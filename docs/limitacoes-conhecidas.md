@@ -5,7 +5,7 @@
 - Sem autenticação: uso local/self-hosted (ADR-0005), não exponha fora de
   `localhost`
 - Sem organização hierárquica: notas por `path`, sem árvore de pastas
-- Sem busca semântica: busca por substring no `path`
+- Sem busca semântica: busca por substring no conteúdo
 - Validação ponta a ponta no Obsidian é manual ([testes de aceitação](testes-aceitacao.md));
   a lógica do plugin é testada
 - Imagem Docker: prefira tag versionada à `latest` ([DEPLOY](DEPLOY.md))
