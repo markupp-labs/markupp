@@ -1,5 +1,9 @@
 # ADR-0008: AGPL v3 como licença do servidor
 
+## Status
+
+Aceita
+
 ## Contexto
 
 O servidor precisa de uma licença alinhada às premissas do projeto: self-host, soberania do dado e abertura a múltiplos clientes

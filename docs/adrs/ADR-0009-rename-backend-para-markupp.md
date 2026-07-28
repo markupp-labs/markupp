@@ -1,5 +1,9 @@
 # ADR-0009: Renomear `backend` para `markupp`
 
+## Status
+
+Aceita
+
 ## Contexto
 
 A pasta do servidor chamava `backend`, o que tratava o produto como acessório de um frontend. O servidor é o produto central e self-hosted

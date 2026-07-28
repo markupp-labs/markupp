@@ -1,5 +1,9 @@
 # ADR-0007: API REST como única interface de acesso
 
+## Status
+
+Aceita
+
 ## Contexto
 
 Clientes (Obsidian, agentes de IA) podem estar em máquinas diferentes do servidor e precisam ler e escrever documentos

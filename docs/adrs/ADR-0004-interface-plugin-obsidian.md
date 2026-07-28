@@ -1,5 +1,9 @@
 # ADR-0004: Plugin do Obsidian como interface
 
+## Status
+
+Aceita
+
 ## Contexto
 
 O usuário precisa de uma interface para interagir com seus documentos

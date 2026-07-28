@@ -1,5 +1,9 @@
 # ADR-0002: Arquitetura multiprocesso
 
+## Status
+
+Aceita
+
 ## Contexto
 
 O sistema tem responsabilidades distintas que podem se beneficiar de linguagens diferentes

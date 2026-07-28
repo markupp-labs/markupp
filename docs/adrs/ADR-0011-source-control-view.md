@@ -1,5 +1,9 @@
 # ADR-0011: Source Control View no plugin, no lugar dos comandos avulsos
 
+## Status
+
+Aceita
+
 ## Contexto
 
 A primeira versão da sincronização do plugin era um conjunto de comandos avulsos em

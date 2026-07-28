@@ -1,5 +1,9 @@
 # ADR-0005: Segurança fora do MVP
 
+## Status
+
+Aceita
+
 ## Contexto
 
 O MVP será demonstrado em rede interna isolada, sem exposição à internet
