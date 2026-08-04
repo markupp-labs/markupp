@@ -17,12 +17,12 @@ Dois planos. O plano de registro guarda as notas e é a fonte da verdade. O plan
 recuperação é derivado do registro, reconstruível a qualquer momento e nunca escreve de
 volta. Índices, grafo de ligações e agrupamentos vivem no plano de recuperação
 
+A separação é lógica e não decide topologia de processo: o ADR-0002 segue valendo para isso
+
 ## Alternativas consideradas
 
 - Manter tudo no repositório de notas (status quo): o schema de busca fica preso ao schema
   do dado durável e trocar de algoritmo exige migration
-- Processo separado só para recuperação: exige deploy e operação extras, sem ganho no
-  volume atual
 
 ## Consequências
 
@@ -32,3 +32,5 @@ volta. Índices, grafo de ligações e agrupamentos vivem no plano de recuperaç
 - Recuperação degradada não impede escrita e leitura de notas
 - A direção é única: o plano de recuperação observa o registro, o registro não conhece o
   plano de recuperação
+- A fronteira entre os planos é a costura por onde um processo separado de indexação pode
+  ser extraído depois, sem mudar o modelo de dados
