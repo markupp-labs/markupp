@@ -2,7 +2,10 @@
 
 ## Status
 
-Aceita
+Aceita, com escopo limitado ao MVP
+
+Os três itens excluídos entraram depois: autenticação pelo ADR-0020 e TLS pelo ADR-0023. Rate
+limit está no escopo, ainda sem decisão registrada
 
 ## Contexto
 
