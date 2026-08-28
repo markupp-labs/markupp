@@ -2,7 +2,10 @@
 
 ## Status
 
-Aceita
+Aceita, com escopo limitado ao MVP
+
+Valia enquanto o Obsidian era o único cliente previsto. O ADR-0026 estabelece que a interface é
+a API REST e que os clientes são pares, sendo o plugin do Obsidian o primeiro deles
 
 ## Contexto
 
