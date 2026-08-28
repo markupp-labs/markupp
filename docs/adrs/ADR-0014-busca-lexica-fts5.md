@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposta
+Substituída pelo ADR-0017
 
 ## Contexto
 
