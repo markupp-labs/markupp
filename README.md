@@ -66,15 +66,9 @@ autenticação. Ver [requisitos do MVP](docs/requisitos-mvp.md) e
 - [Critérios de Qualidade](docs/qualidade.md)
 - [Testes de Aceitação](docs/testes-aceitacao.md)
 
-## Riscos
-- [Tabelas de Riscos](docs/riscos.md)
-
 ## Fluxo de trabalho
 O fluxo de trabalho do projeto está documentado em [fluxo de trabalho](docs/fluxo-de-trabalho.md)
 
-## Arquitetura e métricas
+## Arquitetura
 - [Arquitetura C4](docs/arquitetura-c4.md)
 - [ADRs](docs/adrs/)
-- [Métricas](docs/metricas.md)
-- [Contribuições da Sprint 3](docs/contribuicoes-sprint3.md)
-- [Contribuições da Sprint 4](docs/contribuicoes-sprint4.md)
