@@ -9,7 +9,8 @@ Configuração planejada, ainda não implementada. A razão de ser plugável est
 | `none` | nenhum | zero | Padrão do self-host. Busca léxica e grafo funcionam sem vetor |
 | `openai-compat` | máquina de quem hospeda | elétrico | Self-host que quer busca semântica sem serviço externo |
 | `openai-compat` | API da OpenAI | por token | Quem já tem chave e não quer rodar modelo |
-| `bedrock` | AWS | por token | Padrão do Enterprise, indexação em Lambda |
+| `bedrock` | AWS | por token | Padrão do Enterprise |
+| `local` | dentro do indexador de embedding | elétrico | Self-host sem nenhum serviço externo, nem container extra |
 
 ## Como funciona
 
@@ -19,15 +20,16 @@ flowchart LR
     P -->|none| D[sem vetor]
     P -->|openai-compat| H["HTTP POST /v1/embeddings"]
     P -->|bedrock| S[AWS SDK]
+    P -->|local| M[modelo carregado no processo]
     H --> O[Ollama]
     H --> L[LocalAI, vLLM, llama.cpp]
     H --> A[API da OpenAI]
     S --> T[Titan, Cohere]
 ```
 
-Uma interface, duas implementações. Toda ferramenta local de inferência expõe endpoint
-compatível com a OpenAI, então o caso local e o caso hospedado usam o mesmo cliente HTTP,
-mudando só a URL.
+Uma interface, três implementações. As ferramentas de inferência expõem endpoint compatível com
+a OpenAI, então apontar para um Ollama no cluster ou para a API da OpenAI usa o mesmo cliente
+HTTP, mudando só a URL. O provedor `local` dispensa até esse container.
 
 ## none
 
@@ -106,6 +108,25 @@ Padrão do Enterprise. Sem chave no arquivo: a credencial vem do papel de execu�
 
 O Titan v2 aceita 256, 512 ou 1024. Para acervo multilíngue, `cohere.embed-multilingual-v3`
 com 1024.
+
+## local
+
+Carrega o modelo dentro do processo do indexador de embedding, sem container nem serviço
+externo. Só existe onde a indexação roda como Job dedicado (ADR-0027 e ADR-0028), porque a
+imagem fica grande.
+
+```json
+{
+  "embedding": {
+    "provider": "local",
+    "model_path": "/models/nomic-embed-text-v1.5.onnx",
+    "dimensions": 768
+  }
+}
+```
+
+É a única opção que dá busca semântica sem depender de terceiro nem de componente extra no
+compose.
 
 ## Trocar de modelo obriga reindexar
 
