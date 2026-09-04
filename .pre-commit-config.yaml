@@ -1,0 +1,16 @@
+default_install_hook_types: [pre-commit, commit-msg]
+
+repos:
+  - repo: local
+    hooks:
+      - id: mensagem-de-commit
+        name: valida a mensagem de commit
+        entry: scripts/valida-mensagem-de-commit.sh
+        language: script
+        stages: [commit-msg]
+
+      - id: gofmt
+        name: gofmt nos arquivos go alterados
+        entry: bash -c 'desformatados="$(gofmt -l "$@")"; [ -z "$desformatados" ] || { printf "fora do gofmt:\n%s\n" "$desformatados"; exit 1; }' --
+        language: system
+        types: [go]
