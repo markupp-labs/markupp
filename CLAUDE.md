@@ -80,3 +80,20 @@ The rule applies whether the work is shipped, scaffolded, drafted, or merely sta
 
 - Decisions belong to the user. List the options and wait for the choice;
   don't fill gaps with reasonable defaults, even small ones.
+
+## Agent skills
+
+### Issue tracker
+
+Issues live as GitHub issues on `markupp-labs/markupp`, driven by the `gh` CLI.
+See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+The five canonical triage roles use their default label strings; `bug` and `enhancement`
+carry the category roles. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Multi-context: a root `CONTEXT-MAP.md` points at one `CONTEXT.md` per module
+(`markupp/`, `obsidian-plugin/`). See `docs/agents/domain.md`.
