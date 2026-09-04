@@ -51,8 +51,6 @@
 
 **Commit message format.** Conventional Commits, written in Portuguese, no scope in parentheses: `feat:`, `fix:`, `docs:`, `test:`, `chore:`. Use `refact:` for refactors, never `refactor:`. No emojis, no em dashes in messages. Example: `feat: adiciona validação de upload`.
 
-**Signing.** GPG-sign every commit. Never pass `--no-gpg-sign` or `-c commit.gpgsign=false` without explicit authorization.
-
 **Branches and PRs.** Branch prefixes: `feat/`, `fix/`, `refactor/` (never `feature/`, even if old merges show it). Feature work targets `dev` (`--base dev`); only release or milestone consolidation targets `main`. Promote `dev` to `main` with a merge commit, never squash, then back-merge `main` into `dev`.
 
 **Templates.** Every issue and pull request must follow the templates in `.github` (`.github/ISSUE_TEMPLATE/` and `.github/PULL_REQUEST_TEMPLATE.md`).
