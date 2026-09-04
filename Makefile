@@ -3,7 +3,7 @@ MARKUPP_WORKDIR=/src
 DB_CONFIG_PKG=./internal/storage
 DOCKER_COMPOSE=docker compose
 
-.PHONY: all test-db-config compose-config compose-env docker-up docker-test docker-down run
+.PHONY: all test-db-config compose-config compose-env docker-up docker-test docker-down run hooks test-hooks
 
 all: compose-env compose-config docker-up docker-test docker-down
 
@@ -39,3 +39,11 @@ docker-down:
 # Roda a aplicação completa com air via Docker
 run: compose-env compose-config
 	$(DOCKER_COMPOSE) -f $(COMPOSE_FILE) up --build markupp
+
+# Instala os hooks de pre-commit neste clone
+hooks:
+	pre-commit install
+
+# Roda os testes dos scripts de hook
+test-hooks:
+	./scripts/valida-mensagem-de-commit-test.sh
