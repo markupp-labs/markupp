@@ -20,8 +20,7 @@
 - Tests must be F.I.R.S.T: fast, independent, repeatable,
   self-validating, timely.
 - TDD per commit: the first commit of a task brings only the failing
-  tests; later commits make them pass. Exception: `metrics/` tooling
-  (clean code, but no TDD).
+  tests; later commits make them pass.
 
 ## Dependencies
 
@@ -33,8 +32,6 @@
 - Follow the framework's convention (Rails, Django, Next.js, etc.).
 - Prefer small focused modules over god files.
 - Predictable paths: controller/model/view, src/lib/test, etc.
-- `metrics/` is local tooling and stays untracked; never `git add` it
-  without an explicit request.
 
 ## Formatting
 
