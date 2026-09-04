@@ -37,8 +37,8 @@
 
 - Use the language default formatter (`cargo fmt`, `gofmt`, `prettier`,
   `black`, `rubocop -A`). Don't discuss style beyond that.
-- Before every commit, run `gofmt -l`, `go vet`, and `golangci-lint run`;
-  fix everything before committing.
+- `gofmt` runs on staged Go files through the pre-commit hook. `go vet` and
+  `golangci-lint run` run in CI; run them locally when touching Go.
 
 ## Logging
 
@@ -49,7 +49,7 @@
 
 **Atomic, frequent commits.** One logical change per commit. If the message needs "and", split it. Commit as soon as a unit of work is coherent and tests pass; don't batch unrelated changes. Refactor, feature, and fix go in separate commits even when touching the same file.
 
-**Commit message format.** Conventional Commits, written in Portuguese, no scope in parentheses: `feat:`, `fix:`, `docs:`, `test:`, `chore:`. Use `refact:` for refactors, never `refactor:`. No emojis, no em dashes in messages. Example: `feat: adiciona validação de upload`.
+**Commit message format.** Conventional Commits, written in Portuguese, no scope in parentheses: `feat:`, `fix:`, `docs:`, `test:`, `chore:`. Use `refact:` for refactors, never `refactor:`. Example: `feat: adiciona validação de upload`. The `commit-msg` hook in `.pre-commit-config.yaml` enforces this and rejects emojis, em dashes and tool attribution; install it with `make hooks`.
 
 **Branches and PRs.** Branch prefixes: `feat/`, `fix/`, `refactor/` (never `feature/`, even if old merges show it). Feature work targets `dev` (`--base dev`); only release or milestone consolidation targets `main`. Promote `dev` to `main` with a merge commit, never squash, then back-merge `main` into `dev`.
 
@@ -57,7 +57,7 @@
 
 **AI agents never take credit, in any artifact.** An agent is a tool the human uses; the human is the author of the work. Concretely, when authoring or editing on behalf of the user:
 
-- Never add `Co-Authored-By` trailers to commits.
+- Never add `Co-Authored-By` trailers to commits (the hook blocks them).
 - Never list yourself (or any model/tool name) as author, co-author, contributor, decider, reviewer, or signer in frontmatter, YAML headers, author lists, READMEs, ADRs, docstrings, code comments, changelogs, release notes, PR descriptions, or any other versioned artifact.
 - Never insert "🤖 Generated with..." or similar attribution footers in commits, PR bodies, or generated files.
 - If a template field expects an author/decider/owner, leave it for the human to fill or omit the field — do not put yourself there as a placeholder.
