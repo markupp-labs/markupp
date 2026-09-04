@@ -2,7 +2,7 @@
 
 ## Status
 
-Aceita
+Substituída pelo ADR-0029
 
 ## Contexto
 
