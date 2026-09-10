@@ -59,7 +59,7 @@
 - Never add `Co-Authored-By` trailers to commits (the hook blocks them).
 - Never list yourself (or any model/tool name) as author, co-author, contributor, decider, reviewer, or signer in frontmatter, YAML headers, author lists, READMEs, ADRs, docstrings, code comments, changelogs, release notes, PR descriptions, or any other versioned artifact.
 - Never insert "🤖 Generated with..." or similar attribution footers in commits, PR bodies, or generated files.
-- If a template field expects an author/decider/owner, leave it for the human to fill or omit the field — do not put yourself there as a placeholder.
+- If a template field expects an author/decider/owner, leave it for the human to fill or omit the field; do not put yourself there as a placeholder.
 - If asked to remove existing credit attributions, remove them in full rather than substituting another agent name.
 
 The rule applies whether the work is shipped, scaffolded, drafted, or merely staged.
