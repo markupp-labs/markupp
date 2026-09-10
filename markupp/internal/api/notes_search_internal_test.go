@@ -35,7 +35,7 @@ func (f *fakeBuscaService) Delete(ctx context.Context, id string) error {
 	return nil
 }
 
-func (f *fakeBuscaService) GetNoteById(ctx context.Context, id string) (notes.Note, error) {
+func (f *fakeBuscaService) GetNoteByID(ctx context.Context, id string) (notes.Note, error) {
 	return notes.Note{}, nil
 }
 
@@ -160,8 +160,8 @@ func TestSearch_ServicoRetornaErroDesconhecido_Retorna500Internal(t *testing.T) 
 	assert.Equal(t, "internal", codigoDoErro(t, rec))
 }
 
-func TestSearch_ServicoRetornaErrInvalidId_Retorna400InvalidId(t *testing.T) {
-	svc := &fakeBuscaService{erro: notes.ErrInvalidId}
+func TestSearch_ServicoRetornaErrInvalidID_Retorna400InvalidId(t *testing.T) {
+	svc := &fakeBuscaService{erro: notes.ErrInvalidID}
 
 	rec := buscarNotas(t, svc, "query=go")
 

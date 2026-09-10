@@ -38,7 +38,7 @@ var (
 	ErrInvalidContent = errors.New("content inválido")
 	ErrDuplicatePath  = errors.New("path já existe")
 	ErrNotFound       = errors.New("nota não encontrada")
-	ErrInvalidId      = errors.New("ID inválido")
+	ErrInvalidID      = errors.New("ID inválido")
 	ErrConflict       = errors.New("nota foi atualizada por outro cliente")
 )
 
@@ -58,8 +58,8 @@ func NewService(repo Repository, maxContentSize int64) *Service {
 	}
 }
 
-func (s *Service) GetNoteById(ctx context.Context, id string) (Note, error) {
-	if err := validateId(id); err != nil {
+func (s *Service) GetNoteByID(ctx context.Context, id string) (Note, error) {
+	if err := validateID(id); err != nil {
 		return Note{}, err
 	}
 	return s.repo.GetNoteByID(ctx, id)
@@ -91,7 +91,7 @@ func (s *Service) Create(ctx context.Context, path, content string) (Note, error
 }
 
 func (s *Service) Update(ctx context.Context, id, path, content string, lastModifiedAt time.Time, force bool) (Note, error) {
-	if err := validateId(id); err != nil {
+	if err := validateID(id); err != nil {
 		return Note{}, err
 	}
 	if err := validatePath(path); err != nil {
@@ -118,7 +118,7 @@ func (s *Service) Update(ctx context.Context, id, path, content string, lastModi
 }
 
 func (s *Service) Delete(ctx context.Context, id string) error {
-	if err := validateId(id); err != nil {
+	if err := validateID(id); err != nil {
 		return err
 	}
 	if err := s.repo.Delete(ctx, id); err != nil {
@@ -130,9 +130,9 @@ func (s *Service) Delete(ctx context.Context, id string) error {
 	return nil
 }
 
-func validateId(id string) error {
+func validateID(id string) error {
 	if strings.TrimSpace(id) == "" {
-		return ErrInvalidId
+		return ErrInvalidID
 	}
 	return nil
 }

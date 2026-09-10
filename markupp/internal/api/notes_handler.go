@@ -17,7 +17,7 @@ type NoteService interface {
 	Create(ctx context.Context, path, content string) (notes.Note, error)
 	Update(ctx context.Context, id, path, content string, lastModifiedAt time.Time, force bool) (notes.Note, error)
 	Delete(ctx context.Context, id string) error
-	GetNoteById(ctx context.Context, id string) (notes.Note, error)
+	GetNoteByID(ctx context.Context, id string) (notes.Note, error)
 	ListNotes(ctx context.Context) ([]notes.Note, error)
 	SearchNotes(ctx context.Context, query string, offset, limit int) ([]notes.SearchResult, error)
 }
@@ -94,7 +94,7 @@ func (h *notesHandler) update(w http.ResponseWriter, r *http.Request) {
 
 func (h *notesHandler) get(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
-	note, err := h.svc.GetNoteById(r.Context(), id)
+	note, err := h.svc.GetNoteByID(r.Context(), id)
 	if err != nil {
 		writeDomainError(w, err)
 		return
@@ -193,8 +193,8 @@ func writeDomainError(w http.ResponseWriter, err error) {
 		writeError(w, "conflict", notes.ErrConflict.Error(), http.StatusConflict)
 	case errors.Is(err, notes.ErrNotFound):
 		writeError(w, "not_found", notes.ErrNotFound.Error(), http.StatusNotFound)
-	case errors.Is(err, notes.ErrInvalidId):
-		writeError(w, "invalid_id", notes.ErrInvalidId.Error(), http.StatusBadRequest)
+	case errors.Is(err, notes.ErrInvalidID):
+		writeError(w, "invalid_id", notes.ErrInvalidID.Error(), http.StatusBadRequest)
 	default:
 		writeError(w, "internal", "erro interno", http.StatusInternalServerError)
 	}
