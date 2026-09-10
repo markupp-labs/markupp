@@ -53,7 +53,7 @@ func NewService(repo Repository, maxContentSize int64) *Service {
 	return &Service{
 		repo:           repo,
 		clock:          time.Now,
-		newID:          func() string { return uuid.NewString() },
+		newID:          uuid.NewString,
 		maxContentSize: maxContentSize,
 	}
 }
