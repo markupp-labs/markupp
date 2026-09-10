@@ -60,7 +60,7 @@ curl -s -X DELETE http://localhost:8080/notes/$ID -w '%{http_code}\n'
 
 Esperado: `POST` retorna JSON com `id` UUID, `GET` traz a nota, `DELETE` responde `204`. Rotas completas em `markupp/openapi.yaml`.
 
-Para validar pelo plugin: abra a Source Control View (ícone na barra lateral ou o comando "Abrir source control"), edite/crie uma nota no vault e rode Push (ou Sync). A nota deve aparecer no servidor (confirme com o GET /notes).
+Para validar pelo [plugin](https://github.com/markupp-labs/obsidian-markupp-plugin): abra a Source Control View (ícone na barra lateral ou o comando "Abrir source control"), edite/crie uma nota no vault e rode Push (ou Sync). A nota deve aparecer no servidor (confirme com o GET /notes).
 
 ## Build a partir do código fonte
 
@@ -71,11 +71,6 @@ Para validar pelo plugin: abra a Source Control View (ícone na barra lateral ou
 cd markupp
 go build -o markupp ./cmd/markupp
 ./markupp
-
-# plugin
-cd obsidian-plugin
-npm ci
-npm run build
 ```
 
 A imagem Docker é gerada por `markupp/Dockerfile` (multi-stage, alpine, ~20MB). O workflow `.github/workflows/release.yml` publica `riedelgab/ifsces2` em cada tag `v*`.

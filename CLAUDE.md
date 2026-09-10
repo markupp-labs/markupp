@@ -89,5 +89,5 @@ carry the category roles. See `docs/agents/triage-labels.md`.
 
 ### Domain docs
 
-Multi-context: a root `CONTEXT-MAP.md` points at one `CONTEXT.md` per module
-(`markupp/`, `obsidian-plugin/`). See `docs/agents/domain.md`.
+A root `CONTEXT-MAP.md` points at one `CONTEXT.md` per module (`markupp/`).
+See `docs/agents/domain.md`.

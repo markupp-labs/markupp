@@ -35,12 +35,9 @@ Fora do MVP: versionamento, organização hierárquica, busca semântica e
 autenticação. Ver [requisitos do MVP](docs/requisitos-mvp.md) e
 [limitações conhecidas](docs/limitacoes-conhecidas.md).
 
-## Instalação do plugin (Obsidian)
-1. Baixe o artefato (`markupp-plugin-<versão>.zip`, ou os arquivos `main.js`, `manifest.json` e `styles.css`) da [release mais recente](https://github.com/IFSC-ES2/projeto-markupp/releases/latest).
-2. Crie a pasta `<seu-vault>/.obsidian/plugins/obsidian-markupp-plugin/` e coloque os três arquivos nela (extraia o zip aqui).
-3. No Obsidian: **Configurações → Plugins da comunidade**, ative o **Markupp**.
-4. Nas opções do plugin, ajuste o **`serverUrl`** (padrão `http://localhost:8080`) para o endereço do servidor Markupp.
-5. Use o ícone na barra lateral ou os comandos **Fetch / Pull / Push / Sync** para sincronizar suas notas.
+## Plugin do Obsidian
+O plugin vive em repositório próprio: [markupp-labs/obsidian-markupp-plugin](https://github.com/markupp-labs/obsidian-markupp-plugin).
+As instruções de instalação e os artefatos das releases estão lá.
 
 > Para subir o servidor e validar o ambiente, veja [docs/DEPLOY.md](docs/DEPLOY.md).
 
@@ -64,11 +61,11 @@ autenticação. Ver [requisitos do MVP](docs/requisitos-mvp.md) e
 
 ## Critérios de Qualidade
 - [Critérios de Qualidade](docs/qualidade.md)
-- [Testes de Aceitação](docs/testes-aceitacao.md)
+- [Testes de Aceitação](https://github.com/markupp-labs/obsidian-markupp-plugin/blob/main/docs/testes-aceitacao.md) (no repositório do plugin)
 
 ## Fluxo de trabalho
 O fluxo de trabalho do projeto está documentado em [fluxo de trabalho](docs/fluxo-de-trabalho.md)
 
 ## Arquitetura
-- [Arquitetura C4](docs/arquitetura-c4.md)
+- [Arquitetura C4](https://github.com/markupp-labs/obsidian-markupp-plugin/blob/main/docs/arquitetura-c4.md) (no repositório do plugin)
 - [ADRs](docs/adrs/)
