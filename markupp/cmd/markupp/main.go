@@ -7,11 +7,19 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/api"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/config"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/notes"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/storage"
+)
+
+const (
+	readHeaderTimeout = 10 * time.Second
+	readTimeout       = 30 * time.Second
+	writeTimeout      = 30 * time.Second
+	idleTimeout       = 120 * time.Second
 )
 
 func main() {
@@ -38,12 +46,23 @@ func run(logger *slog.Logger) error {
 		return fmt.Errorf("aplicar migrations: %w", err)
 	}
 
-	addr := ":" + strconv.Itoa(cfg.Port)
-	logger.Info("servidor subindo", "addr", addr)
-	return http.ListenAndServe(addr, newHandler(cfg, db))
+	server := newServer(cfg.Port, newHandler(cfg, db))
+	logger.Info("servidor subindo", "addr", server.Addr)
+	return server.ListenAndServe()
 }
 
 func newHandler(cfg config.Config, db *sql.DB) http.Handler {
 	repo := storage.NewSqliteNotesRepository(db)
 	return api.NewRouter(notes.NewService(repo, cfg.MaxNoteSize))
+}
+
+func newServer(port int, handler http.Handler) *http.Server {
+	return &http.Server{
+		Addr:              ":" + strconv.Itoa(port),
+		Handler:           handler,
+		ReadHeaderTimeout: readHeaderTimeout,
+		ReadTimeout:       readTimeout,
+		WriteTimeout:      writeTimeout,
+		IdleTimeout:       idleTimeout,
+	}
 }
