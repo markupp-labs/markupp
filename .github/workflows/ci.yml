@@ -73,3 +73,33 @@ jobs:
 
       - name: Run tests
         run: npm test --if-present
+
+  convencoes:
+    name: Convencoes de commit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Testa os scripts de apoio
+        run: make test-scripts
+
+      - name: Valida as mensagens dos commits do PR
+        if: github.event_name == 'pull_request'
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          TOPO: ${{ github.event.pull_request.head.sha }}
+        run: |
+          reprovados=0
+          for commit in $(git rev-list "$BASE..$TOPO"); do
+            git log -1 --format=%B "$commit" > "$RUNNER_TEMP/mensagem.txt"
+            if ! ./scripts/valida-mensagem-de-commit.sh "$RUNNER_TEMP/mensagem.txt"; then
+              git log -1 --format='  no commit %h %s' "$commit" >&2
+              reprovados=$((reprovados + 1))
+            fi
+          done
+          if [ "$reprovados" -ne 0 ]; then
+            printf '%s commit(s) com mensagem fora da convencao\n' "$reprovados" >&2
+            exit 1
+          fi
