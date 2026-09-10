@@ -61,11 +61,11 @@ As instruções de instalação e os artefatos das releases estão lá.
 
 ## Critérios de Qualidade
 - [Critérios de Qualidade](docs/qualidade.md)
-- [Testes de Aceitação](docs/testes-aceitacao.md)
+- [Testes de Aceitação](https://github.com/markupp-labs/obsidian-markupp-plugin/blob/main/docs/testes-aceitacao.md) (no repositório do plugin)
 
 ## Fluxo de trabalho
 O fluxo de trabalho do projeto está documentado em [fluxo de trabalho](docs/fluxo-de-trabalho.md)
 
 ## Arquitetura
-- [Arquitetura C4](docs/arquitetura-c4.md)
+- [Arquitetura C4](https://github.com/markupp-labs/obsidian-markupp-plugin/blob/main/docs/arquitetura-c4.md) (no repositório do plugin)
 - [ADRs](docs/adrs/)
