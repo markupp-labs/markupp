@@ -33,7 +33,7 @@ func Load() (Config, error) {
 	}
 
 	cfg := Default()
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) //nolint:gosec // caminho vem de configuracao do operador via MARKUPP_CONFIG_PATH, nao de entrada de usuario
 	if errors.Is(err, fs.ErrNotExist) {
 		return cfg, nil
 	}
