@@ -9,8 +9,8 @@ repos:
         language: script
         stages: [commit-msg]
 
-      - id: gofmt
-        name: gofmt nos arquivos go alterados
-        entry: bash -c 'desformatados="$(gofmt -l "$@")"; [ -z "$desformatados" ] || { printf "fora do gofmt:\n%s\n" "$desformatados"; exit 1; }' --
+      - id: goimports
+        name: goimports nos arquivos go alterados
+        entry: bash -c 'desformatados="$(go run golang.org/x/tools/cmd/goimports@v0.50.0 -l "$@")"; [ -z "$desformatados" ] || { printf "fora do goimports:\n%s\n" "$desformatados"; exit 1; }' --
         language: system
         types: [go]
