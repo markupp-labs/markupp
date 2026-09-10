@@ -49,9 +49,9 @@
 
 **Atomic, frequent commits.** One logical change per commit. If the message needs "and", split it. Commit as soon as a unit of work is coherent and tests pass; don't batch unrelated changes. Refactor, feature, and fix go in separate commits even when touching the same file.
 
-**Commit message format.** Conventional Commits, written in Portuguese, no scope in parentheses: `feat:`, `fix:`, `docs:`, `test:`, `chore:`. Use `refact:` for refactors, never `refactor:`. Example: `feat: adiciona validação de upload`. The `commit-msg` hook in `.pre-commit-config.yaml` enforces this and rejects emojis, em dashes and tool attribution; install it with `make hooks`.
+**Commit message format.** Conventional Commits, written in Portuguese, no scope in parentheses: `feat:`, `fix:`, `docs:`, `test:`, `chore:`, `release:` (sprint consolidation into main), `merge:` (hand-written back-merge). Use `refact:` for refactors, never `refactor:`. Example: `feat: adiciona validação de upload`. The `commit-msg` hook in `.pre-commit-config.yaml` enforces this and rejects emojis, em dashes and tool attribution; install it with `make hooks`.
 
-**Branches and PRs.** Branch prefixes: `feat/`, `fix/`, `refactor/` (never `feature/`, even if old merges show it). Feature work targets `dev` (`--base dev`); only release or milestone consolidation targets `main`. Promote `dev` to `main` with a merge commit, never squash, then back-merge `main` into `dev`.
+**Branches and PRs.** Branch prefixes: `feat/`, `fix/`, `refactor/` (never `feature/`, even if old merges show it). Feature work targets `dev` (`--base dev`); only release or milestone consolidation targets `main`. Promote `dev` to `main` with a merge commit, never squash, then back-merge `main` into `dev`. Release tags follow semantic versioning with a `v` prefix (`v1.0.0`, `v1.0.0-rc.1`); the release workflow refuses to publish a tag that does not.
 
 **Templates.** Every issue and pull request must follow the templates in `.github` (`.github/ISSUE_TEMPLATE/` and `.github/PULL_REQUEST_TEMPLATE.md`).
 
