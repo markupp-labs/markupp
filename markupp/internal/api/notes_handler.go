@@ -1,3 +1,5 @@
+// Package api expõe as notas como uma API REST, traduzindo os erros de
+// domínio em códigos de status HTTP.
 package api
 
 import (
@@ -13,6 +15,7 @@ import (
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/notes"
 )
 
+// NoteService é a fatia do serviço de notas que os handlers HTTP consomem.
 type NoteService interface {
 	Create(ctx context.Context, path, content string) (notes.Note, error)
 	Update(ctx context.Context, id, path, content string, lastModifiedAt time.Time, force bool) (notes.Note, error)

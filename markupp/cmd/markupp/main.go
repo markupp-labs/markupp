@@ -1,3 +1,5 @@
+// Command markupp sobe o servidor HTTP de notas: carrega a configuração,
+// abre e migra o banco, e serve a API REST.
 package main
 
 import (
