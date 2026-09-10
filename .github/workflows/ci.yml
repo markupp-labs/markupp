@@ -46,6 +46,9 @@ jobs:
         working-directory: ${{ github.workspace }}
         run: make coverage-check
 
+      - name: Vulnerabilidades conhecidas
+        run: go run golang.org/x/vuln/cmd/govulncheck@v1.8.0 ./...
+
   plugin-build:
     name: Obsidian plugin build
     runs-on: ubuntu-latest
