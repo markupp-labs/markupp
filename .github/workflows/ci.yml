@@ -40,7 +40,11 @@ jobs:
         run: go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2 run
 
       - name: Run tests
-        run: go test ./... -race -count=1
+        run: go test ./... -race -count=1 -coverprofile=cover.out -covermode=atomic
+
+      - name: Coverage minimo do servidor
+        working-directory: ${{ github.workspace }}
+        run: make coverage-check
 
   plugin-build:
     name: Obsidian plugin build
