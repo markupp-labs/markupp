@@ -71,7 +71,7 @@ func (f *fakeService) Delete(ctx context.Context, id string) error {
 	return f.deleteErr
 }
 
-func (f *fakeService) GetNoteById(ctx context.Context, id string) (notes.Note, error) {
+func (f *fakeService) GetNoteByID(ctx context.Context, id string) (notes.Note, error) {
 	return f.note, f.err
 }
 

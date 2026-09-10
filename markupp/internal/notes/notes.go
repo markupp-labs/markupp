@@ -1,3 +1,5 @@
+// Package notes concentra as regras de negócio das notas: validação,
+// carimbo de tempo e detecção de conflito de versão.
 package notes
 
 import (
@@ -10,6 +12,7 @@ import (
 	"github.com/google/uuid"
 )
 
+// Note é uma nota persistida, identificada por ID e endereçada por Path.
 type Note struct {
 	ID        string
 	Path      string
@@ -18,12 +21,14 @@ type Note struct {
 	UpdatedAt time.Time
 }
 
+// SearchResult é a projeção de uma nota devolvida pela busca, sem o conteúdo.
 type SearchResult struct {
 	ID        string    `json:"id"`
 	Path      string    `json:"path"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
+// Repository é a porta de persistência que o Service consome.
 type Repository interface {
 	Save(ctx context.Context, note Note) error
 	Update(ctx context.Context, id, path, content string, updatedAt, lastModifiedAt time.Time, force bool) (Note, error)
@@ -33,15 +38,18 @@ type Repository interface {
 	SearchNotes(ctx context.Context, query string, offset, limit int32) ([]SearchResult, error)
 }
 
+// Erros de domínio devolvidos pelo Service e traduzidos em status HTTP pela
+// camada de API.
 var (
 	ErrInvalidPath    = errors.New("path inválido")
 	ErrInvalidContent = errors.New("content inválido")
 	ErrDuplicatePath  = errors.New("path já existe")
 	ErrNotFound       = errors.New("nota não encontrada")
-	ErrInvalidId      = errors.New("ID inválido")
+	ErrInvalidID      = errors.New("ID inválido")
 	ErrConflict       = errors.New("nota foi atualizada por outro cliente")
 )
 
+// Service aplica as regras de negócio das notas sobre um Repository.
 type Service struct {
 	repo           Repository
 	clock          func() time.Time
@@ -49,26 +57,30 @@ type Service struct {
 	maxContentSize int64
 }
 
+// NewService monta um Service com relógio e gerador de ID reais.
 func NewService(repo Repository, maxContentSize int64) *Service {
 	return &Service{
 		repo:           repo,
 		clock:          time.Now,
-		newID:          func() string { return uuid.NewString() },
+		newID:          uuid.NewString,
 		maxContentSize: maxContentSize,
 	}
 }
 
-func (s *Service) GetNoteById(ctx context.Context, id string) (Note, error) {
-	if err := validateId(id); err != nil {
+// GetNoteByID devolve a nota de id, ou ErrInvalidID se o id for vazio.
+func (s *Service) GetNoteByID(ctx context.Context, id string) (Note, error) {
+	if err := validateID(id); err != nil {
 		return Note{}, err
 	}
 	return s.repo.GetNoteByID(ctx, id)
 }
 
+// ListNotes devolve todas as notas.
 func (s *Service) ListNotes(ctx context.Context) ([]Note, error) {
 	return s.repo.ListNotes(ctx)
 }
 
+// Create valida path e content e persiste uma nota nova com ID gerado.
 func (s *Service) Create(ctx context.Context, path, content string) (Note, error) {
 	if err := validatePath(path); err != nil {
 		return Note{}, err
@@ -90,8 +102,11 @@ func (s *Service) Create(ctx context.Context, path, content string) (Note, error
 	return note, nil
 }
 
+// Update grava path e content na nota de id. Com force falso, recusa com
+// ErrConflict quando lastModifiedAt não corresponde à versão armazenada. O
+// updated_at gravado é sempre estritamente maior que o anterior.
 func (s *Service) Update(ctx context.Context, id, path, content string, lastModifiedAt time.Time, force bool) (Note, error) {
-	if err := validateId(id); err != nil {
+	if err := validateID(id); err != nil {
 		return Note{}, err
 	}
 	if err := validatePath(path); err != nil {
@@ -101,7 +116,12 @@ func (s *Service) Update(ctx context.Context, id, path, content string, lastModi
 		return Note{}, err
 	}
 
-	now := canonicalTime(s.clock())
+	atual, err := s.repo.GetNoteByID(ctx, id)
+	if err != nil {
+		return Note{}, err
+	}
+
+	now := strictlyAfter(atual.UpdatedAt, canonicalTime(s.clock()))
 	updated, err := s.repo.Update(ctx, id, path, content, now, canonicalTime(lastModifiedAt), force)
 	if err != nil {
 		if errors.Is(err, ErrDuplicatePath) || errors.Is(err, ErrNotFound) || errors.Is(err, ErrConflict) {
@@ -112,8 +132,9 @@ func (s *Service) Update(ctx context.Context, id, path, content string, lastModi
 	return updated, nil
 }
 
+// Delete remove a nota de id, ou devolve ErrNotFound se ela não existir.
 func (s *Service) Delete(ctx context.Context, id string) error {
-	if err := validateId(id); err != nil {
+	if err := validateID(id); err != nil {
 		return err
 	}
 	if err := s.repo.Delete(ctx, id); err != nil {
@@ -125,11 +146,18 @@ func (s *Service) Delete(ctx context.Context, id string) error {
 	return nil
 }
 
-func validateId(id string) error {
+func validateID(id string) error {
 	if strings.TrimSpace(id) == "" {
-		return ErrInvalidId
+		return ErrInvalidID
 	}
 	return nil
+}
+
+func strictlyAfter(previous, now time.Time) time.Time {
+	if now.After(previous) {
+		return now
+	}
+	return previous.Add(time.Millisecond)
 }
 
 func canonicalTime(t time.Time) time.Time {
@@ -157,6 +185,8 @@ func (s *Service) validateContent(content string) error {
 	return nil
 }
 
+// SearchNotes busca por conteúdo, normalizando offset negativo para zero e
+// limit não positivo para dez.
 func (s *Service) SearchNotes(ctx context.Context, query string, offset, limit int) ([]SearchResult, error) {
 	if offset < 0 {
 		offset = 0
