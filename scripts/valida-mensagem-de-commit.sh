@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -uo pipefail
 
-TIPOS_ACEITOS='feat|fix|docs|test|chore|refact'
+TIPOS_ACEITOS='feat|fix|docs|test|chore|refact|release|merge'
 FAIXAS_DE_EMOJI='[\x{1F000}-\x{1FAFF}\x{2600}-\x{27BF}\x{2B00}-\x{2BFF}\x{FE0F}]'
 
 recusa() {
