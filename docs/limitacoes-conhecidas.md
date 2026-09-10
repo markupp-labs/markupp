@@ -6,8 +6,8 @@
   `localhost`
 - Sem organização hierárquica: notas por `path`, sem árvore de pastas
 - Sem busca semântica: busca por substring no conteúdo
-- Validação ponta a ponta no Obsidian é manual ([testes de aceitação](https://github.com/markupp-labs/obsidian-markupp-plugin/blob/main/docs/testes-aceitacao.md));
-  a lógica do plugin é testada
+- Validação ponta a ponta pelo cliente é manual: o servidor tem testes de
+  integração, o percurso do usuário não
 - Imagem Docker: prefira tag versionada à `latest` ([DEPLOY](DEPLOY.md))
 
 Itens fora do escopo do MVP: [requisitos do MVP](requisitos-mvp.md).
