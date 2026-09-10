@@ -2,8 +2,10 @@ COMPOSE_FILE=docker-compose.yaml
 MARKUPP_WORKDIR=/src
 DB_CONFIG_PKG=./internal/storage
 DOCKER_COMPOSE=docker compose
+META_COVERAGE=90
+PERFIL_COVERAGE=markupp/cover.out
 
-.PHONY: all test-db-config compose-config compose-env docker-up docker-test docker-down run hooks test-hooks
+.PHONY: all test-db-config compose-config compose-env docker-up docker-test docker-down run hooks test-scripts coverage coverage-check
 
 all: compose-env compose-config docker-up docker-test docker-down
 
@@ -44,6 +46,16 @@ run: compose-env compose-config
 hooks:
 	pre-commit install
 
-# Roda os testes dos scripts de hook
-test-hooks:
+# Roda os testes dos scripts de apoio
+test-scripts:
 	./scripts/valida-mensagem-de-commit-test.sh
+	./scripts/verifica-coverage-test.sh
+
+# Mede o coverage do servidor e checa a meta minima
+coverage:
+	cd markupp && go test ./... -coverprofile=../$(PERFIL_COVERAGE) -covermode=atomic
+	$(MAKE) coverage-check
+
+# Checa um coverprofile ja existente contra a meta minima
+coverage-check:
+	./scripts/verifica-coverage.sh $(PERFIL_COVERAGE) $(META_COVERAGE)
