@@ -1,7 +1,7 @@
 {
 	"id": "obsidian-markupp-plugin",
 	"name": "Markupp",
-	"version": "0.1.0",
+	"version": "1.0.0",
 	"minAppVersion": "0.15.0",
 	"description": "Self-hosted markdown rendering plugin for Obsidian.",
 	"author": "Luis Renato, Nicolas Arthur, Nicolas Pitz, Gabriela Riedel",

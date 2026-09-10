@@ -1,6 +1,6 @@
 {
 	"name": "obsidian-markupp-plugin",
-	"version": "0.1.0",
+	"version": "1.0.0",
 	"description": "Plugin Obsidian do projeto Markupp: envia notas para o servidor Markupp self-hosted.",
 	"main": "main.js",
 	"type": "module",
