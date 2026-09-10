@@ -25,6 +25,8 @@ rejeita() { verifica 1 "$1" "$2"; }
 
 aceita 'tipo valido com descricao' 'feat: adiciona validacao de upload'
 aceita 'refact e um tipo aceito' 'refact: extrai funcao de parsing'
+aceita 'tipo release' 'release: consolida a Sprint 4 no main como v0.4.0'
+aceita 'tipo merge' 'merge: traz main no dev para reconciliar o v0.4.0'
 aceita 'merge commit nao e validado' 'Merge pull request #7 from markupp-labs/docs'
 aceita 'revert nao e validado' 'Revert "feat: adiciona rota"'
 aceita 'comentario do git e ignorado' "$(printf 'feat: adiciona rota\n# Co-Authored-By: Ferramenta <a@b.c>')"
