@@ -50,7 +50,7 @@
 
 **Commit message format.** Conventional Commits, written in Portuguese, no scope in parentheses: `feat:`, `fix:`, `docs:`, `test:`, `chore:`, `release:` (sprint consolidation into main), `merge:` (hand-written back-merge). Use `refact:` for refactors, never `refactor:`. Example: `feat: adiciona validação de upload`. The `commit-msg` hook in `.pre-commit-config.yaml` enforces this and rejects emojis, em dashes and tool attribution; install it with `make hooks`.
 
-**Branches and PRs.** Branch prefixes: `feat/`, `fix/`, `refactor/` (never `feature/`, even if old merges show it). Feature work targets `dev` (`--base dev`); only release or milestone consolidation targets `main`. Promote `dev` to `main` with a merge commit, never squash, then back-merge `main` into `dev`. Release tags follow semantic versioning with a `v` prefix (`v1.0.0`, `v1.0.0-rc.1`); the release workflow refuses to publish a tag that does not.
+**Branches and PRs.** Branch prefixes mirror the commit types: `feat/`, `fix/`, `refact/` (never `feature/` or `refactor/`, even if old merges show them). Feature work targets `dev` (`--base dev`); only release or milestone consolidation targets `main`. Promote `dev` to `main` with a merge commit, never squash, then back-merge `main` into `dev`. Release tags follow semantic versioning with a `v` prefix (`v1.0.0`, `v1.0.0-rc.1`); the release workflow refuses to publish a tag that does not.
 
 **Templates.** Every issue and pull request must follow the templates in `.github` (`.github/ISSUE_TEMPLATE/` and `.github/PULL_REQUEST_TEMPLATE.md`).
 
