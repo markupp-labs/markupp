@@ -9,7 +9,6 @@
 - No code duplication. Extract shared logic into a function/module.
 - Early returns over nested ifs. Max 2 levels of indentation.
 - Exception messages must include the offending value and expected shape.
-- No comments. Clear names and short functions replace them.
 
 ## Tests
 
