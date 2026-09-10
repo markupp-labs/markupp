@@ -101,7 +101,12 @@ func (s *Service) Update(ctx context.Context, id, path, content string, lastModi
 		return Note{}, err
 	}
 
-	now := canonicalTime(s.clock())
+	atual, err := s.repo.GetNoteByID(ctx, id)
+	if err != nil {
+		return Note{}, err
+	}
+
+	now := strictlyAfter(atual.UpdatedAt, canonicalTime(s.clock()))
 	updated, err := s.repo.Update(ctx, id, path, content, now, canonicalTime(lastModifiedAt), force)
 	if err != nil {
 		if errors.Is(err, ErrDuplicatePath) || errors.Is(err, ErrNotFound) || errors.Is(err, ErrConflict) {
@@ -130,6 +135,13 @@ func validateId(id string) error {
 		return ErrInvalidId
 	}
 	return nil
+}
+
+func strictlyAfter(previous, now time.Time) time.Time {
+	if now.After(previous) {
+		return now
+	}
+	return previous.Add(time.Millisecond)
 }
 
 func canonicalTime(t time.Time) time.Time {
