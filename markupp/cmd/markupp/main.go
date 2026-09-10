@@ -1,6 +1,8 @@
 package main
 
 import (
+	"database/sql"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
@@ -14,33 +16,34 @@ import (
 
 func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	if err := run(logger); err != nil {
+		logger.Error("servidor encerrado", "err", err)
+		os.Exit(1)
+	}
+}
 
+func run(logger *slog.Logger) error {
 	cfg, err := config.Load()
 	if err != nil {
-		logger.Error("carregar config", "err", err)
-		os.Exit(1)
+		return fmt.Errorf("carregar config: %w", err)
 	}
 
 	db, err := storage.OpenDB(cfg.DBPath)
 	if err != nil {
-		logger.Error("abrir db", "err", err)
-		os.Exit(1)
+		return fmt.Errorf("abrir db %q: %w", cfg.DBPath, err)
 	}
 	defer func() { _ = db.Close() }()
 
 	if err := storage.Migrate(db); err != nil {
-		logger.Error("aplicar migrations", "err", err)
-		os.Exit(1)
+		return fmt.Errorf("aplicar migrations: %w", err)
 	}
-
-	repo := storage.NewSqliteNotesRepository(db)
-	svc := notes.NewService(repo, cfg.MaxNoteSize)
-	router := api.NewRouter(svc)
 
 	addr := ":" + strconv.Itoa(cfg.Port)
 	logger.Info("servidor subindo", "addr", addr)
-	if err := http.ListenAndServe(addr, router); err != nil {
-		logger.Error("servidor", "err", err)
-		os.Exit(1)
-	}
+	return http.ListenAndServe(addr, newHandler(cfg, db))
+}
+
+func newHandler(cfg config.Config, db *sql.DB) http.Handler {
+	repo := storage.NewSqliteNotesRepository(db)
+	return api.NewRouter(notes.NewService(repo, cfg.MaxNoteSize))
 }
