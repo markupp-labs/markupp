@@ -152,12 +152,12 @@ func parseQueryInt(value string, defaultValue int) (int, error) {
 	return strconv.Atoi(value)
 }
 
-func clamp(v, min, max int) int {
-	if v < min {
-		return min
+func clamp(v, lower, upper int) int {
+	if v < lower {
+		return lower
 	}
-	if v > max {
-		return max
+	if v > upper {
+		return upper
 	}
 	return v
 }
