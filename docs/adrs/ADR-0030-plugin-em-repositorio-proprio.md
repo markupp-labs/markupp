@@ -15,7 +15,8 @@ privilegiada que justifique dividir o repositório
 ## Decisão
 
 O plugin passa a viver em `markupp-labs/obsidian-markupp-plugin`, com histórico preservado
-via `git subtree split`. Este repositório fica só com o servidor
+via `git subtree split`. A documentação referente ao plugin acompanha o código. Este
+repositório fica só com o servidor
 
 ## Alternativas consideradas
 
@@ -34,3 +35,8 @@ via `git subtree split`. Este repositório fica só com o servidor
   contrato entre eles (ADR-0026)
 - O contrato deixa de ser verificado por um CI único: quebrar a API aqui só aparece no CI
   do plugin
+- A ADR-0004 (plugin como interface) e a ADR-0011 (source control view) saem daqui e viram
+  a ADR-0002 e a ADR-0003 do repositório do plugin, junto com a visão C4 e os testes de
+  aceitação. A numeração daqui fica com dois buracos
+- A visão C4 do sistema, que cobria também os componentes do servidor, passa a ser mantida
+  no repositório do plugin
