@@ -27,17 +27,13 @@ Excesso de informação descentralizada e dados desestruturados sem métodos de 
 
 ## MVP entregue (Release Candidate)
 
-As seções acima são a visão do produto. O MVP entregue cobre CRUD de notas via
-plugin e API REST, listagem, busca por substring e sincronização com detecção de
-conflito e sobrescrita forçada.
+As seções acima são a visão do produto. O MVP entregue cobre CRUD de notas pela
+API REST, listagem, busca por substring e sincronização com detecção de conflito
+e sobrescrita forçada.
 
 Fora do MVP: versionamento, organização hierárquica, busca semântica e
 autenticação. Ver [requisitos do MVP](docs/requisitos-mvp.md) e
 [limitações conhecidas](docs/limitacoes-conhecidas.md).
-
-## Plugin do Obsidian
-O plugin vive em repositório próprio: [markupp-labs/obsidian-markupp-plugin](https://github.com/markupp-labs/obsidian-markupp-plugin).
-As instruções de instalação e os artefatos das releases estão lá.
 
 > Para subir o servidor e validar o ambiente, veja [docs/DEPLOY.md](docs/DEPLOY.md).
 
@@ -61,11 +57,9 @@ As instruções de instalação e os artefatos das releases estão lá.
 
 ## Critérios de Qualidade
 - [Critérios de Qualidade](docs/qualidade.md)
-- [Testes de Aceitação](https://github.com/markupp-labs/obsidian-markupp-plugin/blob/main/docs/testes-aceitacao.md) (no repositório do plugin)
 
 ## Fluxo de trabalho
 O fluxo de trabalho do projeto está documentado em [fluxo de trabalho](docs/fluxo-de-trabalho.md)
 
 ## Arquitetura
-- [Arquitetura C4](https://github.com/markupp-labs/obsidian-markupp-plugin/blob/main/docs/arquitetura-c4.md) (no repositório do plugin)
 - [ADRs](docs/adrs/)
