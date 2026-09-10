@@ -17,18 +17,15 @@ terms or decisions actually get resolved.
 
 ## File structure
 
-This is a multi-context repo. Two modules with separate toolchains: `markupp/` (Go
-server) and `obsidian-plugin/` (TypeScript client).
+This repo holds one module: `markupp/`, the Go server. The Obsidian plugin lives in
+`markupp-labs/obsidian-markupp-plugin`.
 
     /
     |- CONTEXT-MAP.md
     |- docs/adrs/                       system-wide decisions, ADR-0001 onwards
-    |- markupp/
-    |   |- CONTEXT.md
-    |   `- docs/adrs/                   server-specific decisions
-    `- obsidian-plugin/
+    `- markupp/
         |- CONTEXT.md
-        `- docs/adrs/                   plugin-specific decisions
+        `- docs/adrs/                   server-specific decisions
 
 Existing ADRs are named `ADR-NNNN-slug-em-portugues.md` and are written in Portuguese.
 Keep that convention for new ones.

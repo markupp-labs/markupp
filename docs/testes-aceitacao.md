@@ -13,9 +13,9 @@ dentro do Obsidian é validado manualmente.
 | Editar e renomear (RF5/RF4, #7/#6) | idem |
 | Excluir nota (RF3, #5) | idem |
 | Conflito 409 e force (#59) | idem |
-| Operações do plugin: fetch/pull/push/sync (#57/#68/#78) | `obsidian-plugin/src/core/*.test.ts` |
+| Operações do plugin: fetch/pull/push/sync (#57/#68/#78) | `src/core/*.test.ts` no [repositório do plugin](https://github.com/markupp-labs/obsidian-markupp-plugin) |
 
-CI: jobs "Servidor (Go) tests" e "Obsidian plugin build". Fora do escopo do MVP:
+CI: job "Servidor (Go) tests" aqui, "Obsidian plugin build" no repositório do plugin. Fora do escopo do MVP:
 ver [requisitos do MVP](requisitos-mvp.md).
 
 ## Roteiro manual (Obsidian)
