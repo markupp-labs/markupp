@@ -1,3 +1,5 @@
+// Package storage persiste as notas em SQLite e traduz os erros do driver
+// nos erros de domínio do pacote notes.
 package storage
 
 import (
@@ -14,14 +16,18 @@ import (
 
 const sqliteUniqueConstraintCode = 2067
 
+// SqliteNotesRepository persiste notas em SQLite através das queries geradas
+// pelo sqlc.
 type SqliteNotesRepository struct {
 	q *gen.Queries
 }
 
+// NewSqliteNotesRepository monta o repositório sobre uma conexão já aberta.
 func NewSqliteNotesRepository(db *sql.DB) *SqliteNotesRepository {
 	return &SqliteNotesRepository{q: gen.New(db)}
 }
 
+// Save insere a nota, devolvendo notes.ErrDuplicatePath se o path já existir.
 func (r *SqliteNotesRepository) Save(ctx context.Context, note notes.Note) error {
 	err := r.q.CreateNote(ctx, gen.CreateNoteParams{
 		ID:        note.ID,
@@ -39,6 +45,8 @@ func (r *SqliteNotesRepository) Save(ctx context.Context, note notes.Note) error
 	return err
 }
 
+// Update grava a nota. Com force falso a escrita é condicionada a
+// lastModifiedAt e devolve notes.ErrConflict se a versão não bater.
 func (r *SqliteNotesRepository) Update(ctx context.Context, id, path, content string, updatedAt, lastModifiedAt time.Time, force bool) (notes.Note, error) {
 	var row gen.Note
 	var err error
@@ -86,6 +94,7 @@ func (r *SqliteNotesRepository) Update(ctx context.Context, id, path, content st
 	}, nil
 }
 
+// Delete remove a nota de id, devolvendo notes.ErrNotFound se ela não existir.
 func (r *SqliteNotesRepository) Delete(ctx context.Context, id string) error {
 	rows, err := r.q.DeleteNote(ctx, id)
 	if err != nil {
@@ -97,6 +106,7 @@ func (r *SqliteNotesRepository) Delete(ctx context.Context, id string) error {
 	return nil
 }
 
+// GetNoteByID lê a nota de id, devolvendo notes.ErrNotFound se ela não existir.
 func (r *SqliteNotesRepository) GetNoteByID(ctx context.Context, id string) (notes.Note, error) {
 	row, err := r.q.GetNoteByID(ctx, id)
 	if err != nil {
@@ -114,6 +124,8 @@ func (r *SqliteNotesRepository) GetNoteByID(ctx context.Context, id string) (not
 	}, nil
 }
 
+// SearchNotes devolve as notas cujo conteúdo casa com query, paginadas por
+// offset e limit.
 func (r *SqliteNotesRepository) SearchNotes(ctx context.Context, query string, offset, limit int32) ([]notes.SearchResult, error) {
 	rows, err := r.q.SearchNotes(ctx, gen.SearchNotesParams{
 		Content: "%" + query + "%",
@@ -134,6 +146,7 @@ func (r *SqliteNotesRepository) SearchNotes(ctx context.Context, query string, o
 	return out, nil
 }
 
+// ListNotes devolve todas as notas.
 func (r *SqliteNotesRepository) ListNotes(ctx context.Context) ([]notes.Note, error) {
 	rows, err := r.q.ListNotes(ctx)
 	if err != nil {

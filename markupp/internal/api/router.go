@@ -5,6 +5,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 )
 
+// NewRouter monta as rotas REST de notas sobre svc, com RequestID e Recoverer.
 func NewRouter(svc NoteService) chi.Router {
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)

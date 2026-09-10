@@ -1,5 +1,9 @@
 # ADR-0001: Go como linguagem do servidor
 
+## Status
+
+Aceita
+
 ## Contexto
 
 Precisamos de uma linguagem para a API REST e o núcleo do sistema

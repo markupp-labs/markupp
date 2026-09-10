@@ -34,27 +34,6 @@ Cada atributo priorizado guia decisões nas sprints seguintes:
 - Confiabilidade: exige testes junto com as features, tratamento de erros no CRUD, integridade dos documentos e correção de bugs críticos antes de novas entregas.
 - Desempenho: exige boas escolhas de recursos, atenção a memory leaks e cuidado para evitar más práticas que pesam sem necessidade no cliente e no servidor.
 
-## Relação entre Riscos e Qualidade
-
-### Mapeamento de Riscos × Atributos de Qualidade
-
-Relação dos [riscos](docs/riscos.md) com os atributos afetados:
-
-- RES-1 (complexidade da interface): afeta Manutenibilidade e Desempenho. Interface complexa gera código acoplado e componentes pesados.
-- RPR-1 (backlog volumoso com poucas horas semanais): afeta Manutenibilidade e Confiabilidade. Pressão por entrega estimula atalhos e redução de testes.
-- REQ-1 (turnover de membros): afeta Manutenibilidade e Confiabilidade. Saída de integrantes deixa áreas sem conhecimento documentado.
-- REQ-2 (curva de aprendizado): afeta Manutenibilidade e Desempenho. Falta de domínio gera código pouco padronizado e soluções ineficientes.
-- RTE-1 (falha de integração): afeta Compatibilidade e Confiabilidade. Dependências depreciadas quebram contratos da API e fluxos críticos.
-- RQP-1 (bugs em homologação): afeta Confiabilidade e Manutenibilidade. Bugs frequentes indicam baixa cobertura de testes e código difícil de evoluir.
-
-### Como as Mitigações Protegem os Atributos
-
-Ações concretas que a equipe adota para proteger cada atributo:
-
-- **Manutenibilidade**: linter e formatter rodando em CI/pre-commit; PR template com checklist obrigatório de testes e boas práticas.
-- **Confiabilidade**: validação de entrada; testes de integração obrigatórios para os fluxos CRUD; confirmação no plugin antes de ações destrutivas.
-- **Desempenho**: seguir boas práticas de código como evitar operações pesadas em eventos frequentes; evitar dependências pesadas sem necessidade; atenção a esses pontos durante o code review.
-
 ## Avaliação Preliminar da Qualidade
 
 ### Escopo Inicial

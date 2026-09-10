@@ -1,5 +1,9 @@
 # ADR-0010: Detalhes de persistência isolados na camada de storage
 
+## Status
+
+Aceita
+
 ## Contexto
 
 As camadas api -> notes -> storage existem, mas detalhes de persistência vazam para

@@ -1,5 +1,9 @@
 # ADR-0006: SQLite como armazenamento dos documentos e anexos
 
+## Status
+
+Substituída pelo ADR-0015
+
 ## Contexto
 
 Precisamos decidir onde o conteúdo markdown e os anexos embutidos ficam guardados no servidor

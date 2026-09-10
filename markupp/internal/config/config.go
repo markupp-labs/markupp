@@ -1,3 +1,5 @@
+// Package config carrega os parâmetros de execução do servidor a partir de
+// um arquivo JSON, com valores padrão embutidos.
 package config
 
 import (
@@ -12,12 +14,14 @@ const (
 	defaultPath = "./config.json"
 )
 
+// Config são os parâmetros de execução do servidor.
 type Config struct {
 	Port        int    `json:"port"`
 	DBPath      string `json:"db_path"`
 	MaxNoteSize int64  `json:"max_note_size"`
 }
 
+// Default devolve a configuração usada quando não há arquivo de config.
 func Default() Config {
 	return Config{
 		Port:        8080,
@@ -26,6 +30,8 @@ func Default() Config {
 	}
 }
 
+// Load lê o JSON apontado por MARKUPP_CONFIG_PATH, caindo em Default quando o
+// arquivo não existe.
 func Load() (Config, error) {
 	path := os.Getenv(envVarName)
 	if path == "" {
@@ -33,7 +39,7 @@ func Load() (Config, error) {
 	}
 
 	cfg := Default()
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) //nolint:gosec // caminho vem de configuracao do operador via MARKUPP_CONFIG_PATH, nao de entrada de usuario
 	if errors.Is(err, fs.ErrNotExist) {
 		return cfg, nil
 	}

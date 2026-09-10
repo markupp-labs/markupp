@@ -1,3 +1,5 @@
+// Package api expõe as notas como uma API REST, traduzindo os erros de
+// domínio em códigos de status HTTP.
 package api
 
 import (
@@ -13,11 +15,12 @@ import (
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/notes"
 )
 
+// NoteService é a fatia do serviço de notas que os handlers HTTP consomem.
 type NoteService interface {
 	Create(ctx context.Context, path, content string) (notes.Note, error)
 	Update(ctx context.Context, id, path, content string, lastModifiedAt time.Time, force bool) (notes.Note, error)
 	Delete(ctx context.Context, id string) error
-	GetNoteById(ctx context.Context, id string) (notes.Note, error)
+	GetNoteByID(ctx context.Context, id string) (notes.Note, error)
 	ListNotes(ctx context.Context) ([]notes.Note, error)
 	SearchNotes(ctx context.Context, query string, offset, limit int) ([]notes.SearchResult, error)
 }
@@ -94,7 +97,7 @@ func (h *notesHandler) update(w http.ResponseWriter, r *http.Request) {
 
 func (h *notesHandler) get(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
-	note, err := h.svc.GetNoteById(r.Context(), id)
+	note, err := h.svc.GetNoteByID(r.Context(), id)
 	if err != nil {
 		writeDomainError(w, err)
 		return
@@ -152,12 +155,12 @@ func parseQueryInt(value string, defaultValue int) (int, error) {
 	return strconv.Atoi(value)
 }
 
-func clamp(v, min, max int) int {
-	if v < min {
-		return min
+func clamp(v, lower, upper int) int {
+	if v < lower {
+		return lower
 	}
-	if v > max {
-		return max
+	if v > upper {
+		return upper
 	}
 	return v
 }
@@ -193,8 +196,8 @@ func writeDomainError(w http.ResponseWriter, err error) {
 		writeError(w, "conflict", notes.ErrConflict.Error(), http.StatusConflict)
 	case errors.Is(err, notes.ErrNotFound):
 		writeError(w, "not_found", notes.ErrNotFound.Error(), http.StatusNotFound)
-	case errors.Is(err, notes.ErrInvalidId):
-		writeError(w, "invalid_id", notes.ErrInvalidId.Error(), http.StatusBadRequest)
+	case errors.Is(err, notes.ErrInvalidID):
+		writeError(w, "invalid_id", notes.ErrInvalidID.Error(), http.StatusBadRequest)
 	default:
 		writeError(w, "internal", "erro interno", http.StatusInternalServerError)
 	}

@@ -1,5 +1,12 @@
 # ADR-0005: Segurança fora do MVP
 
+## Status
+
+Aceita, com escopo limitado ao MVP
+
+Os três itens excluídos entraram depois: autenticação pelo ADR-0020 e TLS pelo ADR-0023. Rate
+limit está no escopo, ainda sem decisão registrada
+
 ## Contexto
 
 O MVP será demonstrado em rede interna isolada, sem exposição à internet
