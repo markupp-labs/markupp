@@ -2,10 +2,12 @@
 
 ## Status
 
-Aceita, com a escolha de linguagem por serviço parcialmente substituída
+Aceita, com duas partes substituídas
 
 A divisão em processos independentes segue valendo. A escolha de Rust ou Python para
-indexação e busca semântica foi substituída pelo ADR-0031, que fixa Go nos dois indexadores
+indexação e busca semântica foi substituída pelo ADR-0031, que fixa Go nos dois indexadores.
+A alternativa "microserviços via rede", descartada aqui, foi retomada pelos ADR-0027 e
+ADR-0028, que separam sete serviços com ciclo de vida próprio sobre Kubernetes
 
 ## Contexto
 
