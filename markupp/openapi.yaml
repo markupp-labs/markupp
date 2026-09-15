@@ -8,6 +8,24 @@ servers:
     description: Servidor local padrão
 paths:
   /notes:
+    get:
+      summary: Lista todas as notas
+      description: Retorna todas as notas com o conteúdo, ordenadas por caminho. Sem paginação.
+      responses:
+        '200':
+          description: Lista de notas, vazia quando não há nenhuma
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/NoteResponse'
+        '500':
+          description: Erro interno do servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
     post:
       summary: Cria uma nova nota
       description: Cria uma nota com caminho e conteúdo fornecidos.
@@ -32,6 +50,59 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '409':
           description: Caminho de nota duplicado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Erro interno do servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /notes/search:
+    get:
+      summary: Busca notas por substring do conteúdo
+      description: |
+        Procura a substring no conteúdo das notas, sem diferenciar maiúscula de minúscula,
+        e devolve os resultados ordenados da atualização mais recente para a mais antiga.
+        O resultado não carrega o conteúdo da nota.
+      parameters:
+        - name: query
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Substring procurada no conteúdo
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 0
+            minimum: 0
+            maximum: 10000
+          description: Quantos resultados pular. Valor fora da faixa é ajustado para o limite.
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 10
+            minimum: 1
+            maximum: 100
+          description: Quantos resultados devolver. Valor fora da faixa é ajustado para o limite.
+      responses:
+        '200':
+          description: Resultados da busca, vazio quando nada casa
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SearchResultResponse'
+        '400':
+          description: Query ausente, ou offset e limit não inteiros
           content:
             application/json:
               schema:
@@ -164,6 +235,23 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /healthz:
+    get:
+      summary: Sonda de saúde do servidor
+      description: Consulta o armazenamento e responde se o servidor está apto a atender.
+      responses:
+        '200':
+          description: Servidor apto
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+        '503':
+          description: Armazenamento não responde
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
 components:
   schemas:
     NoteRequest:
@@ -235,6 +323,30 @@ components:
           format: date-time
           description: Data da última atualização da nota
           example: "2026-05-14T12:00:00Z"
+    SearchResultResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Identificador único da nota
+          example: "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+        path:
+          type: string
+          description: Caminho/identificador do arquivo de nota
+          example: "notas/meeting.md"
+        updated_at:
+          type: string
+          format: date-time
+          description: Data da última atualização da nota
+          example: "2026-05-14T12:00:00Z"
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [ok, unavailable]
+          description: Estado do servidor
+          example: "ok"
     ErrorResponse:
       type: object
       properties:
