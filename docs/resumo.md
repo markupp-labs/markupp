@@ -1,6 +1,6 @@
 # Resumo do projeto
 
-Markupp é um servidor de anotações em markdown que organiza a base sozinho, em vez de pedir
+Markupp é um servidor de notas em markdown que organiza a base sozinho, em vez de pedir
 que o usuário organize.
 
 O usuário escreve e salva. O servidor indexa, liga uma nota à outra e agrupa por tema, sem
