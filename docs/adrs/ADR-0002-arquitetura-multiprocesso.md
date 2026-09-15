@@ -2,7 +2,10 @@
 
 ## Status
 
-Aceita
+Aceita, com a escolha de linguagem por serviço parcialmente substituída
+
+A divisão em processos independentes segue valendo. A escolha de Rust ou Python para
+indexação e busca semântica foi substituída pelo ADR-0031, que fixa Go nos dois indexadores
 
 ## Contexto
 
