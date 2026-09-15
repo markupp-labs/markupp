@@ -15,6 +15,11 @@ import (
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/notes"
 )
 
+// fakeProbe responde a sonda de armazenamento sem tocar em banco.
+type fakeProbe struct{}
+
+func (fakeProbe) PingContext(ctx context.Context) error { return nil }
+
 type fakeBuscaService struct {
 	resultado []notes.SearchResult
 	erro      error
@@ -129,7 +134,7 @@ func buscarNotas(t *testing.T, svc NoteService, queryString string) *httptest.Re
 	t.Helper()
 	req := httptest.NewRequest(http.MethodGet, "/notes/search?"+queryString, nil)
 	rec := httptest.NewRecorder()
-	NewRouter(svc).ServeHTTP(rec, req)
+	NewRouter(svc, fakeProbe{}, nil).ServeHTTP(rec, req)
 	return rec
 }
 

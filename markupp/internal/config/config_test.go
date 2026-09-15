@@ -92,3 +92,31 @@ func TestLoad_JsonInvalido_RetornaErro(t *testing.T) {
 
 	require.Error(t, err)
 }
+
+func TestDefault_NaoTemOrigemPermitida(t *testing.T) {
+	cfg := config.Default()
+
+	assert.Empty(t, cfg.AllowedOrigins, "sem origem configurada o CORS fica desligado")
+}
+
+func TestLoad_ArquivoComOrigens_LeAsOrigensPermitidas(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "config.json")
+	require.NoError(t, os.WriteFile(path, []byte(`{"allowed_origins": ["https://painel.markupp.dev", "http://localhost:5173"]}`), 0o600))
+	t.Setenv("MARKUPP_CONFIG_PATH", path)
+
+	cfg, err := config.Load()
+
+	require.NoError(t, err)
+	assert.Equal(t, []string{"https://painel.markupp.dev", "http://localhost:5173"}, cfg.AllowedOrigins)
+}
+
+func TestLoad_ArquivoSemOrigens_PreservaListaVazia(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "config.json")
+	require.NoError(t, os.WriteFile(path, []byte(`{"port": 9090}`), 0o600))
+	t.Setenv("MARKUPP_CONFIG_PATH", path)
+
+	cfg, err := config.Load()
+
+	require.NoError(t, err)
+	assert.Empty(t, cfg.AllowedOrigins)
+}
