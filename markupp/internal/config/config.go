@@ -19,6 +19,8 @@ type Config struct {
 	Port        int    `json:"port"`
 	DBPath      string `json:"db_path"`
 	MaxNoteSize int64  `json:"max_note_size"`
+	// AllowedOrigins libera CORS para essas origens. Vazio desliga o CORS.
+	AllowedOrigins []string `json:"allowed_origins"`
 }
 
 // Default devolve a configuração usada quando não há arquivo de config.
