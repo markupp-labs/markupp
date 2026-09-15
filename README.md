@@ -1,9 +1,10 @@
 # Markupp
-Markupp é um projeto que propõe uma arquitetura centralizada e self-hosted que permite que usuários criem, editem, organizem e versionem documentos markdown em uma estrutura hierárquica por projetos e categorias. 
 
-O sistema deve funcionar como um hub central de conhecimento oferecendo operações completas de criação, leitura, atualização, exclusão e controle de versões, além de manter organização por caminhos lógicos semelhantes a diretórios.
+Servidor de anotações em markdown que organiza a base sozinho. O usuário escreve e salva, e
+o servidor indexa, liga e agrupa sem alterar o conteúdo. Toda interação passa por uma API
+REST versionada, e painel web, plugin de editor e agente de IA são clientes pares dela.
 
-Com a ascensão dos agentes de IA, a solução ideal é um repositório centralizado e multiplataforma, onde usuário e IA colaboram sobre a mesma base de dados em tempo real criando uma simbiose das suas ideias com seus agentes.
+Descrição completa em [resumo do projeto](docs/resumo.md).
 
 ## Equipe:
  - Renato Freitas - Arquiteto de Software;
