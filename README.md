@@ -1,6 +1,6 @@
 # Markupp
 
-Servidor de anotações em markdown que organiza a base sozinho. O usuário escreve e salva, e
+Servidor de notas em markdown que organiza a base sozinho. O usuário escreve e salva, e
 o servidor indexa, liga e agrupa sem alterar o conteúdo. Toda interação passa por uma API
 REST versionada, e painel web, plugin de editor e agente de IA são clientes pares dela.
 
