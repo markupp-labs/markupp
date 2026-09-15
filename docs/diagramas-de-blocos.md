@@ -9,19 +9,20 @@ rede com transação distribuída.
 
 ## Clientes
 
-Navegador, plugin de editor e agente de IA são pares sobre a mesma API REST versionada.
-Nenhum deles toca o armazenamento, e nenhum tem rota privilegiada.
+Navegador, plugin de editor e agente de IA são pares. Nenhum toca o armazenamento, nenhum
+tem rota privilegiada, e o conjunto de operações é o mesmo dos dois lados.
 
 O navegador baixa o painel web do armazenamento de objeto com CDN e depois fala com a API
 como qualquer outro cliente.
 
 ## Sempre ligado
 
-A **API REST** atende pessoas, tem carga constante e é o caminho de entrada e saída de todo
-conteúdo.
+A **API REST** atende painel web e plugin de editor, tem carga constante e é o caminho de
+entrada e saída de todo conteúdo.
 
-O **servidor MCP** atende agentes. Mesmo formato de requisição, rajada diferente. Fica
-isolado para que um agente em laço não derrube a experiência de quem está digitando.
+O **servidor MCP** atende agentes, com o mesmo conjunto de operações da API REST e uma
+rajada de tráfego própria. O isolamento é mútuo, e nenhum dos dois perfis de carga degrada o
+outro.
 
 O **plano de controle** cuida de cobrança, provisionamento e plano. Tráfego baixo e postura
 de segurança distinta dos outros dois.

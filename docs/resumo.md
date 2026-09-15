@@ -7,8 +7,9 @@ O usuário escreve e salva. O servidor indexa, liga uma nota à outra e agrupa p
 nunca alterar o conteúdo nem o caminho do que foi escrito. A estrutura emerge do que está
 lá, e o cliente mostra essa visão derivada no lugar da árvore de pastas.
 
-Toda interação passa por uma API REST versionada. Painel web, plugin de editor e agente de
-IA são clientes pares dessa API, e nenhum deles toca o armazenamento direto.
+O sistema nasce AI first. Agente de IA é cliente de primeira classe, não integração
+pendurada depois. Toda operação disponível a uma pessoa está disponível a um agente, pela
+mesma API REST versionada, e nenhum cliente toca o armazenamento direto.
 
 ## O problema
 

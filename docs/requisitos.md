@@ -18,7 +18,8 @@ O sistema deve:
 - Publicar a documentação dessa API junto com o servidor
 - Aceitar vários clientes como pares da mesma API, sem cliente privilegiado
 - Servir um painel web ao navegador, com o código baixado sob demanda
-- Atender agentes de IA por um servidor MCP, isolado da API que as pessoas usam
+- Atender agentes de IA por um servidor MCP que expõe o mesmo conjunto de operações da
+  API REST, isolado dela por perfil de carga
 - Controlar o acesso por autenticação, com credencial local e provedores externos
   habilitados por configuração
 - Tratar o cofre como unidade de acesso, onde quem é membro lê e escreve todas as notas dele
