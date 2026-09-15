@@ -6,8 +6,9 @@ REST versionada.
 ## Language
 
 **Cliente**:
-Tudo que consome o markupp, pela API REST ou pelo servidor MCP. Navegador com o painel web,
-plugin de editor e agente de IA são clientes, e nenhum deles é privilegiado.
+Tudo que consome o markupp, pela API REST ou pelo servidor MCP. Painel web, plugin de editor
+e agente de IA são clientes, e nenhum deles é privilegiado. O navegador consome o painel, não
+o markupp.
 _Avoid_: consumidor, integração, aplicação externa, frontend
 
 **Nota**:
