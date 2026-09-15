@@ -43,8 +43,12 @@ O **worker de notificação** trata rajada com repetição, fora do caminho da r
 Um PostgreSQL só, com o plano de registro e o plano de recuperação dentro dele. Os vetores
 ficam em pgvector.
 
-Os sete serviços compartilham esse banco, então o isolamento entre eles é de processo e de
-escala, não de dado. Não são microsserviços no sentido de banco por serviço.
+Seis dos sete artefatos compartilham esse banco, porque o painel web é arquivo estático e não
+roda processo. São serviços no sentido de implantação e escala independentes, não no de banco
+por serviço, e o isolamento entre eles é de processo e de escala, não de dado.
+
+O preço é acoplamento pelo schema. Mudança de coluna coordena os seis, em expand e contract, e
+nenhum deles evolui o modelo de dados por conta própria.
 
 ## Provedores externos
 
