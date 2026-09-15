@@ -45,10 +45,10 @@ Nota, cofre, usuário e busca não são serviços: compartilham banco e caminho 
   indexador de embedding roda
 - A escrita de uma nota continua sendo uma transação em um banco, sem salto de rede
 - Sete artefatos para construir, versionar e implantar, contra um hoje
-- O painel consome computação como os demais serviços, desde o ADR-0032 (o ADR-0028 o
-  previa como arquivo estático, sem processo)
+- O painel consome computação como os demais serviços, desde o ADR-0032
 - São serviços no sentido de implantação e escala independentes, não no de banco por serviço.
   O banco compartilhado é escolha deliberada, e o isolamento entre eles é de processo e de
   escala, não de dado
-- O custo dessa escolha é acoplamento pelo schema. Mudança de coluna coordena os sete, em
-  expand e contract, e nenhum serviço evolui o modelo de dados por conta própria
+- O custo dessa escolha é acoplamento pelo schema. Mudança de coluna coordena os seis que
+  alcançam o banco, em expand e contract, e nenhum deles evolui o modelo de dados por conta
+  própria. O painel fica de fora, porque consome a API
