@@ -48,9 +48,12 @@ escala, não de dado. Não são microsserviços no sentido de banco por serviço
 
 ## Provedores externos
 
-A API REST valida identidade contra o provedor OIDC habilitado. O indexador de embedding
-gera vetores pelo Bedrock. O worker de notificação entrega email pelo SES. Os três são
-trocáveis por configuração, e o self-host aponta para outra coisa sem mudar código.
+A API REST valida identidade contra o provedor OIDC habilitado, o indexador de embedding
+gera vetores pelo provedor configurado, e o worker de notificação entrega email pelo dele.
+
+Os três são trocáveis por configuração, e é por isso que o desenho não nomeia serviço. O
+Enterprise liga Bedrock e SES, o self-host aponta para um modelo local e um SMTP próprio, e
+o código é o mesmo nos dois.
 
 ## O que muda no self-host
 
