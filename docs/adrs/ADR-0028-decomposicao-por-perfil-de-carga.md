@@ -15,8 +15,8 @@ rede e transação distribuída dentro do caminho de escrita de uma nota
 A divisão segue perfil de recurso, não entidade de domínio:
 
 - API REST: ligada à entrada e saída, carga constante, sempre ligada
-- Servidor MCP: mesmo formato de requisição, tráfego de agente com rajada própria, isolado para
-  não degradar a API usada por pessoas
+- Servidor MCP: mesmo formato de requisição e o mesmo conjunto de operações, com rajada de
+  tráfego própria. O isolamento é mútuo: nenhum dos dois perfis de carga degrada o outro
 - Indexador determinístico: CPU em rajada, sem modelo, escala a zero
 - Indexador de embedding: perfil de recurso distinto, com acelerador quando houver modelo
   local, escala a zero
