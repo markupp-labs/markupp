@@ -38,5 +38,13 @@ Descrição completa em [resumo do projeto](docs/resumo.md).
 ## Fluxo de trabalho
 O fluxo de trabalho do projeto está documentado em [fluxo de trabalho](docs/fluxo-de-trabalho.md)
 
+## Especificação
+- [Resumo do projeto](docs/resumo.md)
+- [Requisitos](docs/requisitos.md)
+- [Regras de negócio](docs/regras-de-negocio.md)
+- [Casos de uso](docs/casos-de-uso.md)
+- [Diagramas de blocos](docs/diagramas-de-blocos.md)
+- [Fluxogramas](docs/fluxogramas.md)
+
 ## Arquitetura
 - [ADRs](docs/adrs/)
