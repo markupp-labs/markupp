@@ -5,8 +5,8 @@
 Usuário e agente de IA são o mesmo ator perante o sistema. O diagrama diz isso pela
 generalização. Os dois são Cliente, e todo caso de uso aberto a um está aberto ao outro.
 
-O que muda é a porta de entrada. Painel web e plugin de editor entram pela API REST, o agente
-entra pelo servidor MCP, e as duas expõem o mesmo conjunto de operações.
+O que muda é a porta de entrada. Cliente que fala REST entra pela API, cliente que fala MCP
+entra pelo servidor MCP, e as duas portas expõem o mesmo conjunto de operações.
 
 O administrador aparece à parte porque não escreve nota, configura a instalação.
 

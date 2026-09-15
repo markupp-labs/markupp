@@ -12,8 +12,7 @@ O sistema deve:
 - Indexar o conteúdo em vetores para busca semântica
 - Atualizar os índices automaticamente a cada edição
 - Buscar por título e por conteúdo, combinando o ramo léxico e o semântico
-- Deixar o usuário navegar pela base a partir de um cliente, pela visão derivada ou pelo
-  caminho lógico
+- Deixar o cliente navegar pela base, pela visão derivada ou pelo caminho lógico
 - Expor uma API REST como única interface, versionada por prefixo de caminho
 - Publicar a documentação dessa API junto com o servidor
 - Aceitar vários clientes como pares da mesma API, sem cliente privilegiado
