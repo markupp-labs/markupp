@@ -36,9 +36,6 @@ O sistema deve:
 - Responder com baixa latência sob carga de leitura
 - Manter o painel web utilizável em tela de celular e de desktop
 - Operar com custo mínimo
-- Devolver CPU e memória ao cluster quando os indexadores ficam ociosos
-- Encerrar em resposta a sinal de término sem derrubar requisição em andamento
-- Expor sondas distintas de vivacidade e de prontidão
 - Configurar-se por variável de ambiente, sem arquivo montado no contêiner
 - Não guardar estado no disco do contêiner
 - Emitir log estruturado, métrica e rastro para coleta externa
