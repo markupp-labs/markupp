@@ -35,12 +35,11 @@ O sistema deve:
 - Terminar TLS em toda porta exposta
 - Responder com baixa latência sob carga de leitura
 - Manter o painel web utilizável em tela de celular e de desktop
-- Operar com custo mínimo, com os serviços de indexação escalando a zero quando ociosos
+- Operar com custo mínimo
+- Devolver CPU e memória ao cluster quando os indexadores ficam ociosos
+- Encerrar em resposta a sinal de término sem derrubar requisição em andamento
+- Expor sondas distintas de vivacidade e de prontidão
+- Configurar-se por variável de ambiente, sem arquivo montado no contêiner
+- Não guardar estado no disco do contêiner
+- Emitir log estruturado, métrica e rastro para coleta externa
 - Rodar self-hosted numa instalação de um nó, com o mesmo código que roda na nuvem
-
-## Riscos
-
-O control plane do EKS é cobrado por hora mesmo sem carga. A escala a zero dos indexadores
-corta o custo variável, não esse piso, então o requisito de custo mínimo fica em tensão com
-a escolha de Kubernetes do ADR-0027. Vale revisitar se o piso pesar mais que a operação que
-o Kubernetes poupa.
