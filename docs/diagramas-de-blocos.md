@@ -36,8 +36,9 @@ de segurança distinta dos outros três.
 O **indexador determinístico** gasta CPU em rajada e não carrega modelo. Roda como Job e
 some quando não há nota para indexar.
 
-O **indexador de embedding** tem perfil próprio, com acelerador quando o modelo é local. Sai
-caro ligado, então escala a zero importa mais aqui do que em qualquer outro serviço.
+O **indexador de embedding** tem perfil próprio, com acelerador quando o modelo é local. É o
+que mais segura recurso enquanto roda, então devolver esse recurso ao cluster pesa mais aqui
+do que em qualquer outro serviço.
 
 O **worker de notificação** trata rajada com repetição, fora do caminho da requisição.
 
