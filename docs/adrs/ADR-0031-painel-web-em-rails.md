@@ -1,4 +1,4 @@
-# ADR-0032: Painel web em Ruby on Rails, cliente da API
+# ADR-0031: Painel web em Ruby on Rails, cliente da API
 
 ## Status
 

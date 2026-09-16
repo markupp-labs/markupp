@@ -24,7 +24,7 @@ A divisão segue perfil de recurso, não entidade de domínio:
 - Plano de controle: cobrança, provisionamento e plano, tráfego baixo e postura de segurança
   distinta
 - Painel web: interface do usuário, com ritmo de release próprio e cliente da API como
-  qualquer outro (ADR-0032)
+  qualquer outro (ADR-0031)
 
 Nota, cofre, usuário e busca não são serviços: compartilham banco e caminho de requisição
 
@@ -45,7 +45,7 @@ Nota, cofre, usuário e busca não são serviços: compartilham banco e caminho 
   indexador de embedding roda
 - A escrita de uma nota continua sendo uma transação em um banco, sem salto de rede
 - Sete artefatos para construir, versionar e implantar, contra um hoje
-- O painel consome computação como os demais serviços, desde o ADR-0032
+- O painel consome computação como os demais serviços, desde o ADR-0031
 - São serviços no sentido de implantação e escala independentes, não no de banco por serviço.
   O banco compartilhado é escolha deliberada, e o isolamento entre eles é de processo e de
   escala, não de dado
