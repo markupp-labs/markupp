@@ -1,11 +1,10 @@
 # Markupp
 
 Servidor de notas em markdown que organiza a base sozinho. O usuário escreve e salva, e o
-servidor indexa, liga uma nota à outra e agrupa por tema, sem alterar o conteúdo nem o caminho
-do que foi escrito.
+servidor indexa, liga e agrupa sem alterar o conteúdo. Toda interação passa por uma API REST
+versionada, e painel web, plugin de editor e agente de IA são clientes pares dela.
 
-Toda interação passa por uma API REST versionada, e todo cliente é par dela. Nenhum alcança o
-armazenamento direto.
+Descrição completa em [resumo do projeto](docs/resumo.md).
 
 ## Rodando
 
