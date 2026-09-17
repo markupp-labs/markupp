@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/assets/logo.jpg" alt="Markupp" width="180">
+  <img src="docs/assets/logo.png" alt="Markupp" width="160">
 </p>
 
 # Markupp
