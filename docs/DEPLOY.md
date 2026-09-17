@@ -1,12 +1,11 @@
 # Deploy
 
-O Markupp tem dois artefatos: o **servidor** em Go e o **plugin Obsidian**. O servidor expõe a API REST e o plugin é o cliente que envia notas.
+Este documento cobre o deploy do **servidor** Markupp, escrito em Go. O servidor expõe a API REST que os clientes consomem.
 
 ## Pré-requisitos
 
 - Docker 24+ para rodar o servidor.
-- Obsidian 1.5+ para o plugin.
-- (Opcional, só pra buildar do código) Go 1.26 e Node 20+.
+- (Opcional, só pra buildar do código) Go 1.26.
 
 ## Subir o servidor
 
@@ -38,16 +37,9 @@ docker run -d --name markupp \
 | `db_path` | `./markupp.db` | Arquivo SQLite |
 | `max_note_size` | `52428800` | Tamanho máximo de uma nota (bytes) |
 
-## Instalar o plugin no Obsidian
-
-1. Baixe `main.js`, `manifest.json` e `styles.css` da [release mais recente](https://github.com/IFSC-ES2/projeto-markupp/releases).
-2. Copie os três arquivos para `<seu-vault>/.obsidian/plugins/obsidian-markupp-plugin/`.
-3. Em **Settings → Community Plugins**, habilite "Markupp Plugin".
-4. Em **Settings → Markupp Plugin**, configure a URL do servidor (default `http://localhost:8080`).
-
 ## Validar
 
-Smoke test pela API (sem precisar do Obsidian):
+Smoke test pela API:
 
 ```sh
 ID=$(curl -s -X POST http://localhost:8080/notes \
@@ -60,14 +52,11 @@ curl -s -X DELETE http://localhost:8080/notes/$ID -w '%{http_code}\n'
 
 Esperado: `POST` retorna JSON com `id` UUID, `GET` traz a nota, `DELETE` responde `204`. Rotas completas em `markupp/openapi.yaml`.
 
-Para validar pelo [plugin](https://github.com/markupp-labs/obsidian-markupp-plugin): abra a Source Control View (ícone na barra lateral ou o comando "Abrir source control"), edite/crie uma nota no vault e rode Push (ou Sync). A nota deve aparecer no servidor (confirme com o GET /notes).
-
 ## Build a partir do código fonte
 
 Útil pra contribuir ou reproduzir a imagem localmente.
 
 ```sh
-# servidor
 cd markupp
 go build -o markupp ./cmd/markupp
 ./markupp

@@ -1,5 +1,6 @@
 {
   "port": 8080,
   "db_path": "./markupp.db",
-  "max_note_size": 52428800
+  "max_note_size": 52428800,
+  "allowed_origins": []
 }

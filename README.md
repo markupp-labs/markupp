@@ -1,71 +1,41 @@
+[![CI](https://github.com/markupp-labs/markupp/actions/workflows/ci.yml/badge.svg)](https://github.com/markupp-labs/markupp/actions/workflows/ci.yml)
+[![Licença](https://img.shields.io/github/license/markupp-labs/markupp)](LICENSE)
+[![Go](https://img.shields.io/github/go-mod/go-version/markupp-labs/markupp?filename=markupp%2Fgo.mod)](markupp/go.mod)
+
+<p align="center">
+  <img src="docs/assets/logo.png" alt="Markupp" width="160">
+</p>
+
 # Markupp
-Markupp é um projeto que propõe uma arquitetura centralizada e self-hosted que permite que usuários criem, editem, organizem e versionem documentos markdown em uma estrutura hierárquica por projetos e categorias. 
 
-O sistema deve funcionar como um hub central de conhecimento oferecendo operações completas de criação, leitura, atualização, exclusão e controle de versões, além de manter organização por caminhos lógicos semelhantes a diretórios.
+Markupp é uma base de conhecimento em markdown que se organiza sozinha. Quem faz o trabalho é
+o servidor. Qualquer programa que leia ou escreva notas é cliente dele, nenhum privilegiado, e
+o servidor não presume quais existem.
 
-Com a ascensão dos agentes de IA, a solução ideal é um repositório centralizado e multiplataforma, onde usuário e IA colaboram sobre a mesma base de dados em tempo real criando uma simbiose das suas ideias com seus agentes.
+O usuário escreve e salva. O servidor indexa, liga uma nota à outra e agrupa por tema, sem
+nunca alterar o conteúdo nem o caminho. O cliente mostra essa organização derivada no lugar
+da árvore de pastas.
 
-## Equipe:
- - Renato Freitas - Arquiteto de Software;
- - Nícolas Arthur - DevOps/Infra;
- - Nicolas Pitz - Engenheiro de Qualidade;
- - Gabriela Riedel - Scrum Master;
+A busca é otimizada para encontrar por sentido. Ela acha a nota que trata do assunto mesmo
+quando a palavra digitada não aparece nela, e devolve o trecho que casou com a pergunta.
 
-## MVP
-### O problema
-Excesso de informação descentralizada e dados desestruturados sem métodos de busca de conteúdo. Nossa solução tem o objetivo de resolver esta dor.
+O sistema nasce AI first. Toda operação disponível a uma pessoa está disponível a um agente
+de IA, pela mesma interface.
 
-### Público Alvo
-- Usuários que já têm agentes de IA integrados no seu dia a dia.
-- Times que precisam centralizar documentos. 
+## Rodando
 
-### O que fará
-- Prover um ambiente centralizado para criação, edição e organização de documentos Markdown.
-- Estruturar o conhecimento em hierarquia lógica.
-- Expor uma API REST que permita integração com clientes
-- Processar documentos automaticamente para busca semântica
+```bash
+docker compose up
+```
 
-## MVP entregue (Release Candidate)
+Sobe em `localhost:8080`. Para usar a imagem publicada em vez de buildar do código, veja
+[DEPLOY](docs/DEPLOY.md).
 
-As seções acima são a visão do produto. O MVP entregue cobre CRUD de notas via
-plugin e API REST, listagem, busca por substring e sincronização com detecção de
-conflito e sobrescrita forçada.
+## Documentação
 
-Fora do MVP: versionamento, organização hierárquica, busca semântica e
-autenticação. Ver [requisitos do MVP](docs/requisitos-mvp.md) e
-[limitações conhecidas](docs/limitacoes-conhecidas.md).
+A API está descrita em [openapi.yaml](markupp/openapi.yaml). As decisões de arquitetura estão
+registradas em [ADRs](docs/adrs/), e o resto vive em [docs](docs/).
 
-## Plugin do Obsidian
-O plugin vive em repositório próprio: [markupp-labs/obsidian-markupp-plugin](https://github.com/markupp-labs/obsidian-markupp-plugin).
-As instruções de instalação e os artefatos das releases estão lá.
+## Licença
 
-> Para subir o servidor e validar o ambiente, veja [docs/DEPLOY.md](docs/DEPLOY.md).
-
-## Governança
-**Q: Quem pode abrir PR?**
-> `A: Todos.`
-
-**Q: Quem pode aprovar PR?** 
-> `A: Um par.`
-
-**Q: Politica da main**
-> `A: Só aceita merge com PR aprovado por par.`
-
-**Q: Commits**
-> `A: Seguem o padrão conventional commits em português.`
-
-
-## DoD
-- Cobertura de testes unitários mínima de 80%
-- Feature revisada e aprovada por pares
-
-## Critérios de Qualidade
-- [Critérios de Qualidade](docs/qualidade.md)
-- [Testes de Aceitação](https://github.com/markupp-labs/obsidian-markupp-plugin/blob/main/docs/testes-aceitacao.md) (no repositório do plugin)
-
-## Fluxo de trabalho
-O fluxo de trabalho do projeto está documentado em [fluxo de trabalho](docs/fluxo-de-trabalho.md)
-
-## Arquitetura
-- [Arquitetura C4](https://github.com/markupp-labs/obsidian-markupp-plugin/blob/main/docs/arquitetura-c4.md) (no repositório do plugin)
-- [ADRs](docs/adrs/)
+[AGPL v3](LICENSE).

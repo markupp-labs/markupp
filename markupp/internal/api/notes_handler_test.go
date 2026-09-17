@@ -90,7 +90,7 @@ func (f *fakeService) SearchNotes(ctx context.Context, query string, offset, lim
 
 func doPost(t *testing.T, svc api.NoteService, body string) *httptest.ResponseRecorder {
 	t.Helper()
-	router := api.NewRouter(svc)
+	router := api.NewRouter(svc, &fakeProbe{}, nil)
 	req := httptest.NewRequest(http.MethodPost, "/notes", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
@@ -100,7 +100,7 @@ func doPost(t *testing.T, svc api.NoteService, body string) *httptest.ResponseRe
 
 func doPut(t *testing.T, svc api.NoteService, id, body string) *httptest.ResponseRecorder {
 	t.Helper()
-	router := api.NewRouter(svc)
+	router := api.NewRouter(svc, &fakeProbe{}, nil)
 	req := httptest.NewRequest(http.MethodPut, "/notes/"+id, bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
@@ -110,7 +110,7 @@ func doPut(t *testing.T, svc api.NoteService, id, body string) *httptest.Respons
 
 func doDelete(t *testing.T, svc api.NoteService, id string) *httptest.ResponseRecorder {
 	t.Helper()
-	router := api.NewRouter(svc)
+	router := api.NewRouter(svc, &fakeProbe{}, nil)
 	req := httptest.NewRequest(http.MethodDelete, "/notes/"+id, nil)
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
@@ -119,7 +119,7 @@ func doDelete(t *testing.T, svc api.NoteService, id string) *httptest.ResponseRe
 
 func doGet(t *testing.T, svc api.NoteService, id string) *httptest.ResponseRecorder {
 	t.Helper()
-	router := api.NewRouter(svc)
+	router := api.NewRouter(svc, &fakeProbe{}, nil)
 	req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/notes/%s", id), nil)
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
@@ -128,7 +128,7 @@ func doGet(t *testing.T, svc api.NoteService, id string) *httptest.ResponseRecor
 
 func doListNotes(t *testing.T, svc api.NoteService) *httptest.ResponseRecorder {
 	t.Helper()
-	router := api.NewRouter(svc)
+	router := api.NewRouter(svc, &fakeProbe{}, nil)
 	req := httptest.NewRequest(http.MethodGet, "/notes", nil)
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
@@ -352,7 +352,7 @@ func TestGetNotes_IDNaoEncontrado_ComServiceReal_Retorna404(t *testing.T) {
 	repo := &stubRepository{getError: notes.ErrNotFound}
 	svc := notes.NewService(repo, 1000)
 
-	router := api.NewRouter(svc)
+	router := api.NewRouter(svc, &fakeProbe{}, nil)
 	req := httptest.NewRequest(http.MethodGet, "/notes/id-inexistente", nil)
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
@@ -368,7 +368,7 @@ func TestGetNotes_IdEmBranco_ComServiceReal_Retorna400(t *testing.T) {
 	repo := &stubRepository{}
 	svc := notes.NewService(repo, 1000)
 
-	router := api.NewRouter(svc)
+	router := api.NewRouter(svc, &fakeProbe{}, nil)
 	req := httptest.NewRequest(http.MethodGet, "/notes/%20", nil)
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
@@ -389,7 +389,7 @@ func TestGetNotes_IDValido_ComServiceReal_Retorna200(t *testing.T) {
 	repo := &stubRepository{noteToReturn: notaEsperada}
 	svc := notes.NewService(repo, 1000)
 
-	router := api.NewRouter(svc)
+	router := api.NewRouter(svc, &fakeProbe{}, nil)
 	req := httptest.NewRequest(http.MethodGet, "/notes/id-123", nil)
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
@@ -451,7 +451,7 @@ func TestSearchNotes_QueryValido_Retorna200(t *testing.T) {
 		{ID: "id-2", Path: "b.md", UpdatedAt: now},
 	}}
 
-	router := api.NewRouter(svc)
+	router := api.NewRouter(svc, &fakeProbe{}, nil)
 	req := httptest.NewRequest(http.MethodGet, "/notes/search?query=go&offset=1&limit=2", nil)
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
@@ -473,7 +473,7 @@ func TestSearchNotes_QueryValido_Retorna200(t *testing.T) {
 
 func TestSearchNotes_QueryObrigatoria_Retorna400(t *testing.T) {
 	svc := &fakeService{}
-	router := api.NewRouter(svc)
+	router := api.NewRouter(svc, &fakeProbe{}, nil)
 	req := httptest.NewRequest(http.MethodGet, "/notes/search", nil)
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
@@ -486,7 +486,7 @@ func TestSearchNotes_QueryObrigatoria_Retorna400(t *testing.T) {
 
 func TestSearchNotes_OffsetInvalido_Retorna400(t *testing.T) {
 	svc := &fakeService{}
-	router := api.NewRouter(svc)
+	router := api.NewRouter(svc, &fakeProbe{}, nil)
 	req := httptest.NewRequest(http.MethodGet, "/notes/search?query=go&offset=abc", nil)
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
