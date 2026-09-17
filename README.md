@@ -4,6 +4,10 @@
 
 # Markupp
 
+[![CI](https://github.com/markupp-labs/markupp/actions/workflows/ci.yml/badge.svg)](https://github.com/markupp-labs/markupp/actions/workflows/ci.yml)
+[![Licença](https://img.shields.io/github/license/markupp-labs/markupp)](LICENSE)
+[![Go](https://img.shields.io/github/go-mod/go-version/markupp-labs/markupp?filename=markupp%2Fgo.mod)](markupp/go.mod)
+
 Markupp é uma base de conhecimento em markdown que se organiza sozinha. Quem faz o trabalho é
 o servidor. Qualquer programa que leia ou escreva notas é cliente dele, nenhum privilegiado, e
 o servidor não presume quais existem.
