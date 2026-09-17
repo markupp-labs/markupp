@@ -1,47 +1,41 @@
+[![CI](https://github.com/markupp-labs/markupp/actions/workflows/ci.yml/badge.svg)](https://github.com/markupp-labs/markupp/actions/workflows/ci.yml)
+[![Licença](https://img.shields.io/github/license/markupp-labs/markupp)](LICENSE)
+[![Go](https://img.shields.io/github/go-mod/go-version/markupp-labs/markupp?filename=markupp%2Fgo.mod)](markupp/go.mod)
+
+<p align="center">
+  <img src="docs/assets/logo.png" alt="Markupp" width="160">
+</p>
+
 # Markupp
 
-Servidor de notas em markdown que organiza a base sozinho. O usuário escreve e salva, e
-o servidor indexa, liga e agrupa sem alterar o conteúdo. Toda interação passa por uma API
-REST versionada, e painel web, plugin de editor e agente de IA são clientes pares dela.
+Markupp é uma base de conhecimento em markdown que se organiza sozinha. Quem faz o trabalho é
+o servidor. Qualquer programa que leia ou escreva notas é cliente dele, nenhum privilegiado, e
+o servidor não presume quais existem.
 
-## Equipe:
- - Renato Freitas - Arquiteto de Software;
- - Nícolas Arthur - DevOps/Infra;
- - Nicolas Pitz - Engenheiro de Qualidade;
- - Gabriela Riedel - Scrum Master;
+O usuário escreve e salva. O servidor indexa, liga uma nota à outra e agrupa por tema, sem
+nunca alterar o conteúdo nem o caminho. O cliente mostra essa organização derivada no lugar
+da árvore de pastas.
 
-> Para subir o servidor e validar o ambiente, veja [docs/DEPLOY.md](docs/DEPLOY.md).
+A busca é otimizada para encontrar por sentido. Ela acha a nota que trata do assunto mesmo
+quando a palavra digitada não aparece nela, e devolve o trecho que casou com a pergunta.
 
-## Governança
-**Q: Quem pode abrir PR?**
-> `A: Todos.`
+O sistema nasce AI first. Toda operação disponível a uma pessoa está disponível a um agente
+de IA, pela mesma interface.
 
-**Q: Quem pode aprovar PR?** 
-> `A: Um par.`
+## Rodando
 
-**Q: Politica da main**
-> `A: Só aceita merge com PR aprovado por par.`
+```bash
+docker compose up
+```
 
-**Q: Commits**
-> `A: Seguem o padrão conventional commits em português.`
+Sobe em `localhost:8080`. Para usar a imagem publicada em vez de buildar do código, veja
+[DEPLOY](docs/DEPLOY.md).
 
+## Documentação
 
-## DoD
-- Cobertura de testes unitários mínima de 80%
-- Feature revisada e aprovada por pares
+A API está descrita em [openapi.yaml](markupp/openapi.yaml). As decisões de arquitetura estão
+registradas em [ADRs](docs/adrs/), e o resto vive em [docs](docs/).
 
-## Critérios de Qualidade
-- [Critérios de Qualidade](docs/qualidade.md)
+## Licença
 
-## Fluxo de trabalho
-O fluxo de trabalho do projeto está documentado em [fluxo de trabalho](docs/fluxo-de-trabalho.md)
-
-## Especificação
-- [Requisitos](docs/requisitos.md)
-- [Regras de negócio](docs/regras-de-negocio.md)
-- [Casos de uso](docs/casos-de-uso.md)
-- [Diagramas de blocos](docs/diagramas-de-blocos.md)
-- [Fluxogramas](docs/fluxogramas.md)
-
-## Arquitetura
-- [ADRs](docs/adrs/)
+[AGPL v3](LICENSE).
