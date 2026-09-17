@@ -31,16 +31,20 @@ degrada o outro.
 O **plano de controle** cuida de cobrança, provisionamento e plano. Tráfego baixo e postura
 de segurança distinta dos outros três.
 
-## Escala a zero
+## Escala a zero com KEDA
 
-O **indexador determinístico** gasta CPU em rajada e não carrega modelo. Roda como Job e
-some quando não há nota para indexar.
+O KEDA consulta o cursor de revisão no PostgreSQL e cria trabalho só quando há o que fazer. Sem
+nota para indexar e sem notificação pendente, este grupo não consome nada.
+
+O **indexador determinístico** gasta CPU em rajada e não carrega modelo. Nasce como Job por
+lote pendente e termina quando acaba o lote.
 
 O **indexador de embedding** tem perfil próprio, com acelerador quando o modelo é local. É o
 que mais segura recurso enquanto roda, então devolver esse recurso ao cluster pesa mais aqui
 do que em qualquer outro serviço.
 
-O **worker de notificação** trata rajada com repetição, fora do caminho da requisição.
+O **worker de notificação** trata rajada com repetição, fora do caminho da requisição. É
+Deployment e não Job, porque o KEDA leva as réplicas a zero sem precisar de um pod por email.
 
 ## Dados
 
@@ -67,5 +71,7 @@ o código é o mesmo nos dois.
 
 O mesmo conjunto de imagens roda por compose num nó só. Sem cluster, o TLS termina no próprio
 servidor, e o embedding pode vir de modelo local carregado no processo do indexador.
+
+Sem cluster também não há KEDA, então lá o indexador roda em laço em vez de nascer por lote.
 
 A visão C4 do sistema é mantida no repositório do plugin (ADR-0030).
