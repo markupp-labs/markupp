@@ -15,15 +15,16 @@ rede e transação distribuída dentro do caminho de escrita de uma nota
 A divisão segue perfil de recurso, não entidade de domínio:
 
 - API REST: ligada à entrada e saída, carga constante, sempre ligada
-- Servidor MCP: mesmo formato de requisição, tráfego de agente com rajada própria, isolado para
-  não degradar a API usada por pessoas
+- Servidor MCP: mesmo formato de requisição e o mesmo conjunto de operações, com rajada de
+  tráfego própria. O isolamento é mútuo: nenhum dos dois perfis de carga degrada o outro
 - Indexador determinístico: CPU em rajada, sem modelo, escala a zero
 - Indexador de embedding: perfil de recurso distinto, com acelerador quando houver modelo
   local, escala a zero
 - Worker de notificação: rajada com repetição, fora do caminho da requisição
 - Plano de controle: cobrança, provisionamento e plano, tráfego baixo e postura de segurança
   distinta
-- Painel web: arquivo estático em armazenamento de objeto com CDN, sem processo próprio
+- Painel web: interface do usuário, com ritmo de release próprio e cliente da API como
+  qualquer outro (ADR-0031)
 
 Nota, cofre, usuário e busca não são serviços: compartilham banco e caminho de requisição
 
@@ -44,6 +45,10 @@ Nota, cofre, usuário e busca não são serviços: compartilham banco e caminho 
   indexador de embedding roda
 - A escrita de uma nota continua sendo uma transação em um banco, sem salto de rede
 - Sete artefatos para construir, versionar e implantar, contra um hoje
-- O painel não consome computação, então o custo dele é armazenamento e transferência
-- Os serviços compartilham o mesmo banco, então o isolamento entre eles é de processo e de
-  escala, não de dado: não são microsserviços no sentido de banco por serviço
+- O painel consome computação como os demais serviços, desde o ADR-0031
+- São serviços no sentido de implantação e escala independentes, não no de banco por serviço.
+  O banco compartilhado é escolha deliberada, e o isolamento entre eles é de processo e de
+  escala, não de dado
+- O custo dessa escolha é acoplamento pelo schema. Mudança de coluna coordena os seis que
+  alcançam o banco, em expand e contract, e nenhum deles evolui o modelo de dados por conta
+  própria. O painel fica de fora, porque consome a API
