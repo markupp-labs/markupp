@@ -4,9 +4,11 @@ Base de conhecimento em markdown que se organiza sozinha. Você escreve e salva,
 liga uma nota à outra e agrupa por tema, sem nunca mexer no conteúdo. Nenhuma árvore de pastas
 para manter na mão.
 
-Pessoas e agentes de IA trabalham sobre a mesma base, com o mesmo conjunto de operações.
+A busca é otimizada para encontrar por sentido, e não só pela palavra digitada. Procurar por
+"como cobramos por uso" chega na nota que fala em tarifação por consumo.
 
-Descrição completa em [resumo do projeto](docs/resumo.md).
+Quem faz o trabalho é o servidor. Os clientes são o painel web, plugins de editor e agentes de
+IA, e toda operação disponível a uma pessoa está disponível a um agente.
 
 ## Rodando
 
