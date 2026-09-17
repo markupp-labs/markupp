@@ -4,8 +4,6 @@ Servidor de notas em markdown que organiza a base sozinho. O usuário escreve e 
 o servidor indexa, liga e agrupa sem alterar o conteúdo. Toda interação passa por uma API
 REST versionada, e painel web, plugin de editor e agente de IA são clientes pares dela.
 
-Descrição completa em [resumo do projeto](docs/resumo.md).
-
 ## Equipe:
  - Renato Freitas - Arquiteto de Software;
  - Nícolas Arthur - DevOps/Infra;
@@ -39,7 +37,6 @@ Descrição completa em [resumo do projeto](docs/resumo.md).
 O fluxo de trabalho do projeto está documentado em [fluxo de trabalho](docs/fluxo-de-trabalho.md)
 
 ## Especificação
-- [Resumo do projeto](docs/resumo.md)
 - [Requisitos](docs/requisitos.md)
 - [Regras de negócio](docs/regras-de-negocio.md)
 - [Casos de uso](docs/casos-de-uso.md)
