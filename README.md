@@ -1,7 +1,8 @@
 # Markupp
 
 Markupp é uma base de conhecimento em markdown que se organiza sozinha. Quem faz o trabalho é
-o servidor. Os clientes são o painel web, plugins de editor e agentes de IA.
+o servidor. Qualquer programa que leia ou escreva notas é cliente dele, nenhum privilegiado, e
+o servidor não presume quais existem.
 
 O usuário escreve e salva. O servidor indexa, liga uma nota à outra e agrupa por tema, sem
 nunca alterar o conteúdo nem o caminho. O cliente mostra essa organização derivada no lugar
