@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/assets/logo.jpg" alt="Markupp" width="180">
+</p>
+
 # Markupp
 
 Markupp é uma base de conhecimento em markdown que se organiza sozinha. Quem faz o trabalho é
