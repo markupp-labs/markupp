@@ -55,7 +55,8 @@ func run(logger *slog.Logger) error {
 
 func newHandler(cfg config.Config, db *sql.DB) http.Handler {
 	repo := storage.NewSqliteNotesRepository(db)
-	return api.NewRouter(notes.NewService(repo, cfg.MaxNoteSize))
+	svc := notes.NewService(repo, cfg.MaxNoteSize)
+	return api.NewRouter(svc, db, cfg.AllowedOrigins)
 }
 
 func newServer(port int, handler http.Handler) *http.Server {

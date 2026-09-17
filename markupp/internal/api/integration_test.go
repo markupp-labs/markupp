@@ -29,7 +29,7 @@ func setupIntegrationServer(t *testing.T) (*httptest.Server, *sql.DB) {
 
 	repo := storage.NewSqliteNotesRepository(db)
 	svc := notes.NewService(repo, integrationMaxNoteSize)
-	router := api.NewRouter(svc)
+	router := api.NewRouter(svc, db, nil)
 
 	server := httptest.NewServer(router)
 	t.Cleanup(func() {
