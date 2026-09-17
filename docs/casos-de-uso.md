@@ -27,7 +27,8 @@ desligado.
 Ator: cliente.
 
 O cliente envia caminho e conteúdo para um cofre de que é membro. O servidor grava a nota,
-registra a operação na trilha de auditoria na mesma transação e enfileira a indexação.
+registra a operação na trilha de auditoria na mesma transação e avança o cursor de revisão,
+que é o que o indexador observa.
 Caminho já ocupado dentro do cofre rejeita a criação.
 
 ## Editar nota
@@ -73,7 +74,8 @@ namespace de caminho próprio.
 
 Ator: cliente.
 
-Um membro convida outro usuário. O servidor enfileira a notificação, e o worker envia pelo
+Um membro convida outro usuário. O servidor grava a notificação como pendente, e o worker
+envia pelo
 provedor de email configurado, fora do caminho da requisição. Sem provedor configurado o
 convite não sai. Quem aceita passa a ler e escrever todas as notas do cofre, e pode remover
 qualquer membro, inclusive quem criou.
