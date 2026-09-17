@@ -1,14 +1,17 @@
 # Markupp
 
-Base de conhecimento em markdown que se organiza sozinha. Você escreve e salva, e o servidor
-liga uma nota à outra e agrupa por tema, sem nunca mexer no conteúdo. Nenhuma árvore de pastas
-para manter na mão.
+Markupp é uma base de conhecimento em markdown que se organiza sozinha. Quem faz o trabalho é
+o servidor. Os clientes são o painel web, plugins de editor e agentes de IA.
 
-A busca é otimizada para encontrar por sentido, e não só pela palavra digitada. Procurar por
-"como cobramos por uso" chega na nota que fala em tarifação por consumo.
+O usuário escreve e salva. O servidor indexa, liga uma nota à outra e agrupa por tema, sem
+nunca alterar o conteúdo nem o caminho. O cliente mostra essa organização derivada no lugar
+da árvore de pastas.
 
-Quem faz o trabalho é o servidor. Os clientes são o painel web, plugins de editor e agentes de
-IA, e toda operação disponível a uma pessoa está disponível a um agente.
+A busca é otimizada para encontrar por sentido. Ela acha a nota que trata do assunto mesmo
+quando a palavra digitada não aparece nela, e devolve o trecho que casou com a pergunta.
+
+O sistema nasce AI first. Toda operação disponível a uma pessoa está disponível a um agente
+de IA, pela mesma interface.
 
 ## Rodando
 
