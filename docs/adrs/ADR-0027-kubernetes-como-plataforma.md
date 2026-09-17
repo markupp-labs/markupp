@@ -14,8 +14,8 @@ opera na nuvem deveria ser o que qualquer pessoa consegue operar
 ## Decisão
 
 Kubernetes é a plataforma de execução do Enterprise e do self-host de porte maior, com as
-mesmas imagens de container usadas no compose. A indexação roda como Job com escala a zero, e
-o TLS termina no ingress. O compose continua sendo a via para instalação de um nó
+mesmas imagens de container usadas no compose. A indexação roda como Job criado sob demanda (ADR-0032),
+e o TLS termina no ingress. O compose continua sendo a via para instalação de um nó
 
 ## Alternativas consideradas
 
