@@ -54,6 +54,9 @@ Deployment e não Job, porque o KEDA leva as réplicas a zero sem precisar de um
 Um PostgreSQL só, com o plano de registro e o plano de recuperação dentro dele. Os vetores
 ficam em pgvector.
 
+Ele roda dentro do cluster, com volume persistente, e não como banco gerenciado de nuvem. É o
+que o ADR-0015 pede sem dizer onde, e é o que a infraestrutura disponível oferece.
+
 Seis dos sete serviços compartilham esse banco. O painel fica de fora porque consome a API, e
 não o PostgreSQL. São serviços no sentido de implantação e escala independentes, não no de banco
 por serviço, e o isolamento entre eles é de processo e de escala, não de dado.
