@@ -49,6 +49,36 @@ jobs:
       - name: Vulnerabilidades conhecidas
         run: go run golang.org/x/vuln/cmd/govulncheck@v1.8.0 ./...
 
+  painel-tests:
+    name: Painel (Rails) tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version-file: web/.ruby-version
+          bundler-cache: true
+          working-directory: web
+
+      - name: Run rubocop
+        run: bin/rubocop -f github
+
+      - name: Run brakeman
+        run: bin/brakeman --quiet --no-pager --exit-on-warn --exit-on-error
+
+      - name: Vulnerabilidades conhecidas
+        run: |
+          bin/bundler-audit
+          bin/importmap audit
+
+      - name: Run tests
+        run: bin/rails test
+
   convencoes:
     name: Convencoes de commit
     runs-on: ubuntu-latest
