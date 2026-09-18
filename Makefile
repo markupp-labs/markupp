@@ -22,25 +22,26 @@ compose-config:
 # Configura variáveis de ambiente no ambiente do Compose
 compose-env:
 	@if [ ! -f .env ]; then \
-		printf 'MARKUPP_PORT=8080\nDATA_VOLUME=markupp_data\nGO_MOD_CACHE=go_mod_cache\n' > .env; \
+		printf 'MARKUPP_PORT=8080\nWEB_PORT=3000\nDATA_VOLUME=markupp_data\nGO_MOD_CACHE=go_mod_cache\nBUNDLE_CACHE=bundle_cache\n' > .env; \
 	fi
 	@echo ".env criado/atualizado com sucesso."
 
-# Sobe o container Docker do servidor em modo destacado
+# Sobe os containers Docker do repositorio em modo destacado
 docker-up:
-	$(DOCKER_COMPOSE) -f $(COMPOSE_FILE) up -d --build markupp
+	$(DOCKER_COMPOSE) -f $(COMPOSE_FILE) up -d --build
 
-# Executa todos os testes Go do servidor dentro do container Docker em execução
+# Executa os testes do servidor e do painel dentro dos containers Docker
 docker-test:
 	$(DOCKER_COMPOSE) -f $(COMPOSE_FILE) run --rm markupp sh -c "cd $(MARKUPP_WORKDIR) && go test ./..."
+	$(DOCKER_COMPOSE) -f $(COMPOSE_FILE) run --rm web sh -c "bundle check || bundle install && bin/rails test"
 
 # Desce e remove o container Docker usado nos testes
 docker-down:
 	$(DOCKER_COMPOSE) -f $(COMPOSE_FILE) down
 
-# Roda a aplicação completa com air via Docker
+# Roda o servidor e o painel via Docker
 run: compose-env compose-config
-	$(DOCKER_COMPOSE) -f $(COMPOSE_FILE) up --build markupp
+	$(DOCKER_COMPOSE) -f $(COMPOSE_FILE) up --build
 
 # Instala os hooks de pre-commit neste clone
 hooks:
