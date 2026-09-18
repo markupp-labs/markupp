@@ -14,8 +14,8 @@ opera na nuvem deveria ser o que qualquer pessoa consegue operar
 ## Decisão
 
 Kubernetes é a plataforma de execução do Enterprise e do self-host de porte maior, com as
-mesmas imagens de container usadas no compose. A indexação roda como Job com escala a zero, e
-o TLS termina no ingress. O compose continua sendo a via para instalação de um nó
+mesmas imagens de container usadas no compose. A indexação roda como Job criado sob demanda
+(ADR-0032), e o TLS termina no Gateway. O compose continua sendo a via para instalação de um nó
 
 ## Alternativas consideradas
 
@@ -38,5 +38,9 @@ o TLS termina no ingress. O compose continua sendo a via para instalação de um
   servidor com Let's Encrypt, como o ADR-0023 definia
 - Operar Kubernetes é trabalho novo para uma equipe pequena, e o cluster tem piso de custo que
   o Lambda não tinha
-- Portabilidade não sai de graça: ingress, classe de armazenamento e identidade ainda têm
+- A entrada de tráfego usa Gateway API, e não Ingress. A API Ingress está congelada e a
+  documentação do Kubernetes recomenda Gateway no lugar dela. São três recursos com donos
+  distintos, GatewayClass, Gateway e HTTPRoute, e o cluster precisa dos CRDs e de um controlador
+  que os implemente
+- Portabilidade não sai de graça: gateway, classe de armazenamento e identidade ainda têm
   arestas específicas de cada nuvem
