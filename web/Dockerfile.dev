@@ -1,0 +1,6 @@
+FROM ruby:4.0.7
+
+WORKDIR /rails
+EXPOSE 3000
+
+CMD ["sh", "-c", "bundle check || bundle install && bin/dev"]
