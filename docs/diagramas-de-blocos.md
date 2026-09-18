@@ -16,6 +16,9 @@ nenhum tem rota privilegiada, e todos enxergam o mesmo conjunto de operações.
 O navegador não entra nessa lista porque ele consome o painel, não o markupp. Quem chama a
 API é o painel, do lado do servidor.
 
+Todo tráfego entra pelo Gateway, que termina o TLS e roteia para o serviço certo. É Gateway
+API, e não Ingress (ADR-0027).
+
 ## Sempre ligado
 
 O **painel web** é a interface do usuário, em Rails com Hotwire. Roda como serviço próprio e
