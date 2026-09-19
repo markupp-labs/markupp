@@ -28,7 +28,7 @@ de IA, pela mesma interface.
 docker compose up
 ```
 
-Sobe em `localhost:8080`. Para usar a imagem publicada em vez de buildar do código, veja
+Sobe o servidor em `localhost:8080` e o painel web em `localhost:3000`. Para usar a imagem publicada em vez de buildar do código, veja
 [DEPLOY](docs/DEPLOY.md).
 
 ## Documentação
