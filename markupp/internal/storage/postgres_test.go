@@ -11,7 +11,7 @@ import (
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/storage/storagetest"
 )
 
-const urlSemServidor = "postgres://ninguem:nada@127.0.0.1:1/nada?sslmode=disable&connect_timeout=1"
+const urlSemServidor = "postgres://ninguem@127.0.0.1:1/nada?sslmode=disable&connect_timeout=1"
 
 func TestOpenPool_BancoDisponivel_RetornaPoolRespondendoAoPing(t *testing.T) {
 	pool, err := storage.OpenPool(context.Background(), storagetest.DatabaseURL(t))

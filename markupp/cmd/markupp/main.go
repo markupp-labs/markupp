@@ -3,13 +3,15 @@
 package main
 
 import (
-	"database/sql"
+	"context"
 	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
 	"strconv"
 	"time"
+
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/api"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/config"
@@ -38,25 +40,26 @@ func run(logger *slog.Logger) error {
 		return fmt.Errorf("carregar config: %w", err)
 	}
 
-	db, err := storage.OpenDB(cfg.DBPath)
+	ctx := context.Background()
+	pool, err := storage.OpenPool(ctx, cfg.DBPath)
 	if err != nil {
-		return fmt.Errorf("abrir db %q: %w", cfg.DBPath, err)
+		return fmt.Errorf("abrir banco: %w", err)
 	}
-	defer func() { _ = db.Close() }()
+	defer pool.Close()
 
-	if err := storage.Migrate(db); err != nil {
+	if err := storage.Migrate(ctx, pool); err != nil {
 		return fmt.Errorf("aplicar migrations: %w", err)
 	}
 
-	server := newServer(cfg.Port, newHandler(cfg, db))
+	server := newServer(cfg.Port, newHandler(cfg, pool))
 	logger.Info("servidor subindo", "addr", server.Addr)
 	return server.ListenAndServe()
 }
 
-func newHandler(cfg config.Config, db *sql.DB) http.Handler {
-	repo := storage.NewSqliteNotesRepository(db)
+func newHandler(cfg config.Config, pool *pgxpool.Pool) http.Handler {
+	repo := storage.NewPostgresNotesRepository(pool)
 	svc := notes.NewService(repo, cfg.MaxNoteSize)
-	return api.NewRouter(svc, db, cfg.AllowedOrigins)
+	return api.NewRouter(svc, pool, cfg.AllowedOrigins)
 }
 
 func newServer(port int, handler http.Handler) *http.Server {

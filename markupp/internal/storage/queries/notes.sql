@@ -1,9 +1,9 @@
 -- name: CreateNote :exec
 INSERT INTO notes (id, path, content, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?);
+VALUES ($1, $2, $3, $4, $5);
 
 -- name: GetNoteByID :one
-SELECT id, path, content, created_at, updated_at FROM notes WHERE id = ?;
+SELECT id, path, content, created_at, updated_at FROM notes WHERE id = $1;
 
 -- name: ListNotes :many
 SELECT id, path, content, created_at, updated_at FROM notes
@@ -17,15 +17,15 @@ RETURNING id, path, content, created_at, updated_at;
 
 -- name: UpdateNoteForced :one
 UPDATE notes
-SET path = ?, content = ?, updated_at = ?
-WHERE id = ?
+SET path = $1, content = $2, updated_at = $3
+WHERE id = $4
 RETURNING id, path, content, created_at, updated_at;
 
 -- name: DeleteNote :execrows
-DELETE FROM notes WHERE id = ?;
+DELETE FROM notes WHERE id = $1;
 
 -- name: SearchNotes :many
 SELECT id, path, updated_at FROM notes
-WHERE content LIKE ?
+WHERE content ILIKE $1
 ORDER BY updated_at DESC
-LIMIT ? OFFSET ?;
+LIMIT $2 OFFSET $3;
