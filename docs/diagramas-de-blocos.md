@@ -78,8 +78,10 @@ o código é o mesmo nos dois.
 
 ## O que muda no self-host
 
-O mesmo conjunto de imagens roda por compose num nó só. Sem cluster, o TLS termina no próprio
-servidor, e o embedding pode vir de modelo local carregado no processo do indexador.
+O mesmo conjunto de imagens roda por compose num nó só, menos o plano de controle: com um
+tenant só, não há cobrança nem provisionamento. Embedding e notificação sobem por perfil, só
+quando configurados. Sem cluster, o TLS termina no próprio servidor, e o embedding pode vir de
+modelo local carregado no processo do indexador.
 
 Sem cluster também não há KEDA, então lá o indexador roda em laço em vez de nascer por lote.
 
