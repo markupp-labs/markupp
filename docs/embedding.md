@@ -93,7 +93,7 @@ Alternativa com mais qualidade e mais RAM: `mxbai-embed-large`, 1024 dimensões.
 
 ## bedrock
 
-Padrão do Enterprise. Sem chave no arquivo: a credencial vem do papel de execução da Lambda.
+Padrão do Enterprise. Sem chave no arquivo: a credencial vem da identidade do pod.
 
 ```json
 {
