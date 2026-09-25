@@ -35,13 +35,13 @@ func main() {
 }
 
 func run(logger *slog.Logger) error {
-	cfg, err := config.Load()
+	cfg, err := config.Load(os.LookupEnv)
 	if err != nil {
 		return fmt.Errorf("carregar config: %w", err)
 	}
 
 	ctx := context.Background()
-	pool, err := storage.OpenPool(ctx, cfg.DBPath)
+	pool, err := storage.OpenPool(ctx, cfg.DatabaseURL)
 	if err != nil {
 		return fmt.Errorf("abrir banco: %w", err)
 	}
