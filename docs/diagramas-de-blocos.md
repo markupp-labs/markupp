@@ -64,7 +64,8 @@ não o PostgreSQL. São serviços no sentido de implantação e escala independe
 por serviço, e o isolamento entre eles é de processo e de escala, não de dado.
 
 O preço é acoplamento pelo schema. Mudança de coluna coordena os seis, em expand e contract, e
-nenhum deles evolui o modelo de dados por conta própria.
+nenhum deles evolui o modelo de dados por conta própria. Quem aplica a migração é um Job único,
+que roda antes de qualquer serviço subir a versão nova.
 
 ## Provedores externos
 
