@@ -2,7 +2,6 @@ package storage_test
 
 import (
 	"context"
-	"database/sql"
 	"testing"
 	"time"
 
@@ -11,12 +10,11 @@ import (
 
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/notes"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/storage"
-	_ "modernc.org/sqlite"
 )
 
 func TestSearchNotes_ComResultados_RetornaPaginado(t *testing.T) {
-	db := setupIntegrationTestDB(t)
-	repo := storage.NewSqliteNotesRepository(db)
+	db := setupTestDB(t)
+	repo := storage.NewPostgresNotesRepository(db)
 	ctx := context.Background()
 
 	now := time.Now()
@@ -41,8 +39,8 @@ func TestSearchNotes_ComResultados_RetornaPaginado(t *testing.T) {
 }
 
 func TestSearchNotes_ComPaginacao_RetornaApenasLimitAndOffset(t *testing.T) {
-	db := setupIntegrationTestDB(t)
-	repo := storage.NewSqliteNotesRepository(db)
+	db := setupTestDB(t)
+	repo := storage.NewPostgresNotesRepository(db)
 	ctx := context.Background()
 
 	now := time.Now()
@@ -65,8 +63,8 @@ func TestSearchNotes_ComPaginacao_RetornaApenasLimitAndOffset(t *testing.T) {
 }
 
 func TestSearchNotes_OffsetMaiorQueTotal_RetornaVazio(t *testing.T) {
-	db := setupIntegrationTestDB(t)
-	repo := storage.NewSqliteNotesRepository(db)
+	db := setupTestDB(t)
+	repo := storage.NewPostgresNotesRepository(db)
 	ctx := context.Background()
 
 	now := time.Now()
@@ -87,8 +85,8 @@ func TestSearchNotes_OffsetMaiorQueTotal_RetornaVazio(t *testing.T) {
 }
 
 func TestSearchNotes_NaoEncontra_RetornaVazio(t *testing.T) {
-	db := setupIntegrationTestDB(t)
-	repo := storage.NewSqliteNotesRepository(db)
+	db := setupTestDB(t)
+	repo := storage.NewPostgresNotesRepository(db)
 	ctx := context.Background()
 
 	now := time.Now()
@@ -109,8 +107,8 @@ func TestSearchNotes_NaoEncontra_RetornaVazio(t *testing.T) {
 }
 
 func TestSearchNotes_LikeEhCaseInsensitive(t *testing.T) {
-	db := setupIntegrationTestDB(t)
-	repo := storage.NewSqliteNotesRepository(db)
+	db := setupTestDB(t)
+	repo := storage.NewPostgresNotesRepository(db)
 	ctx := context.Background()
 
 	now := time.Now()
@@ -130,8 +128,8 @@ func TestSearchNotes_LikeEhCaseInsensitive(t *testing.T) {
 }
 
 func TestSearchNotes_QueryParcial_CasaSubstring(t *testing.T) {
-	db := setupIntegrationTestDB(t)
-	repo := storage.NewSqliteNotesRepository(db)
+	db := setupTestDB(t)
+	repo := storage.NewPostgresNotesRepository(db)
 	ctx := context.Background()
 
 	now := time.Now()
@@ -144,24 +142,4 @@ func TestSearchNotes_QueryParcial_CasaSubstring(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, results, 1)
 	assert.Equal(t, "1", results[0].ID)
-}
-
-func setupIntegrationTestDB(t *testing.T) *sql.DB {
-	t.Helper()
-	db, err := sql.Open("sqlite", ":memory:")
-	require.NoError(t, err)
-	t.Cleanup(func() { _ = db.Close() })
-
-	_, err = db.Exec(`
-		CREATE TABLE notes (
-			id TEXT PRIMARY KEY,
-			path TEXT UNIQUE NOT NULL,
-			content TEXT NOT NULL,
-			created_at DATETIME NOT NULL,
-			updated_at DATETIME NOT NULL
-		)
-	`)
-	require.NoError(t, err)
-
-	return db
 }
