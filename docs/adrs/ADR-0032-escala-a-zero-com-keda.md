@@ -40,5 +40,6 @@ de saída
 - A latência de indexação passa a ter estimativa, que é o intervalo de consulta do scaler
 - Um Job por lote é um pod por lote, com o custo de partida que isso carrega
 - KEDA não está instalado no cluster da disciplina, que hoje tem Gateway API, Cilium,
-  cert-manager e Longhorn. Sem ele, e sem metrics-server para o ScaledObject, esta decisão
-  descreve o alvo e não o que roda. Instalar é por Helm, que já existe nas máquinas
+  cert-manager e Longhorn. Sem ele, esta decisão descreve o alvo e não o que roda. Instalar é
+  por Helm, que já existe nas máquinas. O próprio KEDA serve as métricas do scaler de
+  PostgreSQL, então metrics-server só entra se algum serviço escalar por CPU ou memória
