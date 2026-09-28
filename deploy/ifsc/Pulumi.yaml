@@ -1,0 +1,33 @@
+name: markupp-ifsc
+description: Enterprise do markupp no cluster do campus São José do IFSC
+runtime: yaml
+
+packages:
+  markupp: ../pulumi
+
+config:
+  namespace:
+    type: string
+    default: markupp
+  image:
+    type: string
+  host:
+    type: string
+  acmeEmail:
+    type: string
+  storageClass:
+    type: string
+
+resources:
+  markupp:
+    type: markupp:index:Markupp
+    properties:
+      namespace: ${namespace}
+      image: ${image}
+      host: ${host}
+      acmeEmail: ${acmeEmail}
+      database:
+        storageClass: ${storageClass}
+
+outputs:
+  url: ${markupp.url}
