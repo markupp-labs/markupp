@@ -68,6 +68,13 @@ func deploy(t *testing.T, args MarkuppArgs) *fakeResourceMonitor {
 	return monitor
 }
 
+func declareErr(args MarkuppArgs) error {
+	return pulumi.RunErr(func(ctx *pulumi.Context) error {
+		_, err := NewMarkupp(ctx, "markupp", args)
+		return err
+	}, pulumi.WithMocks("markupp", "teste", &fakeResourceMonitor{}))
+}
+
 func at(t *testing.T, pm resource.PropertyMap, keys ...string) resource.PropertyValue {
 	t.Helper()
 	value := resource.NewObjectProperty(pm)
@@ -92,10 +99,7 @@ func TestNewMarkupp_SemNamespace_RetornaErroComOCampo(t *testing.T) {
 	args := argsDeTeste()
 	args.Namespace = ""
 
-	err := pulumi.RunErr(func(ctx *pulumi.Context) error {
-		_, err := NewMarkupp(ctx, "markupp", args)
-		return err
-	}, pulumi.WithMocks("markupp", "teste", &fakeResourceMonitor{}))
+	err := declareErr(args)
 
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "namespace")
@@ -170,4 +174,37 @@ func TestNewMarkupp_Issuer_UsaOEmailACMEInformado(t *testing.T) {
 
 	issuer := monitor.single(t, "kubernetes:cert-manager.io/v1:Issuer")
 	assert.Equal(t, "equipe@markupp.dev.br", at(t, issuer, "spec", "acme", "email").StringValue())
+}
+
+func TestNewMarkupp_EmissorAutoassinado_DispensaEmailEACME(t *testing.T) {
+	args := argsDeTeste()
+	args.CertificateIssuer = "selfSigned"
+	args.AcmeEmail = ""
+
+	monitor := deploy(t, args)
+
+	issuer := monitor.single(t, "kubernetes:cert-manager.io/v1:Issuer")
+	assert.True(t, at(t, issuer, "spec", "selfSigned").IsObject(), "esperado spec.selfSigned")
+	assert.True(t, at(t, issuer, "spec", "acme").IsNull(), "emissor autoassinado nao fala com ACME")
+}
+
+func TestNewMarkupp_EmissorACMESemEmail_RetornaErroComOCampo(t *testing.T) {
+	args := argsDeTeste()
+	args.AcmeEmail = ""
+
+	err := declareErr(args)
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "acmeEmail")
+}
+
+func TestNewMarkupp_EmissorDesconhecido_RetornaErroComOValor(t *testing.T) {
+	args := argsDeTeste()
+	args.CertificateIssuer = "letsencrypt"
+
+	err := declareErr(args)
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "letsencrypt")
+	assert.Contains(t, err.Error(), "selfSigned")
 }
