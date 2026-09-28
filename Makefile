@@ -1,19 +1,16 @@
 COMPOSE_FILE=docker-compose.yaml
-MARKUPP_WORKDIR=/src
-DB_CONFIG_PKG=./internal/storage
 DOCKER_COMPOSE=docker compose
 META_COVERAGE=90
 PERFIL_COVERAGE=markupp/cover.out
 
-.PHONY: all test-db-config compose-config compose-env docker-up docker-test docker-down run hooks test-scripts coverage coverage-check
+.PHONY: all test compose-config compose-env docker-up docker-down run hooks test-scripts coverage coverage-check
 
-all: compose-env compose-config docker-up docker-test docker-down
+all: compose-env compose-config docker-up test docker-down
 
-test: docker-test
-
-# Testa o módulo de banco de dados do servidor dentro de um contêiner Docker
-test-db-config:
-	$(DOCKER_COMPOSE) -f $(COMPOSE_FILE) run --rm markupp sh -c "cd $(MARKUPP_WORKDIR) && go test $(DB_CONFIG_PKG)"
+# Roda todos os testes Go do servidor no host, que precisa de Go e de Docker
+# para o testcontainers subir o PostgreSQL de teste
+test:
+	cd markupp && go test ./...
 
 # Valida o arquivo docker-compose e a interpolação de variáveis de ambiente
 compose-config:
@@ -29,10 +26,6 @@ compose-env:
 # Sobe o container Docker do servidor em modo destacado
 docker-up:
 	$(DOCKER_COMPOSE) -f $(COMPOSE_FILE) up -d --build markupp
-
-# Executa todos os testes Go do servidor dentro do container Docker em execução
-docker-test:
-	$(DOCKER_COMPOSE) -f $(COMPOSE_FILE) run --rm markupp sh -c "cd $(MARKUPP_WORKDIR) && go test ./..."
 
 # Desce e remove o container Docker usado nos testes
 docker-down:
