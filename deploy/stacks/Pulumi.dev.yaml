@@ -1,0 +1,7 @@
+# Cluster kind efêmero do CI, que testa a implantação a cada push em dev.
+config:
+  markupp:host: markupp.local
+  markupp:certificateIssuer: selfSigned
+  markupp:storageClass: standard
+  markupp:apiReplicas: 1
+  markupp:dbInstances: 1

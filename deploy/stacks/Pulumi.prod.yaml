@@ -1,0 +1,4 @@
+# Enterprise no cluster do campus São José do IFSC. Domínio e email ACME
+# entram aqui quando forem escolhidos, com pulumi config set.
+config:
+  markupp:storageClass: longhorn-single
