@@ -25,20 +25,26 @@ func declareIngress(ctx *pulumi.Context, names resourceNames, args MarkuppArgs, 
 	return declareRoute(ctx, names, args, parent)
 }
 
-// declareIssuer resolve o desafio ACME HTTP-01 pelo listener http do próprio
-// Gateway, como o cert-manager faz com Gateway API.
 func declareIssuer(ctx *pulumi.Context, names resourceNames, args MarkuppArgs, parent pulumi.ResourceOption) error {
+	spec := pulumi.Map{"selfSigned": pulumi.Map{}}
+	if args.CertificateIssuer == issuerACME {
+		spec = acmeIssuerSpec(names, args)
+	}
+	return declareCustom(ctx, "cert-manager.io/v1", "Issuer", names.issuer, args, spec, parent)
+}
+
+// acmeIssuerSpec resolve o desafio HTTP-01 pelo listener http do próprio
+// Gateway, como o cert-manager faz com Gateway API.
+func acmeIssuerSpec(names resourceNames, args MarkuppArgs) pulumi.Map {
 	solver := pulumi.Map{"http01": pulumi.Map{"gatewayHTTPRoute": pulumi.Map{
 		"parentRefs": pulumi.Array{gatewayRef(names, args, httpListener)},
 	}}}
-	return declareCustom(ctx, "cert-manager.io/v1", "Issuer", names.issuer, args, pulumi.Map{
-		"acme": pulumi.Map{
-			"server":              pulumi.String("https://acme-v02.api.letsencrypt.org/directory"),
-			"email":               pulumi.String(args.AcmeEmail),
-			"privateKeySecretRef": pulumi.Map{"name": pulumi.String(names.issuer + "-account")},
-			"solvers":             pulumi.Array{solver},
-		},
-	}, parent)
+	return pulumi.Map{"acme": pulumi.Map{
+		"server":              pulumi.String("https://acme-v02.api.letsencrypt.org/directory"),
+		"email":               pulumi.String(args.AcmeEmail),
+		"privateKeySecretRef": pulumi.Map{"name": pulumi.String(names.issuer + "-account")},
+		"solvers":             pulumi.Array{solver},
+	}}
 }
 
 func declareGateway(ctx *pulumi.Context, names resourceNames, args MarkuppArgs, parent pulumi.ResourceOption) error {

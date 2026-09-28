@@ -9,6 +9,8 @@ import (
 const (
 	componentType       = "markupp:index:Markupp"
 	defaultGatewayClass = "cilium"
+	issuerACME          = "acme"
+	issuerSelfSigned    = "selfSigned"
 	defaultAPIReplicas  = 2
 	defaultDBInstances  = 2
 	defaultDBSize       = "10Gi"
@@ -32,8 +34,11 @@ type MarkuppArgs struct {
 	Image string `pulumi:"image"`
 	// Host é o domínio público da API.
 	Host string `pulumi:"host"`
-	// AcmeEmail recebe os avisos do Let's Encrypt.
-	AcmeEmail string `pulumi:"acmeEmail"`
+	// CertificateIssuer é acme, com Let's Encrypt, ou selfSigned, para
+	// cluster sem domínio público. Padrão acme.
+	CertificateIssuer string `pulumi:"certificateIssuer,optional"`
+	// AcmeEmail recebe os avisos do Let's Encrypt. Obrigatório com acme.
+	AcmeEmail string `pulumi:"acmeEmail,optional"`
 	// GatewayClassName é a classe do Gateway. Padrão cilium.
 	GatewayClassName string `pulumi:"gatewayClassName,optional"`
 	// APIReplicas é o número de réplicas da API. Padrão 2.
@@ -90,7 +95,14 @@ func declareResources(ctx *pulumi.Context, name string, args MarkuppArgs, parent
 
 func validate(args MarkuppArgs) error {
 	required := []struct{ field, value string }{
-		{"namespace", args.Namespace}, {"image", args.Image}, {"host", args.Host}, {"acmeEmail", args.AcmeEmail},
+		{"namespace", args.Namespace}, {"image", args.Image}, {"host", args.Host},
+	}
+	switch args.CertificateIssuer {
+	case "", issuerACME:
+		required = append(required, struct{ field, value string }{"acmeEmail", args.AcmeEmail})
+	case issuerSelfSigned:
+	default:
+		return fmt.Errorf("certificateIssuer=%q, esperado %q ou %q", args.CertificateIssuer, issuerACME, issuerSelfSigned)
 	}
 	for _, r := range required {
 		if r.value == "" {
@@ -102,6 +114,9 @@ func validate(args MarkuppArgs) error {
 }
 
 func withDefaults(args MarkuppArgs) MarkuppArgs {
+	if args.CertificateIssuer == "" {
+		args.CertificateIssuer = issuerACME
+	}
 	if args.GatewayClassName == "" {
 		args.GatewayClassName = defaultGatewayClass
 	}
