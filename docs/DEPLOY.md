@@ -47,8 +47,26 @@ resources:
         storageClass: longhorn-single
 ```
 
-A stack da equipe, no cluster do IFSC, está em `deploy/ifsc` e usa o componente pelo caminho
-local.
+### Stacks da equipe
+
+O projeto em `deploy/stacks` usa o componente pelo caminho local e tem duas stacks:
+
+- `prod`: o Enterprise no cluster do IFSC, com Let's Encrypt
+- `dev`: um cluster kind que o CI sobe a cada push em dev para testar a implantação, com
+  certificado autoassinado
+
+Para rodar a stack dev na própria máquina, com kind, helm e Pulumi instalados:
+
+```sh
+./deploy/kind/prepara-cluster.sh
+docker build -t markupp:dev markupp
+kind load docker-image markupp:dev --name markupp-dev
+cd deploy/stacks
+pulumi login --local
+pulumi stack select dev --create
+pulumi up --config image=markupp:dev
+curl -k --resolve markupp.local:8443:127.0.0.1 https://markupp.local:8443/healthz
+```
 
 ## Desenvolvimento local
 
