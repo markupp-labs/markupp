@@ -1,0 +1,68 @@
+name: Stack dev
+
+# Testa a implantação a cada push em dev: sobe um kind com os requisitos do
+# cluster do IFSC, aplica a stack dev do Pulumi e bate no healthz por https.
+# O cluster e o estado do Pulumi somem com o runner.
+
+on:
+  push:
+    branches: [dev]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy-kind:
+    name: Implanta a stack dev num kind
+    runs-on: ubuntu-latest
+    env:
+      PULUMI_CONFIG_PASSPHRASE: ""
+      PULUMI_BACKEND_URL: file://${{ github.workspace }}/.pulumi-state
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: deploy/pulumi/go.mod
+          cache-dependency-path: deploy/pulumi/go.sum
+
+      - name: Instala kind
+        run: go install sigs.k8s.io/kind@v0.33.0
+
+      - name: Instala helm
+        uses: azure/setup-helm@v5
+        with:
+          version: v4.3.0
+
+      - name: Instala o Pulumi
+        uses: pulumi/actions@v7
+
+      - name: Constroi a imagem do servidor
+        run: docker build -t markupp:dev markupp
+
+      - name: Sobe o cluster com os requisitos
+        run: ./deploy/kind/prepara-cluster.sh
+
+      - name: Carrega a imagem no cluster
+        run: kind load docker-image markupp:dev --name markupp-dev
+
+      - name: Aplica a stack dev
+        working-directory: deploy/stacks
+        run: |
+          mkdir -p "${PULUMI_BACKEND_URL#file://}"
+          pulumi stack select dev --create --non-interactive
+          pulumi config set image markupp:dev
+          pulumi up --yes --non-interactive
+
+      - name: Healthz por https pelo Gateway
+        run: |
+          for tentativa in $(seq 1 30); do
+            if curl -sfk --resolve markupp.local:8443:127.0.0.1 https://markupp.local:8443/healthz; then
+              exit 0
+            fi
+            sleep 5
+          done
+          kubectl -n markupp get all,certificate,gateway,httproute
+          exit 1
