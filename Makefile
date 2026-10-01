@@ -50,6 +50,7 @@ hooks:
 test-scripts:
 	./scripts/valida-mensagem-de-commit-test.sh
 	./scripts/verifica-coverage-test.sh
+	./scripts/govulncheck-modulos-test.sh
 
 # Mede o coverage do servidor e checa a meta minima
 coverage:
