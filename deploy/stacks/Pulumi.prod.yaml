@@ -2,4 +2,4 @@
 # quando for escolhido, com pulumi config set.
 config:
   markupp:host: markupp.negoci.online
-  markupp:storageClass: longhorn-single
+  markupp:storageClass: longhorn-fast
