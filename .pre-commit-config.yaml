@@ -14,3 +14,10 @@ repos:
         entry: bash -c 'desformatados="$(go run golang.org/x/tools/cmd/goimports@v0.50.0 -l "$@")"; [ -z "$desformatados" ] || { printf "fora do goimports:\n%s\n" "$desformatados"; exit 1; }' --
         language: system
         types: [go]
+
+      - id: govulncheck
+        name: govulncheck nos modulos go
+        entry: scripts/govulncheck-modulos.sh
+        language: script
+        files: '(\.go|go\.mod|go\.sum)$'
+        pass_filenames: false
