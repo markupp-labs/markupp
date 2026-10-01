@@ -12,7 +12,6 @@ const (
 	issuerACME          = "acme"
 	issuerSelfSigned    = "selfSigned"
 	defaultAPIReplicas  = 2
-	defaultDBInstances  = 2
 	defaultDBSize       = "10Gi"
 	apiPort             = 8080
 )
@@ -47,16 +46,15 @@ type MarkuppArgs struct {
 	Database DatabaseArgs `pulumi:"database"`
 }
 
-// DatabaseArgs escolhe entre um PostgreSQL externo e um cluster CloudNativePG.
+// DatabaseArgs escolhe entre um PostgreSQL externo e um PostgreSQL de uma
+// instância dentro do namespace.
 type DatabaseArgs struct {
-	// ExternalURL aponta para um PostgreSQL já existente. Vazio cria um
-	// cluster CloudNativePG, que exige o operador instalado.
+	// ExternalURL aponta para um PostgreSQL já existente. Vazio sobe um
+	// PostgreSQL no namespace, sem nada no nível do cluster.
 	ExternalURL pulumi.StringInput `pulumi:"externalUrl,optional" provider:"secret"`
-	// Instances é o número de instâncias do CloudNativePG. Padrão 2.
-	Instances int `pulumi:"instances,optional"`
-	// StorageClass dos volumes do CloudNativePG.
+	// StorageClass do volume do PostgreSQL do namespace.
 	StorageClass string `pulumi:"storageClass,optional"`
-	// Size de cada volume do CloudNativePG. Padrão 10Gi.
+	// Size do volume do PostgreSQL do namespace. Padrão 10Gi.
 	Size string `pulumi:"size,optional"`
 }
 
@@ -122,9 +120,6 @@ func withDefaults(args MarkuppArgs) MarkuppArgs {
 	}
 	if args.APIReplicas == 0 {
 		args.APIReplicas = defaultAPIReplicas
-	}
-	if args.Database.Instances == 0 {
-		args.Database.Instances = defaultDBInstances
 	}
 	if args.Database.Size == "" {
 		args.Database.Size = defaultDBSize

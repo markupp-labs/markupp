@@ -8,7 +8,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-// migrationBackoff cobre o tempo de o CloudNativePG aceitar conexão na primeira
+// migrationBackoff cobre o tempo de o PostgreSQL aceitar conexão na primeira
 // instalação: o Job falha rápido e tenta de novo até o banco responder.
 const migrationBackoff = 10
 
