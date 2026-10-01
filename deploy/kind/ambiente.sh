@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Ambiente da stack dev num kind com os requisitos do cluster do IFSC.
+# Ambiente da stack dev num kind com os requisitos do cluster de produção.
 #
 #   up      sobe o cluster, o painel Headlamp e a stack dev, e deixa de pé
 #   painel  abre o Headlamp em http://localhost:4466 e mostra o token de acesso

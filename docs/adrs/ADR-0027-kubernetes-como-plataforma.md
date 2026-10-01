@@ -17,10 +17,10 @@ Kubernetes é a plataforma de execução do Enterprise e do self-host de porte m
 mesmas imagens de container usadas no compose. A indexação roda como Job criado sob demanda
 (ADR-0032), e o TLS termina no Gateway. O compose continua sendo a via para instalação de um nó
 
-A implantação vem em duas fases. Na primeira, o Enterprise roda no cluster kubeadm do campus
-São José do IFSC, com Cilium, Gateway API, cert-manager e Longhorn. Na segunda, vai para nuvem
-pública, com a mesma instalação. O PostgreSQL roda numa instância só, dentro do namespace do
-markupp, sem nada acrescentado no nível do cluster para ele
+A implantação vem em duas fases. Na primeira, o Enterprise roda num cluster kubeadm on-premise,
+com Cilium, Gateway API, cert-manager e Longhorn. Na segunda, vai para nuvem pública, com a
+mesma instalação. O PostgreSQL roda numa instância só, dentro do namespace do markupp, sem nada
+acrescentado no nível do cluster para ele
 
 ## Alternativas consideradas
 

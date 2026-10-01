@@ -1,4 +1,4 @@
-# Espelha o cilium.yaml do cluster do IFSC: Gateway API com o Envoy na rede
+# Espelha o Cilium do cluster de produção: Gateway API com o Envoy na rede
 # do nó, sem kube-proxy. O k8sServiceHost é preenchido pelo script, e o
 # operator tem uma réplica porque o kind tem um nó só.
 kubeProxyReplacement: true

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Sobe o cluster kind da stack dev com os pré-requisitos que o cluster do IFSC
+# Sobe o cluster kind da stack dev com os pré-requisitos que o cluster de produção
 # tem: Gateway API, Cilium e cert-manager.
 set -euo pipefail
 
@@ -30,7 +30,7 @@ instala_cert_manager() {
 }
 
 # liga_gateway_no_cert_manager faz o cert-manager emitir certificado a partir
-# da anotação do Gateway, como o controller do IFSC roda com --enable-gateway-api.
+# da anotação do Gateway, como o controller de produção roda com --enable-gateway-api.
 liga_gateway_no_cert_manager() {
   kubectl -n cert-manager patch deployment cert-manager --type=json -p \
     '[{"op":"add","path":"/spec/template/spec/containers/0/args/-","value":"--enable-gateway-api"}]'

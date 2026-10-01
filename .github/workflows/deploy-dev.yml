@@ -1,7 +1,7 @@
 name: Stack dev
 
 # Testa a implantação em cada PR e a cada push em dev com o mesmo smoke de
-# make smoke-kind: kind com os requisitos do cluster do IFSC, stack dev do
+# make smoke-kind: kind com os requisitos do cluster de produção, stack dev do
 # Pulumi e API testada por https pelo Gateway.
 
 on:

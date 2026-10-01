@@ -1,4 +1,4 @@
-# Enterprise no cluster do campus São José do IFSC. O email ACME entra aqui
+# Enterprise no cluster de produção. O email ACME entra aqui
 # quando for escolhido, com pulumi config set.
 config:
   markupp:host: markupp.negoci.online

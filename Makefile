@@ -12,7 +12,7 @@ all: compose-env compose-config test
 test:
 	cd markupp && go test ./...
 
-# Smoke descartável da stack dev num kind com os requisitos do cluster do IFSC.
+# Smoke descartável da stack dev num kind com os requisitos do cluster de produção.
 # Precisa de Docker, kind, helm, kubectl e Pulumi, e apaga o cluster no fim
 smoke-kind:
 	./deploy/kind/ambiente.sh smoke

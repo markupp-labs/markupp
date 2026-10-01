@@ -6,7 +6,7 @@ Aceita
 
 ## Contexto
 
-O Enterprise roda em Kubernetes (ADR-0027), primeiro no cluster do IFSC e depois em nuvem
+O Enterprise roda em Kubernetes (ADR-0027), primeiro num cluster on-premise e depois em nuvem
 pública. A implantação precisa ser reproduzível pela equipe e por quem hospeda por conta
 própria, e nada disso está descrito em código hoje
 
