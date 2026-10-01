@@ -38,4 +38,4 @@ jobs:
         uses: pulumi/actions@v7
 
       - name: Smoke da stack dev num kind
-        run: ./deploy/kind/smoke.sh
+        run: ./deploy/kind/ambiente.sh smoke
