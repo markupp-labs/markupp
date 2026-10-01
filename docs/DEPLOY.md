@@ -55,18 +55,15 @@ O projeto em `deploy/stacks` usa o componente pelo caminho local e tem duas stac
 - `dev`: um cluster kind que o CI sobe em cada PR e a cada push em dev para testar a implantação, com
   certificado autoassinado
 
-Para rodar a stack dev na própria máquina, com kind, helm e Pulumi instalados:
+Para rodar o mesmo teste da stack dev na própria máquina, com Docker, kind, helm, kubectl e
+Pulumi instalados:
 
 ```sh
-./deploy/kind/prepara-cluster.sh
-docker build -t markupp:dev markupp
-kind load docker-image markupp:dev --name markupp-dev
-cd deploy/stacks
-pulumi login --local
-pulumi stack select dev --create
-pulumi up --config image=markupp:dev
-curl -k --resolve markupp.local:8443:127.0.0.1 https://markupp.local:8443/healthz
+make smoke-kind
 ```
+
+O smoke usa kubeconfig e estado do Pulumi próprios, num diretório temporário, e apaga o
+cluster no fim, passe ou falhe.
 
 ## Desenvolvimento local
 
