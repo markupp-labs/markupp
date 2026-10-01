@@ -3,7 +3,7 @@ DOCKER_COMPOSE=docker compose
 META_COVERAGE=90
 PERFIL_COVERAGE=markupp/cover.out
 
-.PHONY: all test compose-config compose-env docker-up docker-down run hooks test-scripts coverage coverage-check
+.PHONY: all test smoke-kind compose-config compose-env docker-up docker-down run hooks test-scripts coverage coverage-check
 
 all: compose-env compose-config test
 
@@ -11,6 +11,11 @@ all: compose-env compose-config test
 # para o testcontainers subir o PostgreSQL de teste
 test:
 	cd markupp && go test ./...
+
+# Smoke descartável da stack dev num kind com os requisitos do cluster do IFSC.
+# Precisa de Docker, kind, helm, kubectl e Pulumi, e apaga o cluster no fim
+smoke-kind:
+	./deploy/kind/smoke.sh
 
 # Valida o arquivo docker-compose e a interpolação de variáveis de ambiente
 compose-config:
