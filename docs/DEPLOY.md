@@ -65,6 +65,17 @@ make smoke-kind
 O smoke usa kubeconfig e estado do Pulumi próprios, num diretório temporário, e apaga o
 cluster no fim, passe ou falhe.
 
+Para acompanhar o mesmo ambiente de pé, com o painel Headlamp:
+
+```sh
+make kind-up      # sobe o cluster, o painel e a stack dev
+make kind-painel  # mostra o token e abre o painel em http://localhost:4466
+make kind-down    # apaga tudo
+```
+
+O ambiente de pé guarda kubeconfig e estado do Pulumi em `~/.cache/markupp-kind`, sem mexer
+no `~/.kube/config`.
+
 ## Desenvolvimento local
 
 O compose sobe PostgreSQL, aplica as migrações e roda o servidor com recarga automática:
