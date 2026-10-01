@@ -54,9 +54,9 @@ Deployment e não Job, porque o KEDA leva as réplicas a zero sem precisar de um
 Um PostgreSQL só, com o plano de registro e o plano de recuperação dentro dele. Os vetores
 ficam em pgvector.
 
-Ele roda dentro do cluster, com CloudNativePG em duas instâncias, e não como banco gerenciado
-de nuvem. É o que o ADR-0015 pede sem dizer onde, e é o que a infraestrutura disponível
-oferece. O backup é snapshot de volume no próprio cluster, então perder o cluster leva as notas
+Ele roda numa instância só, dentro do namespace do markupp, e não como banco gerenciado de
+nuvem nem com operador no cluster compartilhado. É o que o ADR-0015 pede sem dizer onde, e é o
+que a infraestrutura disponível oferece. O backup é snapshot de volume no próprio cluster, então perder o cluster leva as notas
 junto.
 
 Seis dos sete serviços compartilham esse banco. O painel fica de fora porque consome a API, e

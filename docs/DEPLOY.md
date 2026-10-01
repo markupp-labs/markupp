@@ -10,7 +10,8 @@ tag `v*`, e a configuração vem de variáveis de ambiente, descritas no
 A instalação em Kubernetes é o componente Pulumi em `deploy/pulumi` (ADR-0025). Ele cria, no
 namespace informado:
 
-- o banco: um cluster CloudNativePG, ou um Secret com a URL de um PostgreSQL externo;
+- o banco: um PostgreSQL de uma instância no namespace, com senha gerada, ou um Secret com a
+  URL de um PostgreSQL externo;
 - um Job de migração que roda antes da API a cada versão;
 - o Deployment e o Service da API;
 - um Gateway com HTTPRoute, e um Issuer do cert-manager para o certificado.
@@ -20,10 +21,9 @@ namespace informado:
 - Gateway API, com um controlador e uma GatewayClass (padrão `cilium`)
 - cert-manager
 - o namespace do markupp, já criado
-- uma credencial com permissão no namespace para Secret, Job, Deployment, Service, Gateway,
-  HTTPRoute, Issuer e, com CloudNativePG, Cluster
-- opcional: o operador CloudNativePG e uma StorageClass para os volumes dele. Sem ele, informe
-  `database.externalUrl`
+- uma credencial com permissão no namespace para Secret, Job, Deployment, StatefulSet, Service,
+  Gateway, HTTPRoute e Issuer
+- uma StorageClass para o volume do PostgreSQL. Sem informar, vale a padrão do cluster
 - um backend de estado do Pulumi
 
 ### Usar o componente
@@ -44,7 +44,7 @@ resources:
       host: notas.exemplo.com
       acmeEmail: ops@exemplo.com
       database:
-        storageClass: longhorn-single
+        storageClass: longhorn-fast
 ```
 
 ### Stacks da equipe

@@ -19,8 +19,7 @@ consome o mesmo componente
 
 O estado fica num bucket do Garage, e os segredos da stack são cifrados por passphrase. O CI
 implanta com uma credencial restrita ao namespace do markupp. Gateway API e cert-manager são
-pré-requisitos do cluster, e KEDA e CloudNativePG são opcionais, instalados à parte por quem
-administra o cluster
+pré-requisitos do cluster, e KEDA é opcional, instalado à parte por quem administra o cluster
 
 ## Alternativas consideradas
 
@@ -44,6 +43,6 @@ administra o cluster
   junto, e a recuperação é por `pulumi import`
 - O bucket de estado precisa existir antes da primeira execução, então há um passo manual de
   origem que não pode ser descrito pelo próprio Pulumi
-- Sem KEDA, os indexadores rodam por CronJob. Sem CloudNativePG, o componente recebe a conexão de
-  um Postgres qualquer
+- Sem KEDA, os indexadores rodam por CronJob. Sem URL de banco externo, o componente sobe um
+  Postgres de uma instância no namespace, com senha gerada
 - Quem hospeda num nó só continua recebendo o compose, sem IaC

@@ -19,7 +19,8 @@ mesmas imagens de container usadas no compose. A indexação roda como Job criad
 
 A implantação vem em duas fases. Na primeira, o Enterprise roda no cluster kubeadm do campus
 São José do IFSC, com Cilium, Gateway API, cert-manager e Longhorn. Na segunda, vai para nuvem
-pública, com a mesma instalação. O PostgreSQL roda dentro do cluster, com CloudNativePG
+pública, com a mesma instalação. O PostgreSQL roda numa instância só, dentro do namespace do
+markupp, sem nada acrescentado no nível do cluster para ele
 
 ## Alternativas consideradas
 
@@ -28,6 +29,8 @@ pública, com a mesma instalação. O PostgreSQL roda dentro do cluster, com Clo
   conexão obrigatório, teto de quinze minutos e cold start
 - Só Kubernetes, sem compose: uma forma de implantar e menos para manter, e afasta o
   self-hoster individual, que é justamente quem roda compose
+- PostgreSQL com CloudNativePG em duas instâncias: failover automático e backup gerenciado, ao
+  custo de CRD, webhook e operador no cluster compartilhado com outros projetos
 - Nomad ou Docker Swarm: menos operação que Kubernetes, com ecossistema e disponibilidade de
   mão de obra muito menores
 
@@ -44,6 +47,7 @@ pública, com a mesma instalação. O PostgreSQL roda dentro do cluster, com Clo
   o Lambda não tinha
 - Na primeira fase o backup do banco é snapshot de volume no próprio cluster. Perder o cluster
   leva as notas junto
+- O banco não tem failover: se o nó dele cair, a API fica sem banco até o pod subir em outro nó
 - A entrada de tráfego usa Gateway API, e não Ingress. A API Ingress está congelada e a
   documentação do Kubernetes recomenda Gateway no lugar dela. São três recursos com donos
   distintos, GatewayClass, Gateway e HTTPRoute, e o cluster precisa dos CRDs e de um controlador
