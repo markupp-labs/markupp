@@ -1,10 +1,11 @@
 name: Stack dev
 
-# Testa a implantação a cada push em dev: sobe um kind com os requisitos do
+# Testa a implantação em cada PR e a cada push em dev: sobe um kind com os requisitos do
 # cluster do IFSC, aplica a stack dev do Pulumi e bate no healthz por https.
 # O cluster e o estado do Pulumi somem com o runner.
 
 on:
+  pull_request:
   push:
     branches: [dev]
   workflow_dispatch:

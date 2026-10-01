@@ -52,7 +52,7 @@ resources:
 O projeto em `deploy/stacks` usa o componente pelo caminho local e tem duas stacks:
 
 - `prod`: o Enterprise no cluster do IFSC, com Let's Encrypt
-- `dev`: um cluster kind que o CI sobe a cada push em dev para testar a implantação, com
+- `dev`: um cluster kind que o CI sobe em cada PR e a cada push em dev para testar a implantação, com
   certificado autoassinado
 
 Para rodar a stack dev na própria máquina, com kind, helm e Pulumi instalados:
