@@ -10,8 +10,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const (
+	randomPasswordType = "random:index/randomPassword:RandomPassword"
+	senhaDeTeste       = "senha-gerada"
+)
+
 // fakeResourceMonitor faz o papel do motor do Pulumi: aceita cada recurso
-// declarado e guarda os inputs para o teste inspecionar.
+// declarado e guarda os inputs para o teste inspecionar. Para a senha
+// aleatória, devolve um valor fixo no lugar do que o provider geraria.
 type fakeResourceMonitor struct {
 	mu        sync.Mutex
 	resources []pulumi.MockResourceArgs
@@ -21,7 +27,11 @@ func (f *fakeResourceMonitor) NewResource(args pulumi.MockResourceArgs) (string,
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.resources = append(f.resources, args)
-	return args.Name + "-id", args.Inputs, nil
+	state := args.Inputs.Copy()
+	if args.TypeToken == randomPasswordType {
+		state["result"] = resource.NewStringProperty(senhaDeTeste)
+	}
+	return args.Name + "-id", state, nil
 }
 
 func (f *fakeResourceMonitor) Call(args pulumi.MockCallArgs) (resource.PropertyMap, error) {
@@ -53,7 +63,7 @@ func argsDeTeste() MarkuppArgs {
 		Image:     "ghcr.io/markupp-labs/markupp:v1.1.0",
 		Host:      "markupp.dev.br",
 		AcmeEmail: "equipe@markupp.dev.br",
-		Database:  DatabaseArgs{StorageClass: "longhorn-single"},
+		Database:  DatabaseArgs{StorageClass: "longhorn-fast"},
 	}
 }
 
@@ -88,6 +98,13 @@ func at(t *testing.T, pm resource.PropertyMap, keys ...string) resource.Property
 	return value
 }
 
+func plain(value resource.PropertyValue) resource.PropertyValue {
+	for value.IsSecret() {
+		value = value.SecretValue().Element
+	}
+	return value
+}
+
 func firstContainer(t *testing.T, pm resource.PropertyMap) resource.PropertyMap {
 	t.Helper()
 	containers := at(t, pm, "spec", "template", "spec", "containers").ArrayValue()
@@ -105,22 +122,51 @@ func TestNewMarkupp_SemNamespace_RetornaErroComOCampo(t *testing.T) {
 	assert.Contains(t, err.Error(), "namespace")
 }
 
-func TestNewMarkupp_SemBancoExterno_CriaClusterCloudNativePG(t *testing.T) {
+func TestNewMarkupp_SemBancoExterno_CriaPostgresNoNamespaceComVolume(t *testing.T) {
 	monitor := deploy(t, argsDeTeste())
 
-	cluster := monitor.single(t, "kubernetes:postgresql.cnpg.io/v1:Cluster")
-	assert.Equal(t, 2.0, at(t, cluster, "spec", "instances").NumberValue())
-	assert.Equal(t, "longhorn-single", at(t, cluster, "spec", "storage", "storageClass").StringValue())
-	assert.Equal(t, "markupp", at(t, cluster, "metadata", "namespace").StringValue())
+	db := monitor.single(t, "kubernetes:apps/v1:StatefulSet")
+	assert.Equal(t, "markupp", at(t, db, "metadata", "namespace").StringValue())
+	assert.Equal(t, 1.0, at(t, db, "spec", "replicas").NumberValue())
+	assert.Equal(t, "postgres:17-alpine", firstContainer(t, db)["image"].StringValue())
+	claim := at(t, db, "spec", "volumeClaimTemplates").ArrayValue()[0].ObjectValue()
+	assert.Equal(t, "longhorn-fast", at(t, claim, "spec", "storageClassName").StringValue())
+	assert.Equal(t, "10Gi", at(t, claim, "spec", "resources", "requests", "storage").StringValue())
 }
 
-func TestNewMarkupp_ComBancoExterno_NaoCriaClusterEGuardaURLEmSecret(t *testing.T) {
+func TestNewMarkupp_SemBancoExterno_GuardaSenhaGeradaEURLNoSecret(t *testing.T) {
+	monitor := deploy(t, argsDeTeste())
+
+	require.Len(t, monitor.byType(randomPasswordType), 1)
+	secret := monitor.single(t, "kubernetes:core/v1:Secret")
+	assert.Equal(t, senhaDeTeste, plain(at(t, secret, "stringData", "password")).StringValue())
+	assert.Equal(t, "postgres://markupp:"+senhaDeTeste+"@markupp-db:5432/markupp?sslmode=disable",
+		plain(at(t, secret, "stringData", "uri")).StringValue())
+}
+
+func TestNewMarkupp_SemBancoExterno_PostgresLeASenhaDoSecret(t *testing.T) {
+	monitor := deploy(t, argsDeTeste())
+
+	db := monitor.single(t, "kubernetes:apps/v1:StatefulSet")
+	var ref resource.PropertyValue
+	for _, env := range firstContainer(t, db)["env"].ArrayValue() {
+		if env.ObjectValue()["name"].StringValue() == "POSTGRES_PASSWORD" {
+			ref = at(t, env.ObjectValue(), "valueFrom", "secretKeyRef")
+		}
+	}
+	require.True(t, ref.IsObject(), "esperado POSTGRES_PASSWORD vindo de Secret")
+	assert.Equal(t, "markupp-db-app", ref.ObjectValue()["name"].StringValue())
+	assert.Equal(t, "password", ref.ObjectValue()["key"].StringValue())
+}
+
+func TestNewMarkupp_ComBancoExterno_NaoCriaPostgresEGuardaURLEmSecret(t *testing.T) {
 	args := argsDeTeste()
 	args.Database.ExternalURL = pulumi.String("postgres://markupp@db.externo:5432/markupp")
 
 	monitor := deploy(t, args)
 
-	assert.Empty(t, monitor.byType("kubernetes:postgresql.cnpg.io/v1:Cluster"))
+	assert.Empty(t, monitor.byType("kubernetes:apps/v1:StatefulSet"))
+	assert.Empty(t, monitor.byType(randomPasswordType))
 	secret := monitor.single(t, "kubernetes:core/v1:Secret")
 	assert.Equal(t, "postgres://markupp@db.externo:5432/markupp",
 		at(t, secret, "stringData", "uri").StringValue())
@@ -135,7 +181,7 @@ func TestNewMarkupp_JobDeMigracao_RodaOSubcomandoMigrateNaImagem(t *testing.T) {
 	assert.Equal(t, "migrate", container["args"].ArrayValue()[0].StringValue())
 }
 
-func TestNewMarkupp_DeploymentDaAPI_LeOBancoDoSecretDoCluster(t *testing.T) {
+func TestNewMarkupp_DeploymentDaAPI_LeOBancoDoSecret(t *testing.T) {
 	monitor := deploy(t, argsDeTeste())
 
 	api := monitor.single(t, "kubernetes:apps/v1:Deployment")
