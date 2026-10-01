@@ -1,6 +1,10 @@
-# Cluster kind efêmero do CI, que testa a implantação a cada push em dev.
+# Cluster kind da stack dev, do smoke do CI e do ambiente local. A imagem é
+# construída na máquina e carregada no kind, e o salt é o da passphrase vazia,
+# porque esta stack não guarda segredo.
 config:
   markupp:host: markupp.local
   markupp:certificateIssuer: selfSigned
   markupp:storageClass: standard
-  markupp:apiReplicas: 1
+  markupp:apiReplicas: "1"
+  markupp:image: markupp:dev
+encryptionsalt: v1:tbTefk4lOTE=:v1:LIkxKMN7jxMuArZU:7rDPXfPSUFiFmPLrl91RUTCRM4s6zA==

@@ -17,7 +17,6 @@ export PULUMI_CONFIG_PASSPHRASE=""
 
 limpa() {
   kind delete cluster --name "$CLUSTER" >/dev/null 2>&1 || true
-  cp "$WORKDIR/Pulumi.dev.yaml" "$STACKS/Pulumi.dev.yaml" 2>/dev/null || true
   rm -rf "$WORKDIR"
 }
 
@@ -29,10 +28,8 @@ sobe_cluster() {
 
 aplica_stack() {
   mkdir -p "$WORKDIR/state"
-  cp "$STACKS/Pulumi.dev.yaml" "$WORKDIR/Pulumi.dev.yaml"
   cd "$STACKS"
   pulumi stack select dev --create --non-interactive
-  pulumi config set image "$IMAGE"
   pulumi up --yes --non-interactive
 }
 
