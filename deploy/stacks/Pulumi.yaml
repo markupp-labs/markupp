@@ -24,9 +24,6 @@ config:
   apiReplicas:
     type: integer
     default: 2
-  dbInstances:
-    type: integer
-    default: 2
 
 resources:
   markupp:
@@ -40,7 +37,6 @@ resources:
       apiReplicas: ${apiReplicas}
       database:
         storageClass: ${storageClass}
-        instances: ${dbInstances}
 
 outputs:
   url: ${markupp.url}

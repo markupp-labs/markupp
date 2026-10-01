@@ -4,4 +4,3 @@ config:
   markupp:certificateIssuer: selfSigned
   markupp:storageClass: standard
   markupp:apiReplicas: 1
-  markupp:dbInstances: 1
