@@ -1,8 +1,8 @@
 name: Stack dev
 
-# Testa a implantação em cada PR e a cada push em dev: sobe um kind com os requisitos do
-# cluster do IFSC, aplica a stack dev do Pulumi e bate no healthz por https.
-# O cluster e o estado do Pulumi somem com o runner.
+# Testa a implantação em cada PR e a cada push em dev com o mesmo smoke de
+# make smoke-kind: kind com os requisitos do cluster do IFSC, stack dev do
+# Pulumi e API testada por https pelo Gateway.
 
 on:
   pull_request:
@@ -17,9 +17,6 @@ jobs:
   deploy-kind:
     name: Implanta a stack dev num kind
     runs-on: ubuntu-latest
-    env:
-      PULUMI_CONFIG_PASSPHRASE: ""
-      PULUMI_BACKEND_URL: file://${{ github.workspace }}/.pulumi-state
     steps:
       - uses: actions/checkout@v4
 
@@ -40,30 +37,5 @@ jobs:
       - name: Instala o Pulumi
         uses: pulumi/actions@v7
 
-      - name: Constroi a imagem do servidor
-        run: docker build -t markupp:dev markupp
-
-      - name: Sobe o cluster com os requisitos
-        run: ./deploy/kind/prepara-cluster.sh
-
-      - name: Carrega a imagem no cluster
-        run: kind load docker-image markupp:dev --name markupp-dev
-
-      - name: Aplica a stack dev
-        working-directory: deploy/stacks
-        run: |
-          mkdir -p "${PULUMI_BACKEND_URL#file://}"
-          pulumi stack select dev --create --non-interactive
-          pulumi config set image markupp:dev
-          pulumi up --yes --non-interactive
-
-      - name: Healthz por https pelo Gateway
-        run: |
-          for tentativa in $(seq 1 30); do
-            if curl -sfk --resolve markupp.local:8443:127.0.0.1 https://markupp.local:8443/healthz; then
-              exit 0
-            fi
-            sleep 5
-          done
-          kubectl -n markupp get all,certificate,gateway,httproute
-          exit 1
+      - name: Smoke da stack dev num kind
+        run: ./deploy/kind/smoke.sh
