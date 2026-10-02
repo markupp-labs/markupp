@@ -6,10 +6,11 @@ class MarkuppApi
   class NotFound < Error; end
   class Conflict < Error; end
   class DuplicatePath < Error; end
+  class InvalidPath < Error; end
 
   NETWORK_ERRORS = [ SystemCallError, SocketError, Net::OpenTimeout, Net::ReadTimeout ].freeze
-  # A API responde 409 por dois motivos, distinguidos pelo campo error do corpo.
-  CONFLICT_ERRORS = { "conflict" => Conflict, "duplicate_path" => DuplicatePath }.freeze
+  # Erros que o painel trata, pelo campo error do corpo; 409 tem dois motivos.
+  ERRORS_BY_CODE = { "conflict" => Conflict, "duplicate_path" => DuplicatePath, "invalid_path" => InvalidPath }.freeze
 
   def initialize(base_url)
     @base_url = base_url
@@ -47,9 +48,8 @@ class MarkuppApi
 
     def error_class_for(response)
       return NotFound if response.is_a?(Net::HTTPNotFound)
-      return Error unless response.is_a?(Net::HTTPConflict)
 
-      CONFLICT_ERRORS.fetch(error_code(response.body), Error)
+      ERRORS_BY_CODE.fetch(error_code(response.body), Error)
     end
 
     def error_code(body)
