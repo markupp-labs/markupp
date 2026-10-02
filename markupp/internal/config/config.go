@@ -4,6 +4,7 @@ package config
 
 import (
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 )
@@ -38,28 +39,31 @@ func Load(lookup LookupFunc) (Config, error) {
 	}
 	cfg.DatabaseURL = url
 	cfg.AllowedOrigins = splitOrigins(lookup)
-
-	if err := readInt(lookup, "MARKUPP_PORT", &cfg.Port); err != nil {
+	port := int64(cfg.Port)
+	if err := readBounded(lookup, "MARKUPP_PORT", 1, 65535, "de 1 a 65535", &port); err != nil {
 		return Config{}, err
 	}
-	var size int
-	if err := readInt(lookup, "MARKUPP_MAX_NOTE_SIZE", &size); err != nil {
+	cfg.Port = int(port)
+	err := readBounded(lookup, "MARKUPP_MAX_NOTE_SIZE", 1, math.MaxInt64, "maior que zero", &cfg.MaxNoteSize)
+	if err != nil {
 		return Config{}, err
-	}
-	if size > 0 {
-		cfg.MaxNoteSize = int64(size)
 	}
 	return cfg, nil
 }
 
-func readInt(lookup LookupFunc, key string, target *int) error {
+// readBounded lê key como inteiro entre lowest e highest. Variável ausente ou
+// vazia deixa target com o valor que já tinha.
+func readBounded(lookup LookupFunc, key string, lowest, highest int64, faixa string, target *int64) error {
 	raw, ok := lookup(key)
 	if !ok || raw == "" {
 		return nil
 	}
-	value, err := strconv.Atoi(raw)
+	value, err := strconv.ParseInt(raw, 10, 64)
 	if err != nil {
-		return fmt.Errorf("%s=%q, esperado inteiro: %w", key, raw, err)
+		return fmt.Errorf("%s=%q, esperado inteiro %s: %w", key, raw, faixa, err)
+	}
+	if value < lowest || value > highest {
+		return fmt.Errorf("%s=%d fora da faixa, esperado inteiro %s", key, value, faixa)
 	}
 	*target = value
 	return nil
