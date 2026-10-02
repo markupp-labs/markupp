@@ -11,6 +11,19 @@ class NotesController < ApplicationController
     @note = Note.find(params[:id])
   end
 
+  def new
+    @note = Note.untitled(params[:folder])
+  end
+
+  def create
+    @note = Note.new(params.expect(note: [ :path, :content ]))
+    @note.save
+    redirect_to note_path(@note), notice: t(".created")
+  rescue MarkuppApi::DuplicatePath
+    @note.errors.add(:path, :duplicate)
+    render :new, status: :conflict
+  end
+
   def update
     @note = Note.new(id: params[:id], updated_at: params[:last_modified_at])
     @note.update(params.expect(note: [ :path, :content ]), force: params[:force] == "true")

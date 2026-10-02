@@ -1,4 +1,8 @@
 en:
+  activemodel:
+    errors:
+      messages:
+        duplicate: "is already used by another note"
   layouts:
     application:
       notes: "Notes"
@@ -20,7 +24,10 @@ en:
       overwrite: "Overwrite"
     update:
       saved: "Saved"
+    create:
+      created: "Created"
     sidebar:
+      new_note: "New note"
       empty: "No notes yet."
     not_found:
       title: "Note not found"

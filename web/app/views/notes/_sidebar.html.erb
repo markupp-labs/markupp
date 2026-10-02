@@ -1,3 +1,6 @@
+<%= link_to t(".new_note"), new_note_path(folder: current&.folder_names&.join("/").presence),
+            class: "mb-2 block rounded-md border border-line px-2 py-1 hover:bg-accent-soft" %>
+
 <% if tree.folders.empty? && tree.notes.empty? %>
   <p class="px-2 py-1 text-ink-muted"><%= t(".empty") %></p>
 <% else %>
