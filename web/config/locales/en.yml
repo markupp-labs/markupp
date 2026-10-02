@@ -10,7 +10,7 @@ en:
   notes:
     index:
       pick: "Pick a note from the sidebar."
-    show:
+    form:
       save: "Save"
       unsaved: "Unsaved changes"
       leave: "You have unsaved changes. Leave anyway?"
