@@ -12,7 +12,7 @@ const (
 	// dbSecretKey é a chave com a URL de conexão que a API e a migração leem.
 	dbSecretKey      = "uri"
 	dbPasswordKey    = "password"
-	postgresImage    = "postgres:17-alpine"
+	postgresImage    = "postgres:17.9-alpine3.23"
 	postgresPort     = 5432
 	postgresUser     = "markupp"
 	passwordLength   = 32
