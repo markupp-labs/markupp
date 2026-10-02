@@ -8,6 +8,8 @@ class Note
   attribute :created_at, :datetime
   attribute :updated_at, :datetime
 
+  SEARCH_LIMIT = 20
+
   class_attribute :api
 
   # ponytail: GET /notes traz o conteúdo de todas as notas, paginar quando a API paginar
@@ -16,6 +18,13 @@ class Note
   end
 
   def self.find(id) = from_api(api.get(api_path(id)))
+
+  # Os resultados não trazem o conteúdo, só id, path e updated_at.
+  def self.search(query)
+    return [] if query.blank?
+
+    api.get("/notes/search?#{{ query:, limit: SEARCH_LIMIT }.to_query}").map { |attributes| from_api(attributes) }
+  end
 
   def self.from_api(attributes) = new(attributes.slice(*attribute_names))
 
