@@ -99,3 +99,27 @@ func TestLoad_TamanhoNaoNumerico_RetornaErroComOValor(t *testing.T) {
 	assert.Contains(t, err.Error(), "MARKUPP_MAX_NOTE_SIZE")
 	assert.Contains(t, err.Error(), "50MB")
 }
+
+func TestLoad_PortaForaDaFaixa_RetornaErroComOValor(t *testing.T) {
+	for _, porta := range []string{"0", "-1", "65536"} {
+		env := fakeEnv{"MARKUPP_DATABASE_URL": urlDeTeste, "MARKUPP_PORT": porta}
+
+		_, err := config.Load(env.Lookup)
+
+		require.Error(t, err, "porta %s devia ser recusada", porta)
+		assert.Contains(t, err.Error(), porta)
+		assert.Contains(t, err.Error(), "1 a 65535")
+	}
+}
+
+func TestLoad_TamanhoNaoPositivo_RetornaErroComOValor(t *testing.T) {
+	for _, tamanho := range []string{"0", "-5"} {
+		env := fakeEnv{"MARKUPP_DATABASE_URL": urlDeTeste, "MARKUPP_MAX_NOTE_SIZE": tamanho}
+
+		_, err := config.Load(env.Lookup)
+
+		require.Error(t, err, "tamanho %s devia ser recusado", tamanho)
+		assert.Contains(t, err.Error(), tamanho)
+		assert.Contains(t, err.Error(), "maior que zero")
+	}
+}
