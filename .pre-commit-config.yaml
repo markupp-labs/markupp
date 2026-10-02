@@ -1,4 +1,4 @@
-default_install_hook_types: [pre-commit, commit-msg]
+default_install_hook_types: [pre-commit, commit-msg, pre-push]
 
 repos:
   - repo: local
@@ -19,5 +19,6 @@ repos:
         name: govulncheck nos modulos go
         entry: scripts/govulncheck-modulos.sh
         language: script
+        stages: [pre-push]
         files: '(\.go|go\.mod|go\.sum)$'
         pass_filenames: false
