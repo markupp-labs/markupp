@@ -117,17 +117,22 @@ class NoteTest < ActiveSupport::TestCase
   test "save does not renumber a path the user chose" do
     api = use_fake_api(notes: [ { id: "1", path: "plan.md" } ])
 
-    assert_raises(MarkuppApi::DuplicatePath) { Note.new(path: "plan.md", content: "").save }
+    note = Note.new(path: "plan.md", content: "")
+
+    assert_not note.save
+    assert note.errors.of_kind?(:path, :taken)
     assert_equal 1, api.post_requests.size
   end
 
-  test "save gives up numbering at the limit, citing the last path tried" do
+  test "save gives up numbering at the limit, flagging the last path tried" do
     taken = [ "Untitled.md", *(1..Note::UNTITLED_LIMIT).map { "Untitled #{it}.md" } ]
     use_fake_api(notes: taken.map.with_index { |path, index| { id: index.to_s, path: } })
 
-    error = assert_raises(MarkuppApi::DuplicatePath) { Note.untitled(nil).save }
-    assert_match "Untitled #{Note::UNTITLED_LIMIT}.md", error.message
-    assert_match Note::UNTITLED_LIMIT.to_s, error.message
+    note = Note.untitled(nil)
+
+    assert_not note.save
+    assert note.errors.of_kind?(:path, :taken)
+    assert_equal "Untitled #{Note::UNTITLED_LIMIT}.md", note.path
   end
 
   test "update raises Conflict when the note changed on the server" do

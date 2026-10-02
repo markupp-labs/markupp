@@ -17,11 +17,11 @@ class NotesController < ApplicationController
 
   def create
     @note = Note.new(note_params)
-    @note.save
-    redirect_to note_path(@note), notice: t(".created")
-  rescue MarkuppApi::DuplicatePath
-    @note.errors.add(:path, :taken)
-    render :new, status: :conflict
+    if @note.save
+      redirect_to note_path(@note), notice: t(".created")
+    else
+      render :new, status: path_error_status
+    end
   end
 
   def update
@@ -29,7 +29,7 @@ class NotesController < ApplicationController
     if @note.update(note_params, force: params[:force] == "true")
       redirect_to note_path(@note), notice: t(".saved")
     else
-      render :show, status: @note.errors.of_kind?(:path, :taken) ? :conflict : :unprocessable_content
+      render :show, status: path_error_status
     end
   rescue MarkuppApi::Conflict
     @conflict = true
@@ -55,6 +55,8 @@ class NotesController < ApplicationController
       Rails.logger.error({ event: "markupp_api_unreachable", message: error.message }.to_json)
       render :unreachable, status: :bad_gateway
     end
+
+    def path_error_status = @note.errors.of_kind?(:path, :taken) ? :conflict : :unprocessable_content
 
     def render_not_found
       render :not_found, status: :not_found
