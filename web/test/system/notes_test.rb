@@ -31,7 +31,7 @@ class NotesTest < ApplicationSystemTestCase
 
     visit note_path("1")
     click_on "New note"
-    assert_text "work/Untitled.md"
+    assert_field "Path", with: "work/Untitled.md"
     find(".cm-content").send_keys("Fresh idea.")
     find(".cm-content").send_keys([ :control, "s" ])
 

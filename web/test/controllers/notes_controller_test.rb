@@ -130,9 +130,10 @@ class NotesControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select "form[action=?][method=post]", notes_path do
-      assert_select "input[type=hidden][name=?][value=?]", "note[path]", "work/Untitled.md"
+      assert_select "input[type=text][name=?][value=?]", "note[path]", "work/Untitled.md"
       assert_select "button", text: "Save"
     end
+    assert_select "button", text: "Delete", count: 0
     assert_equal "", css_select("main textarea").sole.text
   end
 
@@ -161,7 +162,8 @@ class NotesControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :conflict
     assert_equal "mine", css_select("main textarea").sole.text
-    assert_select "main [role=alert]", text: /Path is already used by another note/
+    assert_select "input[name=?][value=?][aria-invalid=true]", "note[path]", "plan.md"
+    assert_select "#note_path_error", text: "Path already taken"
   end
 
   test "update renames the note and the tree shows the new name" do
