@@ -5,7 +5,7 @@ PERFIL_COVERAGE=markupp/cover.out
 
 .PHONY: all test compose-config compose-env docker-up docker-down run hooks test-scripts coverage coverage-check
 
-all: compose-env compose-config docker-up test docker-down
+all: compose-env compose-config test
 
 # Roda todos os testes Go do servidor no host, que precisa de Go e de Docker
 # para o testcontainers subir o PostgreSQL de teste
