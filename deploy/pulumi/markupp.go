@@ -116,8 +116,8 @@ func validate(args MarkuppArgs) error {
 	}
 	for _, r := range append(required, ingress...) {
 		if r.value == "" {
-			return fmt.Errorf("campo %s vazio, esperado texto não vazio (namespace=%q image=%q host=%q)",
-				r.field, args.Namespace, args.Image, args.Host)
+			return fmt.Errorf("campo %s vazio, esperado texto não vazio (namespace=%q image=%q host=%q certificateIssuer=%q acmeEmail=%q)",
+				r.field, args.Namespace, args.Image, args.Host, args.CertificateIssuer, args.AcmeEmail)
 		}
 	}
 	return nil
