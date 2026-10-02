@@ -207,6 +207,35 @@ class NotesControllerTest < ActionDispatch::IntegrationTest
     assert_select "#note_path_error", text: "Path is invalid"
   end
 
+  test "show offers a delete button that asks for confirmation" do
+    use_fake_api(notes: [ { id: "1", path: "a.md", content: "x" } ])
+
+    get note_path("1")
+
+    assert_select "form[action=?] input[name=_method][value=delete]", note_path("1")
+    assert_select "header button[data-turbo-confirm]", text: "Delete"
+  end
+
+  test "destroy deletes the note and redirects home with a notice" do
+    use_fake_api(notes: [ { id: "1", path: "a.md", content: "x" } ])
+
+    delete note_path("1")
+
+    assert_redirected_to root_path
+    follow_redirect!
+    assert_select "main", text: /Deleted/
+    assert_select "nav li", count: 0
+  end
+
+  test "destroy of a note already deleted still redirects home" do
+    use_fake_api(notes: [])
+
+    delete note_path("gone")
+
+    assert_redirected_to root_path
+    assert_equal "Deleted", flash[:notice]
+  end
+
   test "index answers bad gateway when the API is unreachable" do
     use_fake_api(unreachable: true)
 

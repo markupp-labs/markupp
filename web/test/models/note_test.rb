@@ -165,4 +165,18 @@ class NoteTest < ActiveSupport::TestCase
 
     assert_equal [ "Path is invalid" ], note.errors.full_messages_for(:path)
   end
+
+  test "destroy deletes the note on the server" do
+    use_fake_api(notes: [ { id: "1", path: "a.md", content: "x" } ])
+
+    Note.new(id: "1").destroy
+
+    assert_raises(MarkuppApi::NotFound) { Note.find("1") }
+  end
+
+  test "destroy of a note already deleted does not raise" do
+    use_fake_api(notes: [])
+
+    assert_nothing_raised { Note.new(id: "gone").destroy }
+  end
 end

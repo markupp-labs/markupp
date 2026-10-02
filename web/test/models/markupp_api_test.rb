@@ -92,6 +92,17 @@ class MarkuppApiTest < ActiveSupport::TestCase
     assert_kind_of MarkuppApi::Error, error
   end
 
+  test "delete sends DELETE and accepts the empty 204 answer" do
+    server = FakeHttpServer.new(status: "204 No Content", body: "")
+    thread = server.serve_once
+
+    assert_nil MarkuppApi.new(server.url).delete("/notes/1")
+    thread.join
+    assert_equal [ "DELETE", "/notes/1" ], [ server.requested_method, server.requested_path ]
+  ensure
+    server.close
+  end
+
   private
     def assert_put_raises(error_class, body, status: "409 Conflict")
       server = FakeHttpServer.new(status:, body:)
