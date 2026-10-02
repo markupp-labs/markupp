@@ -22,6 +22,8 @@ class MarkuppApi
 
   def post(path, body) = request(Net::HTTP::Post, path, body)
 
+  def delete(path) = request(Net::HTTP::Delete, path)
+
   private
     def request(verb, path, body = nil)
       uri = URI.join(@base_url, path)
@@ -40,10 +42,11 @@ class MarkuppApi
       http_request
     end
 
+    # O 204 do DELETE chega sem corpo.
     def parse_response(response, call)
-      return JSON.parse(response.body) if response.is_a?(Net::HTTPSuccess)
+      raise error_class_for(response), "#{call} answered #{response.code}, expected 2xx: #{response.body}" unless response.is_a?(Net::HTTPSuccess)
 
-      raise error_class_for(response), "#{call} answered #{response.code}, expected 2xx: #{response.body}"
+      JSON.parse(response.body) if response.body.present?
     end
 
     def error_class_for(response)

@@ -41,6 +41,12 @@ class FakeMarkuppApi
     @notes.last
   end
 
+  def delete(path)
+    refuse_when_unreachable("DELETE", path)
+    @notes.delete(note_at("DELETE", path))
+    nil
+  end
+
   private
     def refuse_when_unreachable(verb, path)
       raise MarkuppApi::Error, "fake API unreachable on #{verb} #{path}" if @unreachable

@@ -57,6 +57,13 @@ class Note
     errors.add(:path, :invalid) && false
   end
 
+  # Já apagada (404) conta como apagada.
+  def destroy
+    api.delete(Note.api_path(id))
+  rescue MarkuppApi::NotFound
+    nil
+  end
+
   def name = path_segments.last
 
   def folder_names = path_segments[...-1]

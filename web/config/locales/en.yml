@@ -27,10 +27,14 @@ en:
       conflict: "This note changed on the server since you opened it."
       reload: "Reload and discard my changes"
       overwrite: "Overwrite"
+      delete: "Delete"
+      confirm_delete: "Delete this note? This cannot be undone."
     update:
       saved: "Saved"
     create:
       created: "Created"
+    destroy:
+      deleted: "Deleted"
     sidebar:
       new_note: "New note"
       empty: "No notes yet."

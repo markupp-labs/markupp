@@ -2,7 +2,7 @@ class NotesController < ApplicationController
   rescue_from MarkuppApi::Error, with: :render_unreachable
   rescue_from MarkuppApi::NotFound, with: :render_not_found
 
-  before_action :set_tree
+  before_action :set_tree, except: :destroy
 
   def index
   end
@@ -34,6 +34,11 @@ class NotesController < ApplicationController
   rescue MarkuppApi::Conflict
     @conflict = true
     render :show, status: :conflict
+  end
+
+  def destroy
+    Note.new(id: params[:id]).destroy
+    redirect_to root_path, notice: t(".deleted")
   end
 
   private
