@@ -270,4 +270,14 @@ class NotesControllerTest < ActionDispatch::IntegrationTest
 
     assert_select "input[type=hidden][name=crlf][value=true]"
   end
+
+  test "create with a path the API refuses keeps the text and flags the path" do
+    use_fake_api(notes: [])
+
+    post notes_path, params: { note: { path: " ", content: "mine" } }
+
+    assert_response :unprocessable_content
+    assert_equal "mine", css_select("main textarea").sole.text
+    assert_select "#note_path_error", text: "Path is invalid"
+  end
 end

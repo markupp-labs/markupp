@@ -36,6 +36,16 @@ class MarkuppApiTest < ActiveSupport::TestCase
     server.close
   end
 
+  test "get raises NotFound when the API refuses the id" do
+    server = FakeHttpServer.new(status: "400 Bad Request", body: '{"error":"invalid_id","message":"id invalido"}')
+    thread = server.serve_once
+
+    assert_raises(MarkuppApi::NotFound) { MarkuppApi.new(server.url).get("/notes/abc") }
+    thread.join
+  ensure
+    server.close
+  end
+
   test "get raises when the API cannot be reached" do
     server = FakeHttpServer.new(status: "200 OK", body: "[]")
     url = server.url

@@ -40,4 +40,13 @@ class SearchesControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select "turbo-frame#search_results", text: ""
   end
+
+  test "show says the server is unreachable inside the results frame" do
+    use_fake_api(unreachable: true)
+
+    get search_path(q: "x")
+
+    assert_response :bad_gateway
+    assert_select "turbo-frame#search_results", text: /Can't reach the markupp server/
+  end
 end
