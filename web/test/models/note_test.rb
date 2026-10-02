@@ -10,6 +10,26 @@ class NoteTest < ActiveSupport::TestCase
     assert_equal Time.utc(2026, 9, 30, 12), note.updated_at
   end
 
+  test "find builds the note with the given id" do
+    use_fake_api(notes: [ { id: "1", path: "a.md", content: "x" }, { id: "2", path: "b.md", content: "# B\n" } ])
+
+    note = Note.find("2")
+    assert_equal "b.md", note.path
+    assert_equal "# B\n", note.content
+  end
+
+  test "find raises NotFound for an unknown id" do
+    use_fake_api(notes: [])
+
+    assert_raises(MarkuppApi::NotFound) { Note.find("missing") }
+  end
+
+  test "persisted only with an id, so routes use the id" do
+    assert Note.new(id: "7").persisted?
+    assert_equal "7", Note.new(id: "7").to_param
+    assert_not Note.new(path: "draft.md").persisted?
+  end
+
   test "name is the last segment of the path" do
     assert_equal "plan.md", Note.new(path: "work/2026/plan.md").name
   end
