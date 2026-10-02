@@ -39,6 +39,15 @@ class Note
 
   def persisted? = id.present?
 
+  # O navegador troca as quebras de linha da nota; ela volta com a que tinha.
+  # ponytail: nota com quebras mistas volta com uma só, guardar a de cada linha se aparecer nota assim
+  def self.restore_line_breaks(content, crlf:)
+    lf = content.to_s.gsub("\r\n", "\n")
+    crlf ? lf.gsub("\n", "\r\n") : lf
+  end
+
+  def crlf? = content.to_s.include?("\r\n")
+
   # Nota com o nome padrão ganha número quando o nome já existe; caminho escolhido pelo usuário não.
   def save
     created = untitled? ? post_numbered : post

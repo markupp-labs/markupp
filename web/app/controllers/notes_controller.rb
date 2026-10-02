@@ -16,7 +16,7 @@ class NotesController < ApplicationController
   end
 
   def create
-    @note = Note.new(params.expect(note: [ :path, :content ]))
+    @note = Note.new(note_params)
     @note.save
     redirect_to note_path(@note), notice: t(".created")
   rescue MarkuppApi::DuplicatePath
@@ -26,7 +26,7 @@ class NotesController < ApplicationController
 
   def update
     @note = Note.new(id: params[:id], updated_at: params[:last_modified_at])
-    if @note.update(params.expect(note: [ :path, :content ]), force: params[:force] == "true")
+    if @note.update(note_params, force: params[:force] == "true")
       redirect_to note_path(@note), notice: t(".saved")
     else
       render :show, status: @note.errors.of_kind?(:path, :taken) ? :conflict : :unprocessable_content
@@ -42,6 +42,11 @@ class NotesController < ApplicationController
   end
 
   private
+    def note_params
+      attributes = params.expect(note: [ :path, :content ])
+      attributes.merge(content: Note.restore_line_breaks(attributes[:content], crlf: params[:crlf] == "true"))
+    end
+
     def set_tree
       @tree = Note::Tree.build(Note.all)
     end

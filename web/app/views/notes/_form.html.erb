@@ -39,6 +39,7 @@
   <% end %>
 
   <%= hidden_field_tag :last_modified_at, @note.updated_at&.iso8601(3), id: nil %>
+  <%= hidden_field_tag :crlf, @note.crlf?, id: nil %>
   <%= form.text_area :content, data: { editor_target: "source", note_form_target: "source" }, aria: { label: @note.path },
                      class: "min-h-[60dvh] w-full flex-1 rounded-md border border-line bg-surface p-2" %>
 <% end %>
