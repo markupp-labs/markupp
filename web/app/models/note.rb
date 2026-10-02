@@ -9,12 +9,13 @@ class Note
   attribute :updated_at, :datetime
 
   SEARCH_LIMIT = 20
+  UNTITLED_LIMIT = 100
 
   class_attribute :api
 
   # ponytail: GET /notes traz o conteúdo de todas as notas, paginar quando a API paginar
   def self.all
-    api.get("/notes").map { |attributes| from_api(attributes) }
+    api.get("/notes").map { from_api(it) }
   end
 
   def self.find(id) = from_api(api.get(api_path(id)))
@@ -23,15 +24,13 @@ class Note
   def self.search(query)
     return [] if query.blank?
 
-    api.get("/notes/search?#{{ query:, limit: SEARCH_LIMIT }.to_query}").map { |attributes| from_api(attributes) }
+    api.get("/notes/search?#{{ query:, limit: SEARCH_LIMIT }.to_query}").map { from_api(it) }
   end
 
   def self.from_api(attributes) = new(attributes.slice(*attribute_names))
-
-  def self.api_path(id) = "/notes/#{ERB::Util.url_encode(id)}"
   private_class_method :from_api
 
-  UNTITLED_LIMIT = 100
+  def self.api_path(id) = "/notes/#{ERB::Util.url_encode(id)}"
 
   def self.untitled(folder) = new(path: [ folder.presence, "#{untitled_name}.md" ].compact.join("/"), content: "")
 
