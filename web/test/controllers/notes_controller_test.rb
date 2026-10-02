@@ -63,6 +63,50 @@ class NotesControllerTest < ActionDispatch::IntegrationTest
     assert_select "main", text: /Note not found/
   end
 
+  test "show puts the note in a save form with the version read" do
+    use_fake_api(notes: [ { id: "1", path: "a.md", content: "x", updated_at: "2026-09-30T12:00:00.123Z" } ])
+
+    get note_path("1")
+
+    assert_select "form[action=?]", note_path("1") do
+      assert_select "input[type=hidden][name=last_modified_at][value=?]", "2026-09-30T12:00:00.123Z"
+      assert_select "input[type=hidden][name=?][value=?]", "note[path]", "a.md"
+      assert_select "button", text: "Save"
+    end
+  end
+
+  test "update saves the note and redirects with a notice" do
+    api = use_fake_api(notes: [ { id: "1", path: "a.md", content: "old" } ])
+
+    patch note_path("1"), params: { note: { path: "a.md", content: "new" }, last_modified_at: "2026-09-30T12:00:00.123Z" }
+
+    assert_redirected_to note_path("1")
+    assert_equal({ path: "a.md", content: "new", lastModifiedAt: "2026-09-30T12:00:00.123Z", force: false }, api.put_requests.sole)
+    follow_redirect!
+    assert_select "main", text: /Saved/
+  end
+
+  test "update on a conflict keeps the text and offers reload or overwrite" do
+    use_fake_api(notes: [ { id: "1", path: "a.md", content: "theirs" } ], conflict: true)
+
+    patch note_path("1"), params: { note: { path: "a.md", content: "mine" }, last_modified_at: "2026-09-30T12:00:00.123Z" }
+
+    assert_response :conflict
+    assert_equal "mine", css_select("main textarea").sole.text
+    assert_select "input[name=last_modified_at][value=?]", "2026-09-30T12:00:00.123Z"
+    assert_select "a[href=?]", note_path("1"), text: "Reload and discard my changes"
+    assert_select "button[name=force][value=true]", text: "Overwrite"
+  end
+
+  test "update with force overwrites despite the conflict" do
+    api = use_fake_api(notes: [ { id: "1", path: "a.md", content: "theirs" } ], conflict: true)
+
+    patch note_path("1"), params: { note: { path: "a.md", content: "mine" }, last_modified_at: "2026-09-30T12:00:00.123Z", force: "true" }
+
+    assert_redirected_to note_path("1")
+    assert api.put_requests.sole[:force]
+  end
+
   test "index answers bad gateway when the API is unreachable" do
     use_fake_api(unreachable: true)
 
