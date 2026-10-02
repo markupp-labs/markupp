@@ -4,7 +4,7 @@ import { Controller } from "@hotwired/stimulus"
 // Com aviso de conflito ou erro de caminho na tela, o que o usuário digitou ainda não está no servidor.
 // O caminho conta como alteração: renomear também precisa salvar.
 export default class extends Controller {
-  static targets = [ "source", "path", "unsaved", "conflict" ]
+  static targets = [ "source", "path", "unsaved", "pending" ]
   static values = { leaveMessage: String }
 
   connect() {
@@ -39,6 +39,6 @@ export default class extends Controller {
 
   get changed() {
     const edited = this.sourceTarget.value != this.original[0] || this.pathTarget.value != this.original[1]
-    return !this.leaving && (this.hasConflictTarget || edited)
+    return !this.leaving && (this.hasPendingTarget || edited)
   }
 }

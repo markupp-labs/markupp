@@ -17,7 +17,7 @@
                           class: "w-full rounded-md border border-transparent bg-transparent px-1 py-1 text-ink-muted " \
                                  "hover:border-line focus:border-line focus:text-ink focus:outline-none aria-invalid:border-danger" %>
       <% if path_error %>
-        <p id="note_path_error" data-note-form-target="conflict" class="px-1 text-danger"><%= path_error %></p>
+        <p id="note_path_error" data-note-form-target="pending" class="px-1 text-danger"><%= path_error %></p>
       <% end %>
     </div>
     <span data-note-form-target="unsaved" hidden class="py-1 text-ink-muted"><%= t(".unsaved") %></span>
@@ -30,7 +30,7 @@
   </header>
 
   <% if @conflict %>
-    <div role="alert" data-note-form-target="conflict" class="flex flex-wrap items-center gap-3 rounded-md border border-danger p-2">
+    <div role="alert" data-note-form-target="pending" class="flex flex-wrap items-center gap-3 rounded-md border border-danger p-2">
       <p class="flex-1 text-danger"><%= t(".conflict") %></p>
       <%= link_to t(".reload"), note_path(@note), data: { action: "note-form#allowLeaving" },
                   class: "rounded-md border border-line px-3 py-1 hover:bg-accent-soft" %>
