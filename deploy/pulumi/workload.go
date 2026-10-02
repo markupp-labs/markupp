@@ -56,7 +56,7 @@ func apiDeploymentArgs(names resourceNames, args MarkuppArgs, labels pulumi.Stri
 	return &appsv1.DeploymentArgs{
 		Metadata: namespaced(names.api, args.Namespace),
 		Spec: appsv1.DeploymentSpecArgs{
-			Replicas: pulumi.Int(args.APIReplicas),
+			Replicas: pulumi.Int(*args.APIReplicas),
 			Selector: metav1.LabelSelectorArgs{MatchLabels: labels},
 			Template: corev1.PodTemplateSpecArgs{
 				Metadata: metav1.ObjectMetaArgs{Labels: labels},

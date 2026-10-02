@@ -44,8 +44,9 @@ type MarkuppArgs struct {
 	// cluster, sem criar Gateway nem Issuer. O certificado fica com quem
 	// administra esse Gateway.
 	ExistingGateway *GatewayRefArgs `pulumi:"existingGateway,optional"`
-	// APIReplicas é o número de réplicas da API. Padrão 2.
-	APIReplicas int `pulumi:"apiReplicas,optional"`
+	// APIReplicas é o número de réplicas da API. Padrão 2, e 0 desliga a API
+	// sem apagar nada.
+	APIReplicas *int `pulumi:"apiReplicas,optional"`
 	// Database define de onde vem o PostgreSQL.
 	Database DatabaseArgs `pulumi:"database"`
 }
@@ -144,8 +145,9 @@ func withDefaults(args MarkuppArgs) MarkuppArgs {
 	if args.GatewayClassName == "" {
 		args.GatewayClassName = defaultGatewayClass
 	}
-	if args.APIReplicas == 0 {
-		args.APIReplicas = defaultAPIReplicas
+	if args.APIReplicas == nil {
+		replicas := defaultAPIReplicas
+		args.APIReplicas = &replicas
 	}
 	if args.Database.Size == "" {
 		args.Database.Size = defaultDBSize
