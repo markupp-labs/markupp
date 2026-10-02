@@ -1,4 +1,4 @@
-name: Stack dev
+name: Smoke da stack dev
 
 # Testa a implantação em cada PR e a cada push em dev com o mesmo smoke de
 # make smoke-kind: kind com os requisitos do cluster de produção, stack dev do
@@ -14,8 +14,8 @@ permissions:
   contents: read
 
 jobs:
-  deploy-kind:
-    name: Implanta a stack dev num kind
+  smoke-kind:
+    name: Smoke da stack dev num kind
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
