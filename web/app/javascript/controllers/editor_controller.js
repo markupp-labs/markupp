@@ -5,7 +5,8 @@ import { markdown, markdownLanguage } from "@codemirror/lang-markdown"
 import { livePreview, wikilinks } from "editor/live_preview"
 import { kanagawaTheme } from "editor/kanagawa_theme"
 
-// Monta o CodeMirror sobre o textarea, que segue como fonte do formulário: cada edição volta para ele.
+// Monta o CodeMirror sobre o textarea, que segue como fonte do formulário: cada edição volta para ele
+// e dispara input, como se o usuário tivesse digitado no textarea.
 export default class extends Controller {
   static targets = [ "source" ]
 
@@ -28,6 +29,9 @@ export default class extends Controller {
   }
 
   syncSource(update) {
-    if (update.docChanged) this.sourceTarget.value = update.state.doc.toString()
+    if (!update.docChanged) return
+
+    this.sourceTarget.value = update.state.doc.toString()
+    this.sourceTarget.dispatchEvent(new Event("input", { bubbles: true }))
   }
 }

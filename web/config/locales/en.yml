@@ -10,6 +10,8 @@ en:
       pick: "Pick a note from the sidebar."
     show:
       save: "Save"
+      unsaved: "Unsaved changes"
+      leave: "You have unsaved changes. Leave anyway?"
       conflict: "This note changed on the server since you opened it."
       reload: "Reload and discard my changes"
       overwrite: "Overwrite"
