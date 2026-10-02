@@ -19,6 +19,8 @@ class MarkuppApi
 
   def put(path, body) = request(Net::HTTP::Put, path, body)
 
+  def post(path, body) = request(Net::HTTP::Post, path, body)
+
   private
     def request(verb, path, body = nil)
       uri = URI.join(@base_url, path)

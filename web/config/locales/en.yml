@@ -8,6 +8,7 @@ en:
       search: "Search"
       search_notes: "Search notes"
   notes:
+    untitled: "Untitled"
     index:
       pick: "Pick a note from the sidebar."
     form:
