@@ -5,6 +5,8 @@ en:
       open_notes: "Notes"
       light_theme: "Light theme"
       dark_theme: "Dark theme"
+      search: "Search"
+      search_notes: "Search notes"
   notes:
     index:
       pick: "Pick a note from the sidebar."
@@ -25,3 +27,6 @@ en:
     unreachable:
       title: "Can't reach the markupp server"
       hint: "Check that it is running and that MARKUPP_API_URL points to it."
+  searches:
+    show:
+      empty: "No matches"
