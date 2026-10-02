@@ -6,8 +6,16 @@ name: Smoke da stack dev
 
 on:
   pull_request:
+    paths:
+      - 'markupp/**'
+      - 'deploy/**'
+      - '.github/workflows/smoke-dev.yml'
   push:
     branches: [dev]
+    paths:
+      - 'markupp/**'
+      - 'deploy/**'
+      - '.github/workflows/smoke-dev.yml'
   workflow_dispatch:
 
 permissions:
