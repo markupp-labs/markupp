@@ -63,4 +63,16 @@ class NotesTest < ApplicationSystemTestCase
     assert_text "Saved"
     assert_equal "a\r\nb\r\n", api.put_requests.sole[:content]
   end
+
+  test "deleting a note with unsaved changes asks only once" do
+    use_fake_api(notes: [ { id: "1", path: "plan.md", content: "# Plan\n" } ])
+
+    visit note_path("1")
+    find(".cm-content").send_keys([ :control, :end ], "draft")
+    assert_text "Unsaved changes"
+    accept_confirm("Delete this note? This cannot be undone.") { click_on "Delete" }
+
+    assert_text "Deleted"
+    assert_current_path root_path
+  end
 end
