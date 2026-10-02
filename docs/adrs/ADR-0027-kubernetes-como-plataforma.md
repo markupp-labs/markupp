@@ -2,7 +2,7 @@
 
 ## Status
 
-Aceita
+Aceita, alterada pelo ADR-0032
 
 ## Contexto
 
