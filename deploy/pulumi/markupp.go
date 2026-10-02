@@ -40,10 +40,24 @@ type MarkuppArgs struct {
 	AcmeEmail string `pulumi:"acmeEmail,optional"`
 	// GatewayClassName é a classe do Gateway. Padrão cilium.
 	GatewayClassName string `pulumi:"gatewayClassName,optional"`
+	// ExistingGateway pendura o HTTPRoute num Gateway que já existe no
+	// cluster, sem criar Gateway nem Issuer. O certificado fica com quem
+	// administra esse Gateway.
+	ExistingGateway *GatewayRefArgs `pulumi:"existingGateway,optional"`
 	// APIReplicas é o número de réplicas da API. Padrão 2.
 	APIReplicas int `pulumi:"apiReplicas,optional"`
 	// Database define de onde vem o PostgreSQL.
 	Database DatabaseArgs `pulumi:"database"`
+}
+
+// GatewayRefArgs aponta para um Gateway de outro namespace. Ele precisa
+// aceitar rotas do namespace do markupp em allowedRoutes.
+type GatewayRefArgs struct {
+	Name      string `pulumi:"name"`
+	Namespace string `pulumi:"namespace"`
+	// SectionName é o listener do Gateway. Vazio deixa o Gateway escolher
+	// pelo host.
+	SectionName string `pulumi:"sectionName,optional"`
 }
 
 // DatabaseArgs escolhe entre um PostgreSQL externo e um PostgreSQL de uma
@@ -91,24 +105,36 @@ func declareResources(ctx *pulumi.Context, name string, args MarkuppArgs, parent
 	return declareIngress(ctx, names, args, parent)
 }
 
+type requiredField struct{ field, value string }
+
 func validate(args MarkuppArgs) error {
-	required := []struct{ field, value string }{
-		{"namespace", args.Namespace}, {"image", args.Image}, {"host", args.Host},
+	required := []requiredField{{"namespace", args.Namespace}, {"image", args.Image}, {"host", args.Host}}
+	ingress, err := ingressRequiredFields(args)
+	if err != nil {
+		return err
 	}
-	switch args.CertificateIssuer {
-	case "", issuerACME:
-		required = append(required, struct{ field, value string }{"acmeEmail", args.AcmeEmail})
-	case issuerSelfSigned:
-	default:
-		return fmt.Errorf("certificateIssuer=%q, esperado %q ou %q", args.CertificateIssuer, issuerACME, issuerSelfSigned)
-	}
-	for _, r := range required {
+	for _, r := range append(required, ingress...) {
 		if r.value == "" {
 			return fmt.Errorf("campo %s vazio, esperado texto não vazio (namespace=%q image=%q host=%q)",
 				r.field, args.Namespace, args.Image, args.Host)
 		}
 	}
 	return nil
+}
+
+// ingressRequiredFields lista o que a entrada exige: com Gateway existente, a
+// referência a ele; sem, o email do ACME quando o emissor é acme.
+func ingressRequiredFields(args MarkuppArgs) ([]requiredField, error) {
+	if ref := args.ExistingGateway; ref != nil {
+		return []requiredField{{"existingGateway.name", ref.Name}, {"existingGateway.namespace", ref.Namespace}}, nil
+	}
+	switch args.CertificateIssuer {
+	case "", issuerACME:
+		return []requiredField{{"acmeEmail", args.AcmeEmail}}, nil
+	case issuerSelfSigned:
+		return nil, nil
+	}
+	return nil, fmt.Errorf("certificateIssuer=%q, esperado %q ou %q", args.CertificateIssuer, issuerACME, issuerSelfSigned)
 }
 
 func withDefaults(args MarkuppArgs) MarkuppArgs {

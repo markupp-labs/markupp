@@ -12,17 +12,21 @@ const (
 	httpsListener = "https"
 )
 
-// declareIngress cria Issuer, Gateway e HTTPRoute no namespace do markupp.
-// O Issuer é do namespace, e não ClusterIssuer, para a credencial do CI não
-// precisar de permissão no cluster inteiro.
+// declareIngress cria Issuer, Gateway e HTTPRoute no namespace do markupp, ou
+// só o HTTPRoute quando há um Gateway existente. O Issuer é do namespace, e
+// não ClusterIssuer, para a credencial do CI não precisar de permissão no
+// cluster inteiro.
 func declareIngress(ctx *pulumi.Context, names resourceNames, args MarkuppArgs, parent pulumi.ResourceOption) error {
+	if args.ExistingGateway != nil {
+		return declareRoute(ctx, names, args, existingGatewayRef(*args.ExistingGateway), parent)
+	}
 	if err := declareIssuer(ctx, names, args, parent); err != nil {
 		return err
 	}
 	if err := declareGateway(ctx, names, args, parent); err != nil {
 		return err
 	}
-	return declareRoute(ctx, names, args, parent)
+	return declareRoute(ctx, names, args, gatewayRef(names, args, httpsListener), parent)
 }
 
 func declareIssuer(ctx *pulumi.Context, names resourceNames, args MarkuppArgs, parent pulumi.ResourceOption) error {
@@ -73,10 +77,10 @@ func declareGateway(ctx *pulumi.Context, names resourceNames, args MarkuppArgs, 
 	return err
 }
 
-func declareRoute(ctx *pulumi.Context, names resourceNames, args MarkuppArgs, parent pulumi.ResourceOption) error {
+func declareRoute(ctx *pulumi.Context, names resourceNames, args MarkuppArgs, gateway pulumi.Map, parent pulumi.ResourceOption) error {
 	backend := pulumi.Map{"name": pulumi.String(names.api), "port": pulumi.Int(apiPort)}
 	return declareCustom(ctx, "gateway.networking.k8s.io/v1", "HTTPRoute", names.api, args, pulumi.Map{
-		"parentRefs": pulumi.Array{gatewayRef(names, args, httpsListener)},
+		"parentRefs": pulumi.Array{gateway},
 		"hostnames":  pulumi.StringArray{pulumi.String(args.Host)},
 		"rules":      pulumi.Array{pulumi.Map{"backendRefs": pulumi.Array{backend}}},
 	}, parent)
@@ -88,6 +92,14 @@ func gatewayRef(names resourceNames, args MarkuppArgs, listener string) pulumi.M
 		"namespace":   pulumi.String(args.Namespace),
 		"sectionName": pulumi.String(listener),
 	}
+}
+
+func existingGatewayRef(ref GatewayRefArgs) pulumi.Map {
+	gateway := pulumi.Map{"name": pulumi.String(ref.Name), "namespace": pulumi.String(ref.Namespace)}
+	if ref.SectionName != "" {
+		gateway["sectionName"] = pulumi.String(ref.SectionName)
+	}
+	return gateway
 }
 
 func declareCustom(ctx *pulumi.Context, apiVersion, kind, name string, args MarkuppArgs, spec pulumi.Map, parent pulumi.ResourceOption) error {
