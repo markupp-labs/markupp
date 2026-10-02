@@ -29,6 +29,12 @@ A unidade de isolamento dentro do banco. Toda linha carrega o tenant a que perte
 self-host roda com um só.
 _Avoid_: cliente, organização, conta
 
+**Edição**:
+A forma de instalação do markupp. São duas, self-host e Enterprise, com o mesmo código, e a
+diferença entre elas é configuração. O self-host é operado por quem instala, com um tenant
+só. O Enterprise é operado pela equipe, para vários tenants.
+_Avoid_: versão, plano, nuvem, cloud, SaaS
+
 **Plano de registro**:
 Onde as notas vivem. É durável e é a fonte da verdade do sistema.
 _Avoid_: banco principal, armazenamento, write model
