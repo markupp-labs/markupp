@@ -9,8 +9,10 @@ class MarkuppApi
   class InvalidPath < Error; end
 
   NETWORK_ERRORS = [ SystemCallError, SocketError, Net::OpenTimeout, Net::ReadTimeout ].freeze
-  # Erros que o painel trata, pelo campo error do corpo; 409 tem dois motivos.
-  ERRORS_BY_CODE = { "conflict" => Conflict, "duplicate_path" => DuplicatePath, "invalid_path" => InvalidPath }.freeze
+  # Erros que o painel trata, pelo campo error do corpo; 409 tem dois motivos. Id recusado é nota que não existe.
+  ERRORS_BY_CODE = {
+    "conflict" => Conflict, "duplicate_path" => DuplicatePath, "invalid_path" => InvalidPath, "invalid_id" => NotFound
+  }.freeze
 
   def initialize(base_url)
     @base_url = base_url
