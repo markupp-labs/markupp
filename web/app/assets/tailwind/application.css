@@ -1,1 +1,67 @@
 @import "tailwindcss";
+
+@font-face {
+  font-family: "Fira Code";
+  src: url("/FiraCode-VF.woff2") format("woff2");
+  font-weight: 300 700;
+  font-display: swap;
+}
+
+/* Tema padrão: Kanagawa (rebelot/kanagawa.nvim), lotus no claro e wave no escuro.
+   Outro tema é só outro conjunto destas variáveis. */
+:root {
+  --surface: #f2ecbc;
+  --surface-sunken: #e7dba0;
+  --line: #d5cea3;
+  --ink: #545464;
+  --ink-muted: #5f5c52;
+  --accent: #4d699b;
+  --accent-soft: #c7d7e0;
+  --danger: #a8344a;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --surface: #1f1f28;
+    --surface-sunken: #16161d;
+    --line: #2a2a37;
+    --ink: #dcd7ba;
+    --ink-muted: #a6a69c;
+    --accent: #7e9cd8;
+    --accent-soft: #223249;
+    --danger: #e46876;
+  }
+}
+
+@theme inline {
+  --font-mono: "Fira Code", ui-monospace, monospace;
+  --color-surface: var(--surface);
+  --color-surface-sunken: var(--surface-sunken);
+  --color-line: var(--line);
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--ink-muted);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-danger: var(--danger);
+}
+
+@layer components {
+  .tree-row {
+    @apply rounded-md px-2 py-1 hover:bg-accent-soft;
+  }
+
+  /* No desktop a barra lateral fica sempre visível; no celular é popover (gaveta). */
+  @media (width >= 48rem) {
+    .sidebar {
+      display: block;
+      position: sticky;
+      top: 0;
+      inset: auto;
+    }
+  }
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
