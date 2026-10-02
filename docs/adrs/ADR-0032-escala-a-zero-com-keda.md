@@ -17,8 +17,8 @@ promessa sem dono e a latência de indexação não tem estimativa
 
 KEDA roda no cluster. Os dois indexadores são ScaledJob, com scaler de PostgreSQL consultando o
 cursor de revisão, e um Job nasce por lote pendente. O worker de notificação continua
-Deployment, com ScaledObject levando as réplicas a zero enquanto não houver notificação na fila
-de saída
+Deployment, com ScaledObject levando as réplicas a zero enquanto não houver notificação
+pendente
 
 ## Alternativas consideradas
 
