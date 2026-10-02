@@ -246,4 +246,28 @@ class NotesControllerTest < ActionDispatch::IntegrationTest
     assert_response :bad_gateway
     assert_select "main", text: /Can't reach the markupp server/
   end
+
+  test "update sends a CRLF note back with CRLF" do
+    api = use_fake_api(notes: [ { id: "1", path: "a.md", content: "x\r\ny\r\n" } ])
+
+    patch note_path("1"), params: { note: { path: "a.md", content: "x\ny\nz\n" }, crlf: "true" }
+
+    assert_equal "x\r\ny\r\nz\r\n", api.put_requests.sole[:content]
+  end
+
+  test "update keeps an LF note in LF when the browser sends CRLF" do
+    api = use_fake_api(notes: [ { id: "1", path: "a.md", content: "x\n" } ])
+
+    patch note_path("1"), params: { note: { path: "a.md", content: "x\r\ny\r\n" }, crlf: "false" }
+
+    assert_equal "x\ny\n", api.put_requests.sole[:content]
+  end
+
+  test "show records whether the note uses CRLF" do
+    use_fake_api(notes: [ { id: "1", path: "a.md", content: "x\r\n" } ])
+
+    get note_path("1")
+
+    assert_select "input[type=hidden][name=crlf][value=true]"
+  end
 end

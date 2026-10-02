@@ -179,4 +179,19 @@ class NoteTest < ActiveSupport::TestCase
 
     assert_nothing_raised { Note.new(id: "gone").destroy }
   end
+
+  test "restore_line_breaks brings back CRLF when the note used it" do
+    assert_equal "a\r\nb\r\n", Note.restore_line_breaks("a\nb\n", crlf: true)
+    assert_equal "a\r\nb\r\n", Note.restore_line_breaks("a\r\nb\r\n", crlf: true)
+  end
+
+  test "restore_line_breaks keeps LF when the note used it, even after a native form submit" do
+    assert_equal "a\nb\n", Note.restore_line_breaks("a\r\nb\r\n", crlf: false)
+    assert_equal "a\nb\n", Note.restore_line_breaks("a\nb\n", crlf: false)
+  end
+
+  test "crlf? tells whether the content uses CRLF" do
+    assert Note.new(content: "a\r\nb").crlf?
+    assert_not Note.new(content: "a\nb").crlf?
+  end
 end

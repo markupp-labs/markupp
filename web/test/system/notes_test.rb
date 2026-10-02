@@ -52,4 +52,15 @@ class NotesTest < ApplicationSystemTestCase
     assert_selector "nav a[aria-current=page]", text: "plan.md"
     assert_equal "work/plan.md", api.put_requests.sole[:path]
   end
+
+  test "saving a CRLF note keeps its line breaks" do
+    api = use_fake_api(notes: [ { id: "1", path: "plan.md", content: "a\r\nb\r\n" } ])
+
+    visit note_path("1")
+    fill_in "Path", with: "renamed.md"
+    click_on "Save"
+
+    assert_text "Saved"
+    assert_equal "a\r\nb\r\n", api.put_requests.sole[:content]
+  end
 end
