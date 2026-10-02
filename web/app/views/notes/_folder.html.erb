@@ -1,0 +1,13 @@
+<ul class="space-y-px">
+  <% folder.folders.each do |child| %>
+    <li>
+      <details>
+        <summary class="tree-row cursor-pointer select-none text-ink-muted"><%= child.name %></summary>
+        <div class="ml-3 border-l border-line pl-2"><%= render "notes/folder", folder: child %></div>
+      </details>
+    </li>
+  <% end %>
+  <% folder.notes.each do |note| %>
+    <li class="tree-row truncate" title="<%= note.path %>"><%= note.name %></li>
+  <% end %>
+</ul>
