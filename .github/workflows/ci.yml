@@ -47,7 +47,8 @@ jobs:
         run: make coverage-check
 
       - name: Vulnerabilidades conhecidas
-        run: go run golang.org/x/vuln/cmd/govulncheck@v1.8.0 ./...
+        working-directory: ${{ github.workspace }}
+        run: ./scripts/govulncheck-modulos.sh
 
   convencoes:
     name: Convencoes de commit
