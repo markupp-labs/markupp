@@ -35,7 +35,7 @@ class FakeMarkuppApi
     raise ArgumentError, "fake API has no route for POST #{path}, expected /notes" unless path == "/notes"
 
     @post_requests << body
-    raise MarkuppApi::DuplicatePath, "fake API already has a note at #{body[:path]}, expected a free path" if @notes.any? { it["path"] == body[:path] }
+    refuse_path(body[:path], nil)
 
     @notes << body.slice(:path, :content).stringify_keys.merge("id" => "created-#{@post_requests.size}", "updated_at" => "2026-10-01T12:00:00.000Z")
     @notes.last
