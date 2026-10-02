@@ -136,4 +136,33 @@ class NoteTest < ActiveSupport::TestCase
     assert_raises(MarkuppApi::Conflict) { Note.new(id: "1", path: "a.md").update({ content: "mine" }) }
     assert_equal "theirs", Note.find("1").content
   end
+
+  test "update renames and moves the note to the new path" do
+    api = use_fake_api(notes: [ { id: "1", path: "a.md", content: "x" } ])
+
+    assert Note.new(id: "1", path: "a.md").update({ path: "work/b.md", content: "x" })
+
+    assert_equal "work/b.md", api.put_requests.sole[:path]
+    assert_equal "work/b.md", Note.find("1").path
+  end
+
+  test "update returns false with a path error when another note has the path" do
+    use_fake_api(notes: [ { id: "1", path: "a.md", content: "x" }, { id: "2", path: "b.md", content: "y" } ])
+    note = Note.new(id: "1", path: "a.md")
+
+    assert_not note.update({ path: "b.md", content: "mine" })
+
+    assert_equal [ "Path already taken" ], note.errors.full_messages_for(:path)
+    assert_equal [ "b.md", "mine" ], [ note.path, note.content ]
+    assert_equal "a.md", Note.find("1").path
+  end
+
+  test "update returns false with a path error when the API refuses the path" do
+    use_fake_api(notes: [ { id: "1", path: "a.md", content: "x" } ])
+    note = Note.new(id: "1", path: "a.md")
+
+    assert_not note.update({ path: " ", content: "x" })
+
+    assert_equal [ "Path is invalid" ], note.errors.full_messages_for(:path)
+  end
 end

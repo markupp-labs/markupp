@@ -38,7 +38,7 @@ class NotesControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_equal content, css_select("main textarea").sole.text
-    assert_select "main", text: /work\/plan\.md/
+    assert_select "main input[name=?][value=?]", "note[path]", "work/plan.md"
   end
 
   test "show marks the current note and opens only its ancestors" do
@@ -70,7 +70,7 @@ class NotesControllerTest < ActionDispatch::IntegrationTest
 
     assert_select "form[action=?]", note_path("1") do
       assert_select "input[type=hidden][name=last_modified_at][value=?]", "2026-09-30T12:00:00.123Z"
-      assert_select "input[type=hidden][name=?][value=?]", "note[path]", "a.md"
+      assert_select "input[type=text][name=?][value=?]", "note[path]", "a.md"
       assert_select "button", text: "Save"
     end
   end
@@ -162,6 +162,49 @@ class NotesControllerTest < ActionDispatch::IntegrationTest
     assert_response :conflict
     assert_equal "mine", css_select("main textarea").sole.text
     assert_select "main [role=alert]", text: /Path is already used by another note/
+  end
+
+  test "update renames the note and the tree shows the new name" do
+    api = use_fake_api(notes: [ { id: "1", path: "a.md", content: "x" } ])
+
+    patch note_path("1"), params: { note: { path: "b.md", content: "x" } }
+
+    assert_redirected_to note_path("1")
+    assert_equal "b.md", api.put_requests.sole[:path]
+    follow_redirect!
+    assert_select "nav a[aria-current=page]", text: "b.md"
+    assert_select "nav li", text: "a.md", count: 0
+  end
+
+  test "update moves the note into a folder and opens it in the tree" do
+    use_fake_api(notes: [ { id: "1", path: "a.md", content: "x" } ])
+
+    patch note_path("1"), params: { note: { path: "work/2026/a.md", content: "x" } }
+    follow_redirect!
+
+    assert_select "nav details[open] details[open] a[aria-current=page]", text: "a.md"
+    assert_select "input[name=?][value=?]", "note[path]", "work/2026/a.md"
+  end
+
+  test "update on a taken path keeps what was typed and shows the error under the field" do
+    use_fake_api(notes: [ { id: "1", path: "a.md", content: "x" }, { id: "2", path: "b.md", content: "y" } ])
+
+    patch note_path("1"), params: { note: { path: "b.md", content: "mine" }, last_modified_at: "2026-09-30T12:00:00.123Z" }
+
+    assert_response :conflict
+    assert_select "input[name=?][value=?][aria-invalid=true]", "note[path]", "b.md"
+    assert_select "#note_path_error", text: "Path already taken"
+    assert_equal "mine", css_select("main textarea").sole.text
+    assert_select "input[name=last_modified_at][value=?]", "2026-09-30T12:00:00.123Z"
+  end
+
+  test "update on a path the API refuses shows its error under the field" do
+    use_fake_api(notes: [ { id: "1", path: "a.md", content: "x" } ])
+
+    patch note_path("1"), params: { note: { path: "", content: "mine" } }
+
+    assert_response :unprocessable_content
+    assert_select "#note_path_error", text: "Path is invalid"
   end
 
   test "index answers bad gateway when the API is unreachable" do

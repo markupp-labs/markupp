@@ -39,4 +39,17 @@ class NotesTest < ApplicationSystemTestCase
     assert_selector "nav a[aria-current=page]", text: "Untitled.md"
     assert_equal({ path: "work/Untitled.md", content: "Fresh idea." }, api.post_requests.sole)
   end
+
+  test "editing the path marks the note unsaved and saves the rename" do
+    api = use_fake_api(notes: [ { id: "1", path: "plan.md", content: "# Plan\n" } ])
+
+    visit note_path("1")
+    fill_in "Path", with: "work/plan.md"
+    assert_text "Unsaved changes"
+    click_on "Save"
+
+    assert_text "Saved"
+    assert_selector "nav a[aria-current=page]", text: "plan.md"
+    assert_equal "work/plan.md", api.put_requests.sole[:path]
+  end
 end

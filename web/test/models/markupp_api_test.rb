@@ -86,9 +86,15 @@ class MarkuppApiTest < ActiveSupport::TestCase
     assert_not_kind_of MarkuppApi::DuplicatePath, error
   end
 
+  test "put raises InvalidPath when the API refuses the path" do
+    error = assert_put_raises(MarkuppApi::InvalidPath, '{"error":"invalid_path","message":"bad"}', status: "400 Bad Request")
+    assert_match "400", error.message
+    assert_kind_of MarkuppApi::Error, error
+  end
+
   private
-    def assert_put_raises(error_class, body)
-      server = FakeHttpServer.new(status: "409 Conflict", body:)
+    def assert_put_raises(error_class, body, status: "409 Conflict")
+      server = FakeHttpServer.new(status:, body:)
       thread = server.serve_once
       error = assert_raises(error_class) { MarkuppApi.new(server.url).put("/notes/1", content: "x") }
       thread.join

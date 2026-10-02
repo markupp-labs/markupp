@@ -24,7 +24,9 @@ class FakeMarkuppApi
     @put_requests << body
     raise MarkuppApi::Conflict, "fake API simulates a conflict on PUT #{path}, expected force: true" if @conflict && !body[:force]
 
-    note_at("PUT", path).merge!(body.slice(:path, :content).stringify_keys)
+    note = note_at("PUT", path)
+    refuse_path(body[:path], note)
+    note.merge!(body.slice(:path, :content).stringify_keys)
   end
 
   # Como a API, recusa caminho já usado. O id segue a ordem dos POSTs: created-1, created-2...
@@ -49,6 +51,14 @@ class FakeMarkuppApi
       params = URI.decode_www_form(query_string).to_h
       matches = @notes.select { |note| note["content"].to_s.downcase.include?(params.fetch("query").downcase) }
       matches.first(Integer(params.fetch("limit"))).map { |note| note.slice("id", "path", "updated_at") }
+    end
+
+    # Só a regra de caminho vazio do servidor; as outras (.., tamanho) ficam com ele.
+    def refuse_path(new_path, note)
+      raise MarkuppApi::InvalidPath, "fake API refuses path #{new_path.inspect}, expected a non blank path" if new_path.to_s.strip.empty?
+      return unless @notes.any? { |other| other["path"] == new_path && !other.equal?(note) }
+
+      raise MarkuppApi::DuplicatePath, "fake API already has a note at #{new_path.inspect}, expected a free path"
     end
 
     def note_at(verb, path)
