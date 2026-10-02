@@ -12,8 +12,15 @@ class Note
 
   # ponytail: GET /notes traz o conteúdo de todas as notas, paginar quando a API paginar
   def self.all
-    api.get("/notes").map { |attributes| new(attributes.slice(*attribute_names)) }
+    api.get("/notes").map { |attributes| from_api(attributes) }
   end
+
+  def self.find(id) = from_api(api.get("/notes/#{ERB::Util.url_encode(id)}"))
+
+  def self.from_api(attributes) = new(attributes.slice(*attribute_names))
+  private_class_method :from_api
+
+  def persisted? = id.present?
 
   def name = path_segments.last
 
