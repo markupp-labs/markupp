@@ -49,6 +49,30 @@ jobs:
       - name: Vulnerabilidades conhecidas
         run: go run golang.org/x/vuln/cmd/govulncheck@v1.8.0 ./...
 
+  pulumi-component-tests:
+    name: Componente Pulumi (Go) tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: deploy/pulumi
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: deploy/pulumi/go.mod
+          cache-dependency-path: deploy/pulumi/go.sum
+
+      - name: Run vet
+        run: go vet ./...
+
+      - name: Run golangci-lint
+        run: go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2 run -c ../../markupp/.golangci.yml
+
+      - name: Run tests
+        run: go test ./... -race -count=1
+
   convencoes:
     name: Convencoes de commit
     runs-on: ubuntu-latest

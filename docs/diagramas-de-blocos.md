@@ -54,15 +54,18 @@ Deployment e não Job, porque o KEDA leva as réplicas a zero sem precisar de um
 Um PostgreSQL só, com o plano de registro e o plano de recuperação dentro dele. Os vetores
 ficam em pgvector.
 
-Ele roda dentro do cluster, com volume persistente, e não como banco gerenciado de nuvem. É o
-que o ADR-0015 pede sem dizer onde, e é o que a infraestrutura disponível oferece.
+Ele roda numa instância só, dentro do namespace do markupp, e não como banco gerenciado de
+nuvem nem com operador no cluster compartilhado. É o que o ADR-0015 pede sem dizer onde, e é o
+que a infraestrutura disponível oferece. O backup é snapshot de volume no próprio cluster, então perder o cluster leva as notas
+junto.
 
 Seis dos sete serviços compartilham esse banco. O painel fica de fora porque consome a API, e
 não o PostgreSQL. São serviços no sentido de implantação e escala independentes, não no de banco
 por serviço, e o isolamento entre eles é de processo e de escala, não de dado.
 
 O preço é acoplamento pelo schema. Mudança de coluna coordena os seis, em expand e contract, e
-nenhum deles evolui o modelo de dados por conta própria.
+nenhum deles evolui o modelo de dados por conta própria. Quem aplica a migração é um Job único,
+que roda antes de qualquer serviço subir a versão nova.
 
 ## Provedores externos
 
@@ -70,13 +73,15 @@ A API REST valida identidade contra o provedor OIDC habilitado, o indexador de e
 gera vetores pelo provedor configurado, e o worker de notificação entrega email pelo dele.
 
 Os três são trocáveis por configuração, e é por isso que o desenho não nomeia serviço. O
-Enterprise liga Bedrock e SES, o self-host aponta para um modelo local e um SMTP próprio, e
+Enterprise entrega email por SMTP, o self-host aponta para um modelo local e um SMTP próprio, e
 o código é o mesmo nos dois.
 
 ## O que muda no self-host
 
-O mesmo conjunto de imagens roda por compose num nó só. Sem cluster, o TLS termina no próprio
-servidor, e o embedding pode vir de modelo local carregado no processo do indexador.
+O mesmo conjunto de imagens roda por compose num nó só, menos o plano de controle: com um
+tenant só, não há cobrança nem provisionamento. Embedding e notificação sobem por perfil, só
+quando configurados. Sem cluster, o TLS termina no próprio servidor, e o embedding pode vir de
+modelo local carregado no processo do indexador.
 
 Sem cluster também não há KEDA, então lá o indexador roda em laço em vez de nascer por lote.
 
