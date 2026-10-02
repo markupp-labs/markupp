@@ -1,0 +1,8 @@
+<% content_for :title, @note.name %>
+<% content_for :sidebar, render("notes/sidebar", tree: @tree, current: @note) %>
+
+<article class="flex h-full flex-col gap-3" data-controller="editor">
+  <h1 class="truncate text-ink-muted"><%= @note.path %></h1>
+  <%= text_area_tag "note[content]", @note.content, data: { editor_target: "source" }, aria: { label: @note.path },
+                    class: "min-h-[60dvh] w-full flex-1 rounded-md border border-line bg-surface p-2" %>
+</article>

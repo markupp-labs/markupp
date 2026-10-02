@@ -1,9 +1,3 @@
-<% content_for :sidebar do %>
-  <% if @tree.folders.empty? && @tree.notes.empty? %>
-    <p class="px-2 py-1 text-ink-muted"><%= t(".empty") %></p>
-  <% else %>
-    <%= render "notes/folder", folder: @tree %>
-  <% end %>
-<% end %>
+<% content_for :sidebar, render("notes/sidebar", tree: @tree, current: nil) %>
 
 <p class="text-ink-muted"><%= t(".pick") %></p>

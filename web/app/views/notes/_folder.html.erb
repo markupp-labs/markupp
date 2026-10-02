@@ -1,13 +1,20 @@
+<%# open_folders: pastas da nota atual ainda não percorridas, para abrir só os ancestrais dela %>
 <ul class="space-y-px">
   <% folder.folders.each do |child| %>
+    <% ancestor = child.name == open_folders.first %>
     <li>
-      <details>
+      <details <%= "open" if ancestor %>>
         <summary class="tree-row cursor-pointer select-none text-ink-muted"><%= child.name %></summary>
-        <div class="ml-3 border-l border-line pl-2"><%= render "notes/folder", folder: child %></div>
+        <div class="ml-3 border-l border-line pl-2">
+          <%= render "notes/folder", folder: child, current: current, open_folders: ancestor ? open_folders.drop(1) : [] %>
+        </div>
       </details>
     </li>
   <% end %>
   <% folder.notes.each do |note| %>
-    <li class="tree-row truncate" title="<%= note.path %>"><%= note.name %></li>
+    <li>
+      <%= link_to note.name, note_path(note), title: note.path, class: "tree-row block truncate aria-[current=page]:bg-accent-soft aria-[current=page]:text-accent",
+                  aria: { current: ("page" if note.id == current&.id) } %>
+    </li>
   <% end %>
 </ul>

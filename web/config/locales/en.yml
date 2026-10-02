@@ -7,8 +7,12 @@ en:
       dark_theme: "Dark theme"
   notes:
     index:
-      empty: "No notes yet."
       pick: "Pick a note from the sidebar."
+    sidebar:
+      empty: "No notes yet."
+    not_found:
+      title: "Note not found"
+      hint: "It may have been renamed or deleted. Pick another one from the sidebar."
     unreachable:
       title: "Can't reach the markupp server"
       hint: "Check that it is running and that MARKUPP_API_URL points to it."

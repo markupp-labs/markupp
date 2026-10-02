@@ -1,0 +1,5 @@
+<% if tree.folders.empty? && tree.notes.empty? %>
+  <p class="px-2 py-1 text-ink-muted"><%= t(".empty") %></p>
+<% else %>
+  <%= render "notes/folder", folder: tree, current:, open_folders: current&.folder_names || [] %>
+<% end %>
