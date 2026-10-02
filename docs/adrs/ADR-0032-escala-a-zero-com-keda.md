@@ -16,9 +16,14 @@ promessa sem dono e a latência de indexação não tem estimativa
 ## Decisão
 
 KEDA roda no cluster. Os dois indexadores são ScaledJob, com scaler de PostgreSQL consultando o
-cursor de revisão, e um Job nasce por lote pendente. O worker de notificação continua
+cursor de revisão, e um Job nasce por cofre com mudança pendente. O worker de notificação continua
 Deployment, com ScaledObject levando as réplicas a zero enquanto não houver notificação
 pendente
+
+A unidade de trabalho é o cofre, onde o dado derivado nasce (ADR-0024). A consulta do scaler
+conta os cofres com mudança pendente, e cada Job reserva um deles travando a linha do cursor do
+cofre com `SELECT ... FOR UPDATE SKIP LOCKED`. Um cofre já reservado é pulado, então dois Jobs
+nunca indexam o mesmo lote, e Jobs em paralelo trabalham em cofres diferentes
 
 ## Alternativas consideradas
 
@@ -26,6 +31,10 @@ pendente
   de acordar mesmo sem nota para indexar e de um piso de um minuto na latência
 - Indexador sempre ligado: elimina a pergunta do gatilho, e paga recurso ocioso, que é
   exatamente o que o ADR-0018 recusou
+- Um Job por vez, com `maxReplicaCount` 1: elimina a concorrência, e coloca a indexação de
+  todos os cofres numa fila só
+- Advisory lock por tenant: paraleliza entre tenants, e cofres do mesmo tenant esperam um ao
+  outro sem precisar
 - Broker de mensagens: resolve gatilho e ordem de uma vez, e é o componente que o ADR-0018
   adiou até o custo do polling ser medido e doer
 
@@ -39,6 +48,9 @@ pendente
   laço além do modo de execução única que o Job usa
 - A latência de indexação passa a ter estimativa, que é o intervalo de consulta do scaler
 - Um Job por lote é um pod por lote, com o custo de partida que isso carrega
+- A reserva dura a transação: Job que morre no meio solta a trava, e o cofre volta a ser pego
+  pelo próximo Job
+- Um cofre grande não se divide entre Jobs, porque o paralelismo é por cofre
 - KEDA não está instalado no cluster da disciplina, que hoje tem Gateway API, Cilium,
   cert-manager e Longhorn. Sem ele, esta decisão descreve o alvo e não o que roda. Instalar é
   por Helm, que já existe nas máquinas. O próprio KEDA serve as métricas do scaler de
