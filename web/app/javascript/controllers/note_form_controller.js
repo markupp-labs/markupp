@@ -8,7 +8,8 @@ export default class extends Controller {
   static values = { leaveMessage: String }
 
   connect() {
-    this.original = [ this.sourceTarget.defaultValue, this.pathTarget.defaultValue ]
+    this.originalContent = this.sourceTarget.defaultValue
+    this.originalPath = this.pathTarget.defaultValue
     this.track()
   }
 
@@ -38,7 +39,7 @@ export default class extends Controller {
   }
 
   get changed() {
-    const edited = this.sourceTarget.value != this.original[0] || this.pathTarget.value != this.original[1]
+    const edited = this.sourceTarget.value != this.originalContent || this.pathTarget.value != this.originalPath
     return !this.leaving && (this.hasPendingTarget || edited)
   }
 }
