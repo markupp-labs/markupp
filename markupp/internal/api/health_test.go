@@ -20,7 +20,7 @@ type fakeProbe struct {
 	called bool
 }
 
-func (f *fakeProbe) PingContext(ctx context.Context) error {
+func (f *fakeProbe) Ping(ctx context.Context) error {
 	f.called = true
 	return f.err
 }
