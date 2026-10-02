@@ -18,7 +18,7 @@ import (
 	tcpostgres "github.com/testcontainers/testcontainers-go/modules/postgres"
 )
 
-const postgresImage = "postgres:17-alpine"
+const postgresImage = "postgres:17.9-alpine3.23"
 
 var (
 	containerOnce sync.Once
