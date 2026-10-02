@@ -24,6 +24,11 @@ export default class extends Controller {
     this.leaving = true
   }
 
+  // O form de excluir fica fora deste (form não aninha); só envia depois do confirm aceito.
+  allowLeavingOnDelete({ target }) {
+    if (target.id == "delete_note") this.allowLeaving()
+  }
+
   warnBeforeUnload(event) {
     if (this.changed) event.preventDefault()
   }

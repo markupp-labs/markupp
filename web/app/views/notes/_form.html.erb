@@ -6,7 +6,7 @@
 <%= form_with model: @note, class: "flex h-full flex-col gap-3",
               data: { controller: "editor note-form", note_form_leave_message_value: t(".leave"),
                       action: "keydown.ctrl+s@window->note-form#save:prevent keydown.meta+s@window->note-form#save:prevent " \
-                              "input->note-form#track submit->note-form#allowLeaving " \
+                              "input->note-form#track submit->note-form#allowLeaving turbo:submit-start@document->note-form#allowLeavingOnDelete " \
                               "beforeunload@window->note-form#warnBeforeUnload turbo:before-visit@document->note-form#confirmVisit" } do |form| %>
   <header class="flex items-start gap-3">
     <div class="min-w-0 flex-1">
