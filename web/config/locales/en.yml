@@ -8,6 +8,13 @@ en:
   notes:
     index:
       pick: "Pick a note from the sidebar."
+    show:
+      save: "Save"
+      conflict: "This note changed on the server since you opened it."
+      reload: "Reload and discard my changes"
+      overwrite: "Overwrite"
+    update:
+      saved: "Saved"
     sidebar:
       empty: "No notes yet."
     not_found:

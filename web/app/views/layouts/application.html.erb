@@ -37,6 +37,9 @@
     </nav>
 
     <main class="min-w-0 p-4 md:p-6">
+      <% if notice %>
+        <p role="status" class="mb-3 text-accent"><%= notice %></p>
+      <% end %>
       <%= yield %>
     </main>
   </body>

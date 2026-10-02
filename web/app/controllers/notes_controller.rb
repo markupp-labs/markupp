@@ -11,6 +11,15 @@ class NotesController < ApplicationController
     @note = Note.find(params[:id])
   end
 
+  def update
+    @note = Note.new(id: params[:id], updated_at: params[:last_modified_at])
+    @note.update(params.expect(note: [ :path, :content ]), force: params[:force] == "true")
+    redirect_to note_path(@note), notice: t(".saved")
+  rescue MarkuppApi::Conflict
+    @conflict = true
+    render :show, status: :conflict
+  end
+
   private
     def set_tree
       @tree = Note::Tree.build(Note.all)
