@@ -47,6 +47,12 @@ resources:
         storageClass: longhorn-fast
 ```
 
+Sem outra opção, o componente cria um Gateway próprio nas portas 80 e 443. Em cluster onde
+outro Gateway já ocupa essas portas, como o Cilium em hostNetwork, que exige porta única por
+Gateway, informe `existingGateway` com nome, namespace e listener. O componente cria só o
+HTTPRoute, e o Gateway precisa aceitar rotas do namespace do markupp em `allowedRoutes`. Nesse
+caso o certificado fica com quem administra o Gateway.
+
 ### Stacks da equipe
 
 O projeto em `deploy/stacks` usa o componente pelo caminho local e tem duas stacks:
