@@ -1,5 +1,4 @@
 class NotesController < ApplicationController
-  rescue_from MarkuppApi::Error, with: :render_unreachable
   rescue_from MarkuppApi::NotFound, with: :render_not_found
 
   before_action :set_tree, except: :destroy
@@ -49,11 +48,6 @@ class NotesController < ApplicationController
 
     def set_tree
       @tree = Note::Tree.build(Note.all)
-    end
-
-    def render_unreachable(error)
-      Rails.logger.error({ event: "markupp_api_unreachable", message: error.message }.to_json)
-      render :unreachable, status: :bad_gateway
     end
 
     def path_error_status = @note.errors.of_kind?(:path, :taken) ? :conflict : :unprocessable_content
