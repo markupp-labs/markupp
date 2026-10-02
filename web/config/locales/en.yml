@@ -3,6 +3,11 @@ en:
     errors:
       messages:
         duplicate: "is already used by another note"
+      models:
+        note:
+          attributes:
+            path:
+              taken: "already taken"
   layouts:
     application:
       notes: "Notes"

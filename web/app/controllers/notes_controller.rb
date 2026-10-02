@@ -26,8 +26,11 @@ class NotesController < ApplicationController
 
   def update
     @note = Note.new(id: params[:id], updated_at: params[:last_modified_at])
-    @note.update(params.expect(note: [ :path, :content ]), force: params[:force] == "true")
-    redirect_to note_path(@note), notice: t(".saved")
+    if @note.update(params.expect(note: [ :path, :content ]), force: params[:force] == "true")
+      redirect_to note_path(@note), notice: t(".saved")
+    else
+      render :show, status: @note.errors.of_kind?(:path, :taken) ? :conflict : :unprocessable_content
+    end
   rescue MarkuppApi::Conflict
     @conflict = true
     render :show, status: :conflict

@@ -1,13 +1,14 @@
 import { Controller } from "@hotwired/stimulus"
 
 // Salvar explícito: Ctrl+S ou Cmd+S submete, marca alterações não salvas e avisa antes de sair com elas.
-// Com o aviso de conflito na tela, o texto do usuário ainda não está no servidor.
+// Com aviso de conflito ou erro de caminho na tela, o que o usuário digitou ainda não está no servidor.
+// O caminho conta como alteração: renomear também precisa salvar.
 export default class extends Controller {
-  static targets = [ "source", "unsaved", "conflict" ]
+  static targets = [ "source", "path", "unsaved", "conflict" ]
   static values = { leaveMessage: String }
 
   connect() {
-    this.original = this.sourceTarget.defaultValue
+    this.original = [ this.sourceTarget.defaultValue, this.pathTarget.defaultValue ]
     this.track()
   }
 
@@ -32,6 +33,7 @@ export default class extends Controller {
   }
 
   get changed() {
-    return !this.leaving && (this.hasConflictTarget || this.sourceTarget.value != this.original)
+    const edited = this.sourceTarget.value != this.original[0] || this.pathTarget.value != this.original[1]
+    return !this.leaving && (this.hasConflictTarget || edited)
   }
 }

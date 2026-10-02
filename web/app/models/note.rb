@@ -47,9 +47,14 @@ class Note
 
   # updated_at é a versão lida; a API recusa com Conflict se a nota mudou depois, a menos que force.
   # A API guarda a versão em milissegundos, então lastModifiedAt vai com essa precisão.
+  # Caminho recusado pela API vira erro em path e devolve false; a regra de caminho fica só no servidor.
   def update(attributes, force: false)
     assign_attributes(attributes)
     api.put(Note.api_path(id), path:, content:, lastModifiedAt: updated_at&.iso8601(3), force:)
+  rescue MarkuppApi::DuplicatePath
+    errors.add(:path, :taken) && false
+  rescue MarkuppApi::InvalidPath
+    errors.add(:path, :invalid) && false
   end
 
   def name = path_segments.last

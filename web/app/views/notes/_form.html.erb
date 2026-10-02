@@ -8,15 +8,21 @@
                       action: "keydown.ctrl+s@window->note-form#save:prevent keydown.meta+s@window->note-form#save:prevent " \
                               "input->note-form#track submit->note-form#allowLeaving " \
                               "beforeunload@window->note-form#warnBeforeUnload turbo:before-visit@document->note-form#confirmVisit" } do |form| %>
-  <header class="flex items-center gap-3">
-    <h1 class="min-w-0 flex-1 truncate text-ink-muted"><%= @note.path %></h1>
-    <span data-note-form-target="unsaved" hidden class="text-ink-muted"><%= t(".unsaved") %></span>
+  <header class="flex items-start gap-3">
+    <div class="min-w-0 flex-1">
+      <% path_error = @note.errors.full_messages_for(:path).first %>
+      <%= form.label :path, class: "sr-only" %>
+      <%= form.text_field :path, data: { note_form_target: "path" }, spellcheck: false, autocomplete: "off",
+                          aria: { invalid: path_error.present?, describedby: ("note_path_error" if path_error) },
+                          class: "w-full rounded-md border border-transparent bg-transparent px-1 py-1 text-ink-muted " \
+                                 "hover:border-line focus:border-line focus:text-ink focus:outline-none aria-invalid:border-danger" %>
+      <% if path_error %>
+        <p id="note_path_error" data-note-form-target="conflict" class="px-1 text-danger"><%= path_error %></p>
+      <% end %>
+    </div>
+    <span data-note-form-target="unsaved" hidden class="py-1 text-ink-muted"><%= t(".unsaved") %></span>
     <%= form.button t(".save"), class: "rounded-md border border-line px-3 py-1 hover:bg-accent-soft" %>
   </header>
-
-  <% if @note.errors.include?(:path) %>
-    <p role="alert" class="text-danger"><%= @note.errors.full_messages_for(:path).to_sentence %></p>
-  <% end %>
 
   <% if @conflict %>
     <div role="alert" data-note-form-target="conflict" class="flex flex-wrap items-center gap-3 rounded-md border border-danger p-2">
@@ -27,7 +33,6 @@
     </div>
   <% end %>
 
-  <%= form.hidden_field :path %>
   <%= hidden_field_tag :last_modified_at, @note.updated_at&.iso8601(3), id: nil %>
   <%= form.text_area :content, data: { editor_target: "source", note_form_target: "source" }, aria: { label: @note.path },
                      class: "min-h-[60dvh] w-full flex-1 rounded-md border border-line bg-surface p-2" %>
