@@ -21,11 +21,11 @@
       <% end %>
     </div>
     <span data-note-form-target="unsaved" hidden class="py-1 text-ink-muted"><%= t(".unsaved") %></span>
-    <%= form.button t(".save"), class: "rounded-md border border-line px-3 py-1 hover:bg-accent-soft" %>
+    <%= form.button t(".save"), class: "btn" %>
     <% if @note.persisted? %>
       <%# Fora do form de salvar (form não aninha): o botão aponta para o form de excluir pelo atributo form. %>
       <%= tag.button t(".delete"), form: "delete_note", data: { turbo_confirm: t(".confirm_delete") },
-                     class: "rounded-md border border-danger px-3 py-1 text-danger" %>
+                     class: "btn border-danger text-danger" %>
     <% end %>
   </header>
 
@@ -33,8 +33,8 @@
     <div role="alert" data-note-form-target="pending" class="flex flex-wrap items-center gap-3 rounded-md border border-danger p-2">
       <p class="flex-1 text-danger"><%= t(".conflict") %></p>
       <%= link_to t(".reload"), note_path(@note), data: { action: "note-form#allowLeaving" },
-                  class: "rounded-md border border-line px-3 py-1 hover:bg-accent-soft" %>
-      <%= form.button t(".overwrite"), name: "force", value: "true", class: "rounded-md border border-danger px-3 py-1 text-danger" %>
+                  class: "btn" %>
+      <%= form.button t(".overwrite"), name: "force", value: "true", class: "btn border-danger text-danger" %>
     </div>
   <% end %>
 

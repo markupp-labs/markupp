@@ -62,6 +62,10 @@
 }
 
 @layer components {
+  .btn {
+    @apply rounded-md border border-line px-3 py-1 hover:bg-accent-soft;
+  }
+
   .tree-row {
     @apply rounded-md px-2 py-1 hover:bg-accent-soft;
   }

@@ -21,7 +21,7 @@
 
   <body class="min-h-dvh bg-surface font-mono text-sm text-ink md:grid md:grid-cols-[17rem_1fr]"
         data-controller="search" data-action="keydown.ctrl+k@window->search#open:prevent keydown.meta+k@window->search#open:prevent">
-    <button popovertarget="sidebar" class="m-2 rounded-md border border-line px-3 py-1.5 text-ink-muted md:hidden">
+    <button popovertarget="sidebar" class="btn m-2 text-ink-muted md:hidden">
       <%= t(".open_notes") %>
     </button>
 
@@ -36,7 +36,7 @@
       <footer class="mt-4 border-t border-line pt-3">
         <% ThemesController::THEMES.each do |theme| %>
           <%= button_to t(".#{theme}_theme"), theme_path, method: :patch, params: { theme: theme }, form_class: "theme-to-#{theme}",
-                class: "rounded-md border border-line px-3 py-1.5 text-ink-muted hover:bg-accent-soft" %>
+                class: "btn text-ink-muted" %>
         <% end %>
       </footer>
     </nav>
