@@ -13,6 +13,7 @@ class FakeMarkuppApi
   def get(path)
     refuse_when_unreachable("GET", path)
     return @notes if path == "/notes"
+    return search(URI(path).query) if path.start_with?("/notes/search?")
 
     note_at("GET", path)
   end
@@ -28,6 +29,13 @@ class FakeMarkuppApi
   private
     def refuse_when_unreachable(verb, path)
       raise MarkuppApi::Error, "fake API unreachable on #{verb} #{path}" if @unreachable
+    end
+
+    # Como a API: substring do conteúdo sem diferenciar caixa, até limit itens, sem o conteúdo.
+    def search(query_string)
+      params = URI.decode_www_form(query_string).to_h
+      matches = @notes.select { |note| note["content"].to_s.downcase.include?(params.fetch("query").downcase) }
+      matches.first(Integer(params.fetch("limit"))).map { |note| note.slice("id", "path", "updated_at") }
     end
 
     def note_at(verb, path)
