@@ -3,6 +3,8 @@ en:
     application:
       notes: "Notes"
       open_notes: "Notes"
+      light_theme: "Light theme"
+      dark_theme: "Dark theme"
   notes:
     index:
       empty: "No notes yet."

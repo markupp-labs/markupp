@@ -8,28 +8,44 @@
 }
 
 /* Tema padrão: Kanagawa (rebelot/kanagawa.nvim), lotus no claro e wave no escuro.
-   Outro tema é só outro conjunto destas variáveis. */
+   Cada token é light-dark(claro, escuro); o lado vem do color-scheme, que segue o
+   sistema ou o data-theme gravado no cookie. Outro tema é só outro conjunto destas
+   variáveis. */
 :root {
-  --surface: #f2ecbc;
-  --surface-sunken: #e7dba0;
-  --line: #d5cea3;
-  --ink: #545464;
-  --ink-muted: #5f5c52;
-  --accent: #4d699b;
-  --accent-soft: #c7d7e0;
-  --danger: #a8344a;
+  color-scheme: light dark;
+  --surface: light-dark(#f2ecbc, #1f1f28);
+  --surface-sunken: light-dark(#e7dba0, #16161d);
+  --line: light-dark(#d5cea3, #2a2a37);
+  --ink: light-dark(#545464, #dcd7ba);
+  --ink-muted: light-dark(#5f5c52, #a6a69c);
+  --accent: light-dark(#4d699b, #7e9cd8);
+  --accent-soft: light-dark(#c7d7e0, #223249);
+  --danger: light-dark(#a8344a, #e46876);
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+}
+
+/* Esconde o botão do tema já ativo, inclusive quando segue o sistema. */
+:root[data-theme="light"] .theme-to-light,
+:root[data-theme="dark"] .theme-to-dark {
+  display: none;
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) .theme-to-light {
+    display: none;
+  }
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
-    --surface: #1f1f28;
-    --surface-sunken: #16161d;
-    --line: #2a2a37;
-    --ink: #dcd7ba;
-    --ink-muted: #a6a69c;
-    --accent: #7e9cd8;
-    --accent-soft: #223249;
-    --danger: #e46876;
+  :root:not([data-theme]) .theme-to-dark {
+    display: none;
   }
 }
 
