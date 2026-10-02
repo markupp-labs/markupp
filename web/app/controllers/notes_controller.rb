@@ -20,7 +20,7 @@ class NotesController < ApplicationController
     @note.save
     redirect_to note_path(@note), notice: t(".created")
   rescue MarkuppApi::DuplicatePath
-    @note.errors.add(:path, :duplicate)
+    @note.errors.add(:path, :taken)
     render :new, status: :conflict
   end
 

@@ -1,8 +1,6 @@
 en:
   activemodel:
     errors:
-      messages:
-        duplicate: "is already used by another note"
       models:
         note:
           attributes:
