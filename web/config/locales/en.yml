@@ -14,6 +14,7 @@ en:
       dark_theme: "Dark theme"
       search: "Search"
       search_notes: "Search notes"
+      search_placeholder: "Search note content"
   notes:
     untitled: "Untitled"
     index:

@@ -45,7 +45,7 @@
     <dialog data-search-target="dialog" aria-label="<%= t(".search_notes") %>"
             class="mx-auto mt-[15vh] w-[min(36rem,calc(100vw-2rem))] rounded-md border border-line bg-surface text-ink backdrop:bg-surface-sunken/70">
       <%= form_with url: search_path, method: :get, data: { turbo_frame: "search_results", search_target: "form" } do |form| %>
-        <%= form.search_field :q, placeholder: t(".search_notes"), autocomplete: "off", role: "combobox",
+        <%= form.search_field :q, placeholder: t(".search_placeholder"), autocomplete: "off", role: "combobox",
                               aria: { label: t(".search_notes"), controls: "search_options", expanded: true },
                               data: { search_target: "input",
                                       action: "input->search#submit keydown.down->search#next:prevent keydown.up->search#previous:prevent keydown.enter->search#choose" },
