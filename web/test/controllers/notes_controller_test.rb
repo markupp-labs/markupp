@@ -107,6 +107,63 @@ class NotesControllerTest < ActionDispatch::IntegrationTest
     assert api.put_requests.sole[:force]
   end
 
+  test "sidebar links new note to the folder of the open note" do
+    use_fake_api(notes: [ { id: "1", path: "work/2026/plan.md", content: "" } ])
+
+    get note_path("1")
+
+    assert_select "nav a[href=?]", new_note_path(folder: "work/2026"), text: "New note"
+  end
+
+  test "sidebar links new note to the root when no note is open" do
+    use_fake_api(notes: [])
+
+    get root_path
+
+    assert_select "nav a[href=?]", new_note_path, text: "New note"
+  end
+
+  test "new opens an empty Untitled.md in the save form" do
+    use_fake_api(notes: [])
+
+    get new_note_path(folder: "work")
+
+    assert_response :success
+    assert_select "form[action=?][method=post]", notes_path do
+      assert_select "input[type=hidden][name=?][value=?]", "note[path]", "work/Untitled.md"
+      assert_select "button", text: "Save"
+    end
+    assert_equal "", css_select("main textarea").sole.text
+  end
+
+  test "create posts the note and redirects to it" do
+    api = use_fake_api(notes: [])
+
+    post notes_path, params: { note: { path: "work/Untitled.md", content: "# New\n" } }
+
+    assert_redirected_to note_path("created-1")
+    assert_equal({ path: "work/Untitled.md", content: "# New\n" }, api.post_requests.sole)
+  end
+
+  test "create numbers an untitled note whose name is taken" do
+    use_fake_api(notes: [ { id: "1", path: "Untitled.md", content: "" } ])
+
+    post notes_path, params: { note: { path: "Untitled.md", content: "" } }
+
+    assert_redirected_to note_path("created-2")
+    assert_equal "Untitled 1.md", Note.find("created-2").path
+  end
+
+  test "create with a taken path keeps the text and flags the path" do
+    use_fake_api(notes: [ { id: "1", path: "plan.md", content: "" } ])
+
+    post notes_path, params: { note: { path: "plan.md", content: "mine" } }
+
+    assert_response :conflict
+    assert_equal "mine", css_select("main textarea").sole.text
+    assert_select "main [role=alert]", text: /Path is already used by another note/
+  end
+
   test "index answers bad gateway when the API is unreachable" do
     use_fake_api(unreachable: true)
 

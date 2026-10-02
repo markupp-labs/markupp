@@ -57,6 +57,18 @@ class MarkuppApiTest < ActiveSupport::TestCase
     server.close
   end
 
+  test "post sends the body as JSON and parses the created note" do
+    server = FakeHttpServer.new(status: "201 Created", body: '{"id":"9","path":"a.md"}')
+    thread = server.serve_once
+
+    assert_equal({ "id" => "9", "path" => "a.md" }, MarkuppApi.new(server.url).post("/notes", path: "a.md", content: ""))
+    thread.join
+    assert_equal [ "POST", "/notes" ], [ server.requested_method, server.requested_path ]
+    assert_equal({ "path" => "a.md", "content" => "" }, JSON.parse(server.requested_body))
+  ensure
+    server.close
+  end
+
   test "put raises Conflict when the note changed since it was read" do
     error = assert_put_raises(MarkuppApi::Conflict, '{"error":"conflict","message":"changed"}')
     assert_match "409", error.message

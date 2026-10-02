@@ -25,4 +25,18 @@ class NotesTest < ApplicationSystemTestCase
     assert_no_text "Unsaved changes"
     assert_equal "# Plan\nShip it.", api.put_requests.sole[:content]
   end
+
+  test "ctrl+s creates a new note in the folder of the open note" do
+    api = use_fake_api(notes: [ { id: "1", path: "work/plan.md", content: "# Plan\n" } ])
+
+    visit note_path("1")
+    click_on "New note"
+    assert_text "work/Untitled.md"
+    find(".cm-content").send_keys("Fresh idea.")
+    find(".cm-content").send_keys([ :control, "s" ])
+
+    assert_text "Created"
+    assert_selector "nav a[aria-current=page]", text: "Untitled.md"
+    assert_equal({ path: "work/Untitled.md", content: "Fresh idea." }, api.post_requests.sole)
+  end
 end

@@ -1,6 +1,6 @@
 # Fica no lugar do MarkuppApi nos testes, sem rede.
 class FakeMarkuppApi
-  attr_reader :put_requests
+  attr_reader :put_requests, :post_requests
 
   # conflict: true faz todo PUT sem force responder como se outro cliente tivesse salvo antes.
   def initialize(notes: [], unreachable: false, conflict: false)
@@ -8,6 +8,7 @@ class FakeMarkuppApi
     @unreachable = unreachable
     @conflict = conflict
     @put_requests = []
+    @post_requests = []
   end
 
   def get(path)
@@ -24,6 +25,18 @@ class FakeMarkuppApi
     raise MarkuppApi::Conflict, "fake API simulates a conflict on PUT #{path}, expected force: true" if @conflict && !body[:force]
 
     note_at("PUT", path).merge!(body.slice(:path, :content).stringify_keys)
+  end
+
+  # Como a API, recusa caminho já usado. O id segue a ordem dos POSTs: created-1, created-2...
+  def post(path, body)
+    refuse_when_unreachable("POST", path)
+    raise ArgumentError, "fake API has no route for POST #{path}, expected /notes" unless path == "/notes"
+
+    @post_requests << body
+    raise MarkuppApi::DuplicatePath, "fake API already has a note at #{body[:path]}, expected a free path" if @notes.any? { it["path"] == body[:path] }
+
+    @notes << body.slice(:path, :content).stringify_keys.merge("id" => "created-#{@post_requests.size}", "updated_at" => "2026-10-01T12:00:00.000Z")
+    @notes.last
   end
 
   private
