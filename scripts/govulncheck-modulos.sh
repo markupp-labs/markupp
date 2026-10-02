@@ -8,12 +8,12 @@ GOVULNCHECK=golang.org/x/vuln/cmd/govulncheck@v1.8.0
 RAIZ="$(git rev-parse --show-toplevel)"
 reprovados=0
 
-for gomod in $(git -C "$RAIZ" ls-files 'go.mod' '*/go.mod'); do
+while IFS= read -r -d '' gomod; do
   modulo="$(dirname "$gomod")"
   if ! (cd "$RAIZ/$modulo" && go run "$GOVULNCHECK" ./...); then
     printf 'govulncheck reprovou o módulo %s\n' "$modulo" >&2
     reprovados=$((reprovados + 1))
   fi
-done
+done < <(git -C "$RAIZ" ls-files -z 'go.mod' '*/go.mod')
 
 [ "$reprovados" -eq 0 ]
