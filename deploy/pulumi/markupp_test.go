@@ -128,7 +128,8 @@ func TestNewMarkupp_SemBancoExterno_CriaPostgresNoNamespaceComVolume(t *testing.
 	db := monitor.single(t, "kubernetes:apps/v1:StatefulSet")
 	assert.Equal(t, "markupp", at(t, db, "metadata", "namespace").StringValue())
 	assert.Equal(t, 1.0, at(t, db, "spec", "replicas").NumberValue())
-	assert.Equal(t, "postgres:17-alpine", firstContainer(t, db)["image"].StringValue())
+	assert.Equal(t, "postgres:17.9-alpine3.23", firstContainer(t, db)["image"].StringValue(),
+		"mesma versão fixa do compose e do testcontainers")
 	claim := at(t, db, "spec", "volumeClaimTemplates").ArrayValue()[0].ObjectValue()
 	assert.Equal(t, "longhorn-fast", at(t, claim, "spec", "storageClassName").StringValue())
 	assert.Equal(t, "10Gi", at(t, claim, "spec", "resources", "requests", "storage").StringValue())
@@ -242,6 +243,7 @@ func TestNewMarkupp_EmissorACMESemEmail_RetornaErroComOCampo(t *testing.T) {
 
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "acmeEmail")
+	assert.Contains(t, err.Error(), "certificateIssuer")
 }
 
 func TestNewMarkupp_EmissorDesconhecido_RetornaErroComOValor(t *testing.T) {
@@ -253,4 +255,60 @@ func TestNewMarkupp_EmissorDesconhecido_RetornaErroComOValor(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "letsencrypt")
 	assert.Contains(t, err.Error(), "selfSigned")
+}
+
+func TestNewMarkupp_ZeroReplicas_DeixaAAPISemPods(t *testing.T) {
+	args := argsDeTeste()
+	zero := 0
+	args.APIReplicas = &zero
+
+	monitor := deploy(t, args)
+
+	api := monitor.single(t, "kubernetes:apps/v1:Deployment")
+	assert.Equal(t, 0.0, at(t, api, "spec", "replicas").NumberValue(), "zero réplicas pedido não vira o padrão")
+}
+
+func gatewayDoCluster() *GatewayRefArgs {
+	return &GatewayRefArgs{Name: "gateway-compartilhado", Namespace: "gateway", SectionName: "https-markupp"}
+}
+
+func TestNewMarkupp_GatewayExistente_NaoCriaGatewayNemIssuer(t *testing.T) {
+	args := argsDeTeste()
+	args.ExistingGateway = gatewayDoCluster()
+
+	monitor := deploy(t, args)
+
+	assert.Empty(t, monitor.byType("kubernetes:gateway.networking.k8s.io/v1:Gateway"))
+	assert.Empty(t, monitor.byType("kubernetes:cert-manager.io/v1:Issuer"))
+}
+
+func TestNewMarkupp_GatewayExistente_PenduraOHTTPRouteNele(t *testing.T) {
+	args := argsDeTeste()
+	args.ExistingGateway = gatewayDoCluster()
+
+	monitor := deploy(t, args)
+
+	route := monitor.single(t, "kubernetes:gateway.networking.k8s.io/v1:HTTPRoute")
+	parent := at(t, route, "spec", "parentRefs").ArrayValue()[0].ObjectValue()
+	assert.Equal(t, "gateway-compartilhado", parent["name"].StringValue())
+	assert.Equal(t, "gateway", parent["namespace"].StringValue())
+	assert.Equal(t, "https-markupp", parent["sectionName"].StringValue())
+}
+
+func TestNewMarkupp_GatewayExistente_DispensaEmailACME(t *testing.T) {
+	args := argsDeTeste()
+	args.ExistingGateway = gatewayDoCluster()
+	args.AcmeEmail = ""
+
+	assert.NoError(t, declareErr(args), "o certificado é de quem administra o Gateway existente")
+}
+
+func TestNewMarkupp_GatewayExistenteSemNome_RetornaErroComOCampo(t *testing.T) {
+	args := argsDeTeste()
+	args.ExistingGateway = &GatewayRefArgs{Namespace: "gateway"}
+
+	err := declareErr(args)
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "existingGateway.name")
 }
