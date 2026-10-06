@@ -16,6 +16,9 @@ nenhum tem rota privilegiada, e todos enxergam o mesmo conjunto de operações.
 O navegador não entra nessa lista porque ele consome o painel, não o markupp. Quem chama a
 API é o painel, do lado do servidor.
 
+Todo tráfego entra pelo Gateway, que termina o TLS e roteia para o serviço certo. É Gateway
+API, e não Ingress (ADR-0027).
+
 ## Sempre ligado
 
 O **painel web** é a interface do usuário, em Rails com Hotwire. Roda como serviço próprio e
@@ -31,28 +34,38 @@ degrada o outro.
 O **plano de controle** cuida de cobrança, provisionamento e plano. Tráfego baixo e postura
 de segurança distinta dos outros três.
 
-## Escala a zero
+## Escala a zero com KEDA
 
-O **indexador determinístico** gasta CPU em rajada e não carrega modelo. Roda como Job e
-some quando não há nota para indexar.
+O KEDA consulta o cursor de revisão no PostgreSQL e cria trabalho só quando há o que fazer. Sem
+nota para indexar e sem notificação pendente, este grupo não consome nada.
+
+O **indexador determinístico** gasta CPU em rajada e não carrega modelo. Nasce como Job por
+lote pendente e termina quando acaba o lote.
 
 O **indexador de embedding** tem perfil próprio, com acelerador quando o modelo é local. É o
 que mais segura recurso enquanto roda, então devolver esse recurso ao cluster pesa mais aqui
 do que em qualquer outro serviço.
 
-O **worker de notificação** trata rajada com repetição, fora do caminho da requisição.
+O **worker de notificação** trata rajada com repetição, fora do caminho da requisição. É
+Deployment e não Job, porque o KEDA leva as réplicas a zero sem precisar de um pod por email.
 
 ## Dados
 
 Um PostgreSQL só, com o plano de registro e o plano de recuperação dentro dele. Os vetores
 ficam em pgvector.
 
+Ele roda numa instância só, dentro do namespace do markupp, e não como banco gerenciado de
+nuvem nem com operador no cluster compartilhado. É o que o ADR-0015 pede sem dizer onde, e é o
+que a infraestrutura disponível oferece. O backup é snapshot de volume no próprio cluster, então perder o cluster leva as notas
+junto.
+
 Seis dos sete serviços compartilham esse banco. O painel fica de fora porque consome a API, e
 não o PostgreSQL. São serviços no sentido de implantação e escala independentes, não no de banco
 por serviço, e o isolamento entre eles é de processo e de escala, não de dado.
 
 O preço é acoplamento pelo schema. Mudança de coluna coordena os seis, em expand e contract, e
-nenhum deles evolui o modelo de dados por conta própria.
+nenhum deles evolui o modelo de dados por conta própria. Quem aplica a migração é um Job único,
+que roda antes de qualquer serviço subir a versão nova.
 
 ## Provedores externos
 
@@ -60,12 +73,16 @@ A API REST valida identidade contra o provedor OIDC habilitado, o indexador de e
 gera vetores pelo provedor configurado, e o worker de notificação entrega email pelo dele.
 
 Os três são trocáveis por configuração, e é por isso que o desenho não nomeia serviço. O
-Enterprise liga Bedrock e SES, o self-host aponta para um modelo local e um SMTP próprio, e
+Enterprise entrega email por SMTP, o self-host aponta para um modelo local e um SMTP próprio, e
 o código é o mesmo nos dois.
 
 ## O que muda no self-host
 
-O mesmo conjunto de imagens roda por compose num nó só. Sem cluster, o TLS termina no próprio
-servidor, e o embedding pode vir de modelo local carregado no processo do indexador.
+O mesmo conjunto de imagens roda por compose num nó só, menos o plano de controle: com um
+tenant só, não há cobrança nem provisionamento. Embedding e notificação sobem por perfil, só
+quando configurados. Sem cluster, o TLS termina no próprio servidor, e o embedding pode vir de
+modelo local carregado no processo do indexador.
+
+Sem cluster também não há KEDA, então lá o indexador roda em laço em vez de nascer por lote.
 
 A visão C4 do sistema é mantida no repositório do plugin (ADR-0030).

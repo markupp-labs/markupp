@@ -6,34 +6,43 @@ Aceita
 
 ## Contexto
 
-O Enterprise roda em AWS, com Lambda para indexação, banco gerenciado, armazenamento de objeto,
-envio de email e balanceador. Nada disso está descrito em código hoje, e a implantação precisa
-ser reproduzível
+O Enterprise roda em Kubernetes (ADR-0027), primeiro num cluster on-premise e depois em nuvem
+pública. A implantação precisa ser reproduzível pela equipe e por quem hospeda por conta
+própria, e nada disso está descrito em código hoje
 
 ## Decisão
 
-Pulumi, com os programas escritos em Go, cobrindo apenas a infraestrutura do Enterprise. O
-estado fica em bucket S3 da própria conta, não no Pulumi Cloud
+Pulumi, com um componente escrito em Go e mantido neste repositório, versionado com a mesma tag
+das imagens. O componente declara os recursos Kubernetes do markupp com tipos do SDK, sem chart
+Helm por baixo, e é o artefato de instalação em Kubernetes para terceiros. A stack da equipe
+consome o mesmo componente
+
+O estado fica num bucket do Garage, e os segredos da stack são cifrados por passphrase. O CI
+implanta com uma credencial restrita ao namespace do markupp. Gateway API e cert-manager são
+pré-requisitos do cluster, e KEDA é opcional, instalado à parte por quem administra o cluster
 
 ## Alternativas consideradas
 
-- Terraform: mais difundido e com estado explícito, e descreve a infraestrutura em linguagem
-  própria, separada da linguagem da aplicação
-- AWS CDK: o binding de Go é o mais fraco dos disponíveis, porque a ergonomia foi desenhada
-  para TypeScript
-- AWS SAM: cobre bem a parte serverless, e a pilha tem banco, armazenamento, email e
-  balanceador além do Lambda
-- Estado no Pulumi Cloud: menos infraestrutura para montar e histórico pronto, e é gratuito só
-  para uso individual, além de tirar da conta um arquivo que guarda identificador de cliente
-- Publicar módulo para quem hospeda por conta própria: significaria dar suporte a conta, região
-  e variação de infraestrutura de terceiros, sem receita associada
+- Helm chart publicado em OCI: é o formato que terceiros esperam, e obriga manter templates e
+  schema de valores fora da linguagem do servidor
+- Kustomize: YAML sem template, e parametrizar para terceiros vira patch
+- Operator próprio: resolve ciclo de vida complexo, e os serviços não têm estado
+- Terraform: mais difundido, e descreve a infraestrutura em linguagem própria
+- Estado no Pulumi Cloud: menos infraestrutura para montar, e é gratuito só para uso individual
+- Estado em bucket de nuvem: sobrevive à perda do cluster, e traz uma conta de nuvem só para isso
+- Credencial de administrador do cluster no CI: o CI instalaria os operadores também, e um
+  vazamento alcançaria os outros projetos do cluster
 
 ## Consequências
 
 - A infraestrutura fica na mesma linguagem do servidor, com o mesmo lint e a mesma forma de
   testar
+- Reproduzir a instalação exige Pulumi. O componente em Go é consumido de qualquer linguagem do
+  Pulumi, inclusive YAML, e quem usa Helm, Argo CD ou Flux fica sem artefato oficial
+- O Garage roda no cluster, fora de qualquer stack e sem cópia. Perder o cluster leva o estado
+  junto, e a recuperação é por `pulumi import`
 - O bucket de estado precisa existir antes da primeira execução, então há um passo manual de
   origem que não pode ser descrito pelo próprio Pulumi
-- O bloqueio de estado precisa estar habilitado no backend, senão duas execuções simultâneas
-  corrompem o estado
-- Quem hospeda por conta própria continua recebendo o compose, sem IaC
+- Sem KEDA, os indexadores rodam por CronJob. Sem URL de banco externo, o componente sobe um
+  Postgres de uma instância no namespace, com senha gerada
+- Quem hospeda num nó só continua recebendo o compose, sem IaC

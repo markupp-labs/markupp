@@ -1,0 +1,42 @@
+name: markupp
+description: Instalações do markupp que a equipe opera, uma por stack
+runtime: yaml
+
+packages:
+  markupp: ../pulumi
+
+config:
+  namespace:
+    type: string
+    default: markupp
+  image:
+    type: string
+  host:
+    type: string
+  certificateIssuer:
+    type: string
+    default: acme
+  acmeEmail:
+    type: string
+    default: ""
+  storageClass:
+    type: string
+  apiReplicas:
+    type: integer
+    default: 2
+
+resources:
+  markupp:
+    type: markupp:index:Markupp
+    properties:
+      namespace: ${namespace}
+      image: ${image}
+      host: ${host}
+      certificateIssuer: ${certificateIssuer}
+      acmeEmail: ${acmeEmail}
+      apiReplicas: ${apiReplicas}
+      database:
+        storageClass: ${storageClass}
+
+outputs:
+  url: ${markupp.url}

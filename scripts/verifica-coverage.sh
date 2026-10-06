@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -uo pipefail
 
-PACOTES_SEM_AUTORIA_HUMANA='(^|/)(storage/gen|cmd/markupp)/'
+PACOTES_FORA_DA_META='(^|/)(storage/gen|storage/storagetest|cmd/markupp)/'
 
 percentual_de() {
   awk 'NR > 1 {
@@ -14,7 +14,7 @@ percentual_de() {
 }
 
 sem_codigo_gerado() {
-  grep -vE "$PACOTES_SEM_AUTORIA_HUMANA" "$1"
+  grep -vE "$PACOTES_FORA_DA_META" "$1"
 }
 
 atinge_meta() {

@@ -1,7 +1,7 @@
 package api_test
 
 import (
-	"database/sql"
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -9,34 +9,30 @@ import (
 	"strings"
 	"testing"
 
-	_ "modernc.org/sqlite"
-
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/api"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/notes"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/storage"
+	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/storage/storagetest"
 )
 
 const integrationMaxNoteSize = 50 * 1024 * 1024
 
-func setupIntegrationServer(t *testing.T) (*httptest.Server, *sql.DB) {
+func setupIntegrationServer(t *testing.T) (*httptest.Server, *pgxpool.Pool) {
 	t.Helper()
-	db, err := sql.Open("sqlite", ":memory:")
-	require.NoError(t, err)
-	require.NoError(t, storage.Migrate(db))
+	pool := storagetest.EmptyPool(t)
+	require.NoError(t, storage.Migrate(context.Background(), pool))
 
-	repo := storage.NewSqliteNotesRepository(db)
+	repo := storage.NewPostgresNotesRepository(pool)
 	svc := notes.NewService(repo, integrationMaxNoteSize)
-	router := api.NewRouter(svc, db, nil)
+	router := api.NewRouter(svc, pool, nil)
 
 	server := httptest.NewServer(router)
-	t.Cleanup(func() {
-		server.Close()
-		_ = db.Close()
-	})
-	return server, db
+	t.Cleanup(server.Close)
+	return server, pool
 }
 
 func postNotes(t *testing.T, baseURL, body string) *http.Response {
@@ -87,7 +83,7 @@ func TestIntegration_CriarNota_FluxoCompleto(t *testing.T) {
 	assert.Equal(t, "# teste", body["content"])
 
 	var dbPath, dbContent string
-	err := db.QueryRow("SELECT path, content FROM notes WHERE id = ?", id).Scan(&dbPath, &dbContent)
+	err := db.QueryRow(context.Background(), "SELECT path, content FROM notes WHERE id = $1", id).Scan(&dbPath, &dbContent)
 	require.NoError(t, err)
 	assert.Equal(t, "integracao.md", dbPath)
 	assert.Equal(t, "# teste", dbContent)
@@ -114,7 +110,7 @@ func TestIntegration_AtualizarNota_FluxoCompleto(t *testing.T) {
 	assert.Equal(t, "v2", body["content"])
 
 	var dbPath, dbContent string
-	require.NoError(t, db.QueryRow("SELECT path, content FROM notes WHERE id = ?", id).Scan(&dbPath, &dbContent))
+	require.NoError(t, db.QueryRow(context.Background(), "SELECT path, content FROM notes WHERE id = $1", id).Scan(&dbPath, &dbContent))
 	assert.Equal(t, "renomeada.md", dbPath)
 	assert.Equal(t, "v2", dbContent)
 }
@@ -202,7 +198,7 @@ func TestIntegration_ConflictoPorVersao_Force_True_Sucesso(t *testing.T) {
 
 	// Verificar no banco
 	var dbContent string
-	require.NoError(t, db.QueryRow("SELECT content FROM notes WHERE id = ?", id).Scan(&dbContent))
+	require.NoError(t, db.QueryRow(context.Background(), "SELECT content FROM notes WHERE id = $1", id).Scan(&dbContent))
 	assert.Equal(t, "v3", dbContent)
 }
 
@@ -221,7 +217,7 @@ func TestIntegration_DeletarNota_FluxoCompleto(t *testing.T) {
 	require.Equal(t, http.StatusNoContent, resp.StatusCode)
 
 	var count int
-	require.NoError(t, db.QueryRow("SELECT COUNT(*) FROM notes WHERE id = ?", id).Scan(&count))
+	require.NoError(t, db.QueryRow(context.Background(), "SELECT COUNT(*) FROM notes WHERE id = $1", id).Scan(&count))
 	assert.Equal(t, 0, count)
 }
 

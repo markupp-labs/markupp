@@ -12,7 +12,7 @@ import (
 
 const createNote = `-- name: CreateNote :exec
 INSERT INTO notes (id, path, content, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?)
+VALUES ($1, $2, $3, $4, $5)
 `
 
 type CreateNoteParams struct {
@@ -24,7 +24,7 @@ type CreateNoteParams struct {
 }
 
 func (q *Queries) CreateNote(ctx context.Context, arg CreateNoteParams) error {
-	_, err := q.db.ExecContext(ctx, createNote,
+	_, err := q.db.Exec(ctx, createNote,
 		arg.ID,
 		arg.Path,
 		arg.Content,
@@ -35,23 +35,23 @@ func (q *Queries) CreateNote(ctx context.Context, arg CreateNoteParams) error {
 }
 
 const deleteNote = `-- name: DeleteNote :execrows
-DELETE FROM notes WHERE id = ?
+DELETE FROM notes WHERE id = $1
 `
 
 func (q *Queries) DeleteNote(ctx context.Context, id string) (int64, error) {
-	result, err := q.db.ExecContext(ctx, deleteNote, id)
+	result, err := q.db.Exec(ctx, deleteNote, id)
 	if err != nil {
 		return 0, err
 	}
-	return result.RowsAffected()
+	return result.RowsAffected(), nil
 }
 
 const getNoteByID = `-- name: GetNoteByID :one
-SELECT id, path, content, created_at, updated_at FROM notes WHERE id = ?
+SELECT id, path, content, created_at, updated_at FROM notes WHERE id = $1
 `
 
 func (q *Queries) GetNoteByID(ctx context.Context, id string) (Note, error) {
-	row := q.db.QueryRowContext(ctx, getNoteByID, id)
+	row := q.db.QueryRow(ctx, getNoteByID, id)
 	var i Note
 	err := row.Scan(
 		&i.ID,
@@ -69,7 +69,7 @@ ORDER BY path
 `
 
 func (q *Queries) ListNotes(ctx context.Context) ([]Note, error) {
-	rows, err := q.db.QueryContext(ctx, listNotes)
+	rows, err := q.db.Query(ctx, listNotes)
 	if err != nil {
 		return nil, err
 	}
@@ -88,9 +88,6 @@ func (q *Queries) ListNotes(ctx context.Context) ([]Note, error) {
 		}
 		items = append(items, i)
 	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
@@ -99,15 +96,15 @@ func (q *Queries) ListNotes(ctx context.Context) ([]Note, error) {
 
 const searchNotes = `-- name: SearchNotes :many
 SELECT id, path, updated_at FROM notes
-WHERE content LIKE ?
+WHERE content ILIKE $1
 ORDER BY updated_at DESC
-LIMIT ? OFFSET ?
+LIMIT $2 OFFSET $3
 `
 
 type SearchNotesParams struct {
 	Content string
-	Limit   int64
-	Offset  int64
+	Limit   int32
+	Offset  int32
 }
 
 type SearchNotesRow struct {
@@ -117,7 +114,7 @@ type SearchNotesRow struct {
 }
 
 func (q *Queries) SearchNotes(ctx context.Context, arg SearchNotesParams) ([]SearchNotesRow, error) {
-	rows, err := q.db.QueryContext(ctx, searchNotes, arg.Content, arg.Limit, arg.Offset)
+	rows, err := q.db.Query(ctx, searchNotes, arg.Content, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}
@@ -130,9 +127,6 @@ func (q *Queries) SearchNotes(ctx context.Context, arg SearchNotesParams) ([]Sea
 		}
 		items = append(items, i)
 	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
@@ -141,8 +135,8 @@ func (q *Queries) SearchNotes(ctx context.Context, arg SearchNotesParams) ([]Sea
 
 const updateNoteForced = `-- name: UpdateNoteForced :one
 UPDATE notes
-SET path = ?, content = ?, updated_at = ?
-WHERE id = ?
+SET path = $1, content = $2, updated_at = $3
+WHERE id = $4
 RETURNING id, path, content, created_at, updated_at
 `
 
@@ -154,7 +148,7 @@ type UpdateNoteForcedParams struct {
 }
 
 func (q *Queries) UpdateNoteForced(ctx context.Context, arg UpdateNoteForcedParams) (Note, error) {
-	row := q.db.QueryRowContext(ctx, updateNoteForced,
+	row := q.db.QueryRow(ctx, updateNoteForced,
 		arg.Path,
 		arg.Content,
 		arg.UpdatedAt,
@@ -173,8 +167,8 @@ func (q *Queries) UpdateNoteForced(ctx context.Context, arg UpdateNoteForcedPara
 
 const updateNoteWithVersionCheck = `-- name: UpdateNoteWithVersionCheck :one
 UPDATE notes
-SET path = ?1, content = ?2, updated_at = ?3
-WHERE id = ?4 AND updated_at = ?5
+SET path = $1, content = $2, updated_at = $3
+WHERE id = $4 AND updated_at = $5
 RETURNING id, path, content, created_at, updated_at
 `
 
@@ -187,7 +181,7 @@ type UpdateNoteWithVersionCheckParams struct {
 }
 
 func (q *Queries) UpdateNoteWithVersionCheck(ctx context.Context, arg UpdateNoteWithVersionCheckParams) (Note, error) {
-	row := q.db.QueryRowContext(ctx, updateNoteWithVersionCheck,
+	row := q.db.QueryRow(ctx, updateNoteWithVersionCheck,
 		arg.Path,
 		arg.Content,
 		arg.UpdatedAt,

@@ -1,34 +1,36 @@
-// Package storage persiste as notas em SQLite e traduz os erros do driver
+// Package storage persiste as notas em PostgreSQL e traduz os erros do driver
 // nos erros de domínio do pacote notes.
 package storage
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"time"
 
-	sqlite "modernc.org/sqlite"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/notes"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/storage/gen"
 )
 
-const sqliteUniqueConstraintCode = 2067
+// uniqueViolationCode é o SQLSTATE do PostgreSQL para violação de unicidade.
+const uniqueViolationCode = "23505"
 
-// SqliteNotesRepository persiste notas em SQLite através das queries geradas
+// PostgresNotesRepository persiste notas em PostgreSQL através das queries geradas
 // pelo sqlc.
-type SqliteNotesRepository struct {
+type PostgresNotesRepository struct {
 	q *gen.Queries
 }
 
-// NewSqliteNotesRepository monta o repositório sobre uma conexão já aberta.
-func NewSqliteNotesRepository(db *sql.DB) *SqliteNotesRepository {
-	return &SqliteNotesRepository{q: gen.New(db)}
+// NewPostgresNotesRepository monta o repositório sobre um pool já aberto.
+func NewPostgresNotesRepository(pool *pgxpool.Pool) *PostgresNotesRepository {
+	return &PostgresNotesRepository{q: gen.New(pool)}
 }
 
 // Save insere a nota, devolvendo notes.ErrDuplicatePath se o path já existir.
-func (r *SqliteNotesRepository) Save(ctx context.Context, note notes.Note) error {
+func (r *PostgresNotesRepository) Save(ctx context.Context, note notes.Note) error {
 	err := r.q.CreateNote(ctx, gen.CreateNoteParams{
 		ID:        note.ID,
 		Path:      note.Path,
@@ -47,7 +49,7 @@ func (r *SqliteNotesRepository) Save(ctx context.Context, note notes.Note) error
 
 // Update grava a nota. Com force falso a escrita é condicionada a
 // lastModifiedAt e devolve notes.ErrConflict se a versão não bater.
-func (r *SqliteNotesRepository) Update(ctx context.Context, id, path, content string, updatedAt, lastModifiedAt time.Time, force bool) (notes.Note, error) {
+func (r *PostgresNotesRepository) Update(ctx context.Context, id, path, content string, updatedAt, lastModifiedAt time.Time, force bool) (notes.Note, error) {
 	var row gen.Note
 	var err error
 
@@ -69,10 +71,10 @@ func (r *SqliteNotesRepository) Update(ctx context.Context, id, path, content st
 	}
 
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, pgx.ErrNoRows) {
 			if !force {
 				_, checkErr := r.q.GetNoteByID(ctx, id)
-				if errors.Is(checkErr, sql.ErrNoRows) {
+				if errors.Is(checkErr, pgx.ErrNoRows) {
 					return notes.Note{}, notes.ErrNotFound
 				}
 				return notes.Note{}, notes.ErrConflict
@@ -95,7 +97,7 @@ func (r *SqliteNotesRepository) Update(ctx context.Context, id, path, content st
 }
 
 // Delete remove a nota de id, devolvendo notes.ErrNotFound se ela não existir.
-func (r *SqliteNotesRepository) Delete(ctx context.Context, id string) error {
+func (r *PostgresNotesRepository) Delete(ctx context.Context, id string) error {
 	rows, err := r.q.DeleteNote(ctx, id)
 	if err != nil {
 		return err
@@ -107,10 +109,10 @@ func (r *SqliteNotesRepository) Delete(ctx context.Context, id string) error {
 }
 
 // GetNoteByID lê a nota de id, devolvendo notes.ErrNotFound se ela não existir.
-func (r *SqliteNotesRepository) GetNoteByID(ctx context.Context, id string) (notes.Note, error) {
+func (r *PostgresNotesRepository) GetNoteByID(ctx context.Context, id string) (notes.Note, error) {
 	row, err := r.q.GetNoteByID(ctx, id)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return notes.Note{}, notes.ErrNotFound
 		}
 		return notes.Note{}, err
@@ -126,11 +128,11 @@ func (r *SqliteNotesRepository) GetNoteByID(ctx context.Context, id string) (not
 
 // SearchNotes devolve as notas cujo conteúdo casa com query, paginadas por
 // offset e limit.
-func (r *SqliteNotesRepository) SearchNotes(ctx context.Context, query string, offset, limit int32) ([]notes.SearchResult, error) {
+func (r *PostgresNotesRepository) SearchNotes(ctx context.Context, query string, offset, limit int32) ([]notes.SearchResult, error) {
 	rows, err := r.q.SearchNotes(ctx, gen.SearchNotesParams{
 		Content: "%" + query + "%",
-		Limit:   int64(limit),
-		Offset:  int64(offset),
+		Limit:   limit,
+		Offset:  offset,
 	})
 	if err != nil {
 		return nil, err
@@ -147,7 +149,7 @@ func (r *SqliteNotesRepository) SearchNotes(ctx context.Context, query string, o
 }
 
 // ListNotes devolve todas as notas.
-func (r *SqliteNotesRepository) ListNotes(ctx context.Context) ([]notes.Note, error) {
+func (r *PostgresNotesRepository) ListNotes(ctx context.Context) ([]notes.Note, error) {
 	rows, err := r.q.ListNotes(ctx)
 	if err != nil {
 		return nil, err
@@ -166,9 +168,9 @@ func (r *SqliteNotesRepository) ListNotes(ctx context.Context) ([]notes.Note, er
 }
 
 func isUniqueConstraintViolation(err error) bool {
-	var sqliteErr *sqlite.Error
-	if !errors.As(err, &sqliteErr) {
+	var pgErr *pgconn.PgError
+	if !errors.As(err, &pgErr) {
 		return false
 	}
-	return sqliteErr.Code() == sqliteUniqueConstraintCode
+	return pgErr.Code == uniqueViolationCode
 }
