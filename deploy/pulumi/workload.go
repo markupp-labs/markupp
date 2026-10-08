@@ -52,7 +52,7 @@ func apiDeploymentArgs(names resourceNames, args MarkuppArgs, labels pulumi.Stri
 	container := serverContainer(args, names)
 	container.Ports = corev1.ContainerPortArray{corev1.ContainerPortArgs{ContainerPort: pulumi.Int(apiPort)}}
 	container.ReadinessProbe = healthzProbe()
-	container.LivenessProbe = healthzProbe()
+	container.LivenessProbe = processProbe()
 	return &appsv1.DeploymentArgs{
 		Metadata: namespaced(names.api, args.Namespace),
 		Spec: appsv1.DeploymentSpecArgs{
@@ -76,6 +76,13 @@ func serverContainer(args MarkuppArgs, names resourceNames) corev1.ContainerArgs
 			ReadOnlyRootFilesystem:   pulumi.Bool(true),
 		},
 	}
+}
+
+// processProbe só confere se o processo aceita conexão. Ela não passa pelo
+// banco: com o /healthz, uma queda do PostgreSQL reiniciaria todas as réplicas
+// da API, e a readiness já tira a réplica do tráfego nesse caso.
+func processProbe() corev1.ProbeArgs {
+	return corev1.ProbeArgs{TcpSocket: corev1.TCPSocketActionArgs{Port: pulumi.Int(apiPort)}}
 }
 
 func healthzProbe() corev1.ProbeArgs {
