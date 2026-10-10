@@ -39,11 +39,16 @@ func (q *Queries) CreateNote(ctx context.Context, arg CreateNoteParams) error {
 }
 
 const deleteNote = `-- name: DeleteNote :execrows
-DELETE FROM notes WHERE id = $1
+DELETE FROM notes WHERE id = $1 AND tenant_id = $2
 `
 
-func (q *Queries) DeleteNote(ctx context.Context, id string) (int64, error) {
-	result, err := q.db.Exec(ctx, deleteNote, id)
+type DeleteNoteParams struct {
+	ID       string
+	TenantID string
+}
+
+func (q *Queries) DeleteNote(ctx context.Context, arg DeleteNoteParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteNote, arg.ID, arg.TenantID)
 	if err != nil {
 		return 0, err
 	}
@@ -53,11 +58,16 @@ func (q *Queries) DeleteNote(ctx context.Context, id string) (int64, error) {
 const getNoteByID = `-- name: GetNoteByID :one
 SELECT id, path, content, created_at, updated_at, tenant_id, vault_id
 FROM notes
-WHERE id = $1
+WHERE id = $1 AND tenant_id = $2
 `
 
-func (q *Queries) GetNoteByID(ctx context.Context, id string) (Note, error) {
-	row := q.db.QueryRow(ctx, getNoteByID, id)
+type GetNoteByIDParams struct {
+	ID       string
+	TenantID string
+}
+
+func (q *Queries) GetNoteByID(ctx context.Context, arg GetNoteByIDParams) (Note, error) {
+	row := q.db.QueryRow(ctx, getNoteByID, arg.ID, arg.TenantID)
 	var i Note
 	err := row.Scan(
 		&i.ID,
@@ -74,11 +84,12 @@ func (q *Queries) GetNoteByID(ctx context.Context, id string) (Note, error) {
 const listNotes = `-- name: ListNotes :many
 SELECT id, path, content, created_at, updated_at, tenant_id, vault_id
 FROM notes
+WHERE tenant_id = $1
 ORDER BY path
 `
 
-func (q *Queries) ListNotes(ctx context.Context) ([]Note, error) {
-	rows, err := q.db.Query(ctx, listNotes)
+func (q *Queries) ListNotes(ctx context.Context, tenantID string) ([]Note, error) {
+	rows, err := q.db.Query(ctx, listNotes, tenantID)
 	if err != nil {
 		return nil, err
 	}
@@ -108,12 +119,17 @@ func (q *Queries) ListNotes(ctx context.Context) ([]Note, error) {
 const listNotesByVault = `-- name: ListNotesByVault :many
 SELECT id, path, content, created_at, updated_at, tenant_id, vault_id
 FROM notes
-WHERE vault_id = $1
+WHERE tenant_id = $1 AND vault_id = $2
 ORDER BY path
 `
 
-func (q *Queries) ListNotesByVault(ctx context.Context, vaultID string) ([]Note, error) {
-	rows, err := q.db.Query(ctx, listNotesByVault, vaultID)
+type ListNotesByVaultParams struct {
+	TenantID string
+	VaultID  string
+}
+
+func (q *Queries) ListNotesByVault(ctx context.Context, arg ListNotesByVaultParams) ([]Note, error) {
+	rows, err := q.db.Query(ctx, listNotesByVault, arg.TenantID, arg.VaultID)
 	if err != nil {
 		return nil, err
 	}
@@ -143,15 +159,16 @@ func (q *Queries) ListNotesByVault(ctx context.Context, vaultID string) ([]Note,
 const searchNotes = `-- name: SearchNotes :many
 SELECT id, path, updated_at, tenant_id, vault_id
 FROM notes
-WHERE content ILIKE $1
+WHERE tenant_id = $1 AND content ILIKE $2
 ORDER BY updated_at DESC
-LIMIT $2 OFFSET $3
+LIMIT $3 OFFSET $4
 `
 
 type SearchNotesParams struct {
-	Content string
-	Limit   int32
-	Offset  int32
+	TenantID string
+	Content  string
+	Limit    int32
+	Offset   int32
 }
 
 type SearchNotesRow struct {
@@ -163,7 +180,12 @@ type SearchNotesRow struct {
 }
 
 func (q *Queries) SearchNotes(ctx context.Context, arg SearchNotesParams) ([]SearchNotesRow, error) {
-	rows, err := q.db.Query(ctx, searchNotes, arg.Content, arg.Limit, arg.Offset)
+	rows, err := q.db.Query(ctx, searchNotes,
+		arg.TenantID,
+		arg.Content,
+		arg.Limit,
+		arg.Offset,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -191,7 +213,7 @@ func (q *Queries) SearchNotes(ctx context.Context, arg SearchNotesParams) ([]Sea
 const updateNoteForced = `-- name: UpdateNoteForced :one
 UPDATE notes
 SET path = $1, content = $2, updated_at = $3
-WHERE id = $4
+WHERE id = $4 AND tenant_id = $5
 RETURNING id, path, content, created_at, updated_at, tenant_id, vault_id
 `
 
@@ -200,6 +222,7 @@ type UpdateNoteForcedParams struct {
 	Content   string
 	UpdatedAt time.Time
 	ID        string
+	TenantID  string
 }
 
 func (q *Queries) UpdateNoteForced(ctx context.Context, arg UpdateNoteForcedParams) (Note, error) {
@@ -208,6 +231,7 @@ func (q *Queries) UpdateNoteForced(ctx context.Context, arg UpdateNoteForcedPara
 		arg.Content,
 		arg.UpdatedAt,
 		arg.ID,
+		arg.TenantID,
 	)
 	var i Note
 	err := row.Scan(
@@ -225,7 +249,7 @@ func (q *Queries) UpdateNoteForced(ctx context.Context, arg UpdateNoteForcedPara
 const updateNoteWithVersionCheck = `-- name: UpdateNoteWithVersionCheck :one
 UPDATE notes
 SET path = $1, content = $2, updated_at = $3
-WHERE id = $4 AND updated_at = $5
+WHERE id = $4 AND tenant_id = $5 AND updated_at = $6
 RETURNING id, path, content, created_at, updated_at, tenant_id, vault_id
 `
 
@@ -234,6 +258,7 @@ type UpdateNoteWithVersionCheckParams struct {
 	Content       string
 	UpdatedAt     time.Time
 	ID            string
+	TenantID      string
 	PrevUpdatedAt time.Time
 }
 
@@ -243,6 +268,7 @@ func (q *Queries) UpdateNoteWithVersionCheck(ctx context.Context, arg UpdateNote
 		arg.Content,
 		arg.UpdatedAt,
 		arg.ID,
+		arg.TenantID,
 		arg.PrevUpdatedAt,
 	)
 	var i Note

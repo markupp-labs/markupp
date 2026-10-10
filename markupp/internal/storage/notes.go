@@ -35,7 +35,7 @@ func NewPostgresNotesRepository(pool *pgxpool.Pool) *PostgresNotesRepository {
 	}
 }
 
-func (r *PostgresNotesRepository) withTenantTx(ctx context.Context, fn func(q *gen.Queries) error) error {
+func (r *PostgresNotesRepository) withTenantTx(ctx context.Context, fn func(q *gen.Queries, tenantID string) error) error {
 	tenantID := tenant.IDFromContext(ctx, "default")
 	tx, err := r.pool.Begin(ctx)
 	if err != nil {
@@ -46,7 +46,7 @@ func (r *PostgresNotesRepository) withTenantTx(ctx context.Context, fn func(q *g
 	if _, err := tx.Exec(ctx, "SELECT set_config('markupp.current_tenant_id', $1, true)", tenantID); err != nil {
 		return fmt.Errorf("definir tenant_id: %w", err)
 	}
-	if err := fn(r.q.WithTx(tx)); err != nil {
+	if err := fn(r.q.WithTx(tx), tenantID); err != nil {
 		return err
 	}
 	return tx.Commit(ctx)
@@ -63,7 +63,7 @@ func (r *PostgresNotesRepository) Save(ctx context.Context, note notes.Note) err
 		vaultID = "default"
 	}
 
-	err := r.withTenantTx(ctx, func(q *gen.Queries) error {
+	err := r.withTenantTx(ctx, func(q *gen.Queries, _ string) error {
 		return q.CreateNote(ctx, gen.CreateNoteParams{
 			ID:        note.ID,
 			TenantID:  tenantID,
@@ -87,7 +87,7 @@ func (r *PostgresNotesRepository) Save(ctx context.Context, note notes.Note) err
 // lastModifiedAt e devolve notes.ErrConflict se a versão não bater.
 func (r *PostgresNotesRepository) Update(ctx context.Context, id, path, content string, updatedAt, lastModifiedAt time.Time, force bool) (notes.Note, error) {
 	var row gen.Note
-	err := r.withTenantTx(ctx, func(q *gen.Queries) error {
+	err := r.withTenantTx(ctx, func(q *gen.Queries, tid string) error {
 		var txErr error
 		if force {
 			row, txErr = q.UpdateNoteForced(ctx, gen.UpdateNoteForcedParams{
@@ -95,6 +95,7 @@ func (r *PostgresNotesRepository) Update(ctx context.Context, id, path, content 
 				Content:   content,
 				UpdatedAt: updatedAt,
 				ID:        id,
+				TenantID:  tid,
 			})
 		} else {
 			row, txErr = q.UpdateNoteWithVersionCheck(ctx, gen.UpdateNoteWithVersionCheckParams{
@@ -102,11 +103,12 @@ func (r *PostgresNotesRepository) Update(ctx context.Context, id, path, content 
 				Content:       content,
 				UpdatedAt:     updatedAt,
 				ID:            id,
+				TenantID:      tid,
 				PrevUpdatedAt: lastModifiedAt,
 			})
 		}
 		if txErr != nil && errors.Is(txErr, pgx.ErrNoRows) && !force {
-			_, checkErr := q.GetNoteByID(ctx, id)
+			_, checkErr := q.GetNoteByID(ctx, gen.GetNoteByIDParams{ID: id, TenantID: tid})
 			if errors.Is(checkErr, pgx.ErrNoRows) {
 				return notes.ErrNotFound
 			}
@@ -142,9 +144,9 @@ func (r *PostgresNotesRepository) Update(ctx context.Context, id, path, content 
 // Delete remove a nota de id, devolvendo notes.ErrNotFound se ela não existir.
 func (r *PostgresNotesRepository) Delete(ctx context.Context, id string) error {
 	var rows int64
-	err := r.withTenantTx(ctx, func(q *gen.Queries) error {
+	err := r.withTenantTx(ctx, func(q *gen.Queries, tid string) error {
 		var txErr error
-		rows, txErr = q.DeleteNote(ctx, id)
+		rows, txErr = q.DeleteNote(ctx, gen.DeleteNoteParams{ID: id, TenantID: tid})
 		return txErr
 	})
 	if err != nil {
@@ -159,9 +161,9 @@ func (r *PostgresNotesRepository) Delete(ctx context.Context, id string) error {
 // GetNoteByID lê a nota de id, devolvendo notes.ErrNotFound se ela não existir.
 func (r *PostgresNotesRepository) GetNoteByID(ctx context.Context, id string) (notes.Note, error) {
 	var row gen.Note
-	err := r.withTenantTx(ctx, func(q *gen.Queries) error {
+	err := r.withTenantTx(ctx, func(q *gen.Queries, tid string) error {
 		var txErr error
-		row, txErr = q.GetNoteByID(ctx, id)
+		row, txErr = q.GetNoteByID(ctx, gen.GetNoteByIDParams{ID: id, TenantID: tid})
 		return txErr
 	})
 	if err != nil {
@@ -185,12 +187,13 @@ func (r *PostgresNotesRepository) GetNoteByID(ctx context.Context, id string) (n
 // offset e limit.
 func (r *PostgresNotesRepository) SearchNotes(ctx context.Context, query string, offset, limit int32) ([]notes.SearchResult, error) {
 	var rows []gen.SearchNotesRow
-	err := r.withTenantTx(ctx, func(q *gen.Queries) error {
+	err := r.withTenantTx(ctx, func(q *gen.Queries, tid string) error {
 		var txErr error
 		rows, txErr = q.SearchNotes(ctx, gen.SearchNotesParams{
-			Content: "%" + query + "%",
-			Limit:   limit,
-			Offset:  offset,
+			TenantID: tid,
+			Content:  "%" + query + "%",
+			Limit:    limit,
+			Offset:   offset,
 		})
 		return txErr
 	})
@@ -213,9 +216,9 @@ func (r *PostgresNotesRepository) SearchNotes(ctx context.Context, query string,
 // ListNotes devolve todas as notas do tenant.
 func (r *PostgresNotesRepository) ListNotes(ctx context.Context) ([]notes.Note, error) {
 	var rows []gen.Note
-	err := r.withTenantTx(ctx, func(q *gen.Queries) error {
+	err := r.withTenantTx(ctx, func(q *gen.Queries, tid string) error {
 		var txErr error
-		rows, txErr = q.ListNotes(ctx)
+		rows, txErr = q.ListNotes(ctx, tid)
 		return txErr
 	})
 	if err != nil {
