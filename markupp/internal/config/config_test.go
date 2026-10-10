@@ -27,6 +27,12 @@ func TestDefault_RetornaValoresPadrao(t *testing.T) {
 	assert.Equal(t, int64(50*1024*1024), cfg.MaxNoteSize)
 	assert.Empty(t, cfg.DatabaseURL, "sem default: o banco precisa ser informado")
 	assert.Empty(t, cfg.AllowedOrigins, "sem origem configurada o CORS fica desligado")
+	assert.Equal(t, "default", cfg.DefaultTenantID)
+	assert.Equal(t, 15, cfg.JWTExpirationMinutes)
+	assert.Equal(t, 7, cfg.RefreshExpirationDays)
+	assert.False(t, cfg.AuthRegistrationEnabled)
+	assert.True(t, cfg.LocalAuthEnabled)
+	assert.NotEmpty(t, cfg.AuthSecret)
 }
 
 func TestLoad_SemDatabaseURL_RetornaErroNomeandoAVariavel(t *testing.T) {
@@ -122,4 +128,46 @@ func TestLoad_TamanhoNaoPositivo_RetornaErroComOValor(t *testing.T) {
 		assert.Contains(t, err.Error(), tamanho)
 		assert.Contains(t, err.Error(), "maior que zero")
 	}
+}
+
+func TestLoad_VariaveisDeAutenticacao_LeTodosOsCampos(t *testing.T) {
+	env := fakeEnv{
+		"MARKUPP_DATABASE_URL":              urlDeTeste,
+		"MARKUPP_AUTH_SECRET":               "segredo-customizado-de-teste-muito-seguro", // #nosec G101 -- valor ficticio de teste
+		"MARKUPP_DEFAULT_TENANT_ID":         "tenant-empresa",
+		"MARKUPP_JWT_EXPIRATION_MINUTES":    "30",
+		"MARKUPP_REFRESH_EXPIRATION_DAYS":   "14",
+		"MARKUPP_AUTH_REGISTRATION_ENABLED": "true",
+		"MARKUPP_AUTH_LOCAL_ENABLED":        "false",
+	}
+
+	cfg, err := config.Load(env.Lookup)
+
+	require.NoError(t, err)
+	assert.Equal(t, "segredo-customizado-de-teste-muito-seguro", cfg.AuthSecret)
+	assert.Equal(t, "tenant-empresa", cfg.DefaultTenantID)
+	assert.Equal(t, 30, cfg.JWTExpirationMinutes)
+	assert.Equal(t, 14, cfg.RefreshExpirationDays)
+	assert.True(t, cfg.AuthRegistrationEnabled)
+	assert.False(t, cfg.LocalAuthEnabled)
+}
+
+func TestLoad_JWTExpirationInvalido_RetornaErroComOValor(t *testing.T) {
+	env := fakeEnv{"MARKUPP_DATABASE_URL": urlDeTeste, "MARKUPP_JWT_EXPIRATION_MINUTES": "zero"}
+
+	_, err := config.Load(env.Lookup)
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "MARKUPP_JWT_EXPIRATION_MINUTES")
+	assert.Contains(t, err.Error(), "zero")
+}
+
+func TestLoad_RefreshExpirationInvalido_RetornaErroComOValor(t *testing.T) {
+	env := fakeEnv{"MARKUPP_DATABASE_URL": urlDeTeste, "MARKUPP_REFRESH_EXPIRATION_DAYS": "dez"}
+
+	_, err := config.Load(env.Lookup)
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "MARKUPP_REFRESH_EXPIRATION_DAYS")
+	assert.Contains(t, err.Error(), "dez")
 }

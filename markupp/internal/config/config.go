@@ -14,11 +14,16 @@ type LookupFunc func(key string) (string, bool)
 
 // Config são os parâmetros de execução do servidor.
 type Config struct {
-	Port        int
-	DatabaseURL string
-	MaxNoteSize int64
-	// AllowedOrigins libera CORS para essas origens. Vazio desliga o CORS.
-	AllowedOrigins []string
+	Port                    int
+	DatabaseURL             string
+	MaxNoteSize             int64
+	AllowedOrigins          []string
+	AuthSecret              string
+	DefaultTenantID         string
+	JWTExpirationMinutes    int
+	RefreshExpirationDays   int
+	AuthRegistrationEnabled bool
+	LocalAuthEnabled        bool
 }
 
 // Default devolve a configuração usada nas variáveis não definidas.
@@ -26,6 +31,13 @@ func Default() Config {
 	return Config{
 		Port:        8080,
 		MaxNoteSize: 50 * 1024 * 1024,
+		// #nosec G101 -- segredo padrao apenas para ambiente de desenvolvimento local
+		AuthSecret:              "markupp-segredo-padrao-apenas-para-desenvolvimento-local-32b",
+		DefaultTenantID:         "default",
+		JWTExpirationMinutes:    15,
+		RefreshExpirationDays:   7,
+		AuthRegistrationEnabled: false,
+		LocalAuthEnabled:        true,
 	}
 }
 
@@ -44,8 +56,10 @@ func Load(lookup LookupFunc) (Config, error) {
 		return Config{}, err
 	}
 	cfg.Port = int(port)
-	err := readBounded(lookup, "MARKUPP_MAX_NOTE_SIZE", 1, math.MaxInt64, "maior que zero", &cfg.MaxNoteSize)
-	if err != nil {
+	if err := readBounded(lookup, "MARKUPP_MAX_NOTE_SIZE", 1, math.MaxInt64, "maior que zero", &cfg.MaxNoteSize); err != nil {
+		return Config{}, err
+	}
+	if err := loadAuthSettings(lookup, &cfg); err != nil {
 		return Config{}, err
 	}
 	return cfg, nil
@@ -78,4 +92,34 @@ func splitOrigins(lookup LookupFunc) []string {
 		}
 	}
 	return origins
+}
+
+func loadAuthSettings(lookup LookupFunc, cfg *Config) error {
+	readString(lookup, "MARKUPP_AUTH_SECRET", &cfg.AuthSecret)
+	readString(lookup, "MARKUPP_DEFAULT_TENANT_ID", &cfg.DefaultTenantID)
+	jwtExp := int64(cfg.JWTExpirationMinutes)
+	if err := readBounded(lookup, "MARKUPP_JWT_EXPIRATION_MINUTES", 1, 10080, "de 1 a 10080", &jwtExp); err != nil {
+		return err
+	}
+	cfg.JWTExpirationMinutes = int(jwtExp)
+	refExp := int64(cfg.RefreshExpirationDays)
+	if err := readBounded(lookup, "MARKUPP_REFRESH_EXPIRATION_DAYS", 1, 365, "de 1 a 365", &refExp); err != nil {
+		return err
+	}
+	cfg.RefreshExpirationDays = int(refExp)
+	readBool(lookup, "MARKUPP_AUTH_REGISTRATION_ENABLED", &cfg.AuthRegistrationEnabled)
+	readBool(lookup, "MARKUPP_AUTH_LOCAL_ENABLED", &cfg.LocalAuthEnabled)
+	return nil
+}
+
+func readString(lookup LookupFunc, key string, target *string) {
+	if val, ok := lookup(key); ok && strings.TrimSpace(val) != "" {
+		*target = strings.TrimSpace(val)
+	}
+}
+
+func readBool(lookup LookupFunc, key string, target *bool) {
+	if val, ok := lookup(key); ok && strings.TrimSpace(val) != "" {
+		*target = strings.TrimSpace(val) == "true" || strings.TrimSpace(val) == "1"
+	}
 }
