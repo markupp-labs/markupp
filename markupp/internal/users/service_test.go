@@ -12,8 +12,12 @@ import (
 )
 
 type fakeUsersRepository struct {
-	users   map[string]users.User
-	invites map[string]users.UserInvite
+	users           map[string]users.User
+	invites         map[string]users.UserInvite
+	createErr       error
+	countErr        error
+	getInviteErr    error
+	updateStatusErr error
 }
 
 func newFakeUsersRepository() *fakeUsersRepository {
@@ -28,6 +32,9 @@ func (f *fakeUsersRepository) userKey(tenantID, email string) string {
 }
 
 func (f *fakeUsersRepository) CreateUser(ctx context.Context, u users.User) error {
+	if f.createErr != nil {
+		return f.createErr
+	}
 	key := f.userKey(u.TenantID, u.Email)
 	if _, exists := f.users[key]; exists {
 		return users.ErrUserAlreadyExists
@@ -37,6 +44,9 @@ func (f *fakeUsersRepository) CreateUser(ctx context.Context, u users.User) erro
 }
 
 func (f *fakeUsersRepository) CountUsersByTenant(ctx context.Context, tenantID string) (int64, error) {
+	if f.countErr != nil {
+		return 0, f.countErr
+	}
 	var count int64
 	for _, u := range f.users {
 		if u.TenantID == tenantID {
@@ -83,6 +93,9 @@ func (f *fakeUsersRepository) CreateInvite(ctx context.Context, inv users.UserIn
 }
 
 func (f *fakeUsersRepository) GetInviteByEmail(ctx context.Context, tenantID, email string) (users.UserInvite, error) {
+	if f.getInviteErr != nil {
+		return users.UserInvite{}, f.getInviteErr
+	}
 	inv, ok := f.invites[f.userKey(tenantID, email)]
 	if !ok {
 		return users.UserInvite{}, users.ErrInviteNotFound
@@ -101,6 +114,9 @@ func (f *fakeUsersRepository) ListInvites(ctx context.Context, tenantID string) 
 }
 
 func (f *fakeUsersRepository) UpdateInviteStatus(ctx context.Context, tenantID, email, status string) error {
+	if f.updateStatusErr != nil {
+		return f.updateStatusErr
+	}
 	key := f.userKey(tenantID, email)
 	inv, ok := f.invites[key]
 	if !ok {
@@ -219,4 +235,86 @@ func TestUsersService_ListUsersEListInvites_Sucesso(t *testing.T) {
 	listaInvites, err := svc.ListInvites(ctx, "tenant-1")
 	require.NoError(t, err)
 	assert.Len(t, listaInvites, 1)
+}
+
+func TestNewService_ClockNil_AdotaRelogioPadrao(t *testing.T) {
+	repo := newFakeUsersRepository()
+	svc := users.NewService(repo, nil)
+	assert.NotNil(t, svc)
+}
+
+func TestUsersService_BootstrapFirstAdmin_ErroNoCount(t *testing.T) {
+	repo := newFakeUsersRepository()
+	repo.countErr = assert.AnError
+	svc := setupUsersService(repo)
+
+	_, err := svc.BootstrapFirstAdmin(context.Background(), "t1", "adm@corp.com")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "contar usuarios")
+}
+
+func TestUsersService_BootstrapFirstAdmin_ErroNoCreate(t *testing.T) {
+	repo := newFakeUsersRepository()
+	repo.createErr = assert.AnError
+	svc := setupUsersService(repo)
+
+	_, err := svc.BootstrapFirstAdmin(context.Background(), "t1", "adm@corp.com")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "criar admin")
+}
+
+func TestUsersService_InviteUser_ErroNoCreateInvite(t *testing.T) {
+	repo := newFakeUsersRepository()
+	svc := setupUsersService(repo)
+	ctx := context.Background()
+
+	_, err := svc.InviteUser(ctx, "t1", "admin", "admin-id", "user@corp.com", "member")
+	require.NoError(t, err)
+
+	_, err = svc.InviteUser(ctx, "t1", "admin", "admin-id", "user@corp.com", "member")
+	require.ErrorIs(t, err, users.ErrInviteAlreadyExists)
+}
+
+func TestUsersService_InviteUser_UsuarioJaExiste(t *testing.T) {
+	repo := newFakeUsersRepository()
+	svc := setupUsersService(repo)
+	ctx := context.Background()
+
+	_, err := svc.BootstrapFirstAdmin(ctx, "t1", "user@corp.com")
+	require.NoError(t, err)
+
+	_, err = svc.InviteUser(ctx, "t1", "admin", "admin-id", "user@corp.com", "member")
+	require.ErrorIs(t, err, users.ErrUserAlreadyExists)
+}
+
+func TestUsersService_AcceptInvite_EmailInvalidoOuNaoEncontrado(t *testing.T) {
+	repo := newFakeUsersRepository()
+	svc := setupUsersService(repo)
+	ctx := context.Background()
+
+	_, err := svc.AcceptInvite(ctx, "t1", "invalido")
+	require.ErrorIs(t, err, users.ErrInvalidEmail)
+
+	_, err = svc.AcceptInvite(ctx, "t1", "inexistente@corp.com")
+	require.ErrorIs(t, err, users.ErrInviteNotFound)
+}
+
+func TestUsersService_AcceptInvite_ErroAoCriarUsuarioOuAtualizarStatus(t *testing.T) {
+	repo := newFakeUsersRepository()
+	svc := setupUsersService(repo)
+	ctx := context.Background()
+
+	_, err := svc.InviteUser(ctx, "t1", "admin", "admin-id", "user@corp.com", "member")
+	require.NoError(t, err)
+
+	repo.createErr = assert.AnError
+	_, err = svc.AcceptInvite(ctx, "t1", "user@corp.com")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "criar usuario por convite")
+
+	repo.createErr = nil
+	repo.updateStatusErr = assert.AnError
+	_, err = svc.AcceptInvite(ctx, "t1", "user@corp.com")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "atualizar convite")
 }

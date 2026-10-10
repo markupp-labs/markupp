@@ -152,3 +152,84 @@ func TestUsersHandler_ListUsers_Sucesso(t *testing.T) {
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &resp))
 	require.Len(t, resp, 1)
 }
+
+func TestUsersHandler_Invite_JSONInvalidoRetorna400(t *testing.T) {
+	router := setupUsersRouter(&fakeUsersService{})
+	req := httptest.NewRequest(http.MethodPost, "/users/invite", bytes.NewBufferString("{invalido"))
+	req.Header.Set("X-User-Role", "admin")
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+}
+
+func TestUsersHandler_Invite_ErrosDeDominio(t *testing.T) {
+	cases := []struct {
+		err      error
+		expected int
+	}{
+		{users.ErrInvalidEmail, http.StatusBadRequest},
+		{users.ErrUserAlreadyExists, http.StatusConflict},
+		{users.ErrInviteAlreadyExists, http.StatusConflict},
+		{assert.AnError, http.StatusInternalServerError},
+	}
+
+	for _, tc := range cases {
+		svc := &fakeUsersService{inviteErr: tc.err}
+		router := setupUsersRouter(svc)
+		body := `{"email":"test@corp.com"}`
+		req := httptest.NewRequest(http.MethodPost, "/users/invite", bytes.NewBufferString(body))
+		req.Header.Set("X-User-Role", "admin")
+		rec := httptest.NewRecorder()
+
+		router.ServeHTTP(rec, req)
+		assert.Equal(t, tc.expected, rec.Code)
+	}
+}
+
+func TestUsersHandler_BootstrapAdmin_ErrosDeDominio(t *testing.T) {
+	svc := &fakeUsersService{bootstrapErr: users.ErrUserAlreadyExists}
+	router := setupUsersRouter(svc)
+	req := httptest.NewRequest(http.MethodPost, "/users/bootstrap-admin", bytes.NewBufferString(`{"email":"adm@corp.com"}`))
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+	assert.Equal(t, http.StatusConflict, rec.Code)
+}
+
+func TestUsersHandler_ListUsers_ErroInternoRetorna500(t *testing.T) {
+	svc := &fakeUsersService{listErr: assert.AnError}
+	router := setupUsersRouter(svc)
+	req := httptest.NewRequest(http.MethodGet, "/users", nil)
+	req.Header.Set("X-User-Role", "admin")
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+	assert.Equal(t, http.StatusInternalServerError, rec.Code)
+}
+
+func TestUsersHandler_ListInvites_SucessoEErro(t *testing.T) {
+	now := time.Now().UTC().Truncate(time.Millisecond)
+	svc := &fakeUsersService{
+		invitesResult: []users.UserInvite{
+			{ID: "inv-1", TenantID: "default", Email: "convite@corp.com", Role: "member", Status: "pending", CreatedAt: now},
+		},
+	}
+	router := setupUsersRouter(svc)
+	req := httptest.NewRequest(http.MethodGet, "/users/invites", nil)
+	req.Header.Set("X-User-Role", "admin")
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	var resp []users.UserInvite
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &resp))
+	require.Len(t, resp, 1)
+
+	svc.invitesErr = assert.AnError
+	recErr := httptest.NewRecorder()
+	reqErr := httptest.NewRequest(http.MethodGet, "/users/invites", nil)
+	reqErr.Header.Set("X-User-Role", "admin")
+	router.ServeHTTP(recErr, reqErr)
+	assert.Equal(t, http.StatusInternalServerError, recErr.Code)
+}
