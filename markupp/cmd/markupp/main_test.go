@@ -57,6 +57,9 @@ func TestMigrateDatabase_BancoVazio_CriaTabelaNotes(t *testing.T) {
 	var tabela *string
 	require.NoError(t, pool.QueryRow(context.Background(), "SELECT to_regclass('notes')::text").Scan(&tabela))
 	assert.NotNil(t, tabela, "esperada a tabela notes depois do migrate")
+	var usersTabela *string
+	require.NoError(t, pool.QueryRow(context.Background(), "SELECT to_regclass('users')::text").Scan(&usersTabela))
+	assert.NotNil(t, usersTabela, "esperada a tabela users depois do migrate")
 }
 
 func TestMigrateDatabase_BancoInalcancavel_RetornaErro(t *testing.T) {

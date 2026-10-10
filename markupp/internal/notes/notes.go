@@ -10,11 +10,15 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
+	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/tenant"
 )
 
-// Note é uma nota persistida, identificada por ID e endereçada por Path.
+// Note é uma nota persistida, identificada por ID e endereçada por Path dentro de um Tenant e Vault.
 type Note struct {
 	ID        string
+	TenantID  string
+	VaultID   string
 	Path      string
 	Content   string
 	CreatedAt time.Time
@@ -24,6 +28,8 @@ type Note struct {
 // SearchResult é a projeção de uma nota devolvida pela busca, sem o conteúdo.
 type SearchResult struct {
 	ID        string    `json:"id"`
+	TenantID  string    `json:"tenant_id,omitempty"`
+	VaultID   string    `json:"vault_id,omitempty"`
 	Path      string    `json:"path"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
@@ -82,15 +88,25 @@ func (s *Service) ListNotes(ctx context.Context) ([]Note, error) {
 
 // Create valida path e content e persiste uma nota nova com ID gerado.
 func (s *Service) Create(ctx context.Context, path, content string) (Note, error) {
+	return s.CreateInVault(ctx, "default", path, content)
+}
+
+// CreateInVault valida path e content e persiste uma nota vinculada a um cofre específico.
+func (s *Service) CreateInVault(ctx context.Context, vaultID, path, content string) (Note, error) {
 	if err := validatePath(path); err != nil {
 		return Note{}, err
 	}
 	if err := s.validateContent(content); err != nil {
 		return Note{}, err
 	}
+	if strings.TrimSpace(vaultID) == "" {
+		vaultID = "default"
+	}
 	now := canonicalTime(s.clock())
 	note := Note{
 		ID:        s.newID(),
+		TenantID:  tenant.IDFromContext(ctx, "default"),
+		VaultID:   vaultID,
 		Path:      path,
 		Content:   content,
 		CreatedAt: now,

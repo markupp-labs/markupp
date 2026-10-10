@@ -1,31 +1,42 @@
 -- name: CreateNote :exec
-INSERT INTO notes (id, path, content, created_at, updated_at)
-VALUES ($1, $2, $3, $4, $5);
+INSERT INTO notes (id, path, content, created_at, updated_at, tenant_id, vault_id)
+VALUES ($1, $2, $3, $4, $5, $6, $7);
 
 -- name: GetNoteByID :one
-SELECT id, path, content, created_at, updated_at FROM notes WHERE id = $1;
+SELECT id, path, content, created_at, updated_at, tenant_id, vault_id
+FROM notes
+WHERE id = $1 AND tenant_id = $2;
 
 -- name: ListNotes :many
-SELECT id, path, content, created_at, updated_at FROM notes
+SELECT id, path, content, created_at, updated_at, tenant_id, vault_id
+FROM notes
+WHERE tenant_id = $1
+ORDER BY path;
+
+-- name: ListNotesByVault :many
+SELECT id, path, content, created_at, updated_at, tenant_id, vault_id
+FROM notes
+WHERE tenant_id = $1 AND vault_id = $2
 ORDER BY path;
 
 -- name: UpdateNoteWithVersionCheck :one
 UPDATE notes
 SET path = sqlc.arg(path), content = sqlc.arg(content), updated_at = sqlc.arg(updated_at)
-WHERE id = sqlc.arg(id) AND updated_at = sqlc.arg(prev_updated_at)
-RETURNING id, path, content, created_at, updated_at;
+WHERE id = sqlc.arg(id) AND tenant_id = sqlc.arg(tenant_id) AND updated_at = sqlc.arg(prev_updated_at)
+RETURNING id, path, content, created_at, updated_at, tenant_id, vault_id;
 
 -- name: UpdateNoteForced :one
 UPDATE notes
 SET path = $1, content = $2, updated_at = $3
-WHERE id = $4
-RETURNING id, path, content, created_at, updated_at;
+WHERE id = $4 AND tenant_id = $5
+RETURNING id, path, content, created_at, updated_at, tenant_id, vault_id;
 
 -- name: DeleteNote :execrows
-DELETE FROM notes WHERE id = $1;
+DELETE FROM notes WHERE id = $1 AND tenant_id = $2;
 
 -- name: SearchNotes :many
-SELECT id, path, updated_at FROM notes
-WHERE content ILIKE $1
+SELECT id, path, updated_at, tenant_id, vault_id
+FROM notes
+WHERE tenant_id = $1 AND content ILIKE $2
 ORDER BY updated_at DESC
-LIMIT $2 OFFSET $3;
+LIMIT $3 OFFSET $4;
