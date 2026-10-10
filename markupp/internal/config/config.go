@@ -122,4 +122,3 @@ func readBool(lookup LookupFunc, key string, target *bool) {
 		*target = strings.TrimSpace(val) == "true" || strings.TrimSpace(val) == "1"
 	}
 }
-
