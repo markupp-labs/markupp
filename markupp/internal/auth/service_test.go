@@ -231,3 +231,87 @@ func TestService_RevokeSession_Sucesso(t *testing.T) {
 	_, err = svc.RefreshToken(ctx, pair.RefreshToken)
 	require.ErrorIs(t, err, auth.ErrRefreshTokenRevoked)
 }
+
+func TestService_LoginLocal_UsuarioNaoExisteEAutoRegistroAtivado_CriaMembro(t *testing.T) {
+	repo := newFakeRepository()
+	svc := setupAuthService(repo, true)
+	ctx := context.Background()
+
+	_, err := svc.LoginLocal(ctx, "admin@markupp.dev", "senha123")
+	require.NoError(t, err)
+
+	pair, err := svc.LoginLocal(ctx, "novo.membro@markupp.dev", "senhaMembro123")
+	require.NoError(t, err)
+	assert.NotEmpty(t, pair.AccessToken)
+	assert.NotEmpty(t, pair.RefreshToken)
+
+	user, err := repo.GetUserByEmail(ctx, "default", "novo.membro@markupp.dev")
+	require.NoError(t, err)
+	assert.Equal(t, "member", user.Role)
+}
+
+func TestService_GetAccount_Sucesso(t *testing.T) {
+	repo := newFakeRepository()
+	svc := setupAuthService(repo, false)
+	ctx := context.Background()
+
+	_, err := svc.LoginLocal(ctx, "admin@markupp.dev", "senha123")
+	require.NoError(t, err)
+
+	admin, err := repo.GetUserByEmail(ctx, "default", "admin@markupp.dev")
+	require.NoError(t, err)
+
+	conta, err := svc.GetAccount(ctx, admin.ID)
+	require.NoError(t, err)
+	assert.Equal(t, admin.ID, conta.ID)
+	assert.Equal(t, "admin@markupp.dev", conta.Email)
+}
+
+func TestService_GetAccount_Inexistente_RetornaErro(t *testing.T) {
+	repo := newFakeRepository()
+	svc := setupAuthService(repo, false)
+	ctx := context.Background()
+
+	_, err := svc.GetAccount(ctx, "usuario-inexistente")
+	require.ErrorIs(t, err, auth.ErrUserNotFound)
+}
+
+func TestService_RefreshToken_Expirado_Falha(t *testing.T) {
+	repo := newFakeRepository()
+	agora := time.Date(2026, 10, 4, 12, 0, 0, 0, time.UTC)
+	clock := func() time.Time { return agora }
+	codec := auth.NewTokenCodec("segredo-para-testes-de-servico", 15*time.Minute, clock)
+	hasher := &fakeHasher{}
+	cfg := auth.ServiceConfig{
+		DefaultTenantID:         "default",
+		RegistrationEnabled:     false,
+		LocalEnabled:            true,
+		RefreshExpirationPeriod: 1 * time.Hour,
+	}
+	svc := auth.NewService(repo, codec, hasher, cfg, clock)
+	ctx := context.Background()
+
+	pair, err := svc.LoginLocal(ctx, "admin@markupp.dev", "senha123")
+	require.NoError(t, err)
+
+	agora = agora.Add(2 * time.Hour)
+	_, err = svc.RefreshToken(ctx, pair.RefreshToken)
+	require.ErrorIs(t, err, auth.ErrRefreshTokenExpired)
+}
+
+func TestService_RefreshToken_UsuarioInexistente_Falha(t *testing.T) {
+	repo := newFakeRepository()
+	svc := setupAuthService(repo, false)
+	ctx := context.Background()
+
+	pair, err := svc.LoginLocal(ctx, "admin@markupp.dev", "senha123")
+	require.NoError(t, err)
+
+	delete(repo.users, "user-1")
+	for k := range repo.users {
+		delete(repo.users, k)
+	}
+
+	_, err = svc.RefreshToken(ctx, pair.RefreshToken)
+	require.ErrorIs(t, err, auth.ErrUserNotFound)
+}

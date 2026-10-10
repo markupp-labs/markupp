@@ -205,3 +205,62 @@ func TestAuthHandler_Me_Sucesso(t *testing.T) {
 	assert.Equal(t, "admin@markupp.dev", resp["email"])
 	assert.Equal(t, "admin", resp["role"])
 }
+
+func TestAuthHandler_Login_EmailOuSenhaVazios_Retorna400(t *testing.T) {
+	svc := &fakeAuthService{loginErr: auth.ErrEmptyEmail}
+	router := setupAuthRouter(svc, nil)
+
+	body := `{"email":"","password":"senha"}`
+	req := httptest.NewRequest(http.MethodPost, "/auth/login", bytes.NewBufferString(body))
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+	assert.Contains(t, rec.Body.String(), "email obrigatorio")
+}
+
+func TestAuthHandler_Refresh_JSONInvalido_Retorna400(t *testing.T) {
+	router := setupAuthRouter(&fakeAuthService{}, nil)
+
+	req := httptest.NewRequest(http.MethodPost, "/auth/refresh", bytes.NewBufferString("{corrompido"))
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+	assert.Contains(t, rec.Body.String(), "invalid_request")
+}
+
+func TestAuthHandler_Logout_JSONInvalido_Retorna400(t *testing.T) {
+	router := setupAuthRouter(&fakeAuthService{}, nil)
+
+	req := httptest.NewRequest(http.MethodPost, "/auth/logout", bytes.NewBufferString("{corrompido"))
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+	assert.Contains(t, rec.Body.String(), "invalid_request")
+}
+
+func TestAuthHandler_Me_UsuarioNaoEncontrado_Retorna404(t *testing.T) {
+	svc := &fakeAuthService{accountErr: auth.ErrUserNotFound}
+	validator := &fakeTokenValidator{
+		claims: auth.Claims{
+			Subject:  "usuario-deletado",
+			TenantID: "tenant-default",
+			Role:     "member",
+		},
+	}
+	router := setupAuthRouter(svc, validator)
+
+	req := httptest.NewRequest(http.MethodGet, "/auth/me", nil)
+	req.Header.Set("Authorization", "Bearer token-valido")
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusNotFound, rec.Code)
+	assert.Contains(t, rec.Body.String(), "not_found")
+}

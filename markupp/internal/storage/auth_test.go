@@ -153,3 +153,39 @@ func TestPostgresAuthRepo_RecordAuditEvent_GravaSucesso(t *testing.T) {
 	}
 	require.NoError(t, repo.RecordAuditEvent(ctx, event))
 }
+
+func TestPostgresAuthRepo_GetUserByID_Inexistente_RetornaErro(t *testing.T) {
+	db := setupTestDB(t)
+	repo := storage.NewPostgresAuthRepository(db)
+	ctx := context.Background()
+
+	_, err := repo.GetUserByID(ctx, "usuario-inexistente")
+	require.ErrorIs(t, err, auth.ErrUserNotFound)
+}
+
+func TestPostgresAuthRepo_GetUserIdentity_Inexistente_RetornaErro(t *testing.T) {
+	db := setupTestDB(t)
+	repo := storage.NewPostgresAuthRepository(db)
+	ctx := context.Background()
+
+	_, err := repo.GetUserIdentity(ctx, "local", "inexistente@markupp.dev")
+	require.ErrorIs(t, err, auth.ErrIdentityNotFound)
+}
+
+func TestPostgresAuthRepo_GetRefreshToken_Inexistente_RetornaErro(t *testing.T) {
+	db := setupTestDB(t)
+	repo := storage.NewPostgresAuthRepository(db)
+	ctx := context.Background()
+
+	_, err := repo.GetRefreshToken(ctx, "hash-inexistente")
+	require.ErrorIs(t, err, auth.ErrRefreshTokenExpired)
+}
+
+func TestPostgresAuthRepo_RevokeRefreshToken_Inexistente_RetornaErro(t *testing.T) {
+	db := setupTestDB(t)
+	repo := storage.NewPostgresAuthRepository(db)
+	ctx := context.Background()
+
+	err := repo.RevokeRefreshToken(ctx, "hash-inexistente")
+	require.ErrorIs(t, err, auth.ErrRefreshTokenExpired)
+}
