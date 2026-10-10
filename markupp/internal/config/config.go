@@ -29,8 +29,9 @@ type Config struct {
 // Default devolve a configuração usada nas variáveis não definidas.
 func Default() Config {
 	return Config{
-		Port:                    8080,
-		MaxNoteSize:             50 * 1024 * 1024,
+		Port:        8080,
+		MaxNoteSize: 50 * 1024 * 1024,
+		// #nosec G101 -- segredo padrao apenas para ambiente de desenvolvimento local
 		AuthSecret:              "markupp-segredo-padrao-apenas-para-desenvolvimento-local-32b",
 		DefaultTenantID:         "default",
 		JWTExpirationMinutes:    15,

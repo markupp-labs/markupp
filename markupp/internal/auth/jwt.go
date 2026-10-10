@@ -16,7 +16,9 @@ import (
 )
 
 var (
+	// ErrInvalidToken indica que a assinatura ou o formato do JWT e invalido.
 	ErrInvalidToken = errors.New("token invalido")
+	// ErrExpiredToken indica que a validade temporal do JWT expirou.
 	ErrExpiredToken = errors.New("token expirado")
 )
 

@@ -133,7 +133,7 @@ func TestLoad_TamanhoNaoPositivo_RetornaErroComOValor(t *testing.T) {
 func TestLoad_VariaveisDeAutenticacao_LeTodosOsCampos(t *testing.T) {
 	env := fakeEnv{
 		"MARKUPP_DATABASE_URL":              urlDeTeste,
-		"MARKUPP_AUTH_SECRET":               "segredo-customizado-de-teste-muito-seguro",
+		"MARKUPP_AUTH_SECRET":               "segredo-customizado-de-teste-muito-seguro", // #nosec G101 -- valor ficticio de teste
 		"MARKUPP_DEFAULT_TENANT_ID":         "tenant-empresa",
 		"MARKUPP_JWT_EXPIRATION_MINUTES":    "30",
 		"MARKUPP_REFRESH_EXPIRATION_DAYS":   "14",

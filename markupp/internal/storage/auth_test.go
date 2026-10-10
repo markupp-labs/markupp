@@ -28,7 +28,7 @@ func sampleAccountParams() auth.CreateAccountParams {
 			UserID:         "user-id-1",
 			Provider:       "local",
 			ProviderUserID: "admin@markupp.dev",
-			PasswordHash:   "hash-bcrypt-seguro",
+			PasswordHash:   "hash-bcrypt-seguro", // #nosec G101 -- hash ficticio para teste
 			CreatedAt:      now,
 		},
 		InitialVaultID:   "vault-id-1",
