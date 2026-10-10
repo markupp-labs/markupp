@@ -1,6 +1,9 @@
 package auth_test
 
 import (
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/base64"
 	"strings"
 	"testing"
 	"time"
@@ -93,5 +96,20 @@ func TestTokenCodec_ValidateToken_HeaderAlterado(t *testing.T) {
 	adulterado := "eyJhbGciOiJub25lIn0." + partes[1] + "." + partes[2]
 
 	_, err = codec.ValidateToken(adulterado)
+	require.ErrorIs(t, err, auth.ErrInvalidToken)
+}
+
+func TestTokenCodec_ValidateToken_PayloadInvalidoComAssinaturaValida(t *testing.T) {
+	clock := func() time.Time { return time.Date(2026, 10, 4, 12, 0, 0, 0, time.UTC) }
+	codec := auth.NewTokenCodec(segredoTeste, 15*time.Minute, clock)
+
+	headerPart := base64.RawURLEncoding.EncodeToString([]byte(`{"alg":"HS256","typ":"JWT"}`))
+	payloadPart := base64.RawURLEncoding.EncodeToString([]byte(`isto-nao-e-um-json-valido`))
+	mac := hmac.New(sha256.New, []byte(segredoTeste))
+	mac.Write([]byte(headerPart + "." + payloadPart))
+	sigPart := base64.RawURLEncoding.EncodeToString(mac.Sum(nil))
+
+	token := headerPart + "." + payloadPart + "." + sigPart
+	_, err := codec.ValidateToken(token)
 	require.ErrorIs(t, err, auth.ErrInvalidToken)
 }
