@@ -171,4 +171,3 @@ func TestLoad_RefreshExpirationInvalido_RetornaErroComOValor(t *testing.T) {
 	assert.Contains(t, err.Error(), "MARKUPP_REFRESH_EXPIRATION_DAYS")
 	assert.Contains(t, err.Error(), "dez")
 }
-
