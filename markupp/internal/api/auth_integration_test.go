@@ -47,7 +47,10 @@ func setupAuthIntegrationServer(t *testing.T) (*httptest.Server, *pgxpool.Pool) 
 
 func postJSON(t *testing.T, url string, body string) *http.Response {
 	t.Helper()
-	resp, err := http.Post(url, "application/json", bytes.NewBufferString(body))
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBufferString(body))
+	require.NoError(t, err)
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(req)
 	require.NoError(t, err)
 	return resp
 }
