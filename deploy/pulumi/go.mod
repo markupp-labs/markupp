@@ -1,6 +1,6 @@
 module github.com/markupp-labs/markupp/deploy/pulumi
 
-go 1.26.6
+go 1.26.9
 
 require (
 	github.com/pulumi/pulumi-go-provider v1.6.0
