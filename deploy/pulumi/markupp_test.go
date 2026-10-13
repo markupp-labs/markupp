@@ -312,3 +312,13 @@ func TestNewMarkupp_GatewayExistenteSemNome_RetornaErroComOCampo(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "existingGateway.name")
 }
+
+func TestNewMarkupp_LivenessDaAPI_NaoDependeDoBanco(t *testing.T) {
+	monitor := deploy(t, argsDeTeste())
+
+	container := firstContainer(t, monitor.single(t, "kubernetes:apps/v1:Deployment"))
+	liveness := container["livenessProbe"].ObjectValue()
+	assert.True(t, liveness["httpGet"].IsNull(),
+		"liveness no /healthz reinicia a API inteira quando o banco cai")
+	assert.Equal(t, 8080.0, at(t, liveness, "tcpSocket", "port").NumberValue())
+}
