@@ -10,7 +10,10 @@ import (
 	"github.com/pulumi/pulumi-go-provider/infer"
 )
 
-// version acompanha a tag do repositório. O release sobrescreve com -ldflags.
+// version é a versão que o provider declara ao motor do Pulumi. Quem consome o
+// componente fixa a versão pela tag do git em `pulumi package add ...@vX.Y.Z`,
+// e o release não compila o componente, então aqui fica um valor de
+// desenvolvimento.
 var version = "0.0.0-dev"
 
 func main() {

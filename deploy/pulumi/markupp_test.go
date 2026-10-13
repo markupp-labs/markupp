@@ -320,5 +320,5 @@ func TestNewMarkupp_LivenessDaAPI_NaoDependeDoBanco(t *testing.T) {
 	liveness := container["livenessProbe"].ObjectValue()
 	assert.True(t, liveness["httpGet"].IsNull(),
 		"liveness no /healthz reinicia a API inteira quando o banco cai")
-	assert.Equal(t, 8080.0, at(t, liveness, "tcpSocket", "port").NumberValue())
+	assert.Equal(t, float64(apiPort), at(t, liveness, "tcpSocket", "port").NumberValue())
 }

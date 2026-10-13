@@ -2,7 +2,7 @@
 
 ## Status
 
-Aceita, alterada pelo ADR-0032
+Aceita
 
 ## Contexto
 
@@ -14,8 +14,9 @@ opera na nuvem deveria ser o que qualquer pessoa consegue operar
 ## Decisão
 
 Kubernetes é a plataforma de execução do Enterprise e do self-host de porte maior, com as
-mesmas imagens de container usadas no compose. A indexação roda como Job criado sob demanda
-(ADR-0032), e o TLS termina no Gateway. O compose continua sendo a via para instalação de um nó
+mesmas imagens de container usadas no compose. A indexação roda como Job criado sob demanda,
+com o gatilho ainda proposto no ADR-0032, e o TLS termina no Gateway. O compose continua sendo
+a via para instalação de um nó
 
 A implantação vem em duas fases. Na primeira, o Enterprise roda num cluster kubeadm on-premise,
 com Cilium, Gateway API, cert-manager e Longhorn. Na segunda, vai para nuvem pública, com a
