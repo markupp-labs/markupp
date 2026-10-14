@@ -490,3 +490,20 @@ func TestService_LoginLocal_EmailInexistente_CustaOMesmoQueSenhaErrada(t *testin
 		countLoginHasherOps(t, "inexistente@markupp.dev"),
 		"email inexistente e senha errada devem custar o mesmo numero de operacoes bcrypt")
 }
+
+func TestService_RefreshToken_Reuso_AuditaNoTenantDoUsuario(t *testing.T) {
+	clock := defaultClock()
+	repo := newFakeRepository(clock)
+	repo.users["u1"] = auth.User{ID: "u1", TenantID: "tenant-b", Email: "b@markupp.dev", Role: "member"}
+	repo.refreshTokens[auth.HashRefreshToken("velho")] = auth.RefreshTokenRecord{
+		TokenHash: auth.HashRefreshToken("velho"), UserID: "u1", ExpiresAt: clock().Add(time.Hour), Revoked: true,
+	}
+	svc := setupAuthService(repo, false, clock)
+
+	_, err := svc.RefreshToken(context.Background(), "velho")
+	require.ErrorIs(t, err, auth.ErrRefreshTokenRevoked)
+
+	ultimo := repo.auditEvents[len(repo.auditEvents)-1]
+	assert.Equal(t, "auth.refresh_reuse", ultimo.Action)
+	assert.Equal(t, "tenant-b", ultimo.TenantID)
+}
