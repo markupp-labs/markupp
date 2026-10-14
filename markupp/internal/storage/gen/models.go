@@ -6,7 +6,19 @@ package gen
 
 import (
 	"time"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
+
+type AuditEvent struct {
+	ID         string
+	TenantID   string
+	ActorID    pgtype.Text
+	Action     string
+	Target     string
+	Result     string
+	OccurredAt time.Time
+}
 
 type Note struct {
 	ID        string
@@ -14,4 +26,43 @@ type Note struct {
 	Content   string
 	CreatedAt time.Time
 	UpdatedAt time.Time
+}
+
+type RefreshToken struct {
+	TokenHash string
+	UserID    string
+	ExpiresAt time.Time
+	Revoked   bool
+	CreatedAt time.Time
+}
+
+type User struct {
+	ID        string
+	TenantID  string
+	Email     string
+	Role      string
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
+type UserIdentity struct {
+	ID             string
+	UserID         string
+	Provider       string
+	ProviderUserID string
+	PasswordHash   pgtype.Text
+	CreatedAt      time.Time
+}
+
+type Vault struct {
+	ID        string
+	TenantID  string
+	Name      string
+	CreatedAt time.Time
+}
+
+type VaultMember struct {
+	VaultID   string
+	UserID    string
+	CreatedAt time.Time
 }

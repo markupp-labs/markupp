@@ -21,6 +21,7 @@ O servidor lê a configuração de variáveis de ambiente.
 | Variável | Default | O que é |
 | --- | --- | --- |
 | `MARKUPP_DATABASE_URL` | nenhum, obrigatória | Conexão PostgreSQL, no formato `postgres://usuario:senha@host:5432/banco` |
+| `MARKUPP_AUTH_SECRET` | nenhum, obrigatória | Segredo de assinatura dos tokens JWT, mínimo de 32 bytes (ex.: `openssl rand -hex 32`) |
 | `MARKUPP_PORT` | `8080` | Porta HTTP |
 | `MARKUPP_MAX_NOTE_SIZE` | `52428800` | Tamanho máximo de uma nota, em bytes |
 | `MARKUPP_ALLOWED_ORIGINS` | vazio | Origens liberadas no CORS, separadas por vírgula. Vazio desliga o CORS |

@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/auth"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/notes"
 )
 
@@ -19,6 +20,12 @@ import (
 type fakeProbe struct{}
 
 func (fakeProbe) Ping(ctx context.Context) error { return nil }
+
+type fakeSearchTokenValidator struct{}
+
+func (fakeSearchTokenValidator) ValidateToken(tokenString string) (auth.Claims, error) {
+	return auth.Claims{Subject: "user-search", TenantID: "default", Role: "member"}, nil
+}
 
 type fakeBuscaService struct {
 	resultado []notes.SearchResult
@@ -133,8 +140,10 @@ func conferirFalhaParseQueryInt(t *testing.T, caso casoParseQueryInt, err error)
 func buscarNotas(t *testing.T, svc NoteService, queryString string) *httptest.ResponseRecorder {
 	t.Helper()
 	req := httptest.NewRequest(http.MethodGet, "/notes/search?"+queryString, nil)
+	req.Header.Set("Authorization", "Bearer token-valido")
 	rec := httptest.NewRecorder()
-	NewRouter(svc, fakeProbe{}, nil).ServeHTTP(rec, req)
+	validator := fakeSearchTokenValidator{}
+	NewRouterWithAuth(svc, nil, validator, fakeProbe{}, nil).ServeHTTP(rec, req)
 	return rec
 }
 
