@@ -17,7 +17,6 @@ import (
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/config"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/notes"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/storage"
-	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/users"
 )
 
 const (
@@ -98,9 +97,7 @@ func serve(ctx context.Context, logger *slog.Logger, cfg config.Config) error {
 func newHandler(cfg config.Config, pool *pgxpool.Pool) http.Handler {
 	repo := storage.NewPostgresNotesRepository(pool)
 	svc := notes.NewService(repo, cfg.MaxNoteSize)
-	usersRepo := storage.NewPostgresUserRepository(pool)
-	usersSvc := users.NewService(usersRepo, time.Now)
-	return api.NewRouterWithUsers(svc, usersSvc, pool, cfg.AllowedOrigins)
+	return api.NewRouter(svc, pool, cfg.AllowedOrigins)
 }
 
 func newServer(port int, handler http.Handler) *http.Server {
