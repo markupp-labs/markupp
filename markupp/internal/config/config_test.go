@@ -196,7 +196,7 @@ func TestLoad_SemAuthSecret_RetornaErroExigindoVariavel(t *testing.T) {
 func TestLoad_AuthSecretCurto_RetornaErroComTamanhoEFormato(t *testing.T) {
 	env := fakeEnv{
 		"MARKUPP_DATABASE_URL": urlDeTeste,
-		"MARKUPP_AUTH_SECRET":  "segredo-curto-com-menos-de-32b",
+		"MARKUPP_AUTH_SECRET":  "segredo-curto-com-menos-de-32b", // #nosec G101 -- segredo curto para teste de validacao
 	}
 
 	_, err := config.Load(env.Lookup)

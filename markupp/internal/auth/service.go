@@ -12,6 +12,7 @@ import (
 
 const (
 	maxPasswordLength = 72
+	// #nosec G101 -- hash bcrypt dummy para mitigacao de timing attack
 	dummyPasswordHash = "$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy"
 )
 
