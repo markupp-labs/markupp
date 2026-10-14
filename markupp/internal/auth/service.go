@@ -10,6 +10,11 @@ import (
 	"github.com/google/uuid"
 )
 
+const (
+	maxPasswordLength = 72
+	dummyPasswordHash = "$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy"
+)
+
 // TokenIssuer define o contrato de geração e validação de tokens para o serviço.
 type TokenIssuer interface {
 	GenerateTokenPair(userID, tenantID, role string) (TokenPair, error)
@@ -48,18 +53,21 @@ func NewService(repo Repository, tokens TokenIssuer, hasher PasswordHasher, cfg 
 
 // LoginLocal autentica via email e senha ou inicializa a primeira conta de administrador.
 func (s *Service) LoginLocal(ctx context.Context, email, password string) (TokenPair, error) {
+	if !s.cfg.LocalEnabled {
+		return TokenPair{}, ErrLocalAuthDisabled
+	}
 	normEmail, err := s.validateCredentials(email, password)
 	if err != nil {
 		return TokenPair{}, err
 	}
-	userCount, err := s.repo.CountUsers(ctx)
+	identity, err := s.repo.GetUserIdentity(ctx, "local", normEmail)
 	if err != nil {
-		return TokenPair{}, fmt.Errorf("contar usuarios: %w", err)
+		if errors.Is(err, ErrIdentityNotFound) {
+			return s.handleUnknownUser(ctx, normEmail, password)
+		}
+		return TokenPair{}, fmt.Errorf("buscar identidade local %q: %w", normEmail, err)
 	}
-	if userCount == 0 {
-		return s.bootstrapAdmin(ctx, normEmail, password)
-	}
-	return s.authenticateExistingOrReject(ctx, normEmail, password)
+	return s.verifyPasswordAndIssue(ctx, identity, normEmail, password)
 }
 
 func (s *Service) validateCredentials(email, password string) (string, error) {
@@ -69,76 +77,61 @@ func (s *Service) validateCredentials(email, password string) (string, error) {
 	if strings.TrimSpace(password) == "" {
 		return "", ErrEmptyPassword
 	}
+	if len(password) > maxPasswordLength {
+		return "", fmt.Errorf("senha com %d bytes, maximo %d: %w", len(password), maxPasswordLength, ErrPasswordTooLong)
+	}
 	return strings.ToLower(strings.TrimSpace(email)), nil
 }
 
-func (s *Service) bootstrapAdmin(ctx context.Context, email, password string) (TokenPair, error) {
-	hash, err := s.hasher.Hash(password)
-	if err != nil {
-		return TokenPair{}, fmt.Errorf("hashear senha: %w", err)
-	}
-	userID := s.newID()
-	p := s.buildAccountParams(userID, email, "admin", hash, "auth.register_admin")
-	if err := s.repo.CreateAccountTx(ctx, p); err != nil {
-		return TokenPair{}, fmt.Errorf("criar conta admin: %w", err)
-	}
-	return s.issueAndPersistTokens(ctx, userID, s.cfg.DefaultTenantID, "admin")
-}
-
-func (s *Service) authenticateExistingOrReject(ctx context.Context, email, password string) (TokenPair, error) {
-	identity, err := s.repo.GetUserIdentity(ctx, "local", email)
-	if err != nil {
-		if errors.Is(err, ErrIdentityNotFound) {
-			return s.handleUnknownUser(ctx, email, password)
-		}
-		return TokenPair{}, fmt.Errorf("buscar identidade: %w", err)
-	}
-	return s.verifyPasswordAndIssue(ctx, identity, email, password)
-}
-
 func (s *Service) handleUnknownUser(ctx context.Context, email, password string) (TokenPair, error) {
-	_ = s.auditLoginAttempt(ctx, "", email, "failure")
-	if !s.cfg.RegistrationEnabled {
-		return TokenPair{}, ErrRegistrationDisabled
-	}
-	return s.registerMember(ctx, email, password)
-}
-
-func (s *Service) registerMember(ctx context.Context, email, password string) (TokenPair, error) {
 	hash, err := s.hasher.Hash(password)
 	if err != nil {
-		return TokenPair{}, fmt.Errorf("hashear senha: %w", err)
+		return TokenPair{}, fmt.Errorf("hashear senha para %q: %w", email, err)
 	}
-	userID := s.newID()
-	p := s.buildAccountParams(userID, email, "member", hash, "auth.register")
-	if err := s.repo.CreateAccountTx(ctx, p); err != nil {
-		return TokenPair{}, fmt.Errorf("criar membro: %w", err)
+	p := s.buildAccountParams(email, hash)
+	user, err := s.repo.CreateAccountTx(ctx, p)
+	if err != nil {
+		if errors.Is(err, ErrRegistrationDisabled) {
+			return s.rejectUnknownUser(ctx, email, password)
+		}
+		return TokenPair{}, fmt.Errorf("criar conta para %q: %w", email, err)
 	}
-	return s.issueAndPersistTokens(ctx, userID, s.cfg.DefaultTenantID, "member")
+	return s.issueAndPersist(ctx, user, "auth.login")
 }
 
-func (s *Service) buildAccountParams(userID, email, role, hash, action string) CreateAccountParams {
+func (s *Service) rejectUnknownUser(ctx context.Context, email, password string) (TokenPair, error) {
+	_ = s.hasher.Compare(dummyPasswordHash, password)
+	if err := s.auditLoginAttempt(ctx, "", email, "failure"); err != nil {
+		return TokenPair{}, fmt.Errorf("auditar login recusado para %q: %w", email, err)
+	}
+	return TokenPair{}, ErrInvalidCredentials
+}
+
+func (s *Service) buildAccountParams(email, hash string) CreateAccountParams {
 	now := s.clock()
+	userID := s.newID()
 	return CreateAccountParams{
-		User:             User{ID: userID, TenantID: s.cfg.DefaultTenantID, Email: email, Role: role, CreatedAt: now, UpdatedAt: now},
-		Identity:         UserIdentity{ID: s.newID(), UserID: userID, Provider: "local", ProviderUserID: email, PasswordHash: hash, CreatedAt: now},
-		InitialVaultID:   s.newID(),
-		InitialVaultName: "Principal",
-		AuditEvent:       AuditEventRecord{ID: s.newID(), TenantID: s.cfg.DefaultTenantID, ActorID: userID, Action: action, Target: email, Result: "success", OccurredAt: now},
+		User:                    User{ID: userID, TenantID: s.cfg.DefaultTenantID, Email: email, CreatedAt: now, UpdatedAt: now},
+		Identity:                UserIdentity{ID: s.newID(), UserID: userID, Provider: "local", ProviderUserID: email, PasswordHash: hash, CreatedAt: now},
+		InitialVaultID:          s.newID(),
+		InitialVaultName:        "Principal",
+		AllowMemberRegistration: s.cfg.RegistrationEnabled,
+		AuditEventID:            s.newID(),
 	}
 }
 
 func (s *Service) verifyPasswordAndIssue(ctx context.Context, identity UserIdentity, email, password string) (TokenPair, error) {
 	if err := s.hasher.Compare(identity.PasswordHash, password); err != nil {
-		_ = s.auditLoginAttempt(ctx, identity.UserID, email, "failure")
+		if auditErr := s.auditLoginAttempt(ctx, identity.UserID, email, "failure"); auditErr != nil {
+			return TokenPair{}, fmt.Errorf("auditar falha de senha para %q: %w", email, auditErr)
+		}
 		return TokenPair{}, ErrInvalidCredentials
 	}
 	user, err := s.repo.GetUserByID(ctx, identity.UserID)
 	if err != nil {
-		return TokenPair{}, fmt.Errorf("buscar usuario: %w", err)
+		return TokenPair{}, fmt.Errorf("buscar usuario %q: %w", identity.UserID, err)
 	}
-	_ = s.auditLoginAttempt(ctx, user.ID, email, "success")
-	return s.issueAndPersistTokens(ctx, user.ID, user.TenantID, user.Role)
+	return s.issueAndPersist(ctx, user, "auth.login")
 }
 
 func (s *Service) auditLoginAttempt(ctx context.Context, actorID, target, result string) error {
@@ -153,21 +146,35 @@ func (s *Service) auditLoginAttempt(ctx context.Context, actorID, target, result
 	})
 }
 
-func (s *Service) issueAndPersistTokens(ctx context.Context, userID, tenantID, role string) (TokenPair, error) {
-	pair, err := s.tokens.GenerateTokenPair(userID, tenantID, role)
-	if err != nil {
-		return TokenPair{}, fmt.Errorf("gerar tokens: %w", err)
-	}
+func (s *Service) buildSessionRecords(user User, pair TokenPair, action string) (RefreshTokenRecord, AuditEventRecord) {
 	now := s.clock()
 	rec := RefreshTokenRecord{
 		TokenHash: HashRefreshToken(pair.RefreshToken),
-		UserID:    userID,
+		UserID:    user.ID,
 		ExpiresAt: now.Add(s.cfg.RefreshExpirationPeriod),
 		Revoked:   false,
 		CreatedAt: now,
 	}
-	if err := s.repo.SaveRefreshToken(ctx, rec); err != nil {
-		return TokenPair{}, fmt.Errorf("salvar refresh token: %w", err)
+	event := AuditEventRecord{
+		ID:         s.newID(),
+		TenantID:   user.TenantID,
+		ActorID:    user.ID,
+		Action:     action,
+		Target:     user.Email,
+		Result:     "success",
+		OccurredAt: now,
+	}
+	return rec, event
+}
+
+func (s *Service) issueAndPersist(ctx context.Context, user User, action string) (TokenPair, error) {
+	pair, err := s.tokens.GenerateTokenPair(user.ID, user.TenantID, user.Role)
+	if err != nil {
+		return TokenPair{}, fmt.Errorf("gerar tokens para %q: %w", user.ID, err)
+	}
+	rec, event := s.buildSessionRecords(user, pair, action)
+	if err := s.repo.IssueSessionTx(ctx, rec, event); err != nil {
+		return TokenPair{}, fmt.Errorf("gravar sessao de %q: %w", user.ID, err)
 	}
 	return pair, nil
 }
@@ -175,22 +182,42 @@ func (s *Service) issueAndPersistTokens(ctx context.Context, userID, tenantID, r
 // RefreshToken valida o refresh token fornecido, revoga-o e emite um novo par de tokens.
 func (s *Service) RefreshToken(ctx context.Context, rawRefreshToken string) (TokenPair, error) {
 	hash := HashRefreshToken(rawRefreshToken)
+	userID, err := s.repo.ConsumeRefreshToken(ctx, hash)
+	if err != nil {
+		return s.handleRefreshFailure(ctx, hash, err)
+	}
+	user, err := s.repo.GetUserByID(ctx, userID)
+	if err != nil {
+		return TokenPair{}, fmt.Errorf("buscar usuario %q do refresh token: %w", userID, err)
+	}
+	return s.issueAndPersist(ctx, user, "auth.refresh")
+}
+
+func (s *Service) handleRefreshFailure(ctx context.Context, hash string, origErr error) (TokenPair, error) {
 	rec, err := s.repo.GetRefreshToken(ctx, hash)
-	if err != nil {
-		return TokenPair{}, err
+	if err == nil && rec.Revoked {
+		return s.handleRefreshReuse(ctx, rec.UserID)
 	}
-	if rec.Revoked {
-		return TokenPair{}, ErrRefreshTokenRevoked
+	return TokenPair{}, origErr
+}
+
+func (s *Service) handleRefreshReuse(ctx context.Context, userID string) (TokenPair, error) {
+	if err := s.repo.RevokeAllUserRefreshTokens(ctx, userID); err != nil {
+		return TokenPair{}, fmt.Errorf("revogar todas sessoes do usuario %q: %w", userID, err)
 	}
-	if rec.ExpiresAt.Before(s.clock()) {
-		return TokenPair{}, ErrRefreshTokenExpired
+	event := AuditEventRecord{
+		ID:         s.newID(),
+		TenantID:   s.cfg.DefaultTenantID,
+		ActorID:    userID,
+		Action:     "auth.refresh_reuse",
+		Target:     userID,
+		Result:     "failure",
+		OccurredAt: s.clock(),
 	}
-	_ = s.repo.RevokeRefreshToken(ctx, hash)
-	user, err := s.repo.GetUserByID(ctx, rec.UserID)
-	if err != nil {
-		return TokenPair{}, fmt.Errorf("buscar usuario do token: %w", err)
+	if err := s.repo.RecordAuditEvent(ctx, event); err != nil {
+		return TokenPair{}, fmt.Errorf("auditar reuso de token do usuario %q: %w", userID, err)
 	}
-	return s.issueAndPersistTokens(ctx, user.ID, user.TenantID, user.Role)
+	return TokenPair{}, ErrRefreshTokenRevoked
 }
 
 // RevokeSession revoga a sessão associada ao refresh token.
