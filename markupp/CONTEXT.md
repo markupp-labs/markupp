@@ -62,3 +62,7 @@ O vínculo entre uma credencial (email e senha ou provedor externo) e a conta de
 A identidade é única globalmente pelo par provedor e identificador do provedor.
 _Avoid_: login, credencial avulsa, perfil
 
+**Convite**:
+O pedido de entrada no tenant que o administrador emite para um email, com papel e
+validade. É de uso único e, aceito, vira a conta do convidado com o primeiro cofre dele.
+_Avoid_: cadastro, convocação, autorregistro
