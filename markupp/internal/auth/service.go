@@ -10,11 +10,7 @@ import (
 	"github.com/google/uuid"
 )
 
-const (
-	maxPasswordLength = 72
-	// #nosec G101 -- hash bcrypt dummy para mitigacao de timing attack
-	dummyPasswordHash = "$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy"
-)
+const maxPasswordLength = 72
 
 // TokenIssuer define o contrato de geração e validação de tokens para o serviço.
 type TokenIssuer interface {
@@ -93,15 +89,16 @@ func (s *Service) handleUnknownUser(ctx context.Context, email, password string)
 	user, err := s.repo.CreateAccountTx(ctx, p)
 	if err != nil {
 		if errors.Is(err, ErrRegistrationDisabled) {
-			return s.rejectUnknownUser(ctx, email, password)
+			return s.rejectUnknownUser(ctx, email)
 		}
 		return TokenPair{}, fmt.Errorf("criar conta para %q: %w", email, err)
 	}
 	return s.issueAndPersist(ctx, user, "auth.login")
 }
 
-func (s *Service) rejectUnknownUser(ctx context.Context, email, password string) (TokenPair, error) {
-	_ = s.hasher.Compare(dummyPasswordHash, password)
+// rejectUnknownUser nao roda bcrypt de novo: o Hash em handleUnknownUser ja igualou o
+// custo ao de uma senha errada, e um segundo bcrypt denunciaria o email inexistente.
+func (s *Service) rejectUnknownUser(ctx context.Context, email string) (TokenPair, error) {
 	if err := s.auditLoginAttempt(ctx, "", email, "failure"); err != nil {
 		return TokenPair{}, fmt.Errorf("auditar login recusado para %q: %w", email, err)
 	}

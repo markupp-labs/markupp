@@ -20,9 +20,6 @@ func (f *fakeHasher) Hash(password string) (string, error) {
 }
 
 func (f *fakeHasher) Compare(hash, password string) error {
-	if hash == "$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy" {
-		return errors.New("dummy mismatch")
-	}
 	if hash != "hash:"+password {
 		return errors.New("senha nao confere")
 	}
