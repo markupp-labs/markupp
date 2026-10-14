@@ -6,9 +6,12 @@ CREATE TABLE users (
     role        TEXT NOT NULL,
     created_at  TIMESTAMPTZ NOT NULL,
     updated_at  TIMESTAMPTZ NOT NULL,
-    CONSTRAINT users_tenant_email_key UNIQUE (tenant_id, email)
+    CONSTRAINT users_tenant_email_key UNIQUE (tenant_id, email),
+    CONSTRAINT users_role_check CHECK (role IN ('admin', 'member'))
 );
 
+-- Unicidade global por (provider, provider_user_id) garante que credenciais locais
+-- identifiquem uma conta unívoca no sistema.
 CREATE TABLE user_identities (
     id                TEXT PRIMARY KEY,
     user_id           TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -41,6 +44,9 @@ CREATE TABLE refresh_tokens (
     created_at  TIMESTAMPTZ NOT NULL
 );
 
+CREATE INDEX refresh_tokens_user_id_idx ON refresh_tokens (user_id);
+CREATE INDEX refresh_tokens_expires_at_idx ON refresh_tokens (expires_at);
+
 CREATE TABLE audit_events (
     id          TEXT PRIMARY KEY,
     tenant_id   TEXT NOT NULL,
@@ -51,8 +57,23 @@ CREATE TABLE audit_events (
     occurred_at TIMESTAMPTZ NOT NULL
 );
 
+CREATE OR REPLACE FUNCTION audit_events_immutable()
+RETURNS TRIGGER AS $$
+BEGIN
+    RAISE EXCEPTION 'tabela audit_events e insert-only: operacoes de UPDATE ou DELETE sao proibidas';
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER audit_events_prevent_mutation
+BEFORE UPDATE OR DELETE ON audit_events
+FOR EACH ROW EXECUTE FUNCTION audit_events_immutable();
+
 -- +goose Down
+DROP TRIGGER IF EXISTS audit_events_prevent_mutation ON audit_events;
+DROP FUNCTION IF EXISTS audit_events_immutable();
 DROP TABLE IF EXISTS audit_events;
+DROP INDEX IF EXISTS refresh_tokens_expires_at_idx;
+DROP INDEX IF EXISTS refresh_tokens_user_id_idx;
 DROP TABLE IF EXISTS refresh_tokens;
 DROP TABLE IF EXISTS vault_members;
 DROP TABLE IF EXISTS vaults;

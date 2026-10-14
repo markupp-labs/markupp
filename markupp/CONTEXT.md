@@ -56,3 +56,9 @@ _Avoid_: hierarquia, taxonomia, classificação automática
 O serviço que lê o plano de registro e escreve o plano de recuperação. São dois, o
 determinístico e o de embedding.
 _Avoid_: worker, processador, pipeline
+
+**Identidade**:
+O vínculo entre uma credencial (email e senha ou provedor externo) e a conta de um usuário.
+A identidade é única globalmente pelo par provedor e identificador do provedor.
+_Avoid_: login, credencial avulsa, perfil
+
