@@ -1,6 +1,6 @@
 -- +goose Up
 
--- Papel da aplicação nas transações de dados (ADR-0016). Sem login: a conexão troca
+-- Papel da aplicação nas transações de dados (ADR-0034). Sem login: a conexão troca
 -- para ele com SET LOCAL ROLE, e como não é superusuário nem dono das tabelas, o RLS
 -- vale sem FORCE. Login e refresh rodam antes de existir tenant e ficam no papel da
 -- conexão. O papel é do cluster, então sobrevive a bancos criados em paralelo.
