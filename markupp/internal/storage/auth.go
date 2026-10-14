@@ -59,13 +59,16 @@ func (r *PostgresAuthRepository) commitAccountTx(ctx context.Context, qtx *gen.Q
 	return user, adoptExistingVaults(ctx, qtx, user, action)
 }
 
-// adoptExistingVaults dá ao primeiro admin os cofres que já existiam no tenant, que
-// só podem ser os criados pela migração para as notas da v1.0.0-rc.1.
+// adoptExistingVaults dá ao primeiro admin os cofres que já existiam, que só podem ser
+// os criados pela migração para as notas da v1.0.0-rc.1. O vínculo nasce 1 ms depois
+// da conta para o cofre criado com ela continuar sendo o padrão do admin.
 func adoptExistingVaults(ctx context.Context, qtx *gen.Queries, user auth.User, action string) error {
 	if action != "auth.register_admin" {
 		return nil
 	}
-	err := qtx.JoinTenantVaults(ctx, gen.JoinTenantVaultsParams{UserID: user.ID, TenantID: user.TenantID})
+	err := qtx.AdoptLegacyVaults(ctx, gen.AdoptLegacyVaultsParams{
+		TenantID: user.TenantID, UserID: user.ID, CreatedAt: user.CreatedAt.Add(time.Millisecond),
+	})
 	if err != nil {
 		return fmt.Errorf("dar ao admin %q os cofres do tenant %q: %w", user.ID, user.TenantID, err)
 	}

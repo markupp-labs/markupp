@@ -28,6 +28,28 @@ func (q *Queries) AddVaultMember(ctx context.Context, arg AddVaultMemberParams) 
 	return err
 }
 
+const adoptLegacyVaults = `-- name: AdoptLegacyVaults :exec
+WITH moved AS (
+    UPDATE vaults SET tenant_id = $3 RETURNING id
+)
+INSERT INTO vault_members (vault_id, user_id, created_at)
+SELECT id, $1, $2 FROM moved
+ON CONFLICT DO NOTHING
+`
+
+type AdoptLegacyVaultsParams struct {
+	UserID    string
+	CreatedAt time.Time
+	TenantID  string
+}
+
+// Só roda para o primeiro admin, quando os únicos cofres são os da migração das notas
+// da rc.1: move todos para o tenant dele, e o ON UPDATE CASCADE leva as notas junto.
+func (q *Queries) AdoptLegacyVaults(ctx context.Context, arg AdoptLegacyVaultsParams) error {
+	_, err := q.db.Exec(ctx, adoptLegacyVaults, arg.UserID, arg.CreatedAt, arg.TenantID)
+	return err
+}
+
 const claimInvite = `-- name: ClaimInvite :one
 UPDATE user_invites
 SET accepted_at = $1
@@ -243,25 +265,6 @@ func (q *Queries) GetUserIdentity(ctx context.Context, arg GetUserIdentityParams
 		&i.CreatedAt,
 	)
 	return i, err
-}
-
-const joinTenantVaults = `-- name: JoinTenantVaults :exec
-INSERT INTO vault_members (vault_id, user_id, created_at)
-SELECT id, $1, clock_timestamp() FROM vaults
-WHERE tenant_id = $2
-ON CONFLICT DO NOTHING
-`
-
-type JoinTenantVaultsParams struct {
-	UserID   string
-	TenantID string
-}
-
-// clock_timestamp, e não o instante da conta, deixa o cofre criado com o usuário
-// como o mais antigo dele, que é o padrão das notas sem cofre informado.
-func (q *Queries) JoinTenantVaults(ctx context.Context, arg JoinTenantVaultsParams) error {
-	_, err := q.db.Exec(ctx, joinTenantVaults, arg.UserID, arg.TenantID)
-	return err
 }
 
 const lockFirstAdmin = `-- name: LockFirstAdmin :exec

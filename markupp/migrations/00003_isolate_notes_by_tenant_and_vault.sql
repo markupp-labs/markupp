@@ -25,8 +25,9 @@ END
 $$;
 -- +goose StatementEnd
 
--- Notas da v1.0.0-rc.1 não tinham cofre. Vão para "Importadas" no tenant padrão, e o
--- primeiro administrador vira membro dele ao ser criado.
+-- Notas da v1.0.0-rc.1 não tinham cofre. Vão para "Importadas", e o primeiro
+-- administrador leva o cofre para o tenant dele e vira membro ao ser criado, porque só
+-- a aplicação conhece o tenant padrão configurado.
 INSERT INTO vaults (id, tenant_id, name, created_at)
 SELECT 'importadas', 'default', 'Importadas', now()
 WHERE EXISTS (SELECT 1 FROM notes);
@@ -40,7 +41,7 @@ ALTER TABLE notes
     ALTER COLUMN tenant_id SET DEFAULT current_setting('markupp.tenant_id', true),
     ALTER COLUMN vault_id SET NOT NULL,
     ADD CONSTRAINT notes_vault_fkey FOREIGN KEY (tenant_id, vault_id)
-        REFERENCES vaults (tenant_id, id) ON DELETE CASCADE,
+        REFERENCES vaults (tenant_id, id) ON DELETE CASCADE ON UPDATE CASCADE,
     DROP CONSTRAINT notes_path_key,
     ADD CONSTRAINT notes_vault_path_key UNIQUE (vault_id, path);
 

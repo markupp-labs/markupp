@@ -56,12 +56,14 @@ WHERE user_id = $1;
 INSERT INTO audit_events (id, tenant_id, actor_id, action, target, result, occurred_at)
 VALUES ($1, $2, $3, $4, $5, $6, $7);
 
--- clock_timestamp, e não o instante da conta, deixa o cofre criado com o usuário
--- como o mais antigo dele, que é o padrão das notas sem cofre informado.
--- name: JoinTenantVaults :exec
+-- Só roda para o primeiro admin, quando os únicos cofres são os da migração das notas
+-- da rc.1: move todos para o tenant dele, e o ON UPDATE CASCADE leva as notas junto.
+-- name: AdoptLegacyVaults :exec
+WITH moved AS (
+    UPDATE vaults SET tenant_id = sqlc.arg(tenant_id) RETURNING id
+)
 INSERT INTO vault_members (vault_id, user_id, created_at)
-SELECT id, sqlc.arg(user_id), clock_timestamp() FROM vaults
-WHERE tenant_id = sqlc.arg(tenant_id)
+SELECT id, sqlc.arg(user_id), sqlc.arg(created_at) FROM moved
 ON CONFLICT DO NOTHING;
 
 -- Marca o convite como aceito numa escrita só, e devolve o que a conta herda dele.
