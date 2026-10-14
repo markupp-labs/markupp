@@ -31,6 +31,14 @@ type fakeAuthService struct {
 	refreshCalls int
 	revokeCalls  int
 	accountCalls int
+	acceptPair   auth.TokenPair
+	acceptErr    error
+	acceptToken  string
+}
+
+func (f *fakeAuthService) AcceptInvite(ctx context.Context, token, password string) (auth.TokenPair, error) {
+	f.acceptToken = token
+	return f.acceptPair, f.acceptErr
 }
 
 func (f *fakeAuthService) LoginLocal(ctx context.Context, email, password string) (auth.TokenPair, error) {
@@ -357,4 +365,39 @@ func TestAuthHandler_Me_ErroInterno_Retorna500(t *testing.T) {
 
 	assert.Equal(t, http.StatusInternalServerError, rec.Code)
 	assert.Contains(t, rec.Body.String(), "internal")
+}
+
+func postAccept(router http.Handler, body string) *httptest.ResponseRecorder {
+	req := httptest.NewRequest(http.MethodPost, "/auth/invites/accept", bytes.NewBufferString(body))
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	return rec
+}
+
+func TestAuthHandler_AcceptInvite_Sucesso_DevolveSessao(t *testing.T) {
+	svc := &fakeAuthService{acceptPair: auth.TokenPair{AccessToken: "jwt-novo", RefreshToken: "r", ExpiresIn: 900}}
+
+	rec := postAccept(setupAuthRouter(svc, nil), `{"token":"tok-1","password":"senhaNova"}`)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, "tok-1", svc.acceptToken)
+	assert.Contains(t, rec.Body.String(), "jwt-novo")
+}
+
+func TestAuthHandler_AcceptInvite_ConviteInvalido_Retorna400(t *testing.T) {
+	svc := &fakeAuthService{acceptErr: auth.ErrInviteInvalid}
+
+	rec := postAccept(setupAuthRouter(svc, nil), `{"token":"velho","password":"senhaNova"}`)
+
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+	assert.Contains(t, rec.Body.String(), "invalid_invite")
+}
+
+func TestAuthHandler_AcceptInvite_EmailJaTemConta_Retorna409(t *testing.T) {
+	svc := &fakeAuthService{acceptErr: auth.ErrUserAlreadyExists}
+
+	rec := postAccept(setupAuthRouter(svc, nil), `{"token":"tok-1","password":"senhaNova"}`)
+
+	assert.Equal(t, http.StatusConflict, rec.Code)
+	assert.Contains(t, rec.Body.String(), "already_exists")
 }
