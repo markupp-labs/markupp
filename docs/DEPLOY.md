@@ -98,22 +98,26 @@ make test
 
 ## Validar
 
-Smoke test pela API:
+Smoke test pela API. Com o banco vazio, o primeiro login cria o administrador:
 
 ```sh
-ID=$(curl -s -X POST http://localhost:8080/notes \
+TOKEN=$(curl -s -X POST http://localhost:8080/auth/login \
   -H 'Content-Type: application/json' \
+  -d '{"email":"admin@exemplo.dev","password":"troque-esta-senha"}' \
+  | grep -o '"access_token":"[^"]*"' | cut -d'"' -f4)
+ID=$(curl -s -X POST http://localhost:8080/notes \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
   -d '{"path":"validacao.md","content":"oi"}' \
   | grep -o '"id":"[^"]*"' | cut -d'"' -f4)
-curl -s http://localhost:8080/notes/$ID
-curl -s -X DELETE http://localhost:8080/notes/$ID -w '%{http_code}\n'
+curl -s -H "Authorization: Bearer $TOKEN" http://localhost:8080/notes/$ID
+curl -s -X DELETE -H "Authorization: Bearer $TOKEN" http://localhost:8080/notes/$ID -w '%{http_code}\n'
 ```
 
-Esperado: `POST` retorna JSON com `id` UUID, `GET` traz a nota, `DELETE` responde `204`. Rotas
-completas em `markupp/openapi.yaml`.
+Esperado: o login devolve `access_token`, `POST` retorna JSON com `id` UUID, `GET` traz a nota,
+`DELETE` responde `204`, e qualquer rota de notas sem o token responde `401`. Rotas completas em
+`markupp/openapi.yaml`.
 
 ## Aviso
 
-O servidor não tem autenticação ([ADR-0005](adrs/ADR-0005-seguranca-fora-do-mvp.md)). Não
-exponha publicamente antes de ela existir: qualquer um com acesso à porta consegue ler, criar e
-apagar notas.
+Com o banco vazio, quem fizer o primeiro login vira administrador ([ADR-0020](adrs/ADR-0020-autenticacao-provedores-configuraveis.md)).
+Faça esse login antes de expor o servidor publicamente.
