@@ -87,6 +87,106 @@ paths:
       responses:
         '204':
           description: Sessão encerrada, inclusive quando o token já não valia
+  /auth/invites/accept:
+    post:
+      summary: Aceita um convite e cria a conta local
+      description: >
+        Troca o token do convite e a senha escolhida por uma conta no tenant e com o
+        papel do convite, com o primeiro cofre, e abre a sessão. O convite é de uso único.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AcceptInviteRequest'
+      responses:
+        '200':
+          description: Conta criada e sessão aberta
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenPairResponse'
+        '400':
+          description: Convite inexistente, vencido ou já aceito (invalid_invite), ou senha inválida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: O email do convite já tem conta (already_exists)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /users:
+    get:
+      summary: Lista os usuários do tenant
+      description: Exige papel admin no token.
+      responses:
+        '200':
+          description: Usuários do tenant, por email
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /users/invites:
+    get:
+      summary: Lista os convites do tenant
+      description: Exige papel admin no token. O token do convite nunca volta aqui.
+      responses:
+        '200':
+          description: Convites do mais recente ao mais antigo
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/InviteResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      summary: Convida um email para o tenant
+      description: >
+        Exige papel admin no token. Devolve o token do convite uma única vez; sem
+        provedor de email, o administrador o repassa ao convidado. Vale por 7 dias.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InviteRequest'
+      responses:
+        '201':
+          description: Convite emitido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IssuedInviteResponse'
+        '400':
+          description: Email ou papel inválido (invalid_request)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: O email já é de um usuário do tenant (already_member)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /auth/me:
     get:
       summary: Devolve a conta autenticada
@@ -122,7 +222,9 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
     post:
       summary: Cria uma nova nota
-      description: Cria uma nota com caminho e conteúdo fornecidos.
+      description: >
+        Cria uma nota com caminho e conteúdo fornecidos, no cofre informado ou no cofre
+        mais antigo do usuário. O caminho é único dentro do cofre.
       requestBody:
         required: true
         content:
@@ -140,6 +242,12 @@ paths:
                 $ref: '#/components/schemas/NoteResponse'
         '400':
           description: Requisição inválida ou dados de nota inválidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Cofre inexistente ou de que o usuário não é membro (vault_forbidden)
           content:
             application/json:
               schema:
@@ -370,7 +478,62 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/ErrorResponse'
+    Forbidden:
+      description: O token não tem papel admin (forbidden)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
   schemas:
+    AcceptInviteRequest:
+      type: object
+      required: [token, password]
+      properties:
+        token:
+          type: string
+        password:
+          type: string
+          maxLength: 72
+    InviteRequest:
+      type: object
+      required: [email, role]
+      properties:
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+          enum: [admin, member]
+    InviteResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+        role:
+          type: string
+          enum: [admin, member]
+        invited_by:
+          type: string
+        expires_at:
+          type: string
+          format: date-time
+        accepted_at:
+          type: string
+          format: date-time
+          description: Ausente enquanto o convite está pendente
+        created_at:
+          type: string
+          format: date-time
+    IssuedInviteResponse:
+      allOf:
+        - $ref: '#/components/schemas/InviteResponse'
+        - type: object
+          properties:
+            token:
+              type: string
+              description: Token do convite, devolvido só nesta resposta
     LoginRequest:
       type: object
       required: [email, password]
@@ -417,6 +580,10 @@ components:
         - path
         - content
       properties:
+        vault_id:
+          type: string
+          description: Cofre de destino. Sem ele, a nota vai para o cofre mais antigo do usuário.
+          example: "3b241101-e2bb-4255-8caf-4136c566a962"
         path:
           type: string
           description: Caminho/identificador do arquivo de nota
@@ -462,6 +629,10 @@ components:
           type: string
           description: Identificador único da nota
           example: "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+        vault_id:
+          type: string
+          description: Cofre da nota
+          example: "3b241101-e2bb-4255-8caf-4136c566a962"
         path:
           type: string
           description: Caminho/identificador do arquivo de nota
@@ -487,6 +658,10 @@ components:
           type: string
           description: Identificador único da nota
           example: "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+        vault_id:
+          type: string
+          description: Cofre da nota
+          example: "3b241101-e2bb-4255-8caf-4136c566a962"
         path:
           type: string
           description: Caminho/identificador do arquivo de nota
