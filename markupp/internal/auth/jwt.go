@@ -168,8 +168,9 @@ func generateRandomHex(n int) (string, error) {
 	return hex.EncodeToString(bytes), nil
 }
 
-// HashRefreshToken calcula o hash SHA-256 do refresh token para armazenamento seguro.
-func HashRefreshToken(token string) string {
+// HashOpaqueToken calcula o hash SHA-256 de um token opaco (refresh ou convite), que
+// é o que o banco guarda no lugar do token.
+func HashOpaqueToken(token string) string {
 	h := sha256.Sum256([]byte(token))
 	return hex.EncodeToString(h[:])
 }

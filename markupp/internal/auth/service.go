@@ -147,7 +147,7 @@ func (s *Service) auditLoginAttempt(ctx context.Context, actorID, target, result
 func (s *Service) buildSessionRecords(user User, pair TokenPair, action string) (RefreshTokenRecord, AuditEventRecord) {
 	now := s.clock()
 	rec := RefreshTokenRecord{
-		TokenHash: HashRefreshToken(pair.RefreshToken),
+		TokenHash: HashOpaqueToken(pair.RefreshToken),
 		UserID:    user.ID,
 		ExpiresAt: now.Add(s.cfg.RefreshExpirationPeriod),
 		Revoked:   false,
@@ -179,7 +179,7 @@ func (s *Service) issueAndPersist(ctx context.Context, user User, action string)
 
 // RefreshToken valida o refresh token fornecido, revoga-o e emite um novo par de tokens.
 func (s *Service) RefreshToken(ctx context.Context, rawRefreshToken string) (TokenPair, error) {
-	hash := HashRefreshToken(rawRefreshToken)
+	hash := HashOpaqueToken(rawRefreshToken)
 	userID, err := s.repo.ConsumeRefreshToken(ctx, hash)
 	if err != nil {
 		return s.handleRefreshFailure(ctx, hash, err)
@@ -227,7 +227,7 @@ func (s *Service) refreshReuseEvent(user User) AuditEventRecord {
 
 // RevokeSession revoga a sessão associada ao refresh token.
 func (s *Service) RevokeSession(ctx context.Context, rawRefreshToken string) error {
-	hash := HashRefreshToken(rawRefreshToken)
+	hash := HashOpaqueToken(rawRefreshToken)
 	return s.repo.RevokeRefreshToken(ctx, hash)
 }
 

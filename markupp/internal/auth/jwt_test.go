@@ -77,10 +77,10 @@ func TestTokenCodec_ValidateToken_FormatoInvalido(t *testing.T) {
 	}
 }
 
-func TestHashRefreshToken_Consistencia(t *testing.T) {
+func TestHashOpaqueToken_Consistencia(t *testing.T) {
 	token := "token-aleatorio-para-teste"
-	hash1 := auth.HashRefreshToken(token)
-	hash2 := auth.HashRefreshToken(token)
+	hash1 := auth.HashOpaqueToken(token)
+	hash2 := auth.HashOpaqueToken(token)
 
 	assert.NotEmpty(t, hash1)
 	assert.Equal(t, hash1, hash2)
