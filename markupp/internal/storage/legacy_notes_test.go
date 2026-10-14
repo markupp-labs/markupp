@@ -80,3 +80,18 @@ func segundaContaNoTenant(primeira auth.CreateAccountParams) auth.CreateAccountP
 	p.InitialVaultID, p.AuditEventID = "vault-id-2", "audit-id-2"
 	return p
 }
+
+func TestMigracao_TenantPadraoConfigurado_PrimeiroAdminLevaOCofreImportado(t *testing.T) {
+	db := bancoDaRC1ComNota(t)
+	require.NoError(t, storage.Migrate(context.Background(), db))
+	params := sampleAccountParams()
+	params.User.TenantID = "empresa"
+	_, err := storage.NewPostgresAuthRepository(db).CreateAccountTx(context.Background(), params)
+	require.NoError(t, err)
+
+	ctx := identity.WithActor(context.Background(), identity.Actor{UserID: params.User.ID, TenantID: "empresa", Role: "admin"})
+	lista, err := storage.NewPostgresNotesRepository(db).ListNotes(ctx)
+
+	require.NoError(t, err)
+	require.Len(t, lista, 1, "MARKUPP_DEFAULT_TENANT_ID diferente de default nao pode esconder as notas da rc1")
+}
