@@ -70,3 +70,7 @@ UPDATE user_invites
 SET accepted_at = sqlc.arg(now)
 WHERE token_hash = sqlc.arg(token_hash) AND accepted_at IS NULL AND expires_at > sqlc.arg(now)
 RETURNING tenant_id, email, role;
+
+-- Serializa a criação de contas para que só o primeiro usuário vire admin.
+-- name: LockFirstAdmin :exec
+SELECT pg_advisory_xact_lock(sqlc.arg(key)::bigint);

@@ -33,24 +33,16 @@ func NewPostgresAuthRepository(pool *pgxpool.Pool) *PostgresAuthRepository {
 
 // CreateAccountTx cria atomicamente usuário, identidade, cofre padrão e auditoria com lock para primeiro admin.
 func (r *PostgresAuthRepository) CreateAccountTx(ctx context.Context, p auth.CreateAccountParams) (auth.User, error) {
-	tx, err := r.pool.Begin(ctx)
-	if err != nil {
-		return auth.User{}, fmt.Errorf("iniciar transacao para %q: %w", p.User.Email, err)
-	}
-	defer func() { _ = tx.Rollback(ctx) }()
-
-	if _, err := tx.Exec(ctx, "SELECT pg_advisory_xact_lock($1)", firstAdminLockKey); err != nil {
-		return auth.User{}, fmt.Errorf("adquirir lock de bootstrap para %q: %w", p.User.Email, err)
-	}
-
-	user, err := r.commitAccountTx(ctx, r.q.WithTx(tx), p)
-	if err != nil {
-		return auth.User{}, err
-	}
-	if err := tx.Commit(ctx); err != nil {
-		return auth.User{}, fmt.Errorf("comitar conta para %q: %w", p.User.Email, err)
-	}
-	return user, nil
+	var user auth.User
+	err := r.inTx(ctx, func(qtx *gen.Queries) error {
+		if err := qtx.LockFirstAdmin(ctx, firstAdminLockKey); err != nil {
+			return fmt.Errorf("adquirir lock de bootstrap para %q: %w", p.User.Email, err)
+		}
+		var err error
+		user, err = r.commitAccountTx(ctx, qtx, p)
+		return err
+	})
+	return user, err
 }
 
 func (r *PostgresAuthRepository) commitAccountTx(ctx context.Context, qtx *gen.Queries, p auth.CreateAccountParams) (auth.User, error) {
@@ -249,17 +241,9 @@ func (r *PostgresAuthRepository) ConsumeRefreshToken(ctx context.Context, tokenH
 
 // IssueSessionTx grava o refresh token e a auditoria de login juntos na mesma transacao.
 func (r *PostgresAuthRepository) IssueSessionTx(ctx context.Context, rec auth.RefreshTokenRecord, event auth.AuditEventRecord) error {
-	tx, err := r.pool.Begin(ctx)
-	if err != nil {
-		return fmt.Errorf("iniciar transacao de sessao: %w", err)
-	}
-	defer func() { _ = tx.Rollback(ctx) }()
-
-	qtx := r.q.WithTx(tx)
-	if err := r.saveSessionRows(ctx, qtx, rec, event); err != nil {
-		return err
-	}
-	return tx.Commit(ctx)
+	return r.inTx(ctx, func(qtx *gen.Queries) error {
+		return r.saveSessionRows(ctx, qtx, rec, event)
+	})
 }
 
 func (r *PostgresAuthRepository) saveSessionRows(ctx context.Context, qtx *gen.Queries, rec auth.RefreshTokenRecord, event auth.AuditEventRecord) error {

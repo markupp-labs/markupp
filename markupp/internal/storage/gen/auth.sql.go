@@ -264,6 +264,16 @@ func (q *Queries) JoinTenantVaults(ctx context.Context, arg JoinTenantVaultsPara
 	return err
 }
 
+const lockFirstAdmin = `-- name: LockFirstAdmin :exec
+SELECT pg_advisory_xact_lock($1::bigint)
+`
+
+// Serializa a criação de contas para que só o primeiro usuário vire admin.
+func (q *Queries) LockFirstAdmin(ctx context.Context, key int64) error {
+	_, err := q.db.Exec(ctx, lockFirstAdmin, key)
+	return err
+}
+
 const revokeAllUserRefreshTokens = `-- name: RevokeAllUserRefreshTokens :exec
 UPDATE refresh_tokens
 SET revoked = TRUE
