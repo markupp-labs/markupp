@@ -9,7 +9,10 @@ import (
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/config"
 )
 
-const urlDeTeste = "postgres://markupp@db:5432/markupp"
+const (
+	urlDeTeste           = "postgres://markupp@db:5432/markupp"
+	segredoDeTesteValido = "12345678901234567890123456789012"
+)
 
 // fakeEnv faz o papel das variáveis de ambiente do processo, com a mesma
 // assinatura de os.LookupEnv.
@@ -153,7 +156,7 @@ func TestLoad_VariaveisDeAutenticacao_LeTodosOsCampos(t *testing.T) {
 }
 
 func TestLoad_JWTExpirationInvalido_RetornaErroComOValor(t *testing.T) {
-	env := fakeEnv{"MARKUPP_DATABASE_URL": urlDeTeste, "MARKUPP_JWT_EXPIRATION_MINUTES": "zero"}
+	env := fakeEnv{"MARKUPP_DATABASE_URL": urlDeTeste, "MARKUPP_AUTH_SECRET": segredoDeTesteValido, "MARKUPP_JWT_EXPIRATION_MINUTES": "zero"}
 
 	_, err := config.Load(env.Lookup)
 
@@ -163,11 +166,63 @@ func TestLoad_JWTExpirationInvalido_RetornaErroComOValor(t *testing.T) {
 }
 
 func TestLoad_RefreshExpirationInvalido_RetornaErroComOValor(t *testing.T) {
-	env := fakeEnv{"MARKUPP_DATABASE_URL": urlDeTeste, "MARKUPP_REFRESH_EXPIRATION_DAYS": "dez"}
+	env := fakeEnv{"MARKUPP_DATABASE_URL": urlDeTeste, "MARKUPP_AUTH_SECRET": segredoDeTesteValido, "MARKUPP_REFRESH_EXPIRATION_DAYS": "dez"}
 
 	_, err := config.Load(env.Lookup)
 
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "MARKUPP_REFRESH_EXPIRATION_DAYS")
 	assert.Contains(t, err.Error(), "dez")
+}
+
+func TestLoad_SemAuthSecret_RetornaErroExigindoVariavel(t *testing.T) {
+	env := fakeEnv{"MARKUPP_DATABASE_URL": urlDeTeste}
+
+	_, err := config.Load(env.Lookup)
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "MARKUPP_AUTH_SECRET")
+	assert.Contains(t, err.Error(), "32 bytes")
+}
+
+func TestLoad_AuthSecretCurto_RetornaErroComTamanhoEFormato(t *testing.T) {
+	env := fakeEnv{
+		"MARKUPP_DATABASE_URL": urlDeTeste,
+		"MARKUPP_AUTH_SECRET":  "segredo-curto-com-menos-de-32b",
+	}
+
+	_, err := config.Load(env.Lookup)
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "MARKUPP_AUTH_SECRET")
+	assert.Contains(t, err.Error(), "30 bytes")
+	assert.Contains(t, err.Error(), "32 bytes")
+}
+
+func TestLoad_BooleanoInvalido_RetornaErroComChaveValorEFormato(t *testing.T) {
+	env := fakeEnv{
+		"MARKUPP_DATABASE_URL":       urlDeTeste,
+		"MARKUPP_AUTH_SECRET":        segredoDeTesteValido,
+		"MARKUPP_AUTH_LOCAL_ENABLED": "sim",
+	}
+
+	_, err := config.Load(env.Lookup)
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "MARKUPP_AUTH_LOCAL_ENABLED")
+	assert.Contains(t, err.Error(), "sim")
+	assert.Contains(t, err.Error(), "esperado booleano")
+}
+
+func TestLoad_BooleanoEmMaiusculo_InterpretaCorretamente(t *testing.T) {
+	env := fakeEnv{
+		"MARKUPP_DATABASE_URL":       urlDeTeste,
+		"MARKUPP_AUTH_SECRET":        segredoDeTesteValido,
+		"MARKUPP_AUTH_LOCAL_ENABLED": "TRUE",
+	}
+
+	cfg, err := config.Load(env.Lookup)
+
+	require.NoError(t, err)
+	assert.True(t, cfg.LocalAuthEnabled)
 }
