@@ -203,19 +203,26 @@ func (s *Service) handleRefreshReuse(ctx context.Context, userID string) (TokenP
 	if err := s.repo.RevokeAllUserRefreshTokens(ctx, userID); err != nil {
 		return TokenPair{}, fmt.Errorf("revogar todas sessoes do usuario %q: %w", userID, err)
 	}
-	event := AuditEventRecord{
-		ID:         s.newID(),
-		TenantID:   s.cfg.DefaultTenantID,
-		ActorID:    userID,
-		Action:     "auth.refresh_reuse",
-		Target:     userID,
-		Result:     "failure",
-		OccurredAt: s.clock(),
+	user, err := s.repo.GetUserByID(ctx, userID)
+	if err != nil {
+		return TokenPair{}, fmt.Errorf("buscar usuario %q do token reusado: %w", userID, err)
 	}
-	if err := s.repo.RecordAuditEvent(ctx, event); err != nil {
+	if err := s.repo.RecordAuditEvent(ctx, s.refreshReuseEvent(user)); err != nil {
 		return TokenPair{}, fmt.Errorf("auditar reuso de token do usuario %q: %w", userID, err)
 	}
 	return TokenPair{}, ErrRefreshTokenRevoked
+}
+
+func (s *Service) refreshReuseEvent(user User) AuditEventRecord {
+	return AuditEventRecord{
+		ID:         s.newID(),
+		TenantID:   user.TenantID,
+		ActorID:    user.ID,
+		Action:     "auth.refresh_reuse",
+		Target:     user.ID,
+		Result:     "failure",
+		OccurredAt: s.clock(),
+	}
 }
 
 // RevokeSession revoga a sessão associada ao refresh token.
