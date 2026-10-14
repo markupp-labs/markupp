@@ -5,11 +5,6 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 )
 
-// NewRouter monta as rotas do servidor sem autenticação (para compatibilidade).
-func NewRouter(svc NoteService, probe StorageProbe, allowedOrigins []string) chi.Router {
-	return NewRouterWithAuth(svc, nil, nil, probe, allowedOrigins)
-}
-
 // NewRouterWithAuth monta o roteador com sonda, rotas de notas e rotas de autenticação.
 func NewRouterWithAuth(
 	svc NoteService,
@@ -18,19 +13,31 @@ func NewRouterWithAuth(
 	probe StorageProbe,
 	allowedOrigins []string,
 ) chi.Router {
+	if tokenValidator == nil {
+		panic("api: tokenValidator obrigatorio para proteger rotas de notas")
+	}
+	r := newBaseRouter(probe, allowedOrigins)
+	if authSvc != nil {
+		mountAuthRoutes(r, authSvc, tokenValidator)
+	}
+	mountProtectedNotesRoutes(r, svc, tokenValidator)
+	return r
+}
+
+func newBaseRouter(probe StorageProbe, allowedOrigins []string) chi.Router {
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
 	r.Use(middleware.Recoverer)
 	r.Use(allowOrigins(allowedOrigins))
-
 	r.Get("/healthz", healthz(probe))
-
-	if authSvc != nil {
-		mountAuthRoutes(r, authSvc, tokenValidator)
-	}
-
-	mountNotesRoutes(r, svc)
 	return r
+}
+
+func mountProtectedNotesRoutes(r chi.Router, svc NoteService, tokenValidator TokenValidator) {
+	r.Group(func(g chi.Router) {
+		g.Use(RequireAuth(tokenValidator))
+		mountNotesRoutes(g, svc)
+	})
 }
 
 func mountAuthRoutes(r chi.Router, authSvc AuthService, tokenValidator TokenValidator) {

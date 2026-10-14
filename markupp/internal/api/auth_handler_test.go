@@ -51,6 +51,9 @@ func (f *fakeAuthService) GetAccount(ctx context.Context, userID string) (auth.U
 }
 
 func setupAuthRouter(svc api.AuthService, validator api.TokenValidator) http.Handler {
+	if validator == nil {
+		validator = &fakeTokenValidator{}
+	}
 	return api.NewRouterWithAuth(&fakeService{}, svc, validator, &fakeProbe{}, nil)
 }
 
