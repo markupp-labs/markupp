@@ -38,7 +38,7 @@ func TestMigracao_NotaDaRC1_PrimeiroAdminEnxergaNoCofreImportadas(t *testing.T) 
 	db := bancoDaRC1ComNota(t)
 	require.NoError(t, storage.Migrate(context.Background(), db))
 	params := sampleAccountParams()
-	params.User.TenantID = "default"
+	params.BootstrapTenantID = "default"
 	_, err := storage.NewPostgresAuthRepository(db).CreateAccountTx(context.Background(), params)
 	require.NoError(t, err)
 
@@ -59,7 +59,7 @@ func TestCreateAccountTx_SegundoUsuario_NaoEntraNosCofresExistentes(t *testing.T
 	require.NoError(t, storage.Migrate(context.Background(), db))
 	repo := storage.NewPostgresAuthRepository(db)
 	admin := sampleAccountParams()
-	admin.User.TenantID = "default"
+	admin.BootstrapTenantID = "default"
 	_, err := repo.CreateAccountTx(context.Background(), admin)
 	require.NoError(t, err)
 	membro := segundaContaNoTenant(admin)
@@ -85,7 +85,7 @@ func TestMigracao_TenantPadraoConfigurado_PrimeiroAdminLevaOCofreImportado(t *te
 	db := bancoDaRC1ComNota(t)
 	require.NoError(t, storage.Migrate(context.Background(), db))
 	params := sampleAccountParams()
-	params.User.TenantID = "empresa"
+	params.BootstrapTenantID = "empresa"
 	_, err := storage.NewPostgresAuthRepository(db).CreateAccountTx(context.Background(), params)
 	require.NoError(t, err)
 

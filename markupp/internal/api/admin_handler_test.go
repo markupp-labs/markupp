@@ -18,7 +18,7 @@ import (
 )
 
 type fakeAdminService struct {
-	users      []auth.User
+	members    []auth.Member
 	invites    []auth.Invite
 	issued     auth.IssuedInvite
 	issueErr   error
@@ -26,8 +26,8 @@ type fakeAdminService struct {
 	issuedRole string
 }
 
-func (f *fakeAdminService) ListUsers(ctx context.Context) ([]auth.User, error) {
-	return f.users, nil
+func (f *fakeAdminService) ListMembers(ctx context.Context) ([]auth.Member, error) {
+	return f.members, nil
 }
 
 func (f *fakeAdminService) ListInvites(ctx context.Context) ([]auth.Invite, error) {
@@ -40,8 +40,9 @@ func (f *fakeAdminService) IssueInvite(ctx context.Context, inviter identity.Act
 }
 
 func adminRequest(svc api.AdminService, role, method, path, body string) *httptest.ResponseRecorder {
-	validator := &fakeTokenValidator{claims: auth.Claims{Subject: "u1", TenantID: "t1", Role: role}}
-	router := api.NewRouter(api.RouterDeps{Admin: svc, Tokens: validator})
+	validator := &fakeTokenValidator{claims: auth.Claims{Subject: "u1"}}
+	tenants := &fakeTenantResolver{membership: auth.Membership{TenantID: "t1", Role: role}}
+	router := api.NewRouter(api.RouterDeps{Admin: svc, Tokens: validator, Tenants: tenants})
 	req := httptest.NewRequest(method, path, bytes.NewBufferString(body))
 	req.Header.Set("Authorization", "Bearer token-valido")
 	rec := httptest.NewRecorder()
@@ -49,16 +50,24 @@ func adminRequest(svc api.AdminService, role, method, path, body string) *httpte
 	return rec
 }
 
-func TestAdminRoutes_PapelMember_Retorna403(t *testing.T) {
-	for _, rota := range [][2]string{{http.MethodGet, "/users"}, {http.MethodGet, "/users/invites"}, {http.MethodPost, "/users/invites"}} {
-		rec := adminRequest(&fakeAdminService{}, "member", rota[0], rota[1], `{}`)
+func TestAdminRoutes_PapelSemAdministracao_Retorna403(t *testing.T) {
+	for _, papel := range []string{"member", "viewer"} {
+		for _, rota := range [][2]string{{http.MethodGet, "/users"}, {http.MethodGet, "/users/invites"}, {http.MethodPost, "/users/invites"}} {
+			rec := adminRequest(&fakeAdminService{}, papel, rota[0], rota[1], `{}`)
 
-		assert.Equal(t, http.StatusForbidden, rec.Code, "%s %s", rota[0], rota[1])
+			assert.Equal(t, http.StatusForbidden, rec.Code, "%s %s %s", papel, rota[0], rota[1])
+		}
 	}
 }
 
+func TestAdminRoutes_Owner_Administra(t *testing.T) {
+	rec := adminRequest(&fakeAdminService{}, "owner", http.MethodGet, "/users", "")
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+}
+
 func TestAdminRoutes_SemToken_Retorna401(t *testing.T) {
-	router := api.NewRouter(api.RouterDeps{Admin: &fakeAdminService{}, Tokens: &fakeTokenValidator{}})
+	router := api.NewRouter(api.RouterDeps{Admin: &fakeAdminService{}, Tokens: &fakeTokenValidator{}, Tenants: tenantDeTeste})
 	rec := httptest.NewRecorder()
 
 	router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/users", nil))
@@ -76,6 +85,7 @@ func TestAdminRoutes_ListUsers_Admin_DevolveUsuarios(t *testing.T) {
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &resp))
 	require.Len(t, resp, 1)
 	assert.Equal(t, "a@markupp.dev", resp[0]["email"])
+	assert.Equal(t, "owner", resp[0]["role"])
 }
 
 func TestAdminRoutes_IssueInvite_DevolveTokenUmaVez(t *testing.T) {

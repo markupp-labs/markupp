@@ -71,17 +71,21 @@ func TestAdminRepo_CreateInviteTx_EmailJaUsuarioDoTenant_RecusaComErrAlreadyMemb
 	assert.ErrorIs(t, err, auth.ErrAlreadyMember)
 }
 
-func TestAdminRepo_ListUsers_SoDoTenantDoAtor(t *testing.T) {
+func TestAdminRepo_ListMembers_SoDoTenantDoAtorComPapel(t *testing.T) {
 	db := setupTestDB(t)
 	ctxA := storagetest.SeedMember(t, db, identity.Actor{UserID: "admin-a", TenantID: "t1", Role: "admin"}, "va")
-	storagetest.SeedMember(t, db, identity.Actor{UserID: "membro-a", TenantID: "t1", Role: "member"}, "va2")
+	storagetest.SeedMember(t, db, identity.Actor{UserID: "membro-a", TenantID: "t1", Role: "viewer"}, "va2")
 	storagetest.SeedMember(t, db, identity.Actor{UserID: "admin-b", TenantID: "t2", Role: "admin"}, "vb")
+	storagetest.SeedMember(t, db, identity.Actor{UserID: "membro-a", TenantID: "t2", Role: "owner"}, "vc")
 
-	users, err := storage.NewPostgresAdminRepository(db).ListUsers(ctxA)
+	membros, err := storage.NewPostgresAdminRepository(db).ListMembers(ctxA)
 
 	require.NoError(t, err)
-	require.Len(t, users, 2)
-	assert.Equal(t, []string{"admin-a@markupp.dev", "membro-a@markupp.dev"}, []string{users[0].Email, users[1].Email})
+	require.Len(t, membros, 2)
+	assert.Equal(t, "admin-a@markupp.dev", membros[0].Email)
+	assert.Equal(t, "admin", membros[0].Role)
+	assert.Equal(t, "membro-a@markupp.dev", membros[1].Email)
+	assert.Equal(t, "viewer", membros[1].Role, "papel do tenant t1, nao o de t2")
 }
 
 func parametrosDeAceite(token string) auth.AcceptInviteParams {
@@ -102,8 +106,11 @@ func TestAuthRepo_AcceptInviteTx_CriaContaNoTenantEConsomeOConvite(t *testing.T)
 	user, err := repo.AcceptInviteTx(context.Background(), parametrosDeAceite("tok-1"))
 
 	require.NoError(t, err)
-	assert.Equal(t, auth.User{ID: "novo", TenantID: "t1", Email: "nova@markupp.dev", Role: "member",
+	assert.Equal(t, auth.User{ID: "novo", Email: "nova@markupp.dev",
 		CreatedAt: instanteDoConvite.Add(time.Minute), UpdatedAt: instanteDoConvite.Add(time.Minute)}, user)
+	vinculo, err := repo.GetMembership(context.Background(), "novo", "t1")
+	require.NoError(t, err)
+	assert.Equal(t, "member", vinculo.Role)
 	ident, err := repo.GetUserIdentity(context.Background(), "local", "nova@markupp.dev")
 	require.NoError(t, err)
 	assert.Equal(t, "hash-da-senha", ident.PasswordHash)

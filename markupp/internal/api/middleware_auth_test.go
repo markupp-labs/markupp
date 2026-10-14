@@ -29,9 +29,7 @@ func (f *fakeTokenValidator) ValidateToken(tokenString string) (auth.Claims, err
 func TestRequireAuth_TokenValido_InjetaContextoEProssegue(t *testing.T) {
 	validator := &fakeTokenValidator{
 		claims: auth.Claims{
-			Subject:  "user-123",
-			TenantID: "tenant-456",
-			Role:     "admin",
+			Subject: "user-123",
 		},
 	}
 
@@ -55,8 +53,8 @@ func TestRequireAuth_TokenValido_InjetaContextoEProssegue(t *testing.T) {
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.True(t, reached)
 	assert.Equal(t, "user-123", capturedUser.UserID)
-	assert.Equal(t, "tenant-456", capturedUser.TenantID)
-	assert.Equal(t, "admin", capturedUser.Role)
+	assert.Empty(t, capturedUser.TenantID, "o tenant vem do vinculo, nao do token")
+	assert.Empty(t, capturedUser.Role)
 }
 
 func TestRequireAuth_SemHeaderAuthorization_Retorna401(t *testing.T) {

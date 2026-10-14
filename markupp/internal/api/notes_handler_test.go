@@ -96,12 +96,10 @@ func (f *fakeService) SearchNotes(ctx context.Context, query string, offset, lim
 func newTestNotesRouter(svc api.NoteService) chi.Router {
 	validator := &fakeTokenValidator{
 		claims: auth.Claims{
-			Subject:  "usuario-teste",
-			TenantID: "tenant-default",
-			Role:     "member",
+			Subject: "usuario-teste",
 		},
 	}
-	return api.NewRouter(api.RouterDeps{Notes: svc, Tokens: validator, Probe: &fakeProbe{}})
+	return api.NewRouter(api.RouterDeps{Notes: svc, Tenants: tenantDeTeste, Tokens: validator, Probe: &fakeProbe{}})
 }
 
 func doPost(t *testing.T, svc api.NoteService, body string) *httptest.ResponseRecorder {

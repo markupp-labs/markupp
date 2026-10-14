@@ -17,12 +17,11 @@ func sampleAccountParams() auth.CreateAccountParams {
 	return auth.CreateAccountParams{
 		User: auth.User{
 			ID:        "user-id-1",
-			TenantID:  "tenant-id-1",
 			Email:     "admin@markupp.dev",
-			Role:      "admin",
 			CreatedAt: now,
 			UpdatedAt: now,
 		},
+		BootstrapTenantID: "tenant-id-1",
 		Identity: auth.UserIdentity{
 			ID:             "identity-id-1",
 			UserID:         "user-id-1",
@@ -44,14 +43,15 @@ func TestPostgresAuthRepo_CreateAccountTx_GravaTodosOsRegistros(t *testing.T) {
 	ctx := context.Background()
 
 	p := sampleAccountParams()
-	user, err := repo.CreateAccountTx(ctx, p)
+	_, err := repo.CreateAccountTx(ctx, p)
 	require.NoError(t, err)
-	assert.Equal(t, "admin", user.Role, "primeiro usuario criado deve ser admin")
 
 	found, err := repo.GetUserByID(ctx, p.User.ID)
 	require.NoError(t, err)
 	assert.Equal(t, p.User.Email, found.Email)
-	assert.Equal(t, "admin", found.Role)
+	vinculo, err := repo.GetMembership(ctx, p.User.ID, "tenant-id-1")
+	require.NoError(t, err)
+	assert.Equal(t, "owner", vinculo.Role, "primeiro usuario da instancia vira owner do tenant inicial")
 
 	identity, err := repo.GetUserIdentity(ctx, p.Identity.Provider, p.Identity.ProviderUserID)
 	require.NoError(t, err)
@@ -97,7 +97,7 @@ func TestPostgresAuthRepo_RefreshToken_FluxoCompleto(t *testing.T) {
 	}
 	event := auth.AuditEventRecord{
 		ID:         "audit-login-1",
-		TenantID:   p.User.TenantID,
+		TenantID:   p.BootstrapTenantID,
 		ActorID:    p.User.ID,
 		Action:     "auth.login",
 		Target:     p.User.Email,
@@ -191,7 +191,7 @@ func TestPostgresAuthRepo_RevokeAllUserRefreshTokens_RevogaTokensDoUsuario(t *te
 	}
 	event1 := auth.AuditEventRecord{
 		ID:         "audit-1",
-		TenantID:   p.User.TenantID,
+		TenantID:   p.BootstrapTenantID,
 		ActorID:    p.User.ID,
 		Action:     "auth.login",
 		Target:     p.User.Email,
@@ -204,4 +204,23 @@ func TestPostgresAuthRepo_RevokeAllUserRefreshTokens_RevogaTokensDoUsuario(t *te
 
 	_, err = repo.ConsumeRefreshToken(ctx, rec1.TokenHash)
 	require.ErrorIs(t, err, auth.ErrRefreshTokenInvalid)
+}
+
+func TestPostgresAuthRepo_CreateAccountTx_RegistroAbertoCriaContaSemTenant(t *testing.T) {
+	db := setupTestDB(t)
+	repo := storage.NewPostgresAuthRepository(db)
+	ctx := context.Background()
+	_, err := repo.CreateAccountTx(ctx, sampleAccountParams())
+	require.NoError(t, err)
+	segunda := sampleAccountParams()
+	segunda.User.ID, segunda.User.Email = "user-id-2", "outra@markupp.dev"
+	segunda.Identity.ID, segunda.Identity.UserID, segunda.Identity.ProviderUserID = "identity-id-2", "user-id-2", "outra@markupp.dev"
+	segunda.InitialVaultID, segunda.AuditEventID = "vault-id-2", "audit-id-2"
+
+	_, err = repo.CreateAccountTx(ctx, segunda)
+
+	require.NoError(t, err)
+	vinculos, err := repo.ListMemberships(ctx, "user-id-2")
+	require.NoError(t, err)
+	assert.Empty(t, vinculos, "conta aberta entra em tenant so por convite ou criando o proprio")
 }

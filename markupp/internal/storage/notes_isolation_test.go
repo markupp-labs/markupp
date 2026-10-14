@@ -164,14 +164,17 @@ func TestRLS_PapelDaAplicacao_NaoAlteraAuditoria(t *testing.T) {
 	assert.Equal(t, "42501", pgErr.Code, "esperada permissao negada ao papel da aplicacao, recebido %v", err)
 }
 
-func TestRLS_PapelDaAplicacaoComoMembro_NaoVeUsuariosNemConvites(t *testing.T) {
+func TestRLS_PapelDaAplicacaoComoMembro_VeOsColegasMasNaoOsConvites(t *testing.T) {
 	db := setupTestDB(t)
 	membro := identity.Actor{UserID: "ua", TenantID: "t1", Role: "member"}
 	storagetest.SeedMember(t, db, membro, "va")
+	storagetest.SeedMember(t, db, identity.Actor{UserID: "colega", TenantID: "t1", Role: "admin"}, "vc")
+	storagetest.SeedMember(t, db, identity.Actor{UserID: "de-fora", TenantID: "t2", Role: "owner"}, "vd")
 
-	for _, sql := range []string{"SELECT count(*) FROM users", "SELECT count(*) FROM user_invites"} {
-		n, err := comoPapelDaAplicacao(t, db, membro, sql)
-		require.NoError(t, err, sql)
-		assert.Zero(t, n, "membro enxergou linhas em %s", sql)
-	}
+	colegas, err := comoPapelDaAplicacao(t, db, membro, "SELECT count(*) FROM users")
+	require.NoError(t, err)
+	assert.Equal(t, int64(2), colegas, "membro ve quem e do tenant, e so isso")
+	convites, err := comoPapelDaAplicacao(t, db, membro, "SELECT count(*) FROM user_invites")
+	require.NoError(t, err)
+	assert.Zero(t, convites)
 }

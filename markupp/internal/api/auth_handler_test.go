@@ -34,6 +34,7 @@ type fakeAuthService struct {
 	acceptPair   auth.TokenPair
 	acceptErr    error
 	acceptToken  string
+	tenants      []auth.Membership
 }
 
 func (f *fakeAuthService) AcceptInvite(ctx context.Context, token, password string) (auth.TokenPair, error) {
@@ -54,6 +55,10 @@ func (f *fakeAuthService) RefreshToken(ctx context.Context, rawRefreshToken stri
 func (f *fakeAuthService) RevokeSession(ctx context.Context, rawRefreshToken string) error {
 	f.revokeCalls++
 	return f.revokeErr
+}
+
+func (f *fakeAuthService) ListTenants(ctx context.Context, userID string) ([]auth.Membership, error) {
+	return f.tenants, nil
 }
 
 func (f *fakeAuthService) GetAccount(ctx context.Context, userID string) (auth.User, error) {
@@ -255,18 +260,14 @@ func TestAuthHandler_Me_Sucesso(t *testing.T) {
 	svc := &fakeAuthService{
 		accountUser: auth.User{
 			ID:        "user-id-42",
-			TenantID:  "tenant-default",
 			Email:     "admin@markupp.dev",
-			Role:      "admin",
 			CreatedAt: now,
 			UpdatedAt: now,
 		},
 	}
 	validator := &fakeTokenValidator{
 		claims: auth.Claims{
-			Subject:  "user-id-42",
-			TenantID: "tenant-default",
-			Role:     "admin",
+			Subject: "user-id-42",
 		},
 	}
 	router := setupAuthRouter(svc, validator)
@@ -284,7 +285,7 @@ func TestAuthHandler_Me_Sucesso(t *testing.T) {
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &resp))
 	assert.Equal(t, "user-id-42", resp["id"])
 	assert.Equal(t, "admin@markupp.dev", resp["email"])
-	assert.Equal(t, "admin", resp["role"])
+	assert.NotContains(t, resp, "tenant_id", "a conta e global")
 }
 
 func TestAuthHandler_Login_EmailOuSenhaVazios_Retorna400(t *testing.T) {
@@ -329,9 +330,7 @@ func TestAuthHandler_Me_UsuarioNaoEncontrado_Retorna404(t *testing.T) {
 	svc := &fakeAuthService{accountErr: auth.ErrUserNotFound}
 	validator := &fakeTokenValidator{
 		claims: auth.Claims{
-			Subject:  "usuario-deletado",
-			TenantID: "tenant-default",
-			Role:     "member",
+			Subject: "usuario-deletado",
 		},
 	}
 	router := setupAuthRouter(svc, validator)
@@ -350,9 +349,7 @@ func TestAuthHandler_Me_ErroInterno_Retorna500(t *testing.T) {
 	svc := &fakeAuthService{accountErr: errors.New("erro inesperado de conexao")}
 	validator := &fakeTokenValidator{
 		claims: auth.Claims{
-			Subject:  "user-id-42",
-			TenantID: "tenant-default",
-			Role:     "member",
+			Subject: "user-id-42",
 		},
 	}
 	router := setupAuthRouter(svc, validator)
@@ -400,4 +397,23 @@ func TestAuthHandler_AcceptInvite_EmailJaTemConta_Retorna409(t *testing.T) {
 
 	assert.Equal(t, http.StatusConflict, rec.Code)
 	assert.Contains(t, rec.Body.String(), "already_exists")
+}
+
+func TestAuthHandler_MeusTenants_ListaVinculos(t *testing.T) {
+	svc := &fakeAuthService{tenants: []auth.Membership{
+		{TenantID: "t1", TenantName: "Acme", Role: "owner"},
+		{TenantID: "t2", TenantName: "Globex", Role: "viewer"},
+	}}
+	router := setupAuthRouter(svc, &fakeTokenValidator{claims: auth.Claims{Subject: "u1"}})
+	req := httptest.NewRequest(http.MethodGet, "/me/tenants", nil)
+	req.Header.Set("Authorization", "Bearer token-valido")
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	var resp []map[string]any
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &resp))
+	require.Len(t, resp, 2)
+	assert.Equal(t, map[string]any{"id": "t2", "name": "Globex", "role": "viewer"}, resp[1])
 }

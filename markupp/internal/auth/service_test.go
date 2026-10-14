@@ -3,6 +3,7 @@ package auth_test
 import (
 	"context"
 	"errors"
+	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -30,6 +31,8 @@ type fakeRepository struct {
 	pendingInvites map[string]auth.Invite
 	acceptedWith   auth.AcceptInviteParams
 
+	memberships map[string]auth.Membership
+
 	clock         func() time.Time
 	users         map[string]auth.User
 	identities    map[string]auth.UserIdentity
@@ -42,6 +45,7 @@ func newFakeRepository(clock func() time.Time) *fakeRepository {
 	return &fakeRepository{
 		clock:         clock,
 		users:         make(map[string]auth.User),
+		memberships:   make(map[string]auth.Membership),
 		identities:    make(map[string]auth.UserIdentity),
 		refreshTokens: make(map[string]auth.RefreshTokenRecord),
 	}
@@ -56,26 +60,25 @@ func (f *fakeRepository) now() time.Time {
 
 func (f *fakeRepository) CreateAccountTx(ctx context.Context, p auth.CreateAccountParams) (auth.User, error) {
 	for _, u := range f.users {
-		if u.Email == p.User.Email && u.TenantID == p.User.TenantID {
+		if u.Email == p.User.Email {
 			return auth.User{}, auth.ErrUserAlreadyExists
 		}
 	}
-	role := "member"
 	action := "auth.register"
+	tenant := ""
 	if len(f.users) == 0 {
-		role = "admin"
-		action = "auth.register_admin"
+		action, tenant = "auth.register_admin", p.BootstrapTenantID
+		f.memberships[tenant+":"+p.User.ID] = auth.Membership{TenantID: tenant, TenantName: tenant, Role: "owner"}
 	} else if !p.AllowMemberRegistration {
 		return auth.User{}, auth.ErrRegistrationDisabled
 	}
 	user := p.User
-	user.Role = role
 	f.users[user.ID] = user
 	f.identities[p.Identity.Provider+":"+p.Identity.ProviderUserID] = p.Identity
 	f.createdVaults = append(f.createdVaults, p.InitialVaultID)
 	f.auditEvents = append(f.auditEvents, auth.AuditEventRecord{
 		ID:         p.AuditEventID,
-		TenantID:   user.TenantID,
+		TenantID:   tenant,
 		ActorID:    user.ID,
 		Action:     action,
 		Target:     user.Email,
@@ -92,9 +95,29 @@ func (f *fakeRepository) AcceptInviteTx(ctx context.Context, p auth.AcceptInvite
 	}
 	delete(f.pendingInvites, p.TokenHash)
 	f.acceptedWith = p
-	user := auth.User{ID: p.UserID, TenantID: inv.TenantID, Email: inv.Email, Role: inv.Role, CreatedAt: p.Now, UpdatedAt: p.Now}
+	user := auth.User{ID: p.UserID, Email: inv.Email, CreatedAt: p.Now, UpdatedAt: p.Now}
 	f.users[user.ID] = user
+	f.memberships[inv.TenantID+":"+user.ID] = auth.Membership{TenantID: inv.TenantID, TenantName: inv.TenantID, Role: inv.Role}
 	return user, nil
+}
+
+func (f *fakeRepository) GetMembership(ctx context.Context, userID, tenantID string) (auth.Membership, error) {
+	m, ok := f.memberships[tenantID+":"+userID]
+	if !ok {
+		return auth.Membership{}, auth.ErrMembershipNotFound
+	}
+	return m, nil
+}
+
+func (f *fakeRepository) ListMemberships(ctx context.Context, userID string) ([]auth.Membership, error) {
+	var out []auth.Membership
+	for chave, m := range f.memberships {
+		if strings.HasSuffix(chave, ":"+userID) {
+			out = append(out, m)
+		}
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].TenantID < out[j].TenantID })
+	return out, nil
 }
 
 func (f *fakeRepository) GetUserByID(ctx context.Context, id string) (auth.User, error) {
@@ -201,7 +224,7 @@ func TestService_PrimeiroUsuario_PromovidoAAdminECriaCofre(t *testing.T) {
 	assert.Len(t, repo.users, 1)
 	user, found := findUserByEmail(repo.users, "primeiro@markupp.dev")
 	require.True(t, found)
-	assert.Equal(t, "admin", user.Role)
+	assert.Equal(t, "owner", repo.memberships["default:"+user.ID].Role)
 	assert.Len(t, repo.createdVaults, 1)
 	assert.NotEmpty(t, repo.auditEvents)
 }
@@ -314,7 +337,9 @@ func TestService_LoginLocal_UsuarioNaoExisteEAutoRegistroAtivado_CriaMembro(t *t
 
 	user, found := findUserByEmail(repo.users, "novo.membro@markupp.dev")
 	require.True(t, found)
-	assert.Equal(t, "member", user.Role)
+	vinculos, err := svc.ListTenants(ctx, user.ID)
+	require.NoError(t, err)
+	assert.Empty(t, vinculos, "auto-registro cria a conta sem tenant")
 }
 
 func TestService_GetAccount_Sucesso(t *testing.T) {
@@ -506,10 +531,10 @@ func TestService_LoginLocal_EmailInexistente_CustaOMesmoQueSenhaErrada(t *testin
 		"email inexistente e senha errada devem custar o mesmo numero de operacoes bcrypt")
 }
 
-func TestService_RefreshToken_Reuso_AuditaNoTenantDoUsuario(t *testing.T) {
+func TestService_RefreshToken_Reuso_AuditaComoEventoDaConta(t *testing.T) {
 	clock := defaultClock()
 	repo := newFakeRepository(clock)
-	repo.users["u1"] = auth.User{ID: "u1", TenantID: "tenant-b", Email: "b@markupp.dev", Role: "member"}
+	repo.users["u1"] = auth.User{ID: "u1", Email: "b@markupp.dev"}
 	repo.refreshTokens[auth.HashOpaqueToken("velho")] = auth.RefreshTokenRecord{
 		TokenHash: auth.HashOpaqueToken("velho"), UserID: "u1", ExpiresAt: clock().Add(time.Hour), Revoked: true,
 	}
@@ -520,7 +545,8 @@ func TestService_RefreshToken_Reuso_AuditaNoTenantDoUsuario(t *testing.T) {
 
 	ultimo := repo.auditEvents[len(repo.auditEvents)-1]
 	assert.Equal(t, "auth.refresh_reuse", ultimo.Action)
-	assert.Equal(t, "tenant-b", ultimo.TenantID)
+	assert.Empty(t, ultimo.TenantID, "sessao e da conta global, sem tenant")
+	assert.Equal(t, "u1", ultimo.ActorID)
 }
 
 func repoComConvite(clock func() time.Time, token string) *fakeRepository {
@@ -543,7 +569,8 @@ func TestAcceptInvite_TokenValido_CriaContaDoConviteEAbreSessao(t *testing.T) {
 	assert.Equal(t, "hash:senhaNova", repo.acceptedWith.PasswordHash)
 	assert.NotEmpty(t, repo.acceptedWith.InitialVaultID)
 	user := repo.users[repo.acceptedWith.UserID]
-	assert.Equal(t, auth.User{ID: user.ID, TenantID: "t1", Email: "nova@markupp.dev", Role: "member", CreatedAt: clock(), UpdatedAt: clock()}, user)
+	assert.Equal(t, auth.User{ID: user.ID, Email: "nova@markupp.dev", CreatedAt: clock(), UpdatedAt: clock()}, user)
+	assert.Equal(t, "member", repo.memberships["t1:"+user.ID].Role)
 	_, sessaoAberta := repo.refreshTokens[auth.HashOpaqueToken(pair.RefreshToken)]
 	assert.True(t, sessaoAberta)
 }
@@ -566,4 +593,55 @@ func TestAcceptInvite_SenhaLongaDemais_RecusaAntesDoBanco(t *testing.T) {
 
 	require.ErrorIs(t, err, auth.ErrPasswordTooLong)
 	assert.Len(t, repo.pendingInvites, 1, "convite nao pode ser consumido por senha invalida")
+}
+
+func repoComVinculos(papeis map[string]string) *fakeRepository {
+	repo := newFakeRepository(defaultClock())
+	for tenantID, papel := range papeis {
+		repo.memberships[tenantID+":u1"] = auth.Membership{TenantID: tenantID, TenantName: "Nome " + tenantID, Role: papel}
+	}
+	return repo
+}
+
+func TestResolveTenant_TenantPedidoComVinculo_DevolveOPapelDele(t *testing.T) {
+	svc := setupAuthService(repoComVinculos(map[string]string{"t1": "member", "t2": "viewer"}), false, defaultClock())
+
+	m, err := svc.ResolveTenant(context.Background(), "u1", "t2")
+
+	require.NoError(t, err)
+	assert.Equal(t, auth.Membership{TenantID: "t2", TenantName: "Nome t2", Role: "viewer"}, m)
+}
+
+func TestResolveTenant_TenantPedidoSemVinculo_RecusaComErrMembershipNotFound(t *testing.T) {
+	svc := setupAuthService(repoComVinculos(map[string]string{"t1": "owner"}), false, defaultClock())
+
+	_, err := svc.ResolveTenant(context.Background(), "u1", "alheio")
+
+	require.ErrorIs(t, err, auth.ErrMembershipNotFound)
+}
+
+func TestResolveTenant_SemPedidoComUmTenant_UsaOUnico(t *testing.T) {
+	svc := setupAuthService(repoComVinculos(map[string]string{"t1": "admin"}), false, defaultClock())
+
+	m, err := svc.ResolveTenant(context.Background(), "u1", "")
+
+	require.NoError(t, err)
+	assert.Equal(t, "t1", m.TenantID)
+}
+
+func TestResolveTenant_SemPedidoComVariosTenants_ExigeEscolha(t *testing.T) {
+	svc := setupAuthService(repoComVinculos(map[string]string{"t1": "admin", "t2": "member"}), false, defaultClock())
+
+	_, err := svc.ResolveTenant(context.Background(), "u1", "")
+
+	require.ErrorIs(t, err, auth.ErrTenantRequired)
+	assert.Contains(t, err.Error(), "2 tenants")
+}
+
+func TestResolveTenant_SemNenhumTenant_RecusaComErrNoTenant(t *testing.T) {
+	svc := setupAuthService(repoComVinculos(nil), false, defaultClock())
+
+	_, err := svc.ResolveTenant(context.Background(), "u1", "")
+
+	require.ErrorIs(t, err, auth.ErrNoTenant)
 }
