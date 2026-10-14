@@ -11,6 +11,15 @@ e agente de IA são clientes, e nenhum deles é privilegiado. O navegador consom
 o markupp.
 _Avoid_: consumidor, integração, aplicação externa, frontend
 
+**Enterprise**:
+A edição que a equipe opera, com vários tenants. O nome diz quem opera, não onde roda.
+_Avoid_: nuvem, SaaS, hospedado
+
+**Self-host**:
+A edição que qualquer pessoa instala e opera por conta própria, com um tenant só e sem
+plano de controle.
+_Avoid_: on-premise, comunidade, open source
+
 **Nota**:
 A unidade de conteúdo markdown que o cliente cria, lê, edita e apaga.
 _Avoid_: anotação, documento, arquivo, página

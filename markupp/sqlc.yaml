@@ -1,10 +1,13 @@
 version: "2"
 sql:
-  - engine: "sqlite"
+  - engine: "postgresql"
     queries: "internal/storage/queries"
     schema: "migrations"
     gen:
       go:
         package: "gen"
         out: "internal/storage/gen"
-        sql_package: "database/sql"
+        sql_package: "pgx/v5"
+        overrides:
+          - db_type: "timestamptz"
+            go_type: "time.Time"

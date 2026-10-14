@@ -16,11 +16,14 @@ go build ./cmd/markupp
 
 ## Configuração
 
-O servidor lê a configuração de um arquivo JSON. O caminho é resolvido nesta ordem:
+O servidor lê a configuração de variáveis de ambiente.
 
-1. Variável de ambiente `MARKUPP_CONFIG_PATH`
-2. Fallback `./config.json` no diretório de trabalho
+| Variável | Default | O que é |
+| --- | --- | --- |
+| `MARKUPP_DATABASE_URL` | nenhum, obrigatória | Conexão PostgreSQL, no formato `postgres://usuario:senha@host:5432/banco` |
+| `MARKUPP_PORT` | `8080` | Porta HTTP |
+| `MARKUPP_MAX_NOTE_SIZE` | `52428800` | Tamanho máximo de uma nota, em bytes |
+| `MARKUPP_ALLOWED_ORIGINS` | vazio | Origens liberadas no CORS, separadas por vírgula. Vazio desliga o CORS |
 
-Se o arquivo não existir, os defaults são aplicados silenciosamente. Chaves ausentes no arquivo preservam o default correspondente.
-
-Exemplo em `config.example.json`.
+Os testes sobem um PostgreSQL descartável com testcontainers, então `go test ./...` precisa de
+Docker disponível.

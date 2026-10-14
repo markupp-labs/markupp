@@ -1,6 +1,6 @@
 # Embedding
 
-Configuração planejada, ainda não implementada. A razão de ser plugável está no ADR-0019.
+Configuração planejada, ainda não implementada. A razão de ser plugável está no ADR-0029.
 
 ## Escolha rápida
 
@@ -93,7 +93,7 @@ Alternativa com mais qualidade e mais RAM: `mxbai-embed-large`, 1024 dimensões.
 
 ## bedrock
 
-Padrão do Enterprise. Sem chave no arquivo: a credencial vem do papel de execução da Lambda.
+Padrão do Enterprise. Sem chave no arquivo: a credencial vem da identidade do pod.
 
 ```json
 {

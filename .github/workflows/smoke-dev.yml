@@ -1,0 +1,49 @@
+name: Smoke da stack dev
+
+# Testa a implantação em cada PR e a cada push em dev com o mesmo smoke de
+# make smoke-kind: kind com os requisitos do cluster de produção, stack dev do
+# Pulumi e API testada por https pelo Gateway.
+
+on:
+  pull_request:
+    paths:
+      - 'markupp/**'
+      - 'deploy/**'
+      - '.github/workflows/smoke-dev.yml'
+  push:
+    branches: [dev]
+    paths:
+      - 'markupp/**'
+      - 'deploy/**'
+      - '.github/workflows/smoke-dev.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke-kind:
+    name: Smoke da stack dev num kind
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: deploy/pulumi/go.mod
+          cache-dependency-path: deploy/pulumi/go.sum
+
+      - name: Instala kind
+        run: go install sigs.k8s.io/kind@v0.33.0
+
+      - name: Instala helm
+        uses: azure/setup-helm@v5
+        with:
+          version: v4.3.0
+
+      - name: Instala o Pulumi
+        uses: pulumi/actions@v7
+
+      - name: Smoke da stack dev num kind
+        run: ./deploy/kind/ambiente.sh smoke

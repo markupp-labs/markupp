@@ -18,7 +18,7 @@ import (
 // fakeProbe responde a sonda de armazenamento sem tocar em banco.
 type fakeProbe struct{}
 
-func (fakeProbe) PingContext(ctx context.Context) error { return nil }
+func (fakeProbe) Ping(ctx context.Context) error { return nil }
 
 type fakeBuscaService struct {
 	resultado []notes.SearchResult
