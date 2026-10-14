@@ -6,12 +6,106 @@ info:
 servers:
   - url: http://localhost:8080
     description: Servidor local padrão
+security:
+  - bearerAuth: []
 paths:
+  /auth/login:
+    post:
+      summary: Abre a sessão com credencial local
+      description: >
+        Sem nenhum usuário cadastrado, o primeiro login cria a conta de administrador com o
+        primeiro cofre. Com auto-registro desligado, email desconhecido é recusado como
+        credencial inválida.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Sessão aberta
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenPairResponse'
+        '400':
+          description: Email ou senha ausentes, ou senha acima de 72 bytes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Credenciais inválidas (invalid_credentials)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Credencial local desligada na configuração (local_auth_disabled)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /auth/refresh:
+    post:
+      summary: Troca o refresh token por um novo par
+      description: >
+        O refresh token é de uso único. Reapresentar um token já usado revoga todas as
+        sessões do usuário.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+      responses:
+        '200':
+          description: Novo par de tokens
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenPairResponse'
+        '401':
+          description: Refresh token inválido, expirado ou revogado (invalid_refresh_token)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /auth/logout:
+    post:
+      summary: Revoga o refresh token da sessão
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+      responses:
+        '204':
+          description: Sessão encerrada, inclusive quando o token já não valia
+  /auth/me:
+    get:
+      summary: Devolve a conta autenticada
+      responses:
+        '200':
+          description: Conta do usuário do token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
   /notes:
     get:
       summary: Lista todas as notas
       description: Retorna todas as notas com o conteúdo, ordenadas por caminho. Sem paginação.
       responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '200':
           description: Lista de notas, vazia quando não há nenhuma
           content:
@@ -36,6 +130,8 @@ paths:
             schema:
               $ref: '#/components/schemas/NoteRequest'
       responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '201':
           description: Nota criada com sucesso
           content:
@@ -93,6 +189,8 @@ paths:
             maximum: 100
           description: Quantos resultados devolver. Valor fora da faixa é ajustado para o limite.
       responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '200':
           description: Resultados da busca, vazio quando nada casa
           content:
@@ -125,6 +223,8 @@ paths:
             type: string
           description: Identificador único da nota
       responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '200':
           description: Nota encontrada
           content:
@@ -172,6 +272,8 @@ paths:
             schema:
               $ref: '#/components/schemas/NoteUpdateRequest'
       responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '200':
           description: Nota atualizada com sucesso
           content:
@@ -215,6 +317,8 @@ paths:
             type: string
           description: Identificador único da nota
       responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '204':
           description: Nota excluída com sucesso
         '400':
@@ -237,6 +341,7 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
   /healthz:
     get:
+      security: []
       summary: Sonda de saúde do servidor
       description: Consulta o armazenamento e responde se o servidor está apto a atender.
       responses:
@@ -253,7 +358,59 @@ paths:
               schema:
                 $ref: '#/components/schemas/HealthResponse'
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  responses:
+    Unauthorized:
+      description: Token ausente, inválido ou expirado (unauthorized)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
   schemas:
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          maxLength: 72
+    RefreshRequest:
+      type: object
+      required: [refresh_token]
+      properties:
+        refresh_token:
+          type: string
+    TokenPairResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+          description: JWT HS256 enviado como Bearer nas rotas protegidas
+        refresh_token:
+          type: string
+        expires_in:
+          type: integer
+          description: Validade do access token em segundos
+    UserResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        tenant_id:
+          type: string
+        email:
+          type: string
+        role:
+          type: string
+          enum: [admin, member]
     NoteRequest:
       type: object
       required:
