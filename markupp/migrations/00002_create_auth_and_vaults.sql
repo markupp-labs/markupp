@@ -57,12 +57,14 @@ CREATE TABLE audit_events (
     occurred_at TIMESTAMPTZ NOT NULL
 );
 
+-- +goose StatementBegin
 CREATE OR REPLACE FUNCTION audit_events_immutable()
 RETURNS TRIGGER AS $$
 BEGIN
     RAISE EXCEPTION 'tabela audit_events e insert-only: operacoes de UPDATE ou DELETE sao proibidas';
 END;
 $$ LANGUAGE plpgsql;
+-- +goose StatementEnd
 
 CREATE TRIGGER audit_events_prevent_mutation
 BEFORE UPDATE OR DELETE ON audit_events
