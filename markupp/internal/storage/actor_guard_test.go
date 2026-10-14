@@ -29,7 +29,7 @@ func TestRepositoriosDeDados_SoAcessamOBancoPelaTransacaoDoAtor(t *testing.T) {
 		if strings.HasSuffix(nome, "_test.go") || arquivosForaDoAtor[nome] {
 			continue
 		}
-		fonte, err := os.ReadFile(nome)
+		fonte, err := os.ReadFile(nome) // #nosec G304 -- arquivo do proprio pacote, listado pelo Glob
 		require.NoError(t, err)
 		assert.Empty(t, acessoDiretoAoPool.FindAllString(string(fonte), -1),
 			"%s acessa o pool sem inActorTx e roda como superusuario, fora do RLS", nome)
