@@ -107,8 +107,8 @@ func (s *Service) Create(ctx context.Context, vaultID, path, content string) (No
 }
 
 func (s *Service) resolveVault(ctx context.Context, vaultID string) (string, error) {
-	if strings.TrimSpace(vaultID) != "" {
-		return vaultID, nil
+	if trimmed := strings.TrimSpace(vaultID); trimmed != "" {
+		return trimmed, nil
 	}
 	return s.repo.DefaultVaultID(ctx)
 }
