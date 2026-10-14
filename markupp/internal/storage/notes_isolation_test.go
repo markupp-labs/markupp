@@ -21,7 +21,7 @@ func notaNoCofre(id, path, vaultID string) notes.Note {
 	return notes.Note{ID: id, VaultID: vaultID, Path: path, Content: "segredo " + path, CreatedAt: agora, UpdatedAt: agora}
 }
 
-func assertNotaInvisivel(t *testing.T, repo *storage.PostgresNotesRepository, ctx context.Context, id string) {
+func assertNotaInvisivel(ctx context.Context, t *testing.T, repo *storage.PostgresNotesRepository, id string) {
 	t.Helper()
 	_, err := repo.GetNoteByID(ctx, id)
 	assert.ErrorIs(t, err, notes.ErrNotFound)
@@ -43,7 +43,7 @@ func TestNotesRLS_OutroTenant_NaoEnxergaNemAlteraNota(t *testing.T) {
 	ctxB := storagetest.SeedMember(t, db, identity.Actor{UserID: "ub", TenantID: "t2", Role: "admin"}, "vb")
 	require.NoError(t, repo.Save(ctxA, notaNoCofre("n1", "a.md", "va")))
 
-	assertNotaInvisivel(t, repo, ctxB, "n1")
+	assertNotaInvisivel(ctxB, t, repo, "n1")
 
 	_, err := repo.GetNoteByID(ctxA, "n1")
 	assert.NoError(t, err, "a dona da nota continua enxergando depois das tentativas alheias")
@@ -56,7 +56,7 @@ func TestNotesRLS_MesmoTenantForaDoCofre_NaoEnxergaNota(t *testing.T) {
 	ctxB := storagetest.SeedMember(t, db, identity.Actor{UserID: "ub", TenantID: "t1", Role: "admin"}, "vb")
 	require.NoError(t, repo.Save(ctxA, notaNoCofre("n1", "a.md", "va")))
 
-	assertNotaInvisivel(t, repo, ctxB, "n1")
+	assertNotaInvisivel(ctxB, t, repo, "n1")
 }
 
 func TestNotesRLS_CofreSemAcesso_RecusaEscrita(t *testing.T) {

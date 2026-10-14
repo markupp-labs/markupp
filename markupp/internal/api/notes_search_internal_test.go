@@ -35,7 +35,7 @@ type fakeBuscaService struct {
 	chamado   bool
 }
 
-func (f *fakeBuscaService) Create(ctx context.Context, path, content string) (notes.Note, error) {
+func (f *fakeBuscaService) Create(ctx context.Context, vaultID, path, content string) (notes.Note, error) {
 	return notes.Note{}, nil
 }
 

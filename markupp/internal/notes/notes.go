@@ -33,6 +33,7 @@ type SearchResult struct {
 
 // Repository é a porta de persistência que o Service consome.
 type Repository interface {
+	DefaultVaultID(ctx context.Context) (string, error)
 	Save(ctx context.Context, note Note) error
 	Update(ctx context.Context, id, path, content string, updatedAt, lastModifiedAt time.Time, force bool) (Note, error)
 	Delete(ctx context.Context, id string) error
@@ -84,26 +85,32 @@ func (s *Service) ListNotes(ctx context.Context) ([]Note, error) {
 	return s.repo.ListNotes(ctx)
 }
 
-// Create valida path e content e persiste uma nota nova com ID gerado.
-func (s *Service) Create(ctx context.Context, path, content string) (Note, error) {
+// Create valida path e content e persiste uma nota nova com ID gerado no cofre
+// vaultID, ou no cofre padrão do ator quando vaultID vem vazio.
+func (s *Service) Create(ctx context.Context, vaultID, path, content string) (Note, error) {
 	if err := validatePath(path); err != nil {
 		return Note{}, err
 	}
 	if err := s.validateContent(content); err != nil {
 		return Note{}, err
 	}
-	now := canonicalTime(s.clock())
-	note := Note{
-		ID:        s.newID(),
-		Path:      path,
-		Content:   content,
-		CreatedAt: now,
-		UpdatedAt: now,
+	vaultID, err := s.resolveVault(ctx, vaultID)
+	if err != nil {
+		return Note{}, err
 	}
+	now := canonicalTime(s.clock())
+	note := Note{ID: s.newID(), VaultID: vaultID, Path: path, Content: content, CreatedAt: now, UpdatedAt: now}
 	if err := s.repo.Save(ctx, note); err != nil {
-		return Note{}, fmt.Errorf("salvar nota %q: %w", note.ID, err)
+		return Note{}, fmt.Errorf("salvar nota %q no cofre %q: %w", note.ID, vaultID, err)
 	}
 	return note, nil
+}
+
+func (s *Service) resolveVault(ctx context.Context, vaultID string) (string, error) {
+	if strings.TrimSpace(vaultID) != "" {
+		return vaultID, nil
+	}
+	return s.repo.DefaultVaultID(ctx)
 }
 
 // Update grava path e content na nota de id. Com force falso, recusa com

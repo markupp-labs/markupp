@@ -345,6 +345,10 @@ type stubRepository struct {
 	listErr    error
 }
 
+func (s *stubRepository) DefaultVaultID(ctx context.Context) (string, error) {
+	return "cofre-stub", nil
+}
+
 func (s *stubRepository) Save(ctx context.Context, n notes.Note) error {
 	return nil
 }

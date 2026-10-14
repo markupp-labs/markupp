@@ -17,7 +17,7 @@ import (
 
 // NoteService é a fatia do serviço de notas que os handlers HTTP consomem.
 type NoteService interface {
-	Create(ctx context.Context, path, content string) (notes.Note, error)
+	Create(ctx context.Context, vaultID, path, content string) (notes.Note, error)
 	Update(ctx context.Context, id, path, content string, lastModifiedAt time.Time, force bool) (notes.Note, error)
 	Delete(ctx context.Context, id string) error
 	GetNoteByID(ctx context.Context, id string) (notes.Note, error)
@@ -31,6 +31,7 @@ type notesHandler struct {
 
 type noteResponse struct {
 	ID        string    `json:"id"`
+	VaultID   string    `json:"vault_id"`
 	Path      string    `json:"path"`
 	Content   string    `json:"content"`
 	CreatedAt time.Time `json:"created_at"`
@@ -51,6 +52,7 @@ const (
 func toResponse(n notes.Note) noteResponse {
 	return noteResponse{
 		ID:        n.ID,
+		VaultID:   n.VaultID,
 		Path:      n.Path,
 		Content:   n.Content,
 		CreatedAt: n.CreatedAt,
@@ -60,6 +62,7 @@ func toResponse(n notes.Note) noteResponse {
 
 func (h *notesHandler) create(w http.ResponseWriter, r *http.Request) {
 	var req struct {
+		VaultID string `json:"vault_id"`
 		Path    string `json:"path"`
 		Content string `json:"content"`
 	}
@@ -67,7 +70,7 @@ func (h *notesHandler) create(w http.ResponseWriter, r *http.Request) {
 		writeError(w, "invalid_request", "JSON inválido", http.StatusBadRequest)
 		return
 	}
-	note, err := h.svc.Create(r.Context(), req.Path, req.Content)
+	note, err := h.svc.Create(r.Context(), req.VaultID, req.Path, req.Content)
 	if err != nil {
 		writeDomainError(w, err)
 		return
@@ -192,6 +195,8 @@ func writeDomainError(w http.ResponseWriter, err error) {
 		writeError(w, "invalid_content", notes.ErrInvalidContent.Error(), http.StatusBadRequest)
 	case errors.Is(err, notes.ErrDuplicatePath):
 		writeError(w, "duplicate_path", notes.ErrDuplicatePath.Error(), http.StatusConflict)
+	case errors.Is(err, notes.ErrVaultForbidden):
+		writeError(w, "vault_forbidden", notes.ErrVaultForbidden.Error(), http.StatusForbidden)
 	case errors.Is(err, notes.ErrConflict):
 		writeError(w, "conflict", notes.ErrConflict.Error(), http.StatusConflict)
 	case errors.Is(err, notes.ErrNotFound):

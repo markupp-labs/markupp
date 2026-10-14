@@ -132,7 +132,7 @@ func TestCreate_PathLongoDemais_RetornaErrInvalidPath(t *testing.T) {
 	svc := newServiceForTest(repo)
 	longPath := strings.Repeat("a", 1025)
 
-	_, err := svc.Create(context.Background(), longPath, "qualquer")
+	_, err := svc.Create(context.Background(), "cofre-teste", longPath, "qualquer")
 
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, notes.ErrInvalidPath))
