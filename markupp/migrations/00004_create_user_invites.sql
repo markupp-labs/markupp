@@ -20,7 +20,8 @@ CREATE TABLE user_invites (
 
 ALTER TABLE user_invites ENABLE ROW LEVEL SECURITY;
 CREATE POLICY user_invites_isolation ON user_invites
-    USING (tenant_id = current_setting('markupp.tenant_id', true));
+    USING (tenant_id = current_setting('markupp.tenant_id', true)
+           AND current_setting('markupp.role', true) = 'admin');
 
 GRANT SELECT, INSERT ON user_invites TO markupp_app;
 

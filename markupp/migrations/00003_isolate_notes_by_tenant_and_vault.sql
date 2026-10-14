@@ -71,9 +71,11 @@ ALTER TABLE vault_members ENABLE ROW LEVEL SECURITY;
 CREATE POLICY vault_members_isolation ON vault_members
     USING (vault_id IN (SELECT markupp_member_vaults()));
 
+-- Só o administrador lista usuários: a rota confere o papel, e o banco confere de novo.
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 CREATE POLICY users_isolation ON users
-    USING (tenant_id = current_setting('markupp.tenant_id', true));
+    USING (tenant_id = current_setting('markupp.tenant_id', true)
+           AND current_setting('markupp.role', true) = 'admin');
 
 ALTER TABLE audit_events ENABLE ROW LEVEL SECURITY;
 CREATE POLICY audit_events_isolation ON audit_events

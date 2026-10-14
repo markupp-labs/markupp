@@ -28,14 +28,14 @@ func inTx(ctx context.Context, pool *pgxpool.Pool, fn func(q *gen.Queries) error
 }
 
 // inActorTx roda fn numa transação em que o banco só enxerga o tenant e os cofres
-// do ator do contexto.
+// do ator do contexto, e as políticas de administração conferem o papel dele.
 func inActorTx(ctx context.Context, pool *pgxpool.Pool, fn func(q *gen.Queries) error) error {
 	actor, ok := identity.ActorFrom(ctx)
 	if !ok {
 		return ErrNoActor
 	}
 	return inTx(ctx, pool, func(q *gen.Queries) error {
-		if err := q.EnterActor(ctx, gen.EnterActorParams{TenantID: actor.TenantID, UserID: actor.UserID}); err != nil {
+		if err := q.EnterActor(ctx, gen.EnterActorParams{TenantID: actor.TenantID, UserID: actor.UserID, Role: actor.Role}); err != nil {
 			return fmt.Errorf("entrar no tenant %q como %q: %w", actor.TenantID, actor.UserID, err)
 		}
 		return fn(q)
