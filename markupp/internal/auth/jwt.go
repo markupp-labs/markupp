@@ -22,6 +22,11 @@ var (
 	ErrExpiredToken = errors.New("token expirado")
 )
 
+type tokenHeader struct {
+	Alg string `json:"alg"`
+	Typ string `json:"typ"`
+}
+
 // Claims são as declarações de identidade e permissão contidas no JWT.
 type Claims struct {
 	Subject   string `json:"sub"`
@@ -54,17 +59,20 @@ func NewTokenCodec(secret string, expiration time.Duration, clock func() time.Ti
 	}
 }
 
-// GenerateTokenPair gera o JWT de acesso e um refresh token aleatório.
-func (c *TokenCodec) GenerateTokenPair(userID, tenantID, role string) (TokenPair, error) {
+func (c *TokenCodec) newAccessClaims(userID, tenantID, role string) Claims {
 	now := c.clock()
-	claims := Claims{
+	return Claims{
 		Subject:   userID,
 		TenantID:  tenantID,
 		Role:      role,
 		IssuedAt:  now.Unix(),
 		ExpiresAt: now.Add(c.expiration).Unix(),
 	}
-	access, err := c.encodeClaims(claims)
+}
+
+// GenerateTokenPair gera o JWT de acesso e um refresh token aleatório.
+func (c *TokenCodec) GenerateTokenPair(userID, tenantID, role string) (TokenPair, error) {
+	access, err := c.encodeClaims(c.newAccessClaims(userID, tenantID, role))
 	if err != nil {
 		return TokenPair{}, err
 	}
@@ -79,10 +87,28 @@ func (c *TokenCodec) GenerateTokenPair(userID, tenantID, role string) (TokenPair
 	}, nil
 }
 
+func decodeHeader(headerPart string) error {
+	raw, err := base64.RawURLEncoding.DecodeString(headerPart)
+	if err != nil {
+		return ErrInvalidToken
+	}
+	var h tokenHeader
+	if err := json.Unmarshal(raw, &h); err != nil {
+		return ErrInvalidToken
+	}
+	if h.Alg != "HS256" || h.Typ != "JWT" {
+		return ErrInvalidToken
+	}
+	return nil
+}
+
 // ValidateToken valida a assinatura e expiração do JWT, retornando suas claims.
 func (c *TokenCodec) ValidateToken(tokenString string) (Claims, error) {
 	parts := strings.Split(tokenString, ".")
 	if len(parts) != 3 {
+		return Claims{}, ErrInvalidToken
+	}
+	if err := decodeHeader(parts[0]); err != nil {
 		return Claims{}, ErrInvalidToken
 	}
 	if !c.verifySignature(parts[0], parts[1], parts[2]) {
