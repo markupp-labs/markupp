@@ -55,3 +55,11 @@ WHERE user_id = $1;
 -- name: CreateAuditEvent :exec
 INSERT INTO audit_events (id, tenant_id, actor_id, action, target, result, occurred_at)
 VALUES ($1, $2, $3, $4, $5, $6, $7);
+
+-- clock_timestamp, e não o instante da conta, deixa o cofre criado com o usuário
+-- como o mais antigo dele, que é o padrão das notas sem cofre informado.
+-- name: JoinTenantVaults :exec
+INSERT INTO vault_members (vault_id, user_id, created_at)
+SELECT id, sqlc.arg(user_id), clock_timestamp() FROM vaults
+WHERE tenant_id = sqlc.arg(tenant_id)
+ON CONFLICT DO NOTHING;

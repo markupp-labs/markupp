@@ -49,6 +49,9 @@ func TestMigracao_NotaDaRC1_PrimeiroAdminEnxergaNoCofreImportadas(t *testing.T) 
 	require.Len(t, lista, 1)
 	assert.Equal(t, "antiga.md", lista[0].Path)
 	assert.Equal(t, "importadas", lista[0].VaultID)
+	padrao, err := storage.NewPostgresNotesRepository(db).DefaultVaultID(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, params.InitialVaultID, padrao, "nota nova sem cofre vai para o Principal, nao para o importado")
 }
 
 func TestCreateAccountTx_SegundoUsuario_NaoEntraNosCofresExistentes(t *testing.T) {

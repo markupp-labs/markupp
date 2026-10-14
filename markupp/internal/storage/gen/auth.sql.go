@@ -219,6 +219,25 @@ func (q *Queries) GetUserIdentity(ctx context.Context, arg GetUserIdentityParams
 	return i, err
 }
 
+const joinTenantVaults = `-- name: JoinTenantVaults :exec
+INSERT INTO vault_members (vault_id, user_id, created_at)
+SELECT id, $1, clock_timestamp() FROM vaults
+WHERE tenant_id = $2
+ON CONFLICT DO NOTHING
+`
+
+type JoinTenantVaultsParams struct {
+	UserID   string
+	TenantID string
+}
+
+// clock_timestamp, e não o instante da conta, deixa o cofre criado com o usuário
+// como o mais antigo dele, que é o padrão das notas sem cofre informado.
+func (q *Queries) JoinTenantVaults(ctx context.Context, arg JoinTenantVaultsParams) error {
+	_, err := q.db.Exec(ctx, joinTenantVaults, arg.UserID, arg.TenantID)
+	return err
+}
+
 const revokeAllUserRefreshTokens = `-- name: RevokeAllUserRefreshTokens :exec
 UPDATE refresh_tokens
 SET revoked = TRUE

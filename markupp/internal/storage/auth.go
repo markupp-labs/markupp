@@ -64,7 +64,20 @@ func (r *PostgresAuthRepository) commitAccountTx(ctx context.Context, qtx *gen.Q
 		}
 		return auth.User{}, fmt.Errorf("gravar conta para %q: %w", p.User.Email, err)
 	}
-	return user, nil
+	return user, adoptExistingVaults(ctx, qtx, user, action)
+}
+
+// adoptExistingVaults dá ao primeiro admin os cofres que já existiam no tenant, que
+// só podem ser os criados pela migração para as notas da v1.0.0-rc.1.
+func adoptExistingVaults(ctx context.Context, qtx *gen.Queries, user auth.User, action string) error {
+	if action != "auth.register_admin" {
+		return nil
+	}
+	err := qtx.JoinTenantVaults(ctx, gen.JoinTenantVaultsParams{UserID: user.ID, TenantID: user.TenantID})
+	if err != nil {
+		return fmt.Errorf("dar ao admin %q os cofres do tenant %q: %w", user.ID, user.TenantID, err)
+	}
+	return nil
 }
 
 func (r *PostgresAuthRepository) resolveRoleAndAction(ctx context.Context, qtx *gen.Queries, p auth.CreateAccountParams) (auth.User, string, error) {
