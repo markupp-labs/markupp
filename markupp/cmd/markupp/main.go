@@ -99,10 +99,11 @@ func newHandler(cfg config.Config, pool *pgxpool.Pool) http.Handler {
 	repo := storage.NewPostgresNotesRepository(pool)
 	notesSvc := notes.NewService(repo, cfg.MaxNoteSize)
 	authSvc, codec := newAuthService(cfg, pool)
-	router := api.NewRouterWithAuth(notesSvc, authSvc, codec, pool, cfg.AllowedOrigins)
 	adminSvc := auth.NewAdminService(storage.NewPostgresAdminRepository(pool), time.Now)
-	api.MountAdminRoutes(router, adminSvc, codec)
-	return router
+	return api.NewRouter(api.RouterDeps{
+		Notes: notesSvc, Auth: authSvc, Admin: adminSvc,
+		Tokens: codec, Probe: pool, AllowedOrigins: cfg.AllowedOrigins,
+	})
 }
 
 func newAuthService(cfg config.Config, pool *pgxpool.Pool) (api.AuthService, api.TokenValidator) {

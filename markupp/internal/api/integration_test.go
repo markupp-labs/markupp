@@ -32,7 +32,7 @@ func setupIntegrationServer(t *testing.T) (*httptest.Server, *pgxpool.Pool) {
 	repo := storage.NewPostgresNotesRepository(pool)
 	svc := notes.NewService(repo, integrationMaxNoteSize)
 	validator := &fakeTokenValidator{claims: auth.Claims{Subject: "integracao", TenantID: "default", Role: "admin"}}
-	router := api.NewRouterWithAuth(svc, nil, validator, pool, nil)
+	router := api.NewRouter(api.RouterDeps{Notes: svc, Tokens: validator, Probe: pool})
 
 	server := httptest.NewServer(router)
 	t.Cleanup(server.Close)

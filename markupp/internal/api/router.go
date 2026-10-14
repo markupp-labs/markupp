@@ -5,22 +5,32 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 )
 
-// NewRouterWithAuth monta o roteador com sonda, rotas de notas e rotas de autenticação.
-func NewRouterWithAuth(
-	svc NoteService,
-	authSvc AuthService,
-	tokenValidator TokenValidator,
-	probe StorageProbe,
-	allowedOrigins []string,
-) chi.Router {
-	if tokenValidator == nil {
-		panic("api: tokenValidator obrigatorio para proteger rotas de notas")
+// RouterDeps reúne o que o roteador expõe. As rotas de um serviço nil não são montadas.
+type RouterDeps struct {
+	Notes          NoteService
+	Auth           AuthService
+	Admin          AdminService
+	Tokens         TokenValidator
+	Probe          StorageProbe
+	AllowedOrigins []string
+}
+
+// NewRouter monta o roteador com sonda, rotas de autenticação, de notas e de
+// administração.
+func NewRouter(d RouterDeps) chi.Router {
+	if d.Tokens == nil {
+		panic("api: Tokens obrigatorio para proteger as rotas")
 	}
-	r := newBaseRouter(probe, allowedOrigins)
-	if authSvc != nil {
-		mountAuthRoutes(r, authSvc, tokenValidator)
+	r := newBaseRouter(d.Probe, d.AllowedOrigins)
+	if d.Auth != nil {
+		mountAuthRoutes(r, d.Auth, d.Tokens)
 	}
-	mountProtectedNotesRoutes(r, svc, tokenValidator)
+	if d.Notes != nil {
+		mountProtectedNotesRoutes(r, d.Notes, d.Tokens)
+	}
+	if d.Admin != nil {
+		mountAdminRoutes(r, d.Admin, d.Tokens)
+	}
 	return r
 }
 
@@ -46,9 +56,7 @@ func mountAuthRoutes(r chi.Router, authSvc AuthService, tokenValidator TokenVali
 	r.Post("/auth/refresh", h.refresh)
 	r.Post("/auth/logout", h.logout)
 	r.Post("/auth/invites/accept", h.acceptInvite)
-	if tokenValidator != nil {
-		r.With(RequireAuth(tokenValidator)).Get("/auth/me", h.me)
-	}
+	r.With(RequireAuth(tokenValidator)).Get("/auth/me", h.me)
 }
 
 func mountNotesRoutes(r chi.Router, svc NoteService) {

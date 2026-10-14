@@ -9,7 +9,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -42,8 +41,7 @@ func (f *fakeAdminService) IssueInvite(ctx context.Context, inviter identity.Act
 
 func adminRequest(svc api.AdminService, role, method, path, body string) *httptest.ResponseRecorder {
 	validator := &fakeTokenValidator{claims: auth.Claims{Subject: "u1", TenantID: "t1", Role: role}}
-	router := chi.NewRouter()
-	api.MountAdminRoutes(router, svc, validator)
+	router := api.NewRouter(api.RouterDeps{Admin: svc, Tokens: validator})
 	req := httptest.NewRequest(method, path, bytes.NewBufferString(body))
 	req.Header.Set("Authorization", "Bearer token-valido")
 	rec := httptest.NewRecorder()
@@ -60,8 +58,7 @@ func TestAdminRoutes_PapelMember_Retorna403(t *testing.T) {
 }
 
 func TestAdminRoutes_SemToken_Retorna401(t *testing.T) {
-	router := chi.NewRouter()
-	api.MountAdminRoutes(router, &fakeAdminService{}, &fakeTokenValidator{})
+	router := api.NewRouter(api.RouterDeps{Admin: &fakeAdminService{}, Tokens: &fakeTokenValidator{}})
 	rec := httptest.NewRecorder()
 
 	router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/users", nil))

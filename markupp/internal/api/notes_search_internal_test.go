@@ -143,7 +143,7 @@ func buscarNotas(t *testing.T, svc NoteService, queryString string) *httptest.Re
 	req.Header.Set("Authorization", "Bearer token-valido")
 	rec := httptest.NewRecorder()
 	validator := fakeSearchTokenValidator{}
-	NewRouterWithAuth(svc, nil, validator, fakeProbe{}, nil).ServeHTTP(rec, req)
+	NewRouter(RouterDeps{Notes: svc, Tokens: validator, Probe: fakeProbe{}}).ServeHTTP(rec, req)
 	return rec
 }
 

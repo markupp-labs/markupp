@@ -101,7 +101,7 @@ func newTestNotesRouter(svc api.NoteService) chi.Router {
 			Role:     "member",
 		},
 	}
-	return api.NewRouterWithAuth(svc, nil, validator, &fakeProbe{}, nil)
+	return api.NewRouter(api.RouterDeps{Notes: svc, Tokens: validator, Probe: &fakeProbe{}})
 }
 
 func doPost(t *testing.T, svc api.NoteService, body string) *httptest.ResponseRecorder {

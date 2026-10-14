@@ -40,9 +40,9 @@ type issuedInviteResponse struct {
 	Token string `json:"token"`
 }
 
-// MountAdminRoutes monta as rotas que só o administrador do tenant alcança. O papel
+// mountAdminRoutes monta as rotas que só o administrador do tenant alcança. O papel
 // vem do JWT validado, nunca de cabeçalho enviado pelo cliente.
-func MountAdminRoutes(r chi.Router, svc AdminService, validator TokenValidator) {
+func mountAdminRoutes(r chi.Router, svc AdminService, validator TokenValidator) {
 	h := &adminHandler{svc: svc}
 	r.Group(func(g chi.Router) {
 		g.Use(RequireAuth(validator), requireAdmin)

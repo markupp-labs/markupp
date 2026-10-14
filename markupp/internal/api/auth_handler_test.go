@@ -65,7 +65,7 @@ func setupAuthRouter(svc api.AuthService, validator api.TokenValidator) http.Han
 	if validator == nil {
 		validator = &fakeTokenValidator{}
 	}
-	return api.NewRouterWithAuth(&fakeService{}, svc, validator, &fakeProbe{}, nil)
+	return api.NewRouter(api.RouterDeps{Notes: &fakeService{}, Auth: svc, Tokens: validator, Probe: &fakeProbe{}})
 }
 
 func TestAuthHandler_Login_Sucesso(t *testing.T) {

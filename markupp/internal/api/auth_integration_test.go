@@ -38,8 +38,8 @@ func setupAuthIntegrationServer(t *testing.T) (*httptest.Server, *pgxpool.Pool) 
 		RefreshExpirationPeriod: 7 * 24 * time.Hour,
 	}
 	authSvc := auth.NewService(authRepo, codec, hasher, authCfg, time.Now)
-	router := api.NewRouterWithAuth(notesSvc, authSvc, codec, pool, nil)
-	api.MountAdminRoutes(router, auth.NewAdminService(storage.NewPostgresAdminRepository(pool), time.Now), codec)
+	adminSvc := auth.NewAdminService(storage.NewPostgresAdminRepository(pool), time.Now)
+	router := api.NewRouter(api.RouterDeps{Notes: notesSvc, Auth: authSvc, Admin: adminSvc, Tokens: codec, Probe: pool})
 
 	server := httptest.NewServer(router)
 	t.Cleanup(server.Close)
