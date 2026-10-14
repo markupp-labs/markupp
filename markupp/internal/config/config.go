@@ -14,9 +14,10 @@ type LookupFunc func(key string) (string, bool)
 
 // Config são os parâmetros de execução do servidor.
 type Config struct {
-	Port                    int
-	DatabaseURL             string
-	MaxNoteSize             int64
+	Port        int
+	DatabaseURL string
+	MaxNoteSize int64
+	// AllowedOrigins libera CORS para essas origens. Vazio desliga o CORS.
 	AllowedOrigins          []string
 	AuthSecret              string
 	DefaultTenantID         string
