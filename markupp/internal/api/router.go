@@ -45,6 +45,7 @@ func mountAuthRoutes(r chi.Router, authSvc AuthService, tokenValidator TokenVali
 	r.Post("/auth/login", h.login)
 	r.Post("/auth/refresh", h.refresh)
 	r.Post("/auth/logout", h.logout)
+	r.Post("/auth/invites/accept", h.acceptInvite)
 	if tokenValidator != nil {
 		r.With(RequireAuth(tokenValidator)).Get("/auth/me", h.me)
 	}

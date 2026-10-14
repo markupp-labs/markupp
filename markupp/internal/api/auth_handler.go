@@ -19,6 +19,7 @@ type AuthService interface {
 	RefreshToken(ctx context.Context, rawRefreshToken string) (auth.TokenPair, error)
 	RevokeSession(ctx context.Context, rawRefreshToken string) error
 	GetAccount(ctx context.Context, userID string) (auth.User, error)
+	AcceptInvite(ctx context.Context, token, password string) (auth.TokenPair, error)
 }
 
 type authHandler struct {
@@ -28,6 +29,11 @@ type authHandler struct {
 
 type loginRequest struct {
 	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+type acceptInviteRequest struct {
+	Token    string `json:"token"`
 	Password string `json:"password"`
 }
 
@@ -65,6 +71,21 @@ func (h *authHandler) refresh(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	pair, err := h.svc.RefreshToken(r.Context(), req.RefreshToken)
+	if err != nil {
+		h.handleAuthError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, pair)
+}
+
+func (h *authHandler) acceptInvite(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, maxAuthBodyBytes)
+	var req acceptInviteRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, "invalid_request", "JSON invalido", http.StatusBadRequest)
+		return
+	}
+	pair, err := h.svc.AcceptInvite(r.Context(), req.Token, req.Password)
 	if err != nil {
 		h.handleAuthError(w, err)
 		return
@@ -122,6 +143,10 @@ func (h *authHandler) handleAuthError(w http.ResponseWriter, err error) {
 		writeError(w, "invalid_request", err.Error(), http.StatusBadRequest)
 	case errors.Is(err, auth.ErrInvalidCredentials):
 		writeError(w, "invalid_credentials", "credenciais invalidas", http.StatusUnauthorized)
+	case errors.Is(err, auth.ErrInviteInvalid):
+		writeError(w, "invalid_invite", auth.ErrInviteInvalid.Error(), http.StatusBadRequest)
+	case errors.Is(err, auth.ErrUserAlreadyExists):
+		writeError(w, "already_exists", "email ja tem conta", http.StatusConflict)
 	case errors.Is(err, auth.ErrLocalAuthDisabled):
 		writeError(w, "local_auth_disabled", "autenticacao local desativada", http.StatusForbidden)
 	case errors.Is(err, auth.ErrRefreshTokenRevoked), errors.Is(err, auth.ErrRefreshTokenExpired), errors.Is(err, auth.ErrRefreshTokenInvalid):
