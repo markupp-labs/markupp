@@ -10,8 +10,8 @@ import (
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/identity"
 )
 
-// SeedMember grava, com o papel dono do banco, o usuário do ator, o cofre vaultID no
-// tenant dele e o vínculo entre os dois. Devolve um contexto que carrega o ator.
+// SeedMember grava, com o papel dono do banco, o tenant do ator, o usuário, o vínculo
+// dele com o tenant no papel actor.Role, o cofre vaultID e o pertencimento ao cofre. Devolve um contexto que carrega o ator.
 func SeedMember(t *testing.T, pool *pgxpool.Pool, actor identity.Actor, vaultID string) context.Context {
 	t.Helper()
 	ctx := context.Background()
@@ -19,9 +19,14 @@ func SeedMember(t *testing.T, pool *pgxpool.Pool, actor identity.Actor, vaultID 
 		sql  string
 		args []any
 	}{
+		{`INSERT INTO tenants (id, name, created_at) VALUES ($1, $1, now()) ON CONFLICT DO NOTHING`,
+			[]any{actor.TenantID}},
 		{`INSERT INTO users (id, tenant_id, email, role, created_at, updated_at)
 		  VALUES ($1, $2, $1 || '@markupp.dev', $3, now(), now()) ON CONFLICT DO NOTHING`,
 			[]any{actor.UserID, actor.TenantID, actor.Role}},
+		{`INSERT INTO tenant_memberships (tenant_id, user_id, role, created_at)
+		  VALUES ($1, $2, $3, now()) ON CONFLICT DO NOTHING`,
+			[]any{actor.TenantID, actor.UserID, actor.Role}},
 		{`INSERT INTO vaults (id, tenant_id, name, created_at)
 		  VALUES ($1, $2, $1, clock_timestamp()) ON CONFLICT DO NOTHING`,
 			[]any{vaultID, actor.TenantID}},
