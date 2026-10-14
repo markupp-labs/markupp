@@ -112,15 +112,17 @@ func TestNotesRepo_SemAtorNoContexto_RecusaComErrNoActor(t *testing.T) {
 	assert.ErrorIs(t, err, storage.ErrNoActor)
 }
 
-// comoPapelDaAplicacao roda sql no papel markupp_app com o tenant e o usuário dados,
-// sem passar pelo repositório: prova a política do banco, não a disciplina da query.
-func comoPapelDaAplicacao(t *testing.T, db *pgxpool.Pool, tenantID, userID, sql string) (int64, error) {
+// comoPapelDaAplicacao roda sql no papel markupp_app com o tenant, o usuário e o papel
+// do ator, sem passar pelo repositório: prova a política do banco, não a disciplina
+// da query.
+func comoPapelDaAplicacao(t *testing.T, db *pgxpool.Pool, ator identity.Actor, sql string) (int64, error) {
 	t.Helper()
 	ctx := context.Background()
 	tx, err := db.Begin(ctx)
 	require.NoError(t, err)
 	defer func() { _ = tx.Rollback(ctx) }()
-	_, err = tx.Exec(ctx, "SELECT set_config('role', 'markupp_app', true), set_config('markupp.tenant_id', $1, true), set_config('markupp.user_id', $2, true)", tenantID, userID)
+	_, err = tx.Exec(ctx, "SELECT set_config('role', 'markupp_app', true), set_config('markupp.tenant_id', $1, true), set_config('markupp.user_id', $2, true), set_config('markupp.role', $3, true)",
+		ator.TenantID, ator.UserID, ator.Role)
 	require.NoError(t, err)
 	var n int64
 	err = tx.QueryRow(ctx, sql).Scan(&n)
@@ -140,11 +142,11 @@ func TestRLS_PapelDaAplicacaoSemFiltro_SoEnxergaOProprioTenant(t *testing.T) {
 		"SELECT count(*) FROM vault_members WHERE vault_id = 'va'",
 	}
 	for _, sql := range consultasDoCofreAlheio {
-		n, err := comoPapelDaAplicacao(t, db, "t2", "ub", sql)
+		n, err := comoPapelDaAplicacao(t, db, identity.Actor{UserID: "ub", TenantID: "t2", Role: "admin"}, sql)
 		require.NoError(t, err, sql)
 		assert.Zero(t, n, "tenant t2 enxergou linha do cofre va: %s", sql)
 	}
-	n, err := comoPapelDaAplicacao(t, db, "t2", "ub", "SELECT count(*) FROM users")
+	n, err := comoPapelDaAplicacao(t, db, identity.Actor{UserID: "ub", TenantID: "t2", Role: "admin"}, "SELECT count(*) FROM users")
 	require.NoError(t, err)
 	assert.Equal(t, int64(1), n, "tenant t2 deve ver so o proprio usuario")
 }
@@ -155,9 +157,21 @@ func TestRLS_PapelDaAplicacao_NaoAlteraAuditoria(t *testing.T) {
 		"INSERT INTO audit_events (id, tenant_id, action, target, result, occurred_at) VALUES ('e1', 't1', 'auth.login', 'x', 'success', now())")
 	require.NoError(t, err)
 
-	_, err = comoPapelDaAplicacao(t, db, "t1", "ua", "WITH d AS (DELETE FROM audit_events RETURNING 1) SELECT count(*) FROM d")
+	_, err = comoPapelDaAplicacao(t, db, identity.Actor{UserID: "ua", TenantID: "t1", Role: "admin"}, "WITH d AS (DELETE FROM audit_events RETURNING 1) SELECT count(*) FROM d")
 
 	var pgErr *pgconn.PgError
 	require.ErrorAs(t, err, &pgErr)
 	assert.Equal(t, "42501", pgErr.Code, "esperada permissao negada ao papel da aplicacao, recebido %v", err)
+}
+
+func TestRLS_PapelDaAplicacaoComoMembro_NaoVeUsuariosNemConvites(t *testing.T) {
+	db := setupTestDB(t)
+	membro := identity.Actor{UserID: "ua", TenantID: "t1", Role: "member"}
+	storagetest.SeedMember(t, db, membro, "va")
+
+	for _, sql := range []string{"SELECT count(*) FROM users", "SELECT count(*) FROM user_invites"} {
+		n, err := comoPapelDaAplicacao(t, db, membro, sql)
+		require.NoError(t, err, sql)
+		assert.Zero(t, n, "membro enxergou linhas em %s", sql)
+	}
 }

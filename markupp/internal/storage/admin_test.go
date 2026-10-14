@@ -122,3 +122,14 @@ func TestAuthRepo_AcceptInviteTx_ConviteVencido_RecusaComErrInviteInvalid(t *tes
 
 	assert.ErrorIs(t, err, auth.ErrInviteInvalid)
 }
+
+func TestAdminRepo_CreateInviteTx_AtorMembro_BarradoPeloBanco(t *testing.T) {
+	db := setupTestDB(t)
+	membro := identity.Actor{UserID: "membro-a", TenantID: "t1", Role: "member"}
+	ctx := storagetest.SeedMember(t, db, membro, "va")
+	inv := conviteDe(membro, "c1", "nova@markupp.dev")
+
+	err := storage.NewPostgresAdminRepository(db).CreateInviteTx(ctx, inv, auth.HashOpaqueToken("tok"), eventoDoConvite(inv))
+
+	assert.Error(t, err, "so admin emite convite, mesmo que a rota esqueca o requireAdmin")
+}
