@@ -12,10 +12,12 @@ const (
 	// dbSecretKey é a chave com a URL de conexão que a API e a migração leem.
 	dbSecretKey      = "uri"
 	dbPasswordKey    = "password"
+	authSecretKey    = "auth-secret"
 	postgresImage    = "postgres:17.9-alpine3.23"
 	postgresPort     = 5432
 	postgresUser     = "markupp"
 	passwordLength   = 32
+	authSecretLength = 64
 	postgresDataPath = "/var/lib/postgresql/data"
 )
 
@@ -31,9 +33,15 @@ func declareDatabase(ctx *pulumi.Context, names resourceNames, args MarkuppArgs,
 // declareExternalDatabase guarda a URL num Secret. O provider Kubernetes já
 // trata stringData de Secret como segredo no estado.
 func declareExternalDatabase(ctx *pulumi.Context, names resourceNames, args MarkuppArgs, parent pulumi.ResourceOption) (pulumi.Resource, error) {
+	authSecret, err := random.NewRandomPassword(ctx, names.component+"-auth-secret", &random.RandomPasswordArgs{
+		Length: pulumi.Int(authSecretLength), Special: pulumi.Bool(false),
+	}, parent)
+	if err != nil {
+		return nil, err
+	}
 	return corev1.NewSecret(ctx, names.dbSecret, &corev1.SecretArgs{
 		Metadata:   namespaced(names.dbSecret, args.Namespace),
-		StringData: pulumi.StringMap{dbSecretKey: args.Database.ExternalURL},
+		StringData: pulumi.StringMap{dbSecretKey: args.Database.ExternalURL, authSecretKey: authSecret.Result},
 	}, parent)
 }
 
@@ -47,7 +55,13 @@ func declareNamespacePostgres(ctx *pulumi.Context, names resourceNames, args Mar
 	if err != nil {
 		return nil, err
 	}
-	if err := declarePostgresSecret(ctx, names, args, password.Result, parent); err != nil {
+	authSecret, err := random.NewRandomPassword(ctx, names.component+"-auth-secret", &random.RandomPasswordArgs{
+		Length: pulumi.Int(authSecretLength), Special: pulumi.Bool(false),
+	}, parent)
+	if err != nil {
+		return nil, err
+	}
+	if err := declarePostgresSecret(ctx, names, args, password.Result, authSecret.Result, parent); err != nil {
 		return nil, err
 	}
 	labels := pulumi.StringMap{"app.kubernetes.io/name": pulumi.String(names.database)}
@@ -57,12 +71,12 @@ func declareNamespacePostgres(ctx *pulumi.Context, names resourceNames, args Mar
 	return appsv1.NewStatefulSet(ctx, names.database, postgresStatefulSetArgs(names, args, labels), parent)
 }
 
-func declarePostgresSecret(ctx *pulumi.Context, names resourceNames, args MarkuppArgs, password pulumi.StringOutput, parent pulumi.ResourceOption) error {
+func declarePostgresSecret(ctx *pulumi.Context, names resourceNames, args MarkuppArgs, password, authSecret pulumi.StringOutput, parent pulumi.ResourceOption) error {
 	uri := pulumi.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=disable",
 		postgresUser, password, names.database, postgresPort, postgresUser)
 	_, err := corev1.NewSecret(ctx, names.dbSecret, &corev1.SecretArgs{
 		Metadata:   namespaced(names.dbSecret, args.Namespace),
-		StringData: pulumi.StringMap{dbPasswordKey: password, dbSecretKey: uri},
+		StringData: pulumi.StringMap{dbPasswordKey: password, dbSecretKey: uri, authSecretKey: authSecret},
 	}, parent)
 	return err
 }
@@ -132,7 +146,10 @@ func postgresVolumeClaim(args MarkuppArgs) corev1.PersistentVolumeClaimTypeArgs 
 }
 
 func databaseURLEnv(names resourceNames) corev1.EnvVarArray {
-	return corev1.EnvVarArray{secretEnv("MARKUPP_DATABASE_URL", names.dbSecret, dbSecretKey)}
+	return corev1.EnvVarArray{
+		secretEnv("MARKUPP_DATABASE_URL", names.dbSecret, dbSecretKey),
+		secretEnv("MARKUPP_AUTH_SECRET", names.dbSecret, authSecretKey),
+	}
 }
 
 func secretEnv(name, secret, key string) corev1.EnvVarArgs {

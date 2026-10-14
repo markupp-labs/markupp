@@ -138,9 +138,10 @@ func TestNewMarkupp_SemBancoExterno_CriaPostgresNoNamespaceComVolume(t *testing.
 func TestNewMarkupp_SemBancoExterno_GuardaSenhaGeradaEURLNoSecret(t *testing.T) {
 	monitor := deploy(t, argsDeTeste())
 
-	require.Len(t, monitor.byType(randomPasswordType), 1)
+	require.Len(t, monitor.byType(randomPasswordType), 2)
 	secret := monitor.single(t, "kubernetes:core/v1:Secret")
 	assert.Equal(t, senhaDeTeste, plain(at(t, secret, "stringData", "password")).StringValue())
+	assert.Equal(t, senhaDeTeste, plain(at(t, secret, "stringData", "auth-secret")).StringValue())
 	assert.Equal(t, "postgres://markupp:"+senhaDeTeste+"@markupp-db:5432/markupp?sslmode=disable",
 		plain(at(t, secret, "stringData", "uri")).StringValue())
 }
@@ -167,10 +168,11 @@ func TestNewMarkupp_ComBancoExterno_NaoCriaPostgresEGuardaURLEmSecret(t *testing
 	monitor := deploy(t, args)
 
 	assert.Empty(t, monitor.byType("kubernetes:apps/v1:StatefulSet"))
-	assert.Empty(t, monitor.byType(randomPasswordType))
+	require.Len(t, monitor.byType(randomPasswordType), 1)
 	secret := monitor.single(t, "kubernetes:core/v1:Secret")
 	assert.Equal(t, "postgres://markupp@db.externo:5432/markupp",
 		at(t, secret, "stringData", "uri").StringValue())
+	assert.Equal(t, senhaDeTeste, plain(at(t, secret, "stringData", "auth-secret")).StringValue())
 }
 
 func TestNewMarkupp_JobDeMigracao_RodaOSubcomandoMigrateNaImagem(t *testing.T) {
@@ -182,16 +184,21 @@ func TestNewMarkupp_JobDeMigracao_RodaOSubcomandoMigrateNaImagem(t *testing.T) {
 	assert.Equal(t, "migrate", container["args"].ArrayValue()[0].StringValue())
 }
 
-func TestNewMarkupp_DeploymentDaAPI_LeOBancoDoSecret(t *testing.T) {
+func TestNewMarkupp_DeploymentDaAPI_LeOBancoESegredoDoSecret(t *testing.T) {
 	monitor := deploy(t, argsDeTeste())
 
 	api := monitor.single(t, "kubernetes:apps/v1:Deployment")
 	container := firstContainer(t, api)
-	env := container["env"].ArrayValue()[0].ObjectValue()
-	assert.Equal(t, "MARKUPP_DATABASE_URL", env["name"].StringValue())
-	ref := at(t, env, "valueFrom", "secretKeyRef")
-	assert.Equal(t, "markupp-db-app", at(t, ref.ObjectValue(), "name").StringValue())
-	assert.Equal(t, "uri", at(t, ref.ObjectValue(), "key").StringValue())
+	envs := container["env"].ArrayValue()
+	require.Len(t, envs, 2)
+	assert.Equal(t, "MARKUPP_DATABASE_URL", envs[0].ObjectValue()["name"].StringValue())
+	assert.Equal(t, "MARKUPP_AUTH_SECRET", envs[1].ObjectValue()["name"].StringValue())
+	refDB := at(t, envs[0].ObjectValue(), "valueFrom", "secretKeyRef")
+	assert.Equal(t, "markupp-db-app", at(t, refDB.ObjectValue(), "name").StringValue())
+	assert.Equal(t, "uri", at(t, refDB.ObjectValue(), "key").StringValue())
+	refAuth := at(t, envs[1].ObjectValue(), "valueFrom", "secretKeyRef")
+	assert.Equal(t, "markupp-db-app", at(t, refAuth.ObjectValue(), "name").StringValue())
+	assert.Equal(t, "auth-secret", at(t, refAuth.ObjectValue(), "key").StringValue())
 }
 
 func TestNewMarkupp_DeploymentDaAPI_UsaDuasReplicasESondaHealthz(t *testing.T) {
