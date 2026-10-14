@@ -113,3 +113,35 @@ func TestTokenCodec_ValidateToken_PayloadInvalidoComAssinaturaValida(t *testing.
 	_, err := codec.ValidateToken(token)
 	require.ErrorIs(t, err, auth.ErrInvalidToken)
 }
+
+func TestTokenCodec_ValidateToken_HeaderComAlgInvalidoAssinado_RetornaErro(t *testing.T) {
+	clock := func() time.Time { return time.Date(2026, 10, 4, 12, 0, 0, 0, time.UTC) }
+	codec := auth.NewTokenCodec(segredoTeste, 15*time.Minute, clock)
+
+	for _, alg := range []string{"none", "HS512", "RS256"} {
+		headerPart := base64.RawURLEncoding.EncodeToString([]byte(`{"alg":"` + alg + `","typ":"JWT"}`))
+		payloadPart := base64.RawURLEncoding.EncodeToString([]byte(`{"sub":"user-1","tenant_id":"default","role":"admin","iat":100,"exp":9999999999}`))
+		mac := hmac.New(sha256.New, []byte(segredoTeste))
+		mac.Write([]byte(headerPart + "." + payloadPart))
+		sigPart := base64.RawURLEncoding.EncodeToString(mac.Sum(nil))
+
+		token := headerPart + "." + payloadPart + "." + sigPart
+		_, err := codec.ValidateToken(token)
+		require.ErrorIs(t, err, auth.ErrInvalidToken, "alg %s deveria ser recusado", alg)
+	}
+}
+
+func TestTokenCodec_ValidateToken_HeaderComTypInvalidoAssinado_RetornaErro(t *testing.T) {
+	clock := func() time.Time { return time.Date(2026, 10, 4, 12, 0, 0, 0, time.UTC) }
+	codec := auth.NewTokenCodec(segredoTeste, 15*time.Minute, clock)
+
+	headerPart := base64.RawURLEncoding.EncodeToString([]byte(`{"alg":"HS256","typ":"JOSE"}`))
+	payloadPart := base64.RawURLEncoding.EncodeToString([]byte(`{"sub":"user-1","tenant_id":"default","role":"admin","iat":100,"exp":9999999999}`))
+	mac := hmac.New(sha256.New, []byte(segredoTeste))
+	mac.Write([]byte(headerPart + "." + payloadPart))
+	sigPart := base64.RawURLEncoding.EncodeToString(mac.Sum(nil))
+
+	token := headerPart + "." + payloadPart + "." + sigPart
+	_, err := codec.ValidateToken(token)
+	require.ErrorIs(t, err, auth.ErrInvalidToken, "typ JOSE deveria ser recusado")
+}
