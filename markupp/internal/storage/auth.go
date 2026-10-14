@@ -170,15 +170,7 @@ func invitedAccount(inv gen.ClaimInviteRow, p auth.AcceptInviteParams) (auth.Use
 }
 
 func (r *PostgresAuthRepository) inTx(ctx context.Context, fn func(qtx *gen.Queries) error) error {
-	tx, err := r.pool.Begin(ctx)
-	if err != nil {
-		return fmt.Errorf("iniciar transacao: %w", err)
-	}
-	defer func() { _ = tx.Rollback(ctx) }()
-	if err := fn(r.q.WithTx(tx)); err != nil {
-		return err
-	}
-	return tx.Commit(ctx)
+	return inTx(ctx, r.pool, fn)
 }
 
 // GetUserByID busca a conta por ID, retornando ErrUserNotFound se inexistente.
