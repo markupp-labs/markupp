@@ -587,3 +587,13 @@ func TestCreate_AtorSemCofre_PropagaErrVaultForbidden(t *testing.T) {
 	require.ErrorIs(t, err, notes.ErrVaultForbidden)
 	assert.False(t, repo.called)
 }
+
+func TestCreate_CofreComEspacos_GravaNoCofreSemEspacos(t *testing.T) {
+	repo := &fakeRepo{}
+	svc := newServiceForTest(repo)
+
+	note, err := svc.Create(context.Background(), "  cofre-1 ", "a.md", "x")
+
+	require.NoError(t, err)
+	assert.Equal(t, "cofre-1", note.VaultID)
+}
