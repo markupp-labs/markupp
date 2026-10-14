@@ -1,21 +1,12 @@
 package api
 
 import (
-	"context"
 	"net/http"
 	"strings"
 
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/auth"
+	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/identity"
 )
-
-type userCtxKey struct{}
-
-// UserContext armazena a identidade do usuário autenticado no contexto HTTP.
-type UserContext struct {
-	UserID   string
-	TenantID string
-	Role     string
-}
 
 // TokenValidator define o contrato consumido pelo middleware para verificar o JWT.
 type TokenValidator interface {
@@ -42,7 +33,7 @@ func serveAuthenticated(w http.ResponseWriter, r *http.Request, next http.Handle
 		writeError(w, "unauthorized", "token ausente ou invalido", http.StatusUnauthorized)
 		return
 	}
-	ctx := context.WithValue(r.Context(), userCtxKey{}, UserContext{
+	ctx := identity.WithActor(r.Context(), identity.Actor{
 		UserID:   claims.Subject,
 		TenantID: claims.TenantID,
 		Role:     claims.Role,
@@ -59,10 +50,4 @@ func extractBearerToken(authHeader string) (string, bool) {
 		return "", false
 	}
 	return strings.TrimSpace(token), true
-}
-
-// UserFromContext recupera os dados do usuário autenticado a partir do contexto.
-func UserFromContext(ctx context.Context) (UserContext, bool) {
-	u, ok := ctx.Value(userCtxKey{}).(UserContext)
-	return u, ok
 }

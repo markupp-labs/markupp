@@ -8,6 +8,7 @@ import (
 	"net/http"
 
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/auth"
+	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/identity"
 )
 
 const maxAuthBodyBytes = 4096
@@ -93,7 +94,7 @@ func (h *authHandler) logError(msg string, err error) {
 }
 
 func (h *authHandler) me(w http.ResponseWriter, r *http.Request) {
-	u, ok := UserFromContext(r.Context())
+	u, ok := identity.ActorFrom(r.Context())
 	if !ok {
 		writeError(w, "unauthorized", "nao autenticado", http.StatusUnauthorized)
 		return

@@ -11,6 +11,7 @@ import (
 
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/api"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/auth"
+	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/identity"
 )
 
 type fakeTokenValidator struct {
@@ -35,11 +36,11 @@ func TestRequireAuth_TokenValido_InjetaContextoEProssegue(t *testing.T) {
 	}
 
 	var reached bool
-	var capturedUser api.UserContext
+	var capturedUser identity.Actor
 
 	handler := api.RequireAuth(validator)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		reached = true
-		u, ok := api.UserFromContext(r.Context())
+		u, ok := identity.ActorFrom(r.Context())
 		require.True(t, ok)
 		capturedUser = u
 		w.WriteHeader(http.StatusOK)
