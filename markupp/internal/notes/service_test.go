@@ -20,6 +20,10 @@ type fakeRepo struct {
 	saveErr error
 	called  bool
 
+	defaultVault       string
+	defaultVaultErr    error
+	defaultVaultCalled bool
+
 	updateNote notes.Note
 	updateErr  error
 	updateArgs struct {
@@ -51,6 +55,11 @@ type fakeRepo struct {
 		limit  int32
 		called bool
 	}
+}
+
+func (f *fakeRepo) DefaultVaultID(ctx context.Context) (string, error) {
+	f.defaultVaultCalled = true
+	return f.defaultVault, f.defaultVaultErr
 }
 
 func (f *fakeRepo) Save(ctx context.Context, n notes.Note) error {
@@ -101,7 +110,7 @@ func TestCreate_PathVazio_RetornaErrInvalidPath(t *testing.T) {
 	repo := &fakeRepo{}
 	svc := newServiceForTest(repo)
 
-	_, err := svc.Create(context.Background(), "", "qualquer")
+	_, err := svc.Create(context.Background(), "cofre-teste", "", "qualquer")
 
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, notes.ErrInvalidPath))
@@ -112,7 +121,7 @@ func TestCreate_PathComTraversal_RetornaErrInvalidPath(t *testing.T) {
 	repo := &fakeRepo{}
 	svc := newServiceForTest(repo)
 
-	_, err := svc.Create(context.Background(), "../etc/passwd", "qualquer")
+	_, err := svc.Create(context.Background(), "cofre-teste", "../etc/passwd", "qualquer")
 
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, notes.ErrInvalidPath))
@@ -134,7 +143,7 @@ func TestCreate_ContentMuitoGrande_RetornaErrInvalidContent(t *testing.T) {
 	svc := newServiceForTest(repo)
 	bigContent := strings.Repeat("x", testMaxContentSize+1)
 
-	_, err := svc.Create(context.Background(), "ok.md", bigContent)
+	_, err := svc.Create(context.Background(), "cofre-teste", "ok.md", bigContent)
 
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, notes.ErrInvalidContent))
@@ -144,7 +153,7 @@ func TestCreate_ContentVazio_Aceito(t *testing.T) {
 	repo := &fakeRepo{}
 	svc := newServiceForTest(repo)
 
-	note, err := svc.Create(context.Background(), "vazio.md", "")
+	note, err := svc.Create(context.Background(), "cofre-teste", "vazio.md", "")
 
 	require.NoError(t, err)
 	assert.Empty(t, note.Content)
@@ -156,7 +165,7 @@ func TestCreate_CaminhoFeliz_GeraNotaCompleta(t *testing.T) {
 	svc := newServiceForTest(repo)
 
 	before := time.Now().Truncate(time.Millisecond)
-	note, err := svc.Create(context.Background(), "minha.md", "conteudo")
+	note, err := svc.Create(context.Background(), "cofre-teste", "minha.md", "conteudo")
 	after := time.Now()
 
 	require.NoError(t, err)
@@ -175,7 +184,7 @@ func TestCreate_NormalizaTimestampParaUTCMilissegundo(t *testing.T) {
 	repo := &fakeRepo{}
 	svc := newServiceForTest(repo)
 
-	got, err := svc.Create(context.Background(), "a.md", "conteudo")
+	got, err := svc.Create(context.Background(), "cofre-teste", "a.md", "conteudo")
 
 	require.NoError(t, err)
 	assert.Equal(t, "UTC", got.CreatedAt.Location().String())
@@ -188,7 +197,7 @@ func TestCreate_RepoRetornaErrDuplicatePath_PropagadoAoCaller(t *testing.T) {
 	repo := &fakeRepo{saveErr: notes.ErrDuplicatePath}
 	svc := newServiceForTest(repo)
 
-	_, err := svc.Create(context.Background(), "dup.md", "x")
+	_, err := svc.Create(context.Background(), "cofre-teste", "dup.md", "x")
 
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, notes.ErrDuplicatePath))
@@ -544,4 +553,37 @@ func TestSearch_QueryVazia_PassaVaziaAoRepo(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, "", repo.searchArgs.query)
+}
+
+func TestCreate_ComCofre_GravaNeleSemConsultarOPadrao(t *testing.T) {
+	repo := &fakeRepo{defaultVault: "cofre-padrao"}
+	svc := newServiceForTest(repo)
+
+	note, err := svc.Create(context.Background(), "cofre-escolhido", "a.md", "x")
+
+	require.NoError(t, err)
+	assert.Equal(t, "cofre-escolhido", note.VaultID)
+	assert.Equal(t, "cofre-escolhido", repo.saved.VaultID)
+	assert.False(t, repo.defaultVaultCalled)
+}
+
+func TestCreate_SemCofre_GravaNoCofrePadraoDoAtor(t *testing.T) {
+	repo := &fakeRepo{defaultVault: "cofre-padrao"}
+	svc := newServiceForTest(repo)
+
+	note, err := svc.Create(context.Background(), "", "a.md", "x")
+
+	require.NoError(t, err)
+	assert.Equal(t, "cofre-padrao", note.VaultID)
+	assert.Equal(t, "cofre-padrao", repo.saved.VaultID)
+}
+
+func TestCreate_AtorSemCofre_PropagaErrVaultForbidden(t *testing.T) {
+	repo := &fakeRepo{defaultVaultErr: notes.ErrVaultForbidden}
+	svc := newServiceForTest(repo)
+
+	_, err := svc.Create(context.Background(), "", "a.md", "x")
+
+	require.ErrorIs(t, err, notes.ErrVaultForbidden)
+	assert.False(t, repo.called)
 }

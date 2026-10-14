@@ -43,6 +43,8 @@ type fakeService struct {
 	listErr    error
 	listCalled bool
 
+	createdVaultID string
+
 	searchResult []notes.SearchResult
 	searchErr    error
 	searchArgs   struct {
@@ -53,7 +55,8 @@ type fakeService struct {
 	}
 }
 
-func (f *fakeService) Create(ctx context.Context, path, content string) (notes.Note, error) {
+func (f *fakeService) Create(ctx context.Context, vaultID, path, content string) (notes.Note, error) {
+	f.createdVaultID = vaultID
 	return f.note, f.err
 }
 
@@ -519,4 +522,25 @@ func TestSearchNotes_OffsetInvalido_Retorna400(t *testing.T) {
 	var resp map[string]any
 	require.NoError(t, json.NewDecoder(rec.Body).Decode(&resp))
 	assert.Equal(t, "invalid_request", resp["error"])
+}
+
+func TestPostNotes_ComVaultID_RepassaOCofreEDevolveNaResposta(t *testing.T) {
+	svc := &fakeService{note: notes.Note{ID: "id-x", VaultID: "cofre-1", Path: "x.md"}}
+
+	rec := doPost(t, svc, `{"vault_id":"cofre-1","path":"x.md","content":"y"}`)
+
+	assert.Equal(t, http.StatusCreated, rec.Code)
+	assert.Equal(t, "cofre-1", svc.createdVaultID)
+	var resp map[string]any
+	require.NoError(t, json.NewDecoder(rec.Body).Decode(&resp))
+	assert.Equal(t, "cofre-1", resp["vault_id"])
+}
+
+func TestPostNotes_CofreSemAcesso_Retorna403(t *testing.T) {
+	svc := &fakeService{err: notes.ErrVaultForbidden}
+
+	rec := doPost(t, svc, `{"vault_id":"alheio","path":"x.md","content":"y"}`)
+
+	assert.Equal(t, http.StatusForbidden, rec.Code)
+	assert.Contains(t, rec.Body.String(), "vault_forbidden")
 }
