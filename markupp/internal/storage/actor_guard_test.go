@@ -19,7 +19,7 @@ var arquivosForaDoAtor = map[string]bool{
 	"postgres.go": true,
 }
 
-var acessoDiretoAoPool = regexp.MustCompile(`gen\.New\(|pool\.(Begin|Exec|Query|QueryRow|SendBatch)\(`)
+var acessoDiretoAoPool = regexp.MustCompile(`gen\.New\(|\binTx\(|pgx\.BeginFunc|pool\.\w+\(`)
 
 func TestRepositoriosDeDados_SoAcessamOBancoPelaTransacaoDoAtor(t *testing.T) {
 	arquivos, err := filepath.Glob("*.go")
