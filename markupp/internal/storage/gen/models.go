@@ -56,6 +56,18 @@ type UserIdentity struct {
 	CreatedAt      time.Time
 }
 
+type UserInvite struct {
+	ID         string
+	TenantID   string
+	Email      string
+	Role       string
+	TokenHash  string
+	InvitedBy  string
+	ExpiresAt  time.Time
+	AcceptedAt pgtype.Timestamptz
+	CreatedAt  time.Time
+}
+
 type Vault struct {
 	ID        string
 	TenantID  string

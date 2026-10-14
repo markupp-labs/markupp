@@ -5,10 +5,10 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/identity"
+	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/storage/gen"
 )
 
 // ErrNoActor indica transação de dados pedida sem ator autenticado no contexto.
@@ -22,7 +22,7 @@ const enterActorSQL = `SELECT set_config('role', 'markupp_app', true),
 
 // inActorTx roda fn numa transação em que o banco só enxerga o tenant e os cofres
 // do ator do contexto.
-func inActorTx(ctx context.Context, pool *pgxpool.Pool, fn func(tx pgx.Tx) error) error {
+func inActorTx(ctx context.Context, pool *pgxpool.Pool, fn func(q *gen.Queries) error) error {
 	actor, ok := identity.ActorFrom(ctx)
 	if !ok {
 		return ErrNoActor
@@ -35,7 +35,7 @@ func inActorTx(ctx context.Context, pool *pgxpool.Pool, fn func(tx pgx.Tx) error
 	if _, err := tx.Exec(ctx, enterActorSQL, actor.TenantID, actor.UserID); err != nil {
 		return fmt.Errorf("entrar no tenant %q como %q: %w", actor.TenantID, actor.UserID, err)
 	}
-	if err := fn(tx); err != nil {
+	if err := fn(gen.New(tx)); err != nil {
 		return err
 	}
 	return tx.Commit(ctx)

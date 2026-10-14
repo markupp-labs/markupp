@@ -35,7 +35,7 @@ func NewPostgresNotesRepository(pool *pgxpool.Pool) *PostgresNotesRepository {
 }
 
 func (r *PostgresNotesRepository) run(ctx context.Context, fn func(q *gen.Queries) error) error {
-	return inActorTx(ctx, r.pool, func(tx pgx.Tx) error { return fn(gen.New(tx)) })
+	return inActorTx(ctx, r.pool, fn)
 }
 
 // Save insere a nota no cofre note.VaultID, devolvendo notes.ErrDuplicatePath se o

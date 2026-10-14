@@ -28,6 +28,32 @@ func (q *Queries) AddVaultMember(ctx context.Context, arg AddVaultMemberParams) 
 	return err
 }
 
+const claimInvite = `-- name: ClaimInvite :one
+UPDATE user_invites
+SET accepted_at = $1
+WHERE token_hash = $2 AND accepted_at IS NULL AND expires_at > $1
+RETURNING tenant_id, email, role
+`
+
+type ClaimInviteParams struct {
+	Now       pgtype.Timestamptz
+	TokenHash string
+}
+
+type ClaimInviteRow struct {
+	TenantID string
+	Email    string
+	Role     string
+}
+
+// Marca o convite como aceito numa escrita só, e devolve o que a conta herda dele.
+func (q *Queries) ClaimInvite(ctx context.Context, arg ClaimInviteParams) (ClaimInviteRow, error) {
+	row := q.db.QueryRow(ctx, claimInvite, arg.Now, arg.TokenHash)
+	var i ClaimInviteRow
+	err := row.Scan(&i.TenantID, &i.Email, &i.Role)
+	return i, err
+}
+
 const consumeRefreshToken = `-- name: ConsumeRefreshToken :one
 UPDATE refresh_tokens
 SET revoked = TRUE

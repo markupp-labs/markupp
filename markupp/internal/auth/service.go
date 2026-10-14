@@ -71,13 +71,52 @@ func (s *Service) validateCredentials(email, password string) (string, error) {
 	if strings.TrimSpace(email) == "" {
 		return "", ErrEmptyEmail
 	}
-	if strings.TrimSpace(password) == "" {
-		return "", ErrEmptyPassword
-	}
-	if len(password) > maxPasswordLength {
-		return "", fmt.Errorf("senha com %d bytes, maximo %d: %w", len(password), maxPasswordLength, ErrPasswordTooLong)
+	if err := validatePassword(password); err != nil {
+		return "", err
 	}
 	return strings.ToLower(strings.TrimSpace(email)), nil
+}
+
+func validatePassword(password string) error {
+	if strings.TrimSpace(password) == "" {
+		return ErrEmptyPassword
+	}
+	if len(password) > maxPasswordLength {
+		return fmt.Errorf("senha com %d bytes, maximo %d: %w", len(password), maxPasswordLength, ErrPasswordTooLong)
+	}
+	return nil
+}
+
+// AcceptInvite troca o token do convite e a senha escolhida por uma conta local no
+// tenant e com o papel do convite, e abre a sessão.
+func (s *Service) AcceptInvite(ctx context.Context, token, password string) (TokenPair, error) {
+	if !s.cfg.LocalEnabled {
+		return TokenPair{}, ErrLocalAuthDisabled
+	}
+	if err := validatePassword(password); err != nil {
+		return TokenPair{}, err
+	}
+	hash, err := s.hasher.Hash(password)
+	if err != nil {
+		return TokenPair{}, fmt.Errorf("hashear senha do convite: %w", err)
+	}
+	user, err := s.repo.AcceptInviteTx(ctx, s.acceptInviteParams(token, hash))
+	if err != nil {
+		return TokenPair{}, fmt.Errorf("aceitar convite: %w", err)
+	}
+	return s.issueAndPersist(ctx, user, "auth.login")
+}
+
+func (s *Service) acceptInviteParams(token, passwordHash string) AcceptInviteParams {
+	return AcceptInviteParams{
+		TokenHash:      HashOpaqueToken(token),
+		UserID:         s.newID(),
+		IdentityID:     s.newID(),
+		PasswordHash:   passwordHash,
+		InitialVaultID: s.newID(),
+		AuditEventID:   s.newID(),
+		Now:            s.clock(),
+	}
 }
 
 func (s *Service) handleUnknownUser(ctx context.Context, email, password string) (TokenPair, error) {
@@ -112,7 +151,7 @@ func (s *Service) buildAccountParams(email, hash string) CreateAccountParams {
 		User:                    User{ID: userID, TenantID: s.cfg.DefaultTenantID, Email: email, CreatedAt: now, UpdatedAt: now},
 		Identity:                UserIdentity{ID: s.newID(), UserID: userID, Provider: "local", ProviderUserID: email, PasswordHash: hash, CreatedAt: now},
 		InitialVaultID:          s.newID(),
-		InitialVaultName:        "Principal",
+		InitialVaultName:        InitialVaultName,
 		AllowMemberRegistration: s.cfg.RegistrationEnabled,
 		AuditEventID:            s.newID(),
 	}

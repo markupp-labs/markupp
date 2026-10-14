@@ -63,3 +63,10 @@ INSERT INTO vault_members (vault_id, user_id, created_at)
 SELECT id, sqlc.arg(user_id), clock_timestamp() FROM vaults
 WHERE tenant_id = sqlc.arg(tenant_id)
 ON CONFLICT DO NOTHING;
+
+-- Marca o convite como aceito numa escrita só, e devolve o que a conta herda dele.
+-- name: ClaimInvite :one
+UPDATE user_invites
+SET accepted_at = sqlc.arg(now)
+WHERE token_hash = sqlc.arg(token_hash) AND accepted_at IS NULL AND expires_at > sqlc.arg(now)
+RETURNING tenant_id, email, role;

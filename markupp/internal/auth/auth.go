@@ -20,6 +20,7 @@ var (
 	ErrRefreshTokenInvalid  = errors.New("refresh token invalido")
 	ErrEmptyEmail           = errors.New("email obrigatorio")
 	ErrEmptyPassword        = errors.New("senha obrigatoria")
+	ErrInviteInvalid        = errors.New("convite inexistente, vencido ou ja aceito")
 )
 
 // User representa uma conta com chave estável (UUID).
@@ -72,9 +73,25 @@ type CreateAccountParams struct {
 	AuditEventID            string
 }
 
+// InitialVaultName é o nome do cofre que toda conta ganha ao ser criada.
+const InitialVaultName = "Principal"
+
+// AcceptInviteParams carrega o que a conta do convidado ganha além do que herda do
+// convite (tenant, email e papel), que só o banco conhece a partir do hash do token.
+type AcceptInviteParams struct {
+	TokenHash      string
+	UserID         string
+	IdentityID     string
+	PasswordHash   string
+	InitialVaultID string
+	AuditEventID   string
+	Now            time.Time
+}
+
 // Repository é o contrato de persistência consumido pelo Service.
 type Repository interface {
 	CreateAccountTx(ctx context.Context, params CreateAccountParams) (User, error)
+	AcceptInviteTx(ctx context.Context, params AcceptInviteParams) (User, error)
 	GetUserByID(ctx context.Context, id string) (User, error)
 	GetUserIdentity(ctx context.Context, provider, providerUserID string) (UserIdentity, error)
 	ConsumeRefreshToken(ctx context.Context, tokenHash string) (string, error)

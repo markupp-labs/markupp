@@ -85,6 +85,7 @@ func TestAdminRepo_ListUsers_SoDoTenantDoAtor(t *testing.T) {
 }
 
 func parametrosDeAceite(token string) auth.AcceptInviteParams {
+	// #nosec G101 -- hash ficticio para teste
 	return auth.AcceptInviteParams{
 		TokenHash: auth.HashOpaqueToken(token), UserID: "novo", IdentityID: "ident-novo",
 		PasswordHash: "hash-da-senha", InitialVaultID: "cofre-novo", AuditEventID: "ev-aceite",

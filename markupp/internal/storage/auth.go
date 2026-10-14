@@ -134,6 +134,58 @@ func insertInitialVault(ctx context.Context, q *gen.Queries, vaultID, tenantID, 
 	})
 }
 
+// AcceptInviteTx consome o convite e cria a conta que ele descreve numa transação
+// só: se a conta falhar, o convite continua pendente.
+func (r *PostgresAuthRepository) AcceptInviteTx(ctx context.Context, p auth.AcceptInviteParams) (auth.User, error) {
+	var user auth.User
+	err := r.inTx(ctx, func(qtx *gen.Queries) error {
+		inv, err := qtx.ClaimInvite(ctx, gen.ClaimInviteParams{TokenHash: p.TokenHash, Now: pgtype.Timestamptz{Time: p.Now, Valid: true}})
+		if err != nil {
+			return claimErr(err)
+		}
+		var account auth.CreateAccountParams
+		user, account = invitedAccount(inv, p)
+		return insertAccountRows(ctx, qtx, user, account, "auth.accept_invite")
+	})
+	if isUniqueConstraintViolation(err) {
+		return auth.User{}, auth.ErrUserAlreadyExists
+	}
+	return user, err
+}
+
+func claimErr(err error) error {
+	if errors.Is(err, pgx.ErrNoRows) {
+		return auth.ErrInviteInvalid
+	}
+	return fmt.Errorf("consumir convite: %w", err)
+}
+
+func invitedAccount(inv gen.ClaimInviteRow, p auth.AcceptInviteParams) (auth.User, auth.CreateAccountParams) {
+	user := auth.User{ID: p.UserID, TenantID: inv.TenantID, Email: inv.Email, Role: inv.Role, CreatedAt: p.Now, UpdatedAt: p.Now}
+	return user, auth.CreateAccountParams{
+		User: user,
+		Identity: auth.UserIdentity{
+			ID: p.IdentityID, UserID: p.UserID, Provider: "local", ProviderUserID: inv.Email,
+			PasswordHash: p.PasswordHash, CreatedAt: p.Now,
+		},
+		InitialVaultID:   p.InitialVaultID,
+		InitialVaultName: auth.InitialVaultName,
+		AuditEventID:     p.AuditEventID,
+	}
+}
+
+func (r *PostgresAuthRepository) inTx(ctx context.Context, fn func(qtx *gen.Queries) error) error {
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("iniciar transacao: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	if err := fn(r.q.WithTx(tx)); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
 // GetUserByID busca a conta por ID, retornando ErrUserNotFound se inexistente.
 func (r *PostgresAuthRepository) GetUserByID(ctx context.Context, id string) (auth.User, error) {
 	row, err := r.q.GetUserByID(ctx, id)
