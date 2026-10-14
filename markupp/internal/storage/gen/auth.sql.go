@@ -8,6 +8,8 @@ package gen
 import (
 	"context"
 	"time"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const addVaultMember = `-- name: AddVaultMember :exec
@@ -24,6 +26,20 @@ type AddVaultMemberParams struct {
 func (q *Queries) AddVaultMember(ctx context.Context, arg AddVaultMemberParams) error {
 	_, err := q.db.Exec(ctx, addVaultMember, arg.VaultID, arg.UserID, arg.CreatedAt)
 	return err
+}
+
+const consumeRefreshToken = `-- name: ConsumeRefreshToken :one
+UPDATE refresh_tokens
+SET revoked = TRUE
+WHERE token_hash = $1 AND revoked = FALSE AND expires_at > now()
+RETURNING user_id
+`
+
+func (q *Queries) ConsumeRefreshToken(ctx context.Context, tokenHash string) (string, error) {
+	row := q.db.QueryRow(ctx, consumeRefreshToken, tokenHash)
+	var user_id string
+	err := row.Scan(&user_id)
+	return user_id, err
 }
 
 const countUsers = `-- name: CountUsers :one
@@ -45,7 +61,7 @@ VALUES ($1, $2, $3, $4, $5, $6, $7)
 type CreateAuditEventParams struct {
 	ID         string
 	TenantID   string
-	ActorID    *string
+	ActorID    pgtype.Text
 	Action     string
 	Target     string
 	Result     string
@@ -101,7 +117,7 @@ type CreateUserIdentityParams struct {
 	UserID         string
 	Provider       string
 	ProviderUserID string
-	PasswordHash   *string
+	PasswordHash   pgtype.Text
 	CreatedAt      time.Time
 }
 
@@ -158,31 +174,6 @@ func (q *Queries) GetRefreshToken(ctx context.Context, tokenHash string) (Refres
 	return i, err
 }
 
-const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, tenant_id, email, role, created_at, updated_at
-FROM users
-WHERE tenant_id = $1 AND email = $2
-`
-
-type GetUserByEmailParams struct {
-	TenantID string
-	Email    string
-}
-
-func (q *Queries) GetUserByEmail(ctx context.Context, arg GetUserByEmailParams) (User, error) {
-	row := q.db.QueryRow(ctx, getUserByEmail, arg.TenantID, arg.Email)
-	var i User
-	err := row.Scan(
-		&i.ID,
-		&i.TenantID,
-		&i.Email,
-		&i.Role,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-	)
-	return i, err
-}
-
 const getUserByID = `-- name: GetUserByID :one
 SELECT id, tenant_id, email, role, created_at, updated_at
 FROM users
@@ -228,10 +219,21 @@ func (q *Queries) GetUserIdentity(ctx context.Context, arg GetUserIdentityParams
 	return i, err
 }
 
+const revokeAllUserRefreshTokens = `-- name: RevokeAllUserRefreshTokens :exec
+UPDATE refresh_tokens
+SET revoked = TRUE
+WHERE user_id = $1
+`
+
+func (q *Queries) RevokeAllUserRefreshTokens(ctx context.Context, userID string) error {
+	_, err := q.db.Exec(ctx, revokeAllUserRefreshTokens, userID)
+	return err
+}
+
 const revokeRefreshToken = `-- name: RevokeRefreshToken :execrows
 UPDATE refresh_tokens
 SET revoked = TRUE
-WHERE token_hash = $1
+WHERE token_hash = $1 AND revoked = FALSE
 `
 
 func (q *Queries) RevokeRefreshToken(ctx context.Context, tokenHash string) (int64, error) {

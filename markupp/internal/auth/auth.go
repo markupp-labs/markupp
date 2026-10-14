@@ -13,8 +13,11 @@ var (
 	ErrUserAlreadyExists    = errors.New("usuario ja existe")
 	ErrInvalidCredentials   = errors.New("credenciais invalidas")
 	ErrRegistrationDisabled = errors.New("auto-registro desativado")
+	ErrLocalAuthDisabled    = errors.New("autenticacao local desativada")
+	ErrPasswordTooLong      = errors.New("senha excede o tamanho maximo de 72 bytes")
 	ErrRefreshTokenRevoked  = errors.New("refresh token revogado")
 	ErrRefreshTokenExpired  = errors.New("refresh token expirado")
+	ErrRefreshTokenInvalid  = errors.New("refresh token invalido")
 	ErrEmptyEmail           = errors.New("email obrigatorio")
 	ErrEmptyPassword        = errors.New("senha obrigatoria")
 )
@@ -61,22 +64,23 @@ type AuditEventRecord struct {
 
 // CreateAccountParams empacota os dados para criação atômica de conta, cofre e auditoria.
 type CreateAccountParams struct {
-	User             User
-	Identity         UserIdentity
-	InitialVaultID   string
-	InitialVaultName string
-	AuditEvent       AuditEventRecord
+	User                    User
+	Identity                UserIdentity
+	InitialVaultID          string
+	InitialVaultName        string
+	AllowMemberRegistration bool
+	AuditEventID            string
 }
 
 // Repository é o contrato de persistência consumido pelo Service.
 type Repository interface {
-	CountUsers(ctx context.Context) (int64, error)
-	CreateAccountTx(ctx context.Context, params CreateAccountParams) error
+	CreateAccountTx(ctx context.Context, params CreateAccountParams) (User, error)
 	GetUserByID(ctx context.Context, id string) (User, error)
-	GetUserByEmail(ctx context.Context, tenantID, email string) (User, error)
 	GetUserIdentity(ctx context.Context, provider, providerUserID string) (UserIdentity, error)
-	SaveRefreshToken(ctx context.Context, record RefreshTokenRecord) error
+	ConsumeRefreshToken(ctx context.Context, tokenHash string) (string, error)
+	IssueSessionTx(ctx context.Context, record RefreshTokenRecord, event AuditEventRecord) error
 	GetRefreshToken(ctx context.Context, tokenHash string) (RefreshTokenRecord, error)
 	RevokeRefreshToken(ctx context.Context, tokenHash string) error
+	RevokeAllUserRefreshTokens(ctx context.Context, userID string) error
 	RecordAuditEvent(ctx context.Context, event AuditEventRecord) error
 }

@@ -31,17 +31,10 @@ func sampleAccountParams() auth.CreateAccountParams {
 			PasswordHash:   "hash-bcrypt-seguro", // #nosec G101 -- hash ficticio para teste
 			CreatedAt:      now,
 		},
-		InitialVaultID:   "vault-id-1",
-		InitialVaultName: "Principal",
-		AuditEvent: auth.AuditEventRecord{
-			ID:         "audit-id-1",
-			TenantID:   "tenant-id-1",
-			ActorID:    "user-id-1",
-			Action:     "auth.register",
-			Target:     "admin@markupp.dev",
-			Result:     "success",
-			OccurredAt: now,
-		},
+		InitialVaultID:          "vault-id-1",
+		InitialVaultName:        "Principal",
+		AllowMemberRegistration: true,
+		AuditEventID:            "audit-id-1",
 	}
 }
 
@@ -50,22 +43,15 @@ func TestPostgresAuthRepo_CreateAccountTx_GravaTodosOsRegistros(t *testing.T) {
 	repo := storage.NewPostgresAuthRepository(db)
 	ctx := context.Background()
 
-	countBefore, err := repo.CountUsers(ctx)
-	require.NoError(t, err)
-	assert.Equal(t, int64(0), countBefore)
-
 	p := sampleAccountParams()
-	err = repo.CreateAccountTx(ctx, p)
+	user, err := repo.CreateAccountTx(ctx, p)
 	require.NoError(t, err)
+	assert.Equal(t, "admin", user.Role, "primeiro usuario criado deve ser admin")
 
-	countAfter, err := repo.CountUsers(ctx)
+	found, err := repo.GetUserByID(ctx, p.User.ID)
 	require.NoError(t, err)
-	assert.Equal(t, int64(1), countAfter)
-
-	user, err := repo.GetUserByID(ctx, p.User.ID)
-	require.NoError(t, err)
-	assert.Equal(t, p.User.Email, user.Email)
-	assert.Equal(t, p.User.Role, user.Role)
+	assert.Equal(t, p.User.Email, found.Email)
+	assert.Equal(t, "admin", found.Role)
 
 	identity, err := repo.GetUserIdentity(ctx, p.Identity.Provider, p.Identity.ProviderUserID)
 	require.NoError(t, err)
@@ -79,32 +65,17 @@ func TestPostgresAuthRepo_CreateAccountTx_EmailDuplicadoRetornaErro(t *testing.T
 	ctx := context.Background()
 
 	p1 := sampleAccountParams()
-	require.NoError(t, repo.CreateAccountTx(ctx, p1))
+	_, err := repo.CreateAccountTx(ctx, p1)
+	require.NoError(t, err)
 
 	p2 := sampleAccountParams()
 	p2.User.ID = "user-id-2"
 	p2.Identity.ID = "identity-id-2"
 	p2.InitialVaultID = "vault-id-2"
-	p2.AuditEvent.ID = "audit-id-2"
+	p2.AuditEventID = "audit-id-2"
 
-	err := repo.CreateAccountTx(ctx, p2)
+	_, err = repo.CreateAccountTx(ctx, p2)
 	require.ErrorIs(t, err, auth.ErrUserAlreadyExists)
-}
-
-func TestPostgresAuthRepo_GetUserByEmail_RetornaUsuarioCorreto(t *testing.T) {
-	db := setupTestDB(t)
-	repo := storage.NewPostgresAuthRepository(db)
-	ctx := context.Background()
-
-	p := sampleAccountParams()
-	require.NoError(t, repo.CreateAccountTx(ctx, p))
-
-	found, err := repo.GetUserByEmail(ctx, p.User.TenantID, p.User.Email)
-	require.NoError(t, err)
-	assert.Equal(t, p.User.ID, found.ID)
-
-	_, err = repo.GetUserByEmail(ctx, p.User.TenantID, "inexistente@markupp.dev")
-	require.ErrorIs(t, err, auth.ErrUserNotFound)
 }
 
 func TestPostgresAuthRepo_RefreshToken_FluxoCompleto(t *testing.T) {
@@ -113,7 +84,8 @@ func TestPostgresAuthRepo_RefreshToken_FluxoCompleto(t *testing.T) {
 	ctx := context.Background()
 
 	p := sampleAccountParams()
-	require.NoError(t, repo.CreateAccountTx(ctx, p))
+	_, err := repo.CreateAccountTx(ctx, p)
+	require.NoError(t, err)
 
 	now := time.Now().UTC().Truncate(time.Millisecond)
 	record := auth.RefreshTokenRecord{
@@ -123,18 +95,28 @@ func TestPostgresAuthRepo_RefreshToken_FluxoCompleto(t *testing.T) {
 		Revoked:   false,
 		CreatedAt: now,
 	}
-	require.NoError(t, repo.SaveRefreshToken(ctx, record))
+	event := auth.AuditEventRecord{
+		ID:         "audit-login-1",
+		TenantID:   p.User.TenantID,
+		ActorID:    p.User.ID,
+		Action:     "auth.login",
+		Target:     p.User.Email,
+		Result:     "success",
+		OccurredAt: now,
+	}
+	require.NoError(t, repo.IssueSessionTx(ctx, record, event))
 
 	retrieved, err := repo.GetRefreshToken(ctx, record.TokenHash)
 	require.NoError(t, err)
 	assert.Equal(t, record.UserID, retrieved.UserID)
 	assert.False(t, retrieved.Revoked)
 
-	require.NoError(t, repo.RevokeRefreshToken(ctx, record.TokenHash))
-
-	revoked, err := repo.GetRefreshToken(ctx, record.TokenHash)
+	consumedUserID, err := repo.ConsumeRefreshToken(ctx, record.TokenHash)
 	require.NoError(t, err)
-	assert.True(t, revoked.Revoked)
+	assert.Equal(t, p.User.ID, consumedUserID)
+
+	_, err = repo.ConsumeRefreshToken(ctx, record.TokenHash)
+	require.ErrorIs(t, err, auth.ErrRefreshTokenInvalid, "token ja consumido nao pode ser reutilizado")
 }
 
 func TestPostgresAuthRepo_RecordAuditEvent_GravaSucesso(t *testing.T) {
@@ -178,7 +160,7 @@ func TestPostgresAuthRepo_GetRefreshToken_Inexistente_RetornaErro(t *testing.T) 
 	ctx := context.Background()
 
 	_, err := repo.GetRefreshToken(ctx, "hash-inexistente")
-	require.ErrorIs(t, err, auth.ErrRefreshTokenExpired)
+	require.ErrorIs(t, err, auth.ErrRefreshTokenInvalid)
 }
 
 func TestPostgresAuthRepo_RevokeRefreshToken_Inexistente_RetornaErro(t *testing.T) {
@@ -187,5 +169,39 @@ func TestPostgresAuthRepo_RevokeRefreshToken_Inexistente_RetornaErro(t *testing.
 	ctx := context.Background()
 
 	err := repo.RevokeRefreshToken(ctx, "hash-inexistente")
-	require.ErrorIs(t, err, auth.ErrRefreshTokenExpired)
+	require.ErrorIs(t, err, auth.ErrRefreshTokenInvalid)
+}
+
+func TestPostgresAuthRepo_RevokeAllUserRefreshTokens_RevogaTokensDoUsuario(t *testing.T) {
+	db := setupTestDB(t)
+	repo := storage.NewPostgresAuthRepository(db)
+	ctx := context.Background()
+
+	p := sampleAccountParams()
+	_, err := repo.CreateAccountTx(ctx, p)
+	require.NoError(t, err)
+
+	now := time.Now().UTC().Truncate(time.Millisecond)
+	rec1 := auth.RefreshTokenRecord{
+		TokenHash: "hash-token-a",
+		UserID:    p.User.ID,
+		ExpiresAt: now.Add(24 * time.Hour),
+		Revoked:   false,
+		CreatedAt: now,
+	}
+	event1 := auth.AuditEventRecord{
+		ID:         "audit-1",
+		TenantID:   p.User.TenantID,
+		ActorID:    p.User.ID,
+		Action:     "auth.login",
+		Target:     p.User.Email,
+		Result:     "success",
+		OccurredAt: now,
+	}
+	require.NoError(t, repo.IssueSessionTx(ctx, rec1, event1))
+
+	require.NoError(t, repo.RevokeAllUserRefreshTokens(ctx, p.User.ID))
+
+	_, err = repo.ConsumeRefreshToken(ctx, rec1.TokenHash)
+	require.ErrorIs(t, err, auth.ErrRefreshTokenInvalid)
 }
