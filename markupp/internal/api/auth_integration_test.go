@@ -122,5 +122,5 @@ func TestIntegration_Auth_LoginIncorretoERegistroBloqueado(t *testing.T) {
 
 	unknownUserResp := postJSON(t, server.URL+"/auth/login", `{"email":"intruso@markupp.dev","password":"senhaQualquer"}`)
 	_ = unknownUserResp.Body.Close()
-	assert.Equal(t, http.StatusForbidden, unknownUserResp.StatusCode)
+	assert.Equal(t, http.StatusUnauthorized, unknownUserResp.StatusCode)
 }
