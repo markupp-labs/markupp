@@ -5,7 +5,6 @@ package storage
 import (
 	"context"
 	"errors"
-	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -177,26 +176,16 @@ func notFoundOnNoRows(err error) error {
 }
 
 // mapWriteErr traduz a escrita recusada pelo banco: caminho repetido no cofre, ou
-// cofre fora do alcance do ator, barrado pela política de RLS ou pela chave do
-// cofre no tenant.
+// cofre fora do alcance do ator, barrado pela política de RLS (42501) ou pela chave
+// do cofre no tenant. O SQLSTATE basta: a mensagem muda com o lc_messages do servidor.
 func mapWriteErr(err error) error {
-	switch {
-	case isUniqueConstraintViolation(err):
+	switch pgErrorCode(err) {
+	case uniqueViolationCode:
 		return notes.ErrDuplicatePath
-	case pgErrorCode(err) == foreignKeyViolationCode, isRowSecurityViolation(err):
+	case foreignKeyViolationCode, insufficientPrivilegeCode:
 		return notes.ErrVaultForbidden
 	}
 	return err
-}
-
-// isRowSecurityViolation separa a linha barrada pela política, que é regra de
-// acesso, da falta de GRANT, que é defeito de instalação e deve aparecer como tal.
-func isRowSecurityViolation(err error) bool {
-	var pgErr *pgconn.PgError
-	if !errors.As(err, &pgErr) {
-		return false
-	}
-	return pgErr.Code == insufficientPrivilegeCode && strings.Contains(pgErr.Message, "row-level security")
 }
 
 func pgErrorCode(err error) string {
