@@ -26,6 +26,8 @@ type Note struct {
 	Content   string
 	CreatedAt time.Time
 	UpdatedAt time.Time
+	TenantID  string
+	VaultID   string
 }
 
 type RefreshToken struct {

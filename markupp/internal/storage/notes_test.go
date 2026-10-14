@@ -1,6 +1,7 @@
 package storage_test
 
 import (
+	"context"
 	"errors"
 	"testing"
 	"time"
@@ -9,6 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/identity"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/notes"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/storage"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/storage/storagetest"
@@ -17,7 +19,21 @@ import (
 func setupTestDB(t *testing.T) *pgxpool.Pool {
 	t.Helper()
 	pool := storagetest.EmptyPool(t)
-	require.NoError(t, storage.Migrate(ctxDeTeste, pool))
+	require.NoError(t, storage.Migrate(context.Background(), pool))
+	return pool
+}
+
+var membroDeTeste = identity.Actor{UserID: "u-teste", TenantID: "default", Role: "admin"}
+
+const cofreDeTeste = "cofre-teste"
+
+var ctxDeTeste = identity.WithActor(context.Background(), membroDeTeste)
+
+// setupNotesDB migra o banco e semeia membroDeTeste em cofreDeTeste.
+func setupNotesDB(t *testing.T) *pgxpool.Pool {
+	t.Helper()
+	pool := setupTestDB(t)
+	storagetest.SeedMember(t, pool, membroDeTeste, cofreDeTeste)
 	return pool
 }
 

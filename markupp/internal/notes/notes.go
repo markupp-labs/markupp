@@ -12,9 +12,11 @@ import (
 	"github.com/google/uuid"
 )
 
-// Note é uma nota persistida, identificada por ID e endereçada por Path.
+// Note é uma nota persistida, identificada por ID e endereçada por Path dentro
+// do cofre VaultID.
 type Note struct {
 	ID        string
+	VaultID   string
 	Path      string
 	Content   string
 	CreatedAt time.Time
@@ -24,6 +26,7 @@ type Note struct {
 // SearchResult é a projeção de uma nota devolvida pela busca, sem o conteúdo.
 type SearchResult struct {
 	ID        string    `json:"id"`
+	VaultID   string    `json:"vault_id"`
 	Path      string    `json:"path"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
@@ -47,6 +50,7 @@ var (
 	ErrNotFound       = errors.New("nota não encontrada")
 	ErrInvalidID      = errors.New("ID inválido")
 	ErrConflict       = errors.New("nota foi atualizada por outro cliente")
+	ErrVaultForbidden = errors.New("cofre inexistente ou sem acesso")
 )
 
 // Service aplica as regras de negócio das notas sobre um Repository.
