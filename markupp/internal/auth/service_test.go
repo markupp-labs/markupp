@@ -27,6 +27,9 @@ func (f *fakeHasher) Compare(hash, password string) error {
 }
 
 type fakeRepository struct {
+	pendingInvites map[string]auth.Invite
+	acceptedWith   auth.AcceptInviteParams
+
 	clock         func() time.Time
 	users         map[string]auth.User
 	identities    map[string]auth.UserIdentity
@@ -79,6 +82,18 @@ func (f *fakeRepository) CreateAccountTx(ctx context.Context, p auth.CreateAccou
 		Result:     "success",
 		OccurredAt: user.CreatedAt,
 	})
+	return user, nil
+}
+
+func (f *fakeRepository) AcceptInviteTx(ctx context.Context, p auth.AcceptInviteParams) (auth.User, error) {
+	inv, ok := f.pendingInvites[p.TokenHash]
+	if !ok {
+		return auth.User{}, auth.ErrInviteInvalid
+	}
+	delete(f.pendingInvites, p.TokenHash)
+	f.acceptedWith = p
+	user := auth.User{ID: p.UserID, TenantID: inv.TenantID, Email: inv.Email, Role: inv.Role, CreatedAt: p.Now, UpdatedAt: p.Now}
+	f.users[user.ID] = user
 	return user, nil
 }
 
@@ -506,4 +521,49 @@ func TestService_RefreshToken_Reuso_AuditaNoTenantDoUsuario(t *testing.T) {
 	ultimo := repo.auditEvents[len(repo.auditEvents)-1]
 	assert.Equal(t, "auth.refresh_reuse", ultimo.Action)
 	assert.Equal(t, "tenant-b", ultimo.TenantID)
+}
+
+func repoComConvite(clock func() time.Time, token string) *fakeRepository {
+	repo := newFakeRepository(clock)
+	repo.pendingInvites = map[string]auth.Invite{
+		auth.HashOpaqueToken(token): {TenantID: "t1", Email: "nova@markupp.dev", Role: "member"},
+	}
+	return repo
+}
+
+func TestAcceptInvite_TokenValido_CriaContaDoConviteEAbreSessao(t *testing.T) {
+	clock := defaultClock()
+	repo := repoComConvite(clock, "token-do-convite")
+	svc := setupAuthService(repo, false, clock)
+
+	pair, err := svc.AcceptInvite(context.Background(), "token-do-convite", "senhaNova")
+
+	require.NoError(t, err)
+	assert.NotEmpty(t, pair.AccessToken)
+	assert.Equal(t, "hash:senhaNova", repo.acceptedWith.PasswordHash)
+	assert.NotEmpty(t, repo.acceptedWith.InitialVaultID)
+	user := repo.users[repo.acceptedWith.UserID]
+	assert.Equal(t, auth.User{ID: user.ID, TenantID: "t1", Email: "nova@markupp.dev", Role: "member", CreatedAt: clock(), UpdatedAt: clock()}, user)
+	_, sessaoAberta := repo.refreshTokens[auth.HashOpaqueToken(pair.RefreshToken)]
+	assert.True(t, sessaoAberta)
+}
+
+func TestAcceptInvite_TokenDesconhecido_RecusaComErrInviteInvalid(t *testing.T) {
+	clock := defaultClock()
+	svc := setupAuthService(repoComConvite(clock, "token-do-convite"), false, clock)
+
+	_, err := svc.AcceptInvite(context.Background(), "outro-token", "senhaNova")
+
+	require.ErrorIs(t, err, auth.ErrInviteInvalid)
+}
+
+func TestAcceptInvite_SenhaLongaDemais_RecusaAntesDoBanco(t *testing.T) {
+	clock := defaultClock()
+	repo := repoComConvite(clock, "token-do-convite")
+	svc := setupAuthService(repo, false, clock)
+
+	_, err := svc.AcceptInvite(context.Background(), "token-do-convite", strings.Repeat("a", 73))
+
+	require.ErrorIs(t, err, auth.ErrPasswordTooLong)
+	assert.Len(t, repo.pendingInvites, 1, "convite nao pode ser consumido por senha invalida")
 }
