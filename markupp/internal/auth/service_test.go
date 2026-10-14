@@ -454,3 +454,42 @@ func TestService_LoginLocal_PersistenciaAtomica_GravaSessaoEAuditoria(t *testing
 	assert.NotEmpty(t, loginAudit.ID)
 	assert.Equal(t, "admin@markupp.dev", loginAudit.Target)
 }
+
+// countingHasher conta as operações bcrypt para comparar o custo de cada caminho do login.
+type countingHasher struct {
+	fakeHasher
+	ops int
+}
+
+func (c *countingHasher) Hash(password string) (string, error) {
+	c.ops++
+	return c.fakeHasher.Hash(password)
+}
+
+func (c *countingHasher) Compare(hash, password string) error {
+	c.ops++
+	return c.fakeHasher.Compare(hash, password)
+}
+
+func countLoginHasherOps(t *testing.T, email string) int {
+	t.Helper()
+	clock := defaultClock()
+	repo := newFakeRepository(clock)
+	hasher := &countingHasher{}
+	codec := auth.NewTokenCodec("segredo-para-testes-de-servico", 15*time.Minute, clock)
+	cfg := auth.ServiceConfig{DefaultTenantID: "default", LocalEnabled: true, RefreshExpirationPeriod: time.Hour}
+	svc := auth.NewService(repo, codec, hasher, cfg, clock)
+	_, err := svc.LoginLocal(context.Background(), "admin@markupp.dev", "senha123")
+	require.NoError(t, err)
+	hasher.ops = 0
+	_, err = svc.LoginLocal(context.Background(), email, "senhaErrada")
+	require.ErrorIs(t, err, auth.ErrInvalidCredentials)
+	return hasher.ops
+}
+
+func TestService_LoginLocal_EmailInexistente_CustaOMesmoQueSenhaErrada(t *testing.T) {
+	assert.Equal(t,
+		countLoginHasherOps(t, "admin@markupp.dev"),
+		countLoginHasherOps(t, "inexistente@markupp.dev"),
+		"email inexistente e senha errada devem custar o mesmo numero de operacoes bcrypt")
+}
