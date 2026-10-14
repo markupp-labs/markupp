@@ -4,8 +4,11 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -110,8 +113,8 @@ func TestAuthHandler_Login_CredenciaisInvalidas_Retorna401(t *testing.T) {
 	assert.Contains(t, rec.Body.String(), "invalid_credentials")
 }
 
-func TestAuthHandler_Login_AutoRegistroDesativado_Retorna403(t *testing.T) {
-	svc := &fakeAuthService{loginErr: auth.ErrRegistrationDisabled}
+func TestAuthHandler_Login_AutenticacaoLocalDesativada_Retorna403(t *testing.T) {
+	svc := &fakeAuthService{loginErr: auth.ErrLocalAuthDisabled}
 	router := setupAuthRouter(svc, nil)
 
 	body := `{"email":"novo@markupp.dev","password":"senhaQualquer"}`
@@ -121,7 +124,34 @@ func TestAuthHandler_Login_AutoRegistroDesativado_Retorna403(t *testing.T) {
 	router.ServeHTTP(rec, req)
 
 	assert.Equal(t, http.StatusForbidden, rec.Code)
-	assert.Contains(t, rec.Body.String(), "registration_disabled")
+	assert.Contains(t, rec.Body.String(), "local_auth_disabled")
+}
+
+func TestAuthHandler_Login_SenhaMuitoLonga_Retorna400(t *testing.T) {
+	svc := &fakeAuthService{loginErr: auth.ErrPasswordTooLong}
+	router := setupAuthRouter(svc, nil)
+
+	body := `{"email":"admin@markupp.dev","password":"senha"}`
+	req := httptest.NewRequest(http.MethodPost, "/auth/login", bytes.NewBufferString(body))
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+	assert.Contains(t, rec.Body.String(), "invalid_request")
+}
+
+func TestAuthHandler_Login_CorpoMaiorQue4KiB_Retorna400(t *testing.T) {
+	router := setupAuthRouter(&fakeAuthService{}, nil)
+
+	body := fmt.Sprintf(`{"email":"admin@markupp.dev","password":"%s"}`, strings.Repeat("a", 5000))
+	req := httptest.NewRequest(http.MethodPost, "/auth/login", bytes.NewBufferString(body))
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+	assert.Contains(t, rec.Body.String(), "invalid_request")
 }
 
 func TestAuthHandler_Refresh_Sucesso(t *testing.T) {
@@ -158,6 +188,19 @@ func TestAuthHandler_Refresh_TokenRevogado_Retorna401(t *testing.T) {
 	assert.Contains(t, rec.Body.String(), "invalid_refresh_token")
 }
 
+func TestAuthHandler_Refresh_CorpoMaiorQue4KiB_Retorna400(t *testing.T) {
+	router := setupAuthRouter(&fakeAuthService{}, nil)
+
+	body := fmt.Sprintf(`{"refresh_token":"%s"}`, strings.Repeat("x", 5000))
+	req := httptest.NewRequest(http.MethodPost, "/auth/refresh", bytes.NewBufferString(body))
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+	assert.Contains(t, rec.Body.String(), "invalid_request")
+}
+
 func TestAuthHandler_Logout_Sucesso(t *testing.T) {
 	svc := &fakeAuthService{}
 	router := setupAuthRouter(svc, nil)
@@ -170,6 +213,33 @@ func TestAuthHandler_Logout_Sucesso(t *testing.T) {
 
 	assert.Equal(t, http.StatusNoContent, rec.Code)
 	assert.Equal(t, 1, svc.revokeCalls)
+}
+
+func TestAuthHandler_Logout_FalhaNaRevogacao_RegistraLogERetorna204(t *testing.T) {
+	svc := &fakeAuthService{revokeErr: errors.New("erro ao persistir revogacao")}
+	router := setupAuthRouter(svc, nil)
+
+	body := `{"refresh_token":"token-para-revogar"}`
+	req := httptest.NewRequest(http.MethodPost, "/auth/logout", bytes.NewBufferString(body))
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusNoContent, rec.Code)
+	assert.Equal(t, 1, svc.revokeCalls)
+}
+
+func TestAuthHandler_Logout_CorpoMaiorQue4KiB_Retorna400(t *testing.T) {
+	router := setupAuthRouter(&fakeAuthService{}, nil)
+
+	body := fmt.Sprintf(`{"refresh_token":"%s"}`, strings.Repeat("x", 5000))
+	req := httptest.NewRequest(http.MethodPost, "/auth/logout", bytes.NewBufferString(body))
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+	assert.Contains(t, rec.Body.String(), "invalid_request")
 }
 
 func TestAuthHandler_Me_Sucesso(t *testing.T) {
@@ -266,4 +336,25 @@ func TestAuthHandler_Me_UsuarioNaoEncontrado_Retorna404(t *testing.T) {
 
 	assert.Equal(t, http.StatusNotFound, rec.Code)
 	assert.Contains(t, rec.Body.String(), "not_found")
+}
+
+func TestAuthHandler_Me_ErroInterno_Retorna500(t *testing.T) {
+	svc := &fakeAuthService{accountErr: errors.New("erro inesperado de conexao")}
+	validator := &fakeTokenValidator{
+		claims: auth.Claims{
+			Subject:  "user-id-42",
+			TenantID: "tenant-default",
+			Role:     "member",
+		},
+	}
+	router := setupAuthRouter(svc, validator)
+
+	req := httptest.NewRequest(http.MethodGet, "/auth/me", nil)
+	req.Header.Set("Authorization", "Bearer token-valido")
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusInternalServerError, rec.Code)
+	assert.Contains(t, rec.Body.String(), "internal")
 }
