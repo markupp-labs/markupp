@@ -26,24 +26,28 @@ type TokenValidator interface {
 func RequireAuth(validator TokenValidator) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			tokenString, ok := extractBearerToken(r.Header.Get("Authorization"))
-			if !ok {
-				writeError(w, "unauthorized", "token ausente ou invalido", http.StatusUnauthorized)
-				return
-			}
-			claims, err := validator.ValidateToken(tokenString)
-			if err != nil {
-				writeError(w, "unauthorized", "token ausente ou invalido", http.StatusUnauthorized)
-				return
-			}
-			ctx := context.WithValue(r.Context(), userCtxKey{}, UserContext{
-				UserID:   claims.Subject,
-				TenantID: claims.TenantID,
-				Role:     claims.Role,
-			})
-			next.ServeHTTP(w, r.WithContext(ctx))
+			serveAuthenticated(w, r, next, validator)
 		})
 	}
+}
+
+func serveAuthenticated(w http.ResponseWriter, r *http.Request, next http.Handler, validator TokenValidator) {
+	tokenString, ok := extractBearerToken(r.Header.Get("Authorization"))
+	if !ok {
+		writeError(w, "unauthorized", "token ausente ou invalido", http.StatusUnauthorized)
+		return
+	}
+	claims, err := validator.ValidateToken(tokenString)
+	if err != nil {
+		writeError(w, "unauthorized", "token ausente ou invalido", http.StatusUnauthorized)
+		return
+	}
+	ctx := context.WithValue(r.Context(), userCtxKey{}, UserContext{
+		UserID:   claims.Subject,
+		TenantID: claims.TenantID,
+		Role:     claims.Role,
+	})
+	next.ServeHTTP(w, r.WithContext(ctx))
 }
 
 func extractBearerToken(authHeader string) (string, bool) {
