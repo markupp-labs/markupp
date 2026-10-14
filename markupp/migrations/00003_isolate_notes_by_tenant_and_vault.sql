@@ -49,7 +49,7 @@ ALTER TABLE notes
 -- consultar a própria tabela sem recursão.
 -- +goose StatementBegin
 CREATE FUNCTION markupp_member_vaults() RETURNS SETOF TEXT
-LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = pg_catalog, public, pg_temp AS $$
     SELECT vault_id FROM vault_members
     WHERE user_id = current_setting('markupp.user_id', true)
 $$;
