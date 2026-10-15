@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"log/slog"
 	"net/http"
@@ -103,13 +102,11 @@ func (h *adminHandler) listInvites(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *adminHandler) issueInvite(w http.ResponseWriter, r *http.Request) {
-	r.Body = http.MaxBytesReader(w, r.Body, maxAuthBodyBytes)
 	var req struct {
 		Email string `json:"email"`
 		Role  string `json:"role"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, "invalid_request", "JSON invalido", http.StatusBadRequest)
+	if !decodeJSONBody(w, r, &req) {
 		return
 	}
 	actor, _ := identity.ActorFrom(r.Context())
@@ -122,12 +119,10 @@ func (h *adminHandler) issueInvite(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *adminHandler) changeRole(w http.ResponseWriter, r *http.Request) {
-	r.Body = http.MaxBytesReader(w, r.Body, maxAuthBodyBytes)
 	var req struct {
 		Role string `json:"role"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, "invalid_request", "JSON invalido", http.StatusBadRequest)
+	if !decodeJSONBody(w, r, &req) {
 		return
 	}
 	actor, _ := identity.ActorFrom(r.Context())

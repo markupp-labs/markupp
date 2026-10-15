@@ -57,11 +57,20 @@ type tenantResponse struct {
 	Role string `json:"role"`
 }
 
-func (h *authHandler) login(w http.ResponseWriter, r *http.Request) {
+// decodeJSONBody lê o corpo JSON pequeno das rotas de conta em dst, limitado a
+// maxAuthBodyBytes, e responde 400 quando ele não decodifica.
+func decodeJSONBody(w http.ResponseWriter, r *http.Request, dst any) bool {
 	r.Body = http.MaxBytesReader(w, r.Body, maxAuthBodyBytes)
-	var req loginRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.NewDecoder(r.Body).Decode(dst); err != nil {
 		writeError(w, "invalid_request", "JSON invalido", http.StatusBadRequest)
+		return false
+	}
+	return true
+}
+
+func (h *authHandler) login(w http.ResponseWriter, r *http.Request) {
+	var req loginRequest
+	if !decodeJSONBody(w, r, &req) {
 		return
 	}
 	pair, err := h.svc.LoginLocal(r.Context(), req.Email, req.Password)
@@ -73,10 +82,8 @@ func (h *authHandler) login(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *authHandler) refresh(w http.ResponseWriter, r *http.Request) {
-	r.Body = http.MaxBytesReader(w, r.Body, maxAuthBodyBytes)
 	var req refreshRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, "invalid_request", "JSON invalido", http.StatusBadRequest)
+	if !decodeJSONBody(w, r, &req) {
 		return
 	}
 	pair, err := h.svc.RefreshToken(r.Context(), req.RefreshToken)
@@ -88,10 +95,8 @@ func (h *authHandler) refresh(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *authHandler) acceptInvite(w http.ResponseWriter, r *http.Request) {
-	r.Body = http.MaxBytesReader(w, r.Body, maxAuthBodyBytes)
 	var req acceptInviteRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, "invalid_request", "JSON invalido", http.StatusBadRequest)
+	if !decodeJSONBody(w, r, &req) {
 		return
 	}
 	pair, err := h.svc.AcceptInvite(r.Context(), req.Token, req.Password)
@@ -103,10 +108,8 @@ func (h *authHandler) acceptInvite(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *authHandler) logout(w http.ResponseWriter, r *http.Request) {
-	r.Body = http.MaxBytesReader(w, r.Body, maxAuthBodyBytes)
 	var req refreshRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, "invalid_request", "JSON invalido", http.StatusBadRequest)
+	if !decodeJSONBody(w, r, &req) {
 		return
 	}
 	if err := h.svc.RevokeSession(r.Context(), req.RefreshToken); err != nil {
@@ -142,12 +145,10 @@ func (h *authHandler) me(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *authHandler) createTenant(w http.ResponseWriter, r *http.Request) {
-	r.Body = http.MaxBytesReader(w, r.Body, maxAuthBodyBytes)
 	var req struct {
 		Name string `json:"name"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, "invalid_request", "JSON invalido", http.StatusBadRequest)
+	if !decodeJSONBody(w, r, &req) {
 		return
 	}
 	actor, _ := identity.ActorFrom(r.Context())
