@@ -2,6 +2,7 @@ package config_test
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -233,4 +234,38 @@ func TestLoad_BooleanoEmMaiusculo_InterpretaCorretamente(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.True(t, cfg.LocalAuthEnabled)
+}
+
+func TestDefault_IndexadorUsaSimpleETrintaSegundos(t *testing.T) {
+	cfg := config.Default()
+
+	assert.Equal(t, "simple", cfg.SearchConfig, "simple nao radicaliza, a saida conservadora do ADR-0017")
+	assert.Equal(t, 30*time.Second, cfg.IndexInterval)
+}
+
+func TestLoad_VariaveisDoIndexador_LeConfiguracaoEIntervalo(t *testing.T) {
+	env := fakeEnv{
+		"MARKUPP_DATABASE_URL":   urlDeTeste,
+		"MARKUPP_AUTH_SECRET":    segredoDeTesteValido,
+		"MARKUPP_SEARCH_CONFIG":  "portuguese",
+		"MARKUPP_INDEX_INTERVAL": "5s",
+	}
+
+	cfg, err := config.Load(env.Lookup)
+
+	require.NoError(t, err)
+	assert.Equal(t, "portuguese", cfg.SearchConfig)
+	assert.Equal(t, 5*time.Second, cfg.IndexInterval)
+}
+
+func TestLoad_IntervaloInvalido_RetornaErroComOValor(t *testing.T) {
+	for _, valor := range []string{"trinta", "0s", "-5s"} {
+		env := fakeEnv{"MARKUPP_DATABASE_URL": urlDeTeste, "MARKUPP_AUTH_SECRET": segredoDeTesteValido, "MARKUPP_INDEX_INTERVAL": valor}
+
+		_, err := config.Load(env.Lookup)
+
+		require.Error(t, err, valor)
+		assert.Contains(t, err.Error(), "MARKUPP_INDEX_INTERVAL")
+		assert.Contains(t, err.Error(), valor)
+	}
 }
