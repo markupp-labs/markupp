@@ -117,6 +117,14 @@ Esperado: o login devolve `access_token`, `POST` retorna JSON com `id` UUID, `GE
 `DELETE` responde `204`, e qualquer rota de notas sem o token responde `401`. Rotas completas em
 `markupp/openapi.yaml`.
 
+## Tenants
+
+A conta é da instância e participa de vários tenants, cada um com um papel
+([ADR-0035](adrs/ADR-0035-conta-global-com-vinculo-por-tenant.md)). Quem tem um tenant só não
+precisa dizer nada. Quem tem mais de um escolhe por requisição com o cabeçalho
+`X-Markupp-Tenant`, usando um id de `GET /me/tenants`. Qualquer conta cria tenant em
+`POST /tenants` e vira owner dele.
+
 ## Aviso
 
 Com o banco vazio, quem fizer o primeiro login vira administrador ([ADR-0020](adrs/ADR-0020-autenticacao-provedores-configuraveis.md)).
