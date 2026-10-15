@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 	"testing"
 	"time"
@@ -9,6 +10,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/identity"
+	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/notes"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/storage"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/storage/storagetest"
 )
@@ -65,4 +68,47 @@ func TestMigrateDatabase_BancoInalcancavel_RetornaErro(t *testing.T) {
 	err := migrateDatabase(context.Background(), "postgres://ninguem@127.0.0.1:1/nada?connect_timeout=1")
 
 	assert.Error(t, err)
+}
+
+func TestParseCommand_Index_RetornaIndexacaoUnica(t *testing.T) {
+	cmd, err := parseCommand([]string{"markupp", "index"})
+
+	require.NoError(t, err)
+	assert.Equal(t, indexCommand, cmd)
+}
+
+func TestParseCommand_IndexLoop_RetornaIndexacaoEmLaco(t *testing.T) {
+	cmd, err := parseCommand([]string{"markupp", "index-loop"})
+
+	require.NoError(t, err)
+	assert.Equal(t, indexLoopCommand, cmd)
+}
+
+func TestParseCommand_Desconhecido_ListaTodosOsSubcomandos(t *testing.T) {
+	_, err := parseCommand([]string{"markupp", "indexar"})
+
+	require.Error(t, err)
+	for _, esperado := range []string{"indexar", "serve", "migrate", "index", "index-loop"} {
+		assert.Contains(t, err.Error(), esperado)
+	}
+}
+
+func TestRun_Index_IndexaOCofrePendenteESai(t *testing.T) {
+	url := storagetest.DatabaseURL(t)
+	require.NoError(t, migrateDatabase(context.Background(), url))
+	pool, err := storage.OpenPool(context.Background(), url)
+	require.NoError(t, err)
+	t.Cleanup(pool.Close)
+	ctx := storagetest.SeedMember(t, pool, identity.Actor{UserID: "ua", TenantID: "t1", Role: "member"}, "va")
+	agora := time.Now()
+	require.NoError(t, storage.NewPostgresNotesRepository(pool).Save(ctx,
+		notes.Note{ID: "n1", VaultID: "va", Path: "a.md", Content: "oi", CreatedAt: agora, UpdatedAt: agora}))
+	t.Setenv("MARKUPP_DATABASE_URL", url)
+	t.Setenv("MARKUPP_AUTH_SECRET", "12345678901234567890123456789012")
+
+	require.NoError(t, run(context.Background(), slog.New(slog.DiscardHandler), []string{"markupp", "index"}))
+
+	var pendentes int
+	require.NoError(t, pool.QueryRow(context.Background(), "SELECT markupp_pending_vaults()").Scan(&pendentes))
+	assert.Zero(t, pendentes)
 }
