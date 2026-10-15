@@ -23,11 +23,12 @@ CREATE TABLE tenant_memberships (
 );
 CREATE INDEX tenant_memberships_user_id_idx ON tenant_memberships (user_id);
 
--- O admin mais antigo de cada tenant é quem o criou e vira owner.
+-- O admin mais antigo de cada tenant é quem o criou e vira owner. Tenant sem admin dá o
+-- papel ao membro mais antigo, para nenhum tenant ficar sem owner.
 INSERT INTO tenant_memberships (tenant_id, user_id, role, created_at)
 SELECT tenant_id, id,
        CASE
-           WHEN role = 'admin' AND row_number() OVER (PARTITION BY tenant_id, role ORDER BY created_at, id) = 1 THEN 'owner'
+           WHEN row_number() OVER (PARTITION BY tenant_id ORDER BY role = 'admin' DESC, created_at, id) = 1 THEN 'owner'
            ELSE role
        END,
        created_at
@@ -106,7 +107,9 @@ ALTER TABLE users
 CREATE POLICY users_isolation ON users
     USING (tenant_id = current_setting('markupp.tenant_id', true)
            AND current_setting('markupp.role', true) = 'admin');
-DELETE FROM user_invites WHERE invited_by IS NULL OR role NOT IN ('admin', 'member');
+DELETE FROM user_invites i
+WHERE i.invited_by IS NULL OR i.role NOT IN ('admin', 'member')
+   OR NOT EXISTS (SELECT 1 FROM users u WHERE u.id = i.invited_by AND u.tenant_id = i.tenant_id);
 ALTER TABLE user_invites
     DROP CONSTRAINT user_invites_role_check,
     DROP CONSTRAINT user_invites_tenant_fkey,
