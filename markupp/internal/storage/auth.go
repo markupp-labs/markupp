@@ -55,7 +55,7 @@ func commitAccount(ctx context.Context, qtx *gen.Queries, p auth.CreateAccountPa
 	if userCount > 0 && !p.AllowMemberRegistration {
 		return auth.ErrRegistrationDisabled
 	}
-	if err := insertUserRows(ctx, qtx, p.User, p.Identity); err != nil {
+	if err := insertUserRows(ctx, qtx, p.User, p.Identity, userCount == 0); err != nil {
 		return err
 	}
 	if userCount > 0 {
@@ -93,8 +93,10 @@ func adoptExistingVaults(ctx context.Context, qtx *gen.Queries, tenantID string,
 	return nil
 }
 
-func insertUserRows(ctx context.Context, q *gen.Queries, u auth.User, ident auth.UserIdentity) error {
-	err := q.CreateUser(ctx, gen.CreateUserParams{ID: u.ID, Email: u.Email, CreatedAt: u.CreatedAt, UpdatedAt: u.UpdatedAt})
+// insertUserRows grava a conta e a identidade. emailVerified diz se o caminho que criou
+// a conta provou o email: o primeiro acesso e o token de convite provam, o auto-registro não.
+func insertUserRows(ctx context.Context, q *gen.Queries, u auth.User, ident auth.UserIdentity, emailVerified bool) error {
+	err := q.CreateUser(ctx, gen.CreateUserParams{ID: u.ID, Email: u.Email, EmailVerified: emailVerified, CreatedAt: u.CreatedAt, UpdatedAt: u.UpdatedAt})
 	if err == nil {
 		err = q.CreateUserIdentity(ctx, toCreateIdentityParams(ident))
 	}
@@ -238,7 +240,7 @@ func (r *PostgresAuthRepository) AcceptInviteTx(ctx context.Context, p auth.Acce
 
 func createInvitedAccount(ctx context.Context, qtx *gen.Queries, inv gen.ClaimInviteRow, u auth.User, p auth.AcceptInviteParams) error {
 	ident := auth.UserIdentity{ID: p.IdentityID, UserID: u.ID, Provider: "local", ProviderUserID: inv.Email, PasswordHash: p.PasswordHash, CreatedAt: p.Now}
-	if err := insertUserRows(ctx, qtx, u, ident); err != nil {
+	if err := insertUserRows(ctx, qtx, u, ident, true); err != nil {
 		return err
 	}
 	join := tenantJoin{tenantID: inv.TenantID, userID: u.ID, role: inv.Role, vaultID: p.InitialVaultID, vaultName: auth.InitialVaultName, at: p.Now}
@@ -296,7 +298,7 @@ func (r *PostgresAuthRepository) GetUserByID(ctx context.Context, id string) (au
 	return toAuthUser(row), nil
 }
 
-func toAuthUser(row gen.User) auth.User {
+func toAuthUser(row gen.GetUserByIDRow) auth.User {
 	return auth.User(row)
 }
 

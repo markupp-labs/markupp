@@ -2,11 +2,11 @@
 SELECT COUNT(*) FROM users;
 
 -- name: CreateUser :exec
-INSERT INTO users (id, email, created_at, updated_at)
-VALUES ($1, $2, $3, $4);
+INSERT INTO users (id, email, email_verified, created_at, updated_at)
+VALUES ($1, $2, $3, $4, $5);
 
 -- name: GetUserByID :one
-SELECT * FROM users WHERE id = $1;
+SELECT id, email, created_at, updated_at FROM users WHERE id = $1;
 
 -- name: CreateUserIdentity :exec
 INSERT INTO user_identities (id, user_id, provider, provider_user_id, password_hash, created_at)
@@ -106,20 +106,21 @@ SELECT i.id, i.tenant_id, t.name AS tenant_name, i.role, i.expires_at
 FROM user_invites i
 JOIN tenants t ON t.id = i.tenant_id
 JOIN users u ON u.email = i.email
-WHERE u.id = sqlc.arg(user_id) AND i.accepted_at IS NULL AND i.declined_at IS NULL
+WHERE u.id = sqlc.arg(user_id) AND u.email_verified
+  AND i.accepted_at IS NULL AND i.declined_at IS NULL
   AND i.expires_at > sqlc.arg(now)
 ORDER BY i.created_at, i.id;
 
 -- name: AcceptInviteByID :one
 UPDATE user_invites i SET accepted_at = sqlc.arg(now)
 FROM users u
-WHERE i.id = sqlc.arg(id) AND u.id = sqlc.arg(user_id) AND u.email = i.email
+WHERE i.id = sqlc.arg(id) AND u.id = sqlc.arg(user_id) AND u.email = i.email AND u.email_verified
   AND i.accepted_at IS NULL AND i.declined_at IS NULL AND i.expires_at > sqlc.arg(now)
 RETURNING i.tenant_id, i.role;
 
 -- name: DeclineInvite :one
 UPDATE user_invites i SET declined_at = sqlc.arg(now)
 FROM users u
-WHERE i.id = sqlc.arg(id) AND u.id = sqlc.arg(user_id) AND u.email = i.email
+WHERE i.id = sqlc.arg(id) AND u.id = sqlc.arg(user_id) AND u.email = i.email AND u.email_verified
   AND i.accepted_at IS NULL AND i.declined_at IS NULL AND i.expires_at > sqlc.arg(now)
 RETURNING i.tenant_id;

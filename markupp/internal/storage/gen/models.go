@@ -52,10 +52,11 @@ type TenantMembership struct {
 }
 
 type User struct {
-	ID        string
-	Email     string
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	ID            string
+	Email         string
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+	EmailVerified bool
 }
 
 type UserIdentity struct {

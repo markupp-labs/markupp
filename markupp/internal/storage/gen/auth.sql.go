@@ -15,7 +15,7 @@ import (
 const acceptInviteByID = `-- name: AcceptInviteByID :one
 UPDATE user_invites i SET accepted_at = $1
 FROM users u
-WHERE i.id = $2 AND u.id = $3 AND u.email = i.email
+WHERE i.id = $2 AND u.id = $3 AND u.email = i.email AND u.email_verified
   AND i.accepted_at IS NULL AND i.declined_at IS NULL AND i.expires_at > $1
 RETURNING i.tenant_id, i.role
 `
@@ -194,21 +194,23 @@ func (q *Queries) CreateTenant(ctx context.Context, arg CreateTenantParams) erro
 }
 
 const createUser = `-- name: CreateUser :exec
-INSERT INTO users (id, email, created_at, updated_at)
-VALUES ($1, $2, $3, $4)
+INSERT INTO users (id, email, email_verified, created_at, updated_at)
+VALUES ($1, $2, $3, $4, $5)
 `
 
 type CreateUserParams struct {
-	ID        string
-	Email     string
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	ID            string
+	Email         string
+	EmailVerified bool
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) error {
 	_, err := q.db.Exec(ctx, createUser,
 		arg.ID,
 		arg.Email,
+		arg.EmailVerified,
 		arg.CreatedAt,
 		arg.UpdatedAt,
 	)
@@ -266,7 +268,7 @@ func (q *Queries) CreateVault(ctx context.Context, arg CreateVaultParams) error 
 const declineInvite = `-- name: DeclineInvite :one
 UPDATE user_invites i SET declined_at = $1
 FROM users u
-WHERE i.id = $2 AND u.id = $3 AND u.email = i.email
+WHERE i.id = $2 AND u.id = $3 AND u.email = i.email AND u.email_verified
   AND i.accepted_at IS NULL AND i.declined_at IS NULL AND i.expires_at > $1
 RETURNING i.tenant_id
 `
@@ -348,9 +350,16 @@ const getUserByID = `-- name: GetUserByID :one
 SELECT id, email, created_at, updated_at FROM users WHERE id = $1
 `
 
-func (q *Queries) GetUserByID(ctx context.Context, id string) (User, error) {
+type GetUserByIDRow struct {
+	ID        string
+	Email     string
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
+func (q *Queries) GetUserByID(ctx context.Context, id string) (GetUserByIDRow, error) {
 	row := q.db.QueryRow(ctx, getUserByID, id)
-	var i User
+	var i GetUserByIDRow
 	err := row.Scan(
 		&i.ID,
 		&i.Email,
@@ -423,7 +432,8 @@ SELECT i.id, i.tenant_id, t.name AS tenant_name, i.role, i.expires_at
 FROM user_invites i
 JOIN tenants t ON t.id = i.tenant_id
 JOIN users u ON u.email = i.email
-WHERE u.id = $1 AND i.accepted_at IS NULL AND i.declined_at IS NULL
+WHERE u.id = $1 AND u.email_verified
+  AND i.accepted_at IS NULL AND i.declined_at IS NULL
   AND i.expires_at > $2
 ORDER BY i.created_at, i.id
 `
