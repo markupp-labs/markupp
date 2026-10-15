@@ -21,6 +21,7 @@ type AdminService interface {
 	IssueInvite(ctx context.Context, inviter identity.Actor, email, role string) (auth.IssuedInvite, error)
 	ChangeRole(ctx context.Context, actor identity.Actor, userID, role string) error
 	RemoveMember(ctx context.Context, actor identity.Actor, userID string) error
+	RevokeInvite(ctx context.Context, actor identity.Actor, inviteID string) error
 }
 
 type adminHandler struct {
@@ -53,6 +54,7 @@ func mountAdminRoutes(r chi.Router, svc AdminService, validator TokenValidator, 
 		g.Post("/users/invites", h.issueInvite)
 		g.Patch("/users/{id}", h.changeRole)
 		g.Delete("/users/{id}", h.removeMember)
+		g.Delete("/users/invites/{id}", h.revokeInvite)
 	})
 }
 
@@ -135,6 +137,16 @@ func (h *adminHandler) changeRole(w http.ResponseWriter, r *http.Request) {
 func (h *adminHandler) removeMember(w http.ResponseWriter, r *http.Request) {
 	actor, _ := identity.ActorFrom(r.Context())
 	h.answerMembership(w, h.svc.RemoveMember(r.Context(), actor, chi.URLParam(r, "id")))
+}
+
+func (h *adminHandler) revokeInvite(w http.ResponseWriter, r *http.Request) {
+	actor, _ := identity.ActorFrom(r.Context())
+	err := h.svc.RevokeInvite(r.Context(), actor, chi.URLParam(r, "id"))
+	if errors.Is(err, auth.ErrInviteInvalid) {
+		writeError(w, "invite_not_found", "convite inexistente ou ja respondido", http.StatusNotFound)
+		return
+	}
+	h.answerMembership(w, err)
 }
 
 func (h *adminHandler) answerMembership(w http.ResponseWriter, err error) {

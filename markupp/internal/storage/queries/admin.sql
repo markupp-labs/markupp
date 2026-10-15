@@ -33,3 +33,7 @@ UPDATE tenant_memberships SET role = $2 WHERE user_id = $1;
 
 -- name: DeleteMember :exec
 DELETE FROM tenant_memberships WHERE user_id = $1;
+
+-- Revogar só vale para convite ainda sem resposta.
+-- name: RevokeInvite :execrows
+DELETE FROM user_invites WHERE id = $1 AND accepted_at IS NULL AND declined_at IS NULL;

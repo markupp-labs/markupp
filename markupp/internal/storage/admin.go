@@ -144,3 +144,18 @@ func applyMembershipChange(ctx context.Context, q *gen.Queries, c auth.Membershi
 	}
 	return q.CreateAuditEvent(ctx, toCreateAuditEventParams(c.Event))
 }
+
+// RevokeInviteTx apaga o convite ainda sem resposta, auditado junto, ou devolve
+// auth.ErrInviteInvalid.
+func (r *PostgresAdminRepository) RevokeInviteTx(ctx context.Context, inviteID string, event auth.AuditEventRecord) error {
+	return inActorTx(ctx, r.pool, func(q *gen.Queries) error {
+		rows, err := q.RevokeInvite(ctx, inviteID)
+		if err != nil {
+			return fmt.Errorf("revogar convite %q: %w", inviteID, err)
+		}
+		if rows == 0 {
+			return fmt.Errorf("%w: %q", auth.ErrInviteInvalid, inviteID)
+		}
+		return q.CreateAuditEvent(ctx, toCreateAuditEventParams(event))
+	})
+}

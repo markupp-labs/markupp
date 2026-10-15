@@ -49,6 +49,7 @@ type AdminRepository interface {
 	ListInvites(ctx context.Context) ([]Invite, error)
 	CreateInviteTx(ctx context.Context, inv Invite, tokenHash string, event AuditEventRecord) error
 	ChangeMembershipTx(ctx context.Context, change MembershipChange, check func(MembershipState) error) error
+	RevokeInviteTx(ctx context.Context, inviteID string, event AuditEventRecord) error
 }
 
 // AdminService reúne o que o administrador faz no próprio tenant.
@@ -126,4 +127,12 @@ func (s *AdminService) inviteEvent(inv Invite) AuditEventRecord {
 		Result:     "success",
 		OccurredAt: inv.CreatedAt,
 	}
+}
+
+// RevokeInvite cancela o convite inviteID do tenant do ator antes da resposta.
+func (s *AdminService) RevokeInvite(ctx context.Context, actor identity.Actor, inviteID string) error {
+	return s.repo.RevokeInviteTx(ctx, inviteID, AuditEventRecord{
+		ID: s.newID(), TenantID: actor.TenantID, ActorID: actor.UserID, Action: "users.invite_revoke",
+		Target: inviteID, Result: "success", OccurredAt: s.clock(),
+	})
 }

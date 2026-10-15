@@ -78,11 +78,16 @@ ON CONFLICT DO NOTHING;
 
 -- Marca o convite como aceito numa escrita só, e devolve o que a conta herda dele.
 -- name: ClaimInvite :one
-UPDATE user_invites
+UPDATE user_invites i
 SET accepted_at = sqlc.arg(now)
-WHERE token_hash = sqlc.arg(token_hash) AND accepted_at IS NULL AND declined_at IS NULL
-  AND expires_at > sqlc.arg(now)
-RETURNING tenant_id, email, role;
+WHERE i.token_hash = sqlc.arg(token_hash) AND i.accepted_at IS NULL AND i.declined_at IS NULL
+  AND i.expires_at > sqlc.arg(now)
+  AND EXISTS (
+      SELECT 1 FROM tenant_memberships quem
+      WHERE quem.tenant_id = i.tenant_id AND quem.user_id = i.invited_by
+        AND markupp_role_rank(quem.role) >= markupp_role_rank(i.role)
+  )
+RETURNING i.tenant_id, i.email, i.role;
 
 -- Serializa a criação de contas para que só o primeiro usuário vire admin.
 -- name: LockFirstAdmin :exec
@@ -100,7 +105,8 @@ FROM tenant_memberships m JOIN tenants t ON t.id = m.tenant_id
 WHERE m.user_id = $1
 ORDER BY t.name, m.tenant_id;
 
--- O convite é da conta cujo email ele cita, e só enquanto não foi respondido nem venceu.
+-- O convite é da conta cujo email ele cita, e só enquanto não foi respondido nem venceu e
+-- quem convidou ainda sustenta o papel dele no tenant.
 -- name: ListPendingInvites :many
 SELECT i.id, i.tenant_id, t.name AS tenant_name, i.role, i.expires_at
 FROM user_invites i
@@ -109,6 +115,11 @@ JOIN users u ON u.email = i.email
 WHERE u.id = sqlc.arg(user_id) AND u.email_verified
   AND i.accepted_at IS NULL AND i.declined_at IS NULL
   AND i.expires_at > sqlc.arg(now)
+  AND EXISTS (
+      SELECT 1 FROM tenant_memberships quem
+      WHERE quem.tenant_id = i.tenant_id AND quem.user_id = i.invited_by
+        AND markupp_role_rank(quem.role) >= markupp_role_rank(i.role)
+  )
 ORDER BY i.created_at, i.id;
 
 -- name: AcceptInviteByID :one
@@ -116,6 +127,11 @@ UPDATE user_invites i SET accepted_at = sqlc.arg(now)
 FROM users u
 WHERE i.id = sqlc.arg(id) AND u.id = sqlc.arg(user_id) AND u.email = i.email AND u.email_verified
   AND i.accepted_at IS NULL AND i.declined_at IS NULL AND i.expires_at > sqlc.arg(now)
+  AND EXISTS (
+      SELECT 1 FROM tenant_memberships quem
+      WHERE quem.tenant_id = i.tenant_id AND quem.user_id = i.invited_by
+        AND markupp_role_rank(quem.role) >= markupp_role_rank(i.role)
+  )
 RETURNING i.tenant_id, i.role;
 
 -- name: DeclineInvite :one

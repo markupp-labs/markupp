@@ -17,6 +17,11 @@ UPDATE user_invites i SET accepted_at = $1
 FROM users u
 WHERE i.id = $2 AND u.id = $3 AND u.email = i.email AND u.email_verified
   AND i.accepted_at IS NULL AND i.declined_at IS NULL AND i.expires_at > $1
+  AND EXISTS (
+      SELECT 1 FROM tenant_memberships quem
+      WHERE quem.tenant_id = i.tenant_id AND quem.user_id = i.invited_by
+        AND markupp_role_rank(quem.role) >= markupp_role_rank(i.role)
+  )
 RETURNING i.tenant_id, i.role
 `
 
@@ -99,11 +104,16 @@ func (q *Queries) AdoptLegacyVaults(ctx context.Context, arg AdoptLegacyVaultsPa
 }
 
 const claimInvite = `-- name: ClaimInvite :one
-UPDATE user_invites
+UPDATE user_invites i
 SET accepted_at = $1
-WHERE token_hash = $2 AND accepted_at IS NULL AND declined_at IS NULL
-  AND expires_at > $1
-RETURNING tenant_id, email, role
+WHERE i.token_hash = $2 AND i.accepted_at IS NULL AND i.declined_at IS NULL
+  AND i.expires_at > $1
+  AND EXISTS (
+      SELECT 1 FROM tenant_memberships quem
+      WHERE quem.tenant_id = i.tenant_id AND quem.user_id = i.invited_by
+        AND markupp_role_rank(quem.role) >= markupp_role_rank(i.role)
+  )
+RETURNING i.tenant_id, i.email, i.role
 `
 
 type ClaimInviteParams struct {
@@ -435,6 +445,11 @@ JOIN users u ON u.email = i.email
 WHERE u.id = $1 AND u.email_verified
   AND i.accepted_at IS NULL AND i.declined_at IS NULL
   AND i.expires_at > $2
+  AND EXISTS (
+      SELECT 1 FROM tenant_memberships quem
+      WHERE quem.tenant_id = i.tenant_id AND quem.user_id = i.invited_by
+        AND markupp_role_rank(quem.role) >= markupp_role_rank(i.role)
+  )
 ORDER BY i.created_at, i.id
 `
 
@@ -451,7 +466,8 @@ type ListPendingInvitesRow struct {
 	ExpiresAt  time.Time
 }
 
-// O convite é da conta cujo email ele cita, e só enquanto não foi respondido nem venceu.
+// O convite é da conta cujo email ele cita, e só enquanto não foi respondido nem venceu e
+// quem convidou ainda sustenta o papel dele no tenant.
 func (q *Queries) ListPendingInvites(ctx context.Context, arg ListPendingInvitesParams) ([]ListPendingInvitesRow, error) {
 	rows, err := q.db.Query(ctx, listPendingInvites, arg.UserID, arg.Now)
 	if err != nil {

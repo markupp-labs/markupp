@@ -183,6 +183,19 @@ func (q *Queries) LockTenantOwners(ctx context.Context) ([]string, error) {
 	return items, nil
 }
 
+const revokeInvite = `-- name: RevokeInvite :execrows
+DELETE FROM user_invites WHERE id = $1 AND accepted_at IS NULL AND declined_at IS NULL
+`
+
+// Revogar só vale para convite ainda sem resposta.
+func (q *Queries) RevokeInvite(ctx context.Context, id string) (int64, error) {
+	result, err := q.db.Exec(ctx, revokeInvite, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const updateMemberRole = `-- name: UpdateMemberRole :exec
 UPDATE tenant_memberships SET role = $2 WHERE user_id = $1
 `
