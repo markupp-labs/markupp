@@ -129,7 +129,7 @@ func (s *Service) handleUnknownUser(ctx context.Context, email, password string)
 	p := s.buildAccountParams(email, hash)
 	user, err := s.repo.CreateAccountTx(ctx, p)
 	if err != nil {
-		if errors.Is(err, ErrRegistrationDisabled) {
+		if errors.Is(err, ErrRegistrationDisabled) || errors.Is(err, ErrUserAlreadyExists) {
 			return s.rejectUnknownUser(ctx, email)
 		}
 		return TokenPair{}, fmt.Errorf("criar conta para %q: %w", email, err)
