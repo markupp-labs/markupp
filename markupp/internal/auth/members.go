@@ -19,19 +19,27 @@ type MembershipChange struct {
 	Event   AuditEventRecord
 }
 
+// MembershipState é o que a regra de mudança de vínculo lê do banco, com trava: o papel
+// atual do membro alterado, o papel atual de quem altera e quantos owners o tenant tem.
+type MembershipState struct {
+	Current   string
+	ActorRole string
+	Owners    int
+}
+
 // CheckMembershipChange aplica as regras de quem mexe em quem: ninguém altera papel
 // acima do seu nem concede papel acima do seu, e o tenant nunca fica sem owner.
-func CheckMembershipChange(actor identity.Actor, current, newRole string, owners int) error {
-	if identity.RoleRank(current) > identity.RoleRank(actor.Role) {
-		return fmt.Errorf("%w: %q mexendo em %q", ErrRoleAboveOwn, actor.Role, current)
+func CheckMembershipChange(st MembershipState, newRole string) error {
+	if identity.RoleRank(st.Current) > identity.RoleRank(st.ActorRole) {
+		return fmt.Errorf("%w: %q mexendo em %q", ErrRoleAboveOwn, st.ActorRole, st.Current)
 	}
 	if newRole != "" {
-		if err := checkRoleCeiling(actor, newRole); err != nil {
+		if err := checkRoleCeiling(identity.Actor{Role: st.ActorRole}, newRole); err != nil {
 			return err
 		}
 	}
-	if current == identity.RoleOwner && newRole != identity.RoleOwner && owners <= 1 {
-		return fmt.Errorf("%w: %d owner restante", ErrLastOwner, owners)
+	if st.Current == identity.RoleOwner && newRole != identity.RoleOwner && st.Owners <= 1 {
+		return fmt.Errorf("%w: %d owner restante", ErrLastOwner, st.Owners)
 	}
 	return nil
 }
@@ -54,7 +62,7 @@ func (s *AdminService) changeMembership(ctx context.Context, actor identity.Acto
 		ID: s.newID(), TenantID: actor.TenantID, ActorID: actor.UserID, Action: action,
 		Target: userID, Result: "success", OccurredAt: s.clock(),
 	}}
-	return s.repo.ChangeMembershipTx(ctx, change, func(current string, owners int) error {
-		return CheckMembershipChange(actor, current, role, owners)
+	return s.repo.ChangeMembershipTx(ctx, change, func(st MembershipState) error {
+		return CheckMembershipChange(st, role)
 	})
 }

@@ -88,26 +88,48 @@ func toInvite(row gen.ListInvitesRow) auth.Invite {
 	return inv
 }
 
-// ChangeMembershipTx aplica a mudança de vínculo depois que check aprova o papel atual
-// do membro e o número de owners, lidos com trava, e audita junto.
-func (r *PostgresAdminRepository) ChangeMembershipTx(ctx context.Context, c auth.MembershipChange, check func(current string, owners int) error) error {
+// ChangeMembershipTx aplica a mudança de vínculo depois que check aprova o estado lido
+// com trava (papel do alvo, papel de quem altera e owners) e audita junto.
+func (r *PostgresAdminRepository) ChangeMembershipTx(ctx context.Context, c auth.MembershipChange, check func(auth.MembershipState) error) error {
 	return inActorTx(ctx, r.pool, func(q *gen.Queries) error {
-		owners, err := q.LockTenantOwners(ctx)
+		st, err := lockMembershipState(ctx, q, c)
 		if err != nil {
-			return fmt.Errorf("travar owners do tenant: %w", err)
+			return err
 		}
-		current, err := q.GetMemberRole(ctx, c.UserID)
-		if errors.Is(err, pgx.ErrNoRows) {
-			return fmt.Errorf("%w: usuario %q no tenant %q", auth.ErrMembershipNotFound, c.UserID, c.Event.TenantID)
-		}
-		if err != nil {
-			return fmt.Errorf("ler papel de %q: %w", c.UserID, err)
-		}
-		if err := check(current, len(owners)); err != nil {
+		if err := check(st); err != nil {
 			return err
 		}
 		return applyMembershipChange(ctx, q, c)
 	})
+}
+
+// lockMembershipState trava os owners, o vínculo do alvo e o de quem altera, para que
+// nenhuma mudança simultânea invalide a regra entre a leitura e a escrita.
+func lockMembershipState(ctx context.Context, q *gen.Queries, c auth.MembershipChange) (auth.MembershipState, error) {
+	owners, err := q.LockTenantOwners(ctx)
+	if err != nil {
+		return auth.MembershipState{}, fmt.Errorf("travar owners do tenant: %w", err)
+	}
+	current, err := lockedRole(ctx, q, c.UserID, c.Event.TenantID)
+	if err != nil {
+		return auth.MembershipState{}, err
+	}
+	actorRole, err := lockedRole(ctx, q, c.Event.ActorID, c.Event.TenantID)
+	if err != nil {
+		return auth.MembershipState{}, err
+	}
+	return auth.MembershipState{Current: current, ActorRole: actorRole, Owners: len(owners)}, nil
+}
+
+func lockedRole(ctx context.Context, q *gen.Queries, userID, tenantID string) (string, error) {
+	role, err := q.GetMemberRole(ctx, userID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", fmt.Errorf("%w: usuario %q no tenant %q", auth.ErrMembershipNotFound, userID, tenantID)
+	}
+	if err != nil {
+		return "", fmt.Errorf("ler papel de %q: %w", userID, err)
+	}
+	return role, nil
 }
 
 func applyMembershipChange(ctx context.Context, q *gen.Queries, c auth.MembershipChange) error {

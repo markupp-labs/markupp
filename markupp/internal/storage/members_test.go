@@ -48,12 +48,11 @@ func TestAdminRepo_ChangeMembershipTx_TrocaPapelERemove(t *testing.T) {
 
 func TestAdminRepo_ChangeMembershipTx_EntregaPapelAtualEOwnersParaARegra(t *testing.T) {
 	db := setupTestDB(t)
-	ctx := storagetest.SeedMember(t, db, identity.Actor{UserID: "dona", TenantID: "t1", Role: "owner"}, "va")
+	storagetest.SeedMember(t, db, identity.Actor{UserID: "dona", TenantID: "t1", Role: "owner"}, "va")
 	storagetest.SeedMember(t, db, identity.Actor{UserID: "socia", TenantID: "t1", Role: "owner"}, "vb")
 	storagetest.SeedMember(t, db, identity.Actor{UserID: "rebaixada", TenantID: "t1", Role: "member"}, "vc")
 	ctxVelho := identity.WithActor(context.Background(), identity.Actor{UserID: "rebaixada", TenantID: "t1", Role: "owner"})
 	var estado auth.MembershipState
-	_ = ctx
 
 	err := storage.NewPostgresAdminRepository(db).ChangeMembershipTx(ctxVelho, mudancaPor("rebaixada", "socia", "admin"), func(e auth.MembershipState) error {
 		estado = e
