@@ -94,4 +94,7 @@ func TestMigracao_TenantPadraoConfigurado_PrimeiroAdminLevaOCofreImportado(t *te
 
 	require.NoError(t, err)
 	require.Len(t, lista, 1, "MARKUPP_DEFAULT_TENANT_ID diferente de default nao pode esconder as notas da rc1")
+	var sobras int
+	require.NoError(t, db.QueryRow(context.Background(), "SELECT count(*) FROM tenants WHERE id = 'default'").Scan(&sobras))
+	assert.Zero(t, sobras, "o tenant da migracao que ficou vazio nao sobra")
 }
