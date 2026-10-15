@@ -2,8 +2,10 @@ package storage
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -84,4 +86,39 @@ func toInvite(row gen.ListInvitesRow) auth.Invite {
 		inv.AcceptedAt = &row.AcceptedAt.Time
 	}
 	return inv
+}
+
+// ChangeMembershipTx aplica a mudança de vínculo depois que check aprova o papel atual
+// do membro e o número de owners, lidos com trava, e audita junto.
+func (r *PostgresAdminRepository) ChangeMembershipTx(ctx context.Context, c auth.MembershipChange, check func(current string, owners int) error) error {
+	return inActorTx(ctx, r.pool, func(q *gen.Queries) error {
+		owners, err := q.LockTenantOwners(ctx)
+		if err != nil {
+			return fmt.Errorf("travar owners do tenant: %w", err)
+		}
+		current, err := q.GetMemberRole(ctx, c.UserID)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return fmt.Errorf("%w: usuario %q no tenant %q", auth.ErrMembershipNotFound, c.UserID, c.Event.TenantID)
+		}
+		if err != nil {
+			return fmt.Errorf("ler papel de %q: %w", c.UserID, err)
+		}
+		if err := check(current, len(owners)); err != nil {
+			return err
+		}
+		return applyMembershipChange(ctx, q, c)
+	})
+}
+
+func applyMembershipChange(ctx context.Context, q *gen.Queries, c auth.MembershipChange) error {
+	var err error
+	if c.NewRole == "" {
+		err = q.DeleteMember(ctx, c.UserID)
+	} else {
+		err = q.UpdateMemberRole(ctx, gen.UpdateMemberRoleParams{UserID: c.UserID, Role: c.NewRole})
+	}
+	if err != nil {
+		return fmt.Errorf("mudar vinculo de %q para %q: %w", c.UserID, c.NewRole, err)
+	}
+	return q.CreateAuditEvent(ctx, toCreateAuditEventParams(c.Event))
 }

@@ -52,6 +52,26 @@ func (q *Queries) CreateInvite(ctx context.Context, arg CreateInviteParams) (int
 	return result.RowsAffected(), nil
 }
 
+const deleteMember = `-- name: DeleteMember :exec
+DELETE FROM tenant_memberships WHERE user_id = $1
+`
+
+func (q *Queries) DeleteMember(ctx context.Context, userID string) error {
+	_, err := q.db.Exec(ctx, deleteMember, userID)
+	return err
+}
+
+const getMemberRole = `-- name: GetMemberRole :one
+SELECT role FROM tenant_memberships WHERE user_id = $1 FOR UPDATE
+`
+
+func (q *Queries) GetMemberRole(ctx context.Context, userID string) (string, error) {
+	row := q.db.QueryRow(ctx, getMemberRole, userID)
+	var role string
+	err := row.Scan(&role)
+	return role, err
+}
+
 const listInvites = `-- name: ListInvites :many
 SELECT id, tenant_id, email, role, invited_by, expires_at, accepted_at, created_at
 FROM user_invites
@@ -136,4 +156,43 @@ func (q *Queries) ListMembers(ctx context.Context) ([]ListMembersRow, error) {
 		return nil, err
 	}
 	return items, nil
+}
+
+const lockTenantOwners = `-- name: LockTenantOwners :many
+SELECT user_id FROM tenant_memberships WHERE role = 'owner' FOR UPDATE
+`
+
+// Trava os owners do tenant para que duas mudanças simultâneas não o deixem sem owner.
+func (q *Queries) LockTenantOwners(ctx context.Context) ([]string, error) {
+	rows, err := q.db.Query(ctx, lockTenantOwners)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var user_id string
+		if err := rows.Scan(&user_id); err != nil {
+			return nil, err
+		}
+		items = append(items, user_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const updateMemberRole = `-- name: UpdateMemberRole :exec
+UPDATE tenant_memberships SET role = $2 WHERE user_id = $1
+`
+
+type UpdateMemberRoleParams struct {
+	UserID string
+	Role   string
+}
+
+func (q *Queries) UpdateMemberRole(ctx context.Context, arg UpdateMemberRoleParams) error {
+	_, err := q.db.Exec(ctx, updateMemberRole, arg.UserID, arg.Role)
+	return err
 }

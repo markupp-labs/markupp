@@ -48,6 +48,7 @@ type AdminRepository interface {
 	ListMembers(ctx context.Context) ([]Member, error)
 	ListInvites(ctx context.Context) ([]Invite, error)
 	CreateInviteTx(ctx context.Context, inv Invite, tokenHash string, event AuditEventRecord) error
+	ChangeMembershipTx(ctx context.Context, change MembershipChange, check func(current string, owners int) error) error
 }
 
 // AdminService reúne o que o administrador faz no próprio tenant.

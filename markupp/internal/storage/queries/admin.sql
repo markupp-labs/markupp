@@ -20,3 +20,16 @@ WHERE NOT EXISTS (
     SELECT 1 FROM tenant_memberships m JOIN users u ON u.id = m.user_id
     WHERE m.tenant_id = sqlc.arg(tenant_id) AND u.email = sqlc.arg(email)
 );
+
+-- Trava os owners do tenant para que duas mudanças simultâneas não o deixem sem owner.
+-- name: LockTenantOwners :many
+SELECT user_id FROM tenant_memberships WHERE role = 'owner' FOR UPDATE;
+
+-- name: GetMemberRole :one
+SELECT role FROM tenant_memberships WHERE user_id = $1 FOR UPDATE;
+
+-- name: UpdateMemberRole :exec
+UPDATE tenant_memberships SET role = $2 WHERE user_id = $1;
+
+-- name: DeleteMember :exec
+DELETE FROM tenant_memberships WHERE user_id = $1;

@@ -19,6 +19,8 @@ type AdminService interface {
 	ListMembers(ctx context.Context) ([]auth.Member, error)
 	ListInvites(ctx context.Context) ([]auth.Invite, error)
 	IssueInvite(ctx context.Context, inviter identity.Actor, email, role string) (auth.IssuedInvite, error)
+	ChangeRole(ctx context.Context, actor identity.Actor, userID, role string) error
+	RemoveMember(ctx context.Context, actor identity.Actor, userID string) error
 }
 
 type adminHandler struct {
@@ -49,6 +51,8 @@ func mountAdminRoutes(r chi.Router, svc AdminService, validator TokenValidator, 
 		g.Get("/users", h.listMembers)
 		g.Get("/users/invites", h.listInvites)
 		g.Post("/users/invites", h.issueInvite)
+		g.Patch("/users/{id}", h.changeRole)
+		g.Delete("/users/{id}", h.removeMember)
 	})
 }
 
@@ -109,13 +113,44 @@ func (h *adminHandler) issueInvite(w http.ResponseWriter, r *http.Request) {
 	actor, _ := identity.ActorFrom(r.Context())
 	issued, err := h.svc.IssueInvite(r.Context(), actor, req.Email, req.Role)
 	if err != nil {
-		writeInviteError(w, err)
+		writeAdminError(w, err)
 		return
 	}
 	writeJSON(w, http.StatusCreated, issuedInviteResponse{inviteResponse: toInviteResponse(issued.Invite), Token: issued.Token})
 }
 
-func writeInviteError(w http.ResponseWriter, err error) {
+func (h *adminHandler) changeRole(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, maxAuthBodyBytes)
+	var req struct {
+		Role string `json:"role"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, "invalid_request", "JSON invalido", http.StatusBadRequest)
+		return
+	}
+	actor, _ := identity.ActorFrom(r.Context())
+	h.answerMembership(w, h.svc.ChangeRole(r.Context(), actor, chi.URLParam(r, "id"), req.Role))
+}
+
+func (h *adminHandler) removeMember(w http.ResponseWriter, r *http.Request) {
+	actor, _ := identity.ActorFrom(r.Context())
+	h.answerMembership(w, h.svc.RemoveMember(r.Context(), actor, chi.URLParam(r, "id")))
+}
+
+func (h *adminHandler) answerMembership(w http.ResponseWriter, err error) {
+	switch {
+	case err == nil:
+		w.WriteHeader(http.StatusNoContent)
+	case errors.Is(err, auth.ErrMembershipNotFound):
+		writeError(w, "member_not_found", "usuario nao e membro deste tenant", http.StatusNotFound)
+	case errors.Is(err, auth.ErrLastOwner):
+		writeError(w, "last_owner", err.Error(), http.StatusConflict)
+	default:
+		writeAdminError(w, err)
+	}
+}
+
+func writeAdminError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, auth.ErrInvalidRole), errors.Is(err, auth.ErrInvalidEmail):
 		writeError(w, "invalid_request", err.Error(), http.StatusBadRequest)
@@ -124,7 +159,7 @@ func writeInviteError(w http.ResponseWriter, err error) {
 	case errors.Is(err, auth.ErrRoleAboveOwn):
 		writeError(w, "role_above_own", err.Error(), http.StatusForbidden)
 	default:
-		writeInternal(w, "emitir convite", err)
+		writeInternal(w, "administrar o tenant", err)
 	}
 }
 
