@@ -11,9 +11,9 @@ import (
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/identity"
 )
 
-func (f *fakeAdminRepository) ChangeMembershipTx(ctx context.Context, c auth.MembershipChange, check func(current string, owners int) error) error {
+func (f *fakeAdminRepository) ChangeMembershipTx(ctx context.Context, c auth.MembershipChange, check func(auth.MembershipState) error) error {
 	f.change = c
-	return check(f.currentRole, f.owners)
+	return check(auth.MembershipState{Current: f.currentRole, ActorRole: f.actorRole, Owners: f.owners})
 }
 
 func TestCheckMembershipChange_Regras(t *testing.T) {
@@ -34,7 +34,7 @@ func TestCheckMembershipChange_Regras(t *testing.T) {
 		{"admin remove admin", "admin", "admin", "", 1, nil},
 	}
 	for _, c := range casos {
-		err := auth.CheckMembershipChange(identity.Actor{Role: c.ator}, c.atual, c.novo, c.owners)
+		err := auth.CheckMembershipChange(auth.MembershipState{Current: c.atual, ActorRole: c.ator, Owners: c.owners}, c.novo)
 
 		if c.esperado == nil {
 			assert.NoError(t, err, c.nome)
@@ -45,7 +45,7 @@ func TestCheckMembershipChange_Regras(t *testing.T) {
 }
 
 func TestChangeRole_AplicaARegraComOEstadoDoBanco(t *testing.T) {
-	repo := &fakeAdminRepository{currentRole: "owner", owners: 1}
+	repo := &fakeAdminRepository{currentRole: "owner", actorRole: "owner", owners: 1}
 	svc := auth.NewAdminService(repo, defaultClock())
 
 	err := svc.ChangeRole(context.Background(), identity.Actor{UserID: "dona", TenantID: "t1", Role: "owner"}, "dona", "member")
@@ -66,7 +66,7 @@ func TestChangeRole_PapelInexistente_RecusaAntesDoBanco(t *testing.T) {
 }
 
 func TestRemoveMember_AuditaComoRemocao(t *testing.T) {
-	repo := &fakeAdminRepository{currentRole: "member", owners: 1}
+	repo := &fakeAdminRepository{currentRole: "member", actorRole: "admin", owners: 1}
 
 	err := auth.NewAdminService(repo, defaultClock()).RemoveMember(context.Background(), adminDeTeste, "u2")
 
@@ -75,4 +75,13 @@ func TestRemoveMember_AuditaComoRemocao(t *testing.T) {
 	assert.Equal(t, "members.remove", repo.change.Event.Action)
 	assert.Equal(t, "u2", repo.change.Event.Target)
 	assert.Equal(t, "t1", repo.change.Event.TenantID)
+}
+
+func TestChangeRole_UsaOPapelDoAtorLidoNoBanco(t *testing.T) {
+	repo := &fakeAdminRepository{currentRole: "member", actorRole: "member", owners: 1}
+
+	err := auth.NewAdminService(repo, defaultClock()).ChangeRole(context.Background(),
+		identity.Actor{UserID: "ex-owner", TenantID: "t1", Role: "owner"}, "u2", "owner")
+
+	require.ErrorIs(t, err, auth.ErrRoleAboveOwn, "o papel da requisicao pode estar velho; vale o do banco")
 }

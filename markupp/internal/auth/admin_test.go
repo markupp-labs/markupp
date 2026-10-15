@@ -20,6 +20,7 @@ type fakeAdminRepository struct {
 
 	change      auth.MembershipChange
 	currentRole string
+	actorRole   string
 	owners      int
 }
 

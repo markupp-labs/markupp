@@ -21,7 +21,13 @@ func mudanca(userID, papel string) auth.MembershipChange {
 	}}
 }
 
-func semRegra(current string, owners int) error { return nil }
+func mudancaPor(ator, userID, papel string) auth.MembershipChange {
+	c := mudanca(userID, papel)
+	c.Event.ActorID = ator
+	return c
+}
+
+func semRegra(auth.MembershipState) error { return nil }
 
 func TestAdminRepo_ChangeMembershipTx_TrocaPapelERemove(t *testing.T) {
 	db := setupTestDB(t)
@@ -44,17 +50,19 @@ func TestAdminRepo_ChangeMembershipTx_EntregaPapelAtualEOwnersParaARegra(t *test
 	db := setupTestDB(t)
 	ctx := storagetest.SeedMember(t, db, identity.Actor{UserID: "dona", TenantID: "t1", Role: "owner"}, "va")
 	storagetest.SeedMember(t, db, identity.Actor{UserID: "socia", TenantID: "t1", Role: "owner"}, "vb")
-	var atual string
-	var owners int
+	storagetest.SeedMember(t, db, identity.Actor{UserID: "rebaixada", TenantID: "t1", Role: "member"}, "vc")
+	ctxVelho := identity.WithActor(context.Background(), identity.Actor{UserID: "rebaixada", TenantID: "t1", Role: "owner"})
+	var estado auth.MembershipState
+	_ = ctx
 
-	err := storage.NewPostgresAdminRepository(db).ChangeMembershipTx(ctx, mudanca("socia", "admin"), func(c string, o int) error {
-		atual, owners = c, o
+	err := storage.NewPostgresAdminRepository(db).ChangeMembershipTx(ctxVelho, mudancaPor("rebaixada", "socia", "admin"), func(e auth.MembershipState) error {
+		estado = e
 		return auth.ErrLastOwner
 	})
 
 	require.ErrorIs(t, err, auth.ErrLastOwner)
-	assert.Equal(t, "owner", atual)
-	assert.Equal(t, 2, owners)
+	assert.Equal(t, auth.MembershipState{Current: "owner", ActorRole: "member", Owners: 2}, estado,
+		"papel do ator vem do banco, nao da requisicao")
 	m, err := storage.NewPostgresAuthRepository(db).GetMembership(context.Background(), "socia", "t1")
 	require.NoError(t, err)
 	assert.Equal(t, "owner", m.Role, "regra recusada nao muda nada")
