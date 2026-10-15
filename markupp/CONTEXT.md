@@ -34,8 +34,8 @@ cofre lê e escreve todas as notas dele.
 _Avoid_: workspace, projeto, biblioteca, espaço
 
 **Tenant**:
-A unidade de isolamento dentro do banco. Toda linha carrega o tenant a que pertence, e o
-self-host roda com um só.
+A unidade de isolamento dentro do banco. Toda linha de dado carrega o tenant a que
+pertence, e o self-host roda com um só. A conta entra num tenant por vínculo.
 _Avoid_: cliente, organização, conta
 
 **Plano de registro**:
@@ -62,7 +62,18 @@ O vínculo entre uma credencial (email e senha ou provedor externo) e a conta de
 A identidade é única globalmente pelo par provedor e identificador do provedor.
 _Avoid_: login, credencial avulsa, perfil
 
+**Conta**:
+A pessoa na instância, com email único, que participa de vários tenants. Login e sessão são
+da conta; o tenant em que ela age vem de cada requisição.
+_Avoid_: usuário do tenant, perfil
+
+**Vínculo**:
+A participação de uma conta num tenant, com um papel: owner, admin, member ou viewer. Owner e
+admin administram o tenant, e o viewer só lê nos cofres de que é membro. O acesso às notas
+continua sendo pelo cofre.
+_Avoid_: associação, assinatura, membership
+
 **Convite**:
-O pedido de entrada no tenant que o administrador emite para um email, com papel e
-validade. É de uso único e, aceito, vira a conta do convidado com o primeiro cofre dele.
+O pedido de vínculo que owner ou admin emite para um email, com papel e validade. A conta
+desse email aceita ou recusa; quem ainda não tem conta se cadastra pelo token do convite.
 _Avoid_: cadastro, convocação, autorregistro
