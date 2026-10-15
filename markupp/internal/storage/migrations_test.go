@@ -62,3 +62,33 @@ func TestMigracoes_DownEUpComContaEmDoisTenants(t *testing.T) {
 	_, err = provider.Up(context.Background())
 	require.NoError(t, err)
 }
+
+func TestMigracao00013_NotasAnteriores_FicamPendentesDeIndexacao(t *testing.T) {
+	pool := storagetest.EmptyPool(t)
+	provider := gooseProvider(t, pool)
+	_, err := provider.UpTo(context.Background(), 12)
+	require.NoError(t, err)
+	storagetest.SeedMember(t, pool, identity.Actor{UserID: "ua", TenantID: "t1", Role: "member"}, "va")
+	_, err = pool.Exec(context.Background(), `INSERT INTO notes (id, tenant_id, vault_id, path, content, created_at, updated_at)
+		VALUES ('antiga', 't1', 'va', 'antiga.md', 'oi', now(), now())`)
+	require.NoError(t, err)
+
+	_, err = provider.Up(context.Background())
+
+	require.NoError(t, err)
+	assert.Equal(t, 1, countRows(t, pool, "SELECT markupp_pending_vaults()"),
+		"cofre com nota de antes da migração precisa ser indexado")
+}
+
+func TestMigracao00013_DownEUp(t *testing.T) {
+	pool := storagetest.EmptyPool(t)
+	provider := gooseProvider(t, pool)
+	_, err := provider.Up(context.Background())
+	require.NoError(t, err)
+	storagetest.SeedMember(t, pool, identity.Actor{UserID: "ua", TenantID: "t1", Role: "member"}, "va")
+
+	_, err = provider.DownTo(context.Background(), 12)
+	require.NoError(t, err)
+	_, err = provider.Up(context.Background())
+	require.NoError(t, err)
+}
