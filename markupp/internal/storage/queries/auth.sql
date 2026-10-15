@@ -26,6 +26,13 @@ VALUES ($1, $2, $3, $4);
 INSERT INTO tenants (id, name, created_at) VALUES ($1, $1, $2)
 ON CONFLICT DO NOTHING;
 
+-- Depois de o primeiro usuário levar os cofres da migração, o tenant que ficou sem
+-- vínculo e sem cofre não serve a ninguém.
+-- name: DeleteEmptyTenants :exec
+DELETE FROM tenants t
+WHERE NOT EXISTS (SELECT 1 FROM tenant_memberships m WHERE m.tenant_id = t.id)
+  AND NOT EXISTS (SELECT 1 FROM vaults v WHERE v.tenant_id = t.id);
+
 -- name: CreateTenant :exec
 INSERT INTO tenants (id, name, created_at) VALUES ($1, $2, $3);
 

@@ -90,7 +90,7 @@ func adoptExistingVaults(ctx context.Context, qtx *gen.Queries, tenantID string,
 	if err != nil {
 		return fmt.Errorf("dar ao usuario %q os cofres do tenant %q: %w", u.ID, tenantID, err)
 	}
-	return nil
+	return qtx.DeleteEmptyTenants(ctx)
 }
 
 // insertUserRows grava a conta e a identidade. emailVerified diz se o caminho que criou

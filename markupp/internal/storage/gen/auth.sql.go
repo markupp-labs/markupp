@@ -296,6 +296,19 @@ func (q *Queries) DeclineInvite(ctx context.Context, arg DeclineInviteParams) (s
 	return tenant_id, err
 }
 
+const deleteEmptyTenants = `-- name: DeleteEmptyTenants :exec
+DELETE FROM tenants t
+WHERE NOT EXISTS (SELECT 1 FROM tenant_memberships m WHERE m.tenant_id = t.id)
+  AND NOT EXISTS (SELECT 1 FROM vaults v WHERE v.tenant_id = t.id)
+`
+
+// Depois de o primeiro usuário levar os cofres da migração, o tenant que ficou sem
+// vínculo e sem cofre não serve a ninguém.
+func (q *Queries) DeleteEmptyTenants(ctx context.Context) error {
+	_, err := q.db.Exec(ctx, deleteEmptyTenants)
+	return err
+}
+
 const ensureTenant = `-- name: EnsureTenant :exec
 INSERT INTO tenants (id, name, created_at) VALUES ($1, $1, $2)
 ON CONFLICT DO NOTHING
