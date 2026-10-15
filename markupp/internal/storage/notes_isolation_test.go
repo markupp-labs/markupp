@@ -178,3 +178,22 @@ func TestRLS_PapelDaAplicacaoComoMembro_VeOsColegasMasNaoOsConvites(t *testing.T
 	require.NoError(t, err)
 	assert.Zero(t, convites)
 }
+
+func TestNotesRLS_Viewer_LeMasNaoEscreve(t *testing.T) {
+	db := setupTestDB(t)
+	repo := storage.NewPostgresNotesRepository(db)
+	ctxDona := storagetest.SeedMember(t, db, identity.Actor{UserID: "dona", TenantID: "t1", Role: "owner"}, "va")
+	storagetest.SeedMember(t, db, identity.Actor{UserID: "leitora", TenantID: "t1", Role: "viewer"}, "va")
+	ctxLeitora := identity.WithActor(context.Background(), identity.Actor{UserID: "leitora", TenantID: "t1", Role: "viewer"})
+	require.NoError(t, repo.Save(ctxDona, notaNoCofre("n1", "a.md", "va")))
+
+	_, err := repo.GetNoteByID(ctxLeitora, "n1")
+	require.NoError(t, err, "viewer le as notas do cofre")
+	assert.ErrorIs(t, repo.Save(ctxLeitora, notaNoCofre("n2", "b.md", "va")), notes.ErrVaultForbidden)
+	_, err = repo.Update(ctxLeitora, "n1", "a.md", "alterada", time.Now(), time.Time{}, true)
+	assert.ErrorIs(t, err, notes.ErrNotFound)
+	assert.ErrorIs(t, repo.Delete(ctxLeitora, "n1"), notes.ErrNotFound)
+	intacta, err := repo.GetNoteByID(ctxDona, "n1")
+	require.NoError(t, err)
+	assert.Equal(t, "segredo a.md", intacta.Content)
+}
