@@ -12,7 +12,8 @@ const (
 	RoleViewer = "viewer"
 )
 
-// Actor é o usuário autenticado, com o tenant e o papel vindos do JWT validado.
+// Actor é o usuário do JWT validado, com o tenant em que a requisição age e o papel
+// dele lá, lidos do vínculo no banco.
 type Actor struct {
 	UserID   string
 	TenantID string
