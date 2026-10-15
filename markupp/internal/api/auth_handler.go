@@ -19,6 +19,7 @@ type AuthService interface {
 	RefreshToken(ctx context.Context, rawRefreshToken string) (auth.TokenPair, error)
 	RevokeSession(ctx context.Context, rawRefreshToken string) error
 	GetAccount(ctx context.Context, userID string) (auth.User, error)
+	ListTenants(ctx context.Context, userID string) ([]auth.Membership, error)
 	AcceptInvite(ctx context.Context, token, password string) (auth.TokenPair, error)
 }
 
@@ -42,10 +43,14 @@ type refreshRequest struct {
 }
 
 type userResponse struct {
-	ID       string `json:"id"`
-	TenantID string `json:"tenant_id"`
-	Email    string `json:"email"`
-	Role     string `json:"role"`
+	ID    string `json:"id"`
+	Email string `json:"email"`
+}
+
+type tenantResponse struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	Role string `json:"role"`
 }
 
 func (h *authHandler) login(w http.ResponseWriter, r *http.Request) {
@@ -129,12 +134,22 @@ func (h *authHandler) me(w http.ResponseWriter, r *http.Request) {
 		writeError(w, "internal", "erro interno", http.StatusInternalServerError)
 		return
 	}
-	writeJSON(w, http.StatusOK, userResponse{
-		ID:       user.ID,
-		TenantID: user.TenantID,
-		Email:    user.Email,
-		Role:     user.Role,
-	})
+	writeJSON(w, http.StatusOK, userResponse{ID: user.ID, Email: user.Email})
+}
+
+func (h *authHandler) myTenants(w http.ResponseWriter, r *http.Request) {
+	actor, _ := identity.ActorFrom(r.Context())
+	memberships, err := h.svc.ListTenants(r.Context(), actor.UserID)
+	if err != nil {
+		h.logError("falha ao listar tenants", err)
+		writeError(w, "internal", "erro interno", http.StatusInternalServerError)
+		return
+	}
+	out := make([]tenantResponse, 0, len(memberships))
+	for _, m := range memberships {
+		out = append(out, tenantResponse{ID: m.TenantID, Name: m.TenantName, Role: m.Role})
+	}
+	writeJSON(w, http.StatusOK, out)
 }
 
 func (h *authHandler) handleAuthError(w http.ResponseWriter, err error) {

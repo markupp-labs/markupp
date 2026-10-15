@@ -21,16 +21,33 @@ var (
 	ErrEmptyEmail           = errors.New("email obrigatorio")
 	ErrEmptyPassword        = errors.New("senha obrigatoria")
 	ErrInviteInvalid        = errors.New("convite inexistente, vencido ou ja aceito")
+	ErrMembershipNotFound   = errors.New("usuario sem vinculo com o tenant")
+	ErrTenantRequired       = errors.New("usuario de varios tenants precisa escolher um")
+	ErrNoTenant             = errors.New("usuario sem nenhum tenant")
 )
 
-// User representa uma conta com chave estável (UUID).
+// User representa uma conta da instância com chave estável (UUID). O acesso a cada
+// tenant vem de um Membership.
 type User struct {
 	ID        string
-	TenantID  string
 	Email     string
-	Role      string
 	CreatedAt time.Time
 	UpdatedAt time.Time
+}
+
+// Member é um usuário visto de dentro do tenant, com o papel dele lá.
+type Member struct {
+	UserID   string
+	Email    string
+	Role     string
+	JoinedAt time.Time
+}
+
+// Membership é o vínculo do usuário com um tenant e o papel dele lá.
+type Membership struct {
+	TenantID   string
+	TenantName string
+	Role       string
 }
 
 // UserIdentity isola o vínculo de autenticação externa ou credencial local.
@@ -63,9 +80,12 @@ type AuditEventRecord struct {
 	OccurredAt time.Time
 }
 
-// CreateAccountParams empacota os dados para criação atômica de conta, cofre e auditoria.
+// CreateAccountParams empacota os dados para criação atômica de conta e auditoria. O
+// primeiro usuário da instância ainda ganha o tenant BootstrapTenantID, como owner, e
+// o cofre inicial nele.
 type CreateAccountParams struct {
 	User                    User
+	BootstrapTenantID       string
 	Identity                UserIdentity
 	InitialVaultID          string
 	InitialVaultName        string
@@ -91,6 +111,8 @@ type AcceptInviteParams struct {
 // Repository é o contrato de persistência consumido pelo Service.
 type Repository interface {
 	CreateAccountTx(ctx context.Context, params CreateAccountParams) (User, error)
+	GetMembership(ctx context.Context, userID, tenantID string) (Membership, error)
+	ListMemberships(ctx context.Context, userID string) ([]Membership, error)
 	AcceptInviteTx(ctx context.Context, params AcceptInviteParams) (User, error)
 	GetUserByID(ctx context.Context, id string) (User, error)
 	GetUserIdentity(ctx context.Context, provider, providerUserID string) (UserIdentity, error)

@@ -19,7 +19,7 @@ type fakeAdminRepository struct {
 	createErr error
 }
 
-func (f *fakeAdminRepository) ListUsers(ctx context.Context) ([]auth.User, error) {
+func (f *fakeAdminRepository) ListMembers(ctx context.Context) ([]auth.Member, error) {
 	return nil, nil
 }
 

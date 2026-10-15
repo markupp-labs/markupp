@@ -44,7 +44,7 @@ type IssuedInvite struct {
 
 // AdminRepository é a persistência da administração, sempre no tenant do ator.
 type AdminRepository interface {
-	ListUsers(ctx context.Context) ([]User, error)
+	ListMembers(ctx context.Context) ([]Member, error)
 	ListInvites(ctx context.Context) ([]Invite, error)
 	CreateInviteTx(ctx context.Context, inv Invite, tokenHash string, event AuditEventRecord) error
 }
@@ -61,9 +61,9 @@ func NewAdminService(repo AdminRepository, clock func() time.Time) *AdminService
 	return &AdminService{repo: repo, clock: clock, newID: uuid.NewString}
 }
 
-// ListUsers devolve os usuários do tenant do ator.
-func (s *AdminService) ListUsers(ctx context.Context) ([]User, error) {
-	return s.repo.ListUsers(ctx)
+// ListMembers devolve os membros do tenant do ator, com o papel de cada um.
+func (s *AdminService) ListMembers(ctx context.Context) ([]Member, error) {
+	return s.repo.ListMembers(ctx)
 }
 
 // ListInvites devolve os convites do tenant do ator.

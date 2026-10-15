@@ -2,13 +2,11 @@
 SELECT COUNT(*) FROM users;
 
 -- name: CreateUser :exec
-INSERT INTO users (id, tenant_id, email, role, created_at, updated_at)
-VALUES ($1, $2, $3, $4, $5, $6);
+INSERT INTO users (id, email, created_at, updated_at)
+VALUES ($1, $2, $3, $4);
 
 -- name: GetUserByID :one
-SELECT id, tenant_id, email, role, created_at, updated_at
-FROM users
-WHERE id = $1;
+SELECT * FROM users WHERE id = $1;
 
 -- name: CreateUserIdentity :exec
 INSERT INTO user_identities (id, user_id, provider, provider_user_id, password_hash, created_at)
@@ -21,6 +19,15 @@ WHERE provider = $1 AND provider_user_id = $2;
 
 -- name: CreateVault :exec
 INSERT INTO vaults (id, tenant_id, name, created_at)
+VALUES ($1, $2, $3, $4);
+
+-- O primeiro usuário da instância nasce junto com o tenant inicial.
+-- name: EnsureTenant :exec
+INSERT INTO tenants (id, name, created_at) VALUES ($1, $1, $2)
+ON CONFLICT DO NOTHING;
+
+-- name: AddMembership :exec
+INSERT INTO tenant_memberships (tenant_id, user_id, role, created_at)
 VALUES ($1, $2, $3, $4);
 
 -- name: AddVaultMember :exec
@@ -76,3 +83,15 @@ RETURNING tenant_id, email, role;
 -- Serializa a criação de contas para que só o primeiro usuário vire admin.
 -- name: LockFirstAdmin :exec
 SELECT pg_advisory_xact_lock(sqlc.arg(key)::bigint);
+
+-- Leituras de vínculo rodam antes de existir tenant na sessão, no papel da conexão.
+-- name: GetMembership :one
+SELECT m.tenant_id, t.name AS tenant_name, m.role
+FROM tenant_memberships m JOIN tenants t ON t.id = m.tenant_id
+WHERE m.user_id = $1 AND m.tenant_id = $2;
+
+-- name: ListMemberships :many
+SELECT m.tenant_id, t.name AS tenant_name, m.role
+FROM tenant_memberships m JOIN tenants t ON t.id = m.tenant_id
+WHERE m.user_id = $1
+ORDER BY t.name, m.tenant_id;

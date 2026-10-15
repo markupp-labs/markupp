@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/auth"
@@ -21,17 +22,17 @@ func NewPostgresAdminRepository(pool *pgxpool.Pool) *PostgresAdminRepository {
 	return &PostgresAdminRepository{pool: pool}
 }
 
-// ListUsers devolve os usuários do tenant do ator, por email.
-func (r *PostgresAdminRepository) ListUsers(ctx context.Context) ([]auth.User, error) {
-	var rows []gen.User
+// ListMembers devolve os membros do tenant do ator, por email, com o papel de cada um.
+func (r *PostgresAdminRepository) ListMembers(ctx context.Context) ([]auth.Member, error) {
+	var rows []gen.ListMembersRow
 	err := inActorTx(ctx, r.pool, func(q *gen.Queries) error {
 		var qErr error
-		rows, qErr = q.ListTenantUsers(ctx)
+		rows, qErr = q.ListMembers(ctx)
 		return qErr
 	})
-	out := make([]auth.User, 0, len(rows))
+	out := make([]auth.Member, 0, len(rows))
 	for _, row := range rows {
-		out = append(out, toAuthUser(row))
+		out = append(out, auth.Member{UserID: row.ID, Email: row.Email, Role: row.Role, JoinedAt: row.CreatedAt})
 	}
 	return out, err
 }
@@ -69,14 +70,15 @@ func (r *PostgresAdminRepository) CreateInviteTx(ctx context.Context, inv auth.I
 func toCreateInviteParams(inv auth.Invite, tokenHash string) gen.CreateInviteParams {
 	return gen.CreateInviteParams{
 		ID: inv.ID, TenantID: inv.TenantID, Email: inv.Email, Role: inv.Role, TokenHash: tokenHash,
-		InvitedBy: inv.InvitedBy, ExpiresAt: inv.ExpiresAt, CreatedAt: inv.CreatedAt,
+		InvitedBy: pgtype.Text{String: inv.InvitedBy, Valid: inv.InvitedBy != ""},
+		ExpiresAt: inv.ExpiresAt, CreatedAt: inv.CreatedAt,
 	}
 }
 
 func toInvite(row gen.ListInvitesRow) auth.Invite {
 	inv := auth.Invite{
 		ID: row.ID, TenantID: row.TenantID, Email: row.Email, Role: row.Role,
-		InvitedBy: row.InvitedBy, ExpiresAt: row.ExpiresAt, CreatedAt: row.CreatedAt,
+		InvitedBy: row.InvitedBy.String, ExpiresAt: row.ExpiresAt, CreatedAt: row.CreatedAt,
 	}
 	if row.AcceptedAt.Valid {
 		inv.AcceptedAt = &row.AcceptedAt.Time

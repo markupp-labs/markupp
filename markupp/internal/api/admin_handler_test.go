@@ -75,8 +75,8 @@ func TestAdminRoutes_SemToken_Retorna401(t *testing.T) {
 	assert.Equal(t, http.StatusUnauthorized, rec.Code)
 }
 
-func TestAdminRoutes_ListUsers_Admin_DevolveUsuarios(t *testing.T) {
-	svc := &fakeAdminService{users: []auth.User{{ID: "u1", TenantID: "t1", Email: "a@markupp.dev", Role: "admin"}}}
+func TestAdminRoutes_ListMembers_Admin_DevolveMembrosComPapel(t *testing.T) {
+	svc := &fakeAdminService{members: []auth.Member{{UserID: "u1", Email: "a@markupp.dev", Role: "owner"}}}
 
 	rec := adminRequest(svc, "admin", http.MethodGet, "/users", "")
 

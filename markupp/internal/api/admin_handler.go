@@ -16,7 +16,7 @@ import (
 
 // AdminService é o que as rotas de administração consomem.
 type AdminService interface {
-	ListUsers(ctx context.Context) ([]auth.User, error)
+	ListMembers(ctx context.Context) ([]auth.Member, error)
 	ListInvites(ctx context.Context) ([]auth.Invite, error)
 	IssueInvite(ctx context.Context, inviter identity.Actor, email, role string) (auth.IssuedInvite, error)
 }
@@ -40,13 +40,13 @@ type issuedInviteResponse struct {
 	Token string `json:"token"`
 }
 
-// mountAdminRoutes monta as rotas que só o administrador do tenant alcança. O papel
-// vem do JWT validado, nunca de cabeçalho enviado pelo cliente.
-func mountAdminRoutes(r chi.Router, svc AdminService, validator TokenValidator) {
+// mountAdminRoutes monta as rotas que só owner e admin do tenant alcançam. O papel vem
+// do vínculo no banco, nunca do cliente.
+func mountAdminRoutes(r chi.Router, svc AdminService, validator TokenValidator, tenants TenantResolver) {
 	h := &adminHandler{svc: svc}
 	r.Group(func(g chi.Router) {
-		g.Use(RequireAuth(validator), requireAdmin)
-		g.Get("/users", h.listUsers)
+		g.Use(RequireAuth(validator), RequireTenant(tenants), requireAdmin)
+		g.Get("/users", h.listMembers)
 		g.Get("/users/invites", h.listInvites)
 		g.Post("/users/invites", h.issueInvite)
 	})
@@ -63,15 +63,22 @@ func requireAdmin(next http.Handler) http.Handler {
 	})
 }
 
-func (h *adminHandler) listUsers(w http.ResponseWriter, r *http.Request) {
-	users, err := h.svc.ListUsers(r.Context())
+type memberResponse struct {
+	ID       string    `json:"id"`
+	Email    string    `json:"email"`
+	Role     string    `json:"role"`
+	JoinedAt time.Time `json:"joined_at"`
+}
+
+func (h *adminHandler) listMembers(w http.ResponseWriter, r *http.Request) {
+	members, err := h.svc.ListMembers(r.Context())
 	if err != nil {
-		writeInternal(w, "listar usuarios", err)
+		writeInternal(w, "listar membros", err)
 		return
 	}
-	out := make([]userResponse, 0, len(users))
-	for _, u := range users {
-		out = append(out, userResponse{ID: u.ID, TenantID: u.TenantID, Email: u.Email, Role: u.Role})
+	out := make([]memberResponse, 0, len(members))
+	for _, m := range members {
+		out = append(out, memberResponse{ID: m.UserID, Email: m.Email, Role: m.Role, JoinedAt: m.JoinedAt})
 	}
 	writeJSON(w, http.StatusOK, out)
 }

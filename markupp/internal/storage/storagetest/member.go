@@ -21,11 +21,9 @@ func SeedMember(t *testing.T, pool *pgxpool.Pool, actor identity.Actor, vaultID 
 	}{
 		{`INSERT INTO tenants (id, name, created_at) VALUES ($1, $1, now()) ON CONFLICT DO NOTHING`,
 			[]any{actor.TenantID}},
-		{`INSERT INTO users (id, tenant_id, email, role, created_at, updated_at)
-		  VALUES ($1, $2, $1 || '@markupp.dev',
-		          CASE WHEN $3 IN ('owner', 'admin') THEN 'admin' ELSE 'member' END, now(), now())
-		  ON CONFLICT DO NOTHING`,
-			[]any{actor.UserID, actor.TenantID, actor.Role}},
+		{`INSERT INTO users (id, email, created_at, updated_at)
+		  VALUES ($1, $1 || '@markupp.dev', now(), now()) ON CONFLICT DO NOTHING`,
+			[]any{actor.UserID}},
 		{`INSERT INTO tenant_memberships (tenant_id, user_id, role, created_at)
 		  VALUES ($1, $2, $3, now()) ON CONFLICT DO NOTHING`,
 			[]any{actor.TenantID, actor.UserID, actor.Role}},

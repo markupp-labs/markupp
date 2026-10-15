@@ -33,11 +33,7 @@ func serveAuthenticated(w http.ResponseWriter, r *http.Request, next http.Handle
 		writeError(w, "unauthorized", "token ausente ou invalido", http.StatusUnauthorized)
 		return
 	}
-	ctx := identity.WithActor(r.Context(), identity.Actor{
-		UserID:   claims.Subject,
-		TenantID: claims.TenantID,
-		Role:     claims.Role,
-	})
+	ctx := identity.WithActor(r.Context(), identity.Actor{UserID: claims.Subject})
 	next.ServeHTTP(w, r.WithContext(ctx))
 }
 

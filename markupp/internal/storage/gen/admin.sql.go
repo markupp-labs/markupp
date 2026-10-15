@@ -16,7 +16,10 @@ const createInvite = `-- name: CreateInvite :execrows
 INSERT INTO user_invites (id, tenant_id, email, role, token_hash, invited_by, expires_at, created_at)
 SELECT $1, $2, $3, $4, $5,
        $6, $7, $8
-WHERE NOT EXISTS (SELECT 1 FROM users WHERE email = $3)
+WHERE NOT EXISTS (
+    SELECT 1 FROM tenant_memberships m JOIN users u ON u.id = m.user_id
+    WHERE m.tenant_id = $2 AND u.email = $3
+)
 `
 
 type CreateInviteParams struct {
@@ -25,12 +28,13 @@ type CreateInviteParams struct {
 	Email     string
 	Role      string
 	TokenHash string
-	InvitedBy string
+	InvitedBy pgtype.Text
 	ExpiresAt time.Time
 	CreatedAt time.Time
 }
 
-// Zero linhas quando o email já é de um usuário do tenant.
+// Zero linhas quando o email já é de um membro do tenant. O tenant fica explícito para
+// a regra não depender do RLS.
 func (q *Queries) CreateInvite(ctx context.Context, arg CreateInviteParams) (int64, error) {
 	result, err := q.db.Exec(ctx, createInvite,
 		arg.ID,
@@ -59,7 +63,7 @@ type ListInvitesRow struct {
 	TenantID   string
 	Email      string
 	Role       string
-	InvitedBy  string
+	InvitedBy  pgtype.Text
 	ExpiresAt  time.Time
 	AcceptedAt pgtype.Timestamptz
 	CreatedAt  time.Time
@@ -94,28 +98,35 @@ func (q *Queries) ListInvites(ctx context.Context) ([]ListInvitesRow, error) {
 	return items, nil
 }
 
-const listTenantUsers = `-- name: ListTenantUsers :many
+const listMembers = `-- name: ListMembers :many
 
-SELECT id, tenant_id, email, role, created_at, updated_at FROM users ORDER BY email
+SELECT u.id, u.email, m.role, m.created_at
+FROM tenant_memberships m JOIN users u ON u.id = m.user_id
+ORDER BY u.email
 `
 
+type ListMembersRow struct {
+	ID        string
+	Email     string
+	Role      string
+	CreatedAt time.Time
+}
+
 // Rodam no papel markupp_app: o RLS recorta tudo ao tenant do administrador.
-func (q *Queries) ListTenantUsers(ctx context.Context) ([]User, error) {
-	rows, err := q.db.Query(ctx, listTenantUsers)
+func (q *Queries) ListMembers(ctx context.Context) ([]ListMembersRow, error) {
+	rows, err := q.db.Query(ctx, listMembers)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []User
+	var items []ListMembersRow
 	for rows.Next() {
-		var i User
+		var i ListMembersRow
 		if err := rows.Scan(
 			&i.ID,
-			&i.TenantID,
 			&i.Email,
 			&i.Role,
 			&i.CreatedAt,
-			&i.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}

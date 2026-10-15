@@ -12,6 +12,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/auth"
+	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/identity"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/storage/gen"
 )
 
@@ -31,121 +32,139 @@ func NewPostgresAuthRepository(pool *pgxpool.Pool) *PostgresAuthRepository {
 	}
 }
 
-// CreateAccountTx cria atomicamente usuário, identidade, cofre padrão e auditoria com lock para primeiro admin.
+// CreateAccountTx cria conta, identidade e auditoria sob o lock do primeiro usuário:
+// só ele ganha o tenant inicial, como owner, com o cofre inicial nele.
 func (r *PostgresAuthRepository) CreateAccountTx(ctx context.Context, p auth.CreateAccountParams) (auth.User, error) {
-	var user auth.User
 	err := r.inTx(ctx, func(qtx *gen.Queries) error {
 		if err := qtx.LockFirstAdmin(ctx, firstAdminLockKey); err != nil {
 			return fmt.Errorf("adquirir lock de bootstrap para %q: %w", p.User.Email, err)
 		}
-		var err error
-		user, err = r.commitAccountTx(ctx, qtx, p)
-		return err
+		return commitAccount(ctx, qtx, p)
 	})
-	return user, err
-}
-
-func (r *PostgresAuthRepository) commitAccountTx(ctx context.Context, qtx *gen.Queries, p auth.CreateAccountParams) (auth.User, error) {
-	user, action, err := r.resolveRoleAndAction(ctx, qtx, p)
 	if err != nil {
 		return auth.User{}, err
 	}
-	if err := insertAccountRows(ctx, qtx, user, p, action); err != nil {
-		if isUniqueConstraintViolation(err) {
-			return auth.User{}, auth.ErrUserAlreadyExists
-		}
-		return auth.User{}, fmt.Errorf("gravar conta para %q: %w", p.User.Email, err)
-	}
-	return user, adoptExistingVaults(ctx, qtx, user, action)
+	return p.User, nil
 }
 
-// adoptExistingVaults dá ao primeiro admin os cofres que já existiam, que só podem ser
-// os criados pela migração para as notas da v1.0.0-rc.1. O vínculo nasce 1 ms depois
-// da conta para o cofre criado com ela continuar sendo o padrão do admin.
-func adoptExistingVaults(ctx context.Context, qtx *gen.Queries, user auth.User, action string) error {
-	if action != "auth.register_admin" {
-		return nil
+func commitAccount(ctx context.Context, qtx *gen.Queries, p auth.CreateAccountParams) error {
+	userCount, err := qtx.CountUsers(ctx)
+	if err != nil {
+		return fmt.Errorf("contar usuarios para %q: %w", p.User.Email, err)
 	}
+	if userCount > 0 && !p.AllowMemberRegistration {
+		return auth.ErrRegistrationDisabled
+	}
+	if err := insertUserRows(ctx, qtx, p.User, p.Identity); err != nil {
+		return err
+	}
+	if userCount > 0 {
+		return qtx.CreateAuditEvent(ctx, accountEvent(p.AuditEventID, "", "auth.register", p.User))
+	}
+	return bootstrapFirstTenant(ctx, qtx, p)
+}
+
+// bootstrapFirstTenant entrega ao primeiro usuário da instância o tenant inicial, como
+// owner, e os cofres que já existiam, que só podem ser os das notas da v1.0.0-rc.1.
+func bootstrapFirstTenant(ctx context.Context, qtx *gen.Queries, p auth.CreateAccountParams) error {
+	tenantID, u := p.BootstrapTenantID, p.User
+	if err := qtx.EnsureTenant(ctx, gen.EnsureTenantParams{ID: tenantID, CreatedAt: u.CreatedAt}); err != nil {
+		return fmt.Errorf("criar tenant %q do primeiro usuario: %w", tenantID, err)
+	}
+	join := tenantJoin{tenantID: tenantID, userID: u.ID, role: identity.RoleOwner, vaultID: p.InitialVaultID, vaultName: p.InitialVaultName, at: u.CreatedAt}
+	if err := joinTenant(ctx, qtx, join); err != nil {
+		return err
+	}
+	if err := adoptExistingVaults(ctx, qtx, tenantID, u); err != nil {
+		return err
+	}
+	return qtx.CreateAuditEvent(ctx, accountEvent(p.AuditEventID, tenantID, "auth.register_admin", u))
+}
+
+// adoptExistingVaults move para o tenant do primeiro usuário os cofres da migração. O
+// vínculo nasce 1 ms depois da conta para o cofre criado com ela continuar o padrão.
+func adoptExistingVaults(ctx context.Context, qtx *gen.Queries, tenantID string, u auth.User) error {
 	err := qtx.AdoptLegacyVaults(ctx, gen.AdoptLegacyVaultsParams{
-		TenantID: user.TenantID, UserID: user.ID, CreatedAt: user.CreatedAt.Add(time.Millisecond),
+		TenantID: tenantID, UserID: u.ID, CreatedAt: u.CreatedAt.Add(time.Millisecond),
 	})
 	if err != nil {
-		return fmt.Errorf("dar ao admin %q os cofres do tenant %q: %w", user.ID, user.TenantID, err)
+		return fmt.Errorf("dar ao usuario %q os cofres do tenant %q: %w", u.ID, tenantID, err)
 	}
 	return nil
 }
 
-func (r *PostgresAuthRepository) resolveRoleAndAction(ctx context.Context, qtx *gen.Queries, p auth.CreateAccountParams) (auth.User, string, error) {
-	userCount, err := qtx.CountUsers(ctx)
+func insertUserRows(ctx context.Context, q *gen.Queries, u auth.User, ident auth.UserIdentity) error {
+	err := q.CreateUser(ctx, gen.CreateUserParams{ID: u.ID, Email: u.Email, CreatedAt: u.CreatedAt, UpdatedAt: u.UpdatedAt})
+	if err == nil {
+		err = q.CreateUserIdentity(ctx, toCreateIdentityParams(ident))
+	}
+	if isUniqueConstraintViolation(err) {
+		return fmt.Errorf("%w: %q", auth.ErrUserAlreadyExists, u.Email)
+	}
 	if err != nil {
-		return auth.User{}, "", fmt.Errorf("contar usuarios para %q: %w", p.User.Email, err)
+		return fmt.Errorf("gravar conta para %q: %w", u.Email, err)
 	}
-	user := p.User
-	if userCount == 0 {
-		user.Role = "admin"
-		return user, "auth.register_admin", nil
-	}
-	if !p.AllowMemberRegistration {
-		return auth.User{}, "", auth.ErrRegistrationDisabled
-	}
-	user.Role = "member"
-	return user, "auth.register", nil
+	return nil
 }
 
-func insertAccountRows(ctx context.Context, q *gen.Queries, u auth.User, p auth.CreateAccountParams, action string) error {
-	if err := q.CreateUser(ctx, toCreateUserParams(u)); err != nil {
-		return err
+// tenantJoin é a entrada de um usuário num tenant: o vínculo com o papel e o cofre
+// que ele ganha lá dentro.
+type tenantJoin struct {
+	tenantID, userID, role, vaultID, vaultName string
+	at                                         time.Time
+}
+
+func joinTenant(ctx context.Context, q *gen.Queries, j tenantJoin) error {
+	err := q.AddMembership(ctx, gen.AddMembershipParams{TenantID: j.tenantID, UserID: j.userID, Role: j.role, CreatedAt: j.at})
+	if err != nil {
+		return fmt.Errorf("vincular %q ao tenant %q como %s: %w", j.userID, j.tenantID, j.role, err)
 	}
-	if err := q.CreateUserIdentity(ctx, toCreateIdentityParams(p.Identity)); err != nil {
-		return err
+	return insertInitialVault(ctx, q, j)
+}
+
+func insertInitialVault(ctx context.Context, q *gen.Queries, j tenantJoin) error {
+	err := q.CreateVault(ctx, gen.CreateVaultParams{ID: j.vaultID, TenantID: j.tenantID, Name: j.vaultName, CreatedAt: j.at})
+	if err != nil {
+		return fmt.Errorf("criar cofre de %q no tenant %q: %w", j.userID, j.tenantID, err)
 	}
-	if err := insertInitialVault(ctx, q, p.InitialVaultID, u.TenantID, p.InitialVaultName, u.ID, u.CreatedAt); err != nil {
-		return err
-	}
-	return q.CreateAuditEvent(ctx, gen.CreateAuditEventParams{
-		ID:         p.AuditEventID,
-		TenantID:   u.TenantID,
-		ActorID:    pgtype.Text{String: u.ID, Valid: true},
-		Action:     action,
-		Target:     u.Email,
-		Result:     "success",
-		OccurredAt: u.CreatedAt,
+	return q.AddVaultMember(ctx, gen.AddVaultMemberParams{VaultID: j.vaultID, UserID: j.userID, CreatedAt: j.at})
+}
+
+func accountEvent(id, tenantID, action string, u auth.User) gen.CreateAuditEventParams {
+	return toCreateAuditEventParams(auth.AuditEventRecord{
+		ID: id, TenantID: tenantID, ActorID: u.ID, Action: action,
+		Target: u.Email, Result: "success", OccurredAt: u.CreatedAt,
 	})
 }
 
-func insertInitialVault(ctx context.Context, q *gen.Queries, vaultID, tenantID, name, userID string, now time.Time) error {
-	if err := q.CreateVault(ctx, gen.CreateVaultParams{
-		ID:        vaultID,
-		TenantID:  tenantID,
-		Name:      name,
-		CreatedAt: now,
-	}); err != nil {
-		return err
-	}
-	return q.AddVaultMember(ctx, gen.AddVaultMemberParams{
-		VaultID:   vaultID,
-		UserID:    userID,
-		CreatedAt: now,
-	})
-}
-
-// AcceptInviteTx consome o convite e cria a conta que ele descreve numa transação
-// só: se a conta falhar, o convite continua pendente.
+// AcceptInviteTx consome o convite e cria a conta que ele descreve, já vinculada ao
+// tenant, numa transação só: se a conta falhar, o convite continua pendente.
 func (r *PostgresAuthRepository) AcceptInviteTx(ctx context.Context, p auth.AcceptInviteParams) (auth.User, error) {
-	var user auth.User
+	user := auth.User{ID: p.UserID, CreatedAt: p.Now, UpdatedAt: p.Now}
 	err := r.inTx(ctx, func(qtx *gen.Queries) error {
 		inv, err := qtx.ClaimInvite(ctx, gen.ClaimInviteParams{TokenHash: p.TokenHash, Now: pgtype.Timestamptz{Time: p.Now, Valid: true}})
 		if err != nil {
 			return claimErr(err)
 		}
-		var account auth.CreateAccountParams
-		user, account = invitedAccount(inv, p)
-		return insertAccountRows(ctx, qtx, user, account, "auth.accept_invite")
+		user.Email = inv.Email
+		return createInvitedAccount(ctx, qtx, inv, user, p)
 	})
-	if isUniqueConstraintViolation(err) {
-		return auth.User{}, auth.ErrUserAlreadyExists
+	if err != nil {
+		return auth.User{}, err
 	}
-	return user, err
+	return user, nil
+}
+
+func createInvitedAccount(ctx context.Context, qtx *gen.Queries, inv gen.ClaimInviteRow, u auth.User, p auth.AcceptInviteParams) error {
+	ident := auth.UserIdentity{ID: p.IdentityID, UserID: u.ID, Provider: "local", ProviderUserID: inv.Email, PasswordHash: p.PasswordHash, CreatedAt: p.Now}
+	if err := insertUserRows(ctx, qtx, u, ident); err != nil {
+		return err
+	}
+	join := tenantJoin{tenantID: inv.TenantID, userID: u.ID, role: inv.Role, vaultID: p.InitialVaultID, vaultName: auth.InitialVaultName, at: p.Now}
+	if err := joinTenant(ctx, qtx, join); err != nil {
+		return err
+	}
+	return qtx.CreateAuditEvent(ctx, accountEvent(p.AuditEventID, inv.TenantID, "auth.accept_invite", u))
 }
 
 func claimErr(err error) error {
@@ -155,22 +174,33 @@ func claimErr(err error) error {
 	return fmt.Errorf("consumir convite: %w", err)
 }
 
-func invitedAccount(inv gen.ClaimInviteRow, p auth.AcceptInviteParams) (auth.User, auth.CreateAccountParams) {
-	user := auth.User{ID: p.UserID, TenantID: inv.TenantID, Email: inv.Email, Role: inv.Role, CreatedAt: p.Now, UpdatedAt: p.Now}
-	return user, auth.CreateAccountParams{
-		User: user,
-		Identity: auth.UserIdentity{
-			ID: p.IdentityID, UserID: p.UserID, Provider: "local", ProviderUserID: inv.Email,
-			PasswordHash: p.PasswordHash, CreatedAt: p.Now,
-		},
-		InitialVaultID:   p.InitialVaultID,
-		InitialVaultName: auth.InitialVaultName,
-		AuditEventID:     p.AuditEventID,
-	}
-}
-
 func (r *PostgresAuthRepository) inTx(ctx context.Context, fn func(qtx *gen.Queries) error) error {
 	return inTx(ctx, r.pool, fn)
+}
+
+// GetMembership devolve o vínculo de userID com tenantID, ou auth.ErrMembershipNotFound.
+func (r *PostgresAuthRepository) GetMembership(ctx context.Context, userID, tenantID string) (auth.Membership, error) {
+	row, err := r.q.GetMembership(ctx, gen.GetMembershipParams{UserID: userID, TenantID: tenantID})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return auth.Membership{}, fmt.Errorf("%w: usuario %q, tenant %q", auth.ErrMembershipNotFound, userID, tenantID)
+	}
+	if err != nil {
+		return auth.Membership{}, fmt.Errorf("buscar vinculo de %q com %q: %w", userID, tenantID, err)
+	}
+	return auth.Membership(row), nil
+}
+
+// ListMemberships devolve os tenants de userID, por nome.
+func (r *PostgresAuthRepository) ListMemberships(ctx context.Context, userID string) ([]auth.Membership, error) {
+	rows, err := r.q.ListMemberships(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("listar tenants de %q: %w", userID, err)
+	}
+	out := make([]auth.Membership, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, auth.Membership(row))
+	}
+	return out, nil
 }
 
 // GetUserByID busca a conta por ID, retornando ErrUserNotFound se inexistente.
@@ -186,14 +216,7 @@ func (r *PostgresAuthRepository) GetUserByID(ctx context.Context, id string) (au
 }
 
 func toAuthUser(row gen.User) auth.User {
-	return auth.User{
-		ID:        row.ID,
-		TenantID:  row.TenantID,
-		Email:     row.Email,
-		Role:      row.Role,
-		CreatedAt: row.CreatedAt,
-		UpdatedAt: row.UpdatedAt,
-	}
+	return auth.User(row)
 }
 
 // GetUserIdentity busca o vínculo de autenticação externa ou credencial local.
@@ -303,17 +326,6 @@ func (r *PostgresAuthRepository) RecordAuditEvent(ctx context.Context, e auth.Au
 	return nil
 }
 
-func toCreateUserParams(u auth.User) gen.CreateUserParams {
-	return gen.CreateUserParams{
-		ID:        u.ID,
-		TenantID:  u.TenantID,
-		Email:     u.Email,
-		Role:      u.Role,
-		CreatedAt: u.CreatedAt,
-		UpdatedAt: u.UpdatedAt,
-	}
-}
-
 func toCreateIdentityParams(i auth.UserIdentity) gen.CreateUserIdentityParams {
 	return gen.CreateUserIdentityParams{
 		ID:             i.ID,
@@ -328,7 +340,7 @@ func toCreateIdentityParams(i auth.UserIdentity) gen.CreateUserIdentityParams {
 func toCreateAuditEventParams(e auth.AuditEventRecord) gen.CreateAuditEventParams {
 	return gen.CreateAuditEventParams{
 		ID:         e.ID,
-		TenantID:   e.TenantID,
+		TenantID:   pgtype.Text{String: e.TenantID, Valid: e.TenantID != ""},
 		ActorID:    pgtype.Text{String: e.ActorID, Valid: e.ActorID != ""},
 		Action:     e.Action,
 		Target:     e.Target,

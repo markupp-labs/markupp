@@ -102,11 +102,11 @@ func newHandler(cfg config.Config, pool *pgxpool.Pool) http.Handler {
 	adminSvc := auth.NewAdminService(storage.NewPostgresAdminRepository(pool), time.Now)
 	return api.NewRouter(api.RouterDeps{
 		Notes: notesSvc, Auth: authSvc, Admin: adminSvc,
-		Tokens: codec, Probe: pool, AllowedOrigins: cfg.AllowedOrigins,
+		Tokens: codec, Tenants: authSvc, Probe: pool, AllowedOrigins: cfg.AllowedOrigins,
 	})
 }
 
-func newAuthService(cfg config.Config, pool *pgxpool.Pool) (api.AuthService, api.TokenValidator) {
+func newAuthService(cfg config.Config, pool *pgxpool.Pool) (*auth.Service, api.TokenValidator) {
 	authRepo := storage.NewPostgresAuthRepository(pool)
 	codec := auth.NewTokenCodec(cfg.AuthSecret, time.Duration(cfg.JWTExpirationMinutes)*time.Minute, time.Now)
 	hasher := auth.NewBcryptHasher()

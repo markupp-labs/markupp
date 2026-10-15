@@ -15,7 +15,7 @@ const origemPermitida = "https://painel.markupp.dev"
 func corsRequest(t *testing.T, origins []string, method, origin string, preflight bool) *httptest.ResponseRecorder {
 	t.Helper()
 	validator := &fakeTokenValidator{}
-	router := api.NewRouter(api.RouterDeps{Notes: &fakeService{listResult: nil}, Tokens: validator, Probe: &fakeProbe{}, AllowedOrigins: origins})
+	router := api.NewRouter(api.RouterDeps{Notes: &fakeService{listResult: nil}, Tenants: tenantDeTeste, Tokens: validator, Probe: &fakeProbe{}, AllowedOrigins: origins})
 	req := httptest.NewRequest(method, "/notes", nil)
 	req.Header.Set("Authorization", "Bearer token-valido")
 	if origin != "" {

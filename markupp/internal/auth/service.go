@@ -14,7 +14,7 @@ const maxPasswordLength = 72
 
 // TokenIssuer define o contrato de geração e validação de tokens para o serviço.
 type TokenIssuer interface {
-	GenerateTokenPair(userID, tenantID, role string) (TokenPair, error)
+	GenerateTokenPair(userID string) (TokenPair, error)
 	ValidateToken(tokenString string) (Claims, error)
 }
 
@@ -148,7 +148,8 @@ func (s *Service) buildAccountParams(email, hash string) CreateAccountParams {
 	now := s.clock()
 	userID := s.newID()
 	return CreateAccountParams{
-		User:                    User{ID: userID, TenantID: s.cfg.DefaultTenantID, Email: email, CreatedAt: now, UpdatedAt: now},
+		User:                    User{ID: userID, Email: email, CreatedAt: now, UpdatedAt: now},
+		BootstrapTenantID:       s.cfg.DefaultTenantID,
 		Identity:                UserIdentity{ID: s.newID(), UserID: userID, Provider: "local", ProviderUserID: email, PasswordHash: hash, CreatedAt: now},
 		InitialVaultID:          s.newID(),
 		InitialVaultName:        InitialVaultName,
@@ -174,7 +175,6 @@ func (s *Service) verifyPasswordAndIssue(ctx context.Context, identity UserIdent
 func (s *Service) auditLoginAttempt(ctx context.Context, actorID, target, result string) error {
 	return s.repo.RecordAuditEvent(ctx, AuditEventRecord{
 		ID:         s.newID(),
-		TenantID:   s.cfg.DefaultTenantID,
 		ActorID:    actorID,
 		Action:     "auth.login",
 		Target:     target,
@@ -194,7 +194,6 @@ func (s *Service) buildSessionRecords(user User, pair TokenPair, action string) 
 	}
 	event := AuditEventRecord{
 		ID:         s.newID(),
-		TenantID:   user.TenantID,
 		ActorID:    user.ID,
 		Action:     action,
 		Target:     user.Email,
@@ -205,7 +204,7 @@ func (s *Service) buildSessionRecords(user User, pair TokenPair, action string) 
 }
 
 func (s *Service) issueAndPersist(ctx context.Context, user User, action string) (TokenPair, error) {
-	pair, err := s.tokens.GenerateTokenPair(user.ID, user.TenantID, user.Role)
+	pair, err := s.tokens.GenerateTokenPair(user.ID)
 	if err != nil {
 		return TokenPair{}, fmt.Errorf("gerar tokens para %q: %w", user.ID, err)
 	}
@@ -255,7 +254,6 @@ func (s *Service) handleRefreshReuse(ctx context.Context, userID string) (TokenP
 func (s *Service) refreshReuseEvent(user User) AuditEventRecord {
 	return AuditEventRecord{
 		ID:         s.newID(),
-		TenantID:   user.TenantID,
 		ActorID:    user.ID,
 		Action:     "auth.refresh_reuse",
 		Target:     user.ID,
@@ -273,4 +271,28 @@ func (s *Service) RevokeSession(ctx context.Context, rawRefreshToken string) err
 // GetAccount busca os detalhes da conta do usuário.
 func (s *Service) GetAccount(ctx context.Context, userID string) (User, error) {
 	return s.repo.GetUserByID(ctx, userID)
+}
+
+// ResolveTenant devolve o vínculo de userID com o tenant requested. Sem pedido, vale o
+// único tenant da pessoa, e quem tem vários precisa escolher.
+func (s *Service) ResolveTenant(ctx context.Context, userID, requested string) (Membership, error) {
+	if requested != "" {
+		return s.repo.GetMembership(ctx, userID, requested)
+	}
+	memberships, err := s.repo.ListMemberships(ctx, userID)
+	if err != nil {
+		return Membership{}, err
+	}
+	switch len(memberships) {
+	case 0:
+		return Membership{}, fmt.Errorf("%w: usuario %q", ErrNoTenant, userID)
+	case 1:
+		return memberships[0], nil
+	}
+	return Membership{}, fmt.Errorf("%w: usuario %q esta em %d tenants", ErrTenantRequired, userID, len(memberships))
+}
+
+// ListTenants devolve os tenants de userID, com o papel em cada um.
+func (s *Service) ListTenants(ctx context.Context, userID string) ([]Membership, error) {
+	return s.repo.ListMemberships(ctx, userID)
 }

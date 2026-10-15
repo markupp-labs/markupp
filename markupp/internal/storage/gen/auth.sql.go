@@ -12,6 +12,28 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const addMembership = `-- name: AddMembership :exec
+INSERT INTO tenant_memberships (tenant_id, user_id, role, created_at)
+VALUES ($1, $2, $3, $4)
+`
+
+type AddMembershipParams struct {
+	TenantID  string
+	UserID    string
+	Role      string
+	CreatedAt time.Time
+}
+
+func (q *Queries) AddMembership(ctx context.Context, arg AddMembershipParams) error {
+	_, err := q.db.Exec(ctx, addMembership,
+		arg.TenantID,
+		arg.UserID,
+		arg.Role,
+		arg.CreatedAt,
+	)
+	return err
+}
+
 const addVaultMember = `-- name: AddVaultMember :exec
 INSERT INTO vault_members (vault_id, user_id, created_at)
 VALUES ($1, $2, $3)
@@ -108,7 +130,7 @@ VALUES ($1, $2, $3, $4, $5, $6, $7)
 
 type CreateAuditEventParams struct {
 	ID         string
-	TenantID   string
+	TenantID   pgtype.Text
 	ActorID    pgtype.Text
 	Action     string
 	Target     string
@@ -130,15 +152,13 @@ func (q *Queries) CreateAuditEvent(ctx context.Context, arg CreateAuditEventPara
 }
 
 const createUser = `-- name: CreateUser :exec
-INSERT INTO users (id, tenant_id, email, role, created_at, updated_at)
-VALUES ($1, $2, $3, $4, $5, $6)
+INSERT INTO users (id, email, created_at, updated_at)
+VALUES ($1, $2, $3, $4)
 `
 
 type CreateUserParams struct {
 	ID        string
-	TenantID  string
 	Email     string
-	Role      string
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
@@ -146,9 +166,7 @@ type CreateUserParams struct {
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) error {
 	_, err := q.db.Exec(ctx, createUser,
 		arg.ID,
-		arg.TenantID,
 		arg.Email,
-		arg.Role,
 		arg.CreatedAt,
 		arg.UpdatedAt,
 	)
@@ -203,6 +221,47 @@ func (q *Queries) CreateVault(ctx context.Context, arg CreateVaultParams) error 
 	return err
 }
 
+const ensureTenant = `-- name: EnsureTenant :exec
+INSERT INTO tenants (id, name, created_at) VALUES ($1, $1, $2)
+ON CONFLICT DO NOTHING
+`
+
+type EnsureTenantParams struct {
+	ID        string
+	CreatedAt time.Time
+}
+
+// O primeiro usuário da instância nasce junto com o tenant inicial.
+func (q *Queries) EnsureTenant(ctx context.Context, arg EnsureTenantParams) error {
+	_, err := q.db.Exec(ctx, ensureTenant, arg.ID, arg.CreatedAt)
+	return err
+}
+
+const getMembership = `-- name: GetMembership :one
+SELECT m.tenant_id, t.name AS tenant_name, m.role
+FROM tenant_memberships m JOIN tenants t ON t.id = m.tenant_id
+WHERE m.user_id = $1 AND m.tenant_id = $2
+`
+
+type GetMembershipParams struct {
+	UserID   string
+	TenantID string
+}
+
+type GetMembershipRow struct {
+	TenantID   string
+	TenantName string
+	Role       string
+}
+
+// Leituras de vínculo rodam antes de existir tenant na sessão, no papel da conexão.
+func (q *Queries) GetMembership(ctx context.Context, arg GetMembershipParams) (GetMembershipRow, error) {
+	row := q.db.QueryRow(ctx, getMembership, arg.UserID, arg.TenantID)
+	var i GetMembershipRow
+	err := row.Scan(&i.TenantID, &i.TenantName, &i.Role)
+	return i, err
+}
+
 const getRefreshToken = `-- name: GetRefreshToken :one
 SELECT token_hash, user_id, expires_at, revoked, created_at
 FROM refresh_tokens
@@ -223,9 +282,7 @@ func (q *Queries) GetRefreshToken(ctx context.Context, tokenHash string) (Refres
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, tenant_id, email, role, created_at, updated_at
-FROM users
-WHERE id = $1
+SELECT id, email, created_at, updated_at FROM users WHERE id = $1
 `
 
 func (q *Queries) GetUserByID(ctx context.Context, id string) (User, error) {
@@ -233,9 +290,7 @@ func (q *Queries) GetUserByID(ctx context.Context, id string) (User, error) {
 	var i User
 	err := row.Scan(
 		&i.ID,
-		&i.TenantID,
 		&i.Email,
-		&i.Role,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -265,6 +320,39 @@ func (q *Queries) GetUserIdentity(ctx context.Context, arg GetUserIdentityParams
 		&i.CreatedAt,
 	)
 	return i, err
+}
+
+const listMemberships = `-- name: ListMemberships :many
+SELECT m.tenant_id, t.name AS tenant_name, m.role
+FROM tenant_memberships m JOIN tenants t ON t.id = m.tenant_id
+WHERE m.user_id = $1
+ORDER BY t.name, m.tenant_id
+`
+
+type ListMembershipsRow struct {
+	TenantID   string
+	TenantName string
+	Role       string
+}
+
+func (q *Queries) ListMemberships(ctx context.Context, userID string) ([]ListMembershipsRow, error) {
+	rows, err := q.db.Query(ctx, listMemberships, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListMembershipsRow
+	for rows.Next() {
+		var i ListMembershipsRow
+		if err := rows.Scan(&i.TenantID, &i.TenantName, &i.Role); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const lockFirstAdmin = `-- name: LockFirstAdmin :exec

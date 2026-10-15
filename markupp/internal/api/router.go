@@ -11,6 +11,7 @@ type RouterDeps struct {
 	Auth           AuthService
 	Admin          AdminService
 	Tokens         TokenValidator
+	Tenants        TenantResolver
 	Probe          StorageProbe
 	AllowedOrigins []string
 }
@@ -21,15 +22,18 @@ func NewRouter(d RouterDeps) chi.Router {
 	if d.Tokens == nil {
 		panic("api: Tokens obrigatorio para proteger as rotas")
 	}
+	if d.Tenants == nil && (d.Notes != nil || d.Admin != nil) {
+		panic("api: Tenants obrigatorio para as rotas de notas e de administracao")
+	}
 	r := newBaseRouter(d.Probe, d.AllowedOrigins)
 	if d.Auth != nil {
 		mountAuthRoutes(r, d.Auth, d.Tokens)
 	}
 	if d.Notes != nil {
-		mountProtectedNotesRoutes(r, d.Notes, d.Tokens)
+		mountProtectedNotesRoutes(r, d.Notes, d.Tokens, d.Tenants)
 	}
 	if d.Admin != nil {
-		mountAdminRoutes(r, d.Admin, d.Tokens)
+		mountAdminRoutes(r, d.Admin, d.Tokens, d.Tenants)
 	}
 	return r
 }
@@ -43,9 +47,9 @@ func newBaseRouter(probe StorageProbe, allowedOrigins []string) chi.Router {
 	return r
 }
 
-func mountProtectedNotesRoutes(r chi.Router, svc NoteService, tokenValidator TokenValidator) {
+func mountProtectedNotesRoutes(r chi.Router, svc NoteService, tokenValidator TokenValidator, tenants TenantResolver) {
 	r.Group(func(g chi.Router) {
-		g.Use(RequireAuth(tokenValidator))
+		g.Use(RequireAuth(tokenValidator), RequireTenant(tenants))
 		mountNotesRoutes(g, svc)
 	})
 }
@@ -57,6 +61,7 @@ func mountAuthRoutes(r chi.Router, authSvc AuthService, tokenValidator TokenVali
 	r.Post("/auth/logout", h.logout)
 	r.Post("/auth/invites/accept", h.acceptInvite)
 	r.With(RequireAuth(tokenValidator)).Get("/auth/me", h.me)
+	r.With(RequireAuth(tokenValidator)).Get("/me/tenants", h.myTenants)
 }
 
 func mountNotesRoutes(r chi.Router, svc NoteService) {

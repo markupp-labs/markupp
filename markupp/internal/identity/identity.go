@@ -4,8 +4,13 @@ package identity
 
 import "context"
 
-// RoleAdmin é o papel que administra usuários e convites do tenant.
-const RoleAdmin = "admin"
+// Papéis do usuário dentro de um tenant, do maior para o menor.
+const (
+	RoleOwner  = "owner"
+	RoleAdmin  = "admin"
+	RoleMember = "member"
+	RoleViewer = "viewer"
+)
 
 // Actor é o usuário autenticado, com o tenant e o papel vindos do JWT validado.
 type Actor struct {
@@ -14,9 +19,9 @@ type Actor struct {
 	Role     string
 }
 
-// IsAdmin diz se o ator administra o tenant.
+// IsAdmin diz se o ator administra o tenant: owner ou admin.
 func (a Actor) IsAdmin() bool {
-	return a.Role == RoleAdmin
+	return a.Role == RoleOwner || a.Role == RoleAdmin
 }
 
 type actorKey struct{}
