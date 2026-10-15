@@ -724,3 +724,22 @@ func TestDeclineMyInvite_RepassaUsuarioEConvite(t *testing.T) {
 	assert.Equal(t, "u1", repo.declined.UserID)
 	assert.Equal(t, "convite-1", repo.declined.InviteID)
 }
+
+// racingRepository simula o outro cadastro do mesmo email terminando primeiro.
+type racingRepository struct {
+	*fakeRepository
+}
+
+func (r racingRepository) CreateAccountTx(ctx context.Context, p auth.CreateAccountParams) (auth.User, error) {
+	return auth.User{}, auth.ErrUserAlreadyExists
+}
+
+func TestLoginLocal_CadastroConcorrenteDoMesmoEmail_RecusaComoCredencialInvalida(t *testing.T) {
+	clock := defaultClock()
+	repo := racingRepository{newFakeRepository(clock)}
+	svc := setupAuthService(repo, true, clock)
+
+	_, err := svc.LoginLocal(context.Background(), "corrida@markupp.dev", "senha")
+
+	require.ErrorIs(t, err, auth.ErrInvalidCredentials)
+}
