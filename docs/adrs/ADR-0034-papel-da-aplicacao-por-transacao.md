@@ -16,10 +16,11 @@ tenant depois de ler a conta
 
 Cada tabela com dado de cliente recebe `tenant_id` e política de RLS. A conexão continua com o
 usuário da instalação, e toda transação de dados troca, com `SET LOCAL`, para o papel
-`markupp_app`, sem login, sem superusuário e sem `BYPASSRLS`, e entrega ao banco o tenant, o
-usuário e o papel dele, tirados do JWT. As políticas recortam por tenant, por pertencimento ao
-cofre (ADR-0024) e, em usuários e convites, pelo papel de administrador. Nenhuma query repete o
-filtro. Autenticação roda no papel da conexão, porque precede o tenant
+`markupp_app`, sem login, sem superusuário e sem `BYPASSRLS`, e entrega ao banco o usuário do
+JWT e o tenant e o papel do vínculo dele (ADR-0035). As políticas recortam por tenant, por
+pertencimento ao cofre (ADR-0024) e pelo papel: só owner e admin veem convites e alteram
+vínculos, e o viewer não escreve nota. Nenhuma query repete o filtro. Autenticação e as ações
+da própria conta, como responder convite, rodam no papel da conexão, porque precedem o tenant
 
 ## Alternativas consideradas
 
@@ -38,6 +39,8 @@ filtro. Autenticação roda no papel da conexão, porque precede o tenant
 - Um repositório que use o pool fora da transação do ator roda como superusuário e enxerga todos
   os tenants. Um teste lê o pacote de armazenamento e falha quando isso acontece
 - `FORCE ROW LEVEL SECURITY` fica dispensado, porque `markupp_app` não é dono das tabelas
+- Tabelas da conta, como identidades e refresh tokens, ficam sem RLS e sem GRANT para
+  `markupp_app`: só a autenticação as lê
 - A política de isolamento tem teste próprio, que roda no papel da aplicação sem `WHERE`
 - Self-host e Enterprise compartilham o mesmo caminho de código
 - Cliente grande e cliente pequeno dividem o mesmo índice, e vizinho ruidoso só se resolve
