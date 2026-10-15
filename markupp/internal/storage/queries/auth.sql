@@ -26,6 +26,9 @@ VALUES ($1, $2, $3, $4);
 INSERT INTO tenants (id, name, created_at) VALUES ($1, $1, $2)
 ON CONFLICT DO NOTHING;
 
+-- name: CreateTenant :exec
+INSERT INTO tenants (id, name, created_at) VALUES ($1, $2, $3);
+
 -- name: AddMembership :exec
 INSERT INTO tenant_memberships (tenant_id, user_id, role, created_at)
 VALUES ($1, $2, $3, $4);

@@ -24,6 +24,7 @@ var (
 	ErrMembershipNotFound   = errors.New("usuario sem vinculo com o tenant")
 	ErrTenantRequired       = errors.New("usuario de varios tenants precisa escolher um")
 	ErrNoTenant             = errors.New("usuario sem nenhum tenant")
+	ErrInvalidTenantName    = errors.New("nome de tenant invalido")
 )
 
 // User representa uma conta da instância com chave estável (UUID). O acesso a cada
@@ -96,6 +97,17 @@ type CreateAccountParams struct {
 // InitialVaultName é o nome do cofre que toda conta ganha ao ser criada.
 const InitialVaultName = "Principal"
 
+// CreateTenantParams carrega o tenant novo e o que o criador ganha nele: o vínculo de
+// owner e o cofre inicial.
+type CreateTenantParams struct {
+	TenantID     string
+	Name         string
+	UserID       string
+	VaultID      string
+	AuditEventID string
+	Now          time.Time
+}
+
 // AcceptInviteParams carrega o que a conta do convidado ganha além do que herda do
 // convite (tenant, email e papel), que só o banco conhece a partir do hash do token.
 type AcceptInviteParams struct {
@@ -113,6 +125,7 @@ type Repository interface {
 	CreateAccountTx(ctx context.Context, params CreateAccountParams) (User, error)
 	GetMembership(ctx context.Context, userID, tenantID string) (Membership, error)
 	ListMemberships(ctx context.Context, userID string) ([]Membership, error)
+	CreateTenantTx(ctx context.Context, params CreateTenantParams) error
 	AcceptInviteTx(ctx context.Context, params AcceptInviteParams) (User, error)
 	GetUserByID(ctx context.Context, id string) (User, error)
 	GetUserIdentity(ctx context.Context, provider, providerUserID string) (UserIdentity, error)

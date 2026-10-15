@@ -137,6 +137,24 @@ func accountEvent(id, tenantID, action string, u auth.User) gen.CreateAuditEvent
 	})
 }
 
+// CreateTenantTx cria o tenant com o criador como owner, o cofre inicial dele e a
+// auditoria, juntos.
+func (r *PostgresAuthRepository) CreateTenantTx(ctx context.Context, p auth.CreateTenantParams) error {
+	return r.inTx(ctx, func(qtx *gen.Queries) error {
+		if err := qtx.CreateTenant(ctx, gen.CreateTenantParams{ID: p.TenantID, Name: p.Name, CreatedAt: p.Now}); err != nil {
+			return fmt.Errorf("criar tenant %q: %w", p.Name, err)
+		}
+		join := tenantJoin{tenantID: p.TenantID, userID: p.UserID, role: identity.RoleOwner, vaultID: p.VaultID, vaultName: auth.InitialVaultName, at: p.Now}
+		if err := joinTenant(ctx, qtx, join); err != nil {
+			return err
+		}
+		return qtx.CreateAuditEvent(ctx, toCreateAuditEventParams(auth.AuditEventRecord{
+			ID: p.AuditEventID, TenantID: p.TenantID, ActorID: p.UserID, Action: "tenants.create",
+			Target: p.TenantID, Result: "success", OccurredAt: p.Now,
+		}))
+	})
+}
+
 // AcceptInviteTx consome o convite e cria a conta que ele descreve, já vinculada ao
 // tenant, numa transação só: se a conta falhar, o convite continua pendente.
 func (r *PostgresAuthRepository) AcceptInviteTx(ctx context.Context, p auth.AcceptInviteParams) (auth.User, error) {

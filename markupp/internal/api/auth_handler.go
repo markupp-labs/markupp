@@ -20,6 +20,7 @@ type AuthService interface {
 	RevokeSession(ctx context.Context, rawRefreshToken string) error
 	GetAccount(ctx context.Context, userID string) (auth.User, error)
 	ListTenants(ctx context.Context, userID string) ([]auth.Membership, error)
+	CreateTenant(ctx context.Context, userID, name string) (auth.Membership, error)
 	AcceptInvite(ctx context.Context, token, password string) (auth.TokenPair, error)
 }
 
@@ -135,6 +136,29 @@ func (h *authHandler) me(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, userResponse{ID: user.ID, Email: user.Email})
+}
+
+func (h *authHandler) createTenant(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, maxAuthBodyBytes)
+	var req struct {
+		Name string `json:"name"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, "invalid_request", "JSON invalido", http.StatusBadRequest)
+		return
+	}
+	actor, _ := identity.ActorFrom(r.Context())
+	m, err := h.svc.CreateTenant(r.Context(), actor.UserID, req.Name)
+	if errors.Is(err, auth.ErrInvalidTenantName) {
+		writeError(w, "invalid_request", err.Error(), http.StatusBadRequest)
+		return
+	}
+	if err != nil {
+		h.logError("falha ao criar tenant", err)
+		writeError(w, "internal", "erro interno", http.StatusInternalServerError)
+		return
+	}
+	writeJSON(w, http.StatusCreated, tenantResponse{ID: m.TenantID, Name: m.TenantName, Role: m.Role})
 }
 
 func (h *authHandler) myTenants(w http.ResponseWriter, r *http.Request) {

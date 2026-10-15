@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
+	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/identity"
 )
 
 const maxPasswordLength = 72
@@ -295,4 +297,23 @@ func (s *Service) ResolveTenant(ctx context.Context, userID, requested string) (
 // ListTenants devolve os tenants de userID, com o papel em cada um.
 func (s *Service) ListTenants(ctx context.Context, userID string) ([]Membership, error) {
 	return s.repo.ListMemberships(ctx, userID)
+}
+
+// maxTenantNameLength limita o nome que aparece no seletor de tenant dos clientes.
+const maxTenantNameLength = 100
+
+// CreateTenant cria o tenant name com userID como owner e o cofre inicial dele lá.
+func (s *Service) CreateTenant(ctx context.Context, userID, name string) (Membership, error) {
+	name = strings.TrimSpace(name)
+	if name == "" || len(name) > maxTenantNameLength {
+		return Membership{}, fmt.Errorf("%w: %q, esperado de 1 a %d caracteres", ErrInvalidTenantName, name, maxTenantNameLength)
+	}
+	p := CreateTenantParams{
+		TenantID: s.newID(), Name: name, UserID: userID,
+		VaultID: s.newID(), AuditEventID: s.newID(), Now: s.clock(),
+	}
+	if err := s.repo.CreateTenantTx(ctx, p); err != nil {
+		return Membership{}, fmt.Errorf("criar tenant %q para %q: %w", name, userID, err)
+	}
+	return Membership{TenantID: p.TenantID, TenantName: name, Role: identity.RoleOwner}, nil
 }

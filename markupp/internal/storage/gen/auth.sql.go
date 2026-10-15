@@ -151,6 +151,21 @@ func (q *Queries) CreateAuditEvent(ctx context.Context, arg CreateAuditEventPara
 	return err
 }
 
+const createTenant = `-- name: CreateTenant :exec
+INSERT INTO tenants (id, name, created_at) VALUES ($1, $2, $3)
+`
+
+type CreateTenantParams struct {
+	ID        string
+	Name      string
+	CreatedAt time.Time
+}
+
+func (q *Queries) CreateTenant(ctx context.Context, arg CreateTenantParams) error {
+	_, err := q.db.Exec(ctx, createTenant, arg.ID, arg.Name, arg.CreatedAt)
+	return err
+}
+
 const createUser = `-- name: CreateUser :exec
 INSERT INTO users (id, email, created_at, updated_at)
 VALUES ($1, $2, $3, $4)

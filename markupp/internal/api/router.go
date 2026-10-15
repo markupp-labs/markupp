@@ -62,6 +62,7 @@ func mountAuthRoutes(r chi.Router, authSvc AuthService, tokenValidator TokenVali
 	r.Post("/auth/invites/accept", h.acceptInvite)
 	r.With(RequireAuth(tokenValidator)).Get("/auth/me", h.me)
 	r.With(RequireAuth(tokenValidator)).Get("/me/tenants", h.myTenants)
+	r.With(RequireAuth(tokenValidator)).Post("/tenants", h.createTenant)
 }
 
 func mountNotesRoutes(r chi.Router, svc NoteService) {
