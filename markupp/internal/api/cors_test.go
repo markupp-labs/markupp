@@ -72,7 +72,7 @@ func TestCORS_PreflightDeOrigemNaoPermitida_NaoResponde204(t *testing.T) {
 }
 
 func TestCORS_Preflight_LiberaPatchTokenETenant(t *testing.T) {
-	rec := doCORS([]string{"https://painel.markupp.dev"}, http.MethodOptions, "https://painel.markupp.dev", http.MethodPatch)
+	rec := corsRequest(t, []string{origemPermitida}, http.MethodOptions, origemPermitida, true)
 
 	assert.Contains(t, rec.Header().Get("Access-Control-Allow-Methods"), http.MethodPatch)
 	permitidos := rec.Header().Get("Access-Control-Allow-Headers")
