@@ -24,6 +24,10 @@ type fakeAdminService struct {
 	issueErr   error
 	issuedBy   identity.Actor
 	issuedRole string
+
+	changedUser string
+	changedRole string
+	memberErr   error
 }
 
 func (f *fakeAdminService) ListMembers(ctx context.Context) ([]auth.Member, error) {

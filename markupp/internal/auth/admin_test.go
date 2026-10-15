@@ -17,6 +17,10 @@ type fakeAdminRepository struct {
 	tokenHash string
 	event     auth.AuditEventRecord
 	createErr error
+
+	change      auth.MembershipChange
+	currentRole string
+	owners      int
 }
 
 func (f *fakeAdminRepository) ListMembers(ctx context.Context) ([]auth.Member, error) {
