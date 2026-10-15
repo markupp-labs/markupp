@@ -15,7 +15,7 @@ const origemPermitida = "https://painel.markupp.dev"
 func corsRequest(t *testing.T, origins []string, method, origin string, preflight bool) *httptest.ResponseRecorder {
 	t.Helper()
 	validator := &fakeTokenValidator{}
-	router := api.NewRouterWithAuth(&fakeService{listResult: nil}, nil, validator, &fakeProbe{}, origins)
+	router := api.NewRouter(api.RouterDeps{Notes: &fakeService{listResult: nil}, Tenants: tenantDeTeste, Tokens: validator, Probe: &fakeProbe{}, AllowedOrigins: origins})
 	req := httptest.NewRequest(method, "/notes", nil)
 	req.Header.Set("Authorization", "Bearer token-valido")
 	if origin != "" {
@@ -69,4 +69,13 @@ func TestCORS_PreflightDeOrigemNaoPermitida_NaoResponde204(t *testing.T) {
 
 	assert.NotEqual(t, http.StatusNoContent, rec.Code)
 	assert.Empty(t, rec.Header().Get("Access-Control-Allow-Origin"))
+}
+
+func TestCORS_Preflight_LiberaPatchTokenETenant(t *testing.T) {
+	rec := corsRequest(t, []string{origemPermitida}, http.MethodOptions, origemPermitida, true)
+
+	assert.Contains(t, rec.Header().Get("Access-Control-Allow-Methods"), http.MethodPatch)
+	permitidos := rec.Header().Get("Access-Control-Allow-Headers")
+	assert.Contains(t, permitidos, "Authorization")
+	assert.Contains(t, permitidos, "X-Markupp-Tenant")
 }

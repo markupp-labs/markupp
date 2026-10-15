@@ -24,7 +24,13 @@ func (fakeProbe) Ping(ctx context.Context) error { return nil }
 type fakeSearchTokenValidator struct{}
 
 func (fakeSearchTokenValidator) ValidateToken(tokenString string) (auth.Claims, error) {
-	return auth.Claims{Subject: "user-search", TenantID: "default", Role: "member"}, nil
+	return auth.Claims{Subject: "user-search"}, nil
+}
+
+type fakeSearchTenants struct{}
+
+func (fakeSearchTenants) ResolveTenant(ctx context.Context, userID, requested string) (auth.Membership, error) {
+	return auth.Membership{TenantID: "default", Role: "member"}, nil
 }
 
 type fakeBuscaService struct {
@@ -35,7 +41,7 @@ type fakeBuscaService struct {
 	chamado   bool
 }
 
-func (f *fakeBuscaService) Create(ctx context.Context, path, content string) (notes.Note, error) {
+func (f *fakeBuscaService) Create(ctx context.Context, vaultID, path, content string) (notes.Note, error) {
 	return notes.Note{}, nil
 }
 
@@ -143,7 +149,7 @@ func buscarNotas(t *testing.T, svc NoteService, queryString string) *httptest.Re
 	req.Header.Set("Authorization", "Bearer token-valido")
 	rec := httptest.NewRecorder()
 	validator := fakeSearchTokenValidator{}
-	NewRouterWithAuth(svc, nil, validator, fakeProbe{}, nil).ServeHTTP(rec, req)
+	NewRouter(RouterDeps{Notes: svc, Tenants: fakeSearchTenants{}, Tokens: validator, Probe: fakeProbe{}}).ServeHTTP(rec, req)
 	return rec
 }
 

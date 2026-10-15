@@ -1,7 +1,6 @@
 package storage_test
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -13,16 +12,16 @@ import (
 )
 
 func TestSearchNotes_ComResultados_RetornaPaginado(t *testing.T) {
-	db := setupTestDB(t)
+	db := setupNotesDB(t)
 	repo := storage.NewPostgresNotesRepository(db)
-	ctx := context.Background()
+	ctx := ctxDeTeste
 
 	now := time.Now()
 	notesData := []notes.Note{
-		{ID: "1", Path: "golang1.md", Content: "golang tutorial", CreatedAt: now, UpdatedAt: now},
-		{ID: "2", Path: "golang2.md", Content: "golang tips", CreatedAt: now, UpdatedAt: now},
-		{ID: "3", Path: "python.md", Content: "python guide", CreatedAt: now, UpdatedAt: now},
-		{ID: "4", Path: "golang3.md", Content: "golang advanced", CreatedAt: now, UpdatedAt: now},
+		{ID: "1", VaultID: cofreDeTeste, Path: "golang1.md", Content: "golang tutorial", CreatedAt: now, UpdatedAt: now},
+		{ID: "2", VaultID: cofreDeTeste, Path: "golang2.md", Content: "golang tips", CreatedAt: now, UpdatedAt: now},
+		{ID: "3", VaultID: cofreDeTeste, Path: "python.md", Content: "python guide", CreatedAt: now, UpdatedAt: now},
+		{ID: "4", VaultID: cofreDeTeste, Path: "golang3.md", Content: "golang advanced", CreatedAt: now, UpdatedAt: now},
 	}
 	for _, note := range notesData {
 		err := repo.Save(ctx, note)
@@ -39,14 +38,15 @@ func TestSearchNotes_ComResultados_RetornaPaginado(t *testing.T) {
 }
 
 func TestSearchNotes_ComPaginacao_RetornaApenasLimitAndOffset(t *testing.T) {
-	db := setupTestDB(t)
+	db := setupNotesDB(t)
 	repo := storage.NewPostgresNotesRepository(db)
-	ctx := context.Background()
+	ctx := ctxDeTeste
 
 	now := time.Now()
 	for i := 1; i <= 5; i++ {
 		note := notes.Note{
 			ID:        string(rune('0' + i)),
+			VaultID:   cofreDeTeste,
 			Path:      "golang" + string(rune('0'+i)) + ".md",
 			Content:   "golang content " + string(rune('0'+i)),
 			CreatedAt: now,
@@ -63,13 +63,14 @@ func TestSearchNotes_ComPaginacao_RetornaApenasLimitAndOffset(t *testing.T) {
 }
 
 func TestSearchNotes_OffsetMaiorQueTotal_RetornaVazio(t *testing.T) {
-	db := setupTestDB(t)
+	db := setupNotesDB(t)
 	repo := storage.NewPostgresNotesRepository(db)
-	ctx := context.Background()
+	ctx := ctxDeTeste
 
 	now := time.Now()
 	note := notes.Note{
 		ID:        "1",
+		VaultID:   cofreDeTeste,
 		Path:      "golang.md",
 		Content:   "golang tutorial",
 		CreatedAt: now,
@@ -85,13 +86,14 @@ func TestSearchNotes_OffsetMaiorQueTotal_RetornaVazio(t *testing.T) {
 }
 
 func TestSearchNotes_NaoEncontra_RetornaVazio(t *testing.T) {
-	db := setupTestDB(t)
+	db := setupNotesDB(t)
 	repo := storage.NewPostgresNotesRepository(db)
-	ctx := context.Background()
+	ctx := ctxDeTeste
 
 	now := time.Now()
 	note := notes.Note{
 		ID:        "1",
+		VaultID:   cofreDeTeste,
 		Path:      "python.md",
 		Content:   "python tutorial",
 		CreatedAt: now,
@@ -107,14 +109,14 @@ func TestSearchNotes_NaoEncontra_RetornaVazio(t *testing.T) {
 }
 
 func TestSearchNotes_LikeEhCaseInsensitive(t *testing.T) {
-	db := setupTestDB(t)
+	db := setupNotesDB(t)
 	repo := storage.NewPostgresNotesRepository(db)
-	ctx := context.Background()
+	ctx := ctxDeTeste
 
 	now := time.Now()
 	notesData := []notes.Note{
-		{ID: "1", Path: "a.md", Content: "Golang Tutorial", CreatedAt: now, UpdatedAt: now},
-		{ID: "2", Path: "b.md", Content: "golang tips", CreatedAt: now, UpdatedAt: now},
+		{ID: "1", VaultID: cofreDeTeste, Path: "a.md", Content: "Golang Tutorial", CreatedAt: now, UpdatedAt: now},
+		{ID: "2", VaultID: cofreDeTeste, Path: "b.md", Content: "golang tips", CreatedAt: now, UpdatedAt: now},
 	}
 	for _, note := range notesData {
 		err := repo.Save(ctx, note)
@@ -128,13 +130,14 @@ func TestSearchNotes_LikeEhCaseInsensitive(t *testing.T) {
 }
 
 func TestSearchNotes_QueryParcial_CasaSubstring(t *testing.T) {
-	db := setupTestDB(t)
+	db := setupNotesDB(t)
 	repo := storage.NewPostgresNotesRepository(db)
-	ctx := context.Background()
+	ctx := ctxDeTeste
 
 	now := time.Now()
 	require.NoError(t, repo.Save(ctx, notes.Note{
 		ID: "1", Path: "g.md", Content: "golang tutorial", CreatedAt: now, UpdatedAt: now,
+		VaultID: cofreDeTeste,
 	}))
 
 	results, err := repo.SearchNotes(ctx, "olang", 0, 10)

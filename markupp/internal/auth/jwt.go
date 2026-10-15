@@ -27,11 +27,10 @@ type tokenHeader struct {
 	Typ string `json:"typ"`
 }
 
-// Claims são as declarações de identidade e permissão contidas no JWT.
+// Claims são as declarações de identidade do JWT. Tenant e papel ficam fora: vêm do
+// vínculo no banco a cada requisição, e nunca envelhecem dentro do token.
 type Claims struct {
 	Subject   string `json:"sub"`
-	TenantID  string `json:"tenant_id"`
-	Role      string `json:"role"`
 	IssuedAt  int64  `json:"iat"`
 	ExpiresAt int64  `json:"exp"`
 }
@@ -59,20 +58,18 @@ func NewTokenCodec(secret string, expiration time.Duration, clock func() time.Ti
 	}
 }
 
-func (c *TokenCodec) newAccessClaims(userID, tenantID, role string) Claims {
+func (c *TokenCodec) newAccessClaims(userID string) Claims {
 	now := c.clock()
 	return Claims{
 		Subject:   userID,
-		TenantID:  tenantID,
-		Role:      role,
 		IssuedAt:  now.Unix(),
 		ExpiresAt: now.Add(c.expiration).Unix(),
 	}
 }
 
 // GenerateTokenPair gera o JWT de acesso e um refresh token aleatório.
-func (c *TokenCodec) GenerateTokenPair(userID, tenantID, role string) (TokenPair, error) {
-	access, err := c.encodeClaims(c.newAccessClaims(userID, tenantID, role))
+func (c *TokenCodec) GenerateTokenPair(userID string) (TokenPair, error) {
+	access, err := c.encodeClaims(c.newAccessClaims(userID))
 	if err != nil {
 		return TokenPair{}, err
 	}
@@ -168,8 +165,9 @@ func generateRandomHex(n int) (string, error) {
 	return hex.EncodeToString(bytes), nil
 }
 
-// HashRefreshToken calcula o hash SHA-256 do refresh token para armazenamento seguro.
-func HashRefreshToken(token string) string {
+// HashOpaqueToken calcula o hash SHA-256 de um token opaco (refresh ou convite), que
+// é o que o banco guarda no lugar do token.
+func HashOpaqueToken(token string) string {
 	h := sha256.Sum256([]byte(token))
 	return hex.EncodeToString(h[:])
 }

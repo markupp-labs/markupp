@@ -31,6 +31,44 @@ type fakeAuthService struct {
 	refreshCalls int
 	revokeCalls  int
 	accountCalls int
+	acceptPair   auth.TokenPair
+	acceptErr    error
+	acceptToken  string
+	tenants      []auth.Membership
+
+	pending            []auth.PendingInvite
+	acceptedMembership auth.Membership
+	answerErr          error
+	answeredInvite     string
+
+	createdTenant   auth.Membership
+	createTenantErr error
+	tenantCreator   string
+	tenantName      string
+}
+
+func (f *fakeAuthService) ListMyInvites(ctx context.Context, userID string) ([]auth.PendingInvite, error) {
+	return f.pending, nil
+}
+
+func (f *fakeAuthService) AcceptMyInvite(ctx context.Context, userID, inviteID string) (auth.Membership, error) {
+	f.answeredInvite = inviteID
+	return f.acceptedMembership, f.answerErr
+}
+
+func (f *fakeAuthService) DeclineMyInvite(ctx context.Context, userID, inviteID string) error {
+	f.answeredInvite = inviteID
+	return f.answerErr
+}
+
+func (f *fakeAuthService) CreateTenant(ctx context.Context, userID, name string) (auth.Membership, error) {
+	f.tenantCreator, f.tenantName = userID, name
+	return f.createdTenant, f.createTenantErr
+}
+
+func (f *fakeAuthService) AcceptInvite(ctx context.Context, token, password string) (auth.TokenPair, error) {
+	f.acceptToken = token
+	return f.acceptPair, f.acceptErr
 }
 
 func (f *fakeAuthService) LoginLocal(ctx context.Context, email, password string) (auth.TokenPair, error) {
@@ -48,6 +86,10 @@ func (f *fakeAuthService) RevokeSession(ctx context.Context, rawRefreshToken str
 	return f.revokeErr
 }
 
+func (f *fakeAuthService) ListTenants(ctx context.Context, userID string) ([]auth.Membership, error) {
+	return f.tenants, nil
+}
+
 func (f *fakeAuthService) GetAccount(ctx context.Context, userID string) (auth.User, error) {
 	f.accountCalls++
 	return f.accountUser, f.accountErr
@@ -57,7 +99,7 @@ func setupAuthRouter(svc api.AuthService, validator api.TokenValidator) http.Han
 	if validator == nil {
 		validator = &fakeTokenValidator{}
 	}
-	return api.NewRouterWithAuth(&fakeService{}, svc, validator, &fakeProbe{}, nil)
+	return api.NewRouter(api.RouterDeps{Notes: &fakeService{}, Tenants: tenantDeTeste, Auth: svc, Tokens: validator, Probe: &fakeProbe{}})
 }
 
 func TestAuthHandler_Login_Sucesso(t *testing.T) {
@@ -247,18 +289,14 @@ func TestAuthHandler_Me_Sucesso(t *testing.T) {
 	svc := &fakeAuthService{
 		accountUser: auth.User{
 			ID:        "user-id-42",
-			TenantID:  "tenant-default",
 			Email:     "admin@markupp.dev",
-			Role:      "admin",
 			CreatedAt: now,
 			UpdatedAt: now,
 		},
 	}
 	validator := &fakeTokenValidator{
 		claims: auth.Claims{
-			Subject:  "user-id-42",
-			TenantID: "tenant-default",
-			Role:     "admin",
+			Subject: "user-id-42",
 		},
 	}
 	router := setupAuthRouter(svc, validator)
@@ -276,7 +314,7 @@ func TestAuthHandler_Me_Sucesso(t *testing.T) {
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &resp))
 	assert.Equal(t, "user-id-42", resp["id"])
 	assert.Equal(t, "admin@markupp.dev", resp["email"])
-	assert.Equal(t, "admin", resp["role"])
+	assert.NotContains(t, resp, "tenant_id", "a conta e global")
 }
 
 func TestAuthHandler_Login_EmailOuSenhaVazios_Retorna400(t *testing.T) {
@@ -321,9 +359,7 @@ func TestAuthHandler_Me_UsuarioNaoEncontrado_Retorna404(t *testing.T) {
 	svc := &fakeAuthService{accountErr: auth.ErrUserNotFound}
 	validator := &fakeTokenValidator{
 		claims: auth.Claims{
-			Subject:  "usuario-deletado",
-			TenantID: "tenant-default",
-			Role:     "member",
+			Subject: "usuario-deletado",
 		},
 	}
 	router := setupAuthRouter(svc, validator)
@@ -342,9 +378,7 @@ func TestAuthHandler_Me_ErroInterno_Retorna500(t *testing.T) {
 	svc := &fakeAuthService{accountErr: errors.New("erro inesperado de conexao")}
 	validator := &fakeTokenValidator{
 		claims: auth.Claims{
-			Subject:  "user-id-42",
-			TenantID: "tenant-default",
-			Role:     "member",
+			Subject: "user-id-42",
 		},
 	}
 	router := setupAuthRouter(svc, validator)
@@ -357,4 +391,87 @@ func TestAuthHandler_Me_ErroInterno_Retorna500(t *testing.T) {
 
 	assert.Equal(t, http.StatusInternalServerError, rec.Code)
 	assert.Contains(t, rec.Body.String(), "internal")
+}
+
+func postAccept(router http.Handler, body string) *httptest.ResponseRecorder {
+	req := httptest.NewRequest(http.MethodPost, "/auth/invites/accept", bytes.NewBufferString(body))
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	return rec
+}
+
+func TestAuthHandler_AcceptInvite_Sucesso_DevolveSessao(t *testing.T) {
+	svc := &fakeAuthService{acceptPair: auth.TokenPair{AccessToken: "jwt-novo", RefreshToken: "r", ExpiresIn: 900}}
+
+	rec := postAccept(setupAuthRouter(svc, nil), `{"token":"tok-1","password":"senhaNova"}`)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, "tok-1", svc.acceptToken)
+	assert.Contains(t, rec.Body.String(), "jwt-novo")
+}
+
+func TestAuthHandler_AcceptInvite_ConviteInvalido_Retorna400(t *testing.T) {
+	svc := &fakeAuthService{acceptErr: auth.ErrInviteInvalid}
+
+	rec := postAccept(setupAuthRouter(svc, nil), `{"token":"velho","password":"senhaNova"}`)
+
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+	assert.Contains(t, rec.Body.String(), "invalid_invite")
+}
+
+func TestAuthHandler_AcceptInvite_EmailJaTemConta_Retorna409(t *testing.T) {
+	svc := &fakeAuthService{acceptErr: auth.ErrUserAlreadyExists}
+
+	rec := postAccept(setupAuthRouter(svc, nil), `{"token":"tok-1","password":"senhaNova"}`)
+
+	assert.Equal(t, http.StatusConflict, rec.Code)
+	assert.Contains(t, rec.Body.String(), "already_exists")
+}
+
+func TestAuthHandler_MeusTenants_ListaVinculos(t *testing.T) {
+	svc := &fakeAuthService{tenants: []auth.Membership{
+		{TenantID: "t1", TenantName: "Acme", Role: "owner"},
+		{TenantID: "t2", TenantName: "Globex", Role: "viewer"},
+	}}
+	router := setupAuthRouter(svc, &fakeTokenValidator{claims: auth.Claims{Subject: "u1"}})
+	req := httptest.NewRequest(http.MethodGet, "/me/tenants", nil)
+	req.Header.Set("Authorization", "Bearer token-valido")
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	var resp []map[string]any
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &resp))
+	require.Len(t, resp, 2)
+	assert.Equal(t, map[string]any{"id": "t2", "name": "Globex", "role": "viewer"}, resp[1])
+}
+
+func postTenant(svc *fakeAuthService, body string) *httptest.ResponseRecorder {
+	router := setupAuthRouter(svc, &fakeTokenValidator{claims: auth.Claims{Subject: "u1"}})
+	req := httptest.NewRequest(http.MethodPost, "/tenants", bytes.NewBufferString(body))
+	req.Header.Set("Authorization", "Bearer token-valido")
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	return rec
+}
+
+func TestAuthHandler_CriarTenant_Retorna201ComPapelOwner(t *testing.T) {
+	svc := &fakeAuthService{createdTenant: auth.Membership{TenantID: "t-novo", TenantName: "Acme", Role: "owner"}}
+
+	rec := postTenant(svc, `{"name":"Acme"}`)
+
+	assert.Equal(t, http.StatusCreated, rec.Code)
+	assert.Equal(t, "u1", svc.tenantCreator)
+	assert.Equal(t, "Acme", svc.tenantName)
+	var resp map[string]any
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &resp))
+	assert.Equal(t, map[string]any{"id": "t-novo", "name": "Acme", "role": "owner"}, resp)
+}
+
+func TestAuthHandler_CriarTenant_NomeInvalido_Retorna400(t *testing.T) {
+	rec := postTenant(&fakeAuthService{createTenantErr: auth.ErrInvalidTenantName}, `{"name":""}`)
+
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+	assert.Contains(t, rec.Body.String(), "invalid_request")
 }

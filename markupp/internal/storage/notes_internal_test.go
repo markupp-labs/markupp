@@ -10,16 +10,20 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/identity"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/notes"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/storage/storagetest"
 )
 
-const inserirNotaInterna = "INSERT INTO notes (id, path, content, created_at, updated_at) VALUES ($1, $2, $3, $4, $5)"
+const inserirNotaInterna = "INSERT INTO notes (id, tenant_id, vault_id, path, content, created_at, updated_at) VALUES ($1, 'default', 'cofre-interno', $2, $3, $4, $5)"
+
+var membroInterno = identity.Actor{UserID: "u-interno", TenantID: "default", Role: "admin"}
 
 func bancoInternoMigrado(t *testing.T) *pgxpool.Pool {
 	t.Helper()
 	pool := storagetest.EmptyPool(t)
 	require.NoError(t, Migrate(context.Background(), pool))
+	storagetest.SeedMember(t, pool, membroInterno, "cofre-interno")
 	return pool
 }
 
@@ -27,6 +31,7 @@ func notaInterna() notes.Note {
 	instante := time.Date(2026, 4, 27, 10, 0, 0, 0, time.UTC)
 	return notes.Note{
 		ID:        "id-interno-1",
+		VaultID:   "cofre-interno",
 		Path:      "interna.md",
 		Content:   "conteudo interno",
 		CreatedAt: instante,
@@ -37,9 +42,10 @@ func notaInterna() notes.Note {
 func TestGetNoteByID_NotaExistente_RetornaCamposPersistidos(t *testing.T) {
 	repo := NewPostgresNotesRepository(bancoInternoMigrado(t))
 	nota := notaInterna()
-	require.NoError(t, repo.Save(context.Background(), nota))
+	ctx := identity.WithActor(context.Background(), membroInterno)
+	require.NoError(t, repo.Save(ctx, nota))
 
-	obtida, err := repo.GetNoteByID(context.Background(), nota.ID)
+	obtida, err := repo.GetNoteByID(ctx, nota.ID)
 
 	require.NoError(t, err)
 	assert.Equal(t, nota.ID, obtida.ID)
@@ -52,7 +58,7 @@ func TestGetNoteByID_NotaExistente_RetornaCamposPersistidos(t *testing.T) {
 func TestGetNoteByID_TabelaAusente_PropagaErroSemTraduzirParaNotFound(t *testing.T) {
 	repo := NewPostgresNotesRepository(storagetest.EmptyPool(t))
 
-	_, err := repo.GetNoteByID(context.Background(), "id-interno-1")
+	_, err := repo.GetNoteByID(identity.WithActor(context.Background(), membroInterno), "id-interno-1")
 
 	require.Error(t, err)
 	assert.False(t, errors.Is(err, notes.ErrNotFound),

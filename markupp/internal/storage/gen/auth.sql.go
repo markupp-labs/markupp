@@ -12,6 +12,59 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const acceptInviteByID = `-- name: AcceptInviteByID :one
+UPDATE user_invites i SET accepted_at = $1
+FROM users u
+WHERE i.id = $2 AND u.id = $3 AND u.email = i.email AND u.email_verified
+  AND i.accepted_at IS NULL AND i.declined_at IS NULL AND i.expires_at > $1
+  AND EXISTS (
+      SELECT 1 FROM tenant_memberships quem
+      WHERE quem.tenant_id = i.tenant_id AND quem.user_id = i.invited_by
+        AND markupp_role_rank(quem.role) >= markupp_role_rank(i.role)
+  )
+RETURNING i.tenant_id, i.role
+`
+
+type AcceptInviteByIDParams struct {
+	Now    pgtype.Timestamptz
+	ID     string
+	UserID string
+}
+
+type AcceptInviteByIDRow struct {
+	TenantID string
+	Role     string
+}
+
+func (q *Queries) AcceptInviteByID(ctx context.Context, arg AcceptInviteByIDParams) (AcceptInviteByIDRow, error) {
+	row := q.db.QueryRow(ctx, acceptInviteByID, arg.Now, arg.ID, arg.UserID)
+	var i AcceptInviteByIDRow
+	err := row.Scan(&i.TenantID, &i.Role)
+	return i, err
+}
+
+const addMembership = `-- name: AddMembership :exec
+INSERT INTO tenant_memberships (tenant_id, user_id, role, created_at)
+VALUES ($1, $2, $3, $4)
+`
+
+type AddMembershipParams struct {
+	TenantID  string
+	UserID    string
+	Role      string
+	CreatedAt time.Time
+}
+
+func (q *Queries) AddMembership(ctx context.Context, arg AddMembershipParams) error {
+	_, err := q.db.Exec(ctx, addMembership,
+		arg.TenantID,
+		arg.UserID,
+		arg.Role,
+		arg.CreatedAt,
+	)
+	return err
+}
+
 const addVaultMember = `-- name: AddVaultMember :exec
 INSERT INTO vault_members (vault_id, user_id, created_at)
 VALUES ($1, $2, $3)
@@ -26,6 +79,60 @@ type AddVaultMemberParams struct {
 func (q *Queries) AddVaultMember(ctx context.Context, arg AddVaultMemberParams) error {
 	_, err := q.db.Exec(ctx, addVaultMember, arg.VaultID, arg.UserID, arg.CreatedAt)
 	return err
+}
+
+const adoptLegacyVaults = `-- name: AdoptLegacyVaults :exec
+WITH moved AS (
+    UPDATE vaults SET tenant_id = $3 RETURNING id
+)
+INSERT INTO vault_members (vault_id, user_id, created_at)
+SELECT id, $1, $2 FROM moved
+ON CONFLICT DO NOTHING
+`
+
+type AdoptLegacyVaultsParams struct {
+	UserID    string
+	CreatedAt time.Time
+	TenantID  string
+}
+
+// Só roda para o primeiro admin, quando os únicos cofres são os da migração das notas
+// da rc.1: move todos para o tenant dele, e o ON UPDATE CASCADE leva as notas junto.
+func (q *Queries) AdoptLegacyVaults(ctx context.Context, arg AdoptLegacyVaultsParams) error {
+	_, err := q.db.Exec(ctx, adoptLegacyVaults, arg.UserID, arg.CreatedAt, arg.TenantID)
+	return err
+}
+
+const claimInvite = `-- name: ClaimInvite :one
+UPDATE user_invites i
+SET accepted_at = $1
+WHERE i.token_hash = $2 AND i.accepted_at IS NULL AND i.declined_at IS NULL
+  AND i.expires_at > $1
+  AND EXISTS (
+      SELECT 1 FROM tenant_memberships quem
+      WHERE quem.tenant_id = i.tenant_id AND quem.user_id = i.invited_by
+        AND markupp_role_rank(quem.role) >= markupp_role_rank(i.role)
+  )
+RETURNING i.tenant_id, i.email, i.role
+`
+
+type ClaimInviteParams struct {
+	Now       pgtype.Timestamptz
+	TokenHash string
+}
+
+type ClaimInviteRow struct {
+	TenantID string
+	Email    string
+	Role     string
+}
+
+// Marca o convite como aceito numa escrita só, e devolve o que a conta herda dele.
+func (q *Queries) ClaimInvite(ctx context.Context, arg ClaimInviteParams) (ClaimInviteRow, error) {
+	row := q.db.QueryRow(ctx, claimInvite, arg.Now, arg.TokenHash)
+	var i ClaimInviteRow
+	err := row.Scan(&i.TenantID, &i.Email, &i.Role)
+	return i, err
 }
 
 const consumeRefreshToken = `-- name: ConsumeRefreshToken :one
@@ -60,7 +167,7 @@ VALUES ($1, $2, $3, $4, $5, $6, $7)
 
 type CreateAuditEventParams struct {
 	ID         string
-	TenantID   string
+	TenantID   pgtype.Text
 	ActorID    pgtype.Text
 	Action     string
 	Target     string
@@ -81,26 +188,39 @@ func (q *Queries) CreateAuditEvent(ctx context.Context, arg CreateAuditEventPara
 	return err
 }
 
+const createTenant = `-- name: CreateTenant :exec
+INSERT INTO tenants (id, name, created_at) VALUES ($1, $2, $3)
+`
+
+type CreateTenantParams struct {
+	ID        string
+	Name      string
+	CreatedAt time.Time
+}
+
+func (q *Queries) CreateTenant(ctx context.Context, arg CreateTenantParams) error {
+	_, err := q.db.Exec(ctx, createTenant, arg.ID, arg.Name, arg.CreatedAt)
+	return err
+}
+
 const createUser = `-- name: CreateUser :exec
-INSERT INTO users (id, tenant_id, email, role, created_at, updated_at)
-VALUES ($1, $2, $3, $4, $5, $6)
+INSERT INTO users (id, email, email_verified, created_at, updated_at)
+VALUES ($1, $2, $3, $4, $5)
 `
 
 type CreateUserParams struct {
-	ID        string
-	TenantID  string
-	Email     string
-	Role      string
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	ID            string
+	Email         string
+	EmailVerified bool
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) error {
 	_, err := q.db.Exec(ctx, createUser,
 		arg.ID,
-		arg.TenantID,
 		arg.Email,
-		arg.Role,
+		arg.EmailVerified,
 		arg.CreatedAt,
 		arg.UpdatedAt,
 	)
@@ -155,6 +275,81 @@ func (q *Queries) CreateVault(ctx context.Context, arg CreateVaultParams) error 
 	return err
 }
 
+const declineInvite = `-- name: DeclineInvite :one
+UPDATE user_invites i SET declined_at = $1
+FROM users u
+WHERE i.id = $2 AND u.id = $3 AND u.email = i.email AND u.email_verified
+  AND i.accepted_at IS NULL AND i.declined_at IS NULL AND i.expires_at > $1
+RETURNING i.tenant_id
+`
+
+type DeclineInviteParams struct {
+	Now    pgtype.Timestamptz
+	ID     string
+	UserID string
+}
+
+func (q *Queries) DeclineInvite(ctx context.Context, arg DeclineInviteParams) (string, error) {
+	row := q.db.QueryRow(ctx, declineInvite, arg.Now, arg.ID, arg.UserID)
+	var tenant_id string
+	err := row.Scan(&tenant_id)
+	return tenant_id, err
+}
+
+const deleteEmptyTenants = `-- name: DeleteEmptyTenants :exec
+DELETE FROM tenants t
+WHERE NOT EXISTS (SELECT 1 FROM tenant_memberships m WHERE m.tenant_id = t.id)
+  AND NOT EXISTS (SELECT 1 FROM vaults v WHERE v.tenant_id = t.id)
+`
+
+// Depois de o primeiro usuário levar os cofres da migração, o tenant que ficou sem
+// vínculo e sem cofre não serve a ninguém.
+func (q *Queries) DeleteEmptyTenants(ctx context.Context) error {
+	_, err := q.db.Exec(ctx, deleteEmptyTenants)
+	return err
+}
+
+const ensureTenant = `-- name: EnsureTenant :exec
+INSERT INTO tenants (id, name, created_at) VALUES ($1, $1, $2)
+ON CONFLICT DO NOTHING
+`
+
+type EnsureTenantParams struct {
+	ID        string
+	CreatedAt time.Time
+}
+
+// O primeiro usuário da instância nasce junto com o tenant inicial.
+func (q *Queries) EnsureTenant(ctx context.Context, arg EnsureTenantParams) error {
+	_, err := q.db.Exec(ctx, ensureTenant, arg.ID, arg.CreatedAt)
+	return err
+}
+
+const getMembership = `-- name: GetMembership :one
+SELECT m.tenant_id, t.name AS tenant_name, m.role
+FROM tenant_memberships m JOIN tenants t ON t.id = m.tenant_id
+WHERE m.user_id = $1 AND m.tenant_id = $2
+`
+
+type GetMembershipParams struct {
+	UserID   string
+	TenantID string
+}
+
+type GetMembershipRow struct {
+	TenantID   string
+	TenantName string
+	Role       string
+}
+
+// Leituras de vínculo rodam antes de existir tenant na sessão, no papel da conexão.
+func (q *Queries) GetMembership(ctx context.Context, arg GetMembershipParams) (GetMembershipRow, error) {
+	row := q.db.QueryRow(ctx, getMembership, arg.UserID, arg.TenantID)
+	var i GetMembershipRow
+	err := row.Scan(&i.TenantID, &i.TenantName, &i.Role)
+	return i, err
+}
+
 const getRefreshToken = `-- name: GetRefreshToken :one
 SELECT token_hash, user_id, expires_at, revoked, created_at
 FROM refresh_tokens
@@ -175,19 +370,22 @@ func (q *Queries) GetRefreshToken(ctx context.Context, tokenHash string) (Refres
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, tenant_id, email, role, created_at, updated_at
-FROM users
-WHERE id = $1
+SELECT id, email, created_at, updated_at FROM users WHERE id = $1
 `
 
-func (q *Queries) GetUserByID(ctx context.Context, id string) (User, error) {
+type GetUserByIDRow struct {
+	ID        string
+	Email     string
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
+func (q *Queries) GetUserByID(ctx context.Context, id string) (GetUserByIDRow, error) {
 	row := q.db.QueryRow(ctx, getUserByID, id)
-	var i User
+	var i GetUserByIDRow
 	err := row.Scan(
 		&i.ID,
-		&i.TenantID,
 		&i.Email,
-		&i.Role,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -217,6 +415,106 @@ func (q *Queries) GetUserIdentity(ctx context.Context, arg GetUserIdentityParams
 		&i.CreatedAt,
 	)
 	return i, err
+}
+
+const listMemberships = `-- name: ListMemberships :many
+SELECT m.tenant_id, t.name AS tenant_name, m.role
+FROM tenant_memberships m JOIN tenants t ON t.id = m.tenant_id
+WHERE m.user_id = $1
+ORDER BY t.name, m.tenant_id
+`
+
+type ListMembershipsRow struct {
+	TenantID   string
+	TenantName string
+	Role       string
+}
+
+func (q *Queries) ListMemberships(ctx context.Context, userID string) ([]ListMembershipsRow, error) {
+	rows, err := q.db.Query(ctx, listMemberships, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListMembershipsRow
+	for rows.Next() {
+		var i ListMembershipsRow
+		if err := rows.Scan(&i.TenantID, &i.TenantName, &i.Role); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPendingInvites = `-- name: ListPendingInvites :many
+SELECT i.id, i.tenant_id, t.name AS tenant_name, i.role, i.expires_at
+FROM user_invites i
+JOIN tenants t ON t.id = i.tenant_id
+JOIN users u ON u.email = i.email
+WHERE u.id = $1 AND u.email_verified
+  AND i.accepted_at IS NULL AND i.declined_at IS NULL
+  AND i.expires_at > $2
+  AND EXISTS (
+      SELECT 1 FROM tenant_memberships quem
+      WHERE quem.tenant_id = i.tenant_id AND quem.user_id = i.invited_by
+        AND markupp_role_rank(quem.role) >= markupp_role_rank(i.role)
+  )
+ORDER BY i.created_at, i.id
+`
+
+type ListPendingInvitesParams struct {
+	UserID string
+	Now    time.Time
+}
+
+type ListPendingInvitesRow struct {
+	ID         string
+	TenantID   string
+	TenantName string
+	Role       string
+	ExpiresAt  time.Time
+}
+
+// O convite é da conta cujo email ele cita, e só enquanto não foi respondido nem venceu e
+// quem convidou ainda sustenta o papel dele no tenant.
+func (q *Queries) ListPendingInvites(ctx context.Context, arg ListPendingInvitesParams) ([]ListPendingInvitesRow, error) {
+	rows, err := q.db.Query(ctx, listPendingInvites, arg.UserID, arg.Now)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListPendingInvitesRow
+	for rows.Next() {
+		var i ListPendingInvitesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.TenantID,
+			&i.TenantName,
+			&i.Role,
+			&i.ExpiresAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const lockFirstAdmin = `-- name: LockFirstAdmin :exec
+SELECT pg_advisory_xact_lock($1::bigint)
+`
+
+// Serializa a criação de contas para que só o primeiro usuário vire admin.
+func (q *Queries) LockFirstAdmin(ctx context.Context, key int64) error {
+	_, err := q.db.Exec(ctx, lockFirstAdmin, key)
+	return err
 }
 
 const revokeAllUserRefreshTokens = `-- name: RevokeAllUserRefreshTokens :exec

@@ -12,7 +12,7 @@ import (
 
 type AuditEvent struct {
 	ID         string
-	TenantID   string
+	TenantID   pgtype.Text
 	ActorID    pgtype.Text
 	Action     string
 	Target     string
@@ -26,6 +26,8 @@ type Note struct {
 	Content   string
 	CreatedAt time.Time
 	UpdatedAt time.Time
+	TenantID  string
+	VaultID   string
 }
 
 type RefreshToken struct {
@@ -36,13 +38,25 @@ type RefreshToken struct {
 	CreatedAt time.Time
 }
 
-type User struct {
+type Tenant struct {
 	ID        string
+	Name      string
+	CreatedAt time.Time
+}
+
+type TenantMembership struct {
 	TenantID  string
-	Email     string
+	UserID    string
 	Role      string
 	CreatedAt time.Time
-	UpdatedAt time.Time
+}
+
+type User struct {
+	ID            string
+	Email         string
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+	EmailVerified bool
 }
 
 type UserIdentity struct {
@@ -52,6 +66,19 @@ type UserIdentity struct {
 	ProviderUserID string
 	PasswordHash   pgtype.Text
 	CreatedAt      time.Time
+}
+
+type UserInvite struct {
+	ID         string
+	TenantID   string
+	Email      string
+	Role       string
+	TokenHash  string
+	InvitedBy  pgtype.Text
+	ExpiresAt  time.Time
+	AcceptedAt pgtype.Timestamptz
+	CreatedAt  time.Time
+	DeclinedAt pgtype.Timestamptz
 }
 
 type Vault struct {

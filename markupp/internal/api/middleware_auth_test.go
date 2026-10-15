@@ -11,6 +11,7 @@ import (
 
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/api"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/auth"
+	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/identity"
 )
 
 type fakeTokenValidator struct {
@@ -28,18 +29,16 @@ func (f *fakeTokenValidator) ValidateToken(tokenString string) (auth.Claims, err
 func TestRequireAuth_TokenValido_InjetaContextoEProssegue(t *testing.T) {
 	validator := &fakeTokenValidator{
 		claims: auth.Claims{
-			Subject:  "user-123",
-			TenantID: "tenant-456",
-			Role:     "admin",
+			Subject: "user-123",
 		},
 	}
 
 	var reached bool
-	var capturedUser api.UserContext
+	var capturedUser identity.Actor
 
 	handler := api.RequireAuth(validator)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		reached = true
-		u, ok := api.UserFromContext(r.Context())
+		u, ok := identity.ActorFrom(r.Context())
 		require.True(t, ok)
 		capturedUser = u
 		w.WriteHeader(http.StatusOK)
@@ -54,8 +53,8 @@ func TestRequireAuth_TokenValido_InjetaContextoEProssegue(t *testing.T) {
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.True(t, reached)
 	assert.Equal(t, "user-123", capturedUser.UserID)
-	assert.Equal(t, "tenant-456", capturedUser.TenantID)
-	assert.Equal(t, "admin", capturedUser.Role)
+	assert.Empty(t, capturedUser.TenantID, "o tenant vem do vinculo, nao do token")
+	assert.Empty(t, capturedUser.Role)
 }
 
 func TestRequireAuth_SemHeaderAuthorization_Retorna401(t *testing.T) {

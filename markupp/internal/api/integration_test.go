@@ -15,6 +15,7 @@ import (
 
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/api"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/auth"
+	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/identity"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/notes"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/storage"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/storage/storagetest"
@@ -26,11 +27,12 @@ func setupIntegrationServer(t *testing.T) (*httptest.Server, *pgxpool.Pool) {
 	t.Helper()
 	pool := storagetest.EmptyPool(t)
 	require.NoError(t, storage.Migrate(context.Background(), pool))
+	storagetest.SeedMember(t, pool, identity.Actor{UserID: "integracao", TenantID: "default", Role: "admin"}, "cofre-integracao")
 
 	repo := storage.NewPostgresNotesRepository(pool)
 	svc := notes.NewService(repo, integrationMaxNoteSize)
-	validator := &fakeTokenValidator{claims: auth.Claims{Subject: "integracao", TenantID: "default", Role: "admin"}}
-	router := api.NewRouterWithAuth(svc, nil, validator, pool, nil)
+	validator := &fakeTokenValidator{claims: auth.Claims{Subject: "integracao"}}
+	router := api.NewRouter(api.RouterDeps{Notes: svc, Tenants: &fakeTenantResolver{membership: auth.Membership{TenantID: "default", Role: "admin"}}, Tokens: validator, Probe: pool})
 
 	server := httptest.NewServer(router)
 	t.Cleanup(server.Close)

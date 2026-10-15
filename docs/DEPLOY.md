@@ -98,7 +98,8 @@ make test
 
 ## Validar
 
-Smoke test pela API. Com o banco vazio, o primeiro login cria o administrador:
+Smoke test pela API. Com o banco vazio, o primeiro login cria a conta como owner do tenant
+inicial:
 
 ```sh
 TOKEN=$(curl -s -X POST http://localhost:8080/auth/login \
@@ -117,7 +118,21 @@ Esperado: o login devolve `access_token`, `POST` retorna JSON com `id` UUID, `GE
 `DELETE` responde `204`, e qualquer rota de notas sem o token responde `401`. Rotas completas em
 `markupp/openapi.yaml`.
 
+## Tenants
+
+A conta é da instância e participa de vários tenants, cada um com um papel
+([ADR-0035](adrs/ADR-0035-conta-global-com-vinculo-por-tenant.md)). Quem tem um tenant só não
+precisa dizer nada. Quem tem mais de um escolhe por requisição com o cabeçalho
+`X-Markupp-Tenant`, usando um id de `GET /me/tenants`. Qualquer conta cria tenant em
+`POST /tenants` e vira owner dele.
+
+Sem provedor de email, nada prova o email de quem se cadastra sozinho. Por isso a conta de
+auto-registro (`MARKUPP_AUTH_REGISTRATION_ENABLED=true`) não recebe convite pela lista, e
+qualquer pessoa pode ocupar um email alheio antes do dono. Deixe o auto-registro desligado
+enquanto a verificação de email não existir.
+
 ## Aviso
 
-Com o banco vazio, quem fizer o primeiro login vira administrador ([ADR-0020](adrs/ADR-0020-autenticacao-provedores-configuraveis.md)).
+Com o banco vazio, quem fizer o primeiro login vira owner do tenant inicial
+([ADR-0035](adrs/ADR-0035-conta-global-com-vinculo-por-tenant.md)).
 Faça esse login antes de expor o servidor publicamente.
