@@ -93,3 +93,36 @@ func TestHandshake_AcceptInviteByIDTx_JaMembro_RecusaComErrAlreadyMember(t *test
 
 	assert.ErrorIs(t, err, auth.ErrAlreadyMember)
 }
+
+func TestHandshake_ContaDeAutoRegistro_NaoVeNemAceitaConvite(t *testing.T) {
+	db := setupTestDB(t)
+	repo := storage.NewPostgresAuthRepository(db)
+	_, err := repo.CreateAccountTx(context.Background(), sampleAccountParams())
+	require.NoError(t, err)
+	impostora := sampleAccountParams()
+	impostora.User.ID, impostora.User.Email = "impostora", "vitima@markupp.dev"
+	impostora.Identity.ID, impostora.Identity.UserID, impostora.Identity.ProviderUserID = "ident-impostora", "impostora", "vitima@markupp.dev"
+	impostora.InitialVaultID, impostora.AuditEventID = "v-impostora", "a-impostora"
+	_, err = repo.CreateAccountTx(context.Background(), impostora)
+	require.NoError(t, err)
+	admin := identity.Actor{UserID: "user-id-1", TenantID: "tenant-id-1", Role: "owner"}
+	ctx := identity.WithActor(context.Background(), admin)
+	emitirConvite(ctx, t, db, conviteDe(admin, "c1", "vitima@markupp.dev"), "tok-vitima")
+
+	pendentes, err := repo.ListPendingInvites(context.Background(), "impostora", instanteDoConvite)
+	require.NoError(t, err)
+	assert.Empty(t, pendentes, "email nao verificado nao recebe convite pela lista")
+	_, err = repo.AcceptInviteByIDTx(context.Background(), aceite("impostora"))
+	assert.ErrorIs(t, err, auth.ErrInviteInvalid)
+}
+
+func TestHandshake_ContaDoPrimeiroAcessoEDoToken_TemEmailVerificado(t *testing.T) {
+	db := setupTestDB(t)
+	conviteParaContaExistente(t, db)
+	repo := storage.NewPostgresAuthRepository(db)
+
+	pendentes, err := repo.ListPendingInvites(context.Background(), "convidada", instanteDoConvite)
+
+	require.NoError(t, err)
+	assert.Len(t, pendentes, 1, "conta semeada como no fluxo normal conta como verificada")
+}
