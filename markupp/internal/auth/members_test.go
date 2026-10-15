@@ -46,7 +46,7 @@ func TestCheckMembershipChange_Regras(t *testing.T) {
 
 func TestChangeRole_AplicaARegraComOEstadoDoBanco(t *testing.T) {
 	repo := &fakeAdminRepository{currentRole: "owner", actorRole: "owner", owners: 1}
-	svc := auth.NewAdminService(repo, defaultClock())
+	svc := auth.NewAdminService(repo, defaultClock(), false)
 
 	err := svc.ChangeRole(context.Background(), identity.Actor{UserID: "dona", TenantID: "t1", Role: "owner"}, "dona", "member")
 
@@ -59,7 +59,7 @@ func TestChangeRole_AplicaARegraComOEstadoDoBanco(t *testing.T) {
 func TestChangeRole_PapelInexistente_RecusaAntesDoBanco(t *testing.T) {
 	repo := &fakeAdminRepository{}
 
-	err := auth.NewAdminService(repo, defaultClock()).ChangeRole(context.Background(), adminDeTeste, "u2", "root")
+	err := auth.NewAdminService(repo, defaultClock(), false).ChangeRole(context.Background(), adminDeTeste, "u2", "root")
 
 	require.ErrorIs(t, err, auth.ErrInvalidRole)
 	assert.Empty(t, repo.change.UserID)
@@ -68,7 +68,7 @@ func TestChangeRole_PapelInexistente_RecusaAntesDoBanco(t *testing.T) {
 func TestRemoveMember_AuditaComoRemocao(t *testing.T) {
 	repo := &fakeAdminRepository{currentRole: "member", actorRole: "admin", owners: 1}
 
-	err := auth.NewAdminService(repo, defaultClock()).RemoveMember(context.Background(), adminDeTeste, "u2")
+	err := auth.NewAdminService(repo, defaultClock(), false).RemoveMember(context.Background(), adminDeTeste, "u2")
 
 	require.NoError(t, err)
 	assert.Empty(t, repo.change.NewRole, "papel vazio significa remover")
@@ -80,7 +80,7 @@ func TestRemoveMember_AuditaComoRemocao(t *testing.T) {
 func TestChangeRole_UsaOPapelDoAtorLidoNoBanco(t *testing.T) {
 	repo := &fakeAdminRepository{currentRole: "member", actorRole: "member", owners: 1}
 
-	err := auth.NewAdminService(repo, defaultClock()).ChangeRole(context.Background(),
+	err := auth.NewAdminService(repo, defaultClock(), false).ChangeRole(context.Background(),
 		identity.Actor{UserID: "ex-owner", TenantID: "t1", Role: "owner"}, "u2", "owner")
 
 	require.ErrorIs(t, err, auth.ErrRoleAboveOwn, "o papel da requisicao pode estar velho; vale o do banco")
