@@ -21,6 +21,21 @@ func (f *fakeAdminService) RemoveMember(ctx context.Context, actor identity.Acto
 	return f.memberErr
 }
 
+func (f *fakeAdminService) RevokeInvite(ctx context.Context, actor identity.Actor, inviteID string) error {
+	f.revokedInvite = inviteID
+	return f.memberErr
+}
+
+func TestInvites_Revogar_Retorna204EOu404(t *testing.T) {
+	svc := &fakeAdminService{}
+	rec := adminRequest(svc, "admin", http.MethodDelete, "/users/invites/c1", "")
+	assert.Equal(t, http.StatusNoContent, rec.Code)
+	assert.Equal(t, "c1", svc.revokedInvite)
+
+	rec = adminRequest(&fakeAdminService{memberErr: auth.ErrInviteInvalid}, "admin", http.MethodDelete, "/users/invites/c1", "")
+	assert.Equal(t, http.StatusNotFound, rec.Code)
+}
+
 func TestMembers_TrocarPapel_Retorna204(t *testing.T) {
 	svc := &fakeAdminService{}
 

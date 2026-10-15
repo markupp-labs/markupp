@@ -126,3 +126,35 @@ func TestHandshake_ContaDoPrimeiroAcessoEDoToken_TemEmailVerificado(t *testing.T
 	require.NoError(t, err)
 	assert.Len(t, pendentes, 1, "conta semeada como no fluxo normal conta como verificada")
 }
+
+func TestHandshake_QuemConvidouPerdeuOPapel_ConviteDeixaDeValer(t *testing.T) {
+	db := setupTestDB(t)
+	conviteParaContaExistente(t, db)
+	_, err := db.Exec(context.Background(), "UPDATE tenant_memberships SET role = 'member' WHERE user_id = 'admin-a'")
+	require.NoError(t, err)
+	_, err = db.Exec(context.Background(), "UPDATE user_invites SET role = 'admin' WHERE id = 'c1'")
+	require.NoError(t, err)
+	repo := storage.NewPostgresAuthRepository(db)
+
+	pendentes, err := repo.ListPendingInvites(context.Background(), "convidada", instanteDoConvite)
+	require.NoError(t, err)
+	assert.Empty(t, pendentes)
+	_, err = repo.AcceptInviteByIDTx(context.Background(), aceite("convidada"))
+	assert.ErrorIs(t, err, auth.ErrInviteInvalid, "member nao sustenta convite de admin")
+	_, err = repo.AcceptInviteTx(context.Background(), parametrosDeAceite("tok-1"))
+	assert.ErrorIs(t, err, auth.ErrInviteInvalid, "nem pelo token")
+}
+
+func TestAdminRepo_RevokeInviteTx_ConviteRevogadoNaoVale(t *testing.T) {
+	db := setupTestDB(t)
+	conviteParaContaExistente(t, db)
+	admin := identity.Actor{UserID: "admin-a", TenantID: "t1", Role: "admin"}
+	ctx := identity.WithActor(context.Background(), admin)
+	ev := auth.AuditEventRecord{ID: "ev-revoga", TenantID: "t1", ActorID: "admin-a", Action: "users.invite_revoke", Target: "c1", Result: "success", OccurredAt: instanteDoConvite}
+
+	require.NoError(t, storage.NewPostgresAdminRepository(db).RevokeInviteTx(ctx, "c1", ev))
+
+	_, err := storage.NewPostgresAuthRepository(db).AcceptInviteByIDTx(context.Background(), aceite("convidada"))
+	assert.ErrorIs(t, err, auth.ErrInviteInvalid)
+	assert.ErrorIs(t, storage.NewPostgresAdminRepository(db).RevokeInviteTx(ctx, "c1", ev), auth.ErrInviteInvalid, "revogar de novo")
+}

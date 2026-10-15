@@ -28,6 +28,8 @@ type fakeAdminService struct {
 	changedUser string
 	changedRole string
 	memberErr   error
+
+	revokedInvite string
 }
 
 func (f *fakeAdminService) ListMembers(ctx context.Context) ([]auth.Member, error) {

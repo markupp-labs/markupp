@@ -22,6 +22,7 @@ type fakeAdminRepository struct {
 	currentRole string
 	actorRole   string
 	owners      int
+	revoked     string
 }
 
 func (f *fakeAdminRepository) ListMembers(ctx context.Context) ([]auth.Member, error) {
@@ -112,4 +113,20 @@ func TestIssueInvite_OwnerConvidaOwner(t *testing.T) {
 	_, err := auth.NewAdminService(&fakeAdminRepository{}, defaultClock()).IssueInvite(context.Background(), dona, "socia@markupp.dev", "owner")
 
 	require.NoError(t, err)
+}
+
+func (f *fakeAdminRepository) RevokeInviteTx(ctx context.Context, inviteID string, event auth.AuditEventRecord) error {
+	f.revoked, f.event = inviteID, event
+	return nil
+}
+
+func TestRevokeInvite_AuditaARevogacao(t *testing.T) {
+	repo := &fakeAdminRepository{}
+
+	require.NoError(t, auth.NewAdminService(repo, defaultClock()).RevokeInvite(context.Background(), adminDeTeste, "c1"))
+
+	assert.Equal(t, "c1", repo.revoked)
+	assert.Equal(t, "users.invite_revoke", repo.event.Action)
+	assert.Equal(t, "t1", repo.event.TenantID)
+	assert.Equal(t, "admin-1", repo.event.ActorID)
 }
