@@ -31,7 +31,7 @@ type inviteResponse struct {
 	ID         string     `json:"id"`
 	Email      string     `json:"email"`
 	Role       string     `json:"role"`
-	InvitedBy  string     `json:"invited_by"`
+	InvitedBy  string     `json:"invited_by,omitempty"`
 	ExpiresAt  time.Time  `json:"expires_at"`
 	AcceptedAt *time.Time `json:"accepted_at,omitempty"`
 	CreatedAt  time.Time  `json:"created_at"`
