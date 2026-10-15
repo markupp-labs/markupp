@@ -7,6 +7,7 @@ import (
 	"math"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // LookupFunc tem a assinatura de os.LookupEnv, para o teste injetar o ambiente.
@@ -25,6 +26,10 @@ type Config struct {
 	RefreshExpirationDays   int
 	AuthRegistrationEnabled bool
 	LocalAuthEnabled        bool
+	// SearchConfig é a configuração de texto do PostgreSQL usada pelo indexador.
+	SearchConfig string
+	// IndexInterval é a espera do index-loop entre uma rodada vazia e a próxima.
+	IndexInterval time.Duration
 }
 
 // Default devolve a configuração usada nas variáveis não definidas.
@@ -38,6 +43,8 @@ func Default() Config {
 		RefreshExpirationDays:   7,
 		AuthRegistrationEnabled: false,
 		LocalAuthEnabled:        true,
+		SearchConfig:            "simple",
+		IndexInterval:           30 * time.Second,
 	}
 }
 
@@ -62,7 +69,32 @@ func Load(lookup LookupFunc) (Config, error) {
 	if err := loadAuthSettings(lookup, &cfg); err != nil {
 		return Config{}, err
 	}
+	if err := loadIndexerSettings(lookup, &cfg); err != nil {
+		return Config{}, err
+	}
 	return cfg, nil
+}
+
+func loadIndexerSettings(lookup LookupFunc, cfg *Config) error {
+	readString(lookup, "MARKUPP_SEARCH_CONFIG", &cfg.SearchConfig)
+	return readInterval(lookup, "MARKUPP_INDEX_INTERVAL", &cfg.IndexInterval)
+}
+
+// readInterval lê key como duração positiva do Go, como 30s ou 2m.
+func readInterval(lookup LookupFunc, key string, target *time.Duration) error {
+	raw, ok := lookup(key)
+	if !ok || strings.TrimSpace(raw) == "" {
+		return nil
+	}
+	value, err := time.ParseDuration(strings.TrimSpace(raw))
+	if err != nil {
+		return fmt.Errorf("%s=%q, esperada duracao positiva como 30s ou 2m: %w", key, raw, err)
+	}
+	if value <= 0 {
+		return fmt.Errorf("%s=%q, esperada duracao positiva como 30s ou 2m", key, raw)
+	}
+	*target = value
+	return nil
 }
 
 // readBounded lê key como inteiro entre lowest e highest. Variável ausente ou
