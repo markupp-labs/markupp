@@ -88,7 +88,7 @@ func TestParseCommand_Desconhecido_ListaTodosOsSubcomandos(t *testing.T) {
 	_, err := parseCommand([]string{"markupp", "indexar"})
 
 	require.Error(t, err)
-	for _, esperado := range []string{"indexar", "serve", "migrate", "index", "index-loop"} {
+	for _, esperado := range []string{"indexar", "serve", "migrate", "index", "index-loop", "notify-loop"} {
 		assert.Contains(t, err.Error(), esperado)
 	}
 }
@@ -111,4 +111,21 @@ func TestRun_Index_IndexaOCofrePendenteESai(t *testing.T) {
 	var pendentes int
 	require.NoError(t, pool.QueryRow(context.Background(), "SELECT markupp_pending_vaults()").Scan(&pendentes))
 	assert.Zero(t, pendentes)
+}
+
+func TestParseCommand_NotifyLoop_RetornaEnvioEmLaco(t *testing.T) {
+	cmd, err := parseCommand([]string{"markupp", "notify-loop"})
+
+	require.NoError(t, err)
+	assert.Equal(t, notifyLoopCommand, cmd)
+}
+
+func TestRun_NotifyLoopSemSMTP_RecusaNomeandoAVariavel(t *testing.T) {
+	t.Setenv("MARKUPP_DATABASE_URL", "postgres://ninguem@127.0.0.1:1/nada?connect_timeout=1")
+	t.Setenv("MARKUPP_AUTH_SECRET", "12345678901234567890123456789012")
+
+	err := run(context.Background(), slog.New(slog.DiscardHandler), []string{"markupp", "notify-loop"})
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "MARKUPP_SMTP_URL")
 }
