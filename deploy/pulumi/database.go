@@ -72,8 +72,9 @@ func declareNamespacePostgres(ctx *pulumi.Context, names resourceNames, args Mar
 }
 
 func declarePostgresSecret(ctx *pulumi.Context, names resourceNames, args MarkuppArgs, password, authSecret pulumi.StringOutput, parent pulumi.ResourceOption) error {
-	uri := pulumi.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=disable",
-		postgresUser, password, names.database, postgresPort, postgresUser)
+	// Host com namespace: o scaler do KEDA consulta o banco a partir do namespace dele.
+	uri := pulumi.Sprintf("postgres://%s:%s@%s.%s.svc:%d/%s?sslmode=disable",
+		postgresUser, password, names.database, args.Namespace, postgresPort, postgresUser)
 	_, err := corev1.NewSecret(ctx, names.dbSecret, &corev1.SecretArgs{
 		Metadata:   namespaced(names.dbSecret, args.Namespace),
 		StringData: pulumi.StringMap{dbPasswordKey: password, dbSecretKey: uri, authSecretKey: authSecret},
