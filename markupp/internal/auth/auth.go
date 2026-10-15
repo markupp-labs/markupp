@@ -97,6 +97,33 @@ type CreateAccountParams struct {
 // InitialVaultName é o nome do cofre que toda conta ganha ao ser criada.
 const InitialVaultName = "Principal"
 
+// PendingInvite é o convite que aguarda resposta da conta convidada.
+type PendingInvite struct {
+	ID         string
+	TenantID   string
+	TenantName string
+	Role       string
+	ExpiresAt  time.Time
+}
+
+// AcceptInviteByIDParams é o aceite, pela própria conta, de um convite endereçado ao
+// email dela, com o cofre que ela ganha no tenant.
+type AcceptInviteByIDParams struct {
+	InviteID     string
+	UserID       string
+	VaultID      string
+	AuditEventID string
+	Now          time.Time
+}
+
+// DeclineInviteParams é a recusa, pela própria conta, de um convite endereçado a ela.
+type DeclineInviteParams struct {
+	InviteID     string
+	UserID       string
+	AuditEventID string
+	Now          time.Time
+}
+
 // CreateTenantParams carrega o tenant novo e o que o criador ganha nele: o vínculo de
 // owner e o cofre inicial.
 type CreateTenantParams struct {
@@ -126,6 +153,9 @@ type Repository interface {
 	GetMembership(ctx context.Context, userID, tenantID string) (Membership, error)
 	ListMemberships(ctx context.Context, userID string) ([]Membership, error)
 	CreateTenantTx(ctx context.Context, params CreateTenantParams) error
+	ListPendingInvites(ctx context.Context, userID string, now time.Time) ([]PendingInvite, error)
+	AcceptInviteByIDTx(ctx context.Context, params AcceptInviteByIDParams) (Membership, error)
+	DeclineInviteTx(ctx context.Context, params DeclineInviteParams) error
 	AcceptInviteTx(ctx context.Context, params AcceptInviteParams) (User, error)
 	GetUserByID(ctx context.Context, id string) (User, error)
 	GetUserIdentity(ctx context.Context, provider, providerUserID string) (UserIdentity, error)

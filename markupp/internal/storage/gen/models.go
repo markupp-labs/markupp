@@ -77,6 +77,7 @@ type UserInvite struct {
 	ExpiresAt  time.Time
 	AcceptedAt pgtype.Timestamptz
 	CreatedAt  time.Time
+	DeclinedAt pgtype.Timestamptz
 }
 
 type Vault struct {

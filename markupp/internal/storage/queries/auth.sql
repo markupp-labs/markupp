@@ -80,7 +80,8 @@ ON CONFLICT DO NOTHING;
 -- name: ClaimInvite :one
 UPDATE user_invites
 SET accepted_at = sqlc.arg(now)
-WHERE token_hash = sqlc.arg(token_hash) AND accepted_at IS NULL AND expires_at > sqlc.arg(now)
+WHERE token_hash = sqlc.arg(token_hash) AND accepted_at IS NULL AND declined_at IS NULL
+  AND expires_at > sqlc.arg(now)
 RETURNING tenant_id, email, role;
 
 -- Serializa a criação de contas para que só o primeiro usuário vire admin.
@@ -98,3 +99,27 @@ SELECT m.tenant_id, t.name AS tenant_name, m.role
 FROM tenant_memberships m JOIN tenants t ON t.id = m.tenant_id
 WHERE m.user_id = $1
 ORDER BY t.name, m.tenant_id;
+
+-- O convite é da conta cujo email ele cita, e só enquanto não foi respondido nem venceu.
+-- name: ListPendingInvites :many
+SELECT i.id, i.tenant_id, t.name AS tenant_name, i.role, i.expires_at
+FROM user_invites i
+JOIN tenants t ON t.id = i.tenant_id
+JOIN users u ON u.email = i.email
+WHERE u.id = sqlc.arg(user_id) AND i.accepted_at IS NULL AND i.declined_at IS NULL
+  AND i.expires_at > sqlc.arg(now)
+ORDER BY i.created_at, i.id;
+
+-- name: AcceptInviteByID :one
+UPDATE user_invites i SET accepted_at = sqlc.arg(now)
+FROM users u
+WHERE i.id = sqlc.arg(id) AND u.id = sqlc.arg(user_id) AND u.email = i.email
+  AND i.accepted_at IS NULL AND i.declined_at IS NULL AND i.expires_at > sqlc.arg(now)
+RETURNING i.tenant_id, i.role;
+
+-- name: DeclineInvite :one
+UPDATE user_invites i SET declined_at = sqlc.arg(now)
+FROM users u
+WHERE i.id = sqlc.arg(id) AND u.id = sqlc.arg(user_id) AND u.email = i.email
+  AND i.accepted_at IS NULL AND i.declined_at IS NULL AND i.expires_at > sqlc.arg(now)
+RETURNING i.tenant_id;

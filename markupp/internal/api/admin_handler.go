@@ -121,6 +121,8 @@ func writeInviteError(w http.ResponseWriter, err error) {
 		writeError(w, "invalid_request", err.Error(), http.StatusBadRequest)
 	case errors.Is(err, auth.ErrAlreadyMember):
 		writeError(w, "already_member", err.Error(), http.StatusConflict)
+	case errors.Is(err, auth.ErrRoleAboveOwn):
+		writeError(w, "role_above_own", err.Error(), http.StatusForbidden)
 	default:
 		writeInternal(w, "emitir convite", err)
 	}

@@ -39,6 +39,7 @@ func TestHandshake_ListPendingInvites_MostraOConviteDoEmailDaConta(t *testing.T)
 
 	require.NoError(t, err)
 	require.Len(t, pendentes, 1)
+	pendentes[0].ExpiresAt = pendentes[0].ExpiresAt.UTC()
 	assert.Equal(t, auth.PendingInvite{ID: "c1", TenantID: "t1", TenantName: "t1", Role: "viewer", ExpiresAt: instanteDoConvite.Add(time.Hour)}, pendentes[0])
 	deOutro, err := storage.NewPostgresAuthRepository(db).ListPendingInvites(context.Background(), "admin-a", instanteDoConvite)
 	require.NoError(t, err)

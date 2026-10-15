@@ -19,6 +19,13 @@ type Actor struct {
 	Role     string
 }
 
+var roleRanks = map[string]int{RoleOwner: 4, RoleAdmin: 3, RoleMember: 2, RoleViewer: 1}
+
+// RoleRank é o posto do papel, maior para quem pode mais. Papel desconhecido vale zero.
+func RoleRank(role string) int {
+	return roleRanks[role]
+}
+
 // IsAdmin diz se o ator administra o tenant: owner ou admin.
 func (a Actor) IsAdmin() bool {
 	return a.Role == RoleOwner || a.Role == RoleAdmin

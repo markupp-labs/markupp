@@ -12,6 +12,32 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const acceptInviteByID = `-- name: AcceptInviteByID :one
+UPDATE user_invites i SET accepted_at = $1
+FROM users u
+WHERE i.id = $2 AND u.id = $3 AND u.email = i.email
+  AND i.accepted_at IS NULL AND i.declined_at IS NULL AND i.expires_at > $1
+RETURNING i.tenant_id, i.role
+`
+
+type AcceptInviteByIDParams struct {
+	Now    pgtype.Timestamptz
+	ID     string
+	UserID string
+}
+
+type AcceptInviteByIDRow struct {
+	TenantID string
+	Role     string
+}
+
+func (q *Queries) AcceptInviteByID(ctx context.Context, arg AcceptInviteByIDParams) (AcceptInviteByIDRow, error) {
+	row := q.db.QueryRow(ctx, acceptInviteByID, arg.Now, arg.ID, arg.UserID)
+	var i AcceptInviteByIDRow
+	err := row.Scan(&i.TenantID, &i.Role)
+	return i, err
+}
+
 const addMembership = `-- name: AddMembership :exec
 INSERT INTO tenant_memberships (tenant_id, user_id, role, created_at)
 VALUES ($1, $2, $3, $4)
@@ -75,7 +101,8 @@ func (q *Queries) AdoptLegacyVaults(ctx context.Context, arg AdoptLegacyVaultsPa
 const claimInvite = `-- name: ClaimInvite :one
 UPDATE user_invites
 SET accepted_at = $1
-WHERE token_hash = $2 AND accepted_at IS NULL AND expires_at > $1
+WHERE token_hash = $2 AND accepted_at IS NULL AND declined_at IS NULL
+  AND expires_at > $1
 RETURNING tenant_id, email, role
 `
 
@@ -236,6 +263,27 @@ func (q *Queries) CreateVault(ctx context.Context, arg CreateVaultParams) error 
 	return err
 }
 
+const declineInvite = `-- name: DeclineInvite :one
+UPDATE user_invites i SET declined_at = $1
+FROM users u
+WHERE i.id = $2 AND u.id = $3 AND u.email = i.email
+  AND i.accepted_at IS NULL AND i.declined_at IS NULL AND i.expires_at > $1
+RETURNING i.tenant_id
+`
+
+type DeclineInviteParams struct {
+	Now    pgtype.Timestamptz
+	ID     string
+	UserID string
+}
+
+func (q *Queries) DeclineInvite(ctx context.Context, arg DeclineInviteParams) (string, error) {
+	row := q.db.QueryRow(ctx, declineInvite, arg.Now, arg.ID, arg.UserID)
+	var tenant_id string
+	err := row.Scan(&tenant_id)
+	return tenant_id, err
+}
+
 const ensureTenant = `-- name: EnsureTenant :exec
 INSERT INTO tenants (id, name, created_at) VALUES ($1, $1, $2)
 ON CONFLICT DO NOTHING
@@ -360,6 +408,56 @@ func (q *Queries) ListMemberships(ctx context.Context, userID string) ([]ListMem
 	for rows.Next() {
 		var i ListMembershipsRow
 		if err := rows.Scan(&i.TenantID, &i.TenantName, &i.Role); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPendingInvites = `-- name: ListPendingInvites :many
+SELECT i.id, i.tenant_id, t.name AS tenant_name, i.role, i.expires_at
+FROM user_invites i
+JOIN tenants t ON t.id = i.tenant_id
+JOIN users u ON u.email = i.email
+WHERE u.id = $1 AND i.accepted_at IS NULL AND i.declined_at IS NULL
+  AND i.expires_at > $2
+ORDER BY i.created_at, i.id
+`
+
+type ListPendingInvitesParams struct {
+	UserID string
+	Now    time.Time
+}
+
+type ListPendingInvitesRow struct {
+	ID         string
+	TenantID   string
+	TenantName string
+	Role       string
+	ExpiresAt  time.Time
+}
+
+// O convite é da conta cujo email ele cita, e só enquanto não foi respondido nem venceu.
+func (q *Queries) ListPendingInvites(ctx context.Context, arg ListPendingInvitesParams) ([]ListPendingInvitesRow, error) {
+	rows, err := q.db.Query(ctx, listPendingInvites, arg.UserID, arg.Now)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListPendingInvitesRow
+	for rows.Next() {
+		var i ListPendingInvitesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.TenantID,
+			&i.TenantName,
+			&i.Role,
+			&i.ExpiresAt,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

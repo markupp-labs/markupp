@@ -317,3 +317,22 @@ func (s *Service) CreateTenant(ctx context.Context, userID, name string) (Member
 	}
 	return Membership{TenantID: p.TenantID, TenantName: name, Role: identity.RoleOwner}, nil
 }
+
+// ListMyInvites devolve os convites pendentes para o email da conta userID.
+func (s *Service) ListMyInvites(ctx context.Context, userID string) ([]PendingInvite, error) {
+	return s.repo.ListPendingInvites(ctx, userID, s.clock())
+}
+
+// AcceptMyInvite aceita, pela conta userID, o convite inviteID endereçado a ela.
+func (s *Service) AcceptMyInvite(ctx context.Context, userID, inviteID string) (Membership, error) {
+	return s.repo.AcceptInviteByIDTx(ctx, AcceptInviteByIDParams{
+		InviteID: inviteID, UserID: userID, VaultID: s.newID(), AuditEventID: s.newID(), Now: s.clock(),
+	})
+}
+
+// DeclineMyInvite recusa, pela conta userID, o convite inviteID endereçado a ela.
+func (s *Service) DeclineMyInvite(ctx context.Context, userID, inviteID string) error {
+	return s.repo.DeclineInviteTx(ctx, DeclineInviteParams{
+		InviteID: inviteID, UserID: userID, AuditEventID: s.newID(), Now: s.clock(),
+	})
+}

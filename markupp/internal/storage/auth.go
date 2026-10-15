@@ -155,6 +155,69 @@ func (r *PostgresAuthRepository) CreateTenantTx(ctx context.Context, p auth.Crea
 	})
 }
 
+// ListPendingInvites devolve os convites ainda abertos para o email de userID.
+func (r *PostgresAuthRepository) ListPendingInvites(ctx context.Context, userID string, now time.Time) ([]auth.PendingInvite, error) {
+	rows, err := r.q.ListPendingInvites(ctx, gen.ListPendingInvitesParams{UserID: userID, Now: now})
+	if err != nil {
+		return nil, fmt.Errorf("listar convites de %q: %w", userID, err)
+	}
+	out := make([]auth.PendingInvite, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, auth.PendingInvite(row))
+	}
+	return out, nil
+}
+
+// AcceptInviteByIDTx responde sim ao convite e vincula a conta ao tenant, com o papel do
+// convite e um cofre novo, auditado junto. Já ser membro desfaz o aceite.
+func (r *PostgresAuthRepository) AcceptInviteByIDTx(ctx context.Context, p auth.AcceptInviteByIDParams) (auth.Membership, error) {
+	var m auth.Membership
+	err := r.inTx(ctx, func(qtx *gen.Queries) error {
+		now := pgtype.Timestamptz{Time: p.Now, Valid: true}
+		inv, err := qtx.AcceptInviteByID(ctx, gen.AcceptInviteByIDParams{ID: p.InviteID, UserID: p.UserID, Now: now})
+		if err != nil {
+			return claimErr(err)
+		}
+		join := tenantJoin{tenantID: inv.TenantID, userID: p.UserID, role: inv.Role, vaultID: p.VaultID, vaultName: auth.InitialVaultName, at: p.Now}
+		if err := joinTenant(ctx, qtx, join); err != nil {
+			return membershipConflictErr(err, p.UserID, inv.TenantID)
+		}
+		row, err := qtx.GetMembership(ctx, gen.GetMembershipParams{UserID: p.UserID, TenantID: inv.TenantID})
+		m = auth.Membership(row)
+		if err != nil {
+			return err
+		}
+		return qtx.CreateAuditEvent(ctx, inviteAnswerEvent(p.AuditEventID, inv.TenantID, p.UserID, "invites.accept", p.InviteID, p.Now))
+	})
+	return m, err
+}
+
+// DeclineInviteTx responde não ao convite, auditado junto.
+func (r *PostgresAuthRepository) DeclineInviteTx(ctx context.Context, p auth.DeclineInviteParams) error {
+	return r.inTx(ctx, func(qtx *gen.Queries) error {
+		now := pgtype.Timestamptz{Time: p.Now, Valid: true}
+		tenantID, err := qtx.DeclineInvite(ctx, gen.DeclineInviteParams{ID: p.InviteID, UserID: p.UserID, Now: now})
+		if err != nil {
+			return claimErr(err)
+		}
+		return qtx.CreateAuditEvent(ctx, inviteAnswerEvent(p.AuditEventID, tenantID, p.UserID, "invites.decline", p.InviteID, p.Now))
+	})
+}
+
+func membershipConflictErr(err error, userID, tenantID string) error {
+	if errors.Is(err, auth.ErrAlreadyMember) || isUniqueConstraintViolation(err) {
+		return fmt.Errorf("%w: usuario %q no tenant %q", auth.ErrAlreadyMember, userID, tenantID)
+	}
+	return err
+}
+
+func inviteAnswerEvent(id, tenantID, userID, action, inviteID string, at time.Time) gen.CreateAuditEventParams {
+	return toCreateAuditEventParams(auth.AuditEventRecord{
+		ID: id, TenantID: tenantID, ActorID: userID, Action: action,
+		Target: inviteID, Result: "success", OccurredAt: at,
+	})
+}
+
 // AcceptInviteTx consome o convite e cria a conta que ele descreve, já vinculada ao
 // tenant, numa transação só: se a conta falhar, o convite continua pendente.
 func (r *PostgresAuthRepository) AcceptInviteTx(ctx context.Context, p auth.AcceptInviteParams) (auth.User, error) {

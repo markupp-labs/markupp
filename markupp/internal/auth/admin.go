@@ -21,6 +21,7 @@ var (
 	ErrInvalidRole   = errors.New("papel invalido")
 	ErrInvalidEmail  = errors.New("email invalido")
 	ErrAlreadyMember = errors.New("email ja pertence a um usuario do tenant")
+	ErrRoleAboveOwn  = errors.New("papel acima do de quem atribui")
 )
 
 // Invite é o convite para entrar no tenant. O token não fica aqui: só o hash dele
@@ -93,14 +94,25 @@ func (s *AdminService) newInvite(inviter identity.Actor, email, role string) (In
 	if !strings.Contains(normEmail, "@") {
 		return Invite{}, fmt.Errorf("%w: %q, esperado usuario@dominio", ErrInvalidEmail, email)
 	}
-	if role != identity.RoleAdmin && role != "member" {
-		return Invite{}, fmt.Errorf("%w: %q, esperado admin ou member", ErrInvalidRole, role)
+	if identity.RoleRank(role) == 0 {
+		return Invite{}, fmt.Errorf("%w: %q, esperado owner, admin, member ou viewer", ErrInvalidRole, role)
+	}
+	if err := checkRoleCeiling(inviter, role); err != nil {
+		return Invite{}, err
 	}
 	now := s.clock()
 	return Invite{
 		ID: s.newID(), TenantID: inviter.TenantID, Email: normEmail, Role: role,
 		InvitedBy: inviter.UserID, ExpiresAt: now.Add(inviteTTL), CreatedAt: now,
 	}, nil
+}
+
+// checkRoleCeiling impede que alguém conceda papel acima do próprio.
+func checkRoleCeiling(granter identity.Actor, role string) error {
+	if identity.RoleRank(role) > identity.RoleRank(granter.Role) {
+		return fmt.Errorf("%w: %q por quem e %q", ErrRoleAboveOwn, role, granter.Role)
+	}
+	return nil
 }
 
 func (s *AdminService) inviteEvent(inv Invite) AuditEventRecord {
