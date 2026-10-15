@@ -5,6 +5,7 @@ package config
 import (
 	"fmt"
 	"math"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -30,6 +31,10 @@ type Config struct {
 	SearchConfig string
 	// IndexInterval é a espera do index-loop entre uma rodada vazia e a próxima.
 	IndexInterval time.Duration
+	// SMTPURL é o servidor de email, smtp:// ou smtps://. Vazio desliga o envio.
+	SMTPURL string
+	// SMTPFrom é o remetente dos emails, obrigatório com SMTPURL.
+	SMTPFrom string
 }
 
 // Default devolve a configuração usada nas variáveis não definidas.
@@ -72,7 +77,39 @@ func Load(lookup LookupFunc) (Config, error) {
 	if err := loadIndexerSettings(lookup, &cfg); err != nil {
 		return Config{}, err
 	}
+	if err := loadSMTPSettings(lookup, &cfg); err != nil {
+		return Config{}, err
+	}
 	return cfg, nil
+}
+
+// loadSMTPSettings lê o servidor de email. Sem URL, o envio fica desligado (ADR-0021).
+func loadSMTPSettings(lookup LookupFunc, cfg *Config) error {
+	readString(lookup, "MARKUPP_SMTP_URL", &cfg.SMTPURL)
+	readString(lookup, "MARKUPP_SMTP_FROM", &cfg.SMTPFrom)
+	if cfg.SMTPURL == "" {
+		return nil
+	}
+	if err := checkSMTPURL(cfg.SMTPURL); err != nil {
+		return err
+	}
+	if !strings.Contains(cfg.SMTPFrom, "@") {
+		return fmt.Errorf("MARKUPP_SMTP_FROM=%q, esperado o remetente usuario@dominio quando MARKUPP_SMTP_URL existe", cfg.SMTPFrom)
+	}
+	return nil
+}
+
+// checkSMTPURL recusa URL sem esquema smtp ou smtps ou sem host, sem repetir a senha.
+func checkSMTPURL(raw string) error {
+	parsed, err := url.Parse(raw)
+	if err == nil && (parsed.Scheme == "smtp" || parsed.Scheme == "smtps") && parsed.Hostname() != "" {
+		return nil
+	}
+	shown := "valor ilegivel"
+	if err == nil {
+		shown = parsed.Redacted()
+	}
+	return fmt.Errorf("MARKUPP_SMTP_URL=%q, esperado smtp://usuario:senha@host:porta ou smtps://", shown)
 }
 
 func loadIndexerSettings(lookup LookupFunc, cfg *Config) error {
