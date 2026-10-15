@@ -73,10 +73,10 @@ func mountAuthRoutes(r chi.Router, authSvc AuthService, tokenValidator TokenVali
 
 func mountNotesRoutes(r chi.Router, svc NoteService) {
 	h := &notesHandler{svc: svc}
-	r.Post("/notes", h.create)
 	r.Get("/notes", h.list)
 	r.Get("/notes/search", h.search)
 	r.Get("/notes/{id}", h.get)
-	r.Put("/notes/{id}", h.update)
-	r.Delete("/notes/{id}", h.delete)
+	r.With(requireWriter).Post("/notes", h.create)
+	r.With(requireWriter).Put("/notes/{id}", h.update)
+	r.With(requireWriter).Delete("/notes/{id}", h.delete)
 }

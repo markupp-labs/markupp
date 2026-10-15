@@ -48,3 +48,15 @@ func writeTenantError(w http.ResponseWriter, err error) {
 		writeError(w, "internal", "erro interno", http.StatusInternalServerError)
 	}
 }
+
+// requireWriter barra o viewer, que só lê no tenant.
+func requireWriter(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		actor, _ := identity.ActorFrom(r.Context())
+		if actor.Role == identity.RoleViewer {
+			writeError(w, "read_only", "o papel viewer so le as notas", http.StatusForbidden)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
