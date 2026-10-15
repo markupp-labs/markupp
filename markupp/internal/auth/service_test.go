@@ -31,7 +31,8 @@ type fakeRepository struct {
 	pendingInvites map[string]auth.Invite
 	acceptedWith   auth.AcceptInviteParams
 
-	memberships map[string]auth.Membership
+	memberships   map[string]auth.Membership
+	createdTenant auth.CreateTenantParams
 
 	clock         func() time.Time
 	users         map[string]auth.User
@@ -644,4 +645,35 @@ func TestResolveTenant_SemNenhumTenant_RecusaComErrNoTenant(t *testing.T) {
 	_, err := svc.ResolveTenant(context.Background(), "u1", "")
 
 	require.ErrorIs(t, err, auth.ErrNoTenant)
+}
+
+func (f *fakeRepository) CreateTenantTx(ctx context.Context, p auth.CreateTenantParams) error {
+	f.createdTenant = p
+	f.memberships[p.TenantID+":"+p.UserID] = auth.Membership{TenantID: p.TenantID, TenantName: p.Name, Role: "owner"}
+	return nil
+}
+
+func TestCreateTenant_NomeValido_CriadorViraOwnerComCofre(t *testing.T) {
+	clock := defaultClock()
+	repo := newFakeRepository(clock)
+	svc := setupAuthService(repo, false, clock)
+
+	m, err := svc.CreateTenant(context.Background(), "u1", "  Acme Ltda ")
+
+	require.NoError(t, err)
+	assert.Equal(t, "Acme Ltda", m.TenantName)
+	assert.Equal(t, "owner", m.Role)
+	assert.NotEmpty(t, m.TenantID)
+	assert.Equal(t, m.TenantID, repo.createdTenant.TenantID)
+	assert.Equal(t, "u1", repo.createdTenant.UserID)
+	assert.NotEmpty(t, repo.createdTenant.VaultID)
+	assert.Equal(t, clock(), repo.createdTenant.Now)
+}
+
+func TestCreateTenant_NomeVazio_RecusaComErrInvalidTenantName(t *testing.T) {
+	svc := setupAuthService(newFakeRepository(defaultClock()), false, defaultClock())
+
+	_, err := svc.CreateTenant(context.Background(), "u1", "   ")
+
+	require.ErrorIs(t, err, auth.ErrInvalidTenantName)
 }

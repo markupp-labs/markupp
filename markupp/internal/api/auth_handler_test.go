@@ -35,6 +35,16 @@ type fakeAuthService struct {
 	acceptErr    error
 	acceptToken  string
 	tenants      []auth.Membership
+
+	createdTenant   auth.Membership
+	createTenantErr error
+	tenantCreator   string
+	tenantName      string
+}
+
+func (f *fakeAuthService) CreateTenant(ctx context.Context, userID, name string) (auth.Membership, error) {
+	f.tenantCreator, f.tenantName = userID, name
+	return f.createdTenant, f.createTenantErr
 }
 
 func (f *fakeAuthService) AcceptInvite(ctx context.Context, token, password string) (auth.TokenPair, error) {
@@ -416,4 +426,33 @@ func TestAuthHandler_MeusTenants_ListaVinculos(t *testing.T) {
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &resp))
 	require.Len(t, resp, 2)
 	assert.Equal(t, map[string]any{"id": "t2", "name": "Globex", "role": "viewer"}, resp[1])
+}
+
+func postTenant(svc *fakeAuthService, body string) *httptest.ResponseRecorder {
+	router := setupAuthRouter(svc, &fakeTokenValidator{claims: auth.Claims{Subject: "u1"}})
+	req := httptest.NewRequest(http.MethodPost, "/tenants", bytes.NewBufferString(body))
+	req.Header.Set("Authorization", "Bearer token-valido")
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	return rec
+}
+
+func TestAuthHandler_CriarTenant_Retorna201ComPapelOwner(t *testing.T) {
+	svc := &fakeAuthService{createdTenant: auth.Membership{TenantID: "t-novo", TenantName: "Acme", Role: "owner"}}
+
+	rec := postTenant(svc, `{"name":"Acme"}`)
+
+	assert.Equal(t, http.StatusCreated, rec.Code)
+	assert.Equal(t, "u1", svc.tenantCreator)
+	assert.Equal(t, "Acme", svc.tenantName)
+	var resp map[string]any
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &resp))
+	assert.Equal(t, map[string]any{"id": "t-novo", "name": "Acme", "role": "owner"}, resp)
+}
+
+func TestAuthHandler_CriarTenant_NomeInvalido_Retorna400(t *testing.T) {
+	rec := postTenant(&fakeAuthService{createTenantErr: auth.ErrInvalidTenantName}, `{"name":""}`)
+
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+	assert.Contains(t, rec.Body.String(), "invalid_request")
 }
