@@ -142,8 +142,9 @@ func TestNewMarkupp_SemBancoExterno_GuardaSenhaGeradaEURLNoSecret(t *testing.T) 
 	secret := monitor.single(t, "kubernetes:core/v1:Secret")
 	assert.Equal(t, senhaDeTeste, plain(at(t, secret, "stringData", "password")).StringValue())
 	assert.Equal(t, senhaDeTeste, plain(at(t, secret, "stringData", "auth-secret")).StringValue())
-	assert.Equal(t, "postgres://markupp:"+senhaDeTeste+"@markupp-db:5432/markupp?sslmode=disable",
-		plain(at(t, secret, "stringData", "uri")).StringValue())
+	assert.Equal(t, "postgres://markupp:"+senhaDeTeste+"@markupp-db.markupp.svc:5432/markupp?sslmode=disable",
+		plain(at(t, secret, "stringData", "uri")).StringValue(),
+		"o scaler do KEDA consulta o banco do namespace keda, onde o nome curto do Service não resolve")
 }
 
 func TestNewMarkupp_SemBancoExterno_PostgresLeASenhaDoSecret(t *testing.T) {
