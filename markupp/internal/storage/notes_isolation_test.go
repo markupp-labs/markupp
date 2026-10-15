@@ -197,3 +197,19 @@ func TestNotesRLS_Viewer_LeMasNaoEscreve(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "segredo a.md", intacta.Content)
 }
+
+func TestNotesRLS_DefaultVaultID_ContaEmDoisTenants_UsaOCofreDoTenantDaSessao(t *testing.T) {
+	db := setupTestDB(t)
+	repo := storage.NewPostgresNotesRepository(db)
+	storagetest.SeedMember(t, db, identity.Actor{UserID: "bia", TenantID: "t1", Role: "member"}, "cofre-antigo-t1")
+	ctxT2 := storagetest.SeedMember(t, db, identity.Actor{UserID: "bia", TenantID: "t2", Role: "owner"}, "cofre-t2")
+
+	vaultID, err := repo.DefaultVaultID(ctxT2)
+
+	require.NoError(t, err)
+	assert.Equal(t, "cofre-t2", vaultID, "o cofre padrao e do tenant em que a requisicao age")
+	n, err := comoPapelDaAplicacao(t, db, identity.Actor{UserID: "bia", TenantID: "t2", Role: "owner"},
+		"SELECT count(*) FROM vault_members WHERE vault_id = 'cofre-antigo-t1'")
+	require.NoError(t, err)
+	assert.Zero(t, n, "pertencimento a cofre de outro tenant nao aparece na sessao")
+}
