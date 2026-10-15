@@ -34,6 +34,12 @@ type fakeRepository struct {
 	memberships   map[string]auth.Membership
 	createdTenant auth.CreateTenantParams
 
+	pendingForUser   []auth.PendingInvite
+	acceptedByID     auth.AcceptInviteByIDParams
+	acceptByIDResult auth.Membership
+	acceptByIDErr    error
+	declined         auth.DeclineInviteParams
+
 	clock         func() time.Time
 	users         map[string]auth.User
 	identities    map[string]auth.UserIdentity
@@ -676,4 +682,45 @@ func TestCreateTenant_NomeVazio_RecusaComErrInvalidTenantName(t *testing.T) {
 	_, err := svc.CreateTenant(context.Background(), "u1", "   ")
 
 	require.ErrorIs(t, err, auth.ErrInvalidTenantName)
+}
+
+func (f *fakeRepository) ListPendingInvites(ctx context.Context, userID string, now time.Time) ([]auth.PendingInvite, error) {
+	return f.pendingForUser, nil
+}
+
+func (f *fakeRepository) AcceptInviteByIDTx(ctx context.Context, p auth.AcceptInviteByIDParams) (auth.Membership, error) {
+	f.acceptedByID = p
+	return f.acceptByIDResult, f.acceptByIDErr
+}
+
+func (f *fakeRepository) DeclineInviteTx(ctx context.Context, p auth.DeclineInviteParams) error {
+	f.declined = p
+	return nil
+}
+
+func TestAcceptMyInvite_RepassaUsuarioConviteECofreNovo(t *testing.T) {
+	clock := defaultClock()
+	repo := newFakeRepository(clock)
+	repo.acceptByIDResult = auth.Membership{TenantID: "t1", TenantName: "Acme", Role: "viewer"}
+	svc := setupAuthService(repo, false, clock)
+
+	m, err := svc.AcceptMyInvite(context.Background(), "u1", "convite-1")
+
+	require.NoError(t, err)
+	assert.Equal(t, "viewer", m.Role)
+	assert.Equal(t, "u1", repo.acceptedByID.UserID)
+	assert.Equal(t, "convite-1", repo.acceptedByID.InviteID)
+	assert.NotEmpty(t, repo.acceptedByID.VaultID)
+	assert.Equal(t, clock(), repo.acceptedByID.Now)
+}
+
+func TestDeclineMyInvite_RepassaUsuarioEConvite(t *testing.T) {
+	clock := defaultClock()
+	repo := newFakeRepository(clock)
+	svc := setupAuthService(repo, false, clock)
+
+	require.NoError(t, svc.DeclineMyInvite(context.Background(), "u1", "convite-1"))
+
+	assert.Equal(t, "u1", repo.declined.UserID)
+	assert.Equal(t, "convite-1", repo.declined.InviteID)
 }

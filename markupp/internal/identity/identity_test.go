@@ -29,3 +29,10 @@ func TestActor_IsAdmin_SoParaPapelAdmin(t *testing.T) {
 	assert.False(t, identity.Actor{Role: "member"}.IsAdmin())
 	assert.False(t, identity.Actor{}.IsAdmin())
 }
+
+func TestRoleRank_OrdenaOwnerAdminMemberViewer(t *testing.T) {
+	assert.Greater(t, identity.RoleRank("owner"), identity.RoleRank("admin"))
+	assert.Greater(t, identity.RoleRank("admin"), identity.RoleRank("member"))
+	assert.Greater(t, identity.RoleRank("member"), identity.RoleRank("viewer"))
+	assert.Zero(t, identity.RoleRank("root"), "papel desconhecido nao tem posto")
+}

@@ -82,3 +82,29 @@ func TestIssueInvite_EmailJaEMembro_PropagaErrAlreadyMember(t *testing.T) {
 
 	require.ErrorIs(t, err, auth.ErrAlreadyMember)
 }
+
+func TestIssueInvite_PapelAteODeQuemConvida_Aceito(t *testing.T) {
+	for _, papel := range []string{"admin", "member", "viewer"} {
+		repo := &fakeAdminRepository{}
+
+		_, err := auth.NewAdminService(repo, defaultClock()).IssueInvite(context.Background(), adminDeTeste, "nova@markupp.dev", papel)
+
+		require.NoError(t, err, papel)
+		assert.Equal(t, papel, repo.invite.Role)
+	}
+}
+
+func TestIssueInvite_PapelAcimaDoDeQuemConvida_Recusa(t *testing.T) {
+	_, err := auth.NewAdminService(&fakeAdminRepository{}, defaultClock()).IssueInvite(context.Background(), adminDeTeste, "nova@markupp.dev", "owner")
+
+	require.ErrorIs(t, err, auth.ErrRoleAboveOwn)
+	assert.Contains(t, err.Error(), `"owner"`)
+}
+
+func TestIssueInvite_OwnerConvidaOwner(t *testing.T) {
+	dona := identity.Actor{UserID: "dona", TenantID: "t1", Role: "owner"}
+
+	_, err := auth.NewAdminService(&fakeAdminRepository{}, defaultClock()).IssueInvite(context.Background(), dona, "socia@markupp.dev", "owner")
+
+	require.NoError(t, err)
+}

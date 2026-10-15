@@ -36,10 +36,29 @@ type fakeAuthService struct {
 	acceptToken  string
 	tenants      []auth.Membership
 
+	pending            []auth.PendingInvite
+	acceptedMembership auth.Membership
+	answerErr          error
+	answeredInvite     string
+
 	createdTenant   auth.Membership
 	createTenantErr error
 	tenantCreator   string
 	tenantName      string
+}
+
+func (f *fakeAuthService) ListMyInvites(ctx context.Context, userID string) ([]auth.PendingInvite, error) {
+	return f.pending, nil
+}
+
+func (f *fakeAuthService) AcceptMyInvite(ctx context.Context, userID, inviteID string) (auth.Membership, error) {
+	f.answeredInvite = inviteID
+	return f.acceptedMembership, f.answerErr
+}
+
+func (f *fakeAuthService) DeclineMyInvite(ctx context.Context, userID, inviteID string) error {
+	f.answeredInvite = inviteID
+	return f.answerErr
 }
 
 func (f *fakeAuthService) CreateTenant(ctx context.Context, userID, name string) (auth.Membership, error) {
