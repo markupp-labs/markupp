@@ -53,15 +53,33 @@ curl_api() {
   curl -sfk --resolve markupp.local:8443:127.0.0.1 "$@"
 }
 
+login_smoke() {
+  curl_api -X POST "$URL/auth/login" \
+    -H 'Content-Type: application/json' \
+    -d '{"email":"admin@markupp.local","password":"senhaForte123"}' \
+    | grep -o '"access_token":"[^"]*"' | cut -d'"' -f4
+}
+
+cria_nota_smoke() {
+  local token="$1"
+  curl_api -X POST "$URL/notes" \
+    -H "Authorization: Bearer $token" \
+    -H 'Content-Type: application/json' \
+    -d '{"path":"smoke.md","content":"oi"}'
+}
+
 testa_api() {
   for _ in $(seq 1 30); do
-    if curl_api "$URL/healthz"; then
-      echo
-      curl_api -X POST "$URL/notes" -H 'Content-Type: application/json' -d '{"path":"smoke.md","content":"oi"}'
-      echo
-      return 0
+    if ! curl_api "$URL/healthz"; then
+      sleep 5
+      continue
     fi
-    sleep 5
+    echo
+    token="$(login_smoke)"
+    [ -n "$token" ] || return 1
+    cria_nota_smoke "$token"
+    echo
+    return 0
   done
   kubectl -n markupp get all,certificate,gateway,httproute
   return 1

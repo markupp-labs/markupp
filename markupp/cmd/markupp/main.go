@@ -14,6 +14,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/api"
+	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/auth"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/config"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/notes"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/storage"
@@ -96,8 +97,22 @@ func serve(ctx context.Context, logger *slog.Logger, cfg config.Config) error {
 
 func newHandler(cfg config.Config, pool *pgxpool.Pool) http.Handler {
 	repo := storage.NewPostgresNotesRepository(pool)
-	svc := notes.NewService(repo, cfg.MaxNoteSize)
-	return api.NewRouter(svc, pool, cfg.AllowedOrigins)
+	notesSvc := notes.NewService(repo, cfg.MaxNoteSize)
+	authSvc, codec := newAuthService(cfg, pool)
+	return api.NewRouterWithAuth(notesSvc, authSvc, codec, pool, cfg.AllowedOrigins)
+}
+
+func newAuthService(cfg config.Config, pool *pgxpool.Pool) (api.AuthService, api.TokenValidator) {
+	authRepo := storage.NewPostgresAuthRepository(pool)
+	codec := auth.NewTokenCodec(cfg.AuthSecret, time.Duration(cfg.JWTExpirationMinutes)*time.Minute, time.Now)
+	hasher := auth.NewBcryptHasher()
+	authCfg := auth.ServiceConfig{
+		DefaultTenantID:         cfg.DefaultTenantID,
+		RegistrationEnabled:     cfg.AuthRegistrationEnabled,
+		LocalEnabled:            cfg.LocalAuthEnabled,
+		RefreshExpirationPeriod: time.Duration(cfg.RefreshExpirationDays) * 24 * time.Hour,
+	}
+	return auth.NewService(authRepo, codec, hasher, authCfg, time.Now), codec
 }
 
 func newServer(port int, handler http.Handler) *http.Server {
