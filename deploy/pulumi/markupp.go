@@ -17,7 +17,7 @@ const (
 )
 
 // Markupp é a instalação do markupp num namespace do Kubernetes: banco, job de
-// migração, API e entrada com TLS.
+// migração, API, indexador e entrada com TLS.
 type Markupp struct {
 	pulumi.ResourceState
 
@@ -49,6 +49,8 @@ type MarkuppArgs struct {
 	APIReplicas *int `pulumi:"apiReplicas,optional"`
 	// Database define de onde vem o PostgreSQL.
 	Database DatabaseArgs `pulumi:"database"`
+	// Indexer liga o indexador léxico, que exige o KEDA no cluster. Padrão ligado.
+	Indexer *IndexerArgs `pulumi:"indexer,optional"`
 }
 
 // GatewayRefArgs aponta para um Gateway de outro namespace. Ele precisa
@@ -100,7 +102,11 @@ func declareResources(ctx *pulumi.Context, name string, args MarkuppArgs, parent
 	if err != nil {
 		return err
 	}
-	if err := declareAPI(ctx, names, args, parent, pulumi.DependsOn([]pulumi.Resource{migration})); err != nil {
+	afterMigration := pulumi.DependsOn([]pulumi.Resource{migration})
+	if err := declareAPI(ctx, names, args, parent, afterMigration); err != nil {
+		return err
+	}
+	if err := declareIndexer(ctx, names, args, pulumi.Composite(parent, afterMigration)); err != nil {
 		return err
 	}
 	return declareIngress(ctx, names, args, parent)
@@ -157,7 +163,7 @@ func withDefaults(args MarkuppArgs) MarkuppArgs {
 
 // resourceNames centraliza os nomes que um recurso usa para achar outro.
 type resourceNames struct {
-	component, database, dbSecret, api, gateway, issuer, tlsSecret string
+	component, database, dbSecret, api, indexer, gateway, issuer, tlsSecret string
 }
 
 func newResourceNames(component string) resourceNames {
@@ -166,6 +172,7 @@ func newResourceNames(component string) resourceNames {
 		database:  component + "-db",
 		dbSecret:  component + "-db-app",
 		api:       component + "-api",
+		indexer:   component + "-indexer",
 		gateway:   component + "-gateway",
 		issuer:    component + "-issuer",
 		tlsSecret: component + "-tls",
