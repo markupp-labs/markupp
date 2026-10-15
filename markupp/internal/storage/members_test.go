@@ -81,3 +81,28 @@ func TestRLS_MembroNaoAlteraVinculos(t *testing.T) {
 	require.NoError(t, err)
 	assert.Zero(t, n, "membro nao promove ninguem, nem a si mesmo")
 }
+
+func TestAdminRepo_RemoverMembro_ApagaCofreSoDeleSaiDosCompartilhadosECancelaConvites(t *testing.T) {
+	db := setupTestDB(t)
+	dona := identity.Actor{UserID: "dona", TenantID: "t1", Role: "owner"}
+	ctxDona := storagetest.SeedMember(t, db, dona, "compartilhado")
+	emitirConvite(ctxDona, t, db, conviteDe(dona, "c-antigo", "u2@markupp.dev"), "tok-antigo")
+	ctxU2 := storagetest.SeedMember(t, db, identity.Actor{UserID: "u2", TenantID: "t1", Role: "member"}, "so-da-u2")
+	_, err := db.Exec(context.Background(), "INSERT INTO vault_members (vault_id, user_id, created_at) VALUES ('compartilhado', 'u2', now())")
+	require.NoError(t, err)
+	require.NoError(t, storage.NewPostgresNotesRepository(db).Save(ctxU2, notaNoCofre("n-u2", "dela.md", "so-da-u2")))
+
+	require.NoError(t, storage.NewPostgresAdminRepository(db).ChangeMembershipTx(ctxDona, mudanca("u2", ""), semRegra))
+
+	var cofres, notas, pertencimentos int
+	require.NoError(t, db.QueryRow(context.Background(), "SELECT count(*) FROM vaults WHERE id = 'so-da-u2'").Scan(&cofres))
+	require.NoError(t, db.QueryRow(context.Background(), "SELECT count(*) FROM notes WHERE id = 'n-u2'").Scan(&notas))
+	require.NoError(t, db.QueryRow(context.Background(), "SELECT count(*) FROM vault_members WHERE user_id = 'u2'").Scan(&pertencimentos))
+	assert.Zero(t, cofres, "cofre em que so ela estava e apagado")
+	assert.Zero(t, notas, "as notas vao junto com o cofre")
+	assert.Zero(t, pertencimentos, "ela sai dos cofres compartilhados do tenant")
+	_, err = storage.NewPostgresAuthRepository(db).AcceptInviteByIDTx(context.Background(), auth.AcceptInviteByIDParams{
+		InviteID: "c-antigo", UserID: "u2", VaultID: "v-novo", AuditEventID: "ev-volta", Now: instanteDoConvite.Add(time.Minute),
+	})
+	assert.ErrorIs(t, err, auth.ErrInviteInvalid, "convite pendente nao devolve quem foi removido")
+}
