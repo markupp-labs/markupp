@@ -140,6 +140,22 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+  /users/invites/{id}:
+    delete:
+      summary: Revoga um convite ainda sem resposta
+      description: Exige papel owner ou admin.
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+        - $ref: '#/components/parameters/InviteID'
+      responses:
+        '204':
+          description: Convite revogado
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/InviteNotFound'
   /users/{id}:
     patch:
       summary: Troca o papel de um membro
@@ -182,7 +198,10 @@ paths:
           $ref: '#/components/responses/LastOwner'
     delete:
       summary: Remove um membro do tenant
-      description: Exige papel owner ou admin, com as mesmas regras da troca de papel.
+      description: >
+        Exige papel owner ou admin, com as mesmas regras da troca de papel. Os cofres em
+        que o membro era o único, com as notas, são apagados, e os convites pendentes para
+        o email dele no tenant deixam de valer.
       parameters:
         - $ref: '#/components/parameters/TenantHeader'
         - $ref: '#/components/parameters/MemberID'
@@ -310,6 +329,9 @@ paths:
   /me/invites:
     get:
       summary: Lista os convites pendentes para o email da conta
+      description: >
+        Só para conta com email verificado: a do primeiro acesso e a criada pelo token de
+        convite. Convite cujo autor perdeu o papel ou saiu do tenant não aparece.
       responses:
         '200':
           description: Convites não respondidos e não vencidos
