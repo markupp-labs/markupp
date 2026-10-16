@@ -42,6 +42,13 @@ type Config struct {
 	SMTPURL string
 	// SMTPFrom é o remetente dos emails, obrigatório com SMTPURL.
 	SMTPFrom string
+	// PublicURL é o issuer do authorization server, sem caminho nem barra final.
+	// Vazia desliga o OAuth (ADR-0038).
+	PublicURL string
+	// PanelURL é o painel que faz o login e o consentimento do OAuth, sem barra final.
+	PanelURL string
+	// OAuthResources são os servidores de recursos que aceitam os tokens do OAuth.
+	OAuthResources []OAuthResource
 }
 
 // Default devolve a configuração usada nas variáveis não definidas.
@@ -83,9 +90,12 @@ func Load(lookup LookupFunc) (Config, error) {
 	return cfg, nil
 }
 
-// loadServerSettings lê o que só o servidor e o notificador usam: autenticação e email.
+// loadServerSettings lê o que só o servidor e o notificador usam: autenticação, OAuth e email.
 func loadServerSettings(lookup LookupFunc, cfg *Config) error {
 	if err := loadAuthSettings(lookup, cfg); err != nil {
+		return err
+	}
+	if err := loadOAuthSettings(lookup, cfg); err != nil {
 		return err
 	}
 	return loadSMTPSettings(lookup, cfg)
