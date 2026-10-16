@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"mime"
 	"net"
+	"net/mail"
 	"net/smtp"
 	"net/url"
 	"strings"
@@ -78,12 +79,16 @@ func redacted(rawURL string) string {
 
 // Send abre uma conexão por mensagem e entrega msg.
 func (m *SMTPMailer) Send(ctx context.Context, msg Message) error {
-	client, err := m.connect(ctx, senderDomain(msg.From))
+	sender, err := mail.ParseAddress(msg.From)
+	if err != nil {
+		return fmt.Errorf("remetente %q, esperado usuario@dominio ou Nome <usuario@dominio>: %w", msg.From, err)
+	}
+	client, err := m.connect(ctx, senderDomain(sender))
 	if err != nil {
 		return fmt.Errorf("conectar ao servidor de email %s: %w", m.addr, err)
 	}
 	defer func() { _ = client.Close() }()
-	if err := deliver(client, msg); err != nil {
+	if err := deliver(client, sender, msg); err != nil {
 		return fmt.Errorf("entregar a %q por %s: %w", msg.To, m.addr, err)
 	}
 	// O servidor já aceitou a mensagem no fim do DATA. Tratar a falha do QUIT como
@@ -160,8 +165,10 @@ func (m *SMTPMailer) startTLS(client *smtp.Client) error {
 	return client.StartTLS(&tls.Config{ServerName: m.host, MinVersion: tls.VersionTLS12})
 }
 
-func deliver(client *smtp.Client, msg Message) error {
-	if err := client.Mail(msg.From); err != nil {
+// deliver manda a mensagem com só o endereço do remetente no envelope: o MAIL FROM
+// não aceita o nome de exibição.
+func deliver(client *smtp.Client, sender *mail.Address, msg Message) error {
+	if err := client.Mail(sender.Address); err != nil {
 		return err
 	}
 	if err := client.Rcpt(msg.To); err != nil {
@@ -171,23 +178,23 @@ func deliver(client *smtp.Client, msg Message) error {
 	if err != nil {
 		return err
 	}
-	if _, err := w.Write(encode(msg, senderDomain(msg.From))); err != nil {
+	if _, err := w.Write(encode(msg, sender)); err != nil {
 		return err
 	}
 	return w.Close()
 }
 
 // senderDomain é o domínio do remetente, que assina o Message-ID e o EHLO.
-func senderDomain(from string) string {
-	return from[strings.LastIndex(from, "@")+1:]
+func senderDomain(sender *mail.Address) string {
+	return sender.Address[strings.LastIndex(sender.Address, "@")+1:]
 }
 
 // encode escreve os cabeçalhos e o corpo em UTF-8, com fim de linha CRLF. O
 // Message-ID vai daqui porque relay de submissão, como o Postfix, não o acrescenta.
-func encode(msg Message, domain string) []byte {
+func encode(msg Message, sender *mail.Address) []byte {
 	headers := []string{
-		"Message-ID: <" + rand.Text() + "@" + domain + ">",
-		"From: " + msg.From,
+		"Message-ID: <" + rand.Text() + "@" + senderDomain(sender) + ">",
+		"From: " + sender.String(),
 		"To: " + msg.To,
 		"Subject: " + mime.QEncoding.Encode("utf-8", msg.Subject),
 		"Date: " + time.Now().UTC().Format(time.RFC1123Z),
