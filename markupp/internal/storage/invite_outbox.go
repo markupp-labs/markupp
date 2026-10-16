@@ -40,7 +40,7 @@ func (o *PostgresInviteOutbox) DeliverNextDue(ctx context.Context, deliver notif
 			return fmt.Errorf("reservar notificacao vencida: %w", err)
 		}
 		found = true
-		pending := notify.PendingInvite{NotificationID: row.ID, InviteID: row.InviteID, Attempts: int(row.Attempts)}
+		pending := notify.Pending{NotificationID: row.ID, InviteID: row.InviteID, Attempts: int(row.Attempts)}
 		outcome, err := deliver(ctx, pending, reissuer(q, row.InviteID))
 		if err != nil {
 			return err
@@ -53,13 +53,13 @@ func (o *PostgresInviteOutbox) DeliverNextDue(ctx context.Context, deliver notif
 // reissuer troca o hash do convite inviteID pela função do banco, a única porta do
 // notificador para a tabela de convites.
 func reissuer(q *gen.Queries, inviteID string) notify.ReissueFunc {
-	return func(ctx context.Context, tokenHash string) (notify.InviteDetails, bool, error) {
+	return func(ctx context.Context, tokenHash string) (notify.TokenDetails, bool, error) {
 		rows, err := q.ReissueInviteToken(ctx, gen.ReissueInviteTokenParams{InviteID: inviteID, TokenHash: tokenHash})
 		if err != nil || len(rows) == 0 {
-			return notify.InviteDetails{}, false, err
+			return notify.TokenDetails{}, false, err
 		}
 		r := rows[0]
-		return notify.InviteDetails{
+		return notify.TokenDetails{
 			Email: r.InviteEmail, Role: r.InviteRole, TenantName: r.TenantName,
 			InviterEmail: r.InviterEmail, ExpiresAt: r.InviteExpiresAt,
 		}, true, nil

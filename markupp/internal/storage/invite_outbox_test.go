@@ -37,13 +37,13 @@ func conviteComEmail(t *testing.T, db *pgxpool.Pool, id, email string) {
 type entregaRegistrada struct {
 	outcome  notify.Outcome
 	err      error
-	pending  []notify.PendingInvite
-	details  notify.InviteDetails
+	pending  []notify.Pending
+	details  notify.TokenDetails
 	found    bool
 	novoHash string
 }
 
-func (e *entregaRegistrada) deliver(ctx context.Context, p notify.PendingInvite, reissue notify.ReissueFunc) (notify.Outcome, error) {
+func (e *entregaRegistrada) deliver(ctx context.Context, p notify.Pending, reissue notify.ReissueFunc) (notify.Outcome, error) {
 	e.pending = append(e.pending, p)
 	details, found, err := reissue(ctx, e.novoHash)
 	if err != nil {
@@ -96,7 +96,7 @@ func TestInviteOutbox_ConvitePorEmail_TrocaOHashEEntregaOsDetalhes(t *testing.T)
 	assert.Zero(t, e.pending[0].Attempts)
 	require.True(t, e.found)
 	e.details.ExpiresAt = e.details.ExpiresAt.UTC()
-	assert.Equal(t, notify.InviteDetails{
+	assert.Equal(t, notify.TokenDetails{
 		Email: "nova@markupp.dev", Role: "member", TenantName: "t1",
 		InviterEmail: "admin-a@markupp.dev", ExpiresAt: validadeDoConvite,
 	}, e.details)
@@ -192,7 +192,7 @@ func TestInviteOutbox_NotificacaoReservada_OutroEnvioPulaParaAProxima(t *testing
 	libera := make(chan struct{})
 	terminou := make(chan error, 1)
 	go func() {
-		_, err := outbox.DeliverNextDue(context.Background(), func(ctx context.Context, p notify.PendingInvite, _ notify.ReissueFunc) (notify.Outcome, error) {
+		_, err := outbox.DeliverNextDue(context.Background(), func(ctx context.Context, p notify.Pending, _ notify.ReissueFunc) (notify.Outcome, error) {
 			reservada <- p.InviteID
 			<-libera
 			return notify.Outcome{Sent: true}, nil

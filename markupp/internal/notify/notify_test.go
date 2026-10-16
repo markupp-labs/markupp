@@ -15,8 +15,8 @@ import (
 
 var agora = time.Date(2026, 10, 15, 12, 0, 0, 0, time.UTC)
 
-func detalhesDeTeste() notify.InviteDetails {
-	return notify.InviteDetails{
+func detalhesDeTeste() notify.TokenDetails {
+	return notify.TokenDetails{
 		Email: "nova@markupp.dev", Role: "member", TenantName: "Equipe A",
 		InviterEmail: "admin@markupp.dev", ExpiresAt: agora.Add(7 * 24 * time.Hour),
 	}
@@ -73,10 +73,10 @@ type fakeInvites struct {
 	missing bool
 }
 
-func (f *fakeInvites) reissue(_ context.Context, tokenHash string) (notify.InviteDetails, bool, error) {
+func (f *fakeInvites) reissue(_ context.Context, tokenHash string) (notify.TokenDetails, bool, error) {
 	f.hash = tokenHash
 	if f.missing {
-		return notify.InviteDetails{}, false, nil
+		return notify.TokenDetails{}, false, nil
 	}
 	return detalhesDeTeste(), true, nil
 }
@@ -91,7 +91,7 @@ func TestDeliver_ConvitePendente_GravaOHashEEnviaOToken(t *testing.T) {
 	mailer := &fakeMailer{}
 	convites := &fakeInvites{}
 
-	outcome, err := novoDeliverer(mailer).Deliver(context.Background(), notify.PendingInvite{InviteID: "c1"}, convites.reissue)
+	outcome, err := novoDeliverer(mailer).Deliver(context.Background(), notify.Pending{InviteID: "c1"}, convites.reissue)
 
 	require.NoError(t, err)
 	assert.Equal(t, notify.Outcome{Sent: true}, outcome)
@@ -103,7 +103,7 @@ func TestDeliver_ConvitePendente_GravaOHashEEnviaOToken(t *testing.T) {
 func TestDeliver_SMTPFalha_RemarcaComEsperaCrescente(t *testing.T) {
 	mailer := &fakeMailer{err: errors.New("conexao recusada")}
 
-	outcome, err := novoDeliverer(mailer).Deliver(context.Background(), notify.PendingInvite{InviteID: "c1", Attempts: 2}, (&fakeInvites{}).reissue)
+	outcome, err := novoDeliverer(mailer).Deliver(context.Background(), notify.Pending{InviteID: "c1", Attempts: 2}, (&fakeInvites{}).reissue)
 
 	require.NoError(t, err, "falha do SMTP vira nova tentativa, nao erro do laco")
 	assert.False(t, outcome.Sent)
@@ -115,7 +115,7 @@ func TestDeliver_SMTPFalha_RemarcaComEsperaCrescente(t *testing.T) {
 func TestDeliver_SMTPFalhaNaOitava_Desiste(t *testing.T) {
 	mailer := &fakeMailer{err: errors.New("conexao recusada")}
 
-	outcome, err := novoDeliverer(mailer).Deliver(context.Background(), notify.PendingInvite{InviteID: "c1", Attempts: 7}, (&fakeInvites{}).reissue)
+	outcome, err := novoDeliverer(mailer).Deliver(context.Background(), notify.Pending{InviteID: "c1", Attempts: 7}, (&fakeInvites{}).reissue)
 
 	require.NoError(t, err)
 	assert.True(t, outcome.GiveUp)
@@ -124,7 +124,7 @@ func TestDeliver_SMTPFalhaNaOitava_Desiste(t *testing.T) {
 func TestDeliver_ConviteJaRespondido_DesisteSemEnviar(t *testing.T) {
 	mailer := &fakeMailer{}
 
-	outcome, err := novoDeliverer(mailer).Deliver(context.Background(), notify.PendingInvite{InviteID: "c1"}, (&fakeInvites{missing: true}).reissue)
+	outcome, err := novoDeliverer(mailer).Deliver(context.Background(), notify.Pending{InviteID: "c1"}, (&fakeInvites{missing: true}).reissue)
 
 	require.NoError(t, err)
 	assert.True(t, outcome.GiveUp)

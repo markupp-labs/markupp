@@ -24,16 +24,17 @@ type Mailer interface {
 	Send(ctx context.Context, msg Message) error
 }
 
-// PendingInvite é a notificação de convite reservada para entrega.
-type PendingInvite struct {
+// Pending é a notificação reservada para entrega.
+type Pending struct {
 	NotificationID string
 	InviteID       string
 	// Attempts conta as entregas que já falharam.
 	Attempts int
 }
 
-// InviteDetails é o que o email do convite mostra.
-type InviteDetails struct {
+// TokenDetails é o que o email mostra junto do token. Os campos de convite só vêm
+// preenchidos na notificação de convite.
+type TokenDetails struct {
 	Email        string
 	Role         string
 	TenantName   string
@@ -43,7 +44,7 @@ type InviteDetails struct {
 
 // ReissueFunc grava tokenHash no convite ainda pendente e devolve os detalhes dele,
 // ou found falso quando o convite já foi respondido, revogado ou venceu.
-type ReissueFunc func(ctx context.Context, tokenHash string) (details InviteDetails, found bool, err error)
+type ReissueFunc func(ctx context.Context, tokenHash string) (details TokenDetails, found bool, err error)
 
 // Outcome é o resultado de uma entrega: enviada, remarcada para RetryAt ou abandonada.
 type Outcome struct {
@@ -55,7 +56,7 @@ type Outcome struct {
 
 // DeliverFunc entrega uma notificação reservada. Erro desfaz a transação inteira, e a
 // notificação volta para a fila como estava.
-type DeliverFunc func(ctx context.Context, p PendingInvite, reissue ReissueFunc) (Outcome, error)
+type DeliverFunc func(ctx context.Context, p Pending, reissue ReissueFunc) (Outcome, error)
 
 // Outbox reserva a próxima notificação vencida, entrega com deliver e grava o
 // resultado na mesma transação. Devolve false quando não há notificação vencida livre.
@@ -64,7 +65,7 @@ type Outbox interface {
 }
 
 // InviteMessage monta o email que leva o token do convite.
-func InviteMessage(d InviteDetails, token, from string) Message {
+func InviteMessage(d TokenDetails, token, from string) Message {
 	body := fmt.Sprintf("%s convidou você para %s no markupp, com o papel %s.\n\n"+
 		"Token do convite:\n%s\n\n"+
 		"Use o token no cliente do markupp para aceitar. O convite vale até %s.\n",

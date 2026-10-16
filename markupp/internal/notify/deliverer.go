@@ -24,7 +24,7 @@ func NewDeliverer(mailer Mailer, from string, newToken func() (string, error), c
 
 // Deliver é a DeliverFunc do convite. Falha do servidor de email vira nova tentativa
 // com espera crescente, e convite que não está mais pendente é abandonado sem envio.
-func (d *Deliverer) Deliver(ctx context.Context, p PendingInvite, reissue ReissueFunc) (Outcome, error) {
+func (d *Deliverer) Deliver(ctx context.Context, p Pending, reissue ReissueFunc) (Outcome, error) {
 	token, err := d.newToken()
 	if err != nil {
 		return Outcome{}, err
