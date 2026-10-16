@@ -29,7 +29,7 @@ var (
 
 // DatabaseURL cria um banco vazio no contêiner compartilhado e devolve a URL
 // de conexão para ele.
-func DatabaseURL(t *testing.T) string {
+func DatabaseURL(t testing.TB) string {
 	t.Helper()
 	admin := sharedAdminURL(t)
 	name := fmt.Sprintf("teste_%d_%d", os.Getpid(), databaseSeq.Add(1))
@@ -46,7 +46,7 @@ func DatabaseURL(t *testing.T) string {
 
 // EmptyPool devolve um pool sobre um banco novo e sem schema, fechado ao fim
 // do teste.
-func EmptyPool(t *testing.T) *pgxpool.Pool {
+func EmptyPool(t testing.TB) *pgxpool.Pool {
 	t.Helper()
 	pool, err := pgxpool.New(context.Background(), DatabaseURL(t))
 	require.NoError(t, err)
@@ -54,7 +54,7 @@ func EmptyPool(t *testing.T) *pgxpool.Pool {
 	return pool
 }
 
-func sharedAdminURL(t *testing.T) string {
+func sharedAdminURL(t testing.TB) string {
 	t.Helper()
 	containerOnce.Do(func() { adminURL, errContainer = startContainer() })
 	require.NoError(t, errContainer, "subir o postgres de teste exige Docker disponivel")
@@ -75,7 +75,7 @@ func startContainer() (string, error) {
 	return ctr.ConnectionString(ctx, "sslmode=disable")
 }
 
-func withDatabase(t *testing.T, rawURL, name string) string {
+func withDatabase(t testing.TB, rawURL, name string) string {
 	t.Helper()
 	parsed, err := url.Parse(rawURL)
 	require.NoError(t, err, "url do contêiner fora do formato postgres://: %q", rawURL)

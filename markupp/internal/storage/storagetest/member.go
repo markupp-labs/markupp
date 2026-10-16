@@ -17,7 +17,7 @@ type seedStatement struct {
 
 // SeedMember grava, com o papel dono do banco, o tenant do ator, o usuário, o vínculo
 // dele com o tenant no papel actor.Role, o cofre vaultID e o pertencimento ao cofre.
-func SeedMember(t *testing.T, pool *pgxpool.Pool, actor identity.Actor, vaultID string) context.Context {
+func SeedMember(t testing.TB, pool *pgxpool.Pool, actor identity.Actor, vaultID string) context.Context {
 	t.Helper()
 	ctx := context.Background()
 	for _, s := range memberSeed(actor, vaultID) {
