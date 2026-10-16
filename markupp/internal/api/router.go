@@ -18,7 +18,8 @@ type RouterDeps struct {
 }
 
 // NewRouter monta o roteador com sonda, rotas de autenticação, de notas e de
-// administração.
+// administração, servidas sob /v1 e, durante a transição do ADR-0026, também sem
+// prefixo e marcadas como obsoletas.
 func NewRouter(d RouterDeps) chi.Router {
 	if d.Tokens == nil {
 		panic("api: Tokens obrigatorio para proteger as rotas")
@@ -26,7 +27,19 @@ func NewRouter(d RouterDeps) chi.Router {
 	if d.Tenants == nil && (d.Notes != nil || d.Admin != nil) {
 		panic("api: Tenants obrigatorio para as rotas de notas e de administracao")
 	}
-	r := newBaseRouter(d.Probe, d.AllowedOrigins)
+	routes := newVersionRoutes(d)
+	r := chi.NewRouter()
+	r.Use(middleware.RequestID)
+	r.Use(middleware.Recoverer)
+	r.Use(allowOrigins(d.AllowedOrigins))
+	r.Mount(currentVersionPrefix, routes)
+	r.Mount("/", markDeprecated(routes))
+	return r
+}
+
+func newVersionRoutes(d RouterDeps) chi.Router {
+	r := chi.NewRouter()
+	r.Get("/healthz", healthz(d.Probe))
 	if d.Auth != nil {
 		mountAuthRoutes(r, d.Auth, d.Tokens)
 	}
@@ -39,15 +52,6 @@ func NewRouter(d RouterDeps) chi.Router {
 	if d.AccountEmail != nil {
 		mountAccountEmailRoutes(r, d.AccountEmail, d.Tokens)
 	}
-	return r
-}
-
-func newBaseRouter(probe StorageProbe, allowedOrigins []string) chi.Router {
-	r := chi.NewRouter()
-	r.Use(middleware.RequestID)
-	r.Use(middleware.Recoverer)
-	r.Use(allowOrigins(allowedOrigins))
-	r.Get("/healthz", healthz(probe))
 	return r
 }
 
