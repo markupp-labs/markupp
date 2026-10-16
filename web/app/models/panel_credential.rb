@@ -30,6 +30,8 @@ class PanelCredential
     @session[:tenant_id] = id
   end
 
+  def account_id = @session[:account_id]
+
   def account_email = @session[:account_email]
 
   def access_expired? = Time.current.to_i >= @session[:access_expires_at].to_i

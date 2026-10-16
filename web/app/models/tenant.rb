@@ -17,5 +17,8 @@ Tenant = Data.define(:id, :name, :role) do
   # owner e admin administram membros e convites.
   def admin? = %w[owner admin].include?(role)
 
+  # Papéis que este vínculo concede ou altera: o próprio e os de posto menor.
+  def assignable_roles = Tenant::ROLES.drop(Tenant::ROLES.index(role))
+
   def self.pick(tenants, id) = tenants.find { it.id == id } || (tenants.sole if tenants.one?)
 end

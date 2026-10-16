@@ -98,6 +98,29 @@ en:
       back: "Back to notes"
       members: "Members"
       invites: "Invites"
+    members:
+      index:
+        email: "Email"
+        role: "Role"
+        joined: "Joined"
+      member:
+        you: "(you)"
+        role_for: "Role for %{email}"
+        joined: "Joined"
+        save: "Save"
+        saving: "Saving"
+        remove: "Remove"
+        removing: "Removing"
+        confirm_remove: "Remove %{email} from %{tenant}?"
+      update:
+        updated: "Role updated."
+      destroy:
+        removed: "Member removed."
+        left: "You left %{name}."
+      errors:
+        last_owner: "A tenant needs at least one owner. Make someone else owner first."
+        role_above_own: "You can't give or change a role above your own."
+        member_not_found: "That person is no longer a member."
   notes:
     untitled: "Untitled"
     index:

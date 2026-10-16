@@ -6,6 +6,10 @@ class MarkuppApi
   class NotFound < Error; end
   # Convite inexistente, vencido, já respondido ou de outra conta: a API não distingue.
   class InviteNotFound < NotFound; end
+  # A pessoa já não é membro do tenant: removida por outro admin ou saiu.
+  class MemberNotFound < NotFound; end
+  # A troca deixaria o tenant sem owner.
+  class LastOwner < Error; end
   class AlreadyMember < Error; end
   # Token de email recusado: convite, troca de senha ou verificação, inválido, vencido ou já usado.
   class InvalidToken < Error; end
@@ -25,6 +29,8 @@ class MarkuppApi
   class ReadOnly < Forbidden; end
   # O tenant do cabeçalho não serve: não é da conta (403), a conta não tem tenant (403) ou faltou escolher (400).
   class TenantUnavailable < Forbidden; end
+  # Conceder papel acima do próprio, ou mexer em quem está acima.
+  class RoleAboveOwn < Forbidden; end
 
   NETWORK_ERRORS = [ SystemCallError, SocketError, Net::OpenTimeout, Net::ReadTimeout ].freeze
   # Erros que o painel trata, pelo campo error do corpo; 409 tem dois motivos. Id recusado é nota que não existe.
@@ -34,6 +40,7 @@ class MarkuppApi
     "invalid_request" => InvalidRequest, "forbidden" => Forbidden, "local_auth_disabled" => LocalAuthDisabled,
     "read_only" => ReadOnly, "tenant_forbidden" => TenantUnavailable, "no_tenant" => TenantUnavailable, "tenant_required" => TenantUnavailable,
     "invite_not_found" => InviteNotFound, "already_member" => AlreadyMember,
+    "member_not_found" => MemberNotFound, "last_owner" => LastOwner, "role_above_own" => RoleAboveOwn,
     "invalid_invite" => InvalidToken, "invalid_token" => InvalidToken, "already_exists" => AccountExists
   }.freeze
   # Para o status cujo corpo não traz código conhecido.
