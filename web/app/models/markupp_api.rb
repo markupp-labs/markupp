@@ -25,6 +25,7 @@ class MarkuppApi
   class InvalidRequest < Error; end
   # O servidor não tem SMTP: os fluxos de email da conta ficam desligados.
   class EmailUnavailable < Error; end
+  class EmailAlreadyVerified < Error; end
   class Forbidden < Error; end
   class LocalAuthDisabled < Forbidden; end
   # viewer tentou escrever nota.
@@ -44,7 +45,7 @@ class MarkuppApi
     "invite_not_found" => InviteNotFound, "already_member" => AlreadyMember,
     "member_not_found" => MemberNotFound, "last_owner" => LastOwner, "role_above_own" => RoleAboveOwn,
     "invalid_invite" => InvalidToken, "invalid_token" => InvalidToken, "already_exists" => AccountExists,
-    "email_unavailable" => EmailUnavailable
+    "email_unavailable" => EmailUnavailable, "email_already_verified" => EmailAlreadyVerified
   }.freeze
   # Para o status cujo corpo não traz código conhecido.
   ERRORS_BY_STATUS = { "401" => Unauthorized, "403" => Forbidden, "404" => NotFound }.freeze

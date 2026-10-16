@@ -10,6 +10,9 @@ Rails.application.routes.draw do
   resource :invite_acceptance, only: [ :new, :create ]
   resource :password_request, only: [ :new, :create ]
   resource :password_reset, only: [ :new, :create ]
+  resource :account, only: :show
+  resource :email_verification, only: :create
+  resource :email_confirmation, only: [ :new, :create ]
   resources :tenants, only: [ :index, :create ]
   resource :current_tenant, only: :update
   resources :my_invites, only: [ :index, :update, :destroy ]

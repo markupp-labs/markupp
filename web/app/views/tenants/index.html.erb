@@ -19,7 +19,10 @@
       <%= render partial: "my_invites/invite", collection: pending_invites %>
     </ul>
   <% else %>
-    <p class="mt-2 text-ink-muted"><%= t("tenants.index.no_invites") %></p>
+    <p class="mt-2 text-ink-muted">
+      <%= t("tenants.index.no_invites") %>
+      <%= link_to t("tenants.index.confirm_email"), account_path, class: "text-accent underline" %>
+    </p>
   <% end %>
 
   <h2 class="mt-6 text-base font-semibold"><%= t("tenants.index.new_tenant") %></h2>

@@ -67,6 +67,7 @@ en:
       new_tenant: "New tenant"
       pending_invites: "Pending invites"
       no_invites: "No pending invites. Invites show up here once your email is confirmed."
+      confirm_email: "Confirm your email"
       create: "Create"
       creating: "Creating"
     create:
@@ -102,6 +103,30 @@ en:
       submitting: "Resetting"
     create:
       changed: "Password changed. Log in with the new one."
+  accounts:
+    already_confirmed: "Your email is already confirmed."
+    sidebar:
+      back: "Back to notes"
+    show:
+      title: "Account"
+      email: "Email"
+      confirmation: "Email confirmation"
+      confirmation_hint: "Confirm your email to see the invites sent to it. The confirmation email brings a token."
+      send: "Send confirmation email"
+      sending: "Sending"
+      have_token: "I have a token"
+  email_verifications:
+    create:
+      sent: "Confirmation email sent. It may take a few minutes."
+      email_unavailable: "This server can't send email. Ask an administrator to confirm your email."
+  email_confirmations:
+    new:
+      title: "Confirm your email"
+      hint: "Paste the token from the confirmation email."
+      submit: "Confirm"
+      submitting: "Confirming"
+    create:
+      confirmed: "Email confirmed. Pending invites now show up in your tenant list."
   my_invites:
     invite:
       join: "Join %{tenant} as %{role}"
