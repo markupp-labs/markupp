@@ -45,12 +45,14 @@ const (
 	TokenKindRefresh = "refresh"
 )
 
-// IssuedToken é um token opaco emitido para uma Autorização, guardado só pelo hash.
+// IssuedToken é um token opaco emitido para uma Autorização, guardado só pelo hash. Leva
+// os escopos do pedido que o originou, não a soma da Autorização.
 type IssuedToken struct {
 	Hash            string
 	AuthorizationID string
 	Kind            string
 	Resource        string
+	Scopes          []string
 	ExpiresAt       time.Time
 }
 
