@@ -24,6 +24,7 @@ CREATE TABLE oauth_authorizations (
 -- Uma única Autorização ativa por conta e cliente; as revogadas ficam como histórico.
 CREATE UNIQUE INDEX oauth_authorizations_active_idx ON oauth_authorizations (user_id, client_id)
     WHERE revoked_at IS NULL;
+CREATE INDEX oauth_authorizations_client_id_idx ON oauth_authorizations (client_id);
 
 -- Pedido de autorização: nasce na chegada ao /oauth/authorize, recebe a conta na decisão
 -- e o hash do código quando aprovado.
@@ -45,6 +46,8 @@ CREATE TABLE oauth_requests (
     code_used_at    TIMESTAMPTZ
 );
 CREATE INDEX oauth_requests_expires_at_idx ON oauth_requests (expires_at);
+CREATE INDEX oauth_requests_client_id_idx ON oauth_requests (client_id);
+CREATE INDEX oauth_requests_user_id_idx ON oauth_requests (user_id);
 
 CREATE TABLE oauth_tokens (
     token_hash       TEXT PRIMARY KEY,
