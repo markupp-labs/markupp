@@ -98,7 +98,7 @@ func processProbe() corev1.ProbeArgs {
 
 func healthzProbe() corev1.ProbeArgs {
 	return corev1.ProbeArgs{HttpGet: corev1.HTTPGetActionArgs{
-		Path: pulumi.String("/healthz"),
+		Path: pulumi.String("/v1/healthz"),
 		Port: pulumi.Int(apiPort),
 	}}
 }
