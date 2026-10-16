@@ -89,7 +89,8 @@ func InviteMessage(d TokenDetails, token, from string) Message {
 func VerifyEmailMessage(d TokenDetails, token, from string) Message {
 	body := fmt.Sprintf("Confirme que este email é seu para receber convites no markupp.\n\n"+
 		"Token de verificação:\n%s\n\n"+
-		"Use o token no cliente do markupp. Ele vale até %s.\n",
+		"Use o token no cliente do markupp, logado na conta que você criou. Ele vale até %s.\n\n"+
+		"Se não foi você que criou a conta, ignore este email e não use o token.\n",
 		token, untilMinute(d.ExpiresAt))
 	return Message{From: from, To: d.Email, Subject: "Confirme seu email no markupp", Body: body}
 }
