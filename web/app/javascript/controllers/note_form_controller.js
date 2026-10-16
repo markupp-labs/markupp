@@ -13,7 +13,10 @@ export default class extends Controller {
     this.track()
   }
 
+  // Nota só de leitura (papel viewer) não tem o que salvar.
   save() {
+    if (this.sourceTarget.readOnly) return
+
     this.element.requestSubmit()
   }
 

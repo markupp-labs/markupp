@@ -8,5 +8,8 @@ Tenant = Data.define(:id, :name, :role) do
   def self.from_api(attributes) = new(**attributes.symbolize_keys.slice(*members))
 
   # Tenant ativo: o da sessão enquanto estiver na lista; sem ele, o único que houver.
+  # viewer só lê notas; os outros papéis escrevem.
+  def writer? = role != "viewer"
+
   def self.pick(tenants, id) = tenants.find { it.id == id } || (tenants.sole if tenants.one?)
 end

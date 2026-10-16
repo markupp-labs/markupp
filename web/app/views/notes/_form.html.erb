@@ -2,6 +2,8 @@
 <%# Sem cache do Turbo: voltar para a nota busca a versão atual, e o editor não é clonado no snapshot. %>
 <% content_for :head, tag.meta(name: "turbo-cache-control", content: "no-cache") %>
 <% content_for :sidebar, render("notes/sidebar", tree: @tree, current: @note) %>
+<%# viewer só lê: caminho e texto readonly, sem salvar nem apagar; o editor lê o readonly do textarea. %>
+<% writer = current_tenant.writer? %>
 
 <%= form_with model: @note, class: "flex h-full flex-col gap-3",
               data: { controller: "editor note-form", note_form_leave_message_value: t(".leave"),
@@ -12,7 +14,7 @@
     <div class="min-w-0 flex-1">
       <% path_error = @note.errors.full_messages_for(:path).first %>
       <%= form.label :path, class: "sr-only" %>
-      <%= form.text_field :path, data: { note_form_target: "path" }, spellcheck: false, autocomplete: "off",
+      <%= form.text_field :path, data: { note_form_target: "path" }, spellcheck: false, autocomplete: "off", readonly: !writer,
                           aria: { invalid: path_error.present?, describedby: ("note_path_error" if path_error) },
                           class: "w-full rounded-md border border-transparent bg-transparent px-1 py-1 text-ink-muted " \
                                  "hover:border-line focus:border-line focus:text-ink focus:outline-none aria-invalid:border-danger" %>
@@ -21,8 +23,12 @@
       <% end %>
     </div>
     <span data-note-form-target="unsaved" hidden class="py-1 text-ink-muted"><%= t(".unsaved") %></span>
-    <%= form.button t(".save"), class: "btn" %>
-    <% if @note.persisted? %>
+    <% if writer %>
+      <%= form.button t(".save"), class: "btn" %>
+    <% else %>
+      <p class="py-1 text-ink-muted"><%= t(".read_only") %></p>
+    <% end %>
+    <% if writer && @note.persisted? %>
       <%# Fora do form de salvar (form não aninha): o botão aponta para o form de excluir pelo atributo form. %>
       <%= tag.button t(".delete"), form: "delete_note", data: { turbo_confirm: t(".confirm_delete") },
                      class: "btn border-danger text-danger" %>
@@ -40,10 +46,10 @@
 
   <%= hidden_field_tag :last_modified_at, @note.updated_at&.iso8601(3), id: nil %>
   <%= hidden_field_tag :crlf, @note.crlf?, id: nil %>
-  <%= form.text_area :content, data: { editor_target: "source", note_form_target: "source" }, aria: { label: @note.path },
+  <%= form.text_area :content, data: { editor_target: "source", note_form_target: "source" }, aria: { label: @note.path }, readonly: !writer,
                      class: "min-h-[60dvh] w-full flex-1 rounded-md border border-line bg-surface p-2" %>
 <% end %>
 
-<% if @note.persisted? %>
+<% if writer && @note.persisted? %>
   <%= form_with url: note_path(@note), method: :delete, id: "delete_note", hidden: true do %><% end %>
 <% end %>

@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { EditorState } from "@codemirror/state"
 import { EditorView, keymap } from "@codemirror/view"
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands"
 import { markdown, markdownLanguage } from "@codemirror/lang-markdown"
@@ -20,8 +21,11 @@ export default class extends Controller {
     this.sourceTarget.hidden = false
   }
 
+  // Textarea readonly (papel viewer) vira editor só de leitura.
   extensions() {
+    const readOnly = this.sourceTarget.readOnly
     return [
+      EditorState.readOnly.of(readOnly), EditorView.editable.of(!readOnly),
       history(), keymap.of([ ...defaultKeymap, ...historyKeymap ]), EditorView.lineWrapping,
       markdown({ base: markdownLanguage }), livePreview, wikilinks, kanagawaTheme,
       EditorView.updateListener.of((update) => this.syncSource(update)),

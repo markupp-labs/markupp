@@ -2,6 +2,7 @@ class NotesController < ApplicationController
   rescue_from MarkuppApi::NotFound, with: :render_not_found
 
   before_action :require_tenant
+  before_action :require_writer, only: :new
   before_action :set_tree, except: :destroy
 
   def index
@@ -45,6 +46,11 @@ class NotesController < ApplicationController
     def note_params
       attributes = params.expect(note: [ :path, :content ])
       attributes.merge(content: Note.restore_line_breaks(attributes[:content], crlf: params[:crlf] == "true"))
+    end
+
+    # A API recusaria o POST; o formulário vazio nem abre.
+    def require_writer
+      redirect_to root_path, alert: t("markupp_api.errors.read_only") unless current_tenant.writer?
     end
 
     def set_tree
