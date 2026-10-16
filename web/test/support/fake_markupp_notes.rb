@@ -17,7 +17,8 @@ class FakeMarkuppNotes
     note_at("GET", path)
   end
 
-  def put(path, body, **)
+  def put(path, body, role: nil, **)
+    refuse_viewer(role, "PUT #{path}")
     @put_requests << body
     raise MarkuppApi::Conflict, "fake API simulates a conflict on PUT #{path}, expected force: true" if @conflict && !body[:force]
 
@@ -27,9 +28,10 @@ class FakeMarkuppNotes
   end
 
   # Como a API, recusa caminho já usado. O id segue a ordem dos POSTs: created-1, created-2...
-  def post(path, body, **)
+  def post(path, body, role: nil, **)
     raise ArgumentError, "fake API has no route for POST #{path}, expected /notes" unless path == "/notes"
 
+    refuse_viewer(role, "POST #{path}")
     @post_requests << body
     refuse_path(body[:path], nil)
 
@@ -37,12 +39,18 @@ class FakeMarkuppNotes
     @notes.last
   end
 
-  def delete(path, **)
+  def delete(path, role: nil, **)
+    refuse_viewer(role, "DELETE #{path}")
     @notes.delete(note_at("DELETE", path))
     nil
   end
 
   private
+    # Como o requireWriter da API: viewer só lê.
+    def refuse_viewer(role, call)
+      raise MarkuppApi::ReadOnly, "fake API refuses #{call} for role viewer: read_only, expected owner, admin or member" if role == "viewer"
+    end
+
     # Como a API: substring do conteúdo sem diferenciar caixa, até limit itens, sem o conteúdo.
     def search(query_string)
       params = URI.decode_www_form(query_string).to_h

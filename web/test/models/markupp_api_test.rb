@@ -182,6 +182,11 @@ class MarkuppApiTest < ActiveSupport::TestCase
     assert_operator MarkuppApi::TenantUnavailable, :<, MarkuppApi::Forbidden
   end
 
+  test "maps read_only to ReadOnly, a kind of Forbidden" do
+    error = assert_put_raises(MarkuppApi::ReadOnly, '{"error":"read_only","message":"o papel viewer so le as notas"}', status: "403 Forbidden")
+    assert_kind_of MarkuppApi::Forbidden, error
+  end
+
   private
     def assert_post_raises(error_class, body, status:)
       assert_answer_raises(error_class, body, status) { it.post("/auth/login", email: "a", password: "b") }

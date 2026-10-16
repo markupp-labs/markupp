@@ -81,4 +81,18 @@ class NotesTest < ApplicationSystemTestCase
     assert_text "Deleted"
     assert_current_path root_path
   end
+
+  test "a viewer gets the editor read only and ctrl+s does nothing" do
+    api = use_fake_api(notes: [ { id: "1", path: "plan.md", content: "# Plan\n" } ],
+                       tenants: [ { id: "tenant-1", name: "Acme research", members: { FakeMarkuppAccounts::DEFAULT_EMAIL => "viewer" } } ])
+    sign_in_through_form
+
+    visit note_path("1")
+    assert_selector ".cm-content[contenteditable=false]", text: "Plan"
+    find(".cm-content").send_keys([ :control, "s" ])
+
+    assert_text "Read only: your role here is viewer."
+    assert_no_text "Saved"
+    assert_empty api.put_requests
+  end
 end

@@ -42,4 +42,9 @@ class TenantTest < ActiveSupport::TestCase
   test "create raises InvalidRequest for a name the API refuses" do
     assert_raises(MarkuppApi::InvalidRequest) { Tenant.create(@api, " ") }
   end
+
+  test "writer? is true for every role but viewer" do
+    assert_equal({ "owner" => true, "admin" => true, "member" => true, "viewer" => false },
+                 %w[owner admin member viewer].index_with { Tenant.new(id: "tenant-1", name: "Acme research", role: it).writer? })
+  end
 end
