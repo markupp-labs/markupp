@@ -991,6 +991,9 @@ components:
           format: uuid
         email:
           type: string
+        email_verified:
+          type: boolean
+          description: Se a conta já confirmou o email. Lido do estado atual da conta.
     NoteRequest:
       type: object
       required:
