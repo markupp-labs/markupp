@@ -71,7 +71,7 @@ cria_nota_smoke() {
 
 testa_api() {
   for _ in $(seq 1 30); do
-    if ! curl_api "$URL/healthz"; then
+    if ! curl_api "$URL/v1/healthz"; then
       sleep 5
       continue
     fi
@@ -114,7 +114,7 @@ cmd_up() {
   sobe_cluster
   instala_painel
   aplica_stack
-  echo "API de pé: curl -k --resolve markupp.local:8443:127.0.0.1 $URL/healthz"
+  echo "API de pé: curl -k --resolve markupp.local:8443:127.0.0.1 $URL/v1/healthz"
   echo "painel: make kind-painel"
 }
 
