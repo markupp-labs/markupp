@@ -4,6 +4,9 @@ require "net/http"
 class MarkuppApi
   class Error < StandardError; end
   class NotFound < Error; end
+  # Convite inexistente, vencido, já respondido ou de outra conta: a API não distingue.
+  class InviteNotFound < NotFound; end
+  class AlreadyMember < Error; end
   class Conflict < Error; end
   class DuplicatePath < Error; end
   class InvalidPath < Error; end
@@ -26,7 +29,8 @@ class MarkuppApi
     "conflict" => Conflict, "duplicate_path" => DuplicatePath, "invalid_path" => InvalidPath, "invalid_id" => NotFound,
     "unauthorized" => Unauthorized, "invalid_refresh_token" => RefreshRejected, "invalid_credentials" => InvalidCredentials,
     "invalid_request" => InvalidRequest, "forbidden" => Forbidden, "local_auth_disabled" => LocalAuthDisabled,
-    "read_only" => ReadOnly, "tenant_forbidden" => TenantUnavailable, "no_tenant" => TenantUnavailable, "tenant_required" => TenantUnavailable
+    "read_only" => ReadOnly, "tenant_forbidden" => TenantUnavailable, "no_tenant" => TenantUnavailable, "tenant_required" => TenantUnavailable,
+    "invite_not_found" => InviteNotFound, "already_member" => AlreadyMember
   }.freeze
   # Para o status cujo corpo não traz código conhecido.
   ERRORS_BY_STATUS = { "401" => Unauthorized, "403" => Forbidden, "404" => NotFound }.freeze

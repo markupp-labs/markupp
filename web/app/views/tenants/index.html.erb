@@ -9,10 +9,20 @@
         <li><%= render "tenants/choice", tenant: %></li>
       <% end %>
     </ul>
-    <h2 class="mt-6 text-base font-semibold"><%= t("tenants.index.new_tenant") %></h2>
   <% else %>
     <p class="mt-2 text-ink-muted"><%= t("tenants.index.first_hint") %></p>
   <% end %>
+
+  <h2 class="mt-6 text-base font-semibold"><%= t("tenants.index.pending_invites") %></h2>
+  <% if pending_invites.any? %>
+    <ul class="mt-3 max-w-sm space-y-px rounded-md border border-line p-1">
+      <%= render partial: "my_invites/invite", collection: pending_invites %>
+    </ul>
+  <% else %>
+    <p class="mt-2 text-ink-muted"><%= t("tenants.index.no_invites") %></p>
+  <% end %>
+
+  <h2 class="mt-6 text-base font-semibold"><%= t("tenants.index.new_tenant") %></h2>
 
   <%= form_with scope: :tenant, url: tenants_path, class: "mt-3 flex max-w-sm flex-col gap-3 rounded-md border border-line p-3" do |form| %>
     <div>

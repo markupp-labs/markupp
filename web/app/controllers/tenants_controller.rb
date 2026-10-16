@@ -1,5 +1,7 @@
 # Escolher ou criar tenant: é o onboarding de quem entra sem nenhum.
 class TenantsController < ApplicationController
+  helper_method :pending_invites
+
   def index
   end
 
@@ -13,4 +15,7 @@ class TenantsController < ApplicationController
     @name_error = t(".invalid_name")
     render :index, status: :unprocessable_content
   end
+
+  private
+    def pending_invites = @pending_invites ||= PendingInvite.mine(credential.api)
 end

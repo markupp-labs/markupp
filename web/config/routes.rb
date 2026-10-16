@@ -9,4 +9,5 @@ Rails.application.routes.draw do
   resource :session, only: [ :new, :create, :destroy ]
   resources :tenants, only: [ :index, :create ]
   resource :current_tenant, only: :update
+  resources :my_invites, only: [ :index, :update, :destroy ]
 end
