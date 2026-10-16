@@ -47,8 +47,9 @@ type refreshRequest struct {
 }
 
 type userResponse struct {
-	ID    string `json:"id"`
-	Email string `json:"email"`
+	ID            string `json:"id"`
+	Email         string `json:"email"`
+	EmailVerified bool   `json:"email_verified"`
 }
 
 type tenantResponse struct {
@@ -141,7 +142,7 @@ func (h *authHandler) me(w http.ResponseWriter, r *http.Request) {
 		writeError(w, "internal", "erro interno", http.StatusInternalServerError)
 		return
 	}
-	writeJSON(w, http.StatusOK, userResponse{ID: user.ID, Email: user.Email})
+	writeJSON(w, http.StatusOK, userResponse{ID: user.ID, Email: user.Email, EmailVerified: user.EmailVerified})
 }
 
 func (h *authHandler) createTenant(w http.ResponseWriter, r *http.Request) {

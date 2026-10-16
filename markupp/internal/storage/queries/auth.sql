@@ -6,7 +6,7 @@ INSERT INTO users (id, email, email_verified, created_at, updated_at)
 VALUES ($1, $2, $3, $4, $5);
 
 -- name: GetUserByID :one
-SELECT id, email, created_at, updated_at FROM users WHERE id = $1;
+SELECT id, email, email_verified, created_at, updated_at FROM users WHERE id = $1;
 
 -- name: CreateUserIdentity :exec
 INSERT INTO user_identities (id, user_id, provider, provider_user_id, password_hash, created_at)
