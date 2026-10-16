@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -127,4 +128,23 @@ func TestAccountEmailRoutes_TrocarSenha_SemLogin(t *testing.T) {
 	assert.Equal(t, http.StatusNoContent, rec.Code)
 	assert.Equal(t, "tok-r", svc.resetToken)
 	assert.Equal(t, "senhaNova123", svc.resetPassword)
+}
+
+func TestAccountEmailRoutes_CorpoInvalido_Recusa400(t *testing.T) {
+	for _, path := range []string{"/auth/email/verify", "/auth/password/forgot", "/auth/password/reset"} {
+		svc := &fakeAccountEmailService{}
+
+		rec := accountEmailRequest(svc, http.MethodPost, path, `{"token":`, false)
+
+		assert.Equal(t, http.StatusBadRequest, rec.Code, path)
+		assert.Empty(t, svc.confirmedToken+svc.resetEmail+svc.resetToken, "%s nao chega ao servico", path)
+	}
+}
+
+func TestAccountEmailRoutes_ErroInesperado_Responde500SemDetalhe(t *testing.T) {
+	rec := accountEmailRequest(&fakeAccountEmailService{err: errors.New("banco fora")}, http.MethodPost, "/auth/email/verify", `{"token":"x"}`, false)
+
+	assert.Equal(t, http.StatusInternalServerError, rec.Code)
+	assert.Equal(t, "internal", codigoDoErro(t, rec))
+	assert.NotContains(t, rec.Body.String(), "banco fora")
 }
