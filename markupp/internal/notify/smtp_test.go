@@ -100,3 +100,14 @@ func TestNewSMTPMailer_EsquemaDesconhecido_RetornaErroComOEsquema(t *testing.T) 
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "http")
 }
+
+func TestSMTPMailer_ConexaoCaiNoQuit_ContaComoEntregue(t *testing.T) {
+	servidor := &servidorSMTPFalso{fechaNoQuit: true}
+	mailer, err := notify.NewSMTPMailer(servidor.sobe(t))
+	require.NoError(t, err)
+
+	err = mailer.Send(context.Background(), notify.InviteMessage(detalhesDeTeste(), "tok-123", "convites@markupp.dev"))
+
+	require.NoError(t, err, "o servidor ja aceitou o DATA: reenviar mataria o token deste email")
+	assert.Contains(t, servidor.lido(&servidor.mensagem), "tok-123")
+}
