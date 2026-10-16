@@ -208,6 +208,12 @@ class MarkuppApiTest < ActiveSupport::TestCase
     end
   end
 
+  test "maps email_already_verified to EmailAlreadyVerified" do
+    assert_answer_raises(MarkuppApi::EmailAlreadyVerified, '{"error":"email_already_verified","message":"ja verificado"}', "409 Conflict") do
+      it.post("/auth/email/verify", token: "t")
+    end
+  end
+
   test "maps the error codes of the member routes to their classes" do
     { [ "404 Not Found", "member_not_found" ] => MarkuppApi::MemberNotFound,
       [ "409 Conflict", "last_owner" ] => MarkuppApi::LastOwner,
