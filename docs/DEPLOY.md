@@ -139,7 +139,8 @@ precisa dizer nada. Quem tem mais de um escolhe por requisição com o cabeçalh
 
 A conta de auto-registro (`MARKUPP_AUTH_REGISTRATION_ENABLED=true`) nasce sem email provado e
 não recebe convite pela lista até verificar. Com SMTP configurado, ela recebe o email de
-verificação no cadastro e pode pedir outro em `POST /auth/email/verification`. Sem SMTP, nada
+verificação no cadastro, confirma com o token logada nela em `POST /auth/email/verify` e pode
+pedir outro em `POST /auth/email/verification`. Sem SMTP, nada
 prova o email dela, e qualquer pessoa pode ocupar um email alheio antes do dono: só ligue o
 auto-registro com SMTP.
 

@@ -146,11 +146,11 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
   /auth/email/verify:
     post:
-      summary: Verifica o email da conta com o token recebido por email
+      summary: Verifica o email da conta logada com o token recebido por email
       description: >
-        O token vale 24 horas a partir do envio e uma vez só. A conta verificada passa a
-        receber convites em /me/invites.
-      security: []
+        Exige login, e o token só vale para a conta logada: quem recebe o email de uma
+        conta que não criou não consegue verificá-la. O token vale 24 horas a partir do
+        envio e uma vez só. A conta verificada passa a receber convites em /me/invites.
       requestBody:
         required: true
         content:
@@ -160,8 +160,10 @@ paths:
       responses:
         '204':
           description: Email verificado
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '400':
-          description: Token inexistente, vencido ou já usado (invalid_token)
+          description: Token inexistente, vencido, já usado ou de outra conta (invalid_token)
           content:
             application/json:
               schema:
@@ -170,9 +172,9 @@ paths:
     post:
       summary: Pede o email de troca de senha
       description: >
-        Responde 202 exista a conta ou não, para não revelar quem tem conta. Só a conta
-        com credencial local recebe o email, no máximo um a cada 5 minutos. Só existe
-        com SMTP configurado.
+        Responde 202 exista a conta ou não, e no mesmo tempo, porque o pedido é gravado
+        depois da resposta. Só a conta com credencial local recebe o email, no máximo um
+        a cada 5 minutos. Só existe com SMTP configurado e credencial local ligada.
       security: []
       requestBody:
         required: true
@@ -189,6 +191,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Credencial local desligada (local_auth_disabled)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '503':
           description: Sem SMTP configurado (email_unavailable)
           content:
@@ -200,7 +208,7 @@ paths:
       summary: Troca a senha com o token recebido por email
       description: >
         O token vale 1 hora a partir do envio e uma vez só. A troca encerra todas as
-        sessões abertas da conta.
+        sessões abertas da conta e marca o email dela como verificado.
       security: []
       requestBody:
         required: true
@@ -213,6 +221,12 @@ paths:
           description: Senha trocada
         '400':
           description: Token inexistente, vencido ou já usado (invalid_token), ou senha inválida (invalid_request)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Credencial local desligada (local_auth_disabled)
           content:
             application/json:
               schema:
