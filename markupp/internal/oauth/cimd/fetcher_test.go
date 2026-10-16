@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/x509"
 	"encoding/json"
+	"math"
 	"net/http"
 	"net/http/httptest"
 	"net/netip"
@@ -281,4 +282,39 @@ func TestFetcher_LimitesDeTTLConfigurados_Respeita(t *testing.T) {
 			assert.Equal(t, esperado, meta.TTL)
 		})
 	}
+}
+
+func TestNewFetcher_OpcaoForaDaFaixa_DevolveErroComValor(t *testing.T) {
+	casos := map[string]struct {
+		opcao cimd.Option
+		valor string
+	}{
+		"timeout zero":           {cimd.WithTimeout(0), "0s"},
+		"timeout negativo":       {cimd.WithTimeout(-time.Second), "-1s"},
+		"corpo zero":             {cimd.WithMaxBodyBytes(0), "0"},
+		"corpo negativo":         {cimd.WithMaxBodyBytes(-1), "-1"},
+		"corpo estoura limite+1": {cimd.WithMaxBodyBytes(math.MaxInt64), "9223372036854775807"},
+		"ttl minimo zero":        {cimd.WithTTLBounds(0, time.Hour), "0s"},
+		"ttl minimo negativo":    {cimd.WithTTLBounds(-time.Minute, time.Hour), "-1m0s"},
+		"ttl minimo acima":       {cimd.WithTTLBounds(2*time.Hour, time.Hour), "2h0m0s"},
+	}
+	for nome, caso := range casos {
+		t.Run(nome, func(t *testing.T) {
+			fetcher, err := cimd.NewFetcher(caso.opcao)
+
+			require.Error(t, err)
+			assert.Nil(t, fetcher)
+			assert.Contains(t, err.Error(), caso.valor)
+		})
+	}
+}
+
+func TestNewFetcher_OpcoesNosLimites_Aceita(t *testing.T) {
+	_, err := cimd.NewFetcher(
+		cimd.WithTimeout(time.Nanosecond),
+		cimd.WithMaxBodyBytes(math.MaxInt64-1),
+		cimd.WithTTLBounds(time.Minute, time.Minute),
+	)
+
+	require.NoError(t, err)
 }
