@@ -57,4 +57,10 @@ class TenantTest < ActiveSupport::TestCase
     assert_equal({ "owner" => %w[owner admin member viewer], "admin" => %w[admin member viewer] },
                  %w[owner admin].index_with { Tenant.new(id: "tenant-1", name: "Acme research", role: it).assignable_roles })
   end
+
+  test "assignable_roles names an unknown role and the known ones" do
+    error = assert_raises(ArgumentError) { Tenant.new(id: "tenant-1", name: "Acme research", role: "auditor").assignable_roles }
+
+    assert_equal 'unknown role "auditor", expected one of owner, admin, member, viewer', error.message
+  end
 end
