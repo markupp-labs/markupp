@@ -6,12 +6,510 @@ info:
 servers:
   - url: http://localhost:8080
     description: Servidor local padrão
+security:
+  - bearerAuth: []
 paths:
+  /auth/login:
+    post:
+      summary: Abre a sessão com credencial local
+      description: >
+        Sem nenhum usuário cadastrado, o primeiro login cria a conta de administrador com o
+        primeiro cofre. Com auto-registro desligado, email desconhecido é recusado como
+        credencial inválida.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Sessão aberta
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenPairResponse'
+        '400':
+          description: Email ou senha ausentes, ou senha acima de 72 bytes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Credenciais inválidas (invalid_credentials)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Credencial local desligada na configuração (local_auth_disabled)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /auth/refresh:
+    post:
+      summary: Troca o refresh token por um novo par
+      description: >
+        O refresh token é de uso único. Reapresentar um token já usado revoga todas as
+        sessões do usuário.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+      responses:
+        '200':
+          description: Novo par de tokens
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenPairResponse'
+        '401':
+          description: Refresh token inválido, expirado ou revogado (invalid_refresh_token)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /auth/logout:
+    post:
+      summary: Revoga o refresh token da sessão
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+      responses:
+        '204':
+          description: Sessão encerrada, inclusive quando o token já não valia
+  /auth/invites/accept:
+    post:
+      summary: Cria a conta local a partir de um convite
+      description: >
+        Para quem ainda não tem conta: troca o token do convite e a senha escolhida por
+        uma conta vinculada ao tenant com o papel do convite e um cofre próprio, e abre a
+        sessão. Quem já tem conta aceita em /me/invites/{id}/accept. O convite é de uso
+        único, e a recusa também encerra o token.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AcceptInviteRequest'
+      responses:
+        '200':
+          description: Conta criada e sessão aberta
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenPairResponse'
+        '400':
+          description: Convite inexistente, vencido ou já aceito (invalid_invite), ou senha inválida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: O email do convite já tem conta; aceite pela conta em /me/invites (already_exists)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /auth/email/verification:
+    post:
+      summary: Envia de novo o email de verificação da conta
+      description: >
+        Gera um pedido novo e invalida o token anterior. Dentro de 5 minutos do último
+        pedido, responde 202 sem enviar outro email. Só existe com SMTP configurado.
+      responses:
+        '202':
+          description: Pedido aceito
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          description: O email da conta já está verificado (email_already_verified)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: Sem SMTP configurado (email_unavailable)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /auth/email/verify:
+    post:
+      summary: Verifica o email da conta logada com o token recebido por email
+      description: >
+        Exige login, e o token só vale para a conta logada: quem recebe o email de uma
+        conta que não criou não consegue verificá-la. O token vale 24 horas a partir do
+        envio e uma vez só. A conta verificada passa a receber convites em /me/invites.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmailTokenRequest'
+      responses:
+        '204':
+          description: Email verificado
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '400':
+          description: Token inexistente, vencido, já usado ou de outra conta (invalid_token)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /auth/password/forgot:
+    post:
+      summary: Pede o email de troca de senha
+      description: >
+        Responde 202 exista a conta ou não, e no mesmo tempo, porque o pedido é gravado
+        depois da resposta. Só a conta com credencial local recebe o email, no máximo um
+        a cada 5 minutos. Só existe com SMTP configurado e credencial local ligada.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordForgotRequest'
+      responses:
+        '202':
+          description: Pedido aceito
+        '400':
+          description: Email vazio (invalid_request)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Credencial local desligada (local_auth_disabled)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: Sem SMTP configurado (email_unavailable)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /auth/password/reset:
+    post:
+      summary: Troca a senha com o token recebido por email
+      description: >
+        O token vale 1 hora a partir do envio e uma vez só. A troca encerra todas as
+        sessões abertas da conta e marca o email dela como verificado.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordResetRequest'
+      responses:
+        '204':
+          description: Senha trocada
+        '400':
+          description: Token inexistente, vencido ou já usado (invalid_token), ou senha inválida (invalid_request)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Credencial local desligada (local_auth_disabled)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /users:
+    get:
+      summary: Lista os membros do tenant
+      description: Exige papel owner ou admin no tenant.
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+      responses:
+        '200':
+          description: Membros do tenant, por email, com o papel de cada um
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MemberResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /users/invites/{id}:
+    delete:
+      summary: Revoga um convite ainda sem resposta
+      description: Exige papel owner ou admin.
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+        - $ref: '#/components/parameters/InviteID'
+      responses:
+        '204':
+          description: Convite revogado
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/InviteNotFound'
+  /users/{id}:
+    patch:
+      summary: Troca o papel de um membro
+      description: >
+        Exige papel owner ou admin. Ninguém altera quem está acima nem concede papel acima
+        do próprio, e o tenant nunca fica sem owner.
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+        - $ref: '#/components/parameters/MemberID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [role]
+              properties:
+                role:
+                  $ref: '#/components/schemas/Role'
+      responses:
+        '204':
+          description: Papel trocado
+        '400':
+          description: Papel inexistente (invalid_request)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Sem papel de administração (forbidden) ou papel acima do próprio (role_above_own)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          $ref: '#/components/responses/MemberNotFound'
+        '409':
+          $ref: '#/components/responses/LastOwner'
+    delete:
+      summary: Remove um membro do tenant
+      description: >
+        Exige papel owner ou admin, com as mesmas regras da troca de papel. Os cofres em
+        que o membro era o único, com as notas, são apagados, e os convites pendentes para
+        o email dele no tenant deixam de valer.
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+        - $ref: '#/components/parameters/MemberID'
+      responses:
+        '204':
+          description: Membro removido
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Sem papel de administração (forbidden) ou membro acima do próprio papel (role_above_own)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          $ref: '#/components/responses/MemberNotFound'
+        '409':
+          $ref: '#/components/responses/LastOwner'
+  /users/invites:
+    get:
+      summary: Lista os convites do tenant
+      description: Exige papel owner ou admin no tenant. O token do convite nunca volta aqui.
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+      responses:
+        '200':
+          description: Convites do mais recente ao mais antigo
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/InviteResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      summary: Convida um email para o tenant
+      description: >
+        Exige papel owner ou admin, e o papel do convite não passa do de quem convida.
+        Quem já tem conta vê o convite em /me/invites. O token serve para quem ainda
+        não tem conta se cadastrar. Sem SMTP configurado, ele volta uma única vez nesta
+        resposta e o administrador o repassa. Com SMTP, ele não volta: o servidor gera
+        o token na entrega e o envia só por email. Vale por 7 dias.
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InviteRequest'
+      responses:
+        '201':
+          description: Convite emitido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IssuedInviteResponse'
+        '400':
+          description: Email ou papel inválido (invalid_request)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Sem papel de administração (forbidden) ou papel acima do próprio (role_above_own)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: O email já é de um membro do tenant (already_member)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /tenants:
+    post:
+      summary: Cria um tenant
+      description: Qualquer conta cria tenant e vira owner dele, com um cofre próprio.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+                  maxLength: 100
+      responses:
+        '201':
+          description: Tenant criado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenantResponse'
+        '400':
+          description: Nome vazio ou acima de 100 caracteres (invalid_request)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /me/tenants:
+    get:
+      summary: Lista os tenants da conta
+      description: Os valores de id são os que vão no cabeçalho X-Markupp-Tenant.
+      responses:
+        '200':
+          description: Tenants da conta, por nome, com o papel em cada um
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TenantResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /me/invites:
+    get:
+      summary: Lista os convites pendentes para o email da conta
+      description: >
+        Só para conta com email verificado: a do primeiro acesso e a criada pelo token de
+        convite. Convite cujo autor perdeu o papel ou saiu do tenant não aparece.
+      responses:
+        '200':
+          description: Convites não respondidos e não vencidos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PendingInviteResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /me/invites/{id}/accept:
+    post:
+      summary: Aceita um convite pela conta
+      description: Vincula a conta ao tenant com o papel do convite e um cofre próprio.
+      parameters:
+        - $ref: '#/components/parameters/InviteID'
+      responses:
+        '200':
+          description: Vínculo criado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenantResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/InviteNotFound'
+        '409':
+          description: A conta já é membro desse tenant (already_member)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /me/invites/{id}/decline:
+    post:
+      summary: Recusa um convite pela conta
+      parameters:
+        - $ref: '#/components/parameters/InviteID'
+      responses:
+        '204':
+          description: Convite recusado
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/InviteNotFound'
+  /auth/me:
+    get:
+      summary: Devolve a conta autenticada
+      responses:
+        '200':
+          description: Conta do usuário do token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
   /notes:
     get:
       summary: Lista todas as notas
       description: Retorna todas as notas com o conteúdo, ordenadas por caminho. Sem paginação.
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
       responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '200':
           description: Lista de notas, vazia quando não há nenhuma
           content:
@@ -28,7 +526,11 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
     post:
       summary: Cria uma nova nota
-      description: Cria uma nota com caminho e conteúdo fornecidos.
+      description: >
+        Cria uma nota com caminho e conteúdo fornecidos, no cofre informado ou no cofre
+        mais antigo do usuário. O caminho é único dentro do cofre.
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
       requestBody:
         required: true
         content:
@@ -36,6 +538,8 @@ paths:
             schema:
               $ref: '#/components/schemas/NoteRequest'
       responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '201':
           description: Nota criada com sucesso
           content:
@@ -44,6 +548,12 @@ paths:
                 $ref: '#/components/schemas/NoteResponse'
         '400':
           description: Requisição inválida ou dados de nota inválidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Cofre inexistente ou de que o usuário não é membro (vault_forbidden), ou papel viewer (read_only)
           content:
             application/json:
               schema:
@@ -68,6 +578,7 @@ paths:
         e devolve os resultados ordenados da atualização mais recente para a mais antiga.
         O resultado não carrega o conteúdo da nota.
       parameters:
+        - $ref: '#/components/parameters/TenantHeader'
         - name: query
           in: query
           required: true
@@ -93,6 +604,8 @@ paths:
             maximum: 100
           description: Quantos resultados devolver. Valor fora da faixa é ajustado para o limite.
       responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '200':
           description: Resultados da busca, vazio quando nada casa
           content:
@@ -118,6 +631,7 @@ paths:
       summary: Recupera uma nota por ID
       description: Retorna a nota correspondente ao identificador fornecido.
       parameters:
+        - $ref: '#/components/parameters/TenantHeader'
         - name: id
           in: path
           required: true
@@ -125,6 +639,8 @@ paths:
             type: string
           description: Identificador único da nota
       responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '200':
           description: Nota encontrada
           content:
@@ -159,6 +675,7 @@ paths:
         - Sem flag `force`: retorna erro 409 Conflict
         - Com flag `force: true`: atualiza mesmo assim (sobrescrita)
       parameters:
+        - $ref: '#/components/parameters/TenantHeader'
         - name: id
           in: path
           required: true
@@ -172,6 +689,10 @@ paths:
             schema:
               $ref: '#/components/schemas/NoteUpdateRequest'
       responses:
+        '403':
+          $ref: '#/components/responses/ReadOnly'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '200':
           description: Nota atualizada com sucesso
           content:
@@ -208,6 +729,7 @@ paths:
       summary: Exclui uma nota
       description: Remove a nota identificada pelo ID.
       parameters:
+        - $ref: '#/components/parameters/TenantHeader'
         - name: id
           in: path
           required: true
@@ -215,6 +737,10 @@ paths:
             type: string
           description: Identificador único da nota
       responses:
+        '403':
+          $ref: '#/components/responses/ReadOnly'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '204':
           description: Nota excluída com sucesso
         '400':
@@ -237,6 +763,7 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
   /healthz:
     get:
+      security: []
       summary: Sonda de saúde do servidor
       description: Consulta o armazenamento e responde se o servidor está apto a atender.
       responses:
@@ -253,13 +780,227 @@ paths:
               schema:
                 $ref: '#/components/schemas/HealthResponse'
 components:
+  parameters:
+    TenantHeader:
+      name: X-Markupp-Tenant
+      in: header
+      required: false
+      description: >
+        Tenant em que a requisição age, um dos ids de GET /me/tenants. Dispensável para
+        quem tem um só. Sem vínculo com o tenant pedido: 403 tenant_forbidden; conta em
+        vários tenants sem o cabeçalho: 400 tenant_required; conta sem tenant: 403 no_tenant.
+      schema:
+        type: string
+    MemberID:
+      name: id
+      in: path
+      required: true
+      description: Id da conta do membro
+      schema:
+        type: string
+    InviteID:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  responses:
+    Unauthorized:
+      description: Token ausente, inválido ou expirado (unauthorized)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Forbidden:
+      description: O papel no tenant não é owner nem admin (forbidden)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    ReadOnly:
+      description: O papel viewer só lê as notas (read_only)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    MemberNotFound:
+      description: A conta não é membro deste tenant (member_not_found)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    LastOwner:
+      description: A mudança deixaria o tenant sem owner (last_owner)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    InviteNotFound:
+      description: Convite inexistente, de outra conta, vencido ou já respondido (invite_not_found)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
   schemas:
+    Role:
+      type: string
+      enum: [owner, admin, member, viewer]
+    TenantResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        role:
+          $ref: '#/components/schemas/Role'
+    MemberResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+        role:
+          $ref: '#/components/schemas/Role'
+        joined_at:
+          type: string
+          format: date-time
+    PendingInviteResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        tenant_id:
+          type: string
+        tenant_name:
+          type: string
+        role:
+          $ref: '#/components/schemas/Role'
+        expires_at:
+          type: string
+          format: date-time
+    AcceptInviteRequest:
+      type: object
+      required: [token, password]
+      properties:
+        token:
+          type: string
+        password:
+          type: string
+          maxLength: 72
+    EmailTokenRequest:
+      type: object
+      required: [token]
+      properties:
+        token:
+          type: string
+    PasswordForgotRequest:
+      type: object
+      required: [email]
+      properties:
+        email:
+          type: string
+    PasswordResetRequest:
+      type: object
+      required: [token, password]
+      properties:
+        token:
+          type: string
+        password:
+          type: string
+          maxLength: 72
+    InviteRequest:
+      type: object
+      required: [email, role]
+      properties:
+        email:
+          type: string
+          format: email
+        role:
+          $ref: '#/components/schemas/Role'
+    InviteResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+        role:
+          $ref: '#/components/schemas/Role'
+        invited_by:
+          type: string
+          description: Ausente quando quem convidou não existe mais
+        expires_at:
+          type: string
+          format: date-time
+        accepted_at:
+          type: string
+          format: date-time
+          description: Ausente enquanto o convite está pendente
+        created_at:
+          type: string
+          format: date-time
+    IssuedInviteResponse:
+      allOf:
+        - $ref: '#/components/schemas/InviteResponse'
+        - type: object
+          properties:
+            token:
+              type: string
+              description: >
+                Token do convite, devolvido só nesta resposta e só sem SMTP configurado.
+                Com SMTP, o campo não vem, e o token chega ao convidado por email
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          maxLength: 72
+    RefreshRequest:
+      type: object
+      required: [refresh_token]
+      properties:
+        refresh_token:
+          type: string
+    TokenPairResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+          description: JWT HS256 enviado como Bearer nas rotas protegidas
+        refresh_token:
+          type: string
+        expires_in:
+          type: integer
+          description: Validade do access token em segundos
+    UserResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
     NoteRequest:
       type: object
       required:
         - path
         - content
       properties:
+        vault_id:
+          type: string
+          description: Cofre de destino. Sem ele, a nota vai para o cofre mais antigo do usuário.
+          example: "3b241101-e2bb-4255-8caf-4136c566a962"
         path:
           type: string
           description: Caminho/identificador do arquivo de nota
@@ -305,6 +1046,10 @@ components:
           type: string
           description: Identificador único da nota
           example: "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+        vault_id:
+          type: string
+          description: Cofre da nota
+          example: "3b241101-e2bb-4255-8caf-4136c566a962"
         path:
           type: string
           description: Caminho/identificador do arquivo de nota
@@ -330,6 +1075,10 @@ components:
           type: string
           description: Identificador único da nota
           example: "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+        vault_id:
+          type: string
+          description: Cofre da nota
+          example: "3b241101-e2bb-4255-8caf-4136c566a962"
         path:
           type: string
           description: Caminho/identificador do arquivo de nota

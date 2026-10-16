@@ -2,7 +2,7 @@
 
 ## Status
 
-Substituída pelo ADR-0027
+Substituída pelo ADR-0027 e pelo ADR-0033
 
 ## Contexto
 

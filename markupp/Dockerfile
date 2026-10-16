@@ -9,9 +9,7 @@ RUN CGO_ENABLED=0 go build -ldflags="-s -w" -o /out/markupp ./cmd/markupp
 
 FROM alpine:3.20
 RUN apk add --no-cache ca-certificates \
-  && adduser -D -u 10001 markupp \
-  && mkdir -p /data && chown markupp:markupp /data
-WORKDIR /data
+  && adduser -D -u 10001 markupp
 COPY --from=builder /out/markupp /usr/local/bin/markupp
 USER markupp
 EXPOSE 8080

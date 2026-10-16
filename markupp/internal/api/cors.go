@@ -8,7 +8,7 @@ import (
 
 // exposedMethods são os métodos que a API atende, anunciados no preflight.
 var exposedMethods = strings.Join([]string{
-	http.MethodGet, http.MethodPost, http.MethodPut, http.MethodDelete, http.MethodOptions,
+	http.MethodGet, http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete, http.MethodOptions,
 }, ", ")
 
 const preflightMaxAge = "600"
@@ -41,7 +41,7 @@ func isPreflight(r *http.Request) bool {
 
 func writePreflight(w http.ResponseWriter) {
 	w.Header().Set("Access-Control-Allow-Methods", exposedMethods)
-	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, "+TenantHeader)
 	w.Header().Set("Access-Control-Max-Age", preflightMaxAge)
 	w.WriteHeader(http.StatusNoContent)
 }

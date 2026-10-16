@@ -1,14 +1,77 @@
+x-servidor: &servidor
+  build:
+    context: ./markupp
+    dockerfile: Dockerfile.dev
+  environment: &ambiente
+    MARKUPP_DATABASE_URL: postgres://markupp:${POSTGRES_PASSWORD:-markupp}@postgres:5432/markupp?sslmode=disable
+    MARKUPP_AUTH_SECRET: ${MARKUPP_AUTH_SECRET:?MARKUPP_AUTH_SECRET obrigatoria, execute make compose-env}
+    MARKUPP_AUTH_REGISTRATION_ENABLED: ${MARKUPP_AUTH_REGISTRATION_ENABLED:-false}
+  volumes:
+    - ./markupp:/src
+    - ${GO_MOD_CACHE:-go_mod_cache}:/go/pkg/mod
+
 services:
+  postgres:
+    image: postgres:17.9-alpine3.23
+    environment:
+      POSTGRES_USER: markupp
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-markupp}
+      POSTGRES_DB: markupp
+    volumes:
+      - ${POSTGRES_VOLUME:-postgres_data}:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U markupp -d markupp"]
+      interval: 2s
+      retries: 15
+
+  migrate:
+    <<: *servidor
+    command: ["go", "run", "-C", "/src", "./cmd/markupp", "migrate"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # O self-host não tem KEDA: o mesmo indexador roda em laço (ADR-0032). Erro do banco
+  # vai para o log e o laço tenta de novo no próximo intervalo.
+  indexer:
+    <<: *servidor
+    command: ["go", "run", "-C", "/src", "./cmd/markupp", "index-loop"]
+    restart: unless-stopped
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  mailpit:
+    image: axllent/mailpit:v1.31.4
+    ports:
+      - "${MAILPIT_PORT:-8025}:8025"
+
+  # O self-host não tem KEDA: o notificador fica em laço, como o indexador.
+  notifier:
+    <<: *servidor
+    environment:
+      <<: *ambiente
+      # O Mailpit recebe todo email de desenvolvimento; a caixa fica em http://localhost:8025
+      MARKUPP_SMTP_URL: smtp://mailpit:1025?tls=none
+      MARKUPP_SMTP_FROM: convites@markupp.local
+    command: ["go", "run", "-C", "/src", "./cmd/markupp", "notify-loop"]
+    restart: unless-stopped
+    depends_on:
+      mailpit:
+        condition: service_started
+      migrate:
+        condition: service_completed_successfully
+
   markupp:
-    build:
-      context: ./markupp
-      dockerfile: Dockerfile.dev
+    <<: *servidor
+    environment:
+      <<: *ambiente
+      MARKUPP_INVITE_BY_EMAIL: "true"
     ports:
       - "${MARKUPP_PORT:-8080}:8080"
-    volumes:
-      - ./markupp:/src
-      - ${DATA_VOLUME:-markupp_data}:/data
-      - ${GO_MOD_CACHE:-go_mod_cache}:/go/pkg/mod
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
 
   web:
     build:
@@ -26,6 +89,6 @@ services:
       - markupp
 
 volumes:
-  markupp_data:
+  postgres_data:
   go_mod_cache:
   bundle_cache:

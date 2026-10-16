@@ -1,0 +1,12 @@
+# Cluster da stack dev. Sem CNI nem kube-proxy padrão, porque o Cilium
+# substitui os dois, como no cluster de produção.
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+networking:
+  disableDefaultCNI: true
+  kubeProxyMode: none
+nodes:
+  - role: control-plane
+    extraPortMappings:
+      - containerPort: 443
+        hostPort: 8443

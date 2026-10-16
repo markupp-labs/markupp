@@ -7,7 +7,7 @@ import (
 
 // StorageProbe reporta se o armazenamento que sustenta a API responde.
 type StorageProbe interface {
-	PingContext(ctx context.Context) error
+	Ping(ctx context.Context) error
 }
 
 type healthResponse struct {
@@ -17,7 +17,7 @@ type healthResponse struct {
 // healthz atende a sonda do orquestrador consultando o armazenamento.
 func healthz(probe StorageProbe) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if err := probe.PingContext(r.Context()); err != nil {
+		if err := probe.Ping(r.Context()); err != nil {
 			writeJSON(w, http.StatusServiceUnavailable, healthResponse{Status: "unavailable"})
 			return
 		}

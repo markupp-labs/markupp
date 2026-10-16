@@ -39,6 +39,8 @@ aceita 'codigo gerado pelo sqlc nao conta' 90 \
   "$(printf 'internal/notes/notes.go:10.1,12.2 4 1\ninternal/storage/gen/notes.sql.go:1.1,99.2 80 0')"
 aceita 'fiacao do main nao conta' 90 \
   "$(printf 'internal/notes/notes.go:10.1,12.2 4 1\ncmd/markupp/main.go:1.1,50.2 40 0')"
+aceita 'apoio de teste do storage nao conta' 90 \
+  "$(printf 'internal/notes/notes.go:10.1,12.2 4 1\ninternal/storage/storagetest/postgres.go:1.1,80.2 30 0')"
 rejeita 'perfil sem nenhuma linha reprova' 90 ''
 
 if [ "$falhas" -ne 0 ]; then

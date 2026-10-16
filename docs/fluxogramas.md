@@ -13,7 +13,7 @@ flowchart TD
   B --> C{"Caminho livre no cofre?"}
   C -- não --> D(["Erro de caminho ocupado"])
   C -- sim --> E["Grava a nota e a linha de auditoria na mesma transação"]
-  E --> F["Enfileira a nota para indexação"]
+  E --> F["Avança o cursor de revisão"]
   F --> G(["Resposta ao cliente"])
   F --> H["Job do indexador determinístico sobe"]
   H --> I["Recalcula índice léxico, ligações e agrupamentos do cofre"]
@@ -93,16 +93,16 @@ flowchart TD
   A(["Um membro convida um usuário"]) --> B{"Quem convida é membro do cofre?"}
   B -- não --> C(["Convite recusado"])
   B -- sim --> D["Grava o convite e a linha de auditoria na mesma transação"]
-  D --> E["Enfileira a notificação"]
+  D --> E["Grava a notificação como pendente"]
   E --> F(["Resposta a quem convidou"])
   E --> G["Worker de notificação sobe"]
   G --> H{"Provedor de email configurado?"}
   H -- não --> I(["Convite fica pendente, sem email"])
-  H -- sim --> J["Envia pelo SES ou pelo SMTP configurado"]
+  H -- sim --> J["Gera o token e envia pelo SMTP configurado"]
   J --> K{"Entrega aceita?"}
   K -- não --> L["Repete com espera crescente"]
   L --> J
-  K -- sim --> M["Convidado abre o link e aceita"]
+  K -- sim --> M["Convidado usa o token do email e aceita"]
   M --> N(["Passa a ler e escrever as notas do cofre"])
 ```
 

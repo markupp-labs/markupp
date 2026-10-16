@@ -11,10 +11,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/api"
+	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/auth"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/notes"
 )
 
@@ -41,6 +43,8 @@ type fakeService struct {
 	listErr    error
 	listCalled bool
 
+	createdVaultID string
+
 	searchResult []notes.SearchResult
 	searchErr    error
 	searchArgs   struct {
@@ -51,7 +55,8 @@ type fakeService struct {
 	}
 }
 
-func (f *fakeService) Create(ctx context.Context, path, content string) (notes.Note, error) {
+func (f *fakeService) Create(ctx context.Context, vaultID, path, content string) (notes.Note, error) {
+	f.createdVaultID = vaultID
 	return f.note, f.err
 }
 
@@ -88,10 +93,20 @@ func (f *fakeService) SearchNotes(ctx context.Context, query string, offset, lim
 	return f.searchResult, f.searchErr
 }
 
+func newTestNotesRouter(svc api.NoteService) chi.Router {
+	validator := &fakeTokenValidator{
+		claims: auth.Claims{
+			Subject: "usuario-teste",
+		},
+	}
+	return api.NewRouter(api.RouterDeps{Notes: svc, Tenants: tenantDeTeste, Tokens: validator, Probe: &fakeProbe{}})
+}
+
 func doPost(t *testing.T, svc api.NoteService, body string) *httptest.ResponseRecorder {
 	t.Helper()
-	router := api.NewRouter(svc, &fakeProbe{}, nil)
+	router := newTestNotesRouter(svc)
 	req := httptest.NewRequest(http.MethodPost, "/notes", bytes.NewBufferString(body))
+	req.Header.Set("Authorization", "Bearer token-valido")
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
@@ -100,8 +115,9 @@ func doPost(t *testing.T, svc api.NoteService, body string) *httptest.ResponseRe
 
 func doPut(t *testing.T, svc api.NoteService, id, body string) *httptest.ResponseRecorder {
 	t.Helper()
-	router := api.NewRouter(svc, &fakeProbe{}, nil)
+	router := newTestNotesRouter(svc)
 	req := httptest.NewRequest(http.MethodPut, "/notes/"+id, bytes.NewBufferString(body))
+	req.Header.Set("Authorization", "Bearer token-valido")
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
@@ -110,8 +126,9 @@ func doPut(t *testing.T, svc api.NoteService, id, body string) *httptest.Respons
 
 func doDelete(t *testing.T, svc api.NoteService, id string) *httptest.ResponseRecorder {
 	t.Helper()
-	router := api.NewRouter(svc, &fakeProbe{}, nil)
+	router := newTestNotesRouter(svc)
 	req := httptest.NewRequest(http.MethodDelete, "/notes/"+id, nil)
+	req.Header.Set("Authorization", "Bearer token-valido")
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
 	return rec
@@ -119,8 +136,9 @@ func doDelete(t *testing.T, svc api.NoteService, id string) *httptest.ResponseRe
 
 func doGet(t *testing.T, svc api.NoteService, id string) *httptest.ResponseRecorder {
 	t.Helper()
-	router := api.NewRouter(svc, &fakeProbe{}, nil)
+	router := newTestNotesRouter(svc)
 	req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/notes/%s", id), nil)
+	req.Header.Set("Authorization", "Bearer token-valido")
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
 	return rec
@@ -128,8 +146,9 @@ func doGet(t *testing.T, svc api.NoteService, id string) *httptest.ResponseRecor
 
 func doListNotes(t *testing.T, svc api.NoteService) *httptest.ResponseRecorder {
 	t.Helper()
-	router := api.NewRouter(svc, &fakeProbe{}, nil)
+	router := newTestNotesRouter(svc)
 	req := httptest.NewRequest(http.MethodGet, "/notes", nil)
+	req.Header.Set("Authorization", "Bearer token-valido")
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
 	return rec
@@ -324,6 +343,10 @@ type stubRepository struct {
 	listErr    error
 }
 
+func (s *stubRepository) DefaultVaultID(ctx context.Context) (string, error) {
+	return "cofre-stub", nil
+}
+
 func (s *stubRepository) Save(ctx context.Context, n notes.Note) error {
 	return nil
 }
@@ -352,8 +375,9 @@ func TestGetNotes_IDNaoEncontrado_ComServiceReal_Retorna404(t *testing.T) {
 	repo := &stubRepository{getError: notes.ErrNotFound}
 	svc := notes.NewService(repo, 1000)
 
-	router := api.NewRouter(svc, &fakeProbe{}, nil)
+	router := newTestNotesRouter(svc)
 	req := httptest.NewRequest(http.MethodGet, "/notes/id-inexistente", nil)
+	req.Header.Set("Authorization", "Bearer token-valido")
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
 
@@ -368,8 +392,9 @@ func TestGetNotes_IdEmBranco_ComServiceReal_Retorna400(t *testing.T) {
 	repo := &stubRepository{}
 	svc := notes.NewService(repo, 1000)
 
-	router := api.NewRouter(svc, &fakeProbe{}, nil)
+	router := newTestNotesRouter(svc)
 	req := httptest.NewRequest(http.MethodGet, "/notes/%20", nil)
+	req.Header.Set("Authorization", "Bearer token-valido")
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
 
@@ -389,8 +414,9 @@ func TestGetNotes_IDValido_ComServiceReal_Retorna200(t *testing.T) {
 	repo := &stubRepository{noteToReturn: notaEsperada}
 	svc := notes.NewService(repo, 1000)
 
-	router := api.NewRouter(svc, &fakeProbe{}, nil)
+	router := newTestNotesRouter(svc)
 	req := httptest.NewRequest(http.MethodGet, "/notes/id-123", nil)
+	req.Header.Set("Authorization", "Bearer token-valido")
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
 
@@ -451,8 +477,9 @@ func TestSearchNotes_QueryValido_Retorna200(t *testing.T) {
 		{ID: "id-2", Path: "b.md", UpdatedAt: now},
 	}}
 
-	router := api.NewRouter(svc, &fakeProbe{}, nil)
+	router := newTestNotesRouter(svc)
 	req := httptest.NewRequest(http.MethodGet, "/notes/search?query=go&offset=1&limit=2", nil)
+	req.Header.Set("Authorization", "Bearer token-valido")
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
 
@@ -473,8 +500,9 @@ func TestSearchNotes_QueryValido_Retorna200(t *testing.T) {
 
 func TestSearchNotes_QueryObrigatoria_Retorna400(t *testing.T) {
 	svc := &fakeService{}
-	router := api.NewRouter(svc, &fakeProbe{}, nil)
+	router := newTestNotesRouter(svc)
 	req := httptest.NewRequest(http.MethodGet, "/notes/search", nil)
+	req.Header.Set("Authorization", "Bearer token-valido")
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
 
@@ -486,8 +514,9 @@ func TestSearchNotes_QueryObrigatoria_Retorna400(t *testing.T) {
 
 func TestSearchNotes_OffsetInvalido_Retorna400(t *testing.T) {
 	svc := &fakeService{}
-	router := api.NewRouter(svc, &fakeProbe{}, nil)
+	router := newTestNotesRouter(svc)
 	req := httptest.NewRequest(http.MethodGet, "/notes/search?query=go&offset=abc", nil)
+	req.Header.Set("Authorization", "Bearer token-valido")
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
 
@@ -495,4 +524,25 @@ func TestSearchNotes_OffsetInvalido_Retorna400(t *testing.T) {
 	var resp map[string]any
 	require.NoError(t, json.NewDecoder(rec.Body).Decode(&resp))
 	assert.Equal(t, "invalid_request", resp["error"])
+}
+
+func TestPostNotes_ComVaultID_RepassaOCofreEDevolveNaResposta(t *testing.T) {
+	svc := &fakeService{note: notes.Note{ID: "id-x", VaultID: "cofre-1", Path: "x.md"}}
+
+	rec := doPost(t, svc, `{"vault_id":"cofre-1","path":"x.md","content":"y"}`)
+
+	assert.Equal(t, http.StatusCreated, rec.Code)
+	assert.Equal(t, "cofre-1", svc.createdVaultID)
+	var resp map[string]any
+	require.NoError(t, json.NewDecoder(rec.Body).Decode(&resp))
+	assert.Equal(t, "cofre-1", resp["vault_id"])
+}
+
+func TestPostNotes_CofreSemAcesso_Retorna403(t *testing.T) {
+	svc := &fakeService{err: notes.ErrVaultForbidden}
+
+	rec := doPost(t, svc, `{"vault_id":"alheio","path":"x.md","content":"y"}`)
+
+	assert.Equal(t, http.StatusForbidden, rec.Code)
+	assert.Contains(t, rec.Body.String(), "vault_forbidden")
 }

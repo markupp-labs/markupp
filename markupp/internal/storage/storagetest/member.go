@@ -1,0 +1,42 @@
+package storagetest
+
+import (
+	"context"
+	"testing"
+
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/stretchr/testify/require"
+
+	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/identity"
+)
+
+type seedStatement struct {
+	sql  string
+	args []any
+}
+
+// SeedMember grava, com o papel dono do banco, o tenant do ator, o usuário, o vínculo
+// dele com o tenant no papel actor.Role, o cofre vaultID e o pertencimento ao cofre.
+func SeedMember(t *testing.T, pool *pgxpool.Pool, actor identity.Actor, vaultID string) context.Context {
+	t.Helper()
+	ctx := context.Background()
+	for _, s := range memberSeed(actor, vaultID) {
+		_, err := pool.Exec(ctx, s.sql, s.args...)
+		require.NoError(t, err, "semear membro %+v no cofre %q", actor, vaultID)
+	}
+	return identity.WithActor(ctx, actor)
+}
+
+func memberSeed(actor identity.Actor, vaultID string) []seedStatement {
+	return []seedStatement{
+		{`INSERT INTO tenants (id, name, created_at) VALUES ($1, $1, now()) ON CONFLICT DO NOTHING`, []any{actor.TenantID}},
+		{`INSERT INTO users (id, email, created_at, updated_at)
+		  VALUES ($1, $1 || '@markupp.dev', now(), now()) ON CONFLICT DO NOTHING`, []any{actor.UserID}},
+		{`INSERT INTO tenant_memberships (tenant_id, user_id, role, created_at)
+		  VALUES ($1, $2, $3, now()) ON CONFLICT DO NOTHING`, []any{actor.TenantID, actor.UserID, actor.Role}},
+		{`INSERT INTO vaults (id, tenant_id, name, created_at)
+		  VALUES ($1, $2, $1, clock_timestamp()) ON CONFLICT DO NOTHING`, []any{vaultID, actor.TenantID}},
+		{`INSERT INTO vault_members (vault_id, user_id, created_at)
+		  VALUES ($1, $2, clock_timestamp()) ON CONFLICT DO NOTHING`, []any{vaultID, actor.UserID}},
+	}
+}
