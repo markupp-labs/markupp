@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -82,7 +83,7 @@ func (o *PostgresInviteOutbox) inNotifierTx(ctx context.Context, fn func(q *gen.
 }
 
 func recordOutcome(ctx context.Context, q *gen.Queries, id string, outcome notify.Outcome) error {
-	lastError := pgtype.Text{String: outcome.Error, Valid: outcome.Error != ""}
+	lastError := pgtype.Text{String: storableText(outcome.Error), Valid: outcome.Error != ""}
 	switch {
 	case outcome.Sent:
 		return q.MarkNotificationSent(ctx, id)
@@ -90,4 +91,10 @@ func recordOutcome(ctx context.Context, q *gen.Queries, id string, outcome notif
 		return q.MarkNotificationFailed(ctx, gen.MarkNotificationFailedParams{ID: id, LastError: lastError})
 	}
 	return q.MarkNotificationRetry(ctx, gen.MarkNotificationRetryParams{ID: id, NextAttemptAt: outcome.RetryAt, LastError: lastError})
+}
+
+// storableText limpa o que o PostgreSQL recusa num TEXT: bytes fora do UTF-8, como a
+// resposta de um relay em Latin-1, e o byte nulo.
+func storableText(raw string) string {
+	return strings.ReplaceAll(strings.ToValidUTF8(raw, "\uFFFD"), "\x00", "")
 }
