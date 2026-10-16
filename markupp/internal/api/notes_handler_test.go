@@ -473,7 +473,7 @@ func TestListNotes_ServiceRetornaErro_Retorna500(t *testing.T) {
 func TestSearchNotes_QueryValido_Retorna200(t *testing.T) {
 	now := time.Now()
 	svc := &fakeService{searchResult: []notes.SearchResult{
-		{ID: "id-1", Path: "a.md", UpdatedAt: now, Snippet: "o <b>go</b> compila"},
+		{ID: "id-1", Path: "a.md", UpdatedAt: now, Snippet: "o \u0002go\u0003 compila"},
 		{ID: "id-2", Path: "b.md", UpdatedAt: now},
 	}}
 
@@ -492,7 +492,7 @@ func TestSearchNotes_QueryValido_Retorna200(t *testing.T) {
 	assert.Equal(t, "a.md", resp[0]["path"])
 	assert.Equal(t, "id-2", resp[1]["id"])
 	assert.Equal(t, "b.md", resp[1]["path"])
-	assert.Equal(t, "o <b>go</b> compila", resp[0]["snippet"])
+	assert.Equal(t, "o \u0002go\u0003 compila", resp[0]["snippet"])
 	assert.True(t, svc.searchArgs.called)
 	assert.Equal(t, "go", svc.searchArgs.query)
 	assert.Equal(t, 1, svc.searchArgs.offset)

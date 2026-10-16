@@ -93,7 +93,19 @@ func TestSearchNotes_DevolveTrechoComOTermoMarcado(t *testing.T) {
 
 	require.NoError(t, err)
 	require.Len(t, achadas, 1)
-	assert.Contains(t, achadas[0].Snippet, "<b>kubernetes</b>")
+	assert.Contains(t, achadas[0].Snippet, "\u0002kubernetes\u0003")
+}
+
+func TestSearchNotes_TrechoSemHTML_DevolveTextoCruComMarcadoresNeutros(t *testing.T) {
+	repo := cofreBuscavel(t, "simple", notaComCaminho("n1", "n1.md", "<script>alert(1)</script> kubernetes"))
+
+	achadas, err := repo.SearchNotes(ctxDeTeste, "kubernetes", 0, 10)
+
+	require.NoError(t, err)
+	require.Len(t, achadas, 1)
+	assert.Contains(t, achadas[0].Snippet, "\u0002kubernetes\u0003")
+	assert.NotContains(t, achadas[0].Snippet, "<b>", "o servidor nao gera tag")
+	assert.NotContains(t, achadas[0].Snippet, "</b>", "o servidor nao gera tag")
 }
 
 func TestSearchNotes_PorcentoESublinhado_NaoSaoCuringa(t *testing.T) {
