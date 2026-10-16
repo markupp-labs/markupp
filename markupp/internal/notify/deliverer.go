@@ -13,8 +13,8 @@ import (
 // para devolver à fila a notificação de um notificador que caiu no meio do envio.
 const claimLease = 5 * time.Minute
 
-// Deliverer entrega o convite: gera o token, grava só o hash dele no convite e
-// envia o token por email.
+// Deliverer entrega as notificações: gera o token, grava só o hash dele no pedido
+// (convite ou token da conta) e envia o token por email.
 type Deliverer struct {
 	outbox   Outbox
 	mailer   Mailer
@@ -35,7 +35,7 @@ func NewDeliverer(outbox Outbox, mailer Mailer, from string, newToken func() (st
 func (d *Deliverer) DeliverNext(ctx context.Context) (bool, error) {
 	token, err := d.newToken()
 	if err != nil {
-		return false, fmt.Errorf("gerar token do convite: %w", err)
+		return false, fmt.Errorf("gerar token da notificacao: %w", err)
 	}
 	claim, found, err := d.outbox.ClaimNextDue(ctx, auth.HashOpaqueToken(token), claimLease)
 	if err != nil || !found {
@@ -47,13 +47,17 @@ func (d *Deliverer) DeliverNext(ctx context.Context) (bool, error) {
 }
 
 func (d *Deliverer) attempt(ctx context.Context, claim Claim, token string) Outcome {
+	compose, err := composerFor(claim.Kind)
+	if err != nil {
+		return Outcome{GiveUp: true, Error: err.Error()}
+	}
 	if !claim.Pending {
-		return Outcome{GiveUp: true, Error: "convite respondido, revogado, vencido ou sem quem convidou no papel"}
+		return Outcome{GiveUp: true, Error: fmt.Sprintf("pedido %s %q nao esta mais aberto", claim.Kind, claim.NotificationID)}
 	}
 	if claim.Attempt > maxAttempts {
 		return Outcome{GiveUp: true, Error: fmt.Sprintf("tentativa %d, esperado no maximo %d", claim.Attempt, maxAttempts)}
 	}
-	if err := d.mailer.Send(ctx, InviteMessage(claim.Details, token, d.from)); err != nil {
+	if err := d.mailer.Send(ctx, compose(claim.Details, token, d.from)); err != nil {
 		return d.failure(claim.Attempt, err)
 	}
 	return Outcome{Sent: true}
@@ -62,4 +66,16 @@ func (d *Deliverer) attempt(ctx context.Context, claim Claim, token string) Outc
 func (d *Deliverer) failure(attempts int, err error) Outcome {
 	retryAt, retry := NextAttempt(attempts, d.clock())
 	return Outcome{GiveUp: !retry, RetryAt: retryAt, Error: err.Error()}
+}
+
+func composerFor(kind Kind) (func(TokenDetails, string, string) Message, error) {
+	switch kind {
+	case KindInvite:
+		return InviteMessage, nil
+	case KindEmailVerification:
+		return VerifyEmailMessage, nil
+	case KindPasswordReset:
+		return ResetPasswordMessage, nil
+	}
+	return nil, fmt.Errorf("notificacao do tipo %q, esperado %q, %q ou %q", kind, KindInvite, KindEmailVerification, KindPasswordReset)
 }

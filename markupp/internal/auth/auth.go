@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"errors"
+	"strings"
 	"time"
 )
 
@@ -92,6 +93,15 @@ type CreateAccountParams struct {
 	InitialVaultName        string
 	AllowMemberRegistration bool
 	AuditEventID            string
+	// SendVerification enfileira o email de verificação quando a conta nasce sem email
+	// provado, o que só acontece no auto-registro.
+	SendVerification bool
+}
+
+// normalizeEmail é a forma do email que o banco guarda e compara: sem espaço nas pontas
+// e em minúsculas.
+func normalizeEmail(email string) string {
+	return strings.ToLower(strings.TrimSpace(email))
 }
 
 // InitialVaultName é o nome do cofre que toda conta ganha ao ser criada.

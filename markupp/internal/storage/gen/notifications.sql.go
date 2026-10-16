@@ -22,13 +22,14 @@ WHERE id = (
     LIMIT 1
     FOR UPDATE SKIP LOCKED
 )
-RETURNING id, invite_id, attempts
+RETURNING id, attempts, kind, COALESCE(invite_id, account_token_id)::text AS target_id
 `
 
 type ClaimDueNotificationRow struct {
 	ID       string
-	InviteID string
 	Attempts int32
+	Kind     string
+	TargetID string
 }
 
 // Reserva a próxima notificação vencida por lease_seconds e conta a tentativa já
@@ -37,7 +38,12 @@ type ClaimDueNotificationRow struct {
 func (q *Queries) ClaimDueNotification(ctx context.Context, leaseSeconds int32) (ClaimDueNotificationRow, error) {
 	row := q.db.QueryRow(ctx, claimDueNotification, leaseSeconds)
 	var i ClaimDueNotificationRow
-	err := row.Scan(&i.ID, &i.InviteID, &i.Attempts)
+	err := row.Scan(
+		&i.ID,
+		&i.Attempts,
+		&i.Kind,
+		&i.TargetID,
+	)
 	return i, err
 }
 
@@ -47,8 +53,9 @@ INSERT INTO notifications (invite_id) VALUES ($1)
 `
 
 // A API só enfileira, no tenant do ator. O serviço de notificação trabalha no papel
-// markupp_notifier, que enxerga a fila de todos os tenants e nenhum convite.
-func (q *Queries) EnqueueInviteNotification(ctx context.Context, inviteID string) error {
+// markupp_notifier, que enxerga a fila de todos os tenants e nenhum convite nem token
+// da conta: só os troca pelas funções do banco.
+func (q *Queries) EnqueueInviteNotification(ctx context.Context, inviteID pgtype.Text) error {
 	_, err := q.db.Exec(ctx, enqueueInviteNotification, inviteID)
 	return err
 }
@@ -102,6 +109,49 @@ UPDATE notifications SET sent_at = now() WHERE id = $1
 func (q *Queries) MarkNotificationSent(ctx context.Context, id string) error {
 	_, err := q.db.Exec(ctx, markNotificationSent, id)
 	return err
+}
+
+const reissueAccountToken = `-- name: ReissueAccountToken :many
+SELECT account_email::text, token_expires_at::timestamptz
+FROM markupp_reissue_account_token($1::text, $2::text,
+                                   $3::text, $4::interval)
+`
+
+type ReissueAccountTokenParams struct {
+	ID        string
+	Purpose   string
+	TokenHash string
+	Ttl       pgtype.Interval
+}
+
+type ReissueAccountTokenRow struct {
+	AccountEmail   string
+	TokenExpiresAt time.Time
+}
+
+func (q *Queries) ReissueAccountToken(ctx context.Context, arg ReissueAccountTokenParams) ([]ReissueAccountTokenRow, error) {
+	rows, err := q.db.Query(ctx, reissueAccountToken,
+		arg.ID,
+		arg.Purpose,
+		arg.TokenHash,
+		arg.Ttl,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ReissueAccountTokenRow
+	for rows.Next() {
+		var i ReissueAccountTokenRow
+		if err := rows.Scan(&i.AccountEmail, &i.TokenExpiresAt); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const reissueInviteToken = `-- name: ReissueInviteToken :many

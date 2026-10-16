@@ -10,6 +10,7 @@ type RouterDeps struct {
 	Notes          NoteService
 	Auth           AuthService
 	Admin          AdminService
+	AccountEmail   AccountEmailService
 	Tokens         TokenValidator
 	Tenants        TenantResolver
 	Probe          StorageProbe
@@ -34,6 +35,9 @@ func NewRouter(d RouterDeps) chi.Router {
 	}
 	if d.Admin != nil {
 		mountAdminRoutes(r, d.Admin, d.Tokens, d.Tenants)
+	}
+	if d.AccountEmail != nil {
+		mountAccountEmailRoutes(r, d.AccountEmail, d.Tokens)
 	}
 	return r
 }

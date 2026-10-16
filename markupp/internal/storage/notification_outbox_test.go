@@ -35,14 +35,14 @@ func conviteComEmail(t *testing.T, db *pgxpool.Pool, id, email string) {
 // do convite por hash.
 func reservaProxima(t *testing.T, db *pgxpool.Pool, hash string) (notify.Claim, bool) {
 	t.Helper()
-	claim, found, err := storage.NewPostgresInviteOutbox(db).ClaimNextDue(context.Background(), hash, time.Hour)
+	claim, found, err := storage.NewPostgresNotificationOutbox(db).ClaimNextDue(context.Background(), hash, time.Hour)
 	require.NoError(t, err)
 	return claim, found
 }
 
 func gravaResultado(t *testing.T, db *pgxpool.Pool, claim notify.Claim, outcome notify.Outcome) {
 	t.Helper()
-	require.NoError(t, storage.NewPostgresInviteOutbox(db).Record(context.Background(), claim.NotificationID, outcome))
+	require.NoError(t, storage.NewPostgresNotificationOutbox(db).Record(context.Background(), claim.NotificationID, outcome))
 }
 
 func venceAsNotificacoes(t *testing.T, db *pgxpool.Pool) {
@@ -82,10 +82,11 @@ func TestInviteOutbox_Reserva_TrocaOHashJaGravadoEDevolveOsDetalhes(t *testing.T
 	claim, found := reservaProxima(t, db, "hash-do-envio")
 
 	require.True(t, found)
+	assert.Equal(t, notify.KindInvite, claim.Kind)
 	assert.Equal(t, 1, claim.Attempt)
 	require.True(t, claim.Pending)
 	claim.Details.ExpiresAt = claim.Details.ExpiresAt.UTC()
-	assert.Equal(t, notify.InviteDetails{
+	assert.Equal(t, notify.TokenDetails{
 		Email: "nova@markupp.dev", Role: "member", TenantName: "t1",
 		InviterEmail: "admin-a@markupp.dev", ExpiresAt: validadeDoConvite,
 	}, claim.Details)
@@ -138,7 +139,7 @@ func TestInviteOutbox_ErroComBytesForaDoUTF8_GravaMesmoAssim(t *testing.T) {
 	conviteComEmail(t, db, "c1", "nova@markupp.dev")
 	claim, _ := reservaProxima(t, db, "h1")
 
-	err := storage.NewPostgresInviteOutbox(db).Record(context.Background(), claim.NotificationID,
+	err := storage.NewPostgresNotificationOutbox(db).Record(context.Background(), claim.NotificationID,
 		notify.Outcome{RetryAt: time.Now().Add(time.Hour), Error: "550 Usu\xe1rio inexistente\x00"})
 
 	require.NoError(t, err, "a resposta do relay em Latin-1 nao pode travar a fila")

@@ -77,7 +77,7 @@ func enqueueInvite(ctx context.Context, q *gen.Queries, inviteID string, byEmail
 	if !byEmail {
 		return nil
 	}
-	if err := q.EnqueueInviteNotification(ctx, inviteID); err != nil {
+	if err := q.EnqueueInviteNotification(ctx, pgtype.Text{String: inviteID, Valid: true}); err != nil {
 		return fmt.Errorf("enfileirar email do convite %q: %w", inviteID, err)
 	}
 	return nil

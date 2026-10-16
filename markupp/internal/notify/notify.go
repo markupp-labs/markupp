@@ -22,8 +22,19 @@ type Mailer interface {
 	Send(ctx context.Context, msg Message) error
 }
 
-// InviteDetails é o que o email do convite mostra.
-type InviteDetails struct {
+// Kind é o tipo da notificação, que decide a mensagem e o pedido cujo token ela leva.
+type Kind string
+
+// Tipos de notificação.
+const (
+	KindInvite            Kind = "invite"
+	KindEmailVerification Kind = "email_verification"
+	KindPasswordReset     Kind = "password_reset"
+)
+
+// TokenDetails é o que o email mostra junto do token. Os campos de convite só vêm
+// preenchidos na notificação de convite.
+type TokenDetails struct {
 	Email        string
 	Role         string
 	TenantName   string
@@ -32,14 +43,16 @@ type InviteDetails struct {
 }
 
 // Claim é a notificação reservada para entrega, com o hash do token novo já gravado
-// no convite.
+// no pedido dela: o convite ou o token da conta.
 type Claim struct {
 	NotificationID string
+	Kind           Kind
 	// Attempt é o número desta tentativa, contada já na reserva.
 	Attempt int
-	Details InviteDetails
-	// Pending é falso quando o convite já foi respondido, revogado, venceu ou perdeu
-	// quem o convidou com o papel dele: nada a enviar, e o hash fica como estava.
+	Details TokenDetails
+	// Pending é falso quando o pedido não está mais aberto: o convite respondido,
+	// revogado, vencido ou sem quem convidou no papel, ou o token da conta usado,
+	// trocado por um reenvio ou de email já verificado. Nada a enviar, e o hash fica.
 	Pending bool
 }
 
@@ -62,12 +75,37 @@ type Outbox interface {
 }
 
 // InviteMessage monta o email que leva o token do convite.
-func InviteMessage(d InviteDetails, token, from string) Message {
+func InviteMessage(d TokenDetails, token, from string) Message {
 	body := fmt.Sprintf("%s convidou você para %s no markupp, com o papel %s.\n\n"+
 		"Token do convite:\n%s\n\n"+
 		"Use o token no cliente do markupp para aceitar. O convite vale até %s.\n",
-		d.InviterEmail, d.TenantName, d.Role, token, d.ExpiresAt.UTC().Format("2006-01-02 15:04 MST"))
+		d.InviterEmail, d.TenantName, d.Role, token, validUntil(d.ExpiresAt))
 	return Message{From: from, To: d.Email, Subject: "Convite para " + d.TenantName + " no markupp", Body: body}
+}
+
+// VerifyEmailMessage monta o email que leva o token de verificação da conta.
+func VerifyEmailMessage(d TokenDetails, token, from string) Message {
+	body := fmt.Sprintf("Confirme que este email é seu para receber convites no markupp.\n\n"+
+		"Token de verificação:\n%s\n\n"+
+		"Use o token no cliente do markupp, logado na conta que você criou. Ele vale até %s.\n\n"+
+		"Se não foi você que criou a conta, ignore este email e não use o token.\n",
+		token, validUntil(d.ExpiresAt))
+	return Message{From: from, To: d.Email, Subject: "Confirme seu email no markupp", Body: body}
+}
+
+// ResetPasswordMessage monta o email que leva o token de troca de senha.
+func ResetPasswordMessage(d TokenDetails, token, from string) Message {
+	body := fmt.Sprintf("Alguém pediu a troca da senha da sua conta no markupp.\n\n"+
+		"Token de troca de senha:\n%s\n\n"+
+		"Use o token no cliente do markupp. Ele vale até %s.\n\n"+
+		"Se não foi você, ignore este email: a senha só muda com o token.\n",
+		token, validUntil(d.ExpiresAt))
+	return Message{From: from, To: d.Email, Subject: "Troca de senha no markupp", Body: body}
+}
+
+// validUntil mostra a validade com hora e fuso, em UTC.
+func validUntil(t time.Time) string {
+	return t.UTC().Format("2006-01-02 15:04 MST")
 }
 
 const (

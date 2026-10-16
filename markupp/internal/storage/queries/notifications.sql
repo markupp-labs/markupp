@@ -1,5 +1,6 @@
 -- A API só enfileira, no tenant do ator. O serviço de notificação trabalha no papel
--- markupp_notifier, que enxerga a fila de todos os tenants e nenhum convite.
+-- markupp_notifier, que enxerga a fila de todos os tenants e nenhum convite nem token
+-- da conta: só os troca pelas funções do banco.
 
 -- name: EnqueueInviteNotification :exec
 INSERT INTO notifications (invite_id) VALUES ($1);
@@ -20,12 +21,17 @@ WHERE id = (
     LIMIT 1
     FOR UPDATE SKIP LOCKED
 )
-RETURNING id, invite_id, attempts;
+RETURNING id, attempts, kind, COALESCE(invite_id, account_token_id)::text AS target_id;
 
 -- name: ReissueInviteToken :many
 SELECT invite_email::text, invite_role::text, tenant_name::text, inviter_email::text,
        invite_expires_at::timestamptz
 FROM markupp_reissue_invite_token(sqlc.arg(invite_id)::text, sqlc.arg(token_hash)::text);
+
+-- name: ReissueAccountToken :many
+SELECT account_email::text, token_expires_at::timestamptz
+FROM markupp_reissue_account_token(sqlc.arg(id)::text, sqlc.arg(purpose)::text,
+                                   sqlc.arg(token_hash)::text, sqlc.arg(ttl)::interval);
 
 -- name: MarkNotificationSent :exec
 UPDATE notifications SET sent_at = now() WHERE id = $1;

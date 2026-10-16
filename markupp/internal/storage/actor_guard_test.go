@@ -16,11 +16,12 @@ import (
 // markupp_indexer, o notificador trabalha no papel markupp_notifier, e os outros
 // abrem o pool, migram e montam a transação do ator.
 var arquivosForaDoAtor = map[string]bool{
-	"auth.go":          true,
-	"actor_tx.go":      true,
-	"postgres.go":      true,
-	"vault_indexer.go": true,
-	"invite_outbox.go": true,
+	"auth.go":                true,
+	"actor_tx.go":            true,
+	"postgres.go":            true,
+	"vault_indexer.go":       true,
+	"notification_outbox.go": true,
+	"account_email.go":       true,
 }
 
 var acessoDiretoAoPool = regexp.MustCompile(`gen\.New\(|\binTx\(|pgx\.BeginFunc|pool\.\w+\(`)

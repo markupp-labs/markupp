@@ -106,7 +106,7 @@ func deliverNotifications(ctx context.Context, logger *slog.Logger, cfg config.C
 		return fmt.Errorf("abrir banco: %w", err)
 	}
 	defer pool.Close()
-	deliverer := notify.NewDeliverer(storage.NewPostgresInviteOutbox(pool), mailer, cfg.SMTPFrom, auth.NewOpaqueToken, time.Now)
+	deliverer := notify.NewDeliverer(storage.NewPostgresNotificationOutbox(pool), mailer, cfg.SMTPFrom, auth.NewOpaqueToken, time.Now)
 	logger.Info("notificador em laco", "intervalo", notifyInterval.String())
 	return drain.Run(ctx, deliverer.DeliverNext, drain.WaitInterval(notifyInterval))
 }
@@ -169,18 +169,23 @@ func serve(ctx context.Context, logger *slog.Logger, cfg config.Config) error {
 	}
 	defer pool.Close()
 
-	server := newServer(cfg.Port, newHandler(cfg, pool))
+	server := newServer(cfg.Port, newHandler(cfg, pool, logger))
 	logger.Info("servidor subindo", "addr", server.Addr)
 	return server.ListenAndServe()
 }
 
-func newHandler(cfg config.Config, pool *pgxpool.Pool) http.Handler {
+func newHandler(cfg config.Config, pool *pgxpool.Pool, logger *slog.Logger) http.Handler {
 	repo := storage.NewPostgresNotesRepository(pool)
 	notesSvc := notes.NewService(repo, cfg.MaxNoteSize)
 	authSvc, codec := newAuthService(cfg, pool)
-	adminSvc := auth.NewAdminService(storage.NewPostgresAdminRepository(pool), time.Now, cfg.InviteByEmail)
+	// A API não recebe o SMTP: o booleano diz que há quem entregue os emails dela.
+	emailEnabled := cfg.InviteByEmail
+	adminSvc := auth.NewAdminService(storage.NewPostgresAdminRepository(pool), time.Now, emailEnabled)
+	accountEmail := auth.NewAccountEmailService(storage.NewPostgresAccountEmailRepository(pool), auth.NewBcryptHasher(), time.Now, auth.AccountEmailOptions{
+		EmailEnabled: emailEnabled, LocalEnabled: cfg.LocalAuthEnabled, Background: runDetached, Logger: logger,
+	})
 	return api.NewRouter(api.RouterDeps{
-		Notes: notesSvc, Auth: authSvc, Admin: adminSvc,
+		Notes: notesSvc, Auth: authSvc, Admin: adminSvc, AccountEmail: accountEmail,
 		Tokens: codec, Tenants: authSvc, Probe: pool, AllowedOrigins: cfg.AllowedOrigins,
 	})
 }
@@ -194,6 +199,7 @@ func newAuthService(cfg config.Config, pool *pgxpool.Pool) (*auth.Service, api.T
 		RegistrationEnabled:     cfg.AuthRegistrationEnabled,
 		LocalEnabled:            cfg.LocalAuthEnabled,
 		RefreshExpirationPeriod: time.Duration(cfg.RefreshExpirationDays) * 24 * time.Hour,
+		EmailEnabled:            cfg.InviteByEmail,
 	}
 	return auth.NewService(authRepo, codec, hasher, authCfg, time.Now), codec
 }
@@ -208,3 +214,7 @@ func newServer(port int, handler http.Handler) *http.Server {
 		IdleTimeout:       idleTimeout,
 	}
 }
+
+// runDetached roda f fora da requisição, para o pedido de troca de senha responder
+// antes de gravar.
+func runDetached(f func()) { go f() }

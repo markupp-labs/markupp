@@ -46,6 +46,7 @@ type fakeRepository struct {
 	refreshTokens map[string]auth.RefreshTokenRecord
 	auditEvents   []auth.AuditEventRecord
 	createdVaults []string
+	lastAccount   auth.CreateAccountParams
 }
 
 func newFakeRepository(clock func() time.Time) *fakeRepository {
@@ -66,6 +67,7 @@ func (f *fakeRepository) now() time.Time {
 }
 
 func (f *fakeRepository) CreateAccountTx(ctx context.Context, p auth.CreateAccountParams) (auth.User, error) {
+	f.lastAccount = p
 	for _, u := range f.users {
 		if u.Email == p.User.Email {
 			return auth.User{}, auth.ErrUserAlreadyExists
@@ -742,4 +744,31 @@ func TestLoginLocal_CadastroConcorrenteDoMesmoEmail_RecusaComoCredencialInvalida
 	_, err := svc.LoginLocal(context.Background(), "corrida@markupp.dev", "senha")
 
 	require.ErrorIs(t, err, auth.ErrInvalidCredentials)
+}
+
+func servicoComEmail(repo auth.Repository, emailEnabled bool) *auth.Service {
+	clock := defaultClock()
+	cfg := auth.ServiceConfig{
+		DefaultTenantID: "default", RegistrationEnabled: true, LocalEnabled: true,
+		RefreshExpirationPeriod: 7 * 24 * time.Hour, EmailEnabled: emailEnabled,
+	}
+	return auth.NewService(repo, auth.NewTokenCodec("segredo-para-testes-de-servico", 15*time.Minute, clock), &fakeHasher{}, cfg, clock)
+}
+
+func TestService_AutoRegistroComSMTP_PedeAVerificacaoDoEmail(t *testing.T) {
+	repo := newFakeRepository(defaultClock())
+
+	_, err := servicoComEmail(repo, true).LoginLocal(context.Background(), "nova@markupp.dev", "senhaForte123")
+
+	require.NoError(t, err)
+	assert.True(t, repo.lastAccount.SendVerification)
+}
+
+func TestService_AutoRegistroSemSMTP_NaoPedeVerificacao(t *testing.T) {
+	repo := newFakeRepository(defaultClock())
+
+	_, err := servicoComEmail(repo, false).LoginLocal(context.Background(), "nova@markupp.dev", "senhaForte123")
+
+	require.NoError(t, err)
+	assert.False(t, repo.lastAccount.SendVerification)
 }

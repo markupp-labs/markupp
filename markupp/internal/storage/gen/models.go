@@ -10,6 +10,16 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type AccountToken struct {
+	ID        string
+	UserID    string
+	Purpose   string
+	TokenHash pgtype.Text
+	ExpiresAt pgtype.Timestamptz
+	UsedAt    pgtype.Timestamptz
+	CreatedAt time.Time
+}
+
 type AuditEvent struct {
 	ID         string
 	TenantID   pgtype.Text
@@ -41,15 +51,17 @@ type NoteSearchIndex struct {
 }
 
 type Notification struct {
-	ID            string
-	TenantID      string
-	InviteID      string
-	Attempts      int32
-	NextAttemptAt time.Time
-	SentAt        pgtype.Timestamptz
-	FailedAt      pgtype.Timestamptz
-	LastError     pgtype.Text
-	CreatedAt     time.Time
+	ID             string
+	TenantID       pgtype.Text
+	InviteID       pgtype.Text
+	Attempts       int32
+	NextAttemptAt  time.Time
+	SentAt         pgtype.Timestamptz
+	FailedAt       pgtype.Timestamptz
+	LastError      pgtype.Text
+	CreatedAt      time.Time
+	Kind           string
+	AccountTokenID pgtype.Text
 }
 
 type RefreshToken struct {
