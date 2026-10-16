@@ -128,3 +128,15 @@ func TestRateLimit_RotaForaDaLista_NaoLimita(t *testing.T) {
 		assert.NotEqual(t, http.StatusTooManyRequests, rec.Code)
 	}
 }
+
+func TestRateLimit_MesmoEmailComLixoDepoisDoJSON_Responde429(t *testing.T) {
+	router := newLimitedRouter(&fakeRateClock{current: time.Unix(1_000_000, 0)})
+	corpo := `{"email":"ana@markupp.dev","password":"x"}x`
+	for i := 0; i < limiteDeTeste; i++ {
+		limitedPost(router, "/auth/login", "10.0.0."+strconv.Itoa(i+1)+":1234", corpo)
+	}
+
+	rec := limitedPost(router, "/auth/login", "10.0.0.99:1234", corpo)
+
+	assert.Equal(t, http.StatusTooManyRequests, rec.Code)
+}
