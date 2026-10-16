@@ -49,6 +49,14 @@ type Config struct {
 	PanelURL string
 	// OAuthResources são os servidores de recursos que aceitam os tokens do OAuth.
 	OAuthResources []OAuthResource
+	// OAuthAccessMinutes é a validade do access token emitido pelo OAuth.
+	OAuthAccessMinutes int
+	// OAuthRefreshDays é a validade do refresh token emitido pelo OAuth.
+	OAuthRefreshDays int
+	// OAuthRequestMinutes é quanto o pedido de autorização espera o consentimento.
+	OAuthRequestMinutes int
+	// OAuthCodeSeconds é a validade do authorization code até a troca pelo token.
+	OAuthCodeSeconds int
 }
 
 // Default devolve a configuração usada nas variáveis não definidas.
@@ -64,6 +72,10 @@ func Default() Config {
 		LocalAuthEnabled:        true,
 		SearchConfig:            "simple",
 		IndexInterval:           30 * time.Second,
+		OAuthAccessMinutes:      60,
+		OAuthRefreshDays:        30,
+		OAuthRequestMinutes:     10,
+		OAuthCodeSeconds:        60,
 	}
 }
 

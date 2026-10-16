@@ -53,8 +53,36 @@ func loadOAuthSettings(lookup LookupFunc, cfg *Config) error {
 	if err = loadPanelURL(lookup, cfg); err != nil {
 		return err
 	}
-	cfg.OAuthResources, err = readOAuthResources(lookup)
-	return err
+	if cfg.OAuthResources, err = readOAuthResources(lookup); err != nil {
+		return err
+	}
+	return loadOAuthDurations(lookup, cfg)
+}
+
+// oauthDuration liga uma variável de duração do OAuth à sua faixa e ao campo da Config.
+type oauthDuration struct {
+	key             string
+	lowest, highest int64
+	target          *int
+}
+
+// loadOAuthDurations lê as validades do OAuth; variável ausente mantém o padrão.
+func loadOAuthDurations(lookup LookupFunc, cfg *Config) error {
+	durations := []oauthDuration{
+		{"MARKUPP_OAUTH_ACCESS_MINUTES", 1, 1440, &cfg.OAuthAccessMinutes},
+		{"MARKUPP_OAUTH_REFRESH_DAYS", 1, 365, &cfg.OAuthRefreshDays},
+		{"MARKUPP_OAUTH_REQUEST_MINUTES", 1, 60, &cfg.OAuthRequestMinutes},
+		{"MARKUPP_OAUTH_CODE_SECONDS", 10, 600, &cfg.OAuthCodeSeconds},
+	}
+	for _, duration := range durations {
+		value := int64(*duration.target)
+		faixa := fmt.Sprintf("de %d a %d", duration.lowest, duration.highest)
+		if err := readBounded(lookup, duration.key, duration.lowest, duration.highest, faixa, &value); err != nil {
+			return err
+		}
+		*duration.target = int(value)
+	}
+	return nil
 }
 
 // loadPanelURL exige o painel, para onde o authorization server manda o login e o consentimento.
