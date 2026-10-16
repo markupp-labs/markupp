@@ -36,7 +36,7 @@ type NoteSearchIndex struct {
 	TenantID string
 	VaultID  string
 	Revision int64
-	Document interface{}
+	Document string
 }
 
 type RefreshToken struct {
