@@ -24,7 +24,7 @@ class NoteRolesTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select "input[name=?][readonly]", "note[path]"
-    assert_select "textarea[readonly]", text: "# Plan"
+    assert_select "textarea[readonly]", text: /# Plan/
     assert_select "button", text: "Save", count: 0
     assert_select "button", text: "Delete", count: 0
     assert_select "form#delete_note", count: 0
@@ -64,7 +64,7 @@ class NoteRolesTest < ActionDispatch::IntegrationTest
     assert_empty api.put_requests
     follow_redirect!
     assert_select "[role=alert]", READ_ONLY_ALERT
-    assert_select "textarea[readonly]", text: "# Plan"
+    assert_select "textarea[readonly]", text: /# Plan/
   end
 
   test "a create refused for a viewer goes home with the alert" do

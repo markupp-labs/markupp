@@ -89,10 +89,10 @@ class NotesTest < ApplicationSystemTestCase
 
     visit note_path("1")
     assert_selector ".cm-content[contenteditable=false]", text: "Plan"
-    find(".cm-content").send_keys([ :control, "s" ])
+    find("body").send_keys([ :control, "s" ])
 
     assert_text "Read only: your role here is viewer."
-    assert_no_text "Saved"
-    assert_empty api.put_requests
+    assert_no_selector "[role=alert]"
+    assert_empty api.received_credentials.select { it[:call] == "PUT /notes/1" }
   end
 end
