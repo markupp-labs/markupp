@@ -342,3 +342,23 @@ func TestLoad_RemetenteIlegivel_RetornaErroComOValor(t *testing.T) {
 		assert.Contains(t, err.Error(), "MARKUPP_SMTP_FROM", valor)
 	}
 }
+
+func TestLoad_ConvitePorEmail_LeOBooleanoSemPrecisarDoSMTP(t *testing.T) {
+	env := fakeEnv{"MARKUPP_DATABASE_URL": urlDeTeste, "MARKUPP_AUTH_SECRET": segredoDeTesteValido, "MARKUPP_INVITE_BY_EMAIL": "true"}
+
+	cfg, err := config.Load(env.Lookup)
+
+	require.NoError(t, err)
+	assert.True(t, cfg.InviteByEmail, "a API so precisa saber que o convite sai por email, sem a senha do SMTP")
+	assert.False(t, config.Default().InviteByEmail)
+}
+
+func TestLoad_ConvitePorEmailInvalido_RetornaErroComOValor(t *testing.T) {
+	env := fakeEnv{"MARKUPP_DATABASE_URL": urlDeTeste, "MARKUPP_AUTH_SECRET": segredoDeTesteValido, "MARKUPP_INVITE_BY_EMAIL": "talvez"}
+
+	_, err := config.Load(env.Lookup)
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "MARKUPP_INVITE_BY_EMAIL")
+	assert.Contains(t, err.Error(), "talvez")
+}
