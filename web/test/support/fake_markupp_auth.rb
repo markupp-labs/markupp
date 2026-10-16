@@ -16,6 +16,9 @@ class FakeMarkuppAuth
 
   def local_auth? = @local_auth
 
+  # Cenário: a API demora no POST /auth/refresh até `callers` renovações chegarem juntas, ou até o timeout.
+  def hold_refreshes_together!(callers, timeout:) = @refresh_gate = FakeRefreshGate.new(callers, timeout:)
+
   def get(path, account:, **)
     raise ArgumentError, "fake API has no route for GET #{path}, expected /auth/me" unless path == "/auth/me"
 
@@ -25,7 +28,7 @@ class FakeMarkuppAuth
   def post(path, body, **)
     case path
     when "/auth/login" then login(body)
-    when "/auth/refresh" then @accounts.rotate_refresh(body[:refresh_token])
+    when "/auth/refresh" then refresh(body)
     when "/auth/logout" then logout(body)
     when "/auth/invites/accept" then accept_invite(body)
     else raise ArgumentError, "fake API has no route for POST #{path}, expected one of #{PUBLIC_CALLS}"
@@ -33,6 +36,11 @@ class FakeMarkuppAuth
   end
 
   private
+    def refresh(body)
+      @refresh_gate&.pass
+      @accounts.rotate_refresh(body[:refresh_token])
+    end
+
     def login(body)
       raise MarkuppApi::LocalAuthDisabled, "fake API has local auth disabled on POST /auth/login" unless @local_auth
       raise MarkuppApi::InvalidRequest, "fake API refuses POST /auth/login with #{body.inspect}, expected email and password" if body.values_at(:email, :password).any?(&:blank?)

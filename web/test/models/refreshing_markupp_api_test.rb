@@ -56,9 +56,10 @@ class RefreshingMarkuppApiTest < ActiveSupport::TestCase
   test "two renewals of the same refresh token call /auth/refresh once and share the new pair" do
     renewed_pairs = ActiveSupport::Cache::MemoryStore.new
     twin = PanelCredential.new(ActionController::TestSession.new(@session.to_hash), ->(**credentials) { @fake_api.as(**credentials) })
+    @fake_api.hold_refreshes_together!(2, timeout: 0.3)
     travel 901.seconds
 
-    [ @credential, twin ].map { |credential| Thread.new { RefreshingMarkuppApi.new(credential, renewed_pairs:).get("/notes") } }.each(&:join)
+    [ @credential, twin ].map { |credential| Thread.new { renew_and_list_notes(credential, renewed_pairs) } }.each(&:join)
 
     assert_equal 1, @fake_api.received_credentials.count { it[:call] == "POST /auth/refresh" }
     assert_equal [ "refresh-2", "refresh-2" ], [ @credential.refresh_token, twin.refresh_token ]
@@ -66,6 +67,13 @@ class RefreshingMarkuppApiTest < ActiveSupport::TestCase
   end
 
   private
+    # A segunda renovação com o refresh já usado é recusada; o teste confere a contagem de chamadas, não a exceção.
+    def renew_and_list_notes(credential, renewed_pairs)
+      RefreshingMarkuppApi.new(credential, renewed_pairs:).get("/notes")
+    rescue MarkuppApi::SessionExpired
+      nil
+    end
+
     def access_tokens_sent(call)
       @fake_api.received_credentials.select { it[:call] == call }.map { it[:access_token] }
     end

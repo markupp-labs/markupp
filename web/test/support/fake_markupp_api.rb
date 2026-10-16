@@ -4,7 +4,7 @@ class FakeMarkuppApi
 
   delegate :put_requests, :post_requests, to: :@notes
   delegate :expire_access_tokens!, :revoke_refresh_tokens!, :refresh_token_valid?, to: :@accounts
-  delegate :disable_local_auth!, to: :@auth
+  delegate :disable_local_auth!, :hold_refreshes_together!, to: :@auth
   delegate :assign_role!, :deny_notes_in!, to: :@tenants
   delegate :sent_tokens, to: :@account_email
 
