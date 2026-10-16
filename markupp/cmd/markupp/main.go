@@ -149,18 +149,20 @@ func serve(ctx context.Context, logger *slog.Logger, cfg config.Config) error {
 	}
 	defer pool.Close()
 
-	server := newServer(cfg.Port, newHandler(cfg, pool))
+	server := newServer(cfg.Port, newHandler(cfg, pool, logger))
 	logger.Info("servidor subindo", "addr", server.Addr)
 	return server.ListenAndServe()
 }
 
-func newHandler(cfg config.Config, pool *pgxpool.Pool) http.Handler {
+func newHandler(cfg config.Config, pool *pgxpool.Pool, logger *slog.Logger) http.Handler {
 	repo := storage.NewPostgresNotesRepository(pool)
 	notesSvc := notes.NewService(repo, cfg.MaxNoteSize)
 	authSvc, codec := newAuthService(cfg, pool)
 	emailEnabled := cfg.SMTPURL != ""
 	adminSvc := auth.NewAdminService(storage.NewPostgresAdminRepository(pool), time.Now, emailEnabled)
-	accountEmail := auth.NewAccountEmailService(storage.NewPostgresAccountEmailRepository(pool), auth.NewBcryptHasher(), time.Now, emailEnabled)
+	accountEmail := auth.NewAccountEmailService(storage.NewPostgresAccountEmailRepository(pool), auth.NewBcryptHasher(), time.Now, auth.AccountEmailOptions{
+		EmailEnabled: emailEnabled, LocalEnabled: cfg.LocalAuthEnabled, Background: runDetached, Logger: logger,
+	})
 	return api.NewRouter(api.RouterDeps{
 		Notes: notesSvc, Auth: authSvc, Admin: adminSvc, AccountEmail: accountEmail,
 		Tokens: codec, Tenants: authSvc, Probe: pool, AllowedOrigins: cfg.AllowedOrigins,
@@ -191,3 +193,7 @@ func newServer(port int, handler http.Handler) *http.Server {
 		IdleTimeout:       idleTimeout,
 	}
 }
+
+// runDetached roda f fora da requisição, para o pedido de troca de senha responder
+// antes de gravar.
+func runDetached(f func()) { go f() }
