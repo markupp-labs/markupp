@@ -5,6 +5,7 @@ package config
 import (
 	"fmt"
 	"math"
+	"net/mail"
 	"net/url"
 	"strconv"
 	"strings"
@@ -93,8 +94,8 @@ func loadSMTPSettings(lookup LookupFunc, cfg *Config) error {
 	if err := checkSMTPURL(cfg.SMTPURL); err != nil {
 		return err
 	}
-	if !strings.Contains(cfg.SMTPFrom, "@") {
-		return fmt.Errorf("MARKUPP_SMTP_FROM=%q, esperado o remetente usuario@dominio quando MARKUPP_SMTP_URL existe", cfg.SMTPFrom)
+	if _, err := mail.ParseAddress(cfg.SMTPFrom); err != nil {
+		return fmt.Errorf("MARKUPP_SMTP_FROM=%q, esperado o remetente usuario@dominio ou Nome <usuario@dominio> quando MARKUPP_SMTP_URL existe: %w", cfg.SMTPFrom, err)
 	}
 	return nil
 }
