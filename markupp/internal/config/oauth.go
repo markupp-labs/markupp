@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"net/url"
 	"strings"
+
+	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/oauth"
 )
 
 // OAuthResource é um servidor de recursos que aceita os tokens do authorization
@@ -77,10 +79,8 @@ func normalizeOAuthURL(raw string, rule oauthURLRule) (string, error) {
 	if !oauthURLAllowed(parsed, rule) || strings.Contains(raw, "#") {
 		return "", fmt.Errorf("%s=%q, esperado %s", rule.key, parsed.Redacted(), rule.expected)
 	}
-	parsed.Host = withoutDefaultPort(strings.ToLower(parsed.Host), parsed.Scheme)
-	parsed.Path = strings.TrimRight(parsed.Path, "/")
-	parsed.RawPath = strings.TrimRight(parsed.RawPath, "/")
-	return parsed.String(), nil
+	parsed.Host = withoutDefaultPort(parsed.Host, parsed.Scheme)
+	return oauth.CanonicalURL(parsed), nil
 }
 
 // defaultPorts é a porta implícita de cada esquema aceito, que a normalização remove.
