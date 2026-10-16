@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/config"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/identity"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/notes"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/storage"
@@ -158,4 +159,17 @@ func TestRun_NotifyLoopComSMTPEBancoInalcancavel_RetornaErroDoBanco(t *testing.T
 
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "abrir banco")
+}
+
+func TestOAuthMetadataFrom_SemPublicURL_DesligaAMetadata(t *testing.T) {
+	assert.Nil(t, oauthMetadataFrom(config.Config{}))
+}
+
+func TestOAuthMetadataFrom_ComPublicURL_UsaComoIssuer(t *testing.T) {
+	cfg := config.Config{PublicURL: "https://notas.markupp.dev"}
+
+	meta := oauthMetadataFrom(cfg)
+
+	require.NotNil(t, meta)
+	assert.Equal(t, "https://notas.markupp.dev", meta.Issuer)
 }
