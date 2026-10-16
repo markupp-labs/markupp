@@ -21,6 +21,13 @@ func containerDoIndexador(t *testing.T, scaledJob resource.PropertyMap) resource
 	return containers[0].ObjectValue()
 }
 
+func numeroEm(t *testing.T, pm resource.PropertyMap, keys ...string) float64 {
+	t.Helper()
+	value := at(t, pm, keys...)
+	require.True(t, value.IsNumber(), "esperado numero em %v, recebido %v", keys, value)
+	return value.NumberValue()
+}
+
 func textoEm(t *testing.T, pm resource.PropertyMap, keys ...string) string {
 	t.Helper()
 	value := plain(at(t, pm, keys...))
@@ -51,6 +58,18 @@ func TestNewMarkupp_Indexador_PodNaoRecebeOSegredoDosJWT(t *testing.T) {
 
 	container := containerDoIndexador(t, monitor.single(t, scaledJobType))
 	assert.Equal(t, []string{"MARKUPP_DATABASE_URL"}, nomesDoEnv(container))
+}
+
+func TestNewMarkupp_Indexador_LimitaJobsSimultaneosEHistorico(t *testing.T) {
+	monitor := deploy(t, argsDeTeste())
+
+	scaledJob := monitor.single(t, scaledJobType)
+	assert.Equal(t, 5.0, numeroEm(t, scaledJob, "spec", "maxReplicaCount"),
+		"sem teto o KEDA sobe ate 100 Jobs, cada um com seu pool no banco")
+	assert.Equal(t, 3.0, numeroEm(t, scaledJob, "spec", "successfulJobsHistoryLimit"))
+	assert.Equal(t, 5.0, numeroEm(t, scaledJob, "spec", "failedJobsHistoryLimit"))
+	assert.Equal(t, 1.0, numeroEm(t, scaledJob, "spec", "jobTargetRef", "backoffLimit"))
+	assert.Equal(t, 600.0, numeroEm(t, scaledJob, "spec", "jobTargetRef", "activeDeadlineSeconds"))
 }
 
 func TestNewMarkupp_Indexador_ScalerContaCofresPendentesComPapelProprio(t *testing.T) {
