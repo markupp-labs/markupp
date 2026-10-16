@@ -14,7 +14,7 @@ import (
 // AccountEmailService é a verificação de email e a recuperação de acesso da conta.
 type AccountEmailService interface {
 	RequestEmailVerification(ctx context.Context, userID string) error
-	ConfirmEmail(ctx context.Context, token string) error
+	ConfirmEmail(ctx context.Context, userID, token string) error
 	RequestPasswordReset(ctx context.Context, email string) error
 	ResetPassword(ctx context.Context, token, password string) error
 }
@@ -36,14 +36,17 @@ type passwordResetRequest struct {
 	Password string `json:"password"`
 }
 
-// mountAccountEmailRoutes expõe o pedido de verificação à conta logada, e a
-// confirmação e a troca de senha a quem tem o token do email.
+// mountAccountEmailRoutes expõe a verificação só à conta logada, que é a única a quem o
+// token dela serve, e a troca de senha a quem tem o token do email.
 func mountAccountEmailRoutes(r chi.Router, svc AccountEmailService, validator TokenValidator) {
 	h := &accountEmailHandler{svc: svc}
-	r.Post("/auth/email/verify", h.confirmEmail)
 	r.Post("/auth/password/forgot", h.forgotPassword)
 	r.Post("/auth/password/reset", h.resetPassword)
-	r.With(RequireAuth(validator)).Post("/auth/email/verification", h.requestVerification)
+	r.Group(func(g chi.Router) {
+		g.Use(RequireAuth(validator))
+		g.Post("/auth/email/verification", h.requestVerification)
+		g.Post("/auth/email/verify", h.confirmEmail)
+	})
 }
 
 func (h *accountEmailHandler) requestVerification(w http.ResponseWriter, r *http.Request) {
@@ -56,7 +59,8 @@ func (h *accountEmailHandler) confirmEmail(w http.ResponseWriter, r *http.Reques
 	if !decodeJSONBody(w, r, &req) {
 		return
 	}
-	h.reply(w, h.svc.ConfirmEmail(r.Context(), req.Token), http.StatusNoContent)
+	actor, _ := identity.ActorFrom(r.Context())
+	h.reply(w, h.svc.ConfirmEmail(r.Context(), actor.UserID, req.Token), http.StatusNoContent)
 }
 
 // forgotPassword responde 202 exista a conta ou não.
@@ -85,16 +89,19 @@ func (h *accountEmailHandler) reply(w http.ResponseWriter, err error, success in
 }
 
 func writeAccountEmailError(w http.ResponseWriter, err error) {
+	if writeCredentialInputError(w, err) {
+		return
+	}
 	switch {
+	case errors.Is(err, auth.ErrUserNotFound):
+		writeError(w, "unauthorized", "token ausente ou invalido", http.StatusUnauthorized)
 	case errors.Is(err, auth.ErrEmailAlreadyVerified):
 		writeError(w, "email_already_verified", err.Error(), http.StatusConflict)
 	case errors.Is(err, auth.ErrEmailUnavailable):
 		writeError(w, "email_unavailable", err.Error(), http.StatusServiceUnavailable)
 	case errors.Is(err, auth.ErrInvalidToken):
 		writeError(w, "invalid_token", err.Error(), http.StatusBadRequest)
-	case errors.Is(err, auth.ErrEmptyEmail), errors.Is(err, auth.ErrEmptyPassword), errors.Is(err, auth.ErrPasswordTooLong):
-		writeError(w, "invalid_request", err.Error(), http.StatusBadRequest)
 	default:
-		writeError(w, "internal", "erro interno", http.StatusInternalServerError)
+		writeInternal(w, "email da conta", err)
 	}
 }
