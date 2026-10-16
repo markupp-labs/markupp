@@ -18,7 +18,10 @@ Tenant = Data.define(:id, :name, :role) do
   def admin? = %w[owner admin].include?(role)
 
   # Papéis que este vínculo concede ou altera: o próprio e os de posto menor.
-  def assignable_roles = Tenant::ROLES.drop(Tenant::ROLES.index(role))
+  def assignable_roles
+    rank = Tenant::ROLES.index(role) or raise ArgumentError, "unknown role #{role.inspect}, expected one of #{Tenant::ROLES.join(', ')}"
+    Tenant::ROLES.drop(rank)
+  end
 
   def self.pick(tenants, id) = tenants.find { it.id == id } || (tenants.sole if tenants.one?)
 end
