@@ -19,18 +19,13 @@ import (
 func doisTenantsIndexados(t *testing.T) *pgxpool.Pool {
 	t.Helper()
 	db := setupTestDB(t)
-	repo := storage.NewPostgresNotesRepository(db)
+	repo := storage.NewPostgresNotesRepository(db, "simple")
 	ctxA := storagetest.SeedMember(t, db, identity.Actor{UserID: "ua", TenantID: "t1", Role: "member"}, "va")
 	ctxB := storagetest.SeedMember(t, db, identity.Actor{UserID: "ub", TenantID: "t2", Role: "member"}, "vb")
 	require.NoError(t, repo.Save(ctxA, notaComConteudo("a1", "va", "um")))
 	require.NoError(t, repo.Save(ctxA, notaComConteudo("a2", "va", "dois")))
 	require.NoError(t, repo.Save(ctxB, notaComConteudo("b1", "vb", "tres")))
-	idx := novoIndexador(t, db, "simple")
-	for {
-		if found, _ := indexaProximo(t, idx); !found {
-			break
-		}
-	}
+	indexaTodosOsCofres(t, db, "simple")
 	require.Zero(t, countRows(t, db, consultaDoScaler))
 	return db
 }

@@ -29,7 +29,7 @@ func setupIntegrationServer(t *testing.T) (*httptest.Server, *pgxpool.Pool) {
 	require.NoError(t, storage.Migrate(context.Background(), pool))
 	storagetest.SeedMember(t, pool, identity.Actor{UserID: "integracao", TenantID: "default", Role: "admin"}, "cofre-integracao")
 
-	repo := storage.NewPostgresNotesRepository(pool)
+	repo := storage.NewPostgresNotesRepository(pool, "simple")
 	svc := notes.NewService(repo, integrationMaxNoteSize)
 	validator := &fakeTokenValidator{claims: auth.Claims{Subject: "integracao"}}
 	router := api.NewRouter(api.RouterDeps{Notes: svc, Tenants: &fakeTenantResolver{membership: auth.Membership{TenantID: "default", Role: "admin"}}, Tokens: validator, Probe: pool})

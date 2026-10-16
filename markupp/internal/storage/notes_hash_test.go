@@ -22,7 +22,7 @@ func TestPostgresRepo_GetNoteByID_DevolveSHA256DoConteudoEmUTF8(t *testing.T) {
 	casos := map[string]string{"": sha256DeVazio, "ação": sha256DeAcao}
 	for conteudo, esperado := range casos {
 		db := setupNotesDB(t)
-		repo := storage.NewPostgresNotesRepository(db)
+		repo := storage.NewPostgresNotesRepository(db, "simple")
 		require.NoError(t, repo.Save(ctxDeTeste, notaComConteudo("n1", cofreDeTeste, conteudo)))
 
 		got, err := repo.GetNoteByID(ctxDeTeste, "n1")
@@ -34,7 +34,7 @@ func TestPostgresRepo_GetNoteByID_DevolveSHA256DoConteudoEmUTF8(t *testing.T) {
 
 func TestPostgresRepo_ListNotes_DevolveSHA256DeCadaNota(t *testing.T) {
 	db := setupNotesDB(t)
-	repo := storage.NewPostgresNotesRepository(db)
+	repo := storage.NewPostgresNotesRepository(db, "simple")
 	require.NoError(t, repo.Save(ctxDeTeste, notaComConteudo("n1", cofreDeTeste, "ação")))
 
 	got, err := repo.ListNotes(ctxDeTeste)
@@ -46,7 +46,7 @@ func TestPostgresRepo_ListNotes_DevolveSHA256DeCadaNota(t *testing.T) {
 
 func TestPostgresRepo_Update_HashAcompanhaOConteudoNovo(t *testing.T) {
 	db := setupNotesDB(t)
-	repo := storage.NewPostgresNotesRepository(db)
+	repo := storage.NewPostgresNotesRepository(db, "simple")
 	require.NoError(t, repo.Save(ctxDeTeste, notaComConteudo("n1", cofreDeTeste, "")))
 
 	got, err := repo.Update(ctxDeTeste, "n1", "n1.md", "ação", time.Now(), time.Time{}, true)
@@ -57,7 +57,7 @@ func TestPostgresRepo_Update_HashAcompanhaOConteudoNovo(t *testing.T) {
 
 func TestVaultIndexer_NotaReescritaComOMesmoConteudo_NaoVoltaParaAFila(t *testing.T) {
 	db := setupTestDB(t)
-	repo := storage.NewPostgresNotesRepository(db)
+	repo := storage.NewPostgresNotesRepository(db, "simple")
 	ctx := storagetest.SeedMember(t, db, identity.Actor{UserID: "ua", TenantID: "t1", Role: "member"}, "va")
 	require.NoError(t, repo.Save(ctx, notaComConteudo("n1", "va", "ação")))
 	indexaProximo(t, novoIndexador(t, db, "simple"))
@@ -70,7 +70,7 @@ func TestVaultIndexer_NotaReescritaComOMesmoConteudo_NaoVoltaParaAFila(t *testin
 
 func TestVaultIndexer_ConteudoNovo_VoltaParaAFila(t *testing.T) {
 	db := setupTestDB(t)
-	repo := storage.NewPostgresNotesRepository(db)
+	repo := storage.NewPostgresNotesRepository(db, "simple")
 	ctx := storagetest.SeedMember(t, db, identity.Actor{UserID: "ua", TenantID: "t1", Role: "member"}, "va")
 	require.NoError(t, repo.Save(ctx, notaComConteudo("n1", "va", "ação")))
 	indexaProximo(t, novoIndexador(t, db, "simple"))

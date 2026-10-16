@@ -456,6 +456,7 @@ func TestListNotes_ComNotas_RetornaArrayCompleto(t *testing.T) {
 	require.Len(t, resp, 2)
 	assert.Equal(t, "id-1", resp[0]["id"])
 	assert.Equal(t, "a.md", resp[0]["path"])
+	assert.Equal(t, "o <b>go</b> compila", resp[0]["snippet"])
 	assert.Equal(t, "aaa", resp[0]["content"])
 	assert.Equal(t, "id-2", resp[1]["id"])
 }
@@ -473,7 +474,7 @@ func TestListNotes_ServiceRetornaErro_Retorna500(t *testing.T) {
 func TestSearchNotes_QueryValido_Retorna200(t *testing.T) {
 	now := time.Now()
 	svc := &fakeService{searchResult: []notes.SearchResult{
-		{ID: "id-1", Path: "a.md", UpdatedAt: now},
+		{ID: "id-1", Path: "a.md", UpdatedAt: now, Snippet: "o <b>go</b> compila"},
 		{ID: "id-2", Path: "b.md", UpdatedAt: now},
 	}}
 

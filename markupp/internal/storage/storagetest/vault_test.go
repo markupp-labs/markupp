@@ -21,7 +21,7 @@ func TestSeedVault_GravaAsNotasNoCofreEEnfileiraTodas(t *testing.T) {
 
 	ctx := storagetest.SeedVault(t, pool, ator, "va", vault)
 
-	lidas, err := storage.NewPostgresNotesRepository(pool).ListNotes(ctx)
+	lidas, err := storage.NewPostgresNotesRepository(pool, "simple").ListNotes(ctx)
 	require.NoError(t, err)
 	assert.Len(t, lidas, 50, "o ator enxerga as notas semeadas pelo contexto devolvido")
 	var pendentes int

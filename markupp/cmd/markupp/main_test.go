@@ -102,7 +102,7 @@ func TestRun_Index_IndexaOCofrePendenteESai(t *testing.T) {
 	t.Cleanup(pool.Close)
 	ctx := storagetest.SeedMember(t, pool, identity.Actor{UserID: "ua", TenantID: "t1", Role: "member"}, "va")
 	agora := time.Now()
-	require.NoError(t, storage.NewPostgresNotesRepository(pool).Save(ctx,
+	require.NoError(t, storage.NewPostgresNotesRepository(pool, "simple").Save(ctx,
 		notes.Note{ID: "n1", VaultID: "va", Path: "a.md", Content: "oi", CreatedAt: agora, UpdatedAt: agora}))
 	t.Setenv("MARKUPP_DATABASE_URL", url)
 	t.Setenv("MARKUPP_AUTH_SECRET", "")
@@ -206,7 +206,7 @@ func TestRun_ReindexDeUmCofre_ReenfileiraSoEle(t *testing.T) {
 	require.NoError(t, err)
 	t.Cleanup(pool.Close)
 	agora := time.Now()
-	repo := storage.NewPostgresNotesRepository(pool)
+	repo := storage.NewPostgresNotesRepository(pool, "simple")
 	for _, cofre := range []struct{ tenant, vault string }{{"t1", "va"}, {"t2", "vb"}} {
 		ctx := storagetest.SeedMember(t, pool, identity.Actor{UserID: "u" + cofre.vault, TenantID: cofre.tenant, Role: "member"}, cofre.vault)
 		require.NoError(t, repo.Save(ctx, notes.Note{ID: "n-" + cofre.vault, VaultID: cofre.vault, Path: "a.md", Content: "oi", CreatedAt: agora, UpdatedAt: agora}))

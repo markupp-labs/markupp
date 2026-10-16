@@ -51,7 +51,7 @@ func sampleNote() notes.Note {
 
 func TestPostgresRepo_Save_PersisteCamposCorretos(t *testing.T) {
 	db := setupNotesDB(t)
-	repo := storage.NewPostgresNotesRepository(db)
+	repo := storage.NewPostgresNotesRepository(db, "simple")
 	n := sampleNote()
 
 	err := repo.Save(ctxDeTeste, n)
@@ -74,7 +74,7 @@ func TestPostgresRepo_Save_PersisteCamposCorretos(t *testing.T) {
 
 func TestPostgresRepo_Save_PathDuplicado_RetornaErrDuplicatePath(t *testing.T) {
 	db := setupNotesDB(t)
-	repo := storage.NewPostgresNotesRepository(db)
+	repo := storage.NewPostgresNotesRepository(db, "simple")
 	n1 := sampleNote()
 	n2 := sampleNote()
 	n2.ID = "id-test-2"
@@ -88,7 +88,7 @@ func TestPostgresRepo_Save_PathDuplicado_RetornaErrDuplicatePath(t *testing.T) {
 
 func TestPostgresRepo_Save_Sucesso_RetornaNil(t *testing.T) {
 	db := setupNotesDB(t)
-	repo := storage.NewPostgresNotesRepository(db)
+	repo := storage.NewPostgresNotesRepository(db, "simple")
 
 	err := repo.Save(ctxDeTeste, sampleNote())
 	assert.NoError(t, err)
@@ -96,7 +96,7 @@ func TestPostgresRepo_Save_Sucesso_RetornaNil(t *testing.T) {
 
 func TestPostgresRepo_Update_AtualizaCamposEPreservaCreatedAt(t *testing.T) {
 	db := setupNotesDB(t)
-	repo := storage.NewPostgresNotesRepository(db)
+	repo := storage.NewPostgresNotesRepository(db, "simple")
 	original := sampleNote()
 	require.NoError(t, repo.Save(ctxDeTeste, original))
 
@@ -113,7 +113,7 @@ func TestPostgresRepo_Update_AtualizaCamposEPreservaCreatedAt(t *testing.T) {
 
 func TestPostgresRepo_Update_IDInexistente_RetornaErrNotFound(t *testing.T) {
 	db := setupNotesDB(t)
-	repo := storage.NewPostgresNotesRepository(db)
+	repo := storage.NewPostgresNotesRepository(db, "simple")
 
 	ts := time.Date(2026, 6, 7, 12, 0, 0, 0, time.UTC)
 	_, err := repo.Update(ctxDeTeste, "nao-existe", "x.md", "y", ts, ts, false)
@@ -124,7 +124,7 @@ func TestPostgresRepo_Update_IDInexistente_RetornaErrNotFound(t *testing.T) {
 
 func TestPostgresRepo_Update_PathDuplicado_RetornaErrDuplicatePath(t *testing.T) {
 	db := setupNotesDB(t)
-	repo := storage.NewPostgresNotesRepository(db)
+	repo := storage.NewPostgresNotesRepository(db, "simple")
 	n1 := sampleNote()
 	n2 := sampleNote()
 	n2.ID = "id-test-2"
@@ -141,7 +141,7 @@ func TestPostgresRepo_Update_PathDuplicado_RetornaErrDuplicatePath(t *testing.T)
 
 func TestPostgresRepo_Delete_RemoveLinha(t *testing.T) {
 	db := setupNotesDB(t)
-	repo := storage.NewPostgresNotesRepository(db)
+	repo := storage.NewPostgresNotesRepository(db, "simple")
 	n := sampleNote()
 	require.NoError(t, repo.Save(ctxDeTeste, n))
 
@@ -155,7 +155,7 @@ func TestPostgresRepo_Delete_RemoveLinha(t *testing.T) {
 
 func TestPostgresRepo_Delete_IDInexistente_RetornaErrNotFound(t *testing.T) {
 	db := setupNotesDB(t)
-	repo := storage.NewPostgresNotesRepository(db)
+	repo := storage.NewPostgresNotesRepository(db, "simple")
 
 	err := repo.Delete(ctxDeTeste, "nao-existe")
 
@@ -165,7 +165,7 @@ func TestPostgresRepo_Delete_IDInexistente_RetornaErrNotFound(t *testing.T) {
 
 func TestPostgresRepo_Update_ComVersaoCorreta_Force_False_Sucesso(t *testing.T) {
 	db := setupNotesDB(t)
-	repo := storage.NewPostgresNotesRepository(db)
+	repo := storage.NewPostgresNotesRepository(db, "simple")
 	original := sampleNote()
 	require.NoError(t, repo.Save(ctxDeTeste, original))
 
@@ -179,7 +179,7 @@ func TestPostgresRepo_Update_ComVersaoCorreta_Force_False_Sucesso(t *testing.T) 
 
 func TestPostgresRepo_Update_ComVersaoIncorreta_Force_False_RetornaErrConflict(t *testing.T) {
 	db := setupNotesDB(t)
-	repo := storage.NewPostgresNotesRepository(db)
+	repo := storage.NewPostgresNotesRepository(db, "simple")
 	original := sampleNote()
 	require.NoError(t, repo.Save(ctxDeTeste, original))
 
@@ -193,7 +193,7 @@ func TestPostgresRepo_Update_ComVersaoIncorreta_Force_False_RetornaErrConflict(t
 
 func TestPostgresRepo_Update_ComVersaoIncorreta_Force_True_Sucesso(t *testing.T) {
 	db := setupNotesDB(t)
-	repo := storage.NewPostgresNotesRepository(db)
+	repo := storage.NewPostgresNotesRepository(db, "simple")
 	original := sampleNote()
 	require.NoError(t, repo.Save(ctxDeTeste, original))
 
@@ -208,7 +208,7 @@ func TestPostgresRepo_Update_ComVersaoIncorreta_Force_True_Sucesso(t *testing.T)
 
 func TestPostgresRepo_Update_IDInexistente_Force_False_RetornaErrNotFound(t *testing.T) {
 	db := setupNotesDB(t)
-	repo := storage.NewPostgresNotesRepository(db)
+	repo := storage.NewPostgresNotesRepository(db, "simple")
 
 	ts := time.Date(2026, 6, 7, 12, 0, 0, 0, time.UTC)
 	_, err := repo.Update(ctxDeTeste, "nao-existe", "x.md", "y", ts, ts, false)
@@ -219,7 +219,7 @@ func TestPostgresRepo_Update_IDInexistente_Force_False_RetornaErrNotFound(t *tes
 
 func TestPostgresRepo_Update_IDInexistente_Force_True_RetornaErrNotFound(t *testing.T) {
 	db := setupNotesDB(t)
-	repo := storage.NewPostgresNotesRepository(db)
+	repo := storage.NewPostgresNotesRepository(db, "simple")
 
 	ts := time.Date(2026, 6, 7, 12, 0, 0, 0, time.UTC)
 	_, err := repo.Update(ctxDeTeste, "nao-existe", "x.md", "y", ts, ts, true)
@@ -230,7 +230,7 @@ func TestPostgresRepo_Update_IDInexistente_Force_True_RetornaErrNotFound(t *test
 
 func TestPostgresRepo_Update_UsaUpdatedAtRecebido(t *testing.T) {
 	db := setupNotesDB(t)
-	repo := storage.NewPostgresNotesRepository(db)
+	repo := storage.NewPostgresNotesRepository(db, "simple")
 	original := sampleNote()
 	require.NoError(t, repo.Save(ctxDeTeste, original))
 
@@ -243,7 +243,7 @@ func TestPostgresRepo_Update_UsaUpdatedAtRecebido(t *testing.T) {
 
 func TestPostgresRepo_ListNotes_DBVazio_RetornaSliceVazio(t *testing.T) {
 	db := setupNotesDB(t)
-	repo := storage.NewPostgresNotesRepository(db)
+	repo := storage.NewPostgresNotesRepository(db, "simple")
 
 	got, err := repo.ListNotes(ctxDeTeste)
 
@@ -253,7 +253,7 @@ func TestPostgresRepo_ListNotes_DBVazio_RetornaSliceVazio(t *testing.T) {
 
 func TestPostgresRepo_ListNotes_RetornaTodasNotasOrdenadasPorPath(t *testing.T) {
 	db := setupNotesDB(t)
-	repo := storage.NewPostgresNotesRepository(db)
+	repo := storage.NewPostgresNotesRepository(db, "simple")
 	now := time.Date(2026, 4, 27, 10, 0, 0, 0, time.UTC)
 
 	notas := []notes.Note{
@@ -277,7 +277,7 @@ func TestPostgresRepo_ListNotes_RetornaTodasNotasOrdenadasPorPath(t *testing.T) 
 
 func TestPostgresRepo_GetNoteByID_IDInexistente_RetornaErrNotFound(t *testing.T) {
 	db := setupNotesDB(t)
-	repo := storage.NewPostgresNotesRepository(db)
+	repo := storage.NewPostgresNotesRepository(db, "simple")
 
 	_, err := repo.GetNoteByID(ctxDeTeste, "nao-existe")
 

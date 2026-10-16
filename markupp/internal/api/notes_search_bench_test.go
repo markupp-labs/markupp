@@ -7,12 +7,14 @@ import (
 	"net/url"
 	"testing"
 
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/require"
 
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/api"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/auth"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/benchfixture"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/identity"
+	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/indexing"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/notes"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/storage"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/storage/storagetest"
@@ -43,6 +45,20 @@ func benchBusca(b *testing.B, router http.Handler, termo string) {
 	}
 }
 
+// indexaCofreSintetico esvazia a fila do indexador, porque a busca lê só o índice.
+func indexaCofreSintetico(b *testing.B, pool *pgxpool.Pool) {
+	b.Helper()
+	indexer, err := storage.NewPostgresVaultIndexer(context.Background(), pool, "simple")
+	require.NoError(b, err)
+	for {
+		found, err := indexer.IndexNextVault(context.Background(), indexing.Index)
+		require.NoError(b, err)
+		if !found {
+			return
+		}
+	}
+}
+
 // roteadorDoCofreSintetico monta o roteador real sobre um banco com o cofre
 // sintético inteiro, visto por um membro dele.
 func roteadorDoCofreSintetico(b *testing.B) http.Handler {
@@ -51,7 +67,8 @@ func roteadorDoCofreSintetico(b *testing.B) http.Handler {
 	require.NoError(b, storage.Migrate(context.Background(), pool))
 	ator := identity.Actor{UserID: "u-bench", TenantID: "t-bench", Role: "member"}
 	storagetest.SeedVault(b, pool, ator, "cofre-bench", benchfixture.GenerateVault(benchfixture.VaultSeed, benchfixture.VaultSize))
-	svc := notes.NewService(storage.NewPostgresNotesRepository(pool), integrationMaxNoteSize)
+	indexaCofreSintetico(b, pool)
+	svc := notes.NewService(storage.NewPostgresNotesRepository(pool, "simple"), integrationMaxNoteSize)
 	return api.NewRouter(api.RouterDeps{
 		Notes:   svc,
 		Tenants: &fakeTenantResolver{membership: auth.Membership{TenantID: ator.TenantID, Role: ator.Role}},
