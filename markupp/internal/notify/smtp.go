@@ -2,6 +2,7 @@ package notify
 
 import (
 	"context"
+	"crypto/rand"
 	"crypto/tls"
 	"fmt"
 	"mime"
@@ -119,15 +120,22 @@ func deliver(client *smtp.Client, msg Message) error {
 	if err != nil {
 		return err
 	}
-	if _, err := w.Write(encode(msg)); err != nil {
+	if _, err := w.Write(encode(msg, senderDomain(msg.From))); err != nil {
 		return err
 	}
 	return w.Close()
 }
 
-// encode escreve os cabeçalhos e o corpo em UTF-8, com fim de linha CRLF.
-func encode(msg Message) []byte {
+// senderDomain é o domínio do remetente, que assina o Message-ID.
+func senderDomain(from string) string {
+	return from[strings.LastIndex(from, "@")+1:]
+}
+
+// encode escreve os cabeçalhos e o corpo em UTF-8, com fim de linha CRLF. O
+// Message-ID vai daqui porque relay de submissão, como o Postfix, não o acrescenta.
+func encode(msg Message, domain string) []byte {
 	headers := []string{
+		"Message-ID: <" + rand.Text() + "@" + domain + ">",
 		"From: " + msg.From,
 		"To: " + msg.To,
 		"Subject: " + mime.QEncoding.Encode("utf-8", msg.Subject),
