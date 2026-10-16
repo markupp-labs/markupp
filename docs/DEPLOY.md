@@ -75,7 +75,8 @@ A API limita login, refresh, aceite de convite, pedido de verificação de email
 de senha a 5 tentativas por minuto por IP e, quando o corpo traz email, por email (ADR-0037).
 Acima disso responde 429 com Retry-After. A variável `MARKUPP_RATE_LIMIT_PER_MINUTE`, de 1 a
 10000, troca o 5. A contagem fica na memória de cada réplica, então com N réplicas o limite
-efetivo chega a N vezes o configurado. O IP é o da conexão: atrás de proxy, todo cliente aparece
+efetivo chega a N vezes o configurado. O IP é o da conexão, e endereços IPv6 do mesmo prefixo
+/64 contam como um só. Atrás de proxy, todo cliente aparece
 com o IP do proxy e divide o mesmo limite. O componente ainda não tem opção para a variável.
 
 Sem outra opção, o componente cria um Gateway próprio nas portas 80 e 443. Em cluster onde

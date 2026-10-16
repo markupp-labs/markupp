@@ -14,8 +14,8 @@ de email em nome de terceiros
 
 Essas rotas aceitam 5 tentativas por minuto por IP e, quando o corpo traz email, 5 por minuto
 por email, contadas por rota numa janela fixa na memória do processo. O refresh conta só por
-IP. Acima do limite, a API responde 429 `rate_limited` com Retry-After. O IP é o da conexão, e
-o limite se ajusta em `MARKUPP_RATE_LIMIT_PER_MINUTE`
+IP. Acima do limite, a API responde 429 `rate_limited` com Retry-After. O IP é o da conexão,
+com IPv6 agrupado pelo prefixo /64, e o limite se ajusta em `MARKUPP_RATE_LIMIT_PER_MINUTE`
 
 ## Alternativas consideradas
 
