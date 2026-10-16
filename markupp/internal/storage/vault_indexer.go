@@ -65,7 +65,7 @@ func (x *PostgresVaultIndexer) indexVault(ctx context.Context, q *gen.Queries, v
 func toChangeset(vault gen.ReservePendingVaultRow, rows []gen.ListPendingNotesRow) indexing.Changeset {
 	cs := indexing.Changeset{TenantID: vault.TenantID, VaultID: vault.VaultID, Notes: make([]indexing.NoteChange, 0, len(rows))}
 	for _, row := range rows {
-		cs.Notes = append(cs.Notes, indexing.NoteChange{NoteID: row.ID, Content: row.Content})
+		cs.Notes = append(cs.Notes, indexing.NoteChange{NoteID: row.ID, Path: row.Path, Content: row.Content})
 	}
 	return cs
 }
@@ -76,9 +76,11 @@ func (x *PostgresVaultIndexer) saveDocuments(ctx context.Context, q *gen.Queries
 	if err := matchBatch(cs, docs); err != nil {
 		return err
 	}
-	params := gen.SaveSearchDocumentsParams{SearchConfig: x.searchConfig, NoteIds: make([]string, 0, len(docs)), Bodies: make([]string, 0, len(docs))}
+	params := gen.SaveSearchDocumentsParams{SearchConfig: x.searchConfig, NoteIds: make([]string, 0, len(docs)),
+		Titles: make([]string, 0, len(docs)), Bodies: make([]string, 0, len(docs))}
 	for _, doc := range docs {
 		params.NoteIds = append(params.NoteIds, doc.NoteID)
+		params.Titles = append(params.Titles, doc.Title)
 		params.Bodies = append(params.Bodies, doc.Text)
 	}
 	if err := q.SaveSearchDocuments(ctx, params); err != nil {

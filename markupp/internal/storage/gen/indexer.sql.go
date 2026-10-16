@@ -45,7 +45,7 @@ func (q *Queries) EnterIndexer(ctx context.Context, arg EnterIndexerParams) erro
 }
 
 const listPendingNotes = `-- name: ListPendingNotes :many
-SELECT n.id, n.content, q.revision
+SELECT n.id, n.path, n.content, q.revision
 FROM note_index_queue q
 JOIN notes n ON n.id = q.note_id
 WHERE n.vault_id = $1
@@ -54,6 +54,7 @@ ORDER BY n.id
 
 type ListPendingNotesRow struct {
 	ID       string
+	Path     string
 	Content  string
 	Revision int64
 }
@@ -68,7 +69,12 @@ func (q *Queries) ListPendingNotes(ctx context.Context, vaultID string) ([]ListP
 	var items []ListPendingNotesRow
 	for rows.Next() {
 		var i ListPendingNotesRow
-		if err := rows.Scan(&i.ID, &i.Content, &i.Revision); err != nil {
+		if err := rows.Scan(
+			&i.ID,
+			&i.Path,
+			&i.Content,
+			&i.Revision,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -132,8 +138,10 @@ func (q *Queries) ResolveSearchConfig(ctx context.Context, name string) (int64, 
 
 const saveSearchDocuments = `-- name: SaveSearchDocuments :exec
 INSERT INTO note_search_index (note_id, document)
-SELECT n.id, to_tsvector($1::text::regconfig, left(d.body, 250000))
-FROM (SELECT unnest($2::text[]) AS note_id, unnest($3::text[]) AS body) d
+SELECT n.id, setweight(to_tsvector($1::text::regconfig, d.title), 'A')
+          || setweight(to_tsvector($1::text::regconfig, left(d.body, 250000)), 'D')
+FROM (SELECT unnest($2::text[]) AS note_id, unnest($3::text[]) AS title,
+             unnest($4::text[]) AS body) d
 JOIN notes n ON n.id = d.note_id
 ON CONFLICT (note_id) DO UPDATE SET document = EXCLUDED.document
 `
@@ -141,12 +149,19 @@ ON CONFLICT (note_id) DO UPDATE SET document = EXCLUDED.document
 type SaveSearchDocumentsParams struct {
 	SearchConfig string
 	NoteIds      []string
+	Titles       []string
 	Bodies       []string
 }
 
-// Nota apagada depois da leitura some no JOIN e não é gravada. O corte em 250 mil
-// caracteres (até 1MB em UTF-8) mantém o tsvector abaixo do teto de 1MB de lexemas.
+// Nota apagada depois da leitura some no JOIN e não é gravada. O título pesa A e o
+// corpo pesa D no ts_rank. O corte em 250 mil caracteres do corpo (até 1MB em UTF-8)
+// mantém o tsvector abaixo do teto de 1MB de lexemas.
 func (q *Queries) SaveSearchDocuments(ctx context.Context, arg SaveSearchDocumentsParams) error {
-	_, err := q.db.Exec(ctx, saveSearchDocuments, arg.SearchConfig, arg.NoteIds, arg.Bodies)
+	_, err := q.db.Exec(ctx, saveSearchDocuments,
+		arg.SearchConfig,
+		arg.NoteIds,
+		arg.Titles,
+		arg.Bodies,
+	)
 	return err
 }

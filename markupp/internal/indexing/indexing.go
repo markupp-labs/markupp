@@ -6,11 +6,14 @@ package indexing
 import (
 	"context"
 	"log/slog"
+	"path"
+	"strings"
 )
 
 // NoteChange é uma nota que mudou desde a última indexação do cofre.
 type NoteChange struct {
 	NoteID  string
+	Path    string
 	Content string
 }
 
@@ -21,9 +24,11 @@ type Changeset struct {
 	Notes    []NoteChange
 }
 
-// SearchDocument é o texto que o banco converte em tsvector para a busca léxica.
+// SearchDocument é o texto que o banco converte em tsvector para a busca léxica: o
+// título com peso A e o corpo com peso D.
 type SearchDocument struct {
 	NoteID string
+	Title  string
 	Text   string
 }
 
@@ -36,13 +41,19 @@ type VaultIndexer interface {
 	IndexNextVault(ctx context.Context, index IndexFunc) (bool, error)
 }
 
-// Index devolve um documento de busca por nota mudada, com o conteúdo dela.
+// Index devolve um documento de busca por nota mudada, com o título e o conteúdo dela.
 func Index(cs Changeset) []SearchDocument {
 	docs := make([]SearchDocument, 0, len(cs.Notes))
 	for _, note := range cs.Notes {
-		docs = append(docs, SearchDocument{NoteID: note.NoteID, Text: note.Content})
+		docs = append(docs, SearchDocument{NoteID: note.NoteID, Title: Title(note.Path), Text: note.Content})
 	}
 	return docs
+}
+
+// Title é o título da nota: o último segmento do caminho, sem a extensão.
+func Title(notePath string) string {
+	base := path.Base(notePath)
+	return strings.TrimSuffix(base, path.Ext(base))
 }
 
 // RunLoop indexa os cofres pendentes até não sobrar nenhum, chama wait e recomeça.

@@ -19,18 +19,21 @@ SELECT set_config('role', 'markupp_indexer', true),
 
 -- O filtro de cofre repete o RLS para a consulta usar o índice de notes por cofre.
 -- name: ListPendingNotes :many
-SELECT n.id, n.content, q.revision
+SELECT n.id, n.path, n.content, q.revision
 FROM note_index_queue q
 JOIN notes n ON n.id = q.note_id
 WHERE n.vault_id = sqlc.arg(vault_id)
 ORDER BY n.id;
 
--- Nota apagada depois da leitura some no JOIN e não é gravada. O corte em 250 mil
--- caracteres (até 1MB em UTF-8) mantém o tsvector abaixo do teto de 1MB de lexemas.
+-- Nota apagada depois da leitura some no JOIN e não é gravada. O título pesa A e o
+-- corpo pesa D no ts_rank. O corte em 250 mil caracteres do corpo (até 1MB em UTF-8)
+-- mantém o tsvector abaixo do teto de 1MB de lexemas.
 -- name: SaveSearchDocuments :exec
 INSERT INTO note_search_index (note_id, document)
-SELECT n.id, to_tsvector(sqlc.arg(search_config)::text::regconfig, left(d.body, 250000))
-FROM (SELECT unnest(sqlc.arg(note_ids)::text[]) AS note_id, unnest(sqlc.arg(bodies)::text[]) AS body) d
+SELECT n.id, setweight(to_tsvector(sqlc.arg(search_config)::text::regconfig, d.title), 'A')
+          || setweight(to_tsvector(sqlc.arg(search_config)::text::regconfig, left(d.body, 250000)), 'D')
+FROM (SELECT unnest(sqlc.arg(note_ids)::text[]) AS note_id, unnest(sqlc.arg(titles)::text[]) AS title,
+             unnest(sqlc.arg(bodies)::text[]) AS body) d
 JOIN notes n ON n.id = d.note_id
 ON CONFLICT (note_id) DO UPDATE SET document = EXCLUDED.document;
 
