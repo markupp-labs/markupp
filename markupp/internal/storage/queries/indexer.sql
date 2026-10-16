@@ -1,41 +1,44 @@
 -- O indexador reserva o cofre no papel da conexão, que enxerga todos os tenants, e
 -- só então entra no papel markupp_indexer, preso pelo RLS ao cofre reservado.
 
+-- Trava a linha do cofre, e não a fila, para dois Jobs nunca pegarem o mesmo cofre. NO KEY
+-- UPDATE não conflita com a checagem de chave estrangeira, então as notas seguem
+-- graváveis. A ordem aleatória impede que um cofre que sempre falha segure os outros.
 -- name: ReservePendingVault :one
-SELECT r.vault_id, v.tenant_id
-FROM vault_index_reservations r
-JOIN vaults v ON v.id = r.vault_id
-WHERE EXISTS (
-    SELECT 1 FROM notes n
-    LEFT JOIN note_search_index i ON i.note_id = n.id AND i.revision = n.revision
-    WHERE n.vault_id = r.vault_id AND i.note_id IS NULL
-)
-ORDER BY r.vault_id
+SELECT v.id AS vault_id, v.tenant_id
+FROM vaults v
+WHERE v.id IN (SELECT n.vault_id FROM note_index_queue q JOIN notes n ON n.id = q.note_id)
+ORDER BY random()
 LIMIT 1
-FOR UPDATE OF r SKIP LOCKED;
+FOR NO KEY UPDATE OF v SKIP LOCKED;
 
 -- name: EnterIndexer :exec
 SELECT set_config('role', 'markupp_indexer', true),
        set_config('markupp.tenant_id', sqlc.arg(tenant_id)::text, true),
        set_config('markupp.vault_id', sqlc.arg(vault_id)::text, true);
 
+-- O filtro de cofre repete o RLS para a consulta usar o índice de notes por cofre.
 -- name: ListPendingNotes :many
-SELECT n.id, n.content, n.revision
-FROM notes n
-LEFT JOIN note_search_index i ON i.note_id = n.id AND i.revision = n.revision
-WHERE i.note_id IS NULL
+SELECT n.id, n.content, q.revision
+FROM note_index_queue q
+JOIN notes n ON n.id = q.note_id
+WHERE n.vault_id = sqlc.arg(vault_id)
 ORDER BY n.id;
 
--- name: UpsertSearchDocument :exec
-INSERT INTO note_search_index (note_id, tenant_id, vault_id, revision, document)
-VALUES (
-    sqlc.arg(note_id),
-    current_setting('markupp.tenant_id'),
-    current_setting('markupp.vault_id'),
-    sqlc.arg(revision),
-    to_tsvector(sqlc.arg(search_config)::text::regconfig, sqlc.arg(body)::text)
-)
-ON CONFLICT (note_id) DO UPDATE SET revision = EXCLUDED.revision, document = EXCLUDED.document;
+-- Nota apagada depois da leitura some no JOIN e não é gravada. O corte em 250 mil
+-- caracteres (até 1MB em UTF-8) mantém o tsvector abaixo do teto de 1MB de lexemas.
+-- name: SaveSearchDocuments :exec
+INSERT INTO note_search_index (note_id, document)
+SELECT n.id, to_tsvector(sqlc.arg(search_config)::text::regconfig, left(d.body, 250000))
+FROM (SELECT unnest(sqlc.arg(note_ids)::text[]) AS note_id, unnest(sqlc.arg(bodies)::text[]) AS body) d
+JOIN notes n ON n.id = d.note_id
+ON CONFLICT (note_id) DO UPDATE SET document = EXCLUDED.document;
+
+-- Tira da fila só a revisão lida: a escrita confirmada depois dela continua pendente.
+-- name: DequeueNotes :exec
+DELETE FROM note_index_queue q
+USING (SELECT unnest(sqlc.arg(note_ids)::text[]) AS note_id, unnest(sqlc.arg(revisions)::bigint[]) AS revision) r
+WHERE q.note_id = r.note_id AND q.revision = r.revision;
 
 -- Resolve o nome pelo mesmo cast que a gravação usa, com o search_path da conexão.
 -- name: ResolveSearchConfig :one

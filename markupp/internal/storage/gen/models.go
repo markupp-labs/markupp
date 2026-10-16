@@ -28,14 +28,15 @@ type Note struct {
 	UpdatedAt time.Time
 	TenantID  string
 	VaultID   string
-	Revision  int64
+}
+
+type NoteIndexQueue struct {
+	NoteID   string
+	Revision int64
 }
 
 type NoteSearchIndex struct {
 	NoteID   string
-	TenantID string
-	VaultID  string
-	Revision int64
 	Document string
 }
 
@@ -95,10 +96,6 @@ type Vault struct {
 	TenantID  string
 	Name      string
 	CreatedAt time.Time
-}
-
-type VaultIndexReservation struct {
-	VaultID string
 }
 
 type VaultMember struct {

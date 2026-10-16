@@ -50,34 +50,68 @@ func (x *PostgresVaultIndexer) indexVault(ctx context.Context, q *gen.Queries, v
 	if err := q.EnterIndexer(ctx, gen.EnterIndexerParams{TenantID: vault.TenantID, VaultID: vault.VaultID}); err != nil {
 		return fmt.Errorf("entrar no cofre %q do tenant %q: %w", vault.VaultID, vault.TenantID, err)
 	}
-	rows, err := q.ListPendingNotes(ctx)
+	rows, err := q.ListPendingNotes(ctx, vault.VaultID)
 	if err != nil {
 		return fmt.Errorf("listar notas pendentes do cofre %q: %w", vault.VaultID, err)
 	}
-	cs, revisions := toChangeset(vault, rows)
-	return x.saveDocuments(ctx, q, index(cs), revisions)
+	cs := toChangeset(vault, rows)
+	if err := x.saveDocuments(ctx, q, cs, index(cs)); err != nil {
+		return err
+	}
+	return dequeue(ctx, q, vault.VaultID, rows)
 }
 
-// toChangeset monta o lote do cofre e guarda a revisão lida de cada nota, que é a
-// que o índice registra: escrita feita durante a indexação deixa a nota pendente.
-func toChangeset(vault gen.ReservePendingVaultRow, rows []gen.ListPendingNotesRow) (indexing.Changeset, map[string]int64) {
+func toChangeset(vault gen.ReservePendingVaultRow, rows []gen.ListPendingNotesRow) indexing.Changeset {
 	cs := indexing.Changeset{TenantID: vault.TenantID, VaultID: vault.VaultID, Notes: make([]indexing.NoteChange, 0, len(rows))}
-	revisions := make(map[string]int64, len(rows))
 	for _, row := range rows {
 		cs.Notes = append(cs.Notes, indexing.NoteChange{NoteID: row.ID, Content: row.Content})
-		revisions[row.ID] = row.Revision
 	}
-	return cs, revisions
+	return cs
 }
 
-func (x *PostgresVaultIndexer) saveDocuments(ctx context.Context, q *gen.Queries, docs []indexing.SearchDocument, revisions map[string]int64) error {
+// saveDocuments grava os documentos num comando só. Exige um documento por nota do
+// lote: nota sem documento ficaria pendente para sempre.
+func (x *PostgresVaultIndexer) saveDocuments(ctx context.Context, q *gen.Queries, cs indexing.Changeset, docs []indexing.SearchDocument) error {
+	if err := matchBatch(cs, docs); err != nil {
+		return err
+	}
+	params := gen.SaveSearchDocumentsParams{SearchConfig: x.searchConfig, NoteIds: make([]string, 0, len(docs)), Bodies: make([]string, 0, len(docs))}
 	for _, doc := range docs {
-		err := q.UpsertSearchDocument(ctx, gen.UpsertSearchDocumentParams{
-			NoteID: doc.NoteID, Revision: revisions[doc.NoteID], SearchConfig: x.searchConfig, Body: doc.Text,
-		})
-		if err != nil {
-			return fmt.Errorf("gravar indice da nota %q: %w", doc.NoteID, err)
+		params.NoteIds = append(params.NoteIds, doc.NoteID)
+		params.Bodies = append(params.Bodies, doc.Text)
+	}
+	if err := q.SaveSearchDocuments(ctx, params); err != nil {
+		return fmt.Errorf("gravar indice das %d notas do cofre %q: %w", len(docs), cs.VaultID, err)
+	}
+	return nil
+}
+
+// matchBatch confere que docs tem exatamente um documento por nota de cs.
+func matchBatch(cs indexing.Changeset, docs []indexing.SearchDocument) error {
+	missing := make(map[string]bool, len(cs.Notes))
+	for _, note := range cs.Notes {
+		missing[note.NoteID] = true
+	}
+	for _, doc := range docs {
+		if !missing[doc.NoteID] {
+			return fmt.Errorf("documento da nota %q fora do lote do cofre %q, esperado um documento por nota pendente", doc.NoteID, cs.VaultID)
 		}
+		delete(missing, doc.NoteID)
+	}
+	for id := range missing {
+		return fmt.Errorf("nota %q do cofre %q sem documento, esperado um documento por nota pendente", id, cs.VaultID)
+	}
+	return nil
+}
+
+func dequeue(ctx context.Context, q *gen.Queries, vaultID string, rows []gen.ListPendingNotesRow) error {
+	params := gen.DequeueNotesParams{NoteIds: make([]string, 0, len(rows)), Revisions: make([]int64, 0, len(rows))}
+	for _, row := range rows {
+		params.NoteIds = append(params.NoteIds, row.ID)
+		params.Revisions = append(params.Revisions, row.Revision)
+	}
+	if err := q.DequeueNotes(ctx, params); err != nil {
+		return fmt.Errorf("tirar da fila as %d notas do cofre %q: %w", len(rows), vaultID, err)
 	}
 	return nil
 }
