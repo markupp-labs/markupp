@@ -34,6 +34,7 @@ en:
       search_placeholder: "Search note content"
       log_out: "Log out"
     tenant_switcher:
+      switch: "Switch tenant"
       new_tenant: "New tenant"
       settings: "Tenant settings"
       loading: "Loading"

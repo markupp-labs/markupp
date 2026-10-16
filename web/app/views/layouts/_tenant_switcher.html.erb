@@ -1,13 +1,17 @@
-<%# Seletor no estilo breadcrumb: abre um popover nativo ancorado no botão; sem suporte a âncora, o popover fica no canto. %>
-<button type="button" popovertarget="tenant_switcher" class="tree-row mb-2 block w-full text-left [anchor-name:--tenant-switcher]">
-  <span class="flex items-baseline gap-1">
-    <span class="shrink-0 text-ink-muted">markupp</span>
-    <span class="shrink-0 text-ink-muted">/</span>
-    <span class="truncate" title="<%= current_tenant.name %>"><%= current_tenant.name %></span>
-    <span aria-hidden="true" class="ml-auto shrink-0 text-ink-muted">v</span>
-  </span>
-  <span class="block text-xs text-ink-muted"><%= t("tenants.roles.#{current_tenant.role}") %></span>
-</button>
+<%# O nome leva para a tela padrão; o seletor abre num popover nativo ancorado no cabeçalho (sem suporte a âncora, fica no canto). %>
+<div id="current_tenant" class="mb-2 flex items-start gap-1 [anchor-name:--tenant-switcher]">
+  <%= link_to root_path, class: "tree-row min-w-0 flex-1" do %>
+    <span class="flex items-baseline gap-1">
+      <span class="shrink-0 text-ink-muted">markupp</span>
+      <span class="shrink-0 text-ink-muted">/</span>
+      <span class="truncate" title="<%= current_tenant.name %>"><%= current_tenant.name %></span>
+    </span>
+    <span class="block text-xs text-ink-muted"><%= t("tenants.roles.#{current_tenant.role}") %></span>
+  <% end %>
+  <button type="button" popovertarget="tenant_switcher" aria-label="<%= t(".switch") %>" title="<%= t(".switch") %>" class="btn-icon mt-0.5">
+    <%= icon("caret-up-down") %>
+  </button>
+</div>
 
 <div id="tenant_switcher" popover
      class="m-0 w-64 rounded-md border border-line bg-surface-sunken p-1 text-ink [inset:auto] [position-anchor:--tenant-switcher] [position-area:bottom_span-right]">
