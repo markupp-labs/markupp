@@ -1,0 +1,114 @@
+package oauth
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"net/url"
+	"slices"
+	"strings"
+)
+
+// StartAuthorization valida o GET /oauth/authorize, grava o Pedido de autorização e
+// devolve a URL da tela de consentimento no painel. Enquanto cliente e redirect_uri não
+// estão confirmados, o erro não leva RedirectURI; depois, volta ao cliente por redirect.
+func (s *Service) StartAuthorization(ctx context.Context, p AuthorizeParams) (string, error) {
+	if err := s.checkClientRedirect(ctx, p); err != nil {
+		return "", err
+	}
+	req, err := s.buildRequest(p)
+	if err != nil {
+		return "", err
+	}
+	if err := s.repo.CreateRequest(ctx, req); err != nil {
+		return "", fmt.Errorf("oauth: gravando o pedido de autorização do cliente %q: %w", p.ClientID, err)
+	}
+	return s.cfg.PanelURL + "/oauth/consentimento?pedido=" + url.QueryEscape(req.ID), nil
+}
+
+// checkClientRedirect confirma que o cliente existe e registrou a redirect_uri pedida.
+func (s *Service) checkClientRedirect(ctx context.Context, p AuthorizeParams) error {
+	if p.ClientID == "" {
+		return &ProtocolError{Code: errInvalidRequest, Description: "client_id ausente"}
+	}
+	client, err := s.repo.GetClient(ctx, p.ClientID)
+	if errors.Is(err, ErrClientNotFound) {
+		return &ProtocolError{Code: errInvalidRequest, Description: "client_id " + describeValue(p.ClientID) + " nao registrado"}
+	}
+	if err != nil {
+		return fmt.Errorf("oauth: buscando o cliente %q: %w", p.ClientID, err)
+	}
+	if !MatchRedirectURI(client.RedirectURIs, p.RedirectURI) {
+		return &ProtocolError{Code: errInvalidRequest, Description: "redirect_uri " + describeValue(p.RedirectURI) + " nao registrada para o cliente"}
+	}
+	return nil
+}
+
+// buildRequest valida o resto dos parâmetros e monta o pedido a gravar.
+func (s *Service) buildRequest(p AuthorizeParams) (AuthorizationRequest, error) {
+	if err := checkCodeFlow(p); err != nil {
+		return AuthorizationRequest{}, err
+	}
+	resource, err := s.requestedResource(p)
+	if err != nil {
+		return AuthorizationRequest{}, err
+	}
+	scopes, err := requestedScopes(p)
+	if err != nil {
+		return AuthorizationRequest{}, err
+	}
+	now := s.clock()
+	return AuthorizationRequest{
+		ID: s.newID(), ClientID: p.ClientID, RedirectURI: p.RedirectURI, Scopes: scopes,
+		Resource: resource, State: p.State, CodeChallenge: p.CodeChallenge,
+		CreatedAt: now, ExpiresAt: now.Add(s.cfg.RequestTTL),
+	}, nil
+}
+
+// checkCodeFlow exige response_type=code e PKCE com S256.
+func checkCodeFlow(p AuthorizeParams) error {
+	if p.ResponseType != "code" {
+		return redirectError(p, errUnsupportedResponseType, "response_type "+describeValue(p.ResponseType)+" nao suportado; esperado 'code'")
+	}
+	if p.CodeChallengeMethod != "S256" {
+		return redirectError(p, errInvalidRequest, "code_challenge_method "+describeValue(p.CodeChallengeMethod)+" nao suportado; esperado 'S256'")
+	}
+	if !ValidChallenge(p.CodeChallenge) {
+		return redirectError(p, errInvalidRequest, "code_challenge invalido; esperado SHA-256 em base64url sem padding, 43 caracteres")
+	}
+	return nil
+}
+
+// requestedResource devolve o resource na forma canônica, se for um servidor protegido.
+func (s *Service) requestedResource(p AuthorizeParams) (string, error) {
+	if p.Resource == "" {
+		return "", redirectError(p, errInvalidTarget, "resource ausente")
+	}
+	resource, ok := canonicalize(p.Resource)
+	if !ok || !slices.Contains(s.cfg.Resources, resource) {
+		return "", redirectError(p, errInvalidTarget, "resource "+describeValue(p.Resource)+" desconhecido")
+	}
+	return resource, nil
+}
+
+// requestedScopes separa o scope por espaço, recusa escopo fora de SupportedScopes e
+// devolve os pedidos sem repetição, na ordem de SupportedScopes. Vazio vira leitura.
+func requestedScopes(p AuthorizeParams) ([]string, error) {
+	requested := map[string]bool{}
+	for _, scope := range strings.Split(p.Scope, " ") {
+		if scope != "" && !slices.Contains(SupportedScopes(), scope) {
+			return nil, redirectError(p, errInvalidScope, "escopo "+describeValue(scope)+" nao suportado; esperado um de "+strings.Join(SupportedScopes(), ", "))
+		}
+		requested[scope] = scope != ""
+	}
+	scopes := slices.DeleteFunc(SupportedScopes(), func(scope string) bool { return !requested[scope] })
+	if len(scopes) == 0 {
+		return []string{ScopeNotesRead}, nil
+	}
+	return scopes, nil
+}
+
+// redirectError é o erro que volta ao cliente pela redirect_uri já confirmada.
+func redirectError(p AuthorizeParams, code, description string) error {
+	return &ProtocolError{Code: code, Description: description, RedirectURI: p.RedirectURI, State: p.State}
+}
