@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -23,16 +24,14 @@ func NewPostgresInviteOutbox(pool *pgxpool.Pool) *PostgresInviteOutbox {
 	return &PostgresInviteOutbox{pool: pool}
 }
 
-// DeliverNextDue reserva a próxima notificação vencida, entrega com deliver e grava
-// o resultado na mesma transação. Erro de deliver desfaz tudo, inclusive a troca do
-// hash, e a notificação volta para a fila como estava.
-func (o *PostgresInviteOutbox) DeliverNextDue(ctx context.Context, deliver notify.DeliverFunc) (bool, error) {
+// ClaimNextDue reserva a próxima notificação vencida por lease e troca o hash do
+// convite por tokenHash, numa transação que termina antes do envio: o lock no convite
+// não espera o servidor de email.
+func (o *PostgresInviteOutbox) ClaimNextDue(ctx context.Context, tokenHash string, lease time.Duration) (notify.Claim, bool, error) {
+	var claim notify.Claim
 	found := false
-	err := inTx(ctx, o.pool, func(q *gen.Queries) error {
-		if err := q.EnterNotifier(ctx); err != nil {
-			return fmt.Errorf("entrar no papel do notificador: %w", err)
-		}
-		row, err := q.ReserveDueNotification(ctx)
+	err := o.inNotifierTx(ctx, func(q *gen.Queries) error {
+		row, err := q.ClaimDueNotification(ctx, int32(lease.Seconds()))
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil
 		}
@@ -40,30 +39,46 @@ func (o *PostgresInviteOutbox) DeliverNextDue(ctx context.Context, deliver notif
 			return fmt.Errorf("reservar notificacao vencida: %w", err)
 		}
 		found = true
-		pending := notify.PendingInvite{NotificationID: row.ID, InviteID: row.InviteID, Attempts: int(row.Attempts)}
-		outcome, err := deliver(ctx, pending, reissuer(q, row.InviteID))
-		if err != nil {
-			return err
-		}
-		return recordOutcome(ctx, q, row.ID, outcome)
+		claim, err = reissue(ctx, q, row, tokenHash)
+		return err
 	})
-	return found, err
+	return claim, found, err
 }
 
-// reissuer troca o hash do convite inviteID pela função do banco, a única porta do
-// notificador para a tabela de convites.
-func reissuer(q *gen.Queries, inviteID string) notify.ReissueFunc {
-	return func(ctx context.Context, tokenHash string) (notify.InviteDetails, bool, error) {
-		rows, err := q.ReissueInviteToken(ctx, gen.ReissueInviteTokenParams{InviteID: inviteID, TokenHash: tokenHash})
-		if err != nil || len(rows) == 0 {
-			return notify.InviteDetails{}, false, err
-		}
-		r := rows[0]
-		return notify.InviteDetails{
-			Email: r.InviteEmail, Role: r.InviteRole, TenantName: r.TenantName,
-			InviterEmail: r.InviterEmail, ExpiresAt: r.InviteExpiresAt,
-		}, true, nil
+// reissue troca o hash do convite da notificação pela função do banco, a única porta
+// do notificador para a tabela de convites.
+func reissue(ctx context.Context, q *gen.Queries, row gen.ClaimDueNotificationRow, tokenHash string) (notify.Claim, error) {
+	claim := notify.Claim{NotificationID: row.ID, Attempt: int(row.Attempts)}
+	rows, err := q.ReissueInviteToken(ctx, gen.ReissueInviteTokenParams{InviteID: row.InviteID, TokenHash: tokenHash})
+	if err != nil {
+		return notify.Claim{}, fmt.Errorf("trocar o hash do convite %q: %w", row.InviteID, err)
 	}
+	if len(rows) == 0 {
+		return claim, nil
+	}
+	r := rows[0]
+	claim.Pending = true
+	claim.Details = notify.InviteDetails{
+		Email: r.InviteEmail, Role: r.InviteRole, TenantName: r.TenantName,
+		InviterEmail: r.InviterEmail, ExpiresAt: r.InviteExpiresAt,
+	}
+	return claim, nil
+}
+
+// Record grava o resultado da entrega reservada, que substitui o lease.
+func (o *PostgresInviteOutbox) Record(ctx context.Context, notificationID string, outcome notify.Outcome) error {
+	return o.inNotifierTx(ctx, func(q *gen.Queries) error {
+		return recordOutcome(ctx, q, notificationID, outcome)
+	})
+}
+
+func (o *PostgresInviteOutbox) inNotifierTx(ctx context.Context, fn func(q *gen.Queries) error) error {
+	return inTx(ctx, o.pool, func(q *gen.Queries) error {
+		if err := q.EnterNotifier(ctx); err != nil {
+			return fmt.Errorf("entrar no papel do notificador: %w", err)
+		}
+		return fn(q)
+	})
 }
 
 func recordOutcome(ctx context.Context, q *gen.Queries, id string, outcome notify.Outcome) error {
