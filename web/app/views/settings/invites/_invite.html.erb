@@ -1,0 +1,13 @@
+<%# Pendente tem validade e Revoke; aceito e vencido ficam apagados, só com o status em texto. %>
+<%= tag.li data: { invite_status: invite.status },
+           class: [ "border-t border-line px-2 py-2 md:col-span-4 md:grid md:grid-cols-subgrid md:items-center", ("text-ink-muted" unless invite.pending?) ] do %>
+  <p class="[overflow-wrap:anywhere]"><%= invite.email %></p>
+  <p><%= t("tenants.roles.#{invite.role}") %></p>
+  <% if invite.pending? %>
+    <p class="text-ink-muted"><%= t(".expires", date: l(invite.expires_at.to_date, format: :short)) %></p>
+    <%= button_to t(".revoke"), settings_invite_path(invite.id), method: :delete, form_class: "mt-1 md:mt-0", class: "btn border-danger text-danger",
+                  data: { turbo_confirm: t(".confirm_revoke", email: invite.email), turbo_submits_with: t(".revoking") } %>
+  <% else %>
+    <p><%= t(".#{invite.status}") %></p>
+  <% end %>
+<% end %>

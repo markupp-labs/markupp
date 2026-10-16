@@ -1,3 +1,49 @@
+<% email_error, role_error = (@field_errors || {}).values_at(:email, :role) %>
+<% field_class = "w-full rounded-md border border-line bg-surface px-2 py-1 aria-invalid:border-danger" %>
+
 <div class="max-w-4xl">
   <%= render "settings/tabs", current: "invites" %>
+
+  <% if @token %>
+    <div role="status" class="mt-3 rounded-md border border-line p-2">
+      <p><%= t(".token_hint", email: @issued.email, date: l(@issued.expires_at.to_date, format: :short)) %></p>
+      <%= label_tag :invite_token, t(".token"), class: "mt-2 block text-ink-muted" %>
+      <%= text_field_tag :invite_token, @token, readonly: true, autocomplete: "off", spellcheck: false, class: "#{field_class} select-all" %>
+    </div>
+  <% end %>
+
+  <%# Sem Turbo: a resposta com o token é uma página renderizada, não um redirect. %>
+  <%= form_with scope: :invite, url: settings_invites_path, data: { turbo: false },
+                class: "mt-3 flex flex-col gap-3 rounded-md border border-line p-3 md:flex-row md:items-start" do |form| %>
+    <div class="md:flex-1">
+      <%= form.label :email, class: "block text-ink-muted" %>
+      <%= form.email_field :email, value: @email, required: true, autocomplete: "off", spellcheck: false, autofocus: email_error.present?,
+                           aria: { invalid: email_error.present?, describedby: ("invite_email_error" if email_error) }, class: field_class %>
+      <% if email_error %>
+        <p id="invite_email_error" class="text-danger"><%= email_error %></p>
+      <% end %>
+    </div>
+    <div class="md:w-36">
+      <%= form.label :role, class: "block text-ink-muted" %>
+      <%= form.select :role, current_tenant.assignable_roles.map { [ t("tenants.roles.#{it}"), it ] }, { selected: @role },
+                      aria: { invalid: role_error.present?, describedby: ("invite_role_error" if role_error) }, class: field_class %>
+      <% if role_error %>
+        <p id="invite_role_error" class="text-danger"><%= role_error %></p>
+      <% end %>
+    </div>
+    <%= form.button t(".send"), class: "btn self-start md:mt-5" %>
+  <% end %>
+
+  <% if tenant_invites.empty? %>
+    <p class="mt-4 text-ink-muted"><%= t(".empty") %></p>
+  <% else %>
+    <ul class="mt-4 md:grid md:grid-cols-[1fr_9rem_9rem_auto] md:gap-x-3">
+      <li aria-hidden="true" class="hidden px-2 py-1 text-ink-muted md:col-span-4 md:grid md:grid-cols-subgrid">
+        <span><%= t(".email") %></span>
+        <span><%= t(".role") %></span>
+        <span><%= t(".status") %></span>
+      </li>
+      <%= render partial: "settings/invites/invite", collection: tenant_invites %>
+    </ul>
+  <% end %>
 </div>

@@ -121,6 +121,31 @@ en:
         last_owner: "A tenant needs at least one owner. Make someone else owner first."
         role_above_own: "You can't give or change a role above your own."
         member_not_found: "That person is no longer a member."
+    invites:
+      index:
+        token_hint: "This server has no email set up. Send this token to %{email} yourself; it works once and expires on %{date}."
+        token: "Invite token"
+        send: "Send invite"
+        empty: "No invites yet. Invite someone with the form above."
+        email: "Email"
+        role: "Role"
+        status: "Status"
+      invite:
+        expires: "Expires %{date}"
+        accepted: "Accepted"
+        expired: "Expired"
+        revoke: "Revoke"
+        revoking: "Revoking"
+        confirm_revoke: "Revoke the invite for %{email}?"
+      create:
+        sent: "Invite sent to %{email}."
+      destroy:
+        revoked: "Invite revoked."
+        not_pending: "That invite is no longer pending."
+      errors:
+        invalid_request: "Enter an address like name@example.com."
+        already_member: "%{email} is already a member."
+        role_above_own: "You can't give or change a role above your own."
   notes:
     untitled: "Untitled"
     index:
