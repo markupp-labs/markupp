@@ -66,7 +66,7 @@ func (q *Queries) DeleteNote(ctx context.Context, id string) (int64, error) {
 }
 
 const getNoteByID = `-- name: GetNoteByID :one
-SELECT id, path, content, created_at, updated_at, tenant_id, vault_id FROM notes WHERE id = $1
+SELECT id, path, content, created_at, updated_at, tenant_id, vault_id, content_sha256 FROM notes WHERE id = $1
 `
 
 func (q *Queries) GetNoteByID(ctx context.Context, id string) (Note, error) {
@@ -80,12 +80,13 @@ func (q *Queries) GetNoteByID(ctx context.Context, id string) (Note, error) {
 		&i.UpdatedAt,
 		&i.TenantID,
 		&i.VaultID,
+		&i.ContentSha256,
 	)
 	return i, err
 }
 
 const listNotes = `-- name: ListNotes :many
-SELECT id, path, content, created_at, updated_at, tenant_id, vault_id FROM notes
+SELECT id, path, content, created_at, updated_at, tenant_id, vault_id, content_sha256 FROM notes
 ORDER BY path, vault_id
 `
 
@@ -106,6 +107,7 @@ func (q *Queries) ListNotes(ctx context.Context) ([]Note, error) {
 			&i.UpdatedAt,
 			&i.TenantID,
 			&i.VaultID,
+			&i.ContentSha256,
 		); err != nil {
 			return nil, err
 		}
@@ -166,7 +168,7 @@ const updateNoteForced = `-- name: UpdateNoteForced :one
 UPDATE notes
 SET path = $1, content = $2, updated_at = $3
 WHERE id = $4
-RETURNING id, path, content, created_at, updated_at, tenant_id, vault_id
+RETURNING id, path, content, created_at, updated_at, tenant_id, vault_id, content_sha256
 `
 
 type UpdateNoteForcedParams struct {
@@ -192,6 +194,7 @@ func (q *Queries) UpdateNoteForced(ctx context.Context, arg UpdateNoteForcedPara
 		&i.UpdatedAt,
 		&i.TenantID,
 		&i.VaultID,
+		&i.ContentSha256,
 	)
 	return i, err
 }
@@ -200,7 +203,7 @@ const updateNoteWithVersionCheck = `-- name: UpdateNoteWithVersionCheck :one
 UPDATE notes
 SET path = $1, content = $2, updated_at = $3
 WHERE id = $4 AND updated_at = $5
-RETURNING id, path, content, created_at, updated_at, tenant_id, vault_id
+RETURNING id, path, content, created_at, updated_at, tenant_id, vault_id, content_sha256
 `
 
 type UpdateNoteWithVersionCheckParams struct {
@@ -228,6 +231,7 @@ func (q *Queries) UpdateNoteWithVersionCheck(ctx context.Context, arg UpdateNote
 		&i.UpdatedAt,
 		&i.TenantID,
 		&i.VaultID,
+		&i.ContentSha256,
 	)
 	return i, err
 }

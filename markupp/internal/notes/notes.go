@@ -4,6 +4,8 @@ package notes
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"strings"
@@ -13,14 +15,16 @@ import (
 )
 
 // Note é uma nota persistida, identificada por ID e endereçada por Path dentro
-// do cofre VaultID.
+// do cofre VaultID. ContentSHA256 é o SHA-256 dos bytes UTF-8 de Content, em hex
+// minúsculo.
 type Note struct {
-	ID        string
-	VaultID   string
-	Path      string
-	Content   string
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	ID            string
+	VaultID       string
+	Path          string
+	Content       string
+	ContentSHA256 string
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
 }
 
 // SearchResult é a projeção de uma nota devolvida pela busca, sem o conteúdo.
@@ -99,7 +103,7 @@ func (s *Service) Create(ctx context.Context, vaultID, path, content string) (No
 		return Note{}, err
 	}
 	now := canonicalTime(s.clock())
-	note := Note{ID: s.newID(), VaultID: vaultID, Path: path, Content: content, CreatedAt: now, UpdatedAt: now}
+	note := Note{ID: s.newID(), VaultID: vaultID, Path: path, Content: content, ContentSHA256: contentSHA256(content), CreatedAt: now, UpdatedAt: now}
 	if err := s.repo.Save(ctx, note); err != nil {
 		return Note{}, fmt.Errorf("salvar nota %q no cofre %q: %w", note.ID, vaultID, err)
 	}
@@ -155,6 +159,13 @@ func (s *Service) Delete(ctx context.Context, id string) error {
 		return fmt.Errorf("excluir nota %q: %w", id, err)
 	}
 	return nil
+}
+
+// contentSHA256 repete em Go a coluna gerada notes.content_sha256, porque Save não
+// devolve a linha gravada.
+func contentSHA256(content string) string {
+	sum := sha256.Sum256([]byte(content))
+	return hex.EncodeToString(sum[:])
 }
 
 func validateID(id string) error {

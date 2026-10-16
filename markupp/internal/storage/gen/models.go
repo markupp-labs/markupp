@@ -31,13 +31,14 @@ type AuditEvent struct {
 }
 
 type Note struct {
-	ID        string
-	Path      string
-	Content   string
-	CreatedAt time.Time
-	UpdatedAt time.Time
-	TenantID  string
-	VaultID   string
+	ID            string
+	Path          string
+	Content       string
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+	TenantID      string
+	VaultID       string
+	ContentSha256 []byte
 }
 
 type NoteIndexQueue struct {

@@ -30,12 +30,13 @@ type notesHandler struct {
 }
 
 type noteResponse struct {
-	ID        string    `json:"id"`
-	VaultID   string    `json:"vault_id"`
-	Path      string    `json:"path"`
-	Content   string    `json:"content"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	ID            string    `json:"id"`
+	VaultID       string    `json:"vault_id"`
+	Path          string    `json:"path"`
+	Content       string    `json:"content"`
+	ContentSHA256 string    `json:"content_sha256"`
+	CreatedAt     time.Time `json:"created_at"`
+	UpdatedAt     time.Time `json:"updated_at"`
 }
 
 type errorResponse struct {
@@ -51,12 +52,13 @@ const (
 
 func toResponse(n notes.Note) noteResponse {
 	return noteResponse{
-		ID:        n.ID,
-		VaultID:   n.VaultID,
-		Path:      n.Path,
-		Content:   n.Content,
-		CreatedAt: n.CreatedAt,
-		UpdatedAt: n.UpdatedAt,
+		ID:            n.ID,
+		VaultID:       n.VaultID,
+		Path:          n.Path,
+		Content:       n.Content,
+		ContentSHA256: n.ContentSHA256,
+		CreatedAt:     n.CreatedAt,
+		UpdatedAt:     n.UpdatedAt,
 	}
 }
 

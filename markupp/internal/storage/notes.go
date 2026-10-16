@@ -4,6 +4,7 @@ package storage
 
 import (
 	"context"
+	"encoding/hex"
 	"errors"
 	"time"
 
@@ -159,12 +160,13 @@ func (r *PostgresNotesRepository) ListNotes(ctx context.Context) ([]notes.Note, 
 
 func toNote(row gen.Note) notes.Note {
 	return notes.Note{
-		ID:        row.ID,
-		VaultID:   row.VaultID,
-		Path:      row.Path,
-		Content:   row.Content,
-		CreatedAt: row.CreatedAt,
-		UpdatedAt: row.UpdatedAt,
+		ID:            row.ID,
+		VaultID:       row.VaultID,
+		Path:          row.Path,
+		Content:       row.Content,
+		ContentSHA256: hex.EncodeToString(row.ContentSha256),
+		CreatedAt:     row.CreatedAt,
+		UpdatedAt:     row.UpdatedAt,
 	}
 }
 
