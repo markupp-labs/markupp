@@ -26,7 +26,7 @@ type Note struct {
 }
 
 // SearchResult é a projeção de uma nota devolvida pela busca: sem o conteúdo, com o
-// trecho dele em que os termos da consulta aparecem marcados com <b>.
+// trecho cru dele em que os termos da consulta aparecem entre U+0002 e U+0003.
 type SearchResult struct {
 	ID        string    `json:"id"`
 	VaultID   string    `json:"vault_id"`

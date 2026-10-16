@@ -36,10 +36,12 @@ DELETE FROM notes WHERE id = $1;
 
 -- Lê só o índice: a nota ainda não indexada fica fora (ADR-0012). Consulta sem lexema,
 -- vazia ou só de stopwords, não casa com nada. O id desempata o ranking para a
--- paginação ser estável.
+-- paginação ser estável. O trecho marca os termos com U+0002 e U+0003, e não com
+-- HTML, para o cliente escapar o texto antes de trocar os marcadores por destaque.
 -- name: SearchNotes :many
 SELECT n.id, n.vault_id, n.path, n.updated_at,
-       ts_headline(sqlc.arg(search_config)::text::regconfig, n.content, q.query)::text AS snippet
+       ts_headline(sqlc.arg(search_config)::text::regconfig, n.content, q.query,
+                   'StartSel=' || chr(2) || ', StopSel=' || chr(3))::text AS snippet
 FROM websearch_to_tsquery(sqlc.arg(search_config)::text::regconfig, sqlc.arg(query)::text) AS q (query)
 JOIN note_search_index s ON s.document @@ q.query
 JOIN notes n ON n.id = s.note_id
