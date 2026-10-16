@@ -7,6 +7,8 @@ import (
 	"context"
 	"fmt"
 	"time"
+
+	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/drain"
 )
 
 // Message é um email de texto puro.
@@ -89,16 +91,11 @@ func NextAttempt(attempts int, now time.Time) (time.Time, bool) {
 // RunLoop entrega as notificações vencidas até não sobrar nenhuma, chama wait e
 // recomeça. Termina no primeiro erro do banco ou de wait.
 func RunLoop(ctx context.Context, outbox Outbox, deliver DeliverFunc, wait func(context.Context) error) error {
-	for {
+	return drain.Run(ctx, func(ctx context.Context) (bool, error) {
 		found, err := outbox.DeliverNextDue(ctx, deliver)
 		if err != nil {
-			return fmt.Errorf("entregar proxima notificacao: %w", err)
+			return false, fmt.Errorf("entregar proxima notificacao: %w", err)
 		}
-		if found {
-			continue
-		}
-		if err := wait(ctx); err != nil {
-			return err
-		}
-	}
+		return found, nil
+	}, wait)
 }

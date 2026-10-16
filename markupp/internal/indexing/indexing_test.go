@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -92,19 +91,4 @@ func TestRunLoop_ErroDoBanco_DevolveOErroSemEsperar(t *testing.T) {
 
 	require.ErrorIs(t, err, falha)
 	assert.Zero(t, espera.calls)
-}
-
-func TestWaitInterval_ContextoCancelado_VoltaNaHoraComOErro(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	cancel()
-
-	inicio := time.Now()
-	err := indexing.WaitInterval(time.Hour)(ctx)
-
-	assert.ErrorIs(t, err, context.Canceled)
-	assert.Less(t, time.Since(inicio), time.Second)
-}
-
-func TestWaitInterval_IntervaloPassa_VoltaSemErro(t *testing.T) {
-	assert.NoError(t, indexing.WaitInterval(time.Millisecond)(context.Background()))
 }

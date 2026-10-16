@@ -17,6 +17,7 @@ import (
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/api"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/auth"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/config"
+	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/drain"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/indexing"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/notes"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/notify"
@@ -104,7 +105,7 @@ func deliverNotifications(ctx context.Context, logger *slog.Logger, cfg config.C
 	defer pool.Close()
 	deliverer := notify.NewDeliverer(mailer, cfg.SMTPFrom, auth.NewOpaqueToken, time.Now)
 	logger.Info("notificador em laco", "intervalo", notifyInterval.String())
-	return notify.RunLoop(ctx, storage.NewPostgresInviteOutbox(pool), deliverer.Deliver, indexing.WaitInterval(notifyInterval))
+	return notify.RunLoop(ctx, storage.NewPostgresInviteOutbox(pool), deliverer.Deliver, drain.WaitInterval(notifyInterval))
 }
 
 // indexVaults roda o indexador sem estado do pacote indexing (ADR-0033): index
@@ -121,7 +122,7 @@ func indexVaults(ctx context.Context, logger *slog.Logger, cfg config.Config, cm
 	}
 	if cmd == indexLoopCommand {
 		logger.Info("indexador em laco", "intervalo", cfg.IndexInterval.String())
-		return indexing.RunLoop(ctx, indexer, indexing.WaitInterval(cfg.IndexInterval))
+		return indexing.RunLoop(ctx, indexer, drain.WaitInterval(cfg.IndexInterval))
 	}
 	found, err := indexer.IndexNextVault(ctx, indexing.Index)
 	logger.Info("indexacao de um cofre", "cofre_pendente", found)
