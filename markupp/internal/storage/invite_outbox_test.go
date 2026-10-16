@@ -302,3 +302,17 @@ func TestInviteOutbox_RevogarDuranteAEntrega_NaoEntraEmDeadlock(t *testing.T) {
 	require.NoError(t, <-revogacao)
 	assert.Zero(t, countRows(t, db, "SELECT count(*) FROM user_invites WHERE id = 'c1'"))
 }
+
+func TestInviteOutbox_QuemConvidouSaiuDoTenant_NaoTrocaOHash(t *testing.T) {
+	db := setupTestDB(t)
+	conviteComEmail(t, db, "c1", "nova@markupp.dev")
+	antes := hashDoConvite(t, db, "c1")
+	_, err := db.Exec(context.Background(), "DELETE FROM tenant_memberships WHERE user_id = 'admin-a'")
+	require.NoError(t, err)
+	e := &entregaRegistrada{outcome: notify.Outcome{GiveUp: true}, novoHash: "h1"}
+
+	require.True(t, entregaProxima(t, db, e))
+
+	assert.False(t, e.found, "o aceite recusaria o token: convite sem quem o sustente nao vai por email")
+	assert.Equal(t, antes, hashDoConvite(t, db, "c1"))
+}
