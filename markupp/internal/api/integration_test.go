@@ -14,6 +14,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/api"
+	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/auth"
+	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/identity"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/notes"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/storage"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/storage/storagetest"
@@ -25,10 +27,12 @@ func setupIntegrationServer(t *testing.T) (*httptest.Server, *pgxpool.Pool) {
 	t.Helper()
 	pool := storagetest.EmptyPool(t)
 	require.NoError(t, storage.Migrate(context.Background(), pool))
+	storagetest.SeedMember(t, pool, identity.Actor{UserID: "integracao", TenantID: "default", Role: "admin"}, "cofre-integracao")
 
 	repo := storage.NewPostgresNotesRepository(pool)
 	svc := notes.NewService(repo, integrationMaxNoteSize)
-	router := api.NewRouter(svc, pool, nil)
+	validator := &fakeTokenValidator{claims: auth.Claims{Subject: "integracao"}}
+	router := api.NewRouter(api.RouterDeps{Notes: svc, Tenants: &fakeTenantResolver{membership: auth.Membership{TenantID: "default", Role: "admin"}}, Tokens: validator, Probe: pool})
 
 	server := httptest.NewServer(router)
 	t.Cleanup(server.Close)
@@ -37,7 +41,11 @@ func setupIntegrationServer(t *testing.T) (*httptest.Server, *pgxpool.Pool) {
 
 func postNotes(t *testing.T, baseURL, body string) *http.Response {
 	t.Helper()
-	resp, err := http.Post(baseURL+"/notes", "application/json", strings.NewReader(body))
+	req, err := http.NewRequest(http.MethodPost, baseURL+"/notes", strings.NewReader(body))
+	require.NoError(t, err)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer token-valido")
+	resp, err := http.DefaultClient.Do(req)
 	require.NoError(t, err)
 	return resp
 }
@@ -47,6 +55,7 @@ func putNote(t *testing.T, baseURL, id, body string) *http.Response {
 	req, err := http.NewRequest(http.MethodPut, baseURL+"/notes/"+id, strings.NewReader(body))
 	require.NoError(t, err)
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer token-valido")
 	resp, err := http.DefaultClient.Do(req)
 	require.NoError(t, err)
 	return resp
@@ -56,6 +65,17 @@ func deleteNote(t *testing.T, baseURL, id string) *http.Response {
 	t.Helper()
 	req, err := http.NewRequest(http.MethodDelete, baseURL+"/notes/"+id, nil)
 	require.NoError(t, err)
+	req.Header.Set("Authorization", "Bearer token-valido")
+	resp, err := http.DefaultClient.Do(req)
+	require.NoError(t, err)
+	return resp
+}
+
+func getNotes(t *testing.T, url string) *http.Response {
+	t.Helper()
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	require.NoError(t, err)
+	req.Header.Set("Authorization", "Bearer token-valido")
 	resp, err := http.DefaultClient.Do(req)
 	require.NoError(t, err)
 	return resp
@@ -255,8 +275,7 @@ func TestIntegration_CriarNotaDuplicada_RetornaMensagemLimpa(t *testing.T) {
 func TestIntegration_ListNotes_DBVazio_RetornaArrayVazio(t *testing.T) {
 	server, _ := setupIntegrationServer(t)
 
-	resp, err := http.Get(server.URL + "/notes")
-	require.NoError(t, err)
+	resp := getNotes(t, server.URL+"/notes")
 	defer func() { _ = resp.Body.Close() }()
 
 	require.Equal(t, http.StatusOK, resp.StatusCode)
@@ -281,8 +300,7 @@ func TestIntegration_ListNotes_RetornaArrayOrdenadoPorPath(t *testing.T) {
 	require.Equal(t, http.StatusCreated, r3.StatusCode)
 	_ = r3.Body.Close()
 
-	resp, err := http.Get(server.URL + "/notes")
-	require.NoError(t, err)
+	resp := getNotes(t, server.URL+"/notes")
 	defer func() { _ = resp.Body.Close() }()
 
 	require.Equal(t, http.StatusOK, resp.StatusCode)

@@ -11,27 +11,46 @@ import (
 )
 
 const createNote = `-- name: CreateNote :exec
-INSERT INTO notes (id, path, content, created_at, updated_at)
-VALUES ($1, $2, $3, $4, $5)
+
+INSERT INTO notes (id, vault_id, path, content, created_at, updated_at)
+VALUES ($1, $2, $3, $4, $5, $6)
 `
 
 type CreateNoteParams struct {
 	ID        string
+	VaultID   string
 	Path      string
 	Content   string
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
 
+// O tenant da nota vem do DEFAULT da coluna, lido da sessão, e o RLS recorta toda
+// leitura e escrita ao tenant e aos cofres do usuário: nenhuma query repete o filtro.
 func (q *Queries) CreateNote(ctx context.Context, arg CreateNoteParams) error {
 	_, err := q.db.Exec(ctx, createNote,
 		arg.ID,
+		arg.VaultID,
 		arg.Path,
 		arg.Content,
 		arg.CreatedAt,
 		arg.UpdatedAt,
 	)
 	return err
+}
+
+const defaultVaultID = `-- name: DefaultVaultID :one
+SELECT vault_id FROM vault_members
+WHERE user_id = current_setting('markupp.user_id', true)
+ORDER BY created_at, vault_id
+LIMIT 1
+`
+
+func (q *Queries) DefaultVaultID(ctx context.Context) (string, error) {
+	row := q.db.QueryRow(ctx, defaultVaultID)
+	var vault_id string
+	err := row.Scan(&vault_id)
+	return vault_id, err
 }
 
 const deleteNote = `-- name: DeleteNote :execrows
@@ -47,7 +66,7 @@ func (q *Queries) DeleteNote(ctx context.Context, id string) (int64, error) {
 }
 
 const getNoteByID = `-- name: GetNoteByID :one
-SELECT id, path, content, created_at, updated_at FROM notes WHERE id = $1
+SELECT id, path, content, created_at, updated_at, tenant_id, vault_id FROM notes WHERE id = $1
 `
 
 func (q *Queries) GetNoteByID(ctx context.Context, id string) (Note, error) {
@@ -59,13 +78,15 @@ func (q *Queries) GetNoteByID(ctx context.Context, id string) (Note, error) {
 		&i.Content,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.TenantID,
+		&i.VaultID,
 	)
 	return i, err
 }
 
 const listNotes = `-- name: ListNotes :many
-SELECT id, path, content, created_at, updated_at FROM notes
-ORDER BY path
+SELECT id, path, content, created_at, updated_at, tenant_id, vault_id FROM notes
+ORDER BY path, vault_id
 `
 
 func (q *Queries) ListNotes(ctx context.Context) ([]Note, error) {
@@ -83,6 +104,8 @@ func (q *Queries) ListNotes(ctx context.Context) ([]Note, error) {
 			&i.Content,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.TenantID,
+			&i.VaultID,
 		); err != nil {
 			return nil, err
 		}
@@ -95,7 +118,7 @@ func (q *Queries) ListNotes(ctx context.Context) ([]Note, error) {
 }
 
 const searchNotes = `-- name: SearchNotes :many
-SELECT id, path, updated_at FROM notes
+SELECT id, vault_id, path, updated_at FROM notes
 WHERE content ILIKE $1
 ORDER BY updated_at DESC
 LIMIT $2 OFFSET $3
@@ -109,6 +132,7 @@ type SearchNotesParams struct {
 
 type SearchNotesRow struct {
 	ID        string
+	VaultID   string
 	Path      string
 	UpdatedAt time.Time
 }
@@ -122,7 +146,12 @@ func (q *Queries) SearchNotes(ctx context.Context, arg SearchNotesParams) ([]Sea
 	var items []SearchNotesRow
 	for rows.Next() {
 		var i SearchNotesRow
-		if err := rows.Scan(&i.ID, &i.Path, &i.UpdatedAt); err != nil {
+		if err := rows.Scan(
+			&i.ID,
+			&i.VaultID,
+			&i.Path,
+			&i.UpdatedAt,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -137,7 +166,7 @@ const updateNoteForced = `-- name: UpdateNoteForced :one
 UPDATE notes
 SET path = $1, content = $2, updated_at = $3
 WHERE id = $4
-RETURNING id, path, content, created_at, updated_at
+RETURNING id, path, content, created_at, updated_at, tenant_id, vault_id
 `
 
 type UpdateNoteForcedParams struct {
@@ -161,6 +190,8 @@ func (q *Queries) UpdateNoteForced(ctx context.Context, arg UpdateNoteForcedPara
 		&i.Content,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.TenantID,
+		&i.VaultID,
 	)
 	return i, err
 }
@@ -169,7 +200,7 @@ const updateNoteWithVersionCheck = `-- name: UpdateNoteWithVersionCheck :one
 UPDATE notes
 SET path = $1, content = $2, updated_at = $3
 WHERE id = $4 AND updated_at = $5
-RETURNING id, path, content, created_at, updated_at
+RETURNING id, path, content, created_at, updated_at, tenant_id, vault_id
 `
 
 type UpdateNoteWithVersionCheckParams struct {
@@ -195,6 +226,8 @@ func (q *Queries) UpdateNoteWithVersionCheck(ctx context.Context, arg UpdateNote
 		&i.Content,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.TenantID,
+		&i.VaultID,
 	)
 	return i, err
 }

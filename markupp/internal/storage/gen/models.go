@@ -6,7 +6,29 @@ package gen
 
 import (
 	"time"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
+
+type AccountToken struct {
+	ID        string
+	UserID    string
+	Purpose   string
+	TokenHash pgtype.Text
+	ExpiresAt pgtype.Timestamptz
+	UsedAt    pgtype.Timestamptz
+	CreatedAt time.Time
+}
+
+type AuditEvent struct {
+	ID         string
+	TenantID   pgtype.Text
+	ActorID    pgtype.Text
+	Action     string
+	Target     string
+	Result     string
+	OccurredAt time.Time
+}
 
 type Note struct {
 	ID        string
@@ -14,4 +36,94 @@ type Note struct {
 	Content   string
 	CreatedAt time.Time
 	UpdatedAt time.Time
+	TenantID  string
+	VaultID   string
+}
+
+type NoteIndexQueue struct {
+	NoteID   string
+	Revision int64
+}
+
+type NoteSearchIndex struct {
+	NoteID   string
+	Document string
+}
+
+type Notification struct {
+	ID             string
+	TenantID       pgtype.Text
+	InviteID       pgtype.Text
+	Attempts       int32
+	NextAttemptAt  time.Time
+	SentAt         pgtype.Timestamptz
+	FailedAt       pgtype.Timestamptz
+	LastError      pgtype.Text
+	CreatedAt      time.Time
+	Kind           string
+	AccountTokenID pgtype.Text
+}
+
+type RefreshToken struct {
+	TokenHash string
+	UserID    string
+	ExpiresAt time.Time
+	Revoked   bool
+	CreatedAt time.Time
+}
+
+type Tenant struct {
+	ID        string
+	Name      string
+	CreatedAt time.Time
+}
+
+type TenantMembership struct {
+	TenantID  string
+	UserID    string
+	Role      string
+	CreatedAt time.Time
+}
+
+type User struct {
+	ID            string
+	Email         string
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+	EmailVerified bool
+}
+
+type UserIdentity struct {
+	ID             string
+	UserID         string
+	Provider       string
+	ProviderUserID string
+	PasswordHash   pgtype.Text
+	CreatedAt      time.Time
+}
+
+type UserInvite struct {
+	ID         string
+	TenantID   string
+	Email      string
+	Role       string
+	TokenHash  string
+	InvitedBy  pgtype.Text
+	ExpiresAt  time.Time
+	AcceptedAt pgtype.Timestamptz
+	CreatedAt  time.Time
+	DeclinedAt pgtype.Timestamptz
+}
+
+type Vault struct {
+	ID        string
+	TenantID  string
+	Name      string
+	CreatedAt time.Time
+}
+
+type VaultMember struct {
+	VaultID   string
+	UserID    string
+	CreatedAt time.Time
 }

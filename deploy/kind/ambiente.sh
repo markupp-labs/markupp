@@ -4,7 +4,8 @@
 #   up      sobe o cluster, o painel Headlamp e a stack dev, e deixa de pé
 #   painel  abre o Headlamp em http://localhost:4466 e mostra o token de acesso
 #   down    apaga o cluster e o estado do Pulumi do ambiente de pé
-#   smoke   sobe, testa a API por https e apaga tudo, passe ou falhe; é o do CI
+#   smoke   sobe, testa a API por https e a indexação pelo KEDA e apaga tudo,
+#           passe ou falhe; é o do CI
 set -euo pipefail
 
 REPO="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -53,17 +54,57 @@ curl_api() {
   curl -sfk --resolve markupp.local:8443:127.0.0.1 "$@"
 }
 
+login_smoke() {
+  curl_api -X POST "$URL/auth/login" \
+    -H 'Content-Type: application/json' \
+    -d '{"email":"admin@markupp.local","password":"senhaForte123"}' \
+    | grep -o '"access_token":"[^"]*"' | cut -d'"' -f4
+}
+
+cria_nota_smoke() {
+  local token="$1"
+  curl_api -X POST "$URL/notes" \
+    -H "Authorization: Bearer $token" \
+    -H 'Content-Type: application/json' \
+    -d '{"path":"smoke.md","content":"oi"}'
+}
+
 testa_api() {
   for _ in $(seq 1 30); do
-    if curl_api "$URL/healthz"; then
-      echo
-      curl_api -X POST "$URL/notes" -H 'Content-Type: application/json' -d '{"path":"smoke.md","content":"oi"}'
-      echo
+    if ! curl_api "$URL/healthz"; then
+      sleep 5
+      continue
+    fi
+    echo
+    token="$(login_smoke)"
+    [ -n "$token" ] || return 1
+    cria_nota_smoke "$token"
+    echo
+    return 0
+  done
+  kubectl -n markupp get all,certificate,gateway,httproute
+  return 1
+}
+
+# cofres_pendentes é a contagem que o scaler do KEDA faz, lida do banco do ambiente.
+cofres_pendentes() {
+  kubectl -n markupp exec statefulset/markupp-db -- \
+    psql -U markupp -tAc "SELECT markupp_pending_vaults()"
+}
+
+# testa_indexacao espera o KEDA criar o Job do indexador para a nota do smoke, o Job
+# terminar e a fila de pendências esvaziar: Job completo sem índice gravado não basta.
+testa_indexacao() {
+  for _ in $(seq 1 30); do
+    if kubectl -n markupp wait --for=condition=complete job \
+      -l scaledjob.keda.sh/name=markupp-indexer --timeout=10s 2>/dev/null &&
+      [ "$(cofres_pendentes)" = 0 ]; then
       return 0
     fi
     sleep 5
   done
-  kubectl -n markupp get all,certificate,gateway,httproute
+  kubectl -n markupp get scaledjob,job,pod
+  echo "cofres pendentes: $(cofres_pendentes)"
   return 1
 }
 
@@ -98,6 +139,7 @@ cmd_smoke() {
   sobe_cluster
   aplica_stack
   testa_api
+  testa_indexacao
   echo "smoke passou"
 }
 

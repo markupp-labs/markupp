@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Sobe o cluster kind da stack dev com os pré-requisitos que o cluster de produção
-# tem: Gateway API, Cilium e cert-manager.
+# Sobe o cluster kind da stack dev com os pré-requisitos do cluster de produção:
+# Gateway API, Cilium, cert-manager e KEDA.
 set -euo pipefail
 
 CLUSTER="${CLUSTER:-markupp-dev}"
@@ -9,6 +9,7 @@ DIR="$(cd "$(dirname "$0")" && pwd)"
 GATEWAY_API_VERSION=v1.6.1
 CILIUM_VERSION=1.20.2
 CERT_MANAGER_VERSION=v1.21.2
+KEDA_VERSION=2.21.0
 
 cria_cluster() {
   kind create cluster --name "$CLUSTER" --config "$DIR/cluster.yaml"
@@ -36,7 +37,14 @@ liga_gateway_no_cert_manager() {
     '[{"op":"add","path":"/spec/template/spec/containers/0/args/-","value":"--enable-gateway-api"}]'
 }
 
+# instala_keda traz o ScaledJob que cria o Job do indexador por cofre pendente.
+instala_keda() {
+  helm install keda keda --repo https://kedacore.github.io/charts --version "$KEDA_VERSION" \
+    --namespace keda --create-namespace --wait --timeout 10m
+}
+
 cria_cluster
 instala_cilium
 instala_cert_manager
+instala_keda
 kubectl create namespace "$NAMESPACE"

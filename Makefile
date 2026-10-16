@@ -36,21 +36,23 @@ compose-config:
 # Configura variáveis de ambiente no ambiente do Compose
 compose-env:
 	@if [ ! -f .env ]; then \
-		printf 'MARKUPP_PORT=8080\nPOSTGRES_VOLUME=postgres_data\nGO_MOD_CACHE=go_mod_cache\n' > .env; \
+		printf 'MARKUPP_PORT=8080\nPOSTGRES_VOLUME=postgres_data\nGO_MOD_CACHE=go_mod_cache\nMARKUPP_AUTH_SECRET=%s\n' "$$(openssl rand -hex 32)" > .env; \
+	elif ! grep -q '^MARKUPP_AUTH_SECRET=' .env; then \
+		printf 'MARKUPP_AUTH_SECRET=%s\n' "$$(openssl rand -hex 32)" >> .env; \
 	fi
 	@echo ".env criado/atualizado com sucesso."
 
-# Sobe o container Docker do servidor em modo destacado
+# Sobe a stack do compose em modo destacado
 docker-up:
-	$(DOCKER_COMPOSE) -f $(COMPOSE_FILE) up -d --build markupp
+	$(DOCKER_COMPOSE) -f $(COMPOSE_FILE) up -d --build
 
 # Desce e remove o container Docker usado nos testes
 docker-down:
 	$(DOCKER_COMPOSE) -f $(COMPOSE_FILE) down
 
-# Roda a aplicação completa com air via Docker
+# Roda a stack completa (servidor com air, indexador, notificador e Mailpit) via Docker
 run: compose-env compose-config
-	$(DOCKER_COMPOSE) -f $(COMPOSE_FILE) up --build markupp
+	$(DOCKER_COMPOSE) -f $(COMPOSE_FILE) up --build
 
 # Instala os hooks de pre-commit neste clone
 hooks:

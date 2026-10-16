@@ -1,0 +1,160 @@
+package storage_test
+
+import (
+	"context"
+	"testing"
+	"time"
+
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/auth"
+	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/identity"
+	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/storage"
+	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/storage/storagetest"
+)
+
+// conviteParaContaExistente emite, no tenant t1, convite de viewer para a conta
+// "convidada", que já existe por estar no tenant t2.
+func conviteParaContaExistente(t *testing.T, db *pgxpool.Pool) {
+	t.Helper()
+	admin := identity.Actor{UserID: "admin-a", TenantID: "t1", Role: "admin"}
+	ctx := storagetest.SeedMember(t, db, admin, "va")
+	storagetest.SeedMember(t, db, identity.Actor{UserID: "convidada", TenantID: "t2", Role: "owner"}, "vb")
+	inv := conviteDe(admin, "c1", "convidada@markupp.dev")
+	inv.Role = "viewer"
+	emitirConvite(ctx, t, db, inv, "tok-1")
+}
+
+func aceite(userID string) auth.AcceptInviteByIDParams {
+	return auth.AcceptInviteByIDParams{InviteID: "c1", UserID: userID, VaultID: "cofre-" + userID, AuditEventID: "ev-" + userID, Now: instanteDoConvite.Add(time.Minute)}
+}
+
+func TestHandshake_ListPendingInvites_MostraOConviteDoEmailDaConta(t *testing.T) {
+	db := setupTestDB(t)
+	conviteParaContaExistente(t, db)
+
+	pendentes, err := storage.NewPostgresAuthRepository(db).ListPendingInvites(context.Background(), "convidada", instanteDoConvite)
+
+	require.NoError(t, err)
+	require.Len(t, pendentes, 1)
+	pendentes[0].ExpiresAt = pendentes[0].ExpiresAt.UTC()
+	assert.Equal(t, auth.PendingInvite{ID: "c1", TenantID: "t1", TenantName: "t1", Role: "viewer", ExpiresAt: instanteDoConvite.Add(time.Hour)}, pendentes[0])
+	deOutro, err := storage.NewPostgresAuthRepository(db).ListPendingInvites(context.Background(), "admin-a", instanteDoConvite)
+	require.NoError(t, err)
+	assert.Empty(t, deOutro)
+}
+
+func TestHandshake_AcceptInviteByIDTx_VinculaComOPapelDoConviteUmaVez(t *testing.T) {
+	db := setupTestDB(t)
+	conviteParaContaExistente(t, db)
+	repo := storage.NewPostgresAuthRepository(db)
+
+	m, err := repo.AcceptInviteByIDTx(context.Background(), aceite("convidada"))
+
+	require.NoError(t, err)
+	assert.Equal(t, auth.Membership{TenantID: "t1", TenantName: "t1", Role: "viewer"}, m)
+	_, err = repo.AcceptInviteByIDTx(context.Background(), aceite("convidada"))
+	assert.ErrorIs(t, err, auth.ErrInviteInvalid, "convite respondido nao volta")
+}
+
+func TestHandshake_AcceptInviteByIDTx_ConviteDeOutroEmail_Recusa(t *testing.T) {
+	db := setupTestDB(t)
+	conviteParaContaExistente(t, db)
+	storagetest.SeedMember(t, db, identity.Actor{UserID: "intrusa", TenantID: "t3", Role: "owner"}, "vc")
+
+	_, err := storage.NewPostgresAuthRepository(db).AcceptInviteByIDTx(context.Background(), aceite("intrusa"))
+
+	assert.ErrorIs(t, err, auth.ErrInviteInvalid)
+}
+
+func TestHandshake_DeclineInviteTx_ImpedeAceiteDepois(t *testing.T) {
+	db := setupTestDB(t)
+	conviteParaContaExistente(t, db)
+	repo := storage.NewPostgresAuthRepository(db)
+
+	require.NoError(t, repo.DeclineInviteTx(context.Background(), auth.DeclineInviteParams{
+		InviteID: "c1", UserID: "convidada", AuditEventID: "ev-recusa", Now: instanteDoConvite.Add(time.Minute),
+	}))
+
+	_, err := repo.AcceptInviteByIDTx(context.Background(), aceite("convidada"))
+	assert.ErrorIs(t, err, auth.ErrInviteInvalid)
+	_, err = repo.AcceptInviteTx(context.Background(), parametrosDeAceite("tok-1"))
+	assert.ErrorIs(t, err, auth.ErrInviteInvalid, "o token tambem morre com a recusa")
+}
+
+func TestHandshake_AcceptInviteByIDTx_JaMembro_RecusaComErrAlreadyMember(t *testing.T) {
+	db := setupTestDB(t)
+	conviteParaContaExistente(t, db)
+	storagetest.SeedMember(t, db, identity.Actor{UserID: "convidada", TenantID: "t1", Role: "member"}, "vd")
+
+	_, err := storage.NewPostgresAuthRepository(db).AcceptInviteByIDTx(context.Background(), aceite("convidada"))
+
+	assert.ErrorIs(t, err, auth.ErrAlreadyMember)
+}
+
+func TestHandshake_ContaDeAutoRegistro_NaoVeNemAceitaConvite(t *testing.T) {
+	db := setupTestDB(t)
+	repo := storage.NewPostgresAuthRepository(db)
+	_, err := repo.CreateAccountTx(context.Background(), sampleAccountParams())
+	require.NoError(t, err)
+	impostora := sampleAccountParams()
+	impostora.User.ID, impostora.User.Email = "impostora", "vitima@markupp.dev"
+	impostora.Identity.ID, impostora.Identity.UserID, impostora.Identity.ProviderUserID = "ident-impostora", "impostora", "vitima@markupp.dev"
+	impostora.InitialVaultID, impostora.AuditEventID = "v-impostora", "a-impostora"
+	_, err = repo.CreateAccountTx(context.Background(), impostora)
+	require.NoError(t, err)
+	admin := identity.Actor{UserID: "user-id-1", TenantID: "tenant-id-1", Role: "owner"}
+	ctx := identity.WithActor(context.Background(), admin)
+	emitirConvite(ctx, t, db, conviteDe(admin, "c1", "vitima@markupp.dev"), "tok-vitima")
+
+	pendentes, err := repo.ListPendingInvites(context.Background(), "impostora", instanteDoConvite)
+	require.NoError(t, err)
+	assert.Empty(t, pendentes, "email nao verificado nao recebe convite pela lista")
+	_, err = repo.AcceptInviteByIDTx(context.Background(), aceite("impostora"))
+	assert.ErrorIs(t, err, auth.ErrInviteInvalid)
+}
+
+func TestHandshake_ContaDoPrimeiroAcessoEDoToken_TemEmailVerificado(t *testing.T) {
+	db := setupTestDB(t)
+	conviteParaContaExistente(t, db)
+	repo := storage.NewPostgresAuthRepository(db)
+
+	pendentes, err := repo.ListPendingInvites(context.Background(), "convidada", instanteDoConvite)
+
+	require.NoError(t, err)
+	assert.Len(t, pendentes, 1, "conta semeada como no fluxo normal conta como verificada")
+}
+
+func TestHandshake_QuemConvidouPerdeuOPapel_ConviteDeixaDeValer(t *testing.T) {
+	db := setupTestDB(t)
+	conviteParaContaExistente(t, db)
+	_, err := db.Exec(context.Background(), "UPDATE tenant_memberships SET role = 'member' WHERE user_id = 'admin-a'")
+	require.NoError(t, err)
+	_, err = db.Exec(context.Background(), "UPDATE user_invites SET role = 'admin' WHERE id = 'c1'")
+	require.NoError(t, err)
+	repo := storage.NewPostgresAuthRepository(db)
+
+	pendentes, err := repo.ListPendingInvites(context.Background(), "convidada", instanteDoConvite)
+	require.NoError(t, err)
+	assert.Empty(t, pendentes)
+	_, err = repo.AcceptInviteByIDTx(context.Background(), aceite("convidada"))
+	assert.ErrorIs(t, err, auth.ErrInviteInvalid, "member nao sustenta convite de admin")
+	_, err = repo.AcceptInviteTx(context.Background(), parametrosDeAceite("tok-1"))
+	assert.ErrorIs(t, err, auth.ErrInviteInvalid, "nem pelo token")
+}
+
+func TestAdminRepo_RevokeInviteTx_ConviteRevogadoNaoVale(t *testing.T) {
+	db := setupTestDB(t)
+	conviteParaContaExistente(t, db)
+	admin := identity.Actor{UserID: "admin-a", TenantID: "t1", Role: "admin"}
+	ctx := identity.WithActor(context.Background(), admin)
+	ev := auth.AuditEventRecord{ID: "ev-revoga", TenantID: "t1", ActorID: "admin-a", Action: "users.invite_revoke", Target: "c1", Result: "success", OccurredAt: instanteDoConvite}
+
+	require.NoError(t, storage.NewPostgresAdminRepository(db).RevokeInviteTx(ctx, "c1", ev))
+
+	_, err := storage.NewPostgresAuthRepository(db).AcceptInviteByIDTx(context.Background(), aceite("convidada"))
+	assert.ErrorIs(t, err, auth.ErrInviteInvalid)
+	assert.ErrorIs(t, storage.NewPostgresAdminRepository(db).RevokeInviteTx(ctx, "c1", ev), auth.ErrInviteInvalid, "revogar de novo")
+}

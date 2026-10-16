@@ -14,15 +14,24 @@ namespace informado:
   URL de um PostgreSQL externo;
 - um Job de migração que roda antes da API a cada versão;
 - o Deployment e o Service da API;
+- o ScaledJob do indexador, que o KEDA usa para criar um Job por cofre com nota pendente;
+- com email configurado, o Deployment do notificador e o ScaledObject que o leva a zero réplicas
+  enquanto não há email na fila;
+- o TriggerAuthentication que entrega ao KEDA a URL de um papel do banco que só conta os cofres
+  pendentes e as notificações vencidas;
 - um Gateway com HTTPRoute, e um Issuer do cert-manager para o certificado.
 
 ### Pré-requisitos do cluster
 
 - Gateway API, com um controlador e uma GatewayClass (padrão `cilium`)
 - cert-manager
+- KEDA, para o indexador e o notificador. Sem ele, informe `indexer: {enabled: false}` e deixe
+  `email` de fora, e banco e API sobem sem indexação e sem email. Com banco externo, o host da URL
+  precisa resolver também do namespace do KEDA, e o usuário dela precisa de CREATEROLE para a
+  migração dar login ao papel do scaler
 - o namespace do markupp, já criado
 - uma credencial com permissão no namespace para Secret, Job, Deployment, StatefulSet, Service,
-  Gateway, HTTPRoute e Issuer
+  Gateway, HTTPRoute, Issuer, ScaledJob, ScaledObject e TriggerAuthentication
 - uma StorageClass para o volume do PostgreSQL. Sem informar, vale a padrão do cluster
 - um backend de estado do Pulumi
 
@@ -46,6 +55,14 @@ resources:
       database:
         storageClass: longhorn-fast
 ```
+
+Para enviar o convite por email, informe `email` com `smtpUrl`, no formato
+`smtp://usuario:senha@host:porta` ou `smtps://`, e `from`. A URL vai para o Secret do markupp,
+e só o notificador a recebe: a API recebe apenas `MARKUPP_INVITE_BY_EMAIL=true`.
+O email leva o token do convite, então o notificador exige TLS: com smtp:// o servidor precisa
+oferecer STARTTLS. Texto puro só com `?tls=none` no fim da URL, para servidor local.
+Com email, a API deixa de devolver o token do convite, e o notificador gera o token na entrega e
+o envia só por email.
 
 Sem outra opção, o componente cria um Gateway próprio nas portas 80 e 443. Em cluster onde
 outro Gateway já ocupa essas portas, como o Cilium em hostNetwork, que exige porta única por
@@ -84,13 +101,14 @@ no `~/.kube/config`.
 
 ## Desenvolvimento local
 
-O compose sobe PostgreSQL, aplica as migrações e roda o servidor com recarga automática:
+O compose sobe PostgreSQL, aplica as migrações e roda o servidor com recarga automática, junto
+com o indexador e o notificador em laço e o Mailpit, que recebe todo email de desenvolvimento:
 
 ```sh
 make run
 ```
 
-Servidor em `http://localhost:8080`. Os testes rodam no host e precisam de Go e de Docker:
+Servidor em `http://localhost:8080` e caixa de email em `http://localhost:8025`. Os testes rodam no host e precisam de Go e de Docker:
 
 ```sh
 make test
@@ -98,22 +116,46 @@ make test
 
 ## Validar
 
-Smoke test pela API:
+Smoke test pela API. Com o banco vazio, o primeiro login cria a conta como owner do tenant
+inicial:
 
 ```sh
-ID=$(curl -s -X POST http://localhost:8080/notes \
+TOKEN=$(curl -s -X POST http://localhost:8080/auth/login \
   -H 'Content-Type: application/json' \
+  -d '{"email":"admin@exemplo.dev","password":"troque-esta-senha"}' \
+  | grep -o '"access_token":"[^"]*"' | cut -d'"' -f4)
+ID=$(curl -s -X POST http://localhost:8080/notes \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
   -d '{"path":"validacao.md","content":"oi"}' \
   | grep -o '"id":"[^"]*"' | cut -d'"' -f4)
-curl -s http://localhost:8080/notes/$ID
-curl -s -X DELETE http://localhost:8080/notes/$ID -w '%{http_code}\n'
+curl -s -H "Authorization: Bearer $TOKEN" http://localhost:8080/notes/$ID
+curl -s -X DELETE -H "Authorization: Bearer $TOKEN" http://localhost:8080/notes/$ID -w '%{http_code}\n'
 ```
 
-Esperado: `POST` retorna JSON com `id` UUID, `GET` traz a nota, `DELETE` responde `204`. Rotas
-completas em `markupp/openapi.yaml`.
+Esperado: o login devolve `access_token`, `POST` retorna JSON com `id` UUID, `GET` traz a nota,
+`DELETE` responde `204`, e qualquer rota de notas sem o token responde `401`. Rotas completas em
+`markupp/openapi.yaml`.
+
+## Tenants
+
+A conta é da instância e participa de vários tenants, cada um com um papel
+([ADR-0035](adrs/ADR-0035-conta-global-com-vinculo-por-tenant.md)). Quem tem um tenant só não
+precisa dizer nada. Quem tem mais de um escolhe por requisição com o cabeçalho
+`X-Markupp-Tenant`, usando um id de `GET /me/tenants`. Qualquer conta cria tenant em
+`POST /tenants` e vira owner dele.
+
+A conta de auto-registro (`MARKUPP_AUTH_REGISTRATION_ENABLED=true`) nasce sem email provado e
+não recebe convite pela lista até verificar. Com SMTP configurado, ela recebe o email de
+verificação no cadastro, confirma com o token logada nela em `POST /auth/email/verify` e pode
+pedir outro em `POST /auth/email/verification`. Sem SMTP, nada
+prova o email dela, e qualquer pessoa pode ocupar um email alheio antes do dono: só ligue o
+auto-registro com SMTP.
+
+Com SMTP, quem esqueceu a senha pede a troca em `POST /auth/password/forgot` e troca com o token
+do email em `POST /auth/password/reset`.
 
 ## Aviso
 
-O servidor não tem autenticação ([ADR-0005](adrs/ADR-0005-seguranca-fora-do-mvp.md)). Não
-exponha publicamente antes de ela existir: qualquer um com acesso à porta consegue ler, criar e
-apagar notas.
+Com o banco vazio, quem fizer o primeiro login vira owner do tenant inicial
+([ADR-0035](adrs/ADR-0035-conta-global-com-vinculo-por-tenant.md)).
+Faça esse login antes de expor o servidor publicamente.
