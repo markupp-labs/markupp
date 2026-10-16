@@ -55,6 +55,17 @@ class SessionsControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to root_path
   end
 
+  test "create does not go back to a frame asked before login" do
+    use_fake_api
+    get my_invites_path, headers: { "Turbo-Frame" => "my_invites" }
+
+    assert_select "turbo-frame#my_invites [role=alert] a[href=?][data-turbo-frame=_top]", new_session_path,
+                  text: "Your session expired. Log in again."
+    sign_in_as
+
+    assert_redirected_to root_path
+  end
+
   test "create with a wrong password keeps the email and says so" do
     use_fake_api
 
