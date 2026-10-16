@@ -70,7 +70,7 @@ func serverContainer(args MarkuppArgs, names resourceNames) corev1.ContainerArgs
 	return corev1.ContainerArgs{
 		Name:  pulumi.String("markupp"),
 		Image: pulumi.String(args.Image),
-		Env:   databaseURLEnv(names),
+		Env:   append(databaseURLEnv(names), emailEnv(names, args)...),
 		SecurityContext: corev1.SecurityContextArgs{
 			AllowPrivilegeEscalation: pulumi.Bool(false),
 			ReadOnlyRootFilesystem:   pulumi.Bool(true),
