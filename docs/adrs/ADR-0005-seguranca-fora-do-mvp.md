@@ -4,8 +4,8 @@
 
 Aceita, com escopo limitado ao MVP
 
-Os três itens excluídos entraram depois: autenticação pelo ADR-0020 e TLS pelo ADR-0023. Rate
-limit está no escopo, ainda sem decisão registrada
+Os três itens excluídos entraram depois: autenticação pelo ADR-0020, TLS pelo ADR-0023 e rate
+limit pelo ADR-0037
 
 ## Contexto
 
