@@ -10,8 +10,8 @@ class FakeMarkuppApi
   def initialize(notes: [], unreachable: false, conflict: false, accounts: FakeMarkuppAccounts::DEFAULT_ACCOUNTS,
                  tenants: FakeMarkuppTenants::DEFAULT_TENANTS, invites: [])
     @accounts = FakeMarkuppAccounts.new(accounts)
-    @auth = FakeMarkuppAuth.new(@accounts)
     @tenants = FakeMarkuppTenants.new(tenants, invites)
+    @auth = FakeMarkuppAuth.new(@accounts, @tenants)
     @notes = FakeMarkuppNotes.new(notes:, conflict:)
     @unreachable = unreachable
     @received_credentials = []

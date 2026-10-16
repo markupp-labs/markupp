@@ -16,6 +16,14 @@ class FakeMarkuppAccounts
     @accounts.find { |account| account["email"] == email && account["password"] == password }
   end
 
+  # Conta nova do aceite de convite por token: o email veio do convite, então já nasce verificado.
+  def create(email, password)
+    raise MarkuppApi::AccountExists, "fake API refuses a new account for #{email.inspect}: already_exists" if @accounts.any? { it["email"] == email }
+
+    @accounts << { "email" => email, "password" => password, "verified" => true, "id" => "account-#{@accounts.size + 1}" }
+    @accounts.last
+  end
+
   # Par novo, como o do /auth/login e do /auth/refresh; os tokens seguem a ordem de emissão: access-1, refresh-1...
   def issue_pair(account)
     @issued_pairs += 1

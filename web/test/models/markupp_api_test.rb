@@ -194,6 +194,14 @@ class MarkuppApiTest < ActiveSupport::TestCase
     end
   end
 
+  test "maps the error codes of the token routes to their classes" do
+    { [ "400 Bad Request", "invalid_invite" ] => MarkuppApi::InvalidToken,
+      [ "400 Bad Request", "invalid_token" ] => MarkuppApi::InvalidToken,
+      [ "409 Conflict", "already_exists" ] => MarkuppApi::AccountExists }.each do |(status, code), error_class|
+      assert_answer_raises(error_class, %({"error":"#{code}","message":"recusado"}), status) { it.post("/auth/invites/accept", token: "t", password: "p") }
+    end
+  end
+
   private
     def assert_post_raises(error_class, body, status:)
       assert_answer_raises(error_class, body, status) { it.post("/auth/login", email: "a", password: "b") }
