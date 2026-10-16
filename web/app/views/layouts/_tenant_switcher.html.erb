@@ -1,0 +1,22 @@
+<%# Seletor no estilo breadcrumb: abre um popover nativo ancorado no botão; sem suporte a âncora, o popover fica no canto. %>
+<button type="button" popovertarget="tenant_switcher" class="tree-row mb-2 block w-full text-left [anchor-name:--tenant-switcher]">
+  <span class="flex items-baseline gap-1">
+    <span class="shrink-0 text-ink-muted">markupp</span>
+    <span class="shrink-0 text-ink-muted">/</span>
+    <span class="truncate"><%= current_tenant.name %></span>
+    <span aria-hidden="true" class="ml-auto shrink-0 text-ink-muted">v</span>
+  </span>
+  <span class="block text-xs text-ink-muted"><%= t("tenants.roles.#{current_tenant.role}") %></span>
+</button>
+
+<div id="tenant_switcher" popover
+     class="m-0 w-64 rounded-md border border-line bg-surface-sunken p-1 text-ink [inset:auto] [position-anchor:--tenant-switcher] [position-area:bottom_span-right]">
+  <ul class="space-y-px">
+    <% current_tenants.each do |tenant| %>
+      <li><%= render "tenants/choice", tenant: %></li>
+    <% end %>
+  </ul>
+  <div class="mt-1 border-t border-line pt-1">
+    <%= link_to t(".new_tenant"), tenants_path, class: "tree-row block" %>
+  </div>
+</div>

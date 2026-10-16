@@ -10,6 +10,7 @@
 
     <nav id="sidebar" popover aria-label="<%= t(".notes") %>"
          class="sidebar m-0 h-dvh w-72 max-w-[85vw] overflow-y-auto border-0 border-r border-line bg-surface-sunken p-3 text-ink">
+      <%= render "layouts/tenant_switcher" if current_tenant %>
       <button type="button" data-action="search#open" title="Ctrl+K" aria-keyshortcuts="Control+K Meta+K"
               class="tree-row mb-2 w-full border border-line text-left text-ink-muted">
         <%= t(".search") %>
