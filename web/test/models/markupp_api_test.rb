@@ -232,6 +232,10 @@ class MarkuppApiTest < ActiveSupport::TestCase
     assert_equal "local_auth_disabled", MarkuppApi::LocalAuthDisabled.new.reason
   end
 
+  test "path joins the segments, encoding each one" do
+    assert_equal "/me/invites/a%2Fb%20c/accept", MarkuppApi.path("me", "invites", "a/b c", "accept")
+  end
+
   private
     def assert_post_raises(error_class, body, status:)
       assert_answer_raises(error_class, body, status) { it.post("/auth/login", email: "a", password: "b") }
