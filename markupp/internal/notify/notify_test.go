@@ -28,7 +28,7 @@ func TestInviteMessage_LevaOTokenEQuemConvidou(t *testing.T) {
 	assert.Equal(t, "convites@markupp.dev", msg.From)
 	assert.Equal(t, "nova@markupp.dev", msg.To)
 	assert.Contains(t, msg.Subject, "Equipe A")
-	for _, trecho := range []string{"tok-123", "admin@markupp.dev", "Equipe A", "member", "2026-10-22"} {
+	for _, trecho := range []string{"tok-123", "admin@markupp.dev", "Equipe A", "member", "2026-10-22 12:00 UTC"} {
 		assert.Contains(t, msg.Body, trecho)
 	}
 }
