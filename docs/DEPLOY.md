@@ -137,10 +137,14 @@ precisa dizer nada. Quem tem mais de um escolhe por requisição com o cabeçalh
 `X-Markupp-Tenant`, usando um id de `GET /me/tenants`. Qualquer conta cria tenant em
 `POST /tenants` e vira owner dele.
 
-Sem provedor de email, nada prova o email de quem se cadastra sozinho. Por isso a conta de
-auto-registro (`MARKUPP_AUTH_REGISTRATION_ENABLED=true`) não recebe convite pela lista, e
-qualquer pessoa pode ocupar um email alheio antes do dono. Deixe o auto-registro desligado
-enquanto a verificação de email não existir.
+A conta de auto-registro (`MARKUPP_AUTH_REGISTRATION_ENABLED=true`) nasce sem email provado e
+não recebe convite pela lista até verificar. Com SMTP configurado, ela recebe o email de
+verificação no cadastro e pode pedir outro em `POST /auth/email/verification`. Sem SMTP, nada
+prova o email dela, e qualquer pessoa pode ocupar um email alheio antes do dono: só ligue o
+auto-registro com SMTP.
+
+Com SMTP, quem esqueceu a senha pede a troca em `POST /auth/password/forgot` e troca com o token
+do email em `POST /auth/password/reset`.
 
 ## Aviso
 
