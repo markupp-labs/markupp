@@ -9,7 +9,7 @@ class TenantInvitesTest < ApplicationSystemTestCase
     sign_in_through_form
 
     visit settings_members_path
-    click_on "Invites"
+    within("main") { click_on "Invites" }
     fill_in "Email", with: "gil@markupp.dev"
     select "viewer", from: "Role"
     click_on "Send invite"
