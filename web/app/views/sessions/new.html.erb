@@ -1,0 +1,22 @@
+<% content_for :title, t(".title") %>
+<% login_error = @login.errors[:base].first %>
+
+<h1 class="text-base font-semibold"><%= t(".title") %></h1>
+
+<%= form_with model: @login, scope: :session, url: session_path, class: "mt-3 flex flex-col gap-3 rounded-md border border-line p-3" do |form| %>
+  <% field_aria = { invalid: login_error.present?, describedby: ("session_error" if login_error) } %>
+  <div>
+    <%= form.label :email, class: "block text-ink-muted" %>
+    <%= form.email_field :email, required: true, autofocus: true, autocomplete: "username", aria: field_aria,
+                         class: "w-full rounded-md border border-line bg-surface px-2 py-1 aria-invalid:border-danger" %>
+  </div>
+  <div>
+    <%= form.label :password, class: "block text-ink-muted" %>
+    <%= form.password_field :password, required: true, autocomplete: "current-password", aria: field_aria,
+                            class: "w-full rounded-md border border-line bg-surface px-2 py-1 aria-invalid:border-danger" %>
+  </div>
+  <% if login_error %>
+    <p id="session_error" role="alert" class="text-danger"><%= login_error %></p>
+  <% end %>
+  <%= form.button t(".submit"), class: "btn self-start", data: { turbo_submits_with: t(".submitting") } %>
+<% end %>

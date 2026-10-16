@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<%= tag.html lang: "en", data: { theme: cookies[:theme].presence_in(ThemesController::THEMES) } do %>
+  <%= render "layouts/head" %>
+
+  <%# Telas sem sessão: uma coluna estreita, sem barra lateral. %>
+  <body class="min-h-dvh bg-surface font-mono text-sm text-ink">
+    <main class="max-w-sm p-4 md:mx-auto md:mt-[12vh] md:p-6">
+      <p class="mb-4 text-ink-muted">markupp</p>
+      <%= render "layouts/flash" %>
+      <%= yield %>
+
+      <footer class="mt-6 border-t border-line pt-3">
+        <%= render "layouts/theme_buttons" %>
+      </footer>
+    </main>
+  </body>
+<% end %>

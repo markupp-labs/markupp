@@ -6,6 +6,11 @@ en:
           attributes:
             path:
               taken: "already taken"
+        session_login:
+          attributes:
+            base:
+              invalid_credentials: "Email or password is wrong."
+              local_auth_disabled: "Password login is disabled on this server."
   layouts:
     application:
       notes: "Notes"
@@ -15,6 +20,19 @@ en:
       search: "Search"
       search_notes: "Search notes"
       search_placeholder: "Search note content"
+      log_out: "Log out"
+  markupp_api:
+    errors:
+      session_expired: "Your session expired. Log in again."
+  sessions:
+    new:
+      title: "Log in"
+      submit: "Log in"
+      submitting: "Logging in"
+    create:
+      rate_limited: "Too many attempts. Wait a few minutes."
+    destroy:
+      logged_out: "Logged out."
   notes:
     untitled: "Untitled"
     index:

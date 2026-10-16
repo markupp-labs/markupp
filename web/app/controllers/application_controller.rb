@@ -8,10 +8,30 @@ class ApplicationController < ActionController::Base
   # Raiz de composição: o initializer injeta a fábrica do cliente da API; os testes trocam pela fake.
   class_attribute :markupp_api_factory
 
+  before_action :require_login
+  helper_method :credential
+
+  # O Rails procura do último para o primeiro: os específicos vêm depois do genérico.
   rescue_from MarkuppApi::Error, with: :render_unreachable
+  rescue_from MarkuppApi::Unauthorized, MarkuppApi::SessionExpired, with: :expire_session
 
   private
-    def markupp_api = @markupp_api ||= markupp_api_factory.call
+    def credential = @credential ||= PanelCredential.new(session, markupp_api_factory)
+
+    # Só GET volta depois do login: formulário enviado sem sessão se perde.
+    def require_login
+      return if credential.signed_in?
+
+      session[:return_to] = request.fullpath if request.get?
+      redirect_to new_session_path
+    end
+
+    # 401 que sobra depois da renovação também encerra: a sessão não vale mais.
+    def expire_session(error)
+      Rails.logger.info({ event: "markupp_session_expired", message: error.message }.to_json)
+      credential.sign_out
+      redirect_to new_session_path, alert: t("markupp_api.errors.session_expired")
+    end
 
     # Cada controller tem a sua view unreachable: página inteira nas notas, aviso dentro da paleta na busca.
     def render_unreachable(error)

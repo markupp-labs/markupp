@@ -1,4 +1,5 @@
 class ThemesController < ApplicationController
+  skip_before_action :require_login
   THEMES = %w[light dark].freeze
 
   def update

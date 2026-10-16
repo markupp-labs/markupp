@@ -1,5 +1,5 @@
 class SearchesController < ApplicationController
   def show
-    @notes = Note.search(markupp_api, params[:q])
+    @notes = Note.search(credential.api, params[:q])
   end
 end

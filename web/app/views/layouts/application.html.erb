@@ -1,23 +1,6 @@
 <!DOCTYPE html>
 <%= tag.html lang: "en", data: { theme: cookies[:theme].presence_in(ThemesController::THEMES) } do %>
-  <head>
-    <title><%= content_for(:title) || "markupp" %></title>
-    <meta name="viewport" content="width=device-width,initial-scale=1">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="application-name" content="markupp">
-    <meta name="mobile-web-app-capable" content="yes">
-    <%= csrf_meta_tags %>
-    <%= csp_meta_tag %>
-
-    <%= yield :head %>
-
-    <link rel="icon" href="/icon.png" type="image/png">
-    <link rel="icon" href="/icon.svg" type="image/svg+xml">
-    <link rel="apple-touch-icon" href="/icon.png">
-
-    <%= stylesheet_link_tag :app, "data-turbo-track": "reload" %>
-    <%= javascript_importmap_tags %>
-  </head>
+  <%= render "layouts/head" %>
 
   <body class="min-h-dvh bg-surface font-mono text-sm text-ink md:grid md:grid-cols-[17rem_1fr]"
         data-controller="search" data-action="keydown.ctrl+k@window->search#open:prevent keydown.meta+k@window->search#open:prevent">
@@ -34,11 +17,11 @@
       <%= yield :sidebar %>
 
       <footer class="mt-4 border-t border-line pt-3">
-        <%# Sem Turbo: ele troca só o body, e o tema mora no data-theme do html. %>
-        <% ThemesController::THEMES.each do |theme| %>
-          <%= button_to t(".#{theme}_theme"), theme_path, method: :patch, params: { theme: theme }, form_class: "theme-to-#{theme}",
-                class: "btn text-ink-muted", form: { data: { turbo: false } } %>
-        <% end %>
+        <p class="truncate px-2 py-1 text-ink-muted"><%= credential.account_email %></p>
+        <div class="mt-1 flex flex-wrap gap-2">
+          <%= button_to t(".log_out"), session_path, method: :delete, class: "btn text-ink-muted" %>
+          <%= render "layouts/theme_buttons" %>
+        </div>
       </footer>
     </nav>
 
@@ -55,9 +38,7 @@
     </dialog>
 
     <main class="min-w-0 p-4 md:p-6">
-      <% if notice %>
-        <p role="status" class="mb-3 text-accent"><%= notice %></p>
-      <% end %>
+      <%= render "layouts/flash" %>
       <%= yield %>
     </main>
   </body>

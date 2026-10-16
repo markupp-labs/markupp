@@ -7,7 +7,7 @@ class NotesController < ApplicationController
   end
 
   def show
-    @note = Note.find(markupp_api, params[:id])
+    @note = Note.find(credential.api, params[:id])
   end
 
   def new
@@ -16,7 +16,7 @@ class NotesController < ApplicationController
 
   def create
     @note = Note.new(note_params)
-    if @note.save(markupp_api)
+    if @note.save(credential.api)
       redirect_to note_path(@note), notice: t(".created")
     else
       render :new, status: path_error_status
@@ -25,7 +25,7 @@ class NotesController < ApplicationController
 
   def update
     @note = Note.new(id: params[:id], updated_at: params[:last_modified_at])
-    if @note.update(markupp_api, note_params, force: params[:force] == "true")
+    if @note.update(credential.api, note_params, force: params[:force] == "true")
       redirect_to note_path(@note), notice: t(".saved")
     else
       render :show, status: path_error_status
@@ -36,7 +36,7 @@ class NotesController < ApplicationController
   end
 
   def destroy
-    Note.new(id: params[:id]).destroy(markupp_api)
+    Note.new(id: params[:id]).destroy(credential.api)
     redirect_to root_path, notice: t(".deleted")
   end
 
@@ -47,7 +47,7 @@ class NotesController < ApplicationController
     end
 
     def set_tree
-      @tree = Note::Tree.build(Note.all(markupp_api))
+      @tree = Note::Tree.build(Note.all(credential.api))
     end
 
     def path_error_status = @note.errors.of_kind?(:path, :taken) ? :conflict : :unprocessable_content

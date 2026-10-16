@@ -6,4 +6,5 @@ Rails.application.routes.draw do
 
   root "notes#index"
   resource :theme, only: :update
+  resource :session, only: [ :new, :create, :destroy ]
 end
