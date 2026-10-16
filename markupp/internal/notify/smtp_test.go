@@ -111,3 +111,13 @@ func TestSMTPMailer_ConexaoCaiNoQuit_ContaComoEntregue(t *testing.T) {
 	require.NoError(t, err, "o servidor ja aceitou o DATA: reenviar mataria o token deste email")
 	assert.Contains(t, servidor.lido(&servidor.mensagem), "tok-123")
 }
+
+func TestSMTPMailer_Send_MandaMessageIDNoDominioDoRemetente(t *testing.T) {
+	servidor := &servidorSMTPFalso{}
+	mailer, err := notify.NewSMTPMailer(servidor.sobe(t))
+	require.NoError(t, err)
+
+	require.NoError(t, mailer.Send(context.Background(), notify.InviteMessage(detalhesDeTeste(), "tok", "convites@markupp.dev")))
+
+	assert.Regexp(t, `(?m)^Message-ID: <[^@\s]+@markupp\.dev>\r?$`, servidor.lido(&servidor.mensagem), "o Gmail recusa mensagem sem Message-ID")
+}
