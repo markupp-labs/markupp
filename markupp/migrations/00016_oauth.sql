@@ -1,6 +1,6 @@
 -- +goose Up
 -- Authorization server OAuth 2.1 (ADR-0038). As tabelas são da instância, como a conta
--- (ADR-0035): sem tenant, sem RLS e fora do alcance do papel markupp_app. Códigos e
+-- (ADR-0035): sem tenant, sem RLS e fora do alcance dos papéis da aplicação. Códigos e
 -- tokens ficam só como hash.
 CREATE TABLE oauth_clients (
     id                  TEXT PRIMARY KEY,
@@ -58,8 +58,10 @@ CREATE TABLE oauth_tokens (
 CREATE INDEX oauth_tokens_authorization_id_idx ON oauth_tokens (authorization_id);
 CREATE INDEX oauth_tokens_expires_at_idx ON oauth_tokens (expires_at);
 
--- Garante o isolamento mesmo se o banco tiver DEFAULT PRIVILEGES concedendo ao papel.
-REVOKE ALL ON oauth_clients, oauth_authorizations, oauth_requests, oauth_tokens FROM markupp_app;
+-- Garante o isolamento mesmo se o banco tiver DEFAULT PRIVILEGES concedendo a PUBLIC ou a
+-- qualquer papel criado pelas migrações.
+REVOKE ALL ON oauth_clients, oauth_authorizations, oauth_requests, oauth_tokens
+    FROM PUBLIC, markupp_app, markupp_scaler, markupp_indexer, markupp_notifier;
 
 -- +goose Down
 DROP TABLE IF EXISTS oauth_tokens;
