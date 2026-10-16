@@ -26,12 +26,19 @@ func TestIndex_NotasMudadas_DevolveUmDocumentoPorNotaComTituloEConteudo(t *testi
 	}, docs)
 }
 
-func TestTitle_UltimoSegmentoDoCaminhoSemExtensao(t *testing.T) {
+func TestTitle_UltimoSegmentoDoCaminhoSemExtensaoMd(t *testing.T) {
 	casos := map[string]string{
 		"nota.md":               "nota",
 		"pasta/sub/Nota Boa.md": "Nota Boa",
 		"versao.v2.md":          "versao.v2",
+		"a.b.md":                "a.b",
 		"sem-extensao":          "sem-extensao",
+		"arquivo":               "arquivo",
+		"Nota.MD":               "Nota",
+		"Nota.Md":               "Nota",
+		"pasta/.oculta.md":      ".oculta",
+		"foto.png":              "foto.png",
+		"pasta/doc.txt":         "doc.txt",
 	}
 	for caminho, titulo := range casos {
 		assert.Equal(t, titulo, indexing.Title(caminho), "titulo do caminho %q", caminho)
