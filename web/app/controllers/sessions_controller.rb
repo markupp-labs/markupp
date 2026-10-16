@@ -28,6 +28,6 @@ class SessionsController < ApplicationController
     def revoke_refresh_token
       credential.public_api.post("/auth/logout", refresh_token: credential.refresh_token)
     rescue MarkuppApi::Error => error
-      Rails.logger.warn({ event: "markupp_logout_not_revoked", message: error.message }.to_json)
+      log_api_event("markupp_logout_not_revoked", error, level: :warn)
     end
 end

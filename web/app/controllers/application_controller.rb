@@ -51,27 +51,32 @@ class ApplicationController < ActionController::Base
 
     # O tenant some entre a lista e a chamada de notas (vínculo removido no meio): esquece e manda escolher outro.
     def forget_tenant(error)
-      Rails.logger.info({ event: "markupp_tenant_unavailable", tenant_id: credential.tenant_id, message: error.message }.to_json)
+      log_api_event("markupp_tenant_unavailable", error, tenant_id: credential.tenant_id)
       credential.tenant_id = nil
       redirect_to tenants_path, alert: t("markupp_api.errors.tenant_unavailable")
     end
 
     # Papel mudou no meio (a página ainda oferecia a ação): volta à página de onde veio, que recarrega com o papel novo.
     def refuse_forbidden(error)
-      Rails.logger.info({ event: "markupp_api_forbidden", message: error.message }.to_json)
+      log_api_event("markupp_api_forbidden", error)
       redirect_back_or_to root_path, alert: t("markupp_api.errors.#{error.reason}", default: :"markupp_api.errors.forbidden")
     end
 
     # 401 que sobra depois da renovação também encerra: a sessão não vale mais.
     def expire_session(error)
-      Rails.logger.info({ event: "markupp_session_expired", message: error.message }.to_json)
+      log_api_event("markupp_session_expired", error)
       credential.sign_out
       redirect_to new_session_path, alert: t("markupp_api.errors.session_expired")
     end
 
+    # Log estruturado de uma resposta da API que o painel tratou.
+    def log_api_event(event, error, level: :info, **details)
+      Rails.logger.public_send(level, { event:, **details, message: error.message }.to_json)
+    end
+
     # Cada controller tem a sua view unreachable: página inteira nas notas, aviso dentro da paleta na busca.
     def render_unreachable(error)
-      Rails.logger.error({ event: "markupp_api_unreachable", message: error.message }.to_json)
+      log_api_event("markupp_api_unreachable", error, level: :error)
       render :unreachable, status: :bad_gateway
     end
 end

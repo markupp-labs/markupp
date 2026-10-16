@@ -33,7 +33,7 @@ module Settings
       def tenant_invites = @tenant_invites ||= TenantInvite.all(credential.api)
 
       def render_field_refusal(error)
-        Rails.logger.info({ event: "markupp_invite_issue_refused", message: error.message }.to_json)
+        log_api_event("markupp_invite_issue_refused", error)
         field, status = FIELD_REFUSALS.fetch(error.class)
         @field_errors = { field => t("settings.invites.errors.#{error.reason}", email: @email) }
         render :index, status:

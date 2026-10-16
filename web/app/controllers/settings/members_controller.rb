@@ -31,7 +31,7 @@ module Settings
       end
 
       def render_refusal(error)
-        Rails.logger.info({ event: "markupp_member_change_refused", member_id: params[:id], message: error.message }.to_json)
+        log_api_event("markupp_member_change_refused", error, member_id: params[:id])
         @refusal = t("settings.members.errors.#{error.reason}")
         render :index, status: REFUSAL_STATUS.fetch(error.class)
       end
