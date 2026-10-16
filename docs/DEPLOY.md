@@ -172,6 +172,16 @@ e [::1]. O servidor guarda cada URL com esquema e host em minúsculas, sem a por
 esquema (443 em https, 80 em http) e sem barra final, então `https://MCP.exemplo.com:443/mcp/` e
 `https://mcp.exemplo.com/mcp` contam como o mesmo recurso.
 
+As validades do fluxo são opcionais e só são lidas com o OAuth ligado. Cada uma aceita um
+inteiro dentro da faixa, e um valor fora dela impede o servidor de subir:
+
+| Variável | Padrão | Faixa | O que controla |
+|---|---|---|---|
+| `MARKUPP_OAUTH_ACCESS_MINUTES` | 60 | 1 a 1440 | validade do access token |
+| `MARKUPP_OAUTH_REFRESH_DAYS` | 30 | 1 a 365 | validade do refresh token |
+| `MARKUPP_OAUTH_REQUEST_MINUTES` | 10 | 1 a 60 | espera pelo consentimento no painel |
+| `MARKUPP_OAUTH_CODE_SECONDS` | 60 | 10 a 600 | validade do authorization code |
+
 ## Aviso
 
 Com o banco vazio, quem fizer o primeiro login vira owner do tenant inicial
