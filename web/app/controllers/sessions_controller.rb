@@ -24,15 +24,6 @@ class SessionsController < ApplicationController
   end
 
   private
-    # Sessão nova contra fixação; devolve a página pedida antes do login.
-    def start_session(pair)
-      return_to = session[:return_to] || root_path
-      reset_session
-      credential.sign_in(pair)
-      credential.account = credential.api.get("/auth/me")
-      return_to
-    end
-
     # A API responde 204 sempre; fora do ar, o painel sai do mesmo jeito e o refresh vence sozinho.
     def revoke_refresh_token
       credential.public_api.post("/auth/logout", refresh_token: credential.refresh_token)

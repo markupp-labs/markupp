@@ -28,6 +28,15 @@ class ApplicationController < ActionController::Base
       redirect_to new_session_path
     end
 
+    # Sessão nova contra fixação, a partir do par de tokens do login ou do aceite de convite; devolve a página pedida antes.
+    def start_session(pair)
+      return_to = session[:return_to] || root_path
+      reset_session
+      credential.sign_in(pair)
+      credential.account = credential.api.get("/auth/me")
+      return_to
+    end
+
     # Só nas páginas que agem num tenant: o papel vem da lista, sem cache, a cada página.
     def require_tenant
       @current_tenant = Tenant.pick(current_tenants, credential.tenant_id)
