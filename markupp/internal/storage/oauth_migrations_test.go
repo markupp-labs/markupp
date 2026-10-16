@@ -133,3 +133,18 @@ func TestMigracao00016_Down_RemoveTabelasOAuth(t *testing.T) {
 	_, err = provider.Up(context.Background())
 	require.NoError(t, err)
 }
+
+func emitirToken(pool *pgxpool.Pool, hash, escopos string) error {
+	_, err := pool.Exec(context.Background(), `INSERT INTO oauth_tokens (token_hash, authorization_id, kind, resource, scopes, expires_at)
+		VALUES ($1, 'a1', 'access', 'https://mcp.markupp.dev', $2::TEXT[], now() + interval '1 hour')`, hash, escopos)
+	return err
+}
+
+func TestMigracao00016_EscopoDoToken_RestritoAosSuportados(t *testing.T) {
+	pool := bancoComOAuth(t)
+	require.NoError(t, autorizar(pool, "a1", "{notas:leitura,administracao}", false))
+
+	assert.NoError(t, emitirToken(pool, "t1", "{notas:leitura}"))
+	assert.Error(t, emitirToken(pool, "t2", "{notas:tudo}"))
+	assert.Error(t, emitirToken(pool, "t3", "{}"), "lista vazia de escopos")
+}
