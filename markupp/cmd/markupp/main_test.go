@@ -224,3 +224,15 @@ func TestRun_ReindexDeUmCofre_ReenfileiraSoEle(t *testing.T) {
 	require.NoError(t, pool.QueryRow(context.Background(), "SELECT string_agg(note_id, ',') FROM note_index_queue").Scan(&pendente))
 	assert.Equal(t, "n-va", pendente)
 }
+
+func TestRun_ReindexDeCofreInexistente_RetornaErroComOId(t *testing.T) {
+	url := storagetest.DatabaseURL(t)
+	require.NoError(t, migrateDatabase(context.Background(), url, ""))
+	t.Setenv("MARKUPP_DATABASE_URL", url)
+	t.Setenv("MARKUPP_AUTH_SECRET", "")
+
+	err := run(context.Background(), slog.New(slog.DiscardHandler), []string{"markupp", "reindex", "--vault", "fantasma"})
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), `"fantasma"`)
+}

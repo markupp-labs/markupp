@@ -60,6 +60,28 @@ func TestRequeueNotes_SemCofre_ReenfileiraTodosOsCofresDaInstalacao(t *testing.T
 	assert.Equal(t, 2, countRows(t, db, consultaDoScaler))
 }
 
+func TestRequeueNotes_CofreInexistente_RetornaErroComOId(t *testing.T) {
+	db := doisTenantsIndexados(t)
+
+	n, err := storage.RequeueNotes(context.Background(), db, "fantasma")
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), `"fantasma"`)
+	assert.Contains(t, err.Error(), "--all", "a mensagem aponta o escopo da instalacao inteira")
+	assert.Zero(t, n)
+	assert.Zero(t, countRows(t, db, consultaDoScaler))
+}
+
+func TestRequeueNotes_CofreExistenteEVazio_DevolveZero(t *testing.T) {
+	db := doisTenantsIndexados(t)
+	storagetest.SeedMember(t, db, identity.Actor{UserID: "uc", TenantID: "t1", Role: "member"}, "vc")
+
+	n, err := storage.RequeueNotes(context.Background(), db, "vc")
+
+	require.NoError(t, err)
+	assert.Zero(t, n)
+}
+
 func TestRequeueNotes_NotaJaNaFila_GanhaRevisaoNova(t *testing.T) {
 	db := doisTenantsIndexados(t)
 	_, err := storage.RequeueNotes(context.Background(), db, "vb")
