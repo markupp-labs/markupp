@@ -29,7 +29,7 @@ func conviteComEmail(t *testing.T, db *pgxpool.Pool, id, email string) {
 	ctx := storagetest.SeedMember(t, db, adminDoConvite, "va")
 	inv := conviteDe(adminDoConvite, id, email)
 	inv.ExpiresAt = validadeDoConvite
-	require.NoError(t, storage.NewPostgresAdminRepository(db).CreateInviteTx(ctx, inv, auth.HashOpaqueToken("descartado"), eventoDoConvite(inv), true))
+	require.NoError(t, storage.NewPostgresAdminRepository(db).CreateInviteTx(ctx, inv, auth.HashOpaqueToken("descartado-"+id), eventoDoConvite(inv), true))
 }
 
 // entregaRegistrada faz o papel do notify.Deliverer: troca o hash pelo reissue,
@@ -95,6 +95,7 @@ func TestInviteOutbox_ConvitePorEmail_TrocaOHashEEntregaOsDetalhes(t *testing.T)
 	assert.Equal(t, "c1", e.pending[0].InviteID)
 	assert.Zero(t, e.pending[0].Attempts)
 	require.True(t, e.found)
+	e.details.ExpiresAt = e.details.ExpiresAt.UTC()
 	assert.Equal(t, notify.InviteDetails{
 		Email: "nova@markupp.dev", Role: "member", TenantName: "t1",
 		InviterEmail: "admin-a@markupp.dev", ExpiresAt: validadeDoConvite,
