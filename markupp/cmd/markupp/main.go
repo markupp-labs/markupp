@@ -158,9 +158,11 @@ func newHandler(cfg config.Config, pool *pgxpool.Pool) http.Handler {
 	repo := storage.NewPostgresNotesRepository(pool)
 	notesSvc := notes.NewService(repo, cfg.MaxNoteSize)
 	authSvc, codec := newAuthService(cfg, pool)
-	adminSvc := auth.NewAdminService(storage.NewPostgresAdminRepository(pool), time.Now, cfg.SMTPURL != "")
+	emailEnabled := cfg.SMTPURL != ""
+	adminSvc := auth.NewAdminService(storage.NewPostgresAdminRepository(pool), time.Now, emailEnabled)
+	accountEmail := auth.NewAccountEmailService(storage.NewPostgresAccountEmailRepository(pool), auth.NewBcryptHasher(), time.Now, emailEnabled)
 	return api.NewRouter(api.RouterDeps{
-		Notes: notesSvc, Auth: authSvc, Admin: adminSvc,
+		Notes: notesSvc, Auth: authSvc, Admin: adminSvc, AccountEmail: accountEmail,
 		Tokens: codec, Tenants: authSvc, Probe: pool, AllowedOrigins: cfg.AllowedOrigins,
 	})
 }
@@ -174,6 +176,7 @@ func newAuthService(cfg config.Config, pool *pgxpool.Pool) (*auth.Service, api.T
 		RegistrationEnabled:     cfg.AuthRegistrationEnabled,
 		LocalEnabled:            cfg.LocalAuthEnabled,
 		RefreshExpirationPeriod: time.Duration(cfg.RefreshExpirationDays) * 24 * time.Hour,
+		EmailEnabled:            cfg.SMTPURL != "",
 	}
 	return auth.NewService(authRepo, codec, hasher, authCfg, time.Now), codec
 }
