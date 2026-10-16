@@ -77,3 +77,17 @@ _Avoid_: associação, assinatura, membership
 O pedido de vínculo que owner ou admin emite para um email, com papel e validade. A conta
 desse email aceita ou recusa; quem ainda não tem conta se cadastra pelo token do convite.
 _Avoid_: cadastro, convocação, autorregistro
+
+**Autorização**:
+O consentimento de uma conta para um cliente agir em nome dela. A conta pode revogar a
+autorização.
+_Avoid_: permissão, grant, acesso
+
+**Escopo**:
+O que uma Autorização permite ao cliente: ler notas, escrever notas ou administrar.
+_Avoid_: permissão, papel
+
+**Pedido de autorização**:
+A solicitação de um cliente para agir em nome da conta. A conta aprova ou recusa, e o pedido
+expira se ninguém responder.
+_Avoid_: solicitação de acesso, convite
