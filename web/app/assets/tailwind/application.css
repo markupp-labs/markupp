@@ -66,6 +66,20 @@
     @apply rounded-md border border-line px-3 py-1 hover:bg-accent-soft;
   }
 
+  /* Botão só de ícone: quadrado, sem borda, com o mesmo realce das linhas da árvore. */
+  .btn-icon {
+    @apply inline-flex items-center rounded-md px-1.5 py-1 text-ink-muted hover:bg-accent-soft hover:text-ink;
+  }
+
+  /* Toque de terminal: colchetes em volta, como [x], sem entrar no nome acessível (o aria-label manda). */
+  .ascii-brackets::before {
+    content: "[";
+  }
+
+  .ascii-brackets::after {
+    content: "]";
+  }
+
   .tree-row {
     @apply rounded-md px-2 py-1 hover:bg-accent-soft;
   }
