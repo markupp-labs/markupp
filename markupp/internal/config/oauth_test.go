@@ -1,6 +1,7 @@
 package config_test
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/config"
@@ -172,31 +173,59 @@ func TestLoad_RecursoComSegredoCurto_RetornaErroComTamanhoSemOSegredo(t *testing
 
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "MARKUPP_OAUTH_RESOURCES")
-	assert.Contains(t, err.Error(), "https://mcp.markupp.dev/mcp")
+	assert.Contains(t, err.Error(), "par 1")
 	assert.Contains(t, err.Error(), "12 bytes")
 	assert.Contains(t, err.Error(), "32 bytes")
 	assert.NotContains(t, err.Error(), "curto-demais")
 }
 
-func TestLoad_RecursoForaDoFormato_RetornaErroComAURLSemOSegredo(t *testing.T) {
+func TestLoad_RecursoForaDoFormato_RetornaErroComAPosicaoSemOPar(t *testing.T) {
 	invalidas := []string{
 		"http://mcp.markupp.dev/mcp", "mcp.markupp.dev", "https://mcp.markupp.dev/mcp#topo",
-		"https://usuario@mcp.markupp.dev",
+		"https://usuario@mcp.markupp.dev", "https://mcp.markupp.dev/mcp?a", "https://mcp.markupp.dev/mcp?",
+		"https://:8443/mcp",
 	}
 	for _, valor := range invalidas {
 		env := envComOAuth()
-		env["MARKUPP_OAUTH_RESOURCES"] = valor + "=" + segredoDoRecursoDeTeste
+		env["MARKUPP_OAUTH_RESOURCES"] = "https://api.markupp.dev=" + outroSegredoDeTeste + "," + valor + "=" + segredoDoRecursoDeTeste
 
 		_, err := config.Load(env.Lookup)
 
 		require.Error(t, err, valor)
 		assert.Contains(t, err.Error(), "MARKUPP_OAUTH_RESOURCES", valor)
-		assert.Contains(t, err.Error(), "mcp.markupp.dev", valor)
+		assert.Contains(t, err.Error(), "par 2", valor)
+		assert.Contains(t, err.Error(), "url=segredo", valor)
+		assert.NotContains(t, err.Error(), "mcp.markupp.dev", valor)
 		assert.NotContains(t, err.Error(), segredoDoRecursoDeTeste, valor)
 	}
 }
 
-func TestLoad_RecursoRepetido_RetornaErroComAURL(t *testing.T) {
+func TestLoad_RecursoSoComSegredoBase64_RetornaErroSemVazarOSegredo(t *testing.T) {
+	segredo := "c2VncmVkby1kby1yZWN1cnNvLWNvbS0zMi1ieXRlcyE=" // #nosec G101 -- valor ficticio de teste
+	env := envComOAuth()
+	env["MARKUPP_OAUTH_RESOURCES"] = segredo + "="
+
+	_, err := config.Load(env.Lookup)
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "par 1")
+	assert.Contains(t, err.Error(), "url=segredo")
+	assert.NotContains(t, err.Error(), strings.TrimRight(segredo, "="))
+}
+
+func TestLoad_RecursoInvertido_RetornaErroSemVazarOSegredo(t *testing.T) {
+	env := envComOAuth()
+	env["MARKUPP_OAUTH_RESOURCES"] = segredoDoRecursoDeTeste + "=https://mcp.markupp.dev/mcp"
+
+	_, err := config.Load(env.Lookup)
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "par 1")
+	assert.Contains(t, err.Error(), "url=segredo")
+	assert.NotContains(t, err.Error(), segredoDoRecursoDeTeste)
+}
+
+func TestLoad_RecursoRepetido_RetornaErroComAsPosicoes(t *testing.T) {
 	env := envComOAuth()
 	env["MARKUPP_OAUTH_RESOURCES"] = "https://mcp.markupp.dev/mcp=" + segredoDoRecursoDeTeste +
 		",https://mcp.markupp.dev/mcp=" + outroSegredoDeTeste
@@ -205,6 +234,58 @@ func TestLoad_RecursoRepetido_RetornaErroComAURL(t *testing.T) {
 
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "MARKUPP_OAUTH_RESOURCES")
-	assert.Contains(t, err.Error(), "https://mcp.markupp.dev/mcp")
+	assert.Contains(t, err.Error(), "par 2")
+	assert.Contains(t, err.Error(), "par 1")
 	assert.NotContains(t, err.Error(), outroSegredoDeTeste)
+}
+
+func TestLoad_RecursoRepetidoAposNormalizar_RetornaErro(t *testing.T) {
+	env := envComOAuth()
+	env["MARKUPP_OAUTH_RESOURCES"] = "https://MCP.Markupp.dev/mcp/=" + segredoDoRecursoDeTeste +
+		",HTTPS://mcp.markupp.dev/mcp=" + outroSegredoDeTeste
+
+	_, err := config.Load(env.Lookup)
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "par 2")
+}
+
+func TestLoad_URLsComMaiusculasEBarraFinal_Normaliza(t *testing.T) {
+	env := envComOAuth()
+	env["MARKUPP_PUBLIC_URL"] = "HTTPS://Notas.Markupp.DEV/"
+	env["MARKUPP_PANEL_URL"] = "https://Markupp.dev/Painel/"
+	env["MARKUPP_OAUTH_RESOURCES"] = "https://MCP.markupp.dev/Mcp/=" + segredoDoRecursoDeTeste
+
+	cfg, err := config.Load(env.Lookup)
+
+	require.NoError(t, err)
+	assert.Equal(t, "https://notas.markupp.dev", cfg.PublicURL)
+	assert.Equal(t, "https://markupp.dev/Painel", cfg.PanelURL, "o caminho preserva a caixa")
+	assert.Equal(t, "https://mcp.markupp.dev/Mcp", cfg.OAuthResources[0].URL)
+}
+
+func TestLoad_HTTPEmLoopbackMaiusculo_AceitaENormaliza(t *testing.T) {
+	env := envComOAuth()
+	env["MARKUPP_PUBLIC_URL"] = "HTTP://LOCALHOST:8080"
+	env["MARKUPP_PANEL_URL"] = "http://LocalHost:3999/painel"
+	env["MARKUPP_OAUTH_RESOURCES"] = "HTTP://LOCALHOST:8090/mcp=" + segredoDoRecursoDeTeste
+
+	cfg, err := config.Load(env.Lookup)
+
+	require.NoError(t, err)
+	assert.Equal(t, "http://localhost:8080", cfg.PublicURL)
+	assert.Equal(t, "http://localhost:3999/painel", cfg.PanelURL)
+	assert.Equal(t, "http://localhost:8090/mcp", cfg.OAuthResources[0].URL)
+}
+
+func TestLoad_URLComHostVazio_RetornaErro(t *testing.T) {
+	for _, chave := range []string{"MARKUPP_PUBLIC_URL", "MARKUPP_PANEL_URL"} {
+		env := envComOAuth()
+		env[chave] = "https://:8443"
+
+		_, err := config.Load(env.Lookup)
+
+		require.Error(t, err, chave)
+		assert.Contains(t, err.Error(), chave)
+	}
 }
