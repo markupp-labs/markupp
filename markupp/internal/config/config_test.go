@@ -289,11 +289,13 @@ func TestLoadIndexer_SemBanco_RetornaErroComAVariavel(t *testing.T) {
 	assert.Contains(t, err.Error(), "MARKUPP_DATABASE_URL")
 }
 
+const senhaDoScalerDeTeste = "senha-do-scaler"
+
 func TestLoad_SenhaDoScaler_LeDaVariavel(t *testing.T) {
-	env := fakeEnv{"MARKUPP_DATABASE_URL": urlDeTeste, "MARKUPP_AUTH_SECRET": segredoDeTesteValido, "MARKUPP_SCALER_PASSWORD": "senha-do-scaler"}
+	env := fakeEnv{"MARKUPP_DATABASE_URL": urlDeTeste, "MARKUPP_AUTH_SECRET": segredoDeTesteValido, "MARKUPP_SCALER_PASSWORD": senhaDoScalerDeTeste}
 
 	cfg, err := config.Load(env.Lookup)
 
 	require.NoError(t, err)
-	assert.Equal(t, "senha-do-scaler", cfg.ScalerPassword)
+	assert.Equal(t, senhaDoScalerDeTeste, cfg.ScalerPassword)
 }
