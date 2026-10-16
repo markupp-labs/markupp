@@ -64,6 +64,13 @@ oferecer STARTTLS. Texto puro só com `?tls=none` no fim da URL, para servidor l
 Com email, a API deixa de devolver o token do convite, e o notificador gera o token na entrega e
 o envia só por email.
 
+Com o painel web publicado, a variável `MARKUPP_PANEL_URL` no notificador, uma URL absoluta
+http:// ou https:// como https://painel.exemplo.com, faz os emails de convite, verificação de
+email e troca de senha levarem o link da página do painel que recebe o token
+(/invite_acceptance/new, /email_confirmation/new e /password_reset/new, com ?token=), e o token
+em texto logo abaixo. Sem ela, o email leva só o token. O componente ainda não tem opção para
+ela.
+
 Sem outra opção, o componente cria um Gateway próprio nas portas 80 e 443. Em cluster onde
 outro Gateway já ocupa essas portas, como o Cilium em hostNetwork, que exige porta única por
 Gateway, informe `existingGateway` com nome, namespace e listener. O componente cria só o
