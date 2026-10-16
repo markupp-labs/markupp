@@ -425,6 +425,24 @@ func TestLoad_PainelForaDoFormato_RetornaErroComOValor(t *testing.T) {
 	}
 }
 
+func TestLoad_PainelForaDoFormato_DizQualRegraFalhou(t *testing.T) {
+	casos := map[string]string{
+		"ftp://painel.markupp.dev":        "esquema",
+		"https://":                        "host",
+		"https://painel.markupp.dev/?x=1": "query",
+		"https://painel.markupp.dev/?":    "query",
+		"https://painel.markupp.dev/#x":   "fragmento",
+	}
+	for valor, regra := range casos {
+		env := fakeEnv{"MARKUPP_DATABASE_URL": urlDeTeste, "MARKUPP_AUTH_SECRET": segredoDeTesteValido, "MARKUPP_PANEL_URL": valor}
+
+		_, err := config.Load(env.Lookup)
+
+		require.Error(t, err, valor)
+		assert.Contains(t, err.Error(), regra, valor)
+	}
+}
+
 func TestLoad_SemLimiteDeTentativas_UsaCincoPorMinuto(t *testing.T) {
 	env := fakeEnv{"MARKUPP_DATABASE_URL": urlDeTeste, "MARKUPP_AUTH_SECRET": segredoDeTesteValido}
 
