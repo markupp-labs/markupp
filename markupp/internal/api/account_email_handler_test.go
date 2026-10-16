@@ -22,6 +22,7 @@ type fakeAccountEmailService struct {
 	err error
 
 	verificationFor string
+	confirmedUser   string
 	confirmedToken  string
 	resetEmail      string
 	resetToken      string
@@ -33,8 +34,8 @@ func (f *fakeAccountEmailService) RequestEmailVerification(_ context.Context, us
 	return f.err
 }
 
-func (f *fakeAccountEmailService) ConfirmEmail(_ context.Context, token string) error {
-	f.confirmedToken = token
+func (f *fakeAccountEmailService) ConfirmEmail(_ context.Context, userID, token string) error {
+	f.confirmedUser, f.confirmedToken = userID, token
 	return f.err
 }
 
@@ -93,6 +94,9 @@ func TestAccountEmailRoutes_ErrosDeDominio(t *testing.T) {
 		{auth.ErrEmptyEmail, "/auth/password/forgot", `{"email":""}`, http.StatusBadRequest, "invalid_request"},
 		{auth.ErrInvalidToken, "/auth/password/reset", `{"token":"x","password":"senhaNova123"}`, http.StatusBadRequest, "invalid_token"},
 		{auth.ErrEmptyPassword, "/auth/password/reset", `{"token":"x","password":""}`, http.StatusBadRequest, "invalid_request"},
+		{auth.ErrUserNotFound, "/auth/email/verification", "", http.StatusUnauthorized, "unauthorized"},
+		{auth.ErrLocalAuthDisabled, "/auth/password/forgot", `{"email":"a@markupp.dev"}`, http.StatusForbidden, "local_auth_disabled"},
+		{auth.ErrLocalAuthDisabled, "/auth/password/reset", `{"token":"x","password":"senhaNova123"}`, http.StatusForbidden, "local_auth_disabled"},
 	}
 	for _, c := range casos {
 		rec := accountEmailRequest(&fakeAccountEmailService{err: c.err}, http.MethodPost, c.path, c.body, true)
@@ -102,12 +106,15 @@ func TestAccountEmailRoutes_ErrosDeDominio(t *testing.T) {
 	}
 }
 
-func TestAccountEmailRoutes_ConfirmarEmail_SemLogin(t *testing.T) {
+func TestAccountEmailRoutes_ConfirmarEmail_ExigeLoginEVerificaSoAContaLogada(t *testing.T) {
 	svc := &fakeAccountEmailService{}
 
-	rec := accountEmailRequest(svc, http.MethodPost, "/auth/email/verify", `{"token":"tok-v"}`, false)
+	assert.Equal(t, http.StatusUnauthorized, accountEmailRequest(svc, http.MethodPost, "/auth/email/verify", `{"token":"tok-v"}`, false).Code,
+		"sem login, quem recebe o email nao verifica a conta de um impostor")
+	rec := accountEmailRequest(svc, http.MethodPost, "/auth/email/verify", `{"token":"tok-v"}`, true)
 
 	assert.Equal(t, http.StatusNoContent, rec.Code)
+	assert.Equal(t, "u1", svc.confirmedUser)
 	assert.Equal(t, "tok-v", svc.confirmedToken)
 }
 
@@ -134,7 +141,7 @@ func TestAccountEmailRoutes_CorpoInvalido_Recusa400(t *testing.T) {
 	for _, path := range []string{"/auth/email/verify", "/auth/password/forgot", "/auth/password/reset"} {
 		svc := &fakeAccountEmailService{}
 
-		rec := accountEmailRequest(svc, http.MethodPost, path, `{"token":`, false)
+		rec := accountEmailRequest(svc, http.MethodPost, path, `{"token":`, true)
 
 		assert.Equal(t, http.StatusBadRequest, rec.Code, path)
 		assert.Empty(t, svc.confirmedToken+svc.resetEmail+svc.resetToken, "%s nao chega ao servico", path)
@@ -142,7 +149,7 @@ func TestAccountEmailRoutes_CorpoInvalido_Recusa400(t *testing.T) {
 }
 
 func TestAccountEmailRoutes_ErroInesperado_Responde500SemDetalhe(t *testing.T) {
-	rec := accountEmailRequest(&fakeAccountEmailService{err: errors.New("banco fora")}, http.MethodPost, "/auth/email/verify", `{"token":"x"}`, false)
+	rec := accountEmailRequest(&fakeAccountEmailService{err: errors.New("banco fora")}, http.MethodPost, "/auth/email/verify", `{"token":"x"}`, true)
 
 	assert.Equal(t, http.StatusInternalServerError, rec.Code)
 	assert.Equal(t, "internal", codigoDoErro(t, rec))
