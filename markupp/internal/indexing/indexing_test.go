@@ -21,8 +21,8 @@ func TestIndex_NotasMudadas_DevolveUmDocumentoPorNotaComTituloEConteudo(t *testi
 	docs := indexing.Index(cs)
 
 	assert.Equal(t, []indexing.IndexedNote{
-		{Search: indexing.SearchDocument{NoteID: "n1", Title: "Reuniao Semanal", Text: "reuniao com o cliente"}},
-		{Search: indexing.SearchDocument{NoteID: "n2", Title: "decisao", Text: "decisao tecnica"}},
+		{Search: indexing.SearchDocument{NoteID: "n1", Title: "Reuniao Semanal", Text: "reuniao com o cliente"}, TitleKeys: []string{"reuniao semanal"}},
+		{Search: indexing.SearchDocument{NoteID: "n2", Title: "decisao", Text: "decisao tecnica"}, TitleKeys: []string{"decisao"}},
 	}, docs)
 }
 
@@ -100,7 +100,7 @@ func TestRunLoop_EsvaziaOsCofresPendentesAntesDeEsperar(t *testing.T) {
 	assert.ErrorIs(t, err, context.Canceled)
 	assert.Equal(t, 4, queue.calls, "dois cofres, uma rodada vazia, espera, outra rodada vazia")
 	assert.Equal(t, 2, espera.calls)
-	assert.Equal(t, []indexing.IndexedNote{{Search: indexing.SearchDocument{NoteID: "n1", Title: "oi", Text: "oi"}}}, queue.produced,
+	assert.Equal(t, []indexing.IndexedNote{{Search: indexing.SearchDocument{NoteID: "n1", Title: "oi", Text: "oi"}, TitleKeys: []string{"oi"}}}, queue.produced,
 		"o laço indexa com indexing.Index")
 }
 
