@@ -43,13 +43,14 @@ func contaAutoRegistrada(t *testing.T, db *pgxpool.Pool, id, email string, sendV
 	criarConta(t, db, id, email, sendVerification)
 }
 
-// entregaComToken entrega a próxima notificação trocando o hash pelo de token e
-// devolve o que a entrega recebeu.
-func entregaComToken(t *testing.T, db *pgxpool.Pool, token string) *entregaRegistrada {
+// entregaComToken reserva a próxima notificação trocando o hash pelo de token, grava
+// o envio e devolve a reserva.
+func entregaComToken(t *testing.T, db *pgxpool.Pool, token string) notify.Claim {
 	t.Helper()
-	e := &entregaRegistrada{outcome: notify.Outcome{Sent: true}, novoHash: auth.HashOpaqueToken(token)}
-	require.True(t, entregaProxima(t, db, e), "esperada uma notificacao na fila")
-	return e
+	claim, found := reservaProxima(t, db, auth.HashOpaqueToken(token))
+	require.True(t, found, "esperada uma notificacao na fila")
+	gravaResultado(t, db, claim, notify.Outcome{Sent: true})
+	return claim
 }
 
 func emailVerificado(t *testing.T, db *pgxpool.Pool, id string) bool {
@@ -63,12 +64,12 @@ func TestAccountEmail_AutoRegistroComVerificacao_EnfileiraOEmail(t *testing.T) {
 	db := setupTestDB(t)
 
 	contaAutoRegistrada(t, db, "u1", "nova@markupp.dev", true)
-	e := entregaComToken(t, db, "tok-v")
+	claim := entregaComToken(t, db, "tok-v")
 
-	assert.Equal(t, notify.KindEmailVerification, e.pending[0].Kind)
-	require.True(t, e.found)
-	assert.Equal(t, "nova@markupp.dev", e.details.Email)
-	assert.WithinDuration(t, time.Now().Add(24*time.Hour), e.details.ExpiresAt, time.Minute,
+	assert.Equal(t, notify.KindEmailVerification, claim.Kind)
+	require.True(t, claim.Pending)
+	assert.Equal(t, "nova@markupp.dev", claim.Details.Email)
+	assert.WithinDuration(t, time.Now().Add(24*time.Hour), claim.Details.ExpiresAt, time.Minute,
 		"a validade de 24h conta a partir da entrega")
 }
 
@@ -195,33 +196,22 @@ func TestAccountEmail_RequestEmailVerification_ContaApagada_RecusaComoNaoEncontr
 	assert.ErrorIs(t, err, auth.ErrUserNotFound)
 }
 
-func TestAccountEmail_ReenvioDuranteAEntrega_NaoEntraEmDeadlock(t *testing.T) {
+func TestAccountEmail_TokenTravadoPorOutraTransacao_PulaSemEsperar(t *testing.T) {
 	db := setupTestDB(t)
 	contaAutoRegistrada(t, db, "u1", "nova@markupp.dev", true)
-	envelhecePedidos(t, db)
-	reservada, libera := make(chan struct{}), make(chan struct{})
-	entrega := make(chan error, 1)
-	go func() {
-		_, err := storage.NewPostgresNotificationOutbox(db).DeliverNextDue(context.Background(),
-			func(ctx context.Context, _ notify.Pending, reissue notify.ReissueFunc) (notify.Outcome, error) {
-				close(reservada)
-				<-libera
-				_, found, err := reissue(ctx, "hash-da-entrega")
-				return notify.Outcome{Sent: found, GiveUp: !found}, err
-			})
-		entrega <- err
-	}()
-	<-reservada
-	reenvio := make(chan error, 1)
-	go func() {
-		reenvio <- storage.NewPostgresAccountEmailRepository(db).RequestEmailVerificationTx(context.Background(), "u1", cooldownDeTeste)
-	}()
-	esperaConexaoTravada(t, db)
+	ctx := context.Background()
+	reenvio, err := db.Begin(ctx)
+	require.NoError(t, err)
+	defer func() { _ = reenvio.Rollback(ctx) }()
+	_, err = reenvio.Exec(ctx, "SELECT 1 FROM account_tokens FOR UPDATE")
+	require.NoError(t, err)
 
-	close(libera)
+	claim, found := reservaProxima(t, db, "h1")
 
-	require.NoError(t, <-entrega, "a entrega desiste do pedido que esta sendo trocado")
-	require.NoError(t, <-reenvio)
+	require.True(t, found)
+	assert.False(t, claim.Pending, "token em troca por reenvio e pulado, senao a entrega e o reenvio entram em deadlock")
+	require.NoError(t, reenvio.Rollback(ctx))
+	assert.Zero(t, countRows(t, db, "SELECT count(*) FROM account_tokens WHERE token_hash IS NOT NULL"))
 }
 
 func TestAccountEmail_RequestPasswordReset_EmailDesconhecido_NaoFazNada(t *testing.T) {
@@ -241,9 +231,9 @@ func TestAccountEmail_RequestPasswordReset_UmPedidoPorIntervalo(t *testing.T) {
 	require.NoError(t, repo.RequestPasswordResetTx(context.Background(), "nova@markupp.dev", cooldownDeTeste))
 
 	assert.Equal(t, 1, countRows(t, db, "SELECT count(*) FROM notifications"))
-	e := entregaComToken(t, db, "tok-r")
-	assert.Equal(t, notify.KindPasswordReset, e.pending[0].Kind)
-	assert.WithinDuration(t, time.Now().Add(time.Hour), e.details.ExpiresAt, time.Minute, "a troca de senha vale 1h a partir da entrega")
+	claim := entregaComToken(t, db, "tok-r")
+	assert.Equal(t, notify.KindPasswordReset, claim.Kind)
+	assert.WithinDuration(t, time.Now().Add(time.Hour), claim.Details.ExpiresAt, time.Minute, "a troca de senha vale 1h a partir da entrega")
 }
 
 func TestAccountEmail_RequestPasswordReset_PedidosEmParalelo_GeramUmEmail(t *testing.T) {

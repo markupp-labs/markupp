@@ -5,9 +5,7 @@ package indexing
 
 import (
 	"context"
-	"fmt"
-
-	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/drain"
+	"log/slog"
 )
 
 // NoteChange é uma nota que mudou desde a última indexação do cofre.
@@ -16,7 +14,7 @@ type NoteChange struct {
 	Content string
 }
 
-// Changeset são as notas de um cofre que mudaram desde o cursor de revisão dele.
+// Changeset são as notas de um cofre que mudaram desde a última indexação dele.
 type Changeset struct {
 	TenantID string
 	VaultID  string
@@ -48,13 +46,19 @@ func Index(cs Changeset) []SearchDocument {
 }
 
 // RunLoop indexa os cofres pendentes até não sobrar nenhum, chama wait e recomeça.
-// Termina no primeiro erro do banco ou de wait.
-func RunLoop(ctx context.Context, indexer VaultIndexer, wait func(context.Context) error) error {
-	return drain.Run(ctx, func(ctx context.Context) (bool, error) {
+// Erro de indexação vai para o log e também espera wait, para o laço não martelar o
+// banco. Termina só quando wait devolve erro.
+func RunLoop(ctx context.Context, indexer VaultIndexer, wait func(context.Context) error, logger *slog.Logger) error {
+	for {
 		found, err := indexer.IndexNextVault(ctx, Index)
 		if err != nil {
-			return false, fmt.Errorf("indexar proximo cofre: %w", err)
+			logger.Error("indexar proximo cofre", "err", err)
 		}
-		return found, nil
-	}, wait)
+		if found && err == nil {
+			continue
+		}
+		if err := wait(ctx); err != nil {
+			return err
+		}
+	}
 }

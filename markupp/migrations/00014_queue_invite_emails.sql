@@ -41,7 +41,8 @@ $$;
 -- +goose StatementEnd
 
 -- Troca o hash do convite ainda pendente e devolve o que o email mostra. Convite
--- respondido, revogado ou vencido não devolve linha. Convite travado por outra
+-- respondido, revogado, vencido ou sem quem convidou no papel não devolve linha: é o
+-- mesmo critério do aceite, que recusaria o token. Convite travado por outra
 -- transação está sendo aceito, recusado ou revogado: é pulado, senão a revogação, que
 -- trava o convite e depois a notificação, e a entrega, que trava na ordem inversa,
 -- entram em deadlock.
@@ -54,6 +55,11 @@ LANGUAGE sql VOLATILE SECURITY DEFINER SET search_path = pg_catalog, public, pg_
     WHERE i.id = (SELECT id FROM user_invites WHERE id = p_invite_id FOR UPDATE SKIP LOCKED)
       AND i.accepted_at IS NULL AND i.declined_at IS NULL AND i.expires_at > now()
       AND t.id = i.tenant_id AND u.id = i.invited_by
+      AND EXISTS (
+          SELECT 1 FROM tenant_memberships quem
+          WHERE quem.tenant_id = i.tenant_id AND quem.user_id = i.invited_by
+            AND markupp_role_rank(quem.role) >= markupp_role_rank(i.role)
+      )
     RETURNING i.email, i.role, t.name, u.email, i.expires_at
 $$;
 -- +goose StatementEnd
@@ -68,14 +74,22 @@ LANGUAGE sql STABLE SECURITY DEFINER SET search_path = pg_catalog, public, pg_te
     WHERE sent_at IS NULL AND failed_at IS NULL AND next_attempt_at <= now()
 $$;
 -- +goose StatementEnd
+-- O KEDA conta a fila como markupp_scaler (00013), que só enxerga as contagens.
+REVOKE ALL ON FUNCTION markupp_pending_notifications() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION markupp_pending_notifications() TO markupp_scaler;
 
 GRANT USAGE ON SCHEMA public TO markupp_notifier;
 GRANT SELECT, UPDATE ON notifications TO markupp_notifier;
 GRANT INSERT ON notifications TO markupp_app;
 
 ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
+-- A checagem da chave estrangeira ignora o RLS, então a política amarra o convite ao
+-- tenant da sessão: sem isso, um tenant enfileiraria o convite de outro.
 CREATE POLICY notifications_enqueue ON notifications FOR INSERT TO markupp_app
-    WITH CHECK (tenant_id = current_setting('markupp.tenant_id', true));
+    WITH CHECK (
+        tenant_id = current_setting('markupp.tenant_id', true)
+        AND EXISTS (SELECT 1 FROM user_invites i WHERE i.id = invite_id AND i.tenant_id = notifications.tenant_id)
+    );
 CREATE POLICY notifications_notifier ON notifications TO markupp_notifier
     USING (true);
 
@@ -84,6 +98,7 @@ DROP POLICY IF EXISTS notifications_notifier ON notifications;
 DROP POLICY IF EXISTS notifications_enqueue ON notifications;
 REVOKE ALL ON notifications FROM markupp_app, markupp_notifier;
 REVOKE USAGE ON SCHEMA public FROM markupp_notifier;
+REVOKE EXECUTE ON FUNCTION markupp_pending_notifications() FROM markupp_scaler;
 DROP FUNCTION IF EXISTS markupp_pending_notifications();
 DROP FUNCTION IF EXISTS markupp_reissue_invite_token(TEXT, TEXT);
 DROP TABLE IF EXISTS notifications;

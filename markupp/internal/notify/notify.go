@@ -7,8 +7,6 @@ import (
 	"context"
 	"fmt"
 	"time"
-
-	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/drain"
 )
 
 // Message é um email de texto puro.
@@ -34,16 +32,6 @@ const (
 	KindPasswordReset     Kind = "password_reset"
 )
 
-// Pending é a notificação reservada para entrega.
-type Pending struct {
-	NotificationID string
-	Kind           Kind
-	// TargetID é o convite, a verificação ou a troca de senha da notificação.
-	TargetID string
-	// Attempts conta as entregas que já falharam.
-	Attempts int
-}
-
 // TokenDetails é o que o email mostra junto do token. Os campos de convite só vêm
 // preenchidos na notificação de convite.
 type TokenDetails struct {
@@ -54,9 +42,19 @@ type TokenDetails struct {
 	ExpiresAt    time.Time
 }
 
-// ReissueFunc grava tokenHash no convite ainda pendente e devolve os detalhes dele,
-// ou found falso quando o convite já foi respondido, revogado ou venceu.
-type ReissueFunc func(ctx context.Context, tokenHash string) (details TokenDetails, found bool, err error)
+// Claim é a notificação reservada para entrega, com o hash do token novo já gravado
+// no pedido dela: o convite ou o token da conta.
+type Claim struct {
+	NotificationID string
+	Kind           Kind
+	// Attempt é o número desta tentativa, contada já na reserva.
+	Attempt int
+	Details TokenDetails
+	// Pending é falso quando o pedido não está mais aberto: o convite respondido,
+	// revogado, vencido ou sem quem convidou no papel, ou o token da conta usado,
+	// trocado por um reenvio ou de email já verificado. Nada a enviar, e o hash fica.
+	Pending bool
+}
 
 // Outcome é o resultado de uma entrega: enviada, remarcada para RetryAt ou abandonada.
 type Outcome struct {
@@ -66,14 +64,14 @@ type Outcome struct {
 	Error   string
 }
 
-// DeliverFunc entrega uma notificação reservada. Erro desfaz a transação inteira, e a
-// notificação volta para a fila como estava.
-type DeliverFunc func(ctx context.Context, p Pending, reissue ReissueFunc) (Outcome, error)
-
-// Outbox reserva a próxima notificação vencida, entrega com deliver e grava o
-// resultado na mesma transação. Devolve false quando não há notificação vencida livre.
+// Outbox é a fila do email de convite no banco. Cada chamada é uma transação curta,
+// e o envio acontece entre as duas, sem lock nenhum.
 type Outbox interface {
-	DeliverNextDue(ctx context.Context, deliver DeliverFunc) (bool, error)
+	// ClaimNextDue reserva a próxima notificação vencida por lease, conta a tentativa
+	// e troca o hash do convite por tokenHash. Devolve false com a fila vazia.
+	ClaimNextDue(ctx context.Context, tokenHash string, lease time.Duration) (Claim, bool, error)
+	// Record grava o resultado da entrega reservada.
+	Record(ctx context.Context, notificationID string, outcome Outcome) error
 }
 
 // InviteMessage monta o email que leva o token do convite.
@@ -81,7 +79,7 @@ func InviteMessage(d TokenDetails, token, from string) Message {
 	body := fmt.Sprintf("%s convidou você para %s no markupp, com o papel %s.\n\n"+
 		"Token do convite:\n%s\n\n"+
 		"Use o token no cliente do markupp para aceitar. O convite vale até %s.\n",
-		d.InviterEmail, d.TenantName, d.Role, token, d.ExpiresAt.UTC().Format("2006-01-02"))
+		d.InviterEmail, d.TenantName, d.Role, token, validUntil(d.ExpiresAt))
 	return Message{From: from, To: d.Email, Subject: "Convite para " + d.TenantName + " no markupp", Body: body}
 }
 
@@ -91,7 +89,7 @@ func VerifyEmailMessage(d TokenDetails, token, from string) Message {
 		"Token de verificação:\n%s\n\n"+
 		"Use o token no cliente do markupp, logado na conta que você criou. Ele vale até %s.\n\n"+
 		"Se não foi você que criou a conta, ignore este email e não use o token.\n",
-		token, untilMinute(d.ExpiresAt))
+		token, validUntil(d.ExpiresAt))
 	return Message{From: from, To: d.Email, Subject: "Confirme seu email no markupp", Body: body}
 }
 
@@ -101,12 +99,13 @@ func ResetPasswordMessage(d TokenDetails, token, from string) Message {
 		"Token de troca de senha:\n%s\n\n"+
 		"Use o token no cliente do markupp. Ele vale até %s.\n\n"+
 		"Se não foi você, ignore este email: a senha só muda com o token.\n",
-		token, untilMinute(d.ExpiresAt))
+		token, validUntil(d.ExpiresAt))
 	return Message{From: from, To: d.Email, Subject: "Troca de senha no markupp", Body: body}
 }
 
-func untilMinute(t time.Time) string {
-	return t.UTC().Format("2006-01-02 15:04") + " UTC"
+// validUntil mostra a validade com hora e fuso, em UTC.
+func validUntil(t time.Time) string {
+	return t.UTC().Format("2006-01-02 15:04 MST")
 }
 
 const (
@@ -123,16 +122,4 @@ func NextAttempt(attempts int, now time.Time) (time.Time, bool) {
 	}
 	backoff := firstBackoff << (attempts - 1)
 	return now.Add(min(backoff, maxBackoff)), true
-}
-
-// RunLoop entrega as notificações vencidas até não sobrar nenhuma, chama wait e
-// recomeça. Termina no primeiro erro do banco ou de wait.
-func RunLoop(ctx context.Context, outbox Outbox, deliver DeliverFunc, wait func(context.Context) error) error {
-	return drain.Run(ctx, func(ctx context.Context) (bool, error) {
-		found, err := outbox.DeliverNextDue(ctx, deliver)
-		if err != nil {
-			return false, fmt.Errorf("entregar proxima notificacao: %w", err)
-		}
-		return found, nil
-	}, wait)
 }

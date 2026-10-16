@@ -2,12 +2,9 @@ x-servidor: &servidor
   build:
     context: ./markupp
     dockerfile: Dockerfile.dev
-  environment:
+  environment: &ambiente
     MARKUPP_DATABASE_URL: postgres://markupp:${POSTGRES_PASSWORD:-markupp}@postgres:5432/markupp?sslmode=disable
     MARKUPP_AUTH_SECRET: ${MARKUPP_AUTH_SECRET:?MARKUPP_AUTH_SECRET obrigatoria, execute make compose-env}
-    # O Mailpit recebe todo email de desenvolvimento; a caixa fica em http://localhost:8025
-    MARKUPP_SMTP_URL: smtp://mailpit:1025
-    MARKUPP_SMTP_FROM: convites@markupp.local
     MARKUPP_AUTH_REGISTRATION_ENABLED: ${MARKUPP_AUTH_REGISTRATION_ENABLED:-false}
   volumes:
     - ./markupp:/src
@@ -34,8 +31,8 @@ services:
       postgres:
         condition: service_healthy
 
-  # O self-host não tem KEDA: o mesmo indexador roda em laço (ADR-0032). O laço termina
-  # no primeiro erro do banco, e o compose o sobe de novo.
+  # O self-host não tem KEDA: o mesmo indexador roda em laço (ADR-0032). Erro do banco
+  # vai para o log e o laço tenta de novo no próximo intervalo.
   indexer:
     <<: *servidor
     command: ["go", "run", "-C", "/src", "./cmd/markupp", "index-loop"]
@@ -52,6 +49,11 @@ services:
   # O self-host não tem KEDA: o notificador fica em laço, como o indexador.
   notifier:
     <<: *servidor
+    environment:
+      <<: *ambiente
+      # O Mailpit recebe todo email de desenvolvimento; a caixa fica em http://localhost:8025
+      MARKUPP_SMTP_URL: smtp://mailpit:1025?tls=none
+      MARKUPP_SMTP_FROM: convites@markupp.local
     command: ["go", "run", "-C", "/src", "./cmd/markupp", "notify-loop"]
     restart: unless-stopped
     depends_on:
@@ -62,6 +64,9 @@ services:
 
   markupp:
     <<: *servidor
+    environment:
+      <<: *ambiente
+      MARKUPP_INVITE_BY_EMAIL: "true"
     ports:
       - "${MARKUPP_PORT:-8080}:8080"
     depends_on:

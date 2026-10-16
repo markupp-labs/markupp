@@ -9,6 +9,23 @@ import (
 	"context"
 )
 
+const dequeueNotes = `-- name: DequeueNotes :exec
+DELETE FROM note_index_queue q
+USING (SELECT unnest($1::text[]) AS note_id, unnest($2::bigint[]) AS revision) r
+WHERE q.note_id = r.note_id AND q.revision = r.revision
+`
+
+type DequeueNotesParams struct {
+	NoteIds   []string
+	Revisions []int64
+}
+
+// Tira da fila só a revisão lida: a escrita confirmada depois dela continua pendente.
+func (q *Queries) DequeueNotes(ctx context.Context, arg DequeueNotesParams) error {
+	_, err := q.db.Exec(ctx, dequeueNotes, arg.NoteIds, arg.Revisions)
+	return err
+}
+
 const enterIndexer = `-- name: EnterIndexer :exec
 SELECT set_config('role', 'markupp_indexer', true),
        set_config('markupp.tenant_id', $1::text, true),
@@ -26,10 +43,10 @@ func (q *Queries) EnterIndexer(ctx context.Context, arg EnterIndexerParams) erro
 }
 
 const listPendingNotes = `-- name: ListPendingNotes :many
-SELECT n.id, n.content, n.revision
-FROM notes n
-LEFT JOIN note_search_index i ON i.note_id = n.id AND i.revision = n.revision
-WHERE i.note_id IS NULL
+SELECT n.id, n.content, q.revision
+FROM note_index_queue q
+JOIN notes n ON n.id = q.note_id
+WHERE n.vault_id = $1
 ORDER BY n.id
 `
 
@@ -39,8 +56,9 @@ type ListPendingNotesRow struct {
 	Revision int64
 }
 
-func (q *Queries) ListPendingNotes(ctx context.Context) ([]ListPendingNotesRow, error) {
-	rows, err := q.db.Query(ctx, listPendingNotes)
+// O filtro de cofre repete o RLS para a consulta usar o índice de notes por cofre.
+func (q *Queries) ListPendingNotes(ctx context.Context, vaultID string) ([]ListPendingNotesRow, error) {
+	rows, err := q.db.Query(ctx, listPendingNotes, vaultID)
 	if err != nil {
 		return nil, err
 	}
@@ -61,17 +79,12 @@ func (q *Queries) ListPendingNotes(ctx context.Context) ([]ListPendingNotesRow, 
 
 const reservePendingVault = `-- name: ReservePendingVault :one
 
-SELECT r.vault_id, v.tenant_id
-FROM vault_index_reservations r
-JOIN vaults v ON v.id = r.vault_id
-WHERE EXISTS (
-    SELECT 1 FROM notes n
-    LEFT JOIN note_search_index i ON i.note_id = n.id AND i.revision = n.revision
-    WHERE n.vault_id = r.vault_id AND i.note_id IS NULL
-)
-ORDER BY r.vault_id
+SELECT v.id AS vault_id, v.tenant_id
+FROM vaults v
+WHERE v.id IN (SELECT n.vault_id FROM note_index_queue q JOIN notes n ON n.id = q.note_id)
+ORDER BY random()
 LIMIT 1
-FOR UPDATE OF r SKIP LOCKED
+FOR NO KEY UPDATE OF v SKIP LOCKED
 `
 
 type ReservePendingVaultRow struct {
@@ -81,6 +94,9 @@ type ReservePendingVaultRow struct {
 
 // O indexador reserva o cofre no papel da conexão, que enxerga todos os tenants, e
 // só então entra no papel markupp_indexer, preso pelo RLS ao cofre reservado.
+// Trava a linha do cofre, e não a fila, para dois Jobs nunca pegarem o mesmo cofre. NO KEY
+// UPDATE não conflita com a checagem de chave estrangeira, então as notas seguem
+// graváveis. A ordem aleatória impede que um cofre que sempre falha segure os outros.
 func (q *Queries) ReservePendingVault(ctx context.Context) (ReservePendingVaultRow, error) {
 	row := q.db.QueryRow(ctx, reservePendingVault)
 	var i ReservePendingVaultRow
@@ -88,42 +104,35 @@ func (q *Queries) ReservePendingVault(ctx context.Context) (ReservePendingVaultR
 	return i, err
 }
 
-const searchConfigExists = `-- name: SearchConfigExists :one
-SELECT EXISTS (SELECT 1 FROM pg_catalog.pg_ts_config WHERE cfgname = $1::text)
+const resolveSearchConfig = `-- name: ResolveSearchConfig :one
+SELECT $1::text::regconfig::oid::bigint AS config_oid
 `
 
-func (q *Queries) SearchConfigExists(ctx context.Context, name string) (bool, error) {
-	row := q.db.QueryRow(ctx, searchConfigExists, name)
-	var exists bool
-	err := row.Scan(&exists)
-	return exists, err
+// Resolve o nome pelo mesmo cast que a gravação usa, com o search_path da conexão.
+func (q *Queries) ResolveSearchConfig(ctx context.Context, name string) (int64, error) {
+	row := q.db.QueryRow(ctx, resolveSearchConfig, name)
+	var config_oid int64
+	err := row.Scan(&config_oid)
+	return config_oid, err
 }
 
-const upsertSearchDocument = `-- name: UpsertSearchDocument :exec
-INSERT INTO note_search_index (note_id, tenant_id, vault_id, revision, document)
-VALUES (
-    $1,
-    current_setting('markupp.tenant_id'),
-    current_setting('markupp.vault_id'),
-    $2,
-    to_tsvector($3::text::regconfig, $4::text)
-)
-ON CONFLICT (note_id) DO UPDATE SET revision = EXCLUDED.revision, document = EXCLUDED.document
+const saveSearchDocuments = `-- name: SaveSearchDocuments :exec
+INSERT INTO note_search_index (note_id, document)
+SELECT n.id, to_tsvector($1::text::regconfig, left(d.body, 250000))
+FROM (SELECT unnest($2::text[]) AS note_id, unnest($3::text[]) AS body) d
+JOIN notes n ON n.id = d.note_id
+ON CONFLICT (note_id) DO UPDATE SET document = EXCLUDED.document
 `
 
-type UpsertSearchDocumentParams struct {
-	NoteID       string
-	Revision     int64
+type SaveSearchDocumentsParams struct {
 	SearchConfig string
-	Body         string
+	NoteIds      []string
+	Bodies       []string
 }
 
-func (q *Queries) UpsertSearchDocument(ctx context.Context, arg UpsertSearchDocumentParams) error {
-	_, err := q.db.Exec(ctx, upsertSearchDocument,
-		arg.NoteID,
-		arg.Revision,
-		arg.SearchConfig,
-		arg.Body,
-	)
+// Nota apagada depois da leitura some no JOIN e não é gravada. O corte em 250 mil
+// caracteres (até 1MB em UTF-8) mantém o tsvector abaixo do teto de 1MB de lexemas.
+func (q *Queries) SaveSearchDocuments(ctx context.Context, arg SaveSearchDocumentsParams) error {
+	_, err := q.db.Exec(ctx, saveSearchDocuments, arg.SearchConfig, arg.NoteIds, arg.Bodies)
 	return err
 }

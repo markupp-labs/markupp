@@ -28,7 +28,7 @@ func TestInviteMessage_LevaOTokenEQuemConvidou(t *testing.T) {
 	assert.Equal(t, "convites@markupp.dev", msg.From)
 	assert.Equal(t, "nova@markupp.dev", msg.To)
 	assert.Contains(t, msg.Subject, "Equipe A")
-	for _, trecho := range []string{"tok-123", "admin@markupp.dev", "Equipe A", "member", "2026-10-22"} {
+	for _, trecho := range []string{"tok-123", "admin@markupp.dev", "Equipe A", "member", "2026-10-22 12:00 UTC"} {
 		assert.Contains(t, msg.Body, trecho)
 	}
 }
@@ -66,112 +66,119 @@ func (f *fakeMailer) Send(_ context.Context, msg notify.Message) error {
 	return nil
 }
 
-// fakeInvites faz o papel do banco na troca do hash: guarda o hash recebido e
-// devolve os detalhes do convite, ou found falso para convite já respondido.
-type fakeInvites struct {
-	hash    string
-	missing bool
+// fakeOutbox faz o papel da fila no banco: devolve a reserva combinada, ou fila
+// vazia com empty, guarda o hash e o lease pedidos e cada resultado gravado.
+type fakeOutbox struct {
+	claim    notify.Claim
+	empty    bool
+	err      error
+	hash     string
+	lease    time.Duration
+	recorded map[string]notify.Outcome
 }
 
-func (f *fakeInvites) reissue(_ context.Context, tokenHash string) (notify.TokenDetails, bool, error) {
-	f.hash = tokenHash
-	if f.missing {
-		return notify.TokenDetails{}, false, nil
+func (f *fakeOutbox) ClaimNextDue(_ context.Context, tokenHash string, lease time.Duration) (notify.Claim, bool, error) {
+	if f.err != nil {
+		return notify.Claim{}, false, f.err
 	}
-	return detalhesDeTeste(), true, nil
+	f.hash, f.lease = tokenHash, lease
+	return f.claim, !f.empty, nil
+}
+
+func (f *fakeOutbox) Record(_ context.Context, notificationID string, outcome notify.Outcome) error {
+	if f.recorded == nil {
+		f.recorded = map[string]notify.Outcome{}
+	}
+	f.recorded[notificationID] = outcome
+	return nil
+}
+
+func reservaPendente(attempt int) *fakeOutbox {
+	return &fakeOutbox{claim: notify.Claim{NotificationID: "n1", Kind: notify.KindInvite, Attempt: attempt, Details: detalhesDeTeste(), Pending: true}}
 }
 
 func tokenFixo() (string, error) { return "tok-novo", nil }
 
-func novoDeliverer(mailer notify.Mailer) *notify.Deliverer {
-	return notify.NewDeliverer(mailer, "convites@markupp.dev", tokenFixo, func() time.Time { return agora })
+func novoDeliverer(fila notify.Outbox, mailer notify.Mailer) *notify.Deliverer {
+	return notify.NewDeliverer(fila, mailer, "convites@markupp.dev", tokenFixo, func() time.Time { return agora })
 }
 
-func TestDeliver_ConvitePendente_GravaOHashEEnviaOToken(t *testing.T) {
+func TestDeliverNext_ConvitePendente_GravaOHashEEnviaOToken(t *testing.T) {
 	mailer := &fakeMailer{}
-	convites := &fakeInvites{}
+	fila := reservaPendente(1)
 
-	outcome, err := novoDeliverer(mailer).Deliver(context.Background(), notify.Pending{Kind: notify.KindInvite, TargetID: "c1"}, convites.reissue)
+	found, err := novoDeliverer(fila, mailer).DeliverNext(context.Background())
 
 	require.NoError(t, err)
-	assert.Equal(t, notify.Outcome{Sent: true}, outcome)
-	assert.Equal(t, auth.HashOpaqueToken("tok-novo"), convites.hash, "o banco recebe so o hash do token")
+	assert.True(t, found)
+	assert.Equal(t, auth.HashOpaqueToken("tok-novo"), fila.hash, "o banco recebe so o hash do token")
+	assert.Greater(t, fila.lease, 2*time.Minute, "o lease cobre o pior caso de uma sessao SMTP")
 	require.Len(t, mailer.sent, 1)
 	assert.Contains(t, mailer.sent[0].Body, "tok-novo")
+	assert.Equal(t, map[string]notify.Outcome{"n1": {Sent: true}}, fila.recorded)
 }
 
-func TestDeliver_SMTPFalha_RemarcaComEsperaCrescente(t *testing.T) {
-	mailer := &fakeMailer{err: errors.New("conexao recusada")}
+func TestDeliverNext_SMTPFalha_RemarcaComEsperaCrescente(t *testing.T) {
+	fila := reservaPendente(3)
 
-	outcome, err := novoDeliverer(mailer).Deliver(context.Background(), notify.Pending{Kind: notify.KindInvite, TargetID: "c1", Attempts: 2}, (&fakeInvites{}).reissue)
+	found, err := novoDeliverer(fila, &fakeMailer{err: errors.New("conexao recusada")}).DeliverNext(context.Background())
 
 	require.NoError(t, err, "falha do SMTP vira nova tentativa, nao erro do laco")
+	assert.True(t, found)
+	outcome := fila.recorded["n1"]
 	assert.False(t, outcome.Sent)
 	assert.False(t, outcome.GiveUp)
 	assert.Equal(t, agora.Add(4*time.Minute), outcome.RetryAt, "terceira falha espera 4 minutos")
 	assert.Contains(t, outcome.Error, "conexao recusada")
 }
 
-func TestDeliver_SMTPFalhaNaOitava_Desiste(t *testing.T) {
-	mailer := &fakeMailer{err: errors.New("conexao recusada")}
+func TestDeliverNext_SMTPFalhaNaOitava_Desiste(t *testing.T) {
+	fila := reservaPendente(8)
 
-	outcome, err := novoDeliverer(mailer).Deliver(context.Background(), notify.Pending{Kind: notify.KindInvite, TargetID: "c1", Attempts: 7}, (&fakeInvites{}).reissue)
+	_, err := novoDeliverer(fila, &fakeMailer{err: errors.New("conexao recusada")}).DeliverNext(context.Background())
 
 	require.NoError(t, err)
-	assert.True(t, outcome.GiveUp)
+	assert.True(t, fila.recorded["n1"].GiveUp)
 }
 
-func TestDeliver_ConviteJaRespondido_DesisteSemEnviar(t *testing.T) {
+func TestDeliverNext_TentativaAlemDoLimite_DesisteSemEnviar(t *testing.T) {
 	mailer := &fakeMailer{}
+	fila := reservaPendente(9)
 
-	outcome, err := novoDeliverer(mailer).Deliver(context.Background(), notify.Pending{Kind: notify.KindInvite, TargetID: "c1"}, (&fakeInvites{missing: true}).reissue)
+	_, err := novoDeliverer(fila, mailer).DeliverNext(context.Background())
 
 	require.NoError(t, err)
-	assert.True(t, outcome.GiveUp)
+	assert.True(t, fila.recorded["n1"].GiveUp, "notificador que cai antes de gravar o resultado nao reenvia para sempre")
 	assert.Empty(t, mailer.sent)
 }
 
-// fakeOutbox faz o papel da fila no banco: devolve, chamada a chamada, se havia
-// notificação vencida, ou falha com err.
-type fakeOutbox struct {
-	due   []bool
-	err   error
-	calls int
+func TestDeliverNext_ConviteForaDoEnvio_DesisteSemEnviar(t *testing.T) {
+	mailer := &fakeMailer{}
+	fila := &fakeOutbox{claim: notify.Claim{NotificationID: "n1", Attempt: 1}}
+
+	_, err := novoDeliverer(fila, mailer).DeliverNext(context.Background())
+
+	require.NoError(t, err)
+	assert.True(t, fila.recorded["n1"].GiveUp)
+	assert.Empty(t, mailer.sent)
 }
 
-func (f *fakeOutbox) DeliverNextDue(_ context.Context, _ notify.DeliverFunc) (bool, error) {
-	f.calls++
-	if f.err != nil {
-		return false, f.err
-	}
-	if len(f.due) == 0 {
-		return false, nil
-	}
-	found := f.due[0]
-	f.due = f.due[1:]
-	return found, nil
+func TestDeliverNext_FilaVazia_DevolveFalsoSemEnviar(t *testing.T) {
+	mailer := &fakeMailer{}
+	fila := &fakeOutbox{empty: true}
+
+	found, err := novoDeliverer(fila, mailer).DeliverNext(context.Background())
+
+	require.NoError(t, err)
+	assert.False(t, found)
+	assert.Empty(t, mailer.sent)
+	assert.Empty(t, fila.recorded)
 }
 
-func TestRunLoop_EsvaziaAFilaAntesDeEsperar(t *testing.T) {
-	outbox := &fakeOutbox{due: []bool{true, true, false}}
-	esperas := 0
-	espera := func(context.Context) error {
-		esperas++
-		return context.Canceled
-	}
-
-	err := notify.RunLoop(context.Background(), outbox, novoDeliverer(&fakeMailer{}).Deliver, espera)
-
-	assert.ErrorIs(t, err, context.Canceled)
-	assert.Equal(t, 3, outbox.calls)
-	assert.Equal(t, 1, esperas)
-}
-
-func TestRunLoop_ErroDoBanco_DevolveOErro(t *testing.T) {
+func TestDeliverNext_ErroDoBanco_DevolveOErro(t *testing.T) {
 	falha := errors.New("banco fora")
 
-	err := notify.RunLoop(context.Background(), &fakeOutbox{err: falha}, novoDeliverer(&fakeMailer{}).Deliver,
-		func(context.Context) error { return nil })
+	_, err := novoDeliverer(&fakeOutbox{err: falha}, &fakeMailer{}).DeliverNext(context.Background())
 
 	assert.ErrorIs(t, err, falha)
 }
@@ -190,6 +197,13 @@ func TestVerifyEmailMessage_LevaOTokenEAValidadeComHora(t *testing.T) {
 	assert.Contains(t, msg.Body, "2026-10-16 13:30 UTC")
 }
 
+func TestVerifyEmailMessage_AvisaQuemNaoSeCadastrou(t *testing.T) {
+	msg := notify.VerifyEmailMessage(detalhesDaConta(), "tok-v", "contas@markupp.dev")
+
+	assert.Contains(t, msg.Body, "ignore", "quem nao criou a conta sabe que nao deve usar o token")
+	assert.Contains(t, msg.Body, "logado", "o token so vale na conta que pediu")
+}
+
 func TestResetPasswordMessage_LevaOTokenEAvisaQuemNaoPediu(t *testing.T) {
 	msg := notify.ResetPasswordMessage(detalhesDaConta(), "tok-r", "contas@markupp.dev")
 
@@ -199,39 +213,32 @@ func TestResetPasswordMessage_LevaOTokenEAvisaQuemNaoPediu(t *testing.T) {
 	assert.Contains(t, msg.Body, "ignore", "quem nao pediu a troca sabe que pode ignorar")
 }
 
-// fakeConta devolve os detalhes de uma conta, como a troca do hash de verificacao ou
-// de recuperacao faz.
-func fakeConta(_ context.Context, _ string) (notify.TokenDetails, bool, error) {
-	return detalhesDaConta(), true, nil
-}
-
-func TestDeliver_CadaTipo_MontaAMensagemDele(t *testing.T) {
+func TestDeliverNext_CadaTipo_MontaAMensagemDele(t *testing.T) {
 	assuntos := map[notify.Kind]string{
+		notify.KindInvite:            "Convite",
 		notify.KindEmailVerification: "Confirme",
 		notify.KindPasswordReset:     "senha",
 	}
 	for tipo, assunto := range assuntos {
 		mailer := &fakeMailer{}
+		fila := &fakeOutbox{claim: notify.Claim{NotificationID: "n1", Kind: tipo, Attempt: 1, Details: detalhesDaConta(), Pending: true}}
 
-		outcome, err := novoDeliverer(mailer).Deliver(context.Background(), notify.Pending{Kind: tipo, TargetID: "x"}, fakeConta)
+		_, err := novoDeliverer(fila, mailer).DeliverNext(context.Background())
 
 		require.NoError(t, err, tipo)
-		assert.True(t, outcome.Sent, tipo)
 		require.Len(t, mailer.sent, 1, tipo)
 		assert.Contains(t, mailer.sent[0].Subject, assunto, tipo)
 	}
 }
 
-func TestDeliver_TipoDesconhecido_RetornaErroComOTipo(t *testing.T) {
-	_, err := novoDeliverer(&fakeMailer{}).Deliver(context.Background(), notify.Pending{Kind: "sms", TargetID: "x"}, fakeConta)
+func TestDeliverNext_TipoDesconhecido_DesisteSemEnviar(t *testing.T) {
+	mailer := &fakeMailer{}
+	fila := &fakeOutbox{claim: notify.Claim{NotificationID: "n1", Kind: "sms", Attempt: 1, Details: detalhesDaConta(), Pending: true}}
 
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "sms")
-}
+	_, err := novoDeliverer(fila, mailer).DeliverNext(context.Background())
 
-func TestVerifyEmailMessage_AvisaQuemNaoSeCadastrou(t *testing.T) {
-	msg := notify.VerifyEmailMessage(detalhesDaConta(), "tok-v", "contas@markupp.dev")
-
-	assert.Contains(t, msg.Body, "ignore", "quem nao criou a conta sabe que nao deve usar o token")
-	assert.Contains(t, msg.Body, "logado", "o token so vale na conta que pediu")
+	require.NoError(t, err)
+	assert.Empty(t, mailer.sent)
+	assert.True(t, fila.recorded["n1"].GiveUp)
+	assert.Contains(t, fila.recorded["n1"].Error, "sms")
 }

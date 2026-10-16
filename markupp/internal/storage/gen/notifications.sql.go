@@ -12,13 +12,49 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const claimDueNotification = `-- name: ClaimDueNotification :one
+UPDATE notifications
+SET attempts = attempts + 1, next_attempt_at = now() + $1::int * interval '1 second'
+WHERE id = (
+    SELECT id FROM notifications
+    WHERE sent_at IS NULL AND failed_at IS NULL AND next_attempt_at <= now()
+    ORDER BY next_attempt_at, id
+    LIMIT 1
+    FOR UPDATE SKIP LOCKED
+)
+RETURNING id, attempts, kind, COALESCE(invite_id, account_token_id)::text AS target_id
+`
+
+type ClaimDueNotificationRow struct {
+	ID       string
+	Attempts int32
+	Kind     string
+	TargetID string
+}
+
+// Reserva a próxima notificação vencida por lease_seconds e conta a tentativa já
+// aqui: o envio acontece fora de transação, e um notificador que cai no meio dele
+// também gasta uma.
+func (q *Queries) ClaimDueNotification(ctx context.Context, leaseSeconds int32) (ClaimDueNotificationRow, error) {
+	row := q.db.QueryRow(ctx, claimDueNotification, leaseSeconds)
+	var i ClaimDueNotificationRow
+	err := row.Scan(
+		&i.ID,
+		&i.Attempts,
+		&i.Kind,
+		&i.TargetID,
+	)
+	return i, err
+}
+
 const enqueueInviteNotification = `-- name: EnqueueInviteNotification :exec
 
 INSERT INTO notifications (invite_id) VALUES ($1)
 `
 
 // A API só enfileira, no tenant do ator. O serviço de notificação trabalha no papel
-// markupp_notifier, que enxerga a fila de todos os tenants e nenhum convite.
+// markupp_notifier, que enxerga a fila de todos os tenants e nenhum convite nem token
+// da conta: só os troca pelas funções do banco.
 func (q *Queries) EnqueueInviteNotification(ctx context.Context, inviteID pgtype.Text) error {
 	_, err := q.db.Exec(ctx, enqueueInviteNotification, inviteID)
 	return err
@@ -35,7 +71,7 @@ func (q *Queries) EnterNotifier(ctx context.Context) error {
 
 const markNotificationFailed = `-- name: MarkNotificationFailed :exec
 UPDATE notifications
-SET attempts = attempts + 1, failed_at = now(), last_error = $1
+SET failed_at = now(), last_error = $1
 WHERE id = $2
 `
 
@@ -51,7 +87,7 @@ func (q *Queries) MarkNotificationFailed(ctx context.Context, arg MarkNotificati
 
 const markNotificationRetry = `-- name: MarkNotificationRetry :exec
 UPDATE notifications
-SET attempts = attempts + 1, next_attempt_at = $1, last_error = $2
+SET next_attempt_at = $1, last_error = $2
 WHERE id = $3
 `
 
@@ -161,32 +197,4 @@ func (q *Queries) ReissueInviteToken(ctx context.Context, arg ReissueInviteToken
 		return nil, err
 	}
 	return items, nil
-}
-
-const reserveDueNotification = `-- name: ReserveDueNotification :one
-SELECT id, attempts, kind, COALESCE(invite_id, account_token_id)::text AS target_id
-FROM notifications
-WHERE sent_at IS NULL AND failed_at IS NULL AND next_attempt_at <= now()
-ORDER BY next_attempt_at, id
-LIMIT 1
-FOR UPDATE SKIP LOCKED
-`
-
-type ReserveDueNotificationRow struct {
-	ID       string
-	Attempts int32
-	Kind     string
-	TargetID string
-}
-
-func (q *Queries) ReserveDueNotification(ctx context.Context) (ReserveDueNotificationRow, error) {
-	row := q.db.QueryRow(ctx, reserveDueNotification)
-	var i ReserveDueNotificationRow
-	err := row.Scan(
-		&i.ID,
-		&i.Attempts,
-		&i.Kind,
-		&i.TargetID,
-	)
-	return i, err
 }
