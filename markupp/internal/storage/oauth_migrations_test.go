@@ -44,13 +44,50 @@ func TestMigracao00016_TabelasOAuth_ExistemSemRLS(t *testing.T) {
 	}
 }
 
-func TestMigracao00016_TabelasOAuth_SemPrivilegioParaApp(t *testing.T) {
+// papeisSemAcessoOAuth são PUBLIC e todos os papéis criados pelas migrações.
+var papeisSemAcessoOAuth = []string{"public", "markupp_app", "markupp_scaler", "markupp_indexer", "markupp_notifier"}
+
+// bancoComOAuthSobDefaultPrivileges sobe até a 00015, concede DEFAULT PRIVILEGES a todos os
+// papéis e só então aplica a 00016, simulando um banco que entrega tabelas novas a eles.
+func bancoComOAuthSobDefaultPrivileges(t *testing.T) *pgxpool.Pool {
+	t.Helper()
+	pool := storagetest.EmptyPool(t)
+	provider := gooseProvider(t, pool)
+	_, err := provider.UpTo(context.Background(), 15)
+	require.NoError(t, err)
+	_, err = pool.Exec(context.Background(), `ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES
+		TO PUBLIC, markupp_app, markupp_scaler, markupp_indexer, markupp_notifier`)
+	require.NoError(t, err)
+	_, err = provider.Up(context.Background())
+	require.NoError(t, err)
+	return pool
+}
+
+// privilegiosOAuth conta os privilégios, de tabela ou de alguma coluna, que o papel tem na tabela.
+func privilegiosOAuth(t *testing.T, pool *pgxpool.Pool, papel, tabela string) int {
+	t.Helper()
+	return countRows(t, pool, `SELECT count(*) FROM unnest(ARRAY['SELECT','INSERT','UPDATE','DELETE',
+		'TRUNCATE','REFERENCES','TRIGGER']) p WHERE has_table_privilege('`+papel+`', '`+tabela+`', p)
+		OR (p IN ('SELECT','INSERT','UPDATE','REFERENCES') AND has_any_column_privilege('`+papel+`', '`+tabela+`', p))`)
+}
+
+func TestMigracao00016_TabelasOAuth_SemPrivilegioParaPapeis(t *testing.T) {
+	pool := bancoComOAuthSobDefaultPrivileges(t)
+
+	for _, papel := range papeisSemAcessoOAuth {
+		for _, tabela := range tabelasOAuth {
+			assert.Equal(t, 0, privilegiosOAuth(t, pool, papel, tabela), "%s não pode tocar em %s", papel, tabela)
+		}
+	}
+}
+
+func TestMigracao00016_ChavesEstrangeiras_Indexadas(t *testing.T) {
 	pool := bancoComOAuth(t)
 
-	for _, tabela := range tabelasOAuth {
-		assert.Equal(t, 0, countRows(t, pool, `SELECT count(*) FROM unnest(ARRAY['SELECT','INSERT','UPDATE','DELETE',
-			'TRUNCATE','REFERENCES','TRIGGER']) p WHERE has_table_privilege('markupp_app', '`+tabela+`', p)`),
-			"markupp_app não pode tocar em %s", tabela)
+	for _, fk := range [][2]string{{"oauth_requests", "user_id"}, {"oauth_requests", "client_id"},
+		{"oauth_authorizations", "user_id"}, {"oauth_authorizations", "client_id"}, {"oauth_tokens", "authorization_id"}} {
+		assert.Positive(t, countRows(t, pool, `SELECT count(*) FROM pg_indexes WHERE tablename = '`+fk[0]+
+			`' AND indexdef ~ '\(`+fk[1]+`[,)]'`), "%s.%s precisa de índice com a coluna na frente", fk[0], fk[1])
 	}
 }
 
