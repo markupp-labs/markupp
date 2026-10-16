@@ -15,17 +15,19 @@ namespace informado:
 - um Job de migração que roda antes da API a cada versão;
 - o Deployment e o Service da API;
 - o ScaledJob do indexador, que o KEDA usa para criar um Job por cofre com nota pendente;
+- com email configurado, o Deployment do notificador e o ScaledObject que o leva a zero réplicas
+  enquanto não há email na fila;
 - um Gateway com HTTPRoute, e um Issuer do cert-manager para o certificado.
 
 ### Pré-requisitos do cluster
 
 - Gateway API, com um controlador e uma GatewayClass (padrão `cilium`)
 - cert-manager
-- KEDA, para o indexador. Sem ele, informe `indexer: {enabled: false}`, e banco e API sobem sem
-  indexação
+- KEDA, para o indexador e o notificador. Sem ele, informe `indexer: {enabled: false}` e deixe
+  `email` de fora, e banco e API sobem sem indexação e sem email
 - o namespace do markupp, já criado
 - uma credencial com permissão no namespace para Secret, Job, Deployment, StatefulSet, Service,
-  Gateway, HTTPRoute, Issuer e ScaledJob
+  Gateway, HTTPRoute, Issuer, ScaledJob e ScaledObject
 - uma StorageClass para o volume do PostgreSQL. Sem informar, vale a padrão do cluster
 - um backend de estado do Pulumi
 
@@ -49,6 +51,11 @@ resources:
       database:
         storageClass: longhorn-fast
 ```
+
+Para enviar o convite por email, informe `email` com `smtpUrl`, no formato
+`smtp://usuario:senha@host:porta` ou `smtps://`, e `from`. A URL vai para o Secret do markupp.
+Com email, a API deixa de devolver o token do convite, e o notificador gera o token na entrega e
+o envia só por email.
 
 Sem outra opção, o componente cria um Gateway próprio nas portas 80 e 443. Em cluster onde
 outro Gateway já ocupa essas portas, como o Cilium em hostNetwork, que exige porta única por
@@ -87,13 +94,14 @@ no `~/.kube/config`.
 
 ## Desenvolvimento local
 
-O compose sobe PostgreSQL, aplica as migrações e roda o servidor com recarga automática:
+O compose sobe PostgreSQL, aplica as migrações e roda o servidor com recarga automática, junto
+com o indexador e o notificador em laço e o Mailpit, que recebe todo email de desenvolvimento:
 
 ```sh
 make run
 ```
 
-Servidor em `http://localhost:8080`. Os testes rodam no host e precisam de Go e de Docker:
+Servidor em `http://localhost:8080` e caixa de email em `http://localhost:8025`. Os testes rodam no host e precisam de Go e de Docker:
 
 ```sh
 make test
