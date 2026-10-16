@@ -1,6 +1,11 @@
 require "test_helper"
 
 class SearchesControllerTest < ActionDispatch::IntegrationTest
+  FRAME = { "Turbo-Frame" => "search_results" }.freeze
+  EMAIL = FakeMarkuppAccounts::DEFAULT_EMAIL
+  TWO_TENANTS = [ { id: "tenant-1", name: "Acme research", members: { EMAIL => "owner" } },
+                  { id: "tenant-2", name: "Home lab", members: { EMAIL => "member" } } ].freeze
+
   test "show lists the matching notes in the results frame, linking out of it" do
     use_fake_api(notes: [ { id: "1", path: "work/plan.md", content: "Ship it" }, { id: "2", path: "inbox.md", content: "later" } ])
     sign_in_as
@@ -56,4 +61,46 @@ class SearchesControllerTest < ActionDispatch::IntegrationTest
     assert_response :bad_gateway
     assert_select "turbo-frame#search_results", text: /Can't reach the markupp server/
   end
+
+  test "a tenant the API refuses during the search is forgotten with the notice inside the results frame" do
+    api = use_fake_api(tenants: TWO_TENANTS)
+    sign_in_as
+    patch current_tenant_path, params: { tenant_id: "tenant-2" }
+    api.deny_notes_in!("tenant-2")
+
+    get search_path(q: "x"), headers: FRAME
+
+    assert_response :forbidden
+    assert_frame_alert tenants_path, "You no longer have access to that tenant."
+    get root_path
+    assert_redirected_to tenants_path
+  end
+
+  test "a search without an active tenant says so inside the results frame" do
+    use_fake_api(tenants: TWO_TENANTS)
+    sign_in_as
+
+    get search_path(q: "x"), headers: FRAME
+
+    assert_response :forbidden
+    assert_frame_alert tenants_path, "You no longer have access to that tenant."
+  end
+
+  test "an expired session during the search says so inside the results frame" do
+    api = use_fake_api
+    sign_in_as
+    api.expire_access_tokens!
+    api.revoke_refresh_tokens!
+
+    get search_path(q: "x"), headers: FRAME
+
+    assert_response :unauthorized
+    assert_frame_alert new_session_path, "Your session expired. Log in again."
+  end
+
+  private
+    # O link sai do frame: a página de destino não tem o frame da busca.
+    def assert_frame_alert(path, message)
+      assert_select "turbo-frame#search_results [role=alert] a[href=?][data-turbo-frame=_top]", path, text: message
+    end
 end
