@@ -27,7 +27,7 @@
     </div>
     <div class="md:w-36">
       <%= form.label :role, class: "block text-ink-muted" %>
-      <%= form.select :role, current_tenant.assignable_roles.map { [ t("tenants.roles.#{it}"), it ] }, { selected: @role },
+      <%= form.select :role, role_options(current_tenant), { selected: @role },
                       aria: { invalid: role_error.present?, describedby: ("invite_role_error" if role_error) }, class: field_class %>
       <% if role_error %>
         <p id="invite_role_error" class="text-danger"><%= role_error %></p>
