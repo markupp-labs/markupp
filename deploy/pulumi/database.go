@@ -64,7 +64,7 @@ func declareNamespacePostgres(ctx *pulumi.Context, names resourceNames, args Mar
 	if err := declarePostgresSecret(ctx, names, args, password.Result, authSecret.Result, parent); err != nil {
 		return nil, err
 	}
-	labels := pulumi.StringMap{"app.kubernetes.io/name": pulumi.String(names.database)}
+	labels := appLabels(names.database)
 	if err := declarePostgresService(ctx, names, args, labels, parent); err != nil {
 		return nil, err
 	}

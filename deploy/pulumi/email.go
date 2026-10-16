@@ -6,7 +6,6 @@ import (
 
 	appsv1 "github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/apps/v1"
 	corev1 "github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/core/v1"
-	metav1 "github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/meta/v1"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
@@ -66,21 +65,10 @@ func declareNotifier(ctx *pulumi.Context, names resourceNames, args MarkuppArgs,
 	if args.Email == nil {
 		return nil
 	}
-	labels := pulumi.StringMap{"app.kubernetes.io/name": pulumi.String(names.notifier)}
 	container := serverContainer(args, names)
 	container.Args = pulumi.StringArray{pulumi.String("notify-loop")}
 	container.Env = append(databaseURLEnv(names), smtpEnv(names, args)...)
-	_, err := appsv1.NewDeployment(ctx, names.notifier, &appsv1.DeploymentArgs{
-		Metadata: namespaced(names.notifier, args.Namespace),
-		Spec: appsv1.DeploymentSpecArgs{
-			Selector: metav1.LabelSelectorArgs{MatchLabels: labels},
-			Template: corev1.PodTemplateSpecArgs{
-				Metadata: metav1.ObjectMetaArgs{Labels: labels},
-				Spec:     corev1.PodSpecArgs{SecurityContext: nonRootPod(), Containers: corev1.ContainerArray{container}},
-			},
-		},
-	}, opts)
-	if err != nil {
+	if _, err := appsv1.NewDeployment(ctx, names.notifier, serverDeploymentArgs(names.notifier, args, nil, container), opts); err != nil {
 		return err
 	}
 	return declareCustom(ctx, "keda.sh/v1alpha1", "ScaledObject", names.notifier, args, pulumi.Map{
