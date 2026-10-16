@@ -4,8 +4,6 @@ package notes
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"strings"
@@ -92,7 +90,8 @@ func (s *Service) ListNotes(ctx context.Context) ([]Note, error) {
 }
 
 // Create valida path e content e persiste uma nota nova com ID gerado no cofre
-// vaultID, ou no cofre padrão do ator quando vaultID vem vazio.
+// vaultID, ou no cofre padrão do ator quando vaultID vem vazio, e devolve a nota
+// como o banco a gravou, com o content_sha256 calculado lá.
 func (s *Service) Create(ctx context.Context, vaultID, path, content string) (Note, error) {
 	if err := validatePath(path); err != nil {
 		return Note{}, err
@@ -105,11 +104,12 @@ func (s *Service) Create(ctx context.Context, vaultID, path, content string) (No
 		return Note{}, err
 	}
 	now := canonicalTime(s.clock())
-	note := Note{ID: s.newID(), VaultID: vaultID, Path: path, Content: content, ContentSHA256: contentSHA256(content), CreatedAt: now, UpdatedAt: now}
-	if _, err := s.repo.Save(ctx, note); err != nil {
+	note := Note{ID: s.newID(), VaultID: vaultID, Path: path, Content: content, CreatedAt: now, UpdatedAt: now}
+	saved, err := s.repo.Save(ctx, note)
+	if err != nil {
 		return Note{}, fmt.Errorf("salvar nota %q no cofre %q: %w", note.ID, vaultID, err)
 	}
-	return note, nil
+	return saved, nil
 }
 
 func (s *Service) resolveVault(ctx context.Context, vaultID string) (string, error) {
@@ -161,13 +161,6 @@ func (s *Service) Delete(ctx context.Context, id string) error {
 		return fmt.Errorf("excluir nota %q: %w", id, err)
 	}
 	return nil
-}
-
-// contentSHA256 repete em Go a coluna gerada notes.content_sha256, porque Save não
-// devolve a linha gravada.
-func contentSHA256(content string) string {
-	sum := sha256.Sum256([]byte(content))
-	return hex.EncodeToString(sum[:])
 }
 
 func validateID(id string) error {
