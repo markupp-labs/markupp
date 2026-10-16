@@ -24,7 +24,7 @@ func TestSearchNotes_ComResultados_RetornaPaginado(t *testing.T) {
 		{ID: "4", VaultID: cofreDeTeste, Path: "golang3.md", Content: "golang advanced", CreatedAt: now, UpdatedAt: now},
 	}
 	for _, note := range notesData {
-		err := repo.Save(ctx, note)
+		_, err := repo.Save(ctx, note)
 		require.NoError(t, err)
 	}
 
@@ -53,7 +53,7 @@ func TestSearchNotes_ComPaginacao_RetornaApenasLimitAndOffset(t *testing.T) {
 			CreatedAt: now,
 			UpdatedAt: now,
 		}
-		err := repo.Save(ctx, note)
+		_, err := repo.Save(ctx, note)
 		require.NoError(t, err)
 	}
 
@@ -78,7 +78,7 @@ func TestSearchNotes_OffsetMaiorQueTotal_RetornaVazio(t *testing.T) {
 		CreatedAt: now,
 		UpdatedAt: now,
 	}
-	err := repo.Save(ctx, note)
+	_, err := repo.Save(ctx, note)
 	require.NoError(t, err)
 
 	indexaTodosOsCofres(t, db, "simple")
@@ -102,7 +102,7 @@ func TestSearchNotes_NaoEncontra_RetornaVazio(t *testing.T) {
 		CreatedAt: now,
 		UpdatedAt: now,
 	}
-	err := repo.Save(ctx, note)
+	_, err := repo.Save(ctx, note)
 	require.NoError(t, err)
 
 	indexaTodosOsCofres(t, db, "simple")
@@ -123,7 +123,7 @@ func TestSearchNotes_IgnoraCaixa(t *testing.T) {
 		{ID: "2", VaultID: cofreDeTeste, Path: "b.md", Content: "golang tips", CreatedAt: now, UpdatedAt: now},
 	}
 	for _, note := range notesData {
-		err := repo.Save(ctx, note)
+		_, err := repo.Save(ctx, note)
 		require.NoError(t, err)
 	}
 

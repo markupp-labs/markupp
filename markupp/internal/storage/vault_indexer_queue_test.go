@@ -30,7 +30,7 @@ func textoSemRepeticao() string {
 func TestVaultIndexer_NotaAcimaDoTetoDoTsvector_IndexaOComecoSemTravarOCofre(t *testing.T) {
 	db := setupTestDB(t)
 	ctx := storagetest.SeedMember(t, db, identity.Actor{UserID: "ua", TenantID: "t1", Role: "member"}, "va")
-	require.NoError(t, storage.NewPostgresNotesRepository(db, "simple").Save(ctx, notaComConteudo("n1", "va", textoSemRepeticao())))
+	storagetest.SaveNote(ctx, t, storage.NewPostgresNotesRepository(db, "simple"), notaComConteudo("n1", "va", textoSemRepeticao()))
 
 	found, _ := indexaProximo(t, novoIndexador(t, db, "simple"))
 
@@ -43,8 +43,8 @@ func TestVaultIndexer_NotaApagadaDuranteAIndexacao_GravaAsOutras(t *testing.T) {
 	db := setupTestDB(t)
 	repo := storage.NewPostgresNotesRepository(db, "simple")
 	ctx := storagetest.SeedMember(t, db, identity.Actor{UserID: "ua", TenantID: "t1", Role: "member"}, "va")
-	require.NoError(t, repo.Save(ctx, notaComConteudo("n1", "va", "um")))
-	require.NoError(t, repo.Save(ctx, notaComConteudo("n2", "va", "dois")))
+	storagetest.SaveNote(ctx, t, repo, notaComConteudo("n1", "va", "um"))
+	storagetest.SaveNote(ctx, t, repo, notaComConteudo("n2", "va", "dois"))
 
 	found, err := novoIndexador(t, db, "simple").IndexNextVault(context.Background(), func(cs indexing.Changeset) []indexing.SearchDocument {
 		require.NoError(t, repo.Delete(ctx, "n1"))
@@ -61,7 +61,7 @@ func TestVaultIndexer_EscritaDuranteAIndexacao_DeixaANotaPendente(t *testing.T) 
 	db := setupTestDB(t)
 	repo := storage.NewPostgresNotesRepository(db, "simple")
 	ctx := storagetest.SeedMember(t, db, identity.Actor{UserID: "ua", TenantID: "t1", Role: "member"}, "va")
-	require.NoError(t, repo.Save(ctx, notaComConteudo("n1", "va", "antigo")))
+	storagetest.SaveNote(ctx, t, repo, notaComConteudo("n1", "va", "antigo"))
 	idx := novoIndexador(t, db, "simple")
 
 	_, err := idx.IndexNextVault(context.Background(), func(cs indexing.Changeset) []indexing.SearchDocument {
@@ -81,7 +81,7 @@ func TestVaultIndexer_NotaRenomeada_VoltaParaAFila(t *testing.T) {
 	db := setupTestDB(t)
 	repo := storage.NewPostgresNotesRepository(db, "simple")
 	ctx := storagetest.SeedMember(t, db, identity.Actor{UserID: "ua", TenantID: "t1", Role: "member"}, "va")
-	require.NoError(t, repo.Save(ctx, notaComConteudo("n1", "va", "oi")))
+	storagetest.SaveNote(ctx, t, repo, notaComConteudo("n1", "va", "oi"))
 	indexaProximo(t, novoIndexador(t, db, "simple"))
 
 	_, err := repo.Update(ctx, "n1", "outro.md", "oi", time.Now(), time.Time{}, true)
@@ -114,7 +114,7 @@ func TestVaultIndexer_CofreMudaDeTenant_ReindexaNoTenantNovo(t *testing.T) {
 func TestVaultIndexer_DocumentoDeNotaForaDoLote_RetornaErroComOID(t *testing.T) {
 	db := setupTestDB(t)
 	ctx := storagetest.SeedMember(t, db, identity.Actor{UserID: "ua", TenantID: "t1", Role: "member"}, "va")
-	require.NoError(t, storage.NewPostgresNotesRepository(db, "simple").Save(ctx, notaComConteudo("n1", "va", "um")))
+	storagetest.SaveNote(ctx, t, storage.NewPostgresNotesRepository(db, "simple"), notaComConteudo("n1", "va", "um"))
 
 	_, err := novoIndexador(t, db, "simple").IndexNextVault(context.Background(), func(indexing.Changeset) []indexing.SearchDocument {
 		return []indexing.SearchDocument{{NoteID: "n1", Text: "um"}, {NoteID: "intrusa", Text: "x"}}
@@ -127,7 +127,7 @@ func TestVaultIndexer_DocumentoDeNotaForaDoLote_RetornaErroComOID(t *testing.T) 
 func TestVaultIndexer_IndexFuncOmiteNota_RetornaErroComOID(t *testing.T) {
 	db := setupTestDB(t)
 	ctx := storagetest.SeedMember(t, db, identity.Actor{UserID: "ua", TenantID: "t1", Role: "member"}, "va")
-	require.NoError(t, storage.NewPostgresNotesRepository(db, "simple").Save(ctx, notaComConteudo("n1", "va", "um")))
+	storagetest.SaveNote(ctx, t, storage.NewPostgresNotesRepository(db, "simple"), notaComConteudo("n1", "va", "um"))
 
 	_, err := novoIndexador(t, db, "simple").IndexNextVault(context.Background(), func(indexing.Changeset) []indexing.SearchDocument {
 		return nil
@@ -168,8 +168,8 @@ func TestRLS_PapelDoIndexador_SoTiraDaFilaOCofreDaSessao(t *testing.T) {
 	ator := identity.Actor{UserID: "ua", TenantID: "t1", Role: "member"}
 	storagetest.SeedMember(t, db, ator, "va")
 	ctx := storagetest.SeedMember(t, db, ator, "vb")
-	require.NoError(t, repo.Save(ctx, notaComConteudo("n1", "va", "um")))
-	require.NoError(t, repo.Save(ctx, notaComConteudo("n2", "vb", "dois")))
+	storagetest.SaveNote(ctx, t, repo, notaComConteudo("n1", "va", "um"))
+	storagetest.SaveNote(ctx, t, repo, notaComConteudo("n2", "vb", "dois"))
 
 	n, err := comoIndexador(t, db, "t1", "va", "WITH d AS (DELETE FROM note_index_queue RETURNING 1) SELECT count(*) FROM d")
 
@@ -183,7 +183,7 @@ func TestRLS_PapelDoIndexador_NaoGravaIndiceDeOutroCofre(t *testing.T) {
 	ator := identity.Actor{UserID: "ua", TenantID: "t1", Role: "member"}
 	storagetest.SeedMember(t, db, ator, "va")
 	ctx := storagetest.SeedMember(t, db, ator, "vb")
-	require.NoError(t, repo.Save(ctx, notaComConteudo("n2", "vb", "dois")))
+	storagetest.SaveNote(ctx, t, repo, notaComConteudo("n2", "vb", "dois"))
 
 	_, err := comoIndexador(t, db, "t1", "va",
 		"WITH i AS (INSERT INTO note_search_index (note_id, document) VALUES ('n2', to_tsvector('x')) RETURNING 1) SELECT count(*) FROM i")

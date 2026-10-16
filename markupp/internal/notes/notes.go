@@ -40,7 +40,7 @@ type SearchResult struct {
 // Repository é a porta de persistência que o Service consome.
 type Repository interface {
 	DefaultVaultID(ctx context.Context) (string, error)
-	Save(ctx context.Context, note Note) error
+	Save(ctx context.Context, note Note) (Note, error)
 	Update(ctx context.Context, id, path, content string, updatedAt, lastModifiedAt time.Time, force bool) (Note, error)
 	Delete(ctx context.Context, id string) error
 	GetNoteByID(ctx context.Context, id string) (Note, error)
@@ -106,7 +106,7 @@ func (s *Service) Create(ctx context.Context, vaultID, path, content string) (No
 	}
 	now := canonicalTime(s.clock())
 	note := Note{ID: s.newID(), VaultID: vaultID, Path: path, Content: content, ContentSHA256: contentSHA256(content), CreatedAt: now, UpdatedAt: now}
-	if err := s.repo.Save(ctx, note); err != nil {
+	if _, err := s.repo.Save(ctx, note); err != nil {
 		return Note{}, fmt.Errorf("salvar nota %q no cofre %q: %w", note.ID, vaultID, err)
 	}
 	return note, nil

@@ -1,9 +1,10 @@
 -- O tenant da nota vem do DEFAULT da coluna, lido da sessão, e o RLS recorta toda
 -- leitura e escrita ao tenant e aos cofres do usuário: nenhuma query repete o filtro.
 
--- name: CreateNote :exec
+-- name: CreateNote :one
 INSERT INTO notes (id, vault_id, path, content, created_at, updated_at)
-VALUES ($1, $2, $3, $4, $5, $6);
+VALUES ($1, $2, $3, $4, $5, $6)
+RETURNING *;
 
 -- name: DefaultVaultID :one
 SELECT vault_id FROM vault_members

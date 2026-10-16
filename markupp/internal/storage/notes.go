@@ -40,19 +40,21 @@ func (r *PostgresNotesRepository) run(ctx context.Context, fn func(q *gen.Querie
 	return inActorTx(ctx, r.pool, fn)
 }
 
-// Save insere a nota no cofre note.VaultID, devolvendo notes.ErrDuplicatePath se o
-// path já existir no cofre e notes.ErrVaultForbidden se o ator não for membro dele.
-func (r *PostgresNotesRepository) Save(ctx context.Context, note notes.Note) error {
-	return mapWriteErr(r.run(ctx, func(q *gen.Queries) error {
-		return q.CreateNote(ctx, gen.CreateNoteParams{
-			ID:        note.ID,
-			VaultID:   note.VaultID,
-			Path:      note.Path,
-			Content:   note.Content,
-			CreatedAt: note.CreatedAt,
-			UpdatedAt: note.UpdatedAt,
-		})
-	}))
+// Save insere a nota no cofre note.VaultID e devolve a linha gravada, devolvendo
+// notes.ErrDuplicatePath se o path já existir no cofre e notes.ErrVaultForbidden se
+// o ator não for membro dele.
+func (r *PostgresNotesRepository) Save(ctx context.Context, note notes.Note) (notes.Note, error) {
+	p := gen.CreateNoteParams{ID: note.ID, VaultID: note.VaultID, Path: note.Path, Content: note.Content, CreatedAt: note.CreatedAt, UpdatedAt: note.UpdatedAt}
+	var row gen.Note
+	err := r.run(ctx, func(q *gen.Queries) error {
+		var qErr error
+		row, qErr = q.CreateNote(ctx, p)
+		return qErr
+	})
+	if err != nil {
+		return notes.Note{}, mapWriteErr(err)
+	}
+	return toNote(row), nil
 }
 
 // DefaultVaultID devolve o cofre mais antigo do ator, ou notes.ErrVaultForbidden

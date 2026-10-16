@@ -54,7 +54,7 @@ func TestPostgresRepo_Save_PersisteCamposCorretos(t *testing.T) {
 	repo := storage.NewPostgresNotesRepository(db, "simple")
 	n := sampleNote()
 
-	err := repo.Save(ctxDeTeste, n)
+	_, err := repo.Save(ctxDeTeste, n)
 	require.NoError(t, err)
 
 	var gotID, gotPath, gotContent string
@@ -79,9 +79,9 @@ func TestPostgresRepo_Save_PathDuplicado_RetornaErrDuplicatePath(t *testing.T) {
 	n2 := sampleNote()
 	n2.ID = "id-test-2"
 
-	require.NoError(t, repo.Save(ctxDeTeste, n1))
+	storagetest.SaveNote(ctxDeTeste, t, repo, n1)
 
-	err := repo.Save(ctxDeTeste, n2)
+	_, err := repo.Save(ctxDeTeste, n2)
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, notes.ErrDuplicatePath))
 }
@@ -90,7 +90,7 @@ func TestPostgresRepo_Save_Sucesso_RetornaNil(t *testing.T) {
 	db := setupNotesDB(t)
 	repo := storage.NewPostgresNotesRepository(db, "simple")
 
-	err := repo.Save(ctxDeTeste, sampleNote())
+	_, err := repo.Save(ctxDeTeste, sampleNote())
 	assert.NoError(t, err)
 }
 
@@ -98,7 +98,7 @@ func TestPostgresRepo_Update_AtualizaCamposEPreservaCreatedAt(t *testing.T) {
 	db := setupNotesDB(t)
 	repo := storage.NewPostgresNotesRepository(db, "simple")
 	original := sampleNote()
-	require.NoError(t, repo.Save(ctxDeTeste, original))
+	storagetest.SaveNote(ctxDeTeste, t, repo, original)
 
 	novoUpdatedAt := original.UpdatedAt.Add(time.Hour)
 	got, err := repo.Update(ctxDeTeste, original.ID, "renomeado.md", "novo conteudo", novoUpdatedAt, original.UpdatedAt, false)
@@ -129,8 +129,8 @@ func TestPostgresRepo_Update_PathDuplicado_RetornaErrDuplicatePath(t *testing.T)
 	n2 := sampleNote()
 	n2.ID = "id-test-2"
 	n2.Path = "outra.md"
-	require.NoError(t, repo.Save(ctxDeTeste, n1))
-	require.NoError(t, repo.Save(ctxDeTeste, n2))
+	storagetest.SaveNote(ctxDeTeste, t, repo, n1)
+	storagetest.SaveNote(ctxDeTeste, t, repo, n2)
 
 	novoUpdatedAt := n2.UpdatedAt.Add(time.Hour)
 	_, err := repo.Update(ctxDeTeste, n2.ID, n1.Path, n2.Content, novoUpdatedAt, n2.UpdatedAt, false)
@@ -143,7 +143,7 @@ func TestPostgresRepo_Delete_RemoveLinha(t *testing.T) {
 	db := setupNotesDB(t)
 	repo := storage.NewPostgresNotesRepository(db, "simple")
 	n := sampleNote()
-	require.NoError(t, repo.Save(ctxDeTeste, n))
+	storagetest.SaveNote(ctxDeTeste, t, repo, n)
 
 	err := repo.Delete(ctxDeTeste, n.ID)
 	require.NoError(t, err)
@@ -167,7 +167,7 @@ func TestPostgresRepo_Update_ComVersaoCorreta_Force_False_Sucesso(t *testing.T) 
 	db := setupNotesDB(t)
 	repo := storage.NewPostgresNotesRepository(db, "simple")
 	original := sampleNote()
-	require.NoError(t, repo.Save(ctxDeTeste, original))
+	storagetest.SaveNote(ctxDeTeste, t, repo, original)
 
 	novoUpdatedAt := original.UpdatedAt.Add(time.Hour)
 	got, err := repo.Update(ctxDeTeste, original.ID, "renomeado.md", "novo conteudo", novoUpdatedAt, original.UpdatedAt, false)
@@ -181,7 +181,7 @@ func TestPostgresRepo_Update_ComVersaoIncorreta_Force_False_RetornaErrConflict(t
 	db := setupNotesDB(t)
 	repo := storage.NewPostgresNotesRepository(db, "simple")
 	original := sampleNote()
-	require.NoError(t, repo.Save(ctxDeTeste, original))
+	storagetest.SaveNote(ctxDeTeste, t, repo, original)
 
 	novoUpdatedAt := original.UpdatedAt.Add(time.Hour)
 	versaoAnterior := original.UpdatedAt.Add(-1 * time.Second)
@@ -195,7 +195,7 @@ func TestPostgresRepo_Update_ComVersaoIncorreta_Force_True_Sucesso(t *testing.T)
 	db := setupNotesDB(t)
 	repo := storage.NewPostgresNotesRepository(db, "simple")
 	original := sampleNote()
-	require.NoError(t, repo.Save(ctxDeTeste, original))
+	storagetest.SaveNote(ctxDeTeste, t, repo, original)
 
 	novoUpdatedAt := original.UpdatedAt.Add(time.Hour)
 	versaoAnterior := original.UpdatedAt.Add(-1 * time.Second)
@@ -232,7 +232,7 @@ func TestPostgresRepo_Update_UsaUpdatedAtRecebido(t *testing.T) {
 	db := setupNotesDB(t)
 	repo := storage.NewPostgresNotesRepository(db, "simple")
 	original := sampleNote()
-	require.NoError(t, repo.Save(ctxDeTeste, original))
+	storagetest.SaveNote(ctxDeTeste, t, repo, original)
 
 	novoUpdatedAt := time.Date(2026, 6, 7, 12, 0, 0, 0, time.UTC)
 	got, err := repo.Update(ctxDeTeste, original.ID, "novo.md", "novo", novoUpdatedAt, original.UpdatedAt, false)
@@ -262,7 +262,7 @@ func TestPostgresRepo_ListNotes_RetornaTodasNotasOrdenadasPorPath(t *testing.T) 
 		{ID: "id-b", VaultID: cofreDeTeste, Path: "b.md", Content: "bbb", CreatedAt: now, UpdatedAt: now},
 	}
 	for _, n := range notas {
-		require.NoError(t, repo.Save(ctxDeTeste, n))
+		storagetest.SaveNote(ctxDeTeste, t, repo, n)
 	}
 
 	got, err := repo.ListNotes(ctxDeTeste)

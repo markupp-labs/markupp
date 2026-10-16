@@ -10,10 +10,11 @@ import (
 	"time"
 )
 
-const createNote = `-- name: CreateNote :exec
+const createNote = `-- name: CreateNote :one
 
 INSERT INTO notes (id, vault_id, path, content, created_at, updated_at)
 VALUES ($1, $2, $3, $4, $5, $6)
+RETURNING id, path, content, created_at, updated_at, tenant_id, vault_id, content_sha256
 `
 
 type CreateNoteParams struct {
@@ -27,8 +28,8 @@ type CreateNoteParams struct {
 
 // O tenant da nota vem do DEFAULT da coluna, lido da sessão, e o RLS recorta toda
 // leitura e escrita ao tenant e aos cofres do usuário: nenhuma query repete o filtro.
-func (q *Queries) CreateNote(ctx context.Context, arg CreateNoteParams) error {
-	_, err := q.db.Exec(ctx, createNote,
+func (q *Queries) CreateNote(ctx context.Context, arg CreateNoteParams) (Note, error) {
+	row := q.db.QueryRow(ctx, createNote,
 		arg.ID,
 		arg.VaultID,
 		arg.Path,
@@ -36,7 +37,18 @@ func (q *Queries) CreateNote(ctx context.Context, arg CreateNoteParams) error {
 		arg.CreatedAt,
 		arg.UpdatedAt,
 	)
-	return err
+	var i Note
+	err := row.Scan(
+		&i.ID,
+		&i.Path,
+		&i.Content,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.TenantID,
+		&i.VaultID,
+		&i.ContentSha256,
+	)
+	return i, err
 }
 
 const defaultVaultID = `-- name: DefaultVaultID :one

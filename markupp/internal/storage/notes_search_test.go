@@ -38,7 +38,7 @@ func cofreBuscavel(t *testing.T, config string, lista ...notes.Note) *storage.Po
 	db := setupNotesDB(t)
 	repo := storage.NewPostgresNotesRepository(db, config)
 	for _, nota := range lista {
-		require.NoError(t, repo.Save(ctxDeTeste, nota))
+		storagetest.SaveNote(ctxDeTeste, t, repo, nota)
 	}
 	indexaTodosOsCofres(t, db, config)
 	return repo
@@ -124,7 +124,7 @@ func TestSearchNotes_TituloCitadoEmWikilink_ViraTexto(t *testing.T) {
 
 func TestSearchNotes_NotaAindaNaoIndexada_NaoAparece(t *testing.T) {
 	repo := storage.NewPostgresNotesRepository(setupNotesDB(t), "simple")
-	require.NoError(t, repo.Save(ctxDeTeste, notaComCaminho("n1", "n1.md", "golang")))
+	storagetest.SaveNote(ctxDeTeste, t, repo, notaComCaminho("n1", "n1.md", "golang"))
 
 	assert.Empty(t, idsDaBusca(ctxDeTeste, t, repo, "golang"), "consistencia eventual: so o indexador poe a nota na busca")
 }
@@ -135,9 +135,9 @@ func TestSearchNotes_IsolaPorCofreETenant(t *testing.T) {
 	ctxA := storagetest.SeedMember(t, db, identity.Actor{UserID: "ua", TenantID: "t1", Role: "member"}, "va")
 	ctxVizinho := storagetest.SeedMember(t, db, identity.Actor{UserID: "uv", TenantID: "t1", Role: "member"}, "vv")
 	ctxB := storagetest.SeedMember(t, db, identity.Actor{UserID: "ub", TenantID: "t2", Role: "member"}, "vb")
-	require.NoError(t, repo.Save(ctxA, notaComConteudo("a1", "va", "segredo de a")))
-	require.NoError(t, repo.Save(ctxVizinho, notaComConteudo("v1", "vv", "segredo do vizinho")))
-	require.NoError(t, repo.Save(ctxB, notaComConteudo("b1", "vb", "segredo de b")))
+	storagetest.SaveNote(ctxA, t, repo, notaComConteudo("a1", "va", "segredo de a"))
+	storagetest.SaveNote(ctxVizinho, t, repo, notaComConteudo("v1", "vv", "segredo do vizinho"))
+	storagetest.SaveNote(ctxB, t, repo, notaComConteudo("b1", "vb", "segredo de b"))
 	indexaTodosOsCofres(t, db, "simple")
 
 	assert.Equal(t, []string{"a1"}, idsDaBusca(ctxA, t, repo, "segredo"))
@@ -150,7 +150,7 @@ func TestSearchNotes_ViewerLeOIndiceDoCofre(t *testing.T) {
 	repo := storage.NewPostgresNotesRepository(db, "simple")
 	ctxMembro := storagetest.SeedMember(t, db, identity.Actor{UserID: "um", TenantID: "t1", Role: "member"}, "va")
 	ctxViewer := storagetest.SeedMember(t, db, identity.Actor{UserID: "uv", TenantID: "t1", Role: "viewer"}, "va")
-	require.NoError(t, repo.Save(ctxMembro, notaComConteudo("n1", "va", "relatorio anual")))
+	storagetest.SaveNote(ctxMembro, t, repo, notaComConteudo("n1", "va", "relatorio anual"))
 	indexaTodosOsCofres(t, db, "simple")
 
 	assert.Equal(t, []string{"n1"}, idsDaBusca(ctxViewer, t, repo, "relatorio"))
@@ -158,8 +158,8 @@ func TestSearchNotes_ViewerLeOIndiceDoCofre(t *testing.T) {
 
 func TestVaultIndexer_DocumentoPoeOTituloComPesoAEOCorpoComPesoD(t *testing.T) {
 	db := setupNotesDB(t)
-	require.NoError(t, storage.NewPostgresNotesRepository(db, "simple").Save(ctxDeTeste,
-		notaComCaminho("n1", "pasta/Kubernetes.md", "orquestra containers")))
+	storagetest.SaveNote(ctxDeTeste, t, storage.NewPostgresNotesRepository(db, "simple"),
+		notaComCaminho("n1", "pasta/Kubernetes.md", "orquestra containers"))
 
 	indexaTodosOsCofres(t, db, "simple")
 

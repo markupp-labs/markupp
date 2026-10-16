@@ -347,8 +347,8 @@ func (s *stubRepository) DefaultVaultID(ctx context.Context) (string, error) {
 	return "cofre-stub", nil
 }
 
-func (s *stubRepository) Save(ctx context.Context, n notes.Note) error {
-	return nil
+func (s *stubRepository) Save(ctx context.Context, n notes.Note) (notes.Note, error) {
+	return n, nil
 }
 
 func (s *stubRepository) Update(ctx context.Context, id, path, content string, updatedAt, lastModifiedAt time.Time, force bool) (notes.Note, error) {

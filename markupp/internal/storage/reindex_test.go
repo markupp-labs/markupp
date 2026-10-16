@@ -22,9 +22,9 @@ func doisTenantsIndexados(t *testing.T) *pgxpool.Pool {
 	repo := storage.NewPostgresNotesRepository(db, "simple")
 	ctxA := storagetest.SeedMember(t, db, identity.Actor{UserID: "ua", TenantID: "t1", Role: "member"}, "va")
 	ctxB := storagetest.SeedMember(t, db, identity.Actor{UserID: "ub", TenantID: "t2", Role: "member"}, "vb")
-	require.NoError(t, repo.Save(ctxA, notaComConteudo("a1", "va", "um")))
-	require.NoError(t, repo.Save(ctxA, notaComConteudo("a2", "va", "dois")))
-	require.NoError(t, repo.Save(ctxB, notaComConteudo("b1", "vb", "tres")))
+	storagetest.SaveNote(ctxA, t, repo, notaComConteudo("a1", "va", "um"))
+	storagetest.SaveNote(ctxA, t, repo, notaComConteudo("a2", "va", "dois"))
+	storagetest.SaveNote(ctxB, t, repo, notaComConteudo("b1", "vb", "tres"))
 	indexaTodosOsCofres(t, db, "simple")
 	require.Zero(t, countRows(t, db, consultaDoScaler))
 	return db

@@ -78,7 +78,7 @@ func TestVaultIndexer_SemCofrePendente_DevolveFalsoSemIndexar(t *testing.T) {
 func TestVaultIndexer_NotaNova_IndexaOConteudoNoCofreDela(t *testing.T) {
 	db := setupTestDB(t)
 	ctx := storagetest.SeedMember(t, db, identity.Actor{UserID: "ua", TenantID: "t1", Role: "member"}, "va")
-	require.NoError(t, storage.NewPostgresNotesRepository(db, "simple").Save(ctx, notaComConteudo("n1", "va", "reuniao com o cliente")))
+	storagetest.SaveNote(ctx, t, storage.NewPostgresNotesRepository(db, "simple"), notaComConteudo("n1", "va", "reuniao com o cliente"))
 
 	found, lotes := indexaProximo(t, novoIndexador(t, db, "simple"))
 
@@ -93,7 +93,7 @@ func TestVaultIndexer_NotaNova_IndexaOConteudoNoCofreDela(t *testing.T) {
 func TestVaultIndexer_CofreJaIndexado_NaoFicaPendente(t *testing.T) {
 	db := setupTestDB(t)
 	ctx := storagetest.SeedMember(t, db, identity.Actor{UserID: "ua", TenantID: "t1", Role: "member"}, "va")
-	require.NoError(t, storage.NewPostgresNotesRepository(db, "simple").Save(ctx, notaComConteudo("n1", "va", "oi")))
+	storagetest.SaveNote(ctx, t, storage.NewPostgresNotesRepository(db, "simple"), notaComConteudo("n1", "va", "oi"))
 	idx := novoIndexador(t, db, "simple")
 	indexaProximo(t, idx)
 
@@ -107,8 +107,8 @@ func TestVaultIndexer_NotaEditada_ReindexaSoElaComOConteudoNovo(t *testing.T) {
 	db := setupTestDB(t)
 	repo := storage.NewPostgresNotesRepository(db, "simple")
 	ctx := storagetest.SeedMember(t, db, identity.Actor{UserID: "ua", TenantID: "t1", Role: "member"}, "va")
-	require.NoError(t, repo.Save(ctx, notaComConteudo("n1", "va", "palavra antiga")))
-	require.NoError(t, repo.Save(ctx, notaComConteudo("n2", "va", "intocada")))
+	storagetest.SaveNote(ctx, t, repo, notaComConteudo("n1", "va", "palavra antiga"))
+	storagetest.SaveNote(ctx, t, repo, notaComConteudo("n2", "va", "intocada"))
 	idx := novoIndexador(t, db, "simple")
 	indexaProximo(t, idx)
 	_, err := repo.Update(ctx, "n1", "n1.md", "palavra nova", time.Now(), time.Time{}, true)
@@ -129,7 +129,7 @@ func TestVaultIndexer_NotaApagada_SaiDoIndice(t *testing.T) {
 	db := setupTestDB(t)
 	repo := storage.NewPostgresNotesRepository(db, "simple")
 	ctx := storagetest.SeedMember(t, db, identity.Actor{UserID: "ua", TenantID: "t1", Role: "member"}, "va")
-	require.NoError(t, repo.Save(ctx, notaComConteudo("n1", "va", "oi")))
+	storagetest.SaveNote(ctx, t, repo, notaComConteudo("n1", "va", "oi"))
 	indexaProximo(t, novoIndexador(t, db, "simple"))
 
 	require.NoError(t, repo.Delete(ctx, "n1"))
@@ -143,8 +143,8 @@ func TestVaultIndexer_LoteSoTrazNotasDoCofreReservado(t *testing.T) {
 	ator := identity.Actor{UserID: "ua", TenantID: "t1", Role: "member"}
 	storagetest.SeedMember(t, db, ator, "va")
 	ctx := storagetest.SeedMember(t, db, ator, "vb")
-	require.NoError(t, repo.Save(ctx, notaComConteudo("n1", "va", "um")))
-	require.NoError(t, repo.Save(ctx, notaComConteudo("n2", "vb", "dois")))
+	storagetest.SaveNote(ctx, t, repo, notaComConteudo("n1", "va", "um"))
+	storagetest.SaveNote(ctx, t, repo, notaComConteudo("n2", "vb", "dois"))
 
 	_, lotes := indexaProximo(t, novoIndexador(t, db, "simple"))
 
@@ -185,8 +185,8 @@ func TestVaultIndexer_CofreReservado_OutroIndexadorPulaParaOProximo(t *testing.T
 	repo := storage.NewPostgresNotesRepository(db, "simple")
 	ctxA := storagetest.SeedMember(t, db, identity.Actor{UserID: "ua", TenantID: "t1", Role: "member"}, "va")
 	ctxB := storagetest.SeedMember(t, db, identity.Actor{UserID: "ub", TenantID: "t2", Role: "member"}, "vb")
-	require.NoError(t, repo.Save(ctxA, notaComConteudo("n1", "va", "um")))
-	require.NoError(t, repo.Save(ctxB, notaComConteudo("n2", "vb", "dois")))
+	storagetest.SaveNote(ctxA, t, repo, notaComConteudo("n1", "va", "um"))
+	storagetest.SaveNote(ctxB, t, repo, notaComConteudo("n2", "vb", "dois"))
 	idx := novoIndexador(t, db, "simple")
 	primeiro, libera, terminou := reservaPresa(t, idx)
 
@@ -208,8 +208,8 @@ func TestVaultIndexer_PendentesDoKEDA_ContaCofresComMudanca(t *testing.T) {
 	ctxB := storagetest.SeedMember(t, db, identity.Actor{UserID: "ub", TenantID: "t2", Role: "member"}, "vb")
 	assert.Zero(t, countRows(t, db, consultaDoScaler))
 
-	require.NoError(t, repo.Save(ctxA, notaComConteudo("n1", "va", "um")))
-	require.NoError(t, repo.Save(ctxB, notaComConteudo("n2", "vb", "dois")))
+	storagetest.SaveNote(ctxA, t, repo, notaComConteudo("n1", "va", "um"))
+	storagetest.SaveNote(ctxB, t, repo, notaComConteudo("n2", "vb", "dois"))
 	assert.Equal(t, 2, countRows(t, db, consultaDoScaler))
 
 	indexaProximo(t, novoIndexador(t, db, "simple"))
@@ -233,7 +233,7 @@ func TestNewPostgresVaultIndexer_ConfiguracaoComSchema_Aceita(t *testing.T) {
 func TestVaultIndexer_ConfiguracaoEnglish_IndexaPorRadical(t *testing.T) {
 	db := setupTestDB(t)
 	ctx := storagetest.SeedMember(t, db, identity.Actor{UserID: "ua", TenantID: "t1", Role: "member"}, "va")
-	require.NoError(t, storage.NewPostgresNotesRepository(db, "simple").Save(ctx, notaComConteudo("n1", "va", "running tests")))
+	storagetest.SaveNote(ctx, t, storage.NewPostgresNotesRepository(db, "simple"), notaComConteudo("n1", "va", "running tests"))
 
 	indexaProximo(t, novoIndexador(t, db, "english"))
 
@@ -262,8 +262,8 @@ func TestRLS_PapelDoIndexador_SoEnxergaOCofreDaSessao(t *testing.T) {
 	ator := identity.Actor{UserID: "ua", TenantID: "t1", Role: "member"}
 	storagetest.SeedMember(t, db, ator, "va")
 	ctx := storagetest.SeedMember(t, db, ator, "vb")
-	require.NoError(t, repo.Save(ctx, notaComConteudo("n1", "va", "um")))
-	require.NoError(t, repo.Save(ctx, notaComConteudo("n2", "vb", "dois")))
+	storagetest.SaveNote(ctx, t, repo, notaComConteudo("n1", "va", "um"))
+	storagetest.SaveNote(ctx, t, repo, notaComConteudo("n2", "vb", "dois"))
 
 	n, err := comoIndexador(t, db, "t1", "va", "SELECT count(*) FROM notes")
 	require.NoError(t, err)
@@ -276,7 +276,7 @@ func TestRLS_PapelDoIndexador_SoEnxergaOCofreDaSessao(t *testing.T) {
 func TestRLS_PapelDoIndexador_NaoEscreveNoRegistro(t *testing.T) {
 	db := setupTestDB(t)
 	ctx := storagetest.SeedMember(t, db, identity.Actor{UserID: "ua", TenantID: "t1", Role: "member"}, "va")
-	require.NoError(t, storage.NewPostgresNotesRepository(db, "simple").Save(ctx, notaComConteudo("n1", "va", "um")))
+	storagetest.SaveNote(ctx, t, storage.NewPostgresNotesRepository(db, "simple"), notaComConteudo("n1", "va", "um"))
 
 	_, err := comoIndexador(t, db, "t1", "va", "WITH u AS (UPDATE notes SET content = 'x' RETURNING 1) SELECT count(*) FROM u")
 

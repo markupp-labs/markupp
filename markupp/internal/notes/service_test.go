@@ -62,10 +62,10 @@ func (f *fakeRepo) DefaultVaultID(ctx context.Context) (string, error) {
 	return f.defaultVault, f.defaultVaultErr
 }
 
-func (f *fakeRepo) Save(ctx context.Context, n notes.Note) error {
+func (f *fakeRepo) Save(ctx context.Context, n notes.Note) (notes.Note, error) {
 	f.called = true
 	f.saved = n
-	return f.saveErr
+	return n, f.saveErr
 }
 
 func (f *fakeRepo) Update(ctx context.Context, id, path, content string, updatedAt, lastModifiedAt time.Time, force bool) (notes.Note, error) {

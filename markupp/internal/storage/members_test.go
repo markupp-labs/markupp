@@ -97,7 +97,7 @@ func TestAdminRepo_RemoverMembro_ApagaCofreSoDeleSaiDosCompartilhadosECancelaCon
 	ctxU2 := storagetest.SeedMember(t, db, identity.Actor{UserID: "u2", TenantID: "t1", Role: "member"}, "so-da-u2")
 	_, err := db.Exec(context.Background(), "INSERT INTO vault_members (vault_id, user_id, created_at) VALUES ('compartilhado', 'u2', now())")
 	require.NoError(t, err)
-	require.NoError(t, storage.NewPostgresNotesRepository(db, "simple").Save(ctxU2, notaNoCofre("n-u2", "dela.md", "so-da-u2")))
+	storagetest.SaveNote(ctxU2, t, storage.NewPostgresNotesRepository(db, "simple"), notaNoCofre("n-u2", "dela.md", "so-da-u2"))
 
 	require.NoError(t, storage.NewPostgresAdminRepository(db).ChangeMembershipTx(ctxDona, mudanca("u2", ""), semRegra))
 

@@ -43,7 +43,7 @@ func TestGetNoteByID_NotaExistente_RetornaCamposPersistidos(t *testing.T) {
 	repo := NewPostgresNotesRepository(bancoInternoMigrado(t), "simple")
 	nota := notaInterna()
 	ctx := identity.WithActor(context.Background(), membroInterno)
-	require.NoError(t, repo.Save(ctx, nota))
+	storagetest.SaveNote(ctx, t, repo, nota)
 
 	obtida, err := repo.GetNoteByID(ctx, nota.ID)
 
