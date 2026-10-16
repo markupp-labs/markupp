@@ -165,9 +165,11 @@ outras duas variáveis passam a ser obrigatórias:
   `https://notas.exemplo.com/painel`, sem query nem fragmento
 - `MARKUPP_OAUTH_RESOURCES`: os servidores de recursos que aceitam os tokens, em pares
   `url=segredo` separados por vírgula, cada segredo com ao menos 32 bytes (ex.:
-  `openssl rand -hex 32`) e cada URL uma vez só
+  `openssl rand -hex 32`) e cada URL uma vez só, sem query nem fragmento
 
-As URLs exigem https; http só vale para localhost, 127.0.0.1 e [::1].
+As URLs exigem https e um host, sem usuário nem senha; http só vale para localhost, 127.0.0.1
+e [::1]. O servidor guarda cada URL com esquema e host em minúsculas e sem barra final, então
+`https://MCP.exemplo.com/mcp/` e `https://mcp.exemplo.com/mcp` contam como o mesmo recurso.
 
 ## Aviso
 
