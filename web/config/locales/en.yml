@@ -74,6 +74,7 @@ en:
     new:
       title: "Accept an invite"
       hint: "Paste the token from the invite email and choose a password for your new account."
+      password: "Password"
       submit: "Create account"
       submitting: "Creating account"
       log_in: "Log in"
