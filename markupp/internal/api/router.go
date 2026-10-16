@@ -15,6 +15,7 @@ type RouterDeps struct {
 	Tenants        TenantResolver
 	Probe          StorageProbe
 	AllowedOrigins []string
+	OAuthMetadata  *OAuthMetadata
 }
 
 // NewRouter monta o roteador com sonda, rotas de autenticação, de notas e de
@@ -32,6 +33,9 @@ func NewRouter(d RouterDeps) chi.Router {
 	r.Use(middleware.RequestID)
 	r.Use(middleware.Recoverer)
 	r.Use(allowOrigins(d.AllowedOrigins))
+	if d.OAuthMetadata != nil {
+		r.Get(oauthMetadataPath, oauthMetadataHandler(*d.OAuthMetadata))
+	}
 	r.Mount(currentVersionPrefix, routes)
 	r.Mount("/", markDeprecated(routes))
 	return r
