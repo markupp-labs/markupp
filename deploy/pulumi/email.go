@@ -24,11 +24,11 @@ type EmailArgs struct {
 }
 
 // withEmailSecret acrescenta a URL do SMTP ao Secret do markupp quando há email.
-func withEmailSecret(data pulumi.StringMap, args MarkuppArgs) pulumi.StringMap {
+func withEmailSecret(secretValues pulumi.StringMap, args MarkuppArgs) pulumi.StringMap {
 	if args.Email != nil {
-		data[smtpURLKey] = args.Email.SMTPURL
+		secretValues[smtpURLKey] = args.Email.SMTPURL
 	}
-	return data
+	return secretValues
 }
 
 // validateEmailSender recusa o remetente que o notificador recusaria ao subir.
