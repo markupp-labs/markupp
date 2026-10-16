@@ -1,6 +1,9 @@
 package main
 
 import (
+	"fmt"
+	"net/mail"
+
 	appsv1 "github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/apps/v1"
 	corev1 "github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/core/v1"
 	metav1 "github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/meta/v1"
@@ -27,6 +30,17 @@ func withEmailSecret(data pulumi.StringMap, args MarkuppArgs) pulumi.StringMap {
 		data[smtpURLKey] = args.Email.SMTPURL
 	}
 	return data
+}
+
+// validateEmailSender recusa o remetente que o notificador recusaria ao subir.
+func validateEmailSender(args MarkuppArgs) error {
+	if args.Email == nil {
+		return nil
+	}
+	if _, err := mail.ParseAddress(args.Email.From); err != nil {
+		return fmt.Errorf("campo email.from=%q, esperado usuario@dominio ou Nome <usuario@dominio>: %w", args.Email.From, err)
+	}
+	return nil
 }
 
 // inviteByEmailEnv diz à API que o convite sai por email. Ela não recebe o SMTP:

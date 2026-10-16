@@ -128,9 +128,6 @@ type requiredField struct{ field, value string }
 
 func validate(args MarkuppArgs) error {
 	required := []requiredField{{"namespace", args.Namespace}, {"image", args.Image}, {"host", args.Host}}
-	if args.Email != nil {
-		required = append(required, requiredField{"email.from", args.Email.From})
-	}
 	ingress, err := ingressRequiredFields(args)
 	if err != nil {
 		return err
@@ -141,7 +138,7 @@ func validate(args MarkuppArgs) error {
 				r.field, args.Namespace, args.Image, args.Host, args.CertificateIssuer, args.AcmeEmail)
 		}
 	}
-	return nil
+	return validateEmailSender(args)
 }
 
 // ingressRequiredFields lista o que a entrada exige: com Gateway existente, a
