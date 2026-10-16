@@ -68,7 +68,7 @@ func InviteMessage(d InviteDetails, token, from string) Message {
 	body := fmt.Sprintf("%s convidou você para %s no markupp, com o papel %s.\n\n"+
 		"Token do convite:\n%s\n\n"+
 		"Use o token no cliente do markupp para aceitar. O convite vale até %s.\n",
-		d.InviterEmail, d.TenantName, d.Role, token, d.ExpiresAt.UTC().Format("2006-01-02"))
+		d.InviterEmail, d.TenantName, d.Role, token, d.ExpiresAt.UTC().Format("2006-01-02 15:04 MST"))
 	return Message{From: from, To: d.Email, Subject: "Convite para " + d.TenantName + " no markupp", Body: body}
 }
 
