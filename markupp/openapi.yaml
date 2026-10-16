@@ -1105,8 +1105,12 @@ components:
           example: "2026-05-14T12:00:00Z"
         snippet:
           type: string
-          description: Trecho do conteúdo com os termos da consulta entre <b> e </b>
-          example: "reunião sobre o <b>kubernetes</b> do cluster novo"
+          description: >-
+            Trecho do texto cru da nota, sem HTML gerado pelo servidor, com cada termo
+            casado entre os caracteres de controle U+0002 (início) e U+0003 (fim).
+            O cliente deve escapar o texto e só então trocar os marcadores pelo
+            destaque que preferir.
+          example: "reunião sobre o \u0002kubernetes\u0003 do cluster novo"
     HealthResponse:
       type: object
       properties:
