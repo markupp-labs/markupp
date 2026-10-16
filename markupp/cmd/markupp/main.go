@@ -1,11 +1,14 @@
 // Command markupp sobe o servidor HTTP de notas, aplica as migrações do banco
-// com o subcomando migrate, ou indexa os cofres pendentes com index (um cofre, para
-// o Job do KEDA) e index-loop (em laço, para o compose).
+// com o subcomando migrate, indexa os cofres pendentes com index (um cofre, para
+// o Job do KEDA) e index-loop (em laço, para o compose), ou reenfileira notas para
+// reindexar com reindex.
 package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"os"
@@ -35,7 +38,8 @@ const (
 
 // command é o subcomando do binário: serve sobe a API, migrate aplica o schema
 // e sai, index indexa um cofre pendente e sai, index-loop indexa em laço, e
-// notify-loop entrega a fila de email em laço.
+// notify-loop entrega a fila de email em laço, e reindex reenfileira as notas de
+// um cofre ou da instalação.
 type command string
 
 const (
@@ -44,6 +48,7 @@ const (
 	indexCommand      command = "index"
 	indexLoopCommand  command = "index-loop"
 	notifyLoopCommand command = "notify-loop"
+	reindexCommand    command = "reindex"
 )
 
 // notifyInterval é a espera do notify-loop com a fila vazia. A primeira nova
@@ -66,6 +71,9 @@ func run(ctx context.Context, logger *slog.Logger, args []string) error {
 	if cmd == indexCommand || cmd == indexLoopCommand {
 		return runIndexer(ctx, logger, cmd)
 	}
+	if cmd == reindexCommand {
+		return reindexVaults(ctx, logger, args[2:])
+	}
 	cfg, err := config.Load(os.LookupEnv)
 	if err != nil {
 		return fmt.Errorf("carregar config: %w", err)
@@ -84,11 +92,54 @@ func parseCommand(args []string) (command, error) {
 		return serveCommand, nil
 	}
 	switch cmd := command(args[1]); cmd {
-	case serveCommand, migrateCommand, indexCommand, indexLoopCommand, notifyLoopCommand:
+	case serveCommand, migrateCommand, indexCommand, indexLoopCommand, notifyLoopCommand, reindexCommand:
 		return cmd, nil
 	}
-	return "", fmt.Errorf("subcomando %q desconhecido, esperado %q, %q, %q, %q ou %q",
-		args[1], serveCommand, migrateCommand, indexCommand, indexLoopCommand, notifyLoopCommand)
+	return "", fmt.Errorf("subcomando %q desconhecido, esperado %q, %q, %q, %q, %q ou %q",
+		args[1], serveCommand, migrateCommand, indexCommand, indexLoopCommand, notifyLoopCommand, reindexCommand)
+}
+
+const reindexUsage = "esperado reindex --vault <id> para um cofre ou reindex --all para a instalacao"
+
+// parseReindexScope lê o escopo do reindex: devolve o cofre de --vault, ou vazio com
+// --all. Exige exatamente um dos dois, para a instalação inteira nunca ser o padrão.
+func parseReindexScope(args []string) (string, error) {
+	flags := flag.NewFlagSet(string(reindexCommand), flag.ContinueOnError)
+	flags.SetOutput(io.Discard)
+	vaultID := flags.String("vault", "", "cofre a reindexar")
+	all := flags.Bool("all", false, "reindexa todos os cofres da instalacao")
+	if err := flags.Parse(args); err != nil {
+		return "", fmt.Errorf("argumentos %q do reindex invalidos, %s: %w", args, reindexUsage, err)
+	}
+	if flags.NArg() > 0 || (*vaultID != "") == *all {
+		return "", fmt.Errorf("argumentos %q do reindex, %s", args, reindexUsage)
+	}
+	return *vaultID, nil
+}
+
+// reindexVaults reenfileira as notas do escopo para o indexador refazer o índice,
+// como depois de trocar MARKUPP_SEARCH_CONFIG. Usa a config do indexador: só
+// precisa do banco, com o papel dono.
+func reindexVaults(ctx context.Context, logger *slog.Logger, args []string) error {
+	vaultID, err := parseReindexScope(args)
+	if err != nil {
+		return err
+	}
+	cfg, err := config.LoadIndexer(os.LookupEnv)
+	if err != nil {
+		return fmt.Errorf("carregar config do indexador: %w", err)
+	}
+	pool, err := storage.OpenPool(ctx, cfg.DatabaseURL)
+	if err != nil {
+		return fmt.Errorf("abrir banco: %w", err)
+	}
+	defer pool.Close()
+	requeued, err := storage.RequeueNotes(ctx, pool, vaultID)
+	if err != nil {
+		return err
+	}
+	logger.Info("reindexacao enfileirada", "cofre", vaultID, "notas", requeued)
+	return nil
 }
 
 // deliverNotifications entrega a fila de email em laço: é o Deployment que o KEDA
