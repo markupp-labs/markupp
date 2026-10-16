@@ -11,17 +11,15 @@ class Note
   SEARCH_LIMIT = 20
   UNTITLED_LIMIT = 100
 
-  class_attribute :api
-
   # ponytail: GET /notes traz o conteúdo de todas as notas, paginar quando a API paginar
-  def self.all
+  def self.all(api)
     api.get("/notes").map { from_api(it) }
   end
 
-  def self.find(id) = from_api(api.get(api_path(id)))
+  def self.find(api, id) = from_api(api.get(api_path(id)))
 
   # Os resultados não trazem o conteúdo, só id, path e updated_at.
-  def self.search(query)
+  def self.search(api, query)
     return [] if query.blank?
 
     api.get("/notes/search?#{{ query:, limit: SEARCH_LIMIT }.to_query}").map { from_api(it) }
@@ -48,22 +46,22 @@ class Note
   def crlf? = content.to_s.include?("\r\n")
 
   # Nota com o nome padrão ganha número quando o nome já existe; caminho escolhido pelo usuário não.
-  def save
+  def save(api)
     refusing_path do
-      created = untitled? ? post_numbered : post
+      created = untitled? ? post_numbered(api) : post(api)
       assign_attributes(created.slice("id", "created_at", "updated_at"))
     end
   end
 
   # updated_at é a versão lida; a API recusa com Conflict se a nota mudou depois, a menos que force.
   # A API guarda a versão em milissegundos, então lastModifiedAt vai com essa precisão.
-  def update(attributes, force: false)
+  def update(api, attributes, force: false)
     assign_attributes(attributes)
     refusing_path { api.put(Note.api_path(id), path:, content:, lastModifiedAt: updated_at&.iso8601(3), force:) }
   end
 
   # Já apagada (404) conta como apagada.
-  def destroy
+  def destroy(api)
     api.delete(Note.api_path(id))
   rescue MarkuppApi::NotFound
     nil
@@ -76,7 +74,7 @@ class Note
   private
     def path_segments = path.split("/").reject(&:empty?)
 
-    def post = api.post("/notes", path:, content:)
+    def post(api) = api.post("/notes", path:, content:)
 
     # Caminho recusado pela API vira erro em path e devolve false; a regra de caminho fica só no servidor.
     def refusing_path
@@ -90,10 +88,10 @@ class Note
 
     def untitled? = name == "#{Note.untitled_name}.md"
 
-    def post_numbered
+    def post_numbered(api)
       (0..UNTITLED_LIMIT).each do |number|
         self.path = untitled_path(number)
-        return post
+        return post(api)
       rescue MarkuppApi::DuplicatePath
         next
       end

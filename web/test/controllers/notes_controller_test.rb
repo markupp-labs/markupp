@@ -147,12 +147,12 @@ class NotesControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "create numbers an untitled note whose name is taken" do
-    use_fake_api(notes: [ { id: "1", path: "Untitled.md", content: "" } ])
+    api = use_fake_api(notes: [ { id: "1", path: "Untitled.md", content: "" } ])
 
     post notes_path, params: { note: { path: "Untitled.md", content: "" } }
 
     assert_redirected_to note_path("created-2")
-    assert_equal "Untitled 1.md", Note.find("created-2").path
+    assert_equal "Untitled 1.md", Note.find(api, "created-2").path
   end
 
   test "create with a taken path keeps the text and flags the path" do

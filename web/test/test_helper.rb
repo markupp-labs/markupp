@@ -8,11 +8,13 @@ module ActiveSupport
     # Run tests in parallel with specified workers
     parallelize(workers: :number_of_processors)
 
-    teardown { Note.api = @original_api if @original_api }
+    teardown { ApplicationController.markupp_api_factory = @original_factory if @original_factory }
 
     def use_fake_api(**options)
-      @original_api = Note.api
-      Note.api = FakeMarkuppApi.new(**options)
+      @original_factory ||= ApplicationController.markupp_api_factory
+      fake_api = FakeMarkuppApi.new(**options)
+      ApplicationController.markupp_api_factory = ->(**) { fake_api }
+      fake_api
     end
   end
 end
