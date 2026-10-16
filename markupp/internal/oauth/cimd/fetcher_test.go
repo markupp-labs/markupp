@@ -302,7 +302,7 @@ func TestNewFetcher_OpcaoForaDaFaixa_DevolveErroComValor(t *testing.T) {
 		t.Run(nome, func(t *testing.T) {
 			fetcher, err := cimd.NewFetcher(caso.opcao)
 
-			require.Error(t, err)
+			require.ErrorIs(t, err, cimd.ErrInvalidOption)
 			assert.Nil(t, fetcher)
 			assert.Contains(t, err.Error(), caso.valor)
 		})

@@ -7,11 +7,15 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"mime"
 	"net"
 	"net/http"
 	"time"
 )
+
+// ErrInvalidOption indica uma opção do construtor fora da faixa aceita.
+var ErrInvalidOption = errors.New("opcao do fetcher invalida")
 
 // ErrFetchFailed indica que a busca do documento falhou antes de chegar ao JSON.
 var ErrFetchFailed = errors.New("busca do documento de metadados falhou")
@@ -67,8 +71,28 @@ func NewFetcher(opts ...Option) (*Fetcher, error) {
 	for _, opt := range opts {
 		opt(f)
 	}
+	if err := f.validateOptions(); err != nil {
+		return nil, err
+	}
 	f.client = newGuardedClient(f.policy, f.rootCAs, f.timeout)
 	return f, nil
+}
+
+// validateOptions recusa valores que deixariam a busca sem limite de tempo, o corpo
+// sempre vazio (ou limit+1 estourando em readLimited) ou o TTL fora de um intervalo.
+func (f *Fetcher) validateOptions() error {
+	if f.timeout <= 0 {
+		return fmt.Errorf("%w: timeout %s; esperado maior que zero", ErrInvalidOption, f.timeout)
+	}
+	if f.maxBody <= 0 || f.maxBody == math.MaxInt64 {
+		return fmt.Errorf("%w: limite de corpo %d bytes; esperado entre 1 e %d",
+			ErrInvalidOption, f.maxBody, int64(math.MaxInt64-1))
+	}
+	if f.minTTL <= 0 || f.minTTL > f.maxTTL {
+		return fmt.Errorf("%w: TTL minimo %s e maximo %s; esperado 0 < minimo <= maximo",
+			ErrInvalidOption, f.minTTL, f.maxTTL)
+	}
+	return nil
 }
 
 // newGuardedClient não usa proxy (o proxy esconderia o IP real do Control) e não segue
