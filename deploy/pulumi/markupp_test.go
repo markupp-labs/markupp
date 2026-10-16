@@ -421,12 +421,34 @@ func TestNewMarkupp_ComEmail_GuardaAURLDoSMTPNoSecret(t *testing.T) {
 	assert.Equal(t, "smtps://markupp:senha@smtp.markupp.dev:465", plain(at(t, secret, "stringData", "smtp-url")).StringValue())
 }
 
-func TestNewMarkupp_ComEmail_APIEnfileiraOConvite(t *testing.T) {
+func TestNewMarkupp_ComEmail_APIEnfileiraOConviteSemASenhaDoSMTP(t *testing.T) {
 	monitor := deploy(t, argsComEmail())
 
 	api := firstContainer(t, deploymentNamed(t, monitor, "markupp-api"))
-	assert.Subset(t, envNames(api), []string{"MARKUPP_SMTP_URL", "MARKUPP_SMTP_FROM"},
-		"a API precisa saber que o convite sai por email para nao devolver o token")
+	assert.Contains(t, envNames(api), "MARKUPP_INVITE_BY_EMAIL", "a API precisa saber que o convite sai por email para nao devolver o token")
+	assert.NotContains(t, envNames(api), "MARKUPP_SMTP_URL", "a API exposta a internet nao guarda a senha do SMTP")
+}
+
+func TestNewMarkupp_ComEmail_MigracaoEIndexadorNaoRecebemOSMTP(t *testing.T) {
+	monitor := deploy(t, argsComEmail())
+
+	migracao := firstContainer(t, monitor.single(t, "kubernetes:batch/v1:Job"))
+	indexador := containerDoIndexador(t, monitor.single(t, scaledJobType))
+	for nome, container := range map[string]resource.PropertyMap{"migracao": migracao, "indexador": indexador} {
+		assert.NotContains(t, envNames(container), "MARKUPP_SMTP_URL", nome)
+		assert.NotContains(t, envNames(container), "MARKUPP_SMTP_FROM", nome)
+	}
+}
+
+func TestNewMarkupp_RemetenteIlegivel_RetornaErroComOValor(t *testing.T) {
+	args := argsComEmail()
+	args.Email.From = "noreply"
+
+	err := declareErr(args)
+
+	require.Error(t, err, "remetente que o servidor recusaria derruba todos os conteineres")
+	assert.Contains(t, err.Error(), "email.from")
+	assert.Contains(t, err.Error(), "noreply")
 }
 
 func TestNewMarkupp_ComEmail_NotificadorRodaNotifyLoop(t *testing.T) {
