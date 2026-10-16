@@ -93,7 +93,8 @@ module Settings
 
       assert_select "select#member_role_account-caio option", count: 4
       assert_select "select#member_role_account-caio option[selected]", "member"
-      assert_select "label.sr-only[for=member_role_account-caio]", "Role for #{CAIO}"
+      # Visível no celular, onde o cabeçalho das colunas some; só o desktop esconde.
+      assert_select "label.md\\:sr-only:not(.sr-only)[for=member_role_account-caio]", "Role for #{CAIO}"
       assert_select "form[action=?] input[name=_method][value=patch]", settings_member_path("account-caio")
       assert_select "form[action=?] button[data-turbo-confirm=?]", settings_member_path("account-caio"), "Remove #{CAIO} from Acme research?", text: "Remove"
     end
