@@ -546,3 +546,24 @@ func TestPostNotes_CofreSemAcesso_Retorna403(t *testing.T) {
 	assert.Equal(t, http.StatusForbidden, rec.Code)
 	assert.Contains(t, rec.Body.String(), "vault_forbidden")
 }
+
+func TestGetNotes_ExpoeContentSHA256(t *testing.T) {
+	svc := &fakeService{note: notes.Note{ID: "id-x", Path: "x.md", Content: "y", ContentSHA256: "ab01"}}
+
+	rec := doGet(t, svc, "id-x")
+
+	var resp map[string]any
+	require.NoError(t, json.NewDecoder(rec.Body).Decode(&resp))
+	assert.Equal(t, "ab01", resp["content_sha256"])
+}
+
+func TestListNotes_ExpoeContentSHA256DeCadaNota(t *testing.T) {
+	svc := &fakeService{listResult: []notes.Note{{ID: "id-1", ContentSHA256: "cd02"}}}
+
+	rec := doListNotes(t, svc)
+
+	var resp []map[string]any
+	require.NoError(t, json.NewDecoder(rec.Body).Decode(&resp))
+	require.Len(t, resp, 1)
+	assert.Equal(t, "cd02", resp[0]["content_sha256"])
+}

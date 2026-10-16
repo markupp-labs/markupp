@@ -597,3 +597,12 @@ func TestCreate_CofreComEspacos_GravaNoCofreSemEspacos(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "cofre-1", note.VaultID)
 }
+
+func TestCreate_PreencheSHA256DoConteudoEmUTF8(t *testing.T) {
+	svc := newServiceForTest(&fakeRepo{})
+
+	got, err := svc.Create(context.Background(), "cofre-teste", "a.md", "ação")
+
+	require.NoError(t, err)
+	assert.Equal(t, "0664077f33cc3ebbaa4bbdacac0eb70e740983080f01dce29929e73b7785a7ad", got.ContentSHA256)
+}
