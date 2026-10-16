@@ -26,6 +26,7 @@ func permitirQualquerIP(netip.Addr) error { return nil }
 // servidorDeMetadados é o host remoto falso que publica o documento do cliente.
 type servidorDeMetadados struct {
 	*httptest.Server
+	t            *testing.T
 	documento    documentoDeTeste
 	contentType  string
 	cacheControl string
@@ -37,7 +38,7 @@ type servidorDeMetadados struct {
 
 func novoServidorDeMetadados(t *testing.T) *servidorDeMetadados {
 	t.Helper()
-	srv := &servidorDeMetadados{contentType: "application/json", status: http.StatusOK}
+	srv := &servidorDeMetadados{t: t, contentType: "application/json", status: http.StatusOK}
 	srv.Server = httptest.NewTLSServer(http.HandlerFunc(srv.servir))
 	srv.documento = documentoValido(srv.clientID())
 	t.Cleanup(srv.Close)
@@ -75,7 +76,9 @@ func (s *servidorDeMetadados) confiaveis() *x509.CertPool {
 
 func (s *servidorDeMetadados) fetcher(opts ...cimd.Option) *cimd.Fetcher {
 	base := []cimd.Option{cimd.WithRootCAs(s.confiaveis()), cimd.WithIPPolicy(permitirQualquerIP)}
-	return cimd.NewFetcher(append(base, opts...)...)
+	fetcher, err := cimd.NewFetcher(append(base, opts...)...)
+	require.NoError(s.t, err)
+	return fetcher
 }
 
 func (s *servidorDeMetadados) buscar(opts ...cimd.Option) (cimd.ClientMetadata, error) {
@@ -122,9 +125,10 @@ func TestFetcher_AuthMethodNone_Aceita(t *testing.T) {
 
 func TestFetcher_PoliticaPadrao_RecusaLoopbackSemEnviarRequisicao(t *testing.T) {
 	srv := novoServidorDeMetadados(t)
-	fetcher := cimd.NewFetcher(cimd.WithRootCAs(srv.confiaveis()))
+	fetcher, err := cimd.NewFetcher(cimd.WithRootCAs(srv.confiaveis()))
+	require.NoError(t, err)
 
-	_, err := fetcher.Fetch(context.Background(), srv.clientID())
+	_, err = fetcher.Fetch(context.Background(), srv.clientID())
 
 	require.ErrorIs(t, err, cimd.ErrBlockedAddress)
 	assert.Zero(t, srv.requisicoes.Load())
@@ -132,9 +136,10 @@ func TestFetcher_PoliticaPadrao_RecusaLoopbackSemEnviarRequisicao(t *testing.T) 
 
 func TestFetcher_CertificadoNaoConfiavel_Recusa(t *testing.T) {
 	srv := novoServidorDeMetadados(t)
-	fetcher := cimd.NewFetcher(cimd.WithIPPolicy(permitirQualquerIP))
+	fetcher, err := cimd.NewFetcher(cimd.WithIPPolicy(permitirQualquerIP))
+	require.NoError(t, err)
 
-	_, err := fetcher.Fetch(context.Background(), srv.clientID())
+	_, err = fetcher.Fetch(context.Background(), srv.clientID())
 
 	require.ErrorIs(t, err, cimd.ErrFetchFailed)
 }

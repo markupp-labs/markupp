@@ -56,7 +56,7 @@ func WithIPPolicy(policy IPPolicy) Option { return func(f *Fetcher) { f.policy =
 func WithRootCAs(pool *x509.CertPool) Option { return func(f *Fetcher) { f.rootCAs = pool } }
 
 // NewFetcher monta o Fetcher com um cliente HTTP próprio, isolado do DefaultClient.
-func NewFetcher(opts ...Option) *Fetcher {
+func NewFetcher(opts ...Option) (*Fetcher, error) {
 	f := &Fetcher{
 		policy:  PublicOnly,
 		timeout: DefaultTimeout,
@@ -68,7 +68,7 @@ func NewFetcher(opts ...Option) *Fetcher {
 		opt(f)
 	}
 	f.client = newGuardedClient(f.policy, f.rootCAs, f.timeout)
-	return f
+	return f, nil
 }
 
 // newGuardedClient não usa proxy (o proxy esconderia o IP real do Control) e não segue
