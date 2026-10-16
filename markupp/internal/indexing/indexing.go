@@ -50,10 +50,14 @@ func Index(cs Changeset) []SearchDocument {
 	return docs
 }
 
-// Title é o título da nota: o último segmento do caminho, sem a extensão.
+// Title é o título da nota: o último segmento do caminho, sem a extensão .md em
+// qualquer caixa. Outra extensão fica, porque faz parte do nome.
 func Title(notePath string) string {
 	base := path.Base(notePath)
-	return strings.TrimSuffix(base, path.Ext(base))
+	if !strings.EqualFold(path.Ext(base), ".md") {
+		return base
+	}
+	return base[:len(base)-len(".md")]
 }
 
 // RunLoop indexa os cofres pendentes até não sobrar nenhum, chama wait e recomeça.
