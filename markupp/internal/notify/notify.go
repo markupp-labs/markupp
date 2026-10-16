@@ -6,6 +6,8 @@ package notify
 import (
 	"context"
 	"fmt"
+	"net/url"
+	"strings"
 	"time"
 )
 
@@ -74,33 +76,46 @@ type Outbox interface {
 	Record(ctx context.Context, notificationID string, outcome Outcome) error
 }
 
-// InviteMessage monta o email que leva o token do convite.
-func InviteMessage(d TokenDetails, token, from string) Message {
+// InviteMessage monta o email que leva o token do convite e, com panelURL, o link
+// do painel para aceitar.
+func InviteMessage(d TokenDetails, token, from, panelURL string) Message {
 	body := fmt.Sprintf("%s convidou você para %s no markupp, com o papel %s.\n\n"+
-		"Token do convite:\n%s\n\n"+
+		"%sToken do convite:\n%s\n\n"+
 		"Use o token no cliente do markupp para aceitar. O convite vale até %s.\n",
-		d.InviterEmail, d.TenantName, d.Role, token, validUntil(d.ExpiresAt))
+		d.InviterEmail, d.TenantName, d.Role, panelLink(panelURL, "/invite_acceptance/new", token), token, validUntil(d.ExpiresAt))
 	return Message{From: from, To: d.Email, Subject: "Convite para " + d.TenantName + " no markupp", Body: body}
 }
 
-// VerifyEmailMessage monta o email que leva o token de verificação da conta.
-func VerifyEmailMessage(d TokenDetails, token, from string) Message {
+// VerifyEmailMessage monta o email que leva o token de verificação da conta e,
+// com panelURL, o link do painel para confirmar.
+func VerifyEmailMessage(d TokenDetails, token, from, panelURL string) Message {
 	body := fmt.Sprintf("Confirme que este email é seu para receber convites no markupp.\n\n"+
-		"Token de verificação:\n%s\n\n"+
+		"%sToken de verificação:\n%s\n\n"+
 		"Use o token no cliente do markupp, logado na conta que você criou. Ele vale até %s.\n\n"+
 		"Se não foi você que criou a conta, ignore este email e não use o token.\n",
-		token, validUntil(d.ExpiresAt))
+		panelLink(panelURL, "/email_confirmation/new", token), token, validUntil(d.ExpiresAt))
 	return Message{From: from, To: d.Email, Subject: "Confirme seu email no markupp", Body: body}
 }
 
-// ResetPasswordMessage monta o email que leva o token de troca de senha.
-func ResetPasswordMessage(d TokenDetails, token, from string) Message {
+// ResetPasswordMessage monta o email que leva o token de troca de senha e, com
+// panelURL, o link do painel para trocar.
+func ResetPasswordMessage(d TokenDetails, token, from, panelURL string) Message {
 	body := fmt.Sprintf("Alguém pediu a troca da senha da sua conta no markupp.\n\n"+
-		"Token de troca de senha:\n%s\n\n"+
+		"%sToken de troca de senha:\n%s\n\n"+
 		"Use o token no cliente do markupp. Ele vale até %s.\n\n"+
 		"Se não foi você, ignore este email: a senha só muda com o token.\n",
-		token, validUntil(d.ExpiresAt))
+		panelLink(panelURL, "/password_reset/new", token), token, validUntil(d.ExpiresAt))
 	return Message{From: from, To: d.Email, Subject: "Troca de senha no markupp", Body: body}
+}
+
+// panelLink devolve o parágrafo com o link da rota do painel que recebe o token, ou
+// vazio sem panelURL, e o email fica só com o token.
+func panelLink(panelURL, path, token string) string {
+	if panelURL == "" {
+		return ""
+	}
+	link := strings.TrimSuffix(panelURL, "/") + path + "?token=" + url.QueryEscape(token)
+	return "Abra no painel do markupp:\n" + link + "\n\n"
 }
 
 // validUntil mostra a validade com hora e fuso, em UTC.
