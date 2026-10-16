@@ -78,7 +78,7 @@ func (s *Service) validateCredentials(email, password string) (string, error) {
 	if err := validatePassword(password); err != nil {
 		return "", err
 	}
-	return strings.ToLower(strings.TrimSpace(email)), nil
+	return normalizeEmail(email), nil
 }
 
 func validatePassword(password string) error {

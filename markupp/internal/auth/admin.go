@@ -101,7 +101,7 @@ func (s *AdminService) IssueInvite(ctx context.Context, inviter identity.Actor, 
 }
 
 func (s *AdminService) newInvite(inviter identity.Actor, email, role string) (Invite, error) {
-	normEmail := strings.ToLower(strings.TrimSpace(email))
+	normEmail := normalizeEmail(email)
 	if !strings.Contains(normEmail, "@") {
 		return Invite{}, fmt.Errorf("%w: %q, esperado usuario@dominio", ErrInvalidEmail, email)
 	}

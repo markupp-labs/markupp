@@ -88,7 +88,7 @@ func (s *AccountEmailService) RequestPasswordReset(ctx context.Context, email st
 	if !s.emailEnabled {
 		return ErrEmailUnavailable
 	}
-	normEmail := strings.ToLower(strings.TrimSpace(email))
+	normEmail := normalizeEmail(email)
 	if normEmail == "" {
 		return ErrEmptyEmail
 	}
