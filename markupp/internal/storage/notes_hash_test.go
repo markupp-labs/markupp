@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -53,6 +54,28 @@ func TestPostgresRepo_Update_HashAcompanhaOConteudoNovo(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Equal(t, sha256DeAcao, got.ContentSHA256)
+}
+
+func TestNotas_HashForjadoPeloCliente_EhSobrescrito(t *testing.T) {
+	db := setupTestDB(t)
+	storagetest.SeedMember(t, db, identity.Actor{UserID: "ua", TenantID: "t1", Role: "member"}, "va")
+	const hashDaNota = "SELECT encode(content_sha256, 'hex') FROM notes WHERE id = 'n1'"
+	_, err := db.Exec(ctxDeTeste, `INSERT INTO notes (id, tenant_id, vault_id, path, content, content_sha256, created_at, updated_at)
+		VALUES ('n1', 't1', 'va', 'n1.md', 'ação', '\x00', now(), now())`)
+	require.NoError(t, err)
+	assert.Equal(t, sha256DeAcao, textoDaConsulta(t, db, hashDaNota), "insert com hash forjado")
+
+	_, err = db.Exec(ctxDeTeste, `UPDATE notes SET content_sha256 = '\x00' WHERE id = 'n1'`)
+
+	require.NoError(t, err)
+	assert.Equal(t, sha256DeAcao, textoDaConsulta(t, db, hashDaNota), "update so do hash")
+}
+
+func textoDaConsulta(t *testing.T, db *pgxpool.Pool, query string) string {
+	t.Helper()
+	var s string
+	require.NoError(t, db.QueryRow(ctxDeTeste, query).Scan(&s))
+	return s
 }
 
 func TestVaultIndexer_NotaReescritaComOMesmoConteudo_NaoVoltaParaAFila(t *testing.T) {
