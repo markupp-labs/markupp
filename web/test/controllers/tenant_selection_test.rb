@@ -96,7 +96,7 @@ class TenantSelectionTest < ActionDispatch::IntegrationTest
 
     get root_path
 
-    assert_select "nav button[popovertarget=tenant_switcher]", text: /markupp\s*\/\s*Acme research.*owner/m
+    assert_select "nav #current_tenant", text: /markupp\s*\/\s*Acme research.*owner/m
   end
 
   test "the switcher lists every tenant with the active one marked" do
@@ -121,7 +121,7 @@ class TenantSelectionTest < ActionDispatch::IntegrationTest
 
     get root_path
 
-    assert_select "button[popovertarget=tenant_switcher] .truncate[title=?]", "Home lab"
+    assert_select "#current_tenant .truncate[title=?]", "Home lab"
     assert_select "#tenant_switcher button[title=?]", "Acme research"
     get tenants_path
     assert_select "main form button[title=?]", "Home lab"

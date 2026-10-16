@@ -14,7 +14,8 @@ class SessionsControllerTest < ActionDispatch::IntegrationTest
       assert_select "button", "Log in"
     end
     assert_select "nav#sidebar", count: 0
-    assert_select "form.theme-to-dark button", "Dark theme"
+    assert_select "form.theme-to-dark button[aria-label=?]", "Dark theme"
+    assert_select "a[href=?]", new_session_path, count: 0
   end
 
   test "pages ask for login first" do

@@ -9,14 +9,14 @@ class MyInvitesTest < ApplicationSystemTestCase
                  invites: [ { id: "invite-1", tenant_id: "tenant-2", email: EMAIL, role: "member" } ])
     sign_in_through_form
 
-    click_on "Acme research"
+    click_on "Switch tenant"
     within("#tenant_switcher") do
       assert_text "Join Home lab as member"
       click_on "Accept"
     end
 
     assert_text "Joined Home lab as member."
-    assert_selector "nav button[popovertarget=tenant_switcher]", text: /Home lab.*member/m
+    assert_selector "nav #current_tenant", text: /Home lab.*member/m
   end
 
   test "declining an invite on the onboarding drops it" do

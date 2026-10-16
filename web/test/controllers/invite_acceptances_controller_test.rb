@@ -21,6 +21,15 @@ class InviteAcceptancesControllerTest < ActionDispatch::IntegrationTest
     assert_select "nav#sidebar", count: 0
   end
 
+  test "new leads back to the login before the title" do
+    get new_invite_acceptance_path
+
+    assert_select "main a[href=?] ~ h1", new_session_path
+    assert_select "main a[href=?]", new_session_path, text: "Back to log in" do
+      assert_select "svg[data-icon=arrow-left]"
+    end
+  end
+
   test "new fills the token from the link" do
     get new_invite_acceptance_path(token: "tok-1")
 
@@ -43,7 +52,7 @@ class InviteAcceptancesControllerTest < ActionDispatch::IntegrationTest
     follow_redirect!
     assert_response :success
     assert_select "nav footer", text: /#{NEW_EMAIL}/
-    assert_select "nav button[popovertarget=tenant_switcher]", text: /Acme research.*member/m
+    assert_select "nav #current_tenant", text: /Acme research.*member/m
     assert_equal "tenant-1", api.received_credentials.reverse.find { it[:call] == "GET /notes" }[:tenant_id]
   end
 

@@ -53,7 +53,7 @@ class MyInvitesControllerTest < ActionDispatch::IntegrationTest
     follow_redirect!
     assert_response :success
     assert_select "[role=status]", "Joined Home lab as member."
-    assert_select "nav button[popovertarget=tenant_switcher]", text: /Home lab.*member/m
+    assert_select "nav #current_tenant", text: /Home lab.*member/m
     assert_equal "tenant-2", api.received_credentials.reverse.find { it[:call] == "GET /notes" }[:tenant_id]
   end
 
@@ -64,7 +64,7 @@ class MyInvitesControllerTest < ActionDispatch::IntegrationTest
     patch my_invite_path("invite-1")
     follow_redirect!
 
-    assert_select "nav button[popovertarget=tenant_switcher]", text: /Home lab.*member/m
+    assert_select "nav #current_tenant", text: /Home lab.*member/m
   end
 
   test "declining an invite drops it and goes back" do

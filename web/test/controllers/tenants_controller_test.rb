@@ -62,7 +62,7 @@ class TenantsControllerTest < ActionDispatch::IntegrationTest
     follow_redirect!
     assert_response :success
     assert_select "[role=status]", "Created Acme research."
-    assert_select "nav button[popovertarget=tenant_switcher]", text: /Acme research.*owner/m
+    assert_select "nav #current_tenant", text: /Acme research.*owner/m
     assert_equal "tenant-1", api.received_credentials.reverse.find { it[:call] == "GET /notes" }[:tenant_id]
   end
 

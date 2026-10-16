@@ -53,22 +53,23 @@ module Settings
       assert_equal "Your role in this tenant can't do that.", flash[:alert]
     end
 
-    test "the tenant switcher links to the settings for owner and admin" do
+    test "the sidebar footer links to the settings for owner and admin" do
       use_fake_api(accounts: ACCOUNTS, tenants: [ ACME ])
       sign_in_as(BIA)
 
       get root_path
 
-      assert_select "#tenant_switcher a[href=?]", settings_path, text: "Tenant settings"
+      assert_select "nav > footer a[href=?]", settings_path, text: "Settings"
+      assert_select "#tenant_switcher a[href=?]", settings_path, count: 0
     end
 
-    test "the tenant switcher hides the settings from members" do
+    test "the sidebar hides the settings from members" do
       use_fake_api(tenants: [ ACME.merge(members: { ANA => "member" }) ])
       sign_in_as
 
       get root_path
 
-      assert_select "#tenant_switcher a[href=?]", settings_path, count: 0
+      assert_select "nav a[href=?]", settings_path, count: 0
     end
 
     test "lists each member with role, join date and the account marked as you" do

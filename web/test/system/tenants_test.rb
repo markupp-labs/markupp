@@ -10,12 +10,12 @@ class TenantsTest < ApplicationSystemTestCase
 
     assert_text "Choose a tenant"
     click_on "Home lab"
-    assert_selector "nav button[popovertarget=tenant_switcher]", text: /Home lab.*member/m
+    assert_selector "nav #current_tenant", text: /Home lab.*member/m
 
-    click_on "Home lab"
+    click_on "Switch tenant"
     within("#tenant_switcher") { click_on "Acme research" }
 
-    assert_selector "nav button[popovertarget=tenant_switcher]", text: /Acme research.*owner/m
+    assert_selector "nav #current_tenant", text: /Acme research.*owner/m
   end
 
   test "a new account creates its first tenant and lands on its notes" do
@@ -27,7 +27,7 @@ class TenantsTest < ApplicationSystemTestCase
     click_on "Create"
 
     assert_text "Created Acme research."
-    assert_selector "nav button[popovertarget=tenant_switcher]", text: /Acme research.*owner/m
+    assert_selector "nav #current_tenant", text: /Acme research.*owner/m
     assert_link "New note"
   end
 end
