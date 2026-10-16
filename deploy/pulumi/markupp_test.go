@@ -208,7 +208,7 @@ func TestNewMarkupp_DeploymentDaAPI_UsaDuasReplicasESondaHealthz(t *testing.T) {
 	api := monitor.single(t, "kubernetes:apps/v1:Deployment")
 	assert.Equal(t, 2.0, at(t, api, "spec", "replicas").NumberValue())
 	container := firstContainer(t, api)
-	assert.Equal(t, "/healthz", at(t, container, "readinessProbe", "httpGet", "path").StringValue())
+	assert.Equal(t, "/v1/healthz", at(t, container, "readinessProbe", "httpGet", "path").StringValue())
 }
 
 func TestNewMarkupp_Entrada_RoteiaOHostPeloGatewayComTLS(t *testing.T) {
