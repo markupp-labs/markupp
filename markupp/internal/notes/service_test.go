@@ -16,9 +16,10 @@ import (
 const testMaxContentSize = 100
 
 type fakeRepo struct {
-	saved   notes.Note
-	saveErr error
-	called  bool
+	saved        notes.Note
+	saveErr      error
+	called       bool
+	storedSHA256 string
 
 	defaultVault       string
 	defaultVaultErr    error
@@ -65,6 +66,7 @@ func (f *fakeRepo) DefaultVaultID(ctx context.Context) (string, error) {
 func (f *fakeRepo) Save(ctx context.Context, n notes.Note) (notes.Note, error) {
 	f.called = true
 	f.saved = n
+	n.ContentSHA256 = f.storedSHA256
 	return n, f.saveErr
 }
 
@@ -598,11 +600,11 @@ func TestCreate_CofreComEspacos_GravaNoCofreSemEspacos(t *testing.T) {
 	assert.Equal(t, "cofre-1", note.VaultID)
 }
 
-func TestCreate_PreencheSHA256DoConteudoEmUTF8(t *testing.T) {
-	svc := newServiceForTest(&fakeRepo{})
+func TestCreate_DevolveOSHA256GravadoPeloRepositorio(t *testing.T) {
+	svc := newServiceForTest(&fakeRepo{storedSHA256: "hash-do-banco"})
 
 	got, err := svc.Create(context.Background(), "cofre-teste", "a.md", "ação")
 
 	require.NoError(t, err)
-	assert.Equal(t, "0664077f33cc3ebbaa4bbdacac0eb70e740983080f01dce29929e73b7785a7ad", got.ContentSHA256)
+	assert.Equal(t, "hash-do-banco", got.ContentSHA256)
 }

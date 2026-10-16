@@ -33,6 +33,18 @@ func TestPostgresRepo_GetNoteByID_DevolveSHA256DoConteudoEmUTF8(t *testing.T) {
 	}
 }
 
+func TestPostgresRepo_Save_DevolveOSHA256CalculadoPeloBanco(t *testing.T) {
+	db := setupNotesDB(t)
+	repo := storage.NewPostgresNotesRepository(db, "simple")
+	nota := notaComConteudo("n1", cofreDeTeste, "ação")
+	nota.ContentSHA256 = "ignorado"
+
+	got, err := repo.Save(ctxDeTeste, nota)
+
+	require.NoError(t, err)
+	assert.Equal(t, sha256DeAcao, got.ContentSHA256)
+}
+
 func TestPostgresRepo_ListNotes_DevolveSHA256DeCadaNota(t *testing.T) {
 	db := setupNotesDB(t)
 	repo := storage.NewPostgresNotesRepository(db, "simple")

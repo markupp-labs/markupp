@@ -329,7 +329,7 @@ func TestIntegration_ContentSHA256_IgualNoPostNoPutENoGet(t *testing.T) {
 
 	got := getNotes(t, server.URL+"/notes/"+id)
 	defer func() { _ = got.Body.Close() }()
-	assert.Equal(t, sha256DeAcao, decodeJSON(t, got.Body)["content_sha256"])
+	assert.Equal(t, createdBody["content_sha256"], decodeJSON(t, got.Body)["content_sha256"], "POST devolve o hash lido do banco, igual ao do GET")
 
 	updated := putNote(t, server.URL, id, `{"path":"hash.md","content":"v2","force":true}`)
 	defer func() { _ = updated.Body.Close() }()
