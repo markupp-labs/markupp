@@ -140,6 +140,31 @@ func TestCreate_PathLongoDemais_RetornaErrInvalidPath(t *testing.T) {
 	assert.True(t, errors.Is(err, notes.ErrInvalidPath))
 }
 
+func TestCreate_PathSemTitulo_RetornaErrInvalidPathComOCaminho(t *testing.T) {
+	for _, caminho := range []string{".md", "pasta/.md", "pasta/.MD"} {
+		repo := &fakeRepo{}
+		svc := newServiceForTest(repo)
+
+		_, err := svc.Create(context.Background(), "cofre-teste", caminho, "qualquer")
+
+		require.ErrorIs(t, err, notes.ErrInvalidPath, "caminho %q", caminho)
+		assert.Contains(t, err.Error(), caminho, "a mensagem traz o caminho recusado")
+		assert.Contains(t, err.Error(), "pasta/nota.md", "a mensagem traz o formato esperado")
+		assert.False(t, repo.called)
+	}
+}
+
+func TestUpdate_PathSemTitulo_RetornaErrInvalidPath(t *testing.T) {
+	repo := &fakeRepo{}
+	svc := newServiceForTest(repo)
+
+	_, err := svc.Update(context.Background(), "id-1", "pasta/.md", "x", time.Now(), false)
+
+	require.ErrorIs(t, err, notes.ErrInvalidPath)
+	assert.Contains(t, err.Error(), "pasta/.md")
+	assert.False(t, repo.updateArgs.called)
+}
+
 func TestCreate_ContentMuitoGrande_RetornaErrInvalidContent(t *testing.T) {
 	repo := &fakeRepo{}
 	svc := newServiceForTest(repo)

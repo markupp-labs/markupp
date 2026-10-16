@@ -192,6 +192,17 @@ func TestPostNotes_ErrInvalidPath_Retorna400(t *testing.T) {
 	assert.Equal(t, "invalid_path", resp["error"])
 }
 
+func TestPostNotes_ErrInvalidPathComDetalhe_DevolveOCaminhoNaMensagem(t *testing.T) {
+	svc := &fakeService{err: fmt.Errorf("%w: caminho %q sem titulo", notes.ErrInvalidPath, "pasta/.md")}
+	rec := doPost(t, svc, `{"path":"pasta/.md","content":"x"}`)
+
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+	var resp map[string]any
+	require.NoError(t, json.NewDecoder(rec.Body).Decode(&resp))
+	assert.Equal(t, "invalid_path", resp["error"])
+	assert.Contains(t, resp["message"], "pasta/.md")
+}
+
 func TestPostNotes_ErrInvalidContent_Retorna400(t *testing.T) {
 	svc := &fakeService{err: notes.ErrInvalidContent}
 	rec := doPost(t, svc, `{"path":"x.md","content":"y"}`)
