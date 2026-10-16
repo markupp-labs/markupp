@@ -19,8 +19,10 @@ import (
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/api"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/auth"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/config"
+	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/drain"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/indexing"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/notes"
+	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/notify"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/storage"
 )
 
@@ -32,15 +34,21 @@ const (
 )
 
 // command é o subcomando do binário: serve sobe a API, migrate aplica o schema
-// e sai, index indexa um cofre pendente e sai, index-loop indexa em laço.
+// e sai, index indexa um cofre pendente e sai, index-loop indexa em laço, e
+// notify-loop entrega a fila de email em laço.
 type command string
 
 const (
-	serveCommand     command = "serve"
-	migrateCommand   command = "migrate"
-	indexCommand     command = "index"
-	indexLoopCommand command = "index-loop"
+	serveCommand      command = "serve"
+	migrateCommand    command = "migrate"
+	indexCommand      command = "index"
+	indexLoopCommand  command = "index-loop"
+	notifyLoopCommand command = "notify-loop"
 )
+
+// notifyInterval é a espera do notify-loop com a fila vazia. A primeira nova
+// tentativa de envio é de um minuto, então meio minuto basta.
+const notifyInterval = 30 * time.Second
 
 func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
@@ -62,8 +70,11 @@ func run(ctx context.Context, logger *slog.Logger, args []string) error {
 	if err != nil {
 		return fmt.Errorf("carregar config: %w", err)
 	}
-	if cmd == migrateCommand {
+	switch cmd {
+	case migrateCommand:
 		return migrateDatabase(ctx, cfg.DatabaseURL, cfg.ScalerPassword)
+	case notifyLoopCommand:
+		return deliverNotifications(ctx, logger, cfg)
 	}
 	return serve(ctx, logger, cfg)
 }
@@ -73,11 +84,31 @@ func parseCommand(args []string) (command, error) {
 		return serveCommand, nil
 	}
 	switch cmd := command(args[1]); cmd {
-	case serveCommand, migrateCommand, indexCommand, indexLoopCommand:
+	case serveCommand, migrateCommand, indexCommand, indexLoopCommand, notifyLoopCommand:
 		return cmd, nil
 	}
-	return "", fmt.Errorf("subcomando %q desconhecido, esperado %q, %q, %q ou %q",
-		args[1], serveCommand, migrateCommand, indexCommand, indexLoopCommand)
+	return "", fmt.Errorf("subcomando %q desconhecido, esperado %q, %q, %q, %q ou %q",
+		args[1], serveCommand, migrateCommand, indexCommand, indexLoopCommand, notifyLoopCommand)
+}
+
+// deliverNotifications entrega a fila de email em laço: é o Deployment que o KEDA
+// escala entre zero e uma réplica, e o serviço do compose.
+func deliverNotifications(ctx context.Context, logger *slog.Logger, cfg config.Config) error {
+	if cfg.SMTPURL == "" {
+		return fmt.Errorf("MARKUPP_SMTP_URL vazia, esperado smtp://usuario:senha@host:porta para entregar a fila de email")
+	}
+	mailer, err := notify.NewSMTPMailer(cfg.SMTPURL)
+	if err != nil {
+		return err
+	}
+	pool, err := storage.OpenPool(ctx, cfg.DatabaseURL)
+	if err != nil {
+		return fmt.Errorf("abrir banco: %w", err)
+	}
+	defer pool.Close()
+	deliverer := notify.NewDeliverer(storage.NewPostgresInviteOutbox(pool), mailer, cfg.SMTPFrom, auth.NewOpaqueToken, time.Now)
+	logger.Info("notificador em laco", "intervalo", notifyInterval.String())
+	return drain.Run(ctx, deliverer.DeliverNext, drain.WaitInterval(notifyInterval))
 }
 
 // runIndexer para no SIGTERM do Kubernetes ou do compose: a transação aberta volta
@@ -106,7 +137,7 @@ func indexVaults(ctx context.Context, logger *slog.Logger, cfg config.Config, cm
 	}
 	if cmd == indexLoopCommand {
 		logger.Info("indexador em laco", "intervalo", cfg.IndexInterval.String())
-		return indexing.RunLoop(ctx, indexer, indexing.WaitInterval(cfg.IndexInterval), logger)
+		return indexing.RunLoop(ctx, indexer, drain.WaitInterval(cfg.IndexInterval), logger)
 	}
 	found, err := indexer.IndexNextVault(ctx, indexing.Index)
 	logger.Info("indexacao de um cofre", "cofre_pendente", found)
@@ -147,7 +178,7 @@ func newHandler(cfg config.Config, pool *pgxpool.Pool) http.Handler {
 	repo := storage.NewPostgresNotesRepository(pool)
 	notesSvc := notes.NewService(repo, cfg.MaxNoteSize)
 	authSvc, codec := newAuthService(cfg, pool)
-	adminSvc := auth.NewAdminService(storage.NewPostgresAdminRepository(pool), time.Now)
+	adminSvc := auth.NewAdminService(storage.NewPostgresAdminRepository(pool), time.Now, cfg.InviteByEmail)
 	return api.NewRouter(api.RouterDeps{
 		Notes: notesSvc, Auth: authSvc, Admin: adminSvc,
 		Tokens: codec, Tenants: authSvc, Probe: pool, AllowedOrigins: cfg.AllowedOrigins,

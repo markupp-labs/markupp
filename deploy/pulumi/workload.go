@@ -35,36 +35,46 @@ func declareMigrationJob(ctx *pulumi.Context, names resourceNames, args MarkuppA
 }
 
 func declareAPI(ctx *pulumi.Context, names resourceNames, args MarkuppArgs, opts ...pulumi.ResourceOption) error {
-	labels := pulumi.StringMap{"app.kubernetes.io/name": pulumi.String(names.api)}
-	if _, err := appsv1.NewDeployment(ctx, names.api, apiDeploymentArgs(names, args, labels), opts...); err != nil {
+	if _, err := appsv1.NewDeployment(ctx, names.api, apiDeploymentArgs(names, args), opts...); err != nil {
 		return err
 	}
 	_, err := corev1.NewService(ctx, names.api, &corev1.ServiceArgs{
 		Metadata: namespaced(names.api, args.Namespace),
 		Spec: corev1.ServiceSpecArgs{
-			Selector: labels,
+			Selector: appLabels(names.api),
 			Ports:    corev1.ServicePortArray{corev1.ServicePortArgs{Port: pulumi.Int(apiPort)}},
 		},
 	}, opts...)
 	return err
 }
 
-func apiDeploymentArgs(names resourceNames, args MarkuppArgs, labels pulumi.StringMap) *appsv1.DeploymentArgs {
+func apiDeploymentArgs(names resourceNames, args MarkuppArgs) *appsv1.DeploymentArgs {
 	container := serverContainer(args, names)
+	container.Env = append(databaseURLEnv(names), inviteByEmailEnv(args)...)
 	container.Ports = corev1.ContainerPortArray{corev1.ContainerPortArgs{ContainerPort: pulumi.Int(apiPort)}}
 	container.ReadinessProbe = healthzProbe()
 	container.LivenessProbe = processProbe()
+	return serverDeploymentArgs(names.api, args, pulumi.Int(*args.APIReplicas), container)
+}
+
+// serverDeploymentArgs é o Deployment de um contêiner só do servidor, sem root. Sem
+// replicas, quem decide o número de réplicas é o KEDA.
+func serverDeploymentArgs(name string, args MarkuppArgs, replicas pulumi.IntPtrInput, container corev1.ContainerArgs) *appsv1.DeploymentArgs {
 	return &appsv1.DeploymentArgs{
-		Metadata: namespaced(names.api, args.Namespace),
+		Metadata: namespaced(name, args.Namespace),
 		Spec: appsv1.DeploymentSpecArgs{
-			Replicas: pulumi.Int(*args.APIReplicas),
-			Selector: metav1.LabelSelectorArgs{MatchLabels: labels},
+			Replicas: replicas,
+			Selector: metav1.LabelSelectorArgs{MatchLabels: appLabels(name)},
 			Template: corev1.PodTemplateSpecArgs{
-				Metadata: metav1.ObjectMetaArgs{Labels: labels},
+				Metadata: metav1.ObjectMetaArgs{Labels: appLabels(name)},
 				Spec:     corev1.PodSpecArgs{SecurityContext: nonRootPod(), Containers: corev1.ContainerArray{container}},
 			},
 		},
 	}
+}
+
+func appLabels(name string) pulumi.StringMap {
+	return pulumi.StringMap{"app.kubernetes.io/name": pulumi.String(name)}
 }
 
 func serverContainer(args MarkuppArgs, names resourceNames) corev1.ContainerArgs {

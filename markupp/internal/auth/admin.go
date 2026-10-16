@@ -47,21 +47,25 @@ type IssuedInvite struct {
 type AdminRepository interface {
 	ListMembers(ctx context.Context) ([]Member, error)
 	ListInvites(ctx context.Context) ([]Invite, error)
-	CreateInviteTx(ctx context.Context, inv Invite, tokenHash string, event AuditEventRecord) error
+	// CreateInviteTx grava o convite e a auditoria e, com byEmail, a notificação que
+	// entrega o token por email, tudo na mesma transação.
+	CreateInviteTx(ctx context.Context, inv Invite, tokenHash string, event AuditEventRecord, byEmail bool) error
 	ChangeMembershipTx(ctx context.Context, change MembershipChange, check func(MembershipState) error) error
 	RevokeInviteTx(ctx context.Context, inviteID string, event AuditEventRecord) error
 }
 
 // AdminService reúne o que o administrador faz no próprio tenant.
 type AdminService struct {
-	repo  AdminRepository
-	clock func() time.Time
-	newID func() string
+	repo          AdminRepository
+	clock         func() time.Time
+	newID         func() string
+	inviteByEmail bool
 }
 
-// NewAdminService monta o serviço sobre o repositório e o relógio dados.
-func NewAdminService(repo AdminRepository, clock func() time.Time) *AdminService {
-	return &AdminService{repo: repo, clock: clock, newID: uuid.NewString}
+// NewAdminService monta o serviço sobre o repositório e o relógio dados. Com
+// inviteByEmail, o convite sai por email e o token nunca passa pela resposta.
+func NewAdminService(repo AdminRepository, clock func() time.Time, inviteByEmail bool) *AdminService {
+	return &AdminService{repo: repo, clock: clock, newID: uuid.NewString, inviteByEmail: inviteByEmail}
 }
 
 // ListMembers devolve os membros do tenant do ator, com o papel de cada um.
@@ -75,18 +79,23 @@ func (s *AdminService) ListInvites(ctx context.Context) ([]Invite, error) {
 }
 
 // IssueInvite grava o convite de email com o papel role, auditado na mesma
-// transação, e devolve o token que o administrador repassa ao convidado.
+// transação. Sem email, devolve o token que o administrador repassa ao convidado.
+// Com email, o token desta emissão é descartado: o serviço de notificação gera
+// outro na entrega, e o convidado só recebe esse.
 func (s *AdminService) IssueInvite(ctx context.Context, inviter identity.Actor, email, role string) (IssuedInvite, error) {
 	inv, err := s.newInvite(inviter, email, role)
 	if err != nil {
 		return IssuedInvite{}, err
 	}
-	token, err := generateRandomHex(32)
+	token, err := NewOpaqueToken()
 	if err != nil {
 		return IssuedInvite{}, err
 	}
-	if err := s.repo.CreateInviteTx(ctx, inv, HashOpaqueToken(token), s.inviteEvent(inv)); err != nil {
+	if err := s.repo.CreateInviteTx(ctx, inv, HashOpaqueToken(token), s.inviteEvent(inv), s.inviteByEmail); err != nil {
 		return IssuedInvite{}, fmt.Errorf("gravar convite de %q: %w", inv.Email, err)
+	}
+	if s.inviteByEmail {
+		return IssuedInvite{Invite: inv}, nil
 	}
 	return IssuedInvite{Invite: inv, Token: token}, nil
 }

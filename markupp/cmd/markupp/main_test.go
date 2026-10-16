@@ -8,14 +8,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jackc/pgx/v5"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/identity"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/notes"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/storage"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/storage/storagetest"
+	"github.com/jackc/pgx/v5"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNewServer_PortaConfigurada_DefineEnderecoETimeouts(t *testing.T) {
@@ -130,4 +129,33 @@ func TestMigrateDatabase_ComSenhaDoScaler_LiberaOLoginDoPapel(t *testing.T) {
 	var pendentes int
 	require.NoError(t, conn.QueryRow(context.Background(), "SELECT markupp_pending_vaults()").Scan(&pendentes))
 	assert.Zero(t, pendentes)
+}
+
+func TestParseCommand_NotifyLoop_RetornaEnvioEmLaco(t *testing.T) {
+	cmd, err := parseCommand([]string{"markupp", "notify-loop"})
+
+	require.NoError(t, err)
+	assert.Equal(t, notifyLoopCommand, cmd)
+}
+
+func TestRun_NotifyLoopSemSMTP_RecusaNomeandoAVariavel(t *testing.T) {
+	t.Setenv("MARKUPP_DATABASE_URL", "postgres://ninguem@127.0.0.1:1/nada?connect_timeout=1")
+	t.Setenv("MARKUPP_AUTH_SECRET", "12345678901234567890123456789012")
+
+	err := run(context.Background(), slog.New(slog.DiscardHandler), []string{"markupp", "notify-loop"})
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "MARKUPP_SMTP_URL")
+}
+
+func TestRun_NotifyLoopComSMTPEBancoInalcancavel_RetornaErroDoBanco(t *testing.T) {
+	t.Setenv("MARKUPP_DATABASE_URL", "postgres://ninguem@127.0.0.1:1/nada?connect_timeout=1")
+	t.Setenv("MARKUPP_AUTH_SECRET", "12345678901234567890123456789012")
+	t.Setenv("MARKUPP_SMTP_URL", "smtp://127.0.0.1:1")
+	t.Setenv("MARKUPP_SMTP_FROM", "convites@markupp.dev")
+
+	err := run(context.Background(), slog.New(slog.DiscardHandler), []string{"markupp", "notify-loop"})
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "abrir banco")
 }

@@ -98,11 +98,11 @@ flowchart TD
   E --> G["Worker de notificação sobe"]
   G --> H{"Provedor de email configurado?"}
   H -- não --> I(["Convite fica pendente, sem email"])
-  H -- sim --> J["Envia pelo SES ou pelo SMTP configurado"]
+  H -- sim --> J["Gera o token e envia pelo SMTP configurado"]
   J --> K{"Entrega aceita?"}
   K -- não --> L["Repete com espera crescente"]
   L --> J
-  K -- sim --> M["Convidado abre o link e aceita"]
+  K -- sim --> M["Convidado usa o token do email e aceita"]
   M --> N(["Passa a ler e escrever as notas do cofre"])
 ```
 

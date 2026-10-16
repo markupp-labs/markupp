@@ -51,6 +51,9 @@ type MarkuppArgs struct {
 	Database DatabaseArgs `pulumi:"database"`
 	// Indexer liga o indexador léxico, que exige o KEDA no cluster. Padrão ligado.
 	Indexer *IndexerArgs `pulumi:"indexer,optional"`
+	// Email liga o envio de email e o notificador, que também exige o KEDA. Sem ele,
+	// nada é enviado.
+	Email *EmailArgs `pulumi:"email,optional"`
 }
 
 // GatewayRefArgs aponta para um Gateway de outro namespace. Ele precisa
@@ -106,10 +109,22 @@ func declareResources(ctx *pulumi.Context, name string, args MarkuppArgs, parent
 	if err := declareAPI(ctx, names, args, parent, afterMigration); err != nil {
 		return err
 	}
-	if err := declareIndexer(ctx, names, args, pulumi.Composite(parent, afterMigration)); err != nil {
+	if err := declareWorkers(ctx, names, args, pulumi.Composite(parent, afterMigration)); err != nil {
 		return err
 	}
 	return declareIngress(ctx, names, args, parent)
+}
+
+// declareWorkers cria o que o KEDA escala a partir de consultas ao banco, e por isso
+// só depois da migração que cria as funções consultadas.
+func declareWorkers(ctx *pulumi.Context, names resourceNames, args MarkuppArgs, opts pulumi.ResourceOption) error {
+	if err := declareScalerAuth(ctx, names, args, opts); err != nil {
+		return err
+	}
+	if err := declareIndexer(ctx, names, args, opts); err != nil {
+		return err
+	}
+	return declareNotifier(ctx, names, args, opts)
 }
 
 type requiredField struct{ field, value string }
@@ -126,7 +141,7 @@ func validate(args MarkuppArgs) error {
 				r.field, args.Namespace, args.Image, args.Host, args.CertificateIssuer, args.AcmeEmail)
 		}
 	}
-	return nil
+	return validateEmailSender(args)
 }
 
 // ingressRequiredFields lista o que a entrada exige: com Gateway existente, a
@@ -163,7 +178,7 @@ func withDefaults(args MarkuppArgs) MarkuppArgs {
 
 // resourceNames centraliza os nomes que um recurso usa para achar outro.
 type resourceNames struct {
-	component, database, dbSecret, api, indexer, gateway, issuer, tlsSecret string
+	component, database, dbSecret, api, indexer, notifier, scaler, gateway, issuer, tlsSecret string
 }
 
 func newResourceNames(component string) resourceNames {
@@ -173,6 +188,8 @@ func newResourceNames(component string) resourceNames {
 		dbSecret:  component + "-db-app",
 		api:       component + "-api",
 		indexer:   component + "-indexer",
+		notifier:  component + "-notifier",
+		scaler:    component + "-scaler",
 		gateway:   component + "-gateway",
 		issuer:    component + "-issuer",
 		tlsSecret: component + "-tls",

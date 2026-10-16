@@ -6,7 +6,6 @@ package indexing
 import (
 	"context"
 	"log/slog"
-	"time"
 )
 
 // NoteChange é uma nota que mudou desde a última indexação do cofre.
@@ -60,20 +59,6 @@ func RunLoop(ctx context.Context, indexer VaultIndexer, wait func(context.Contex
 		}
 		if err := wait(ctx); err != nil {
 			return err
-		}
-	}
-}
-
-// WaitInterval espera d, ou volta antes com o erro do contexto se ele acabar.
-func WaitInterval(d time.Duration) func(context.Context) error {
-	return func(ctx context.Context) error {
-		timer := time.NewTimer(d)
-		defer timer.Stop()
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-timer.C:
-			return nil
 		}
 	}
 }

@@ -6,7 +6,6 @@ import (
 	"errors"
 	"log/slog"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 
@@ -98,19 +97,4 @@ func TestRunLoop_ErroDoBanco_RegistraEEsperaAntesDeTentarDeNovo(t *testing.T) {
 	assert.Equal(t, 3, queue.calls, "erro, espera, cofre indexado, rodada vazia, espera")
 	assert.Equal(t, 2, espera.calls, "o erro espera o intervalo, senao o laco martela o banco")
 	assert.Contains(t, logs.String(), "banco fora")
-}
-
-func TestWaitInterval_ContextoCancelado_VoltaNaHoraComOErro(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	cancel()
-
-	inicio := time.Now()
-	err := indexing.WaitInterval(time.Hour)(ctx)
-
-	assert.ErrorIs(t, err, context.Canceled)
-	assert.Less(t, time.Since(inicio), time.Second)
-}
-
-func TestWaitInterval_IntervaloPassa_VoltaSemErro(t *testing.T) {
-	assert.NoError(t, indexing.WaitInterval(time.Millisecond)(context.Background()))
 }

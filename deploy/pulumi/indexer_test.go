@@ -85,14 +85,14 @@ func TestNewMarkupp_Indexador_ScalerContaCofresPendentesComPapelProprio(t *testi
 	assert.Equal(t, "SELECT markupp_pending_vaults()", metadata["query"].StringValue())
 	assert.Equal(t, "1", metadata["targetQueryValue"].StringValue(), "um Job por cofre pendente")
 	assert.True(t, metadata["connectionFromEnv"].IsNull(), "a URL do Job e a do dono do banco")
-	assert.Equal(t, "markupp-indexer", at(t, trigger, "authenticationRef", "name").StringValue())
+	assert.Equal(t, "markupp-scaler", at(t, trigger, "authenticationRef", "name").StringValue())
 }
 
 func TestNewMarkupp_Indexador_TriggerAuthenticationLeAURLDoScaler(t *testing.T) {
 	monitor := deploy(t, argsDeTeste())
 
 	auth := monitor.single(t, triggerAuthType)
-	assert.Equal(t, "markupp-indexer", at(t, auth, "metadata", "name").StringValue())
+	assert.Equal(t, "markupp-scaler", at(t, auth, "metadata", "name").StringValue())
 	refs := at(t, auth, "spec", "secretTargetRef").ArrayValue()
 	require.Len(t, refs, 1)
 	ref := refs[0].ObjectValue()

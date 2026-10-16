@@ -112,6 +112,17 @@ func TestAdminRoutes_IssueInvite_DevolveTokenUmaVez(t *testing.T) {
 	assert.Equal(t, "2026-10-21T12:00:00Z", resp["expires_at"])
 }
 
+func TestAdminRoutes_IssueInviteComEmail_OmiteOToken(t *testing.T) {
+	svc := &fakeAdminService{issued: auth.IssuedInvite{Invite: auth.Invite{ID: "c1", Email: "nova@markupp.dev", Role: "member"}}}
+
+	rec := adminRequest(svc, "admin", http.MethodPost, "/users/invites", `{"email":"nova@markupp.dev","role":"member"}`)
+
+	assert.Equal(t, http.StatusCreated, rec.Code)
+	var resp map[string]any
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &resp))
+	assert.NotContains(t, resp, "token", "com SMTP o token sai so no email")
+}
+
 func TestAdminRoutes_IssueInvite_ErrosDeDominio(t *testing.T) {
 	casos := map[error]int{
 		auth.ErrInvalidRole:   http.StatusBadRequest,

@@ -107,3 +107,16 @@ func TestMigracao00013_DownEUp(t *testing.T) {
 	_, err = provider.Up(context.Background())
 	require.NoError(t, err)
 }
+
+func TestMigracao00014_DownEUpComNotificacaoNaFila(t *testing.T) {
+	pool := storagetest.EmptyPool(t)
+	provider := gooseProvider(t, pool)
+	_, err := provider.Up(context.Background())
+	require.NoError(t, err)
+	conviteComEmail(t, pool, "c1", "nova@markupp.dev")
+
+	_, err = provider.DownTo(context.Background(), 13)
+	require.NoError(t, err)
+	_, err = provider.Up(context.Background())
+	require.NoError(t, err)
+}

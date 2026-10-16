@@ -5,6 +5,8 @@ package config
 import (
 	"fmt"
 	"math"
+	"net/mail"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -33,6 +35,13 @@ type Config struct {
 	// ScalerPassword, quando definida, faz o migrate dar LOGIN com essa senha ao
 	// papel markupp_scaler, que o KEDA usa para contar os cofres pendentes.
 	ScalerPassword string
+	// InviteByEmail diz à API que o convite sai por email, e então o token não volta
+	// na resposta. Quem envia é o notificador, o único que recebe o SMTP.
+	InviteByEmail bool
+	// SMTPURL é o servidor de email do notificador, smtp:// ou smtps://.
+	SMTPURL string
+	// SMTPFrom é o remetente dos emails, obrigatório com SMTPURL.
+	SMTPFrom string
 }
 
 // Default devolve a configuração usada nas variáveis não definidas.
@@ -68,10 +77,51 @@ func Load(lookup LookupFunc) (Config, error) {
 	if err := readBounded(lookup, "MARKUPP_MAX_NOTE_SIZE", 1, math.MaxInt64, "maior que zero", &cfg.MaxNoteSize); err != nil {
 		return Config{}, err
 	}
-	if err := loadAuthSettings(lookup, &cfg); err != nil {
+	if err := loadServerSettings(lookup, &cfg); err != nil {
 		return Config{}, err
 	}
 	return cfg, nil
+}
+
+// loadServerSettings lê o que só o servidor e o notificador usam: autenticação e email.
+func loadServerSettings(lookup LookupFunc, cfg *Config) error {
+	if err := loadAuthSettings(lookup, cfg); err != nil {
+		return err
+	}
+	return loadSMTPSettings(lookup, cfg)
+}
+
+// loadSMTPSettings lê o convite por email da API e o servidor de email do notificador
+// (ADR-0021).
+func loadSMTPSettings(lookup LookupFunc, cfg *Config) error {
+	if err := readBool(lookup, "MARKUPP_INVITE_BY_EMAIL", &cfg.InviteByEmail); err != nil {
+		return err
+	}
+	readString(lookup, "MARKUPP_SMTP_URL", &cfg.SMTPURL)
+	readString(lookup, "MARKUPP_SMTP_FROM", &cfg.SMTPFrom)
+	if cfg.SMTPURL == "" {
+		return nil
+	}
+	if err := checkSMTPURL(cfg.SMTPURL); err != nil {
+		return err
+	}
+	if _, err := mail.ParseAddress(cfg.SMTPFrom); err != nil {
+		return fmt.Errorf("MARKUPP_SMTP_FROM=%q, esperado o remetente usuario@dominio ou Nome <usuario@dominio> quando MARKUPP_SMTP_URL existe: %w", cfg.SMTPFrom, err)
+	}
+	return nil
+}
+
+// checkSMTPURL recusa URL sem esquema smtp ou smtps ou sem host, sem repetir a senha.
+func checkSMTPURL(raw string) error {
+	parsed, err := url.Parse(raw)
+	if err == nil && (parsed.Scheme == "smtp" || parsed.Scheme == "smtps") && parsed.Hostname() != "" {
+		return nil
+	}
+	shown := "valor ilegivel"
+	if err == nil {
+		shown = parsed.Redacted()
+	}
+	return fmt.Errorf("MARKUPP_SMTP_URL=%q, esperado smtp://usuario:senha@host:porta ou smtps://", shown)
 }
 
 // LoadIndexer lê só o que o indexador usa: o banco, a configuração de busca e o

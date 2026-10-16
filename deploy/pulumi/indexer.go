@@ -6,10 +6,10 @@ import (
 )
 
 const (
-	// indexerPollingSeconds é de quanto em quanto tempo o KEDA consulta o banco, e é
-	// a latência de indexação esperada (ADR-0032).
-	indexerPollingSeconds = 30
-	pendingVaultsQuery    = "SELECT markupp_pending_vaults()"
+	// kedaPollingSeconds é de quanto em quanto tempo o KEDA consulta o banco, e é a
+	// latência esperada da indexação e do primeiro envio de email (ADR-0032).
+	kedaPollingSeconds = 30
+	pendingVaultsQuery = "SELECT markupp_pending_vaults()"
 	// indexerMaxJobs limita os Jobs simultâneos, cada um com seu pool no banco: sem
 	// teto o KEDA sobe até 100, o max_connections padrão do PostgreSQL.
 	indexerMaxJobs = 5
@@ -39,11 +39,8 @@ func declareIndexer(ctx *pulumi.Context, names resourceNames, args MarkuppArgs, 
 	if !indexerEnabled(args) {
 		return nil
 	}
-	if err := declareScalerAuth(ctx, names, args, opts); err != nil {
-		return err
-	}
 	return declareCustom(ctx, "keda.sh/v1alpha1", "ScaledJob", names.indexer, args, pulumi.Map{
-		"pollingInterval":            pulumi.Int(indexerPollingSeconds),
+		"pollingInterval":            pulumi.Int(kedaPollingSeconds),
 		"maxReplicaCount":            pulumi.Int(indexerMaxJobs),
 		"successfulJobsHistoryLimit": pulumi.Int(indexerSucceededHistory),
 		"failedJobsHistoryLimit":     pulumi.Int(indexerFailedHistory),
@@ -52,7 +49,7 @@ func declareIndexer(ctx *pulumi.Context, names resourceNames, args MarkuppArgs, 
 			"backoffLimit":          pulumi.Int(indexerBackoffLimit),
 			"activeDeadlineSeconds": pulumi.Int(indexerDeadlineSeconds),
 		},
-		"triggers": pulumi.Array{pendingVaultsTrigger(names)},
+		"triggers": pulumi.Array{pendingRowsTrigger(names, pendingVaultsQuery)},
 	}, opts)
 }
 
@@ -69,9 +66,13 @@ func indexerPodTemplate(names resourceNames, args MarkuppArgs) corev1.PodTemplat
 }
 
 // declareScalerAuth entrega ao KEDA a URL do papel markupp_scaler, que só conta os
-// cofres pendentes, e não a do dono do banco.
+// cofres pendentes e as notificações vencidas, e não a do dono do banco. Existe
+// quando o indexador ou o notificador existem.
 func declareScalerAuth(ctx *pulumi.Context, names resourceNames, args MarkuppArgs, opts pulumi.ResourceOption) error {
-	return declareCustom(ctx, "keda.sh/v1alpha1", "TriggerAuthentication", names.indexer, args, pulumi.Map{
+	if !indexerEnabled(args) && args.Email == nil {
+		return nil
+	}
+	return declareCustom(ctx, "keda.sh/v1alpha1", "TriggerAuthentication", names.scaler, args, pulumi.Map{
 		"secretTargetRef": pulumi.Array{pulumi.StringMap{
 			"parameter": pulumi.String("connection"),
 			"name":      pulumi.String(names.dbSecret),
@@ -80,14 +81,15 @@ func declareScalerAuth(ctx *pulumi.Context, names resourceNames, args MarkuppArg
 	}, opts)
 }
 
-// pendingVaultsTrigger pede um Job por cofre pendente.
-func pendingVaultsTrigger(names resourceNames) pulumi.Map {
+// pendingRowsTrigger pede uma réplica, ou um Job, por linha pendente que query conta,
+// consultando o banco como markupp_scaler.
+func pendingRowsTrigger(names resourceNames, query string) pulumi.Map {
 	return pulumi.Map{
 		"type": pulumi.String("postgresql"),
 		"metadata": pulumi.StringMap{
-			"query":            pulumi.String(pendingVaultsQuery),
+			"query":            pulumi.String(query),
 			"targetQueryValue": pulumi.String("1"),
 		},
-		"authenticationRef": pulumi.StringMap{"name": pulumi.String(names.indexer)},
+		"authenticationRef": pulumi.StringMap{"name": pulumi.String(names.scaler)},
 	}
 }

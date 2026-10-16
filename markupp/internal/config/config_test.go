@@ -4,10 +4,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/config"
 )
 
 const (
@@ -298,4 +297,97 @@ func TestLoad_SenhaDoScaler_LeDaVariavel(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Equal(t, senhaDoScalerDeTeste, cfg.ScalerPassword)
+}
+
+func TestDefault_SemSMTP_EmailDesligado(t *testing.T) {
+	cfg := config.Default()
+
+	assert.Empty(t, cfg.SMTPURL, "sem SMTP o markupp nao envia email (ADR-0021)")
+	assert.Empty(t, cfg.SMTPFrom)
+}
+
+func TestLoad_SMTPComRemetente_LeOsDois(t *testing.T) {
+	env := fakeEnv{
+		"MARKUPP_DATABASE_URL": urlDeTeste,
+		"MARKUPP_AUTH_SECRET":  segredoDeTesteValido,
+		"MARKUPP_SMTP_URL":     "smtps://markupp@smtp.markupp.dev:465",
+		"MARKUPP_SMTP_FROM":    "convites@markupp.dev",
+	}
+
+	cfg, err := config.Load(env.Lookup)
+
+	require.NoError(t, err)
+	assert.Equal(t, "smtps://markupp@smtp.markupp.dev:465", cfg.SMTPURL)
+	assert.Equal(t, "convites@markupp.dev", cfg.SMTPFrom)
+}
+
+func TestLoad_SMTPSemRemetente_RetornaErroNomeandoAVariavel(t *testing.T) {
+	env := fakeEnv{"MARKUPP_DATABASE_URL": urlDeTeste, "MARKUPP_AUTH_SECRET": segredoDeTesteValido, "MARKUPP_SMTP_URL": "smtp://mailpit:1025"}
+
+	_, err := config.Load(env.Lookup)
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "MARKUPP_SMTP_FROM")
+}
+
+func TestLoad_SMTPForaDoFormato_RetornaErroSemVazarASenha(t *testing.T) {
+	for _, valor := range []string{"http://usuario:segredo@smtp.markupp.dev", "smtp://", "mailpit:1025"} {
+		env := fakeEnv{
+			"MARKUPP_DATABASE_URL": urlDeTeste, "MARKUPP_AUTH_SECRET": segredoDeTesteValido,
+			"MARKUPP_SMTP_URL": valor, "MARKUPP_SMTP_FROM": "convites@markupp.dev",
+		}
+
+		_, err := config.Load(env.Lookup)
+
+		require.Error(t, err, valor)
+		assert.Contains(t, err.Error(), "MARKUPP_SMTP_URL")
+		assert.Contains(t, err.Error(), "smtp://")
+		assert.NotContains(t, err.Error(), "segredo", "a mensagem de erro nao repete a senha da URL")
+	}
+}
+
+func TestLoad_RemetenteComNome_Aceita(t *testing.T) {
+	env := fakeEnv{
+		"MARKUPP_DATABASE_URL": urlDeTeste, "MARKUPP_AUTH_SECRET": segredoDeTesteValido,
+		"MARKUPP_SMTP_URL": "smtp://mailpit:1025", "MARKUPP_SMTP_FROM": "Markupp <convites@markupp.dev>",
+	}
+
+	cfg, err := config.Load(env.Lookup)
+
+	require.NoError(t, err)
+	assert.Equal(t, "Markupp <convites@markupp.dev>", cfg.SMTPFrom)
+}
+
+func TestLoad_RemetenteIlegivel_RetornaErroComOValor(t *testing.T) {
+	for _, valor := range []string{"Markupp <convites@>", "a@b, c@d", "convites@markupp.dev>"} {
+		env := fakeEnv{
+			"MARKUPP_DATABASE_URL": urlDeTeste, "MARKUPP_AUTH_SECRET": segredoDeTesteValido,
+			"MARKUPP_SMTP_URL": "smtp://mailpit:1025", "MARKUPP_SMTP_FROM": valor,
+		}
+
+		_, err := config.Load(env.Lookup)
+
+		require.Error(t, err, valor)
+		assert.Contains(t, err.Error(), "MARKUPP_SMTP_FROM", valor)
+	}
+}
+
+func TestLoad_ConvitePorEmail_LeOBooleanoSemPrecisarDoSMTP(t *testing.T) {
+	env := fakeEnv{"MARKUPP_DATABASE_URL": urlDeTeste, "MARKUPP_AUTH_SECRET": segredoDeTesteValido, "MARKUPP_INVITE_BY_EMAIL": "true"}
+
+	cfg, err := config.Load(env.Lookup)
+
+	require.NoError(t, err)
+	assert.True(t, cfg.InviteByEmail, "a API so precisa saber que o convite sai por email, sem a senha do SMTP")
+	assert.False(t, config.Default().InviteByEmail)
+}
+
+func TestLoad_ConvitePorEmailInvalido_RetornaErroComOValor(t *testing.T) {
+	env := fakeEnv{"MARKUPP_DATABASE_URL": urlDeTeste, "MARKUPP_AUTH_SECRET": segredoDeTesteValido, "MARKUPP_INVITE_BY_EMAIL": "talvez"}
+
+	_, err := config.Load(env.Lookup)
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "MARKUPP_INVITE_BY_EMAIL")
+	assert.Contains(t, err.Error(), "talvez")
 }

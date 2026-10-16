@@ -330,3 +330,127 @@ func TestNewMarkupp_LivenessDaAPI_NaoDependeDoBanco(t *testing.T) {
 		"liveness no /healthz reinicia a API inteira quando o banco cai")
 	assert.Equal(t, float64(apiPort), at(t, liveness, "tcpSocket", "port").NumberValue())
 }
+
+const scaledObjectType = "kubernetes:keda.sh/v1alpha1:ScaledObject"
+
+func argsComEmail() MarkuppArgs {
+	args := argsDeTeste()
+	args.Email = &EmailArgs{SMTPURL: pulumi.String("smtps://markupp:senha@smtp.markupp.dev:465"), From: "convites@markupp.dev"}
+	return args
+}
+
+func deploymentNamed(t *testing.T, monitor *fakeResourceMonitor, name string) resource.PropertyMap {
+	t.Helper()
+	for _, d := range monitor.byType("kubernetes:apps/v1:Deployment") {
+		if d.Name == name {
+			return d.Inputs
+		}
+	}
+	require.Failf(t, "deployment ausente", "esperado o Deployment %q", name)
+	return nil
+}
+
+func envNames(container resource.PropertyMap) []string {
+	var names []string
+	for _, env := range container["env"].ArrayValue() {
+		names = append(names, env.ObjectValue()["name"].StringValue())
+	}
+	return names
+}
+
+func TestNewMarkupp_SemEmail_NaoCriaNotificador(t *testing.T) {
+	monitor := deploy(t, argsDeTeste())
+
+	assert.Empty(t, monitor.byType(scaledObjectType))
+	assert.Len(t, monitor.byType("kubernetes:apps/v1:Deployment"), 1, "so a API")
+}
+
+func TestNewMarkupp_ComEmail_GuardaAURLDoSMTPNoSecret(t *testing.T) {
+	monitor := deploy(t, argsComEmail())
+
+	secret := monitor.single(t, "kubernetes:core/v1:Secret")
+	assert.Equal(t, "smtps://markupp:senha@smtp.markupp.dev:465", plain(at(t, secret, "stringData", "smtp-url")).StringValue())
+}
+
+func TestNewMarkupp_ComEmail_APIEnfileiraOConviteSemASenhaDoSMTP(t *testing.T) {
+	monitor := deploy(t, argsComEmail())
+
+	api := firstContainer(t, deploymentNamed(t, monitor, "markupp-api"))
+	assert.Contains(t, envNames(api), "MARKUPP_INVITE_BY_EMAIL", "a API precisa saber que o convite sai por email para nao devolver o token")
+	assert.NotContains(t, envNames(api), "MARKUPP_SMTP_URL", "a API exposta a internet nao guarda a senha do SMTP")
+}
+
+func TestNewMarkupp_ComEmail_MigracaoEIndexadorNaoRecebemOSMTP(t *testing.T) {
+	monitor := deploy(t, argsComEmail())
+
+	migracao := firstContainer(t, monitor.single(t, "kubernetes:batch/v1:Job"))
+	indexador := containerDoIndexador(t, monitor.single(t, scaledJobType))
+	for nome, container := range map[string]resource.PropertyMap{"migracao": migracao, "indexador": indexador} {
+		assert.NotContains(t, envNames(container), "MARKUPP_SMTP_URL", nome)
+		assert.NotContains(t, envNames(container), "MARKUPP_SMTP_FROM", nome)
+	}
+}
+
+func TestNewMarkupp_RemetenteIlegivel_RetornaErroComOValor(t *testing.T) {
+	args := argsComEmail()
+	args.Email.From = "noreply"
+
+	err := declareErr(args)
+
+	require.Error(t, err, "remetente que o servidor recusaria derruba todos os conteineres")
+	assert.Contains(t, err.Error(), "email.from")
+	assert.Contains(t, err.Error(), "noreply")
+}
+
+func TestNewMarkupp_ComEmail_NotificadorRodaNotifyLoop(t *testing.T) {
+	monitor := deploy(t, argsComEmail())
+
+	notifier := firstContainer(t, deploymentNamed(t, monitor, "markupp-notifier"))
+	assert.Equal(t, "notify-loop", notifier["args"].ArrayValue()[0].StringValue())
+	assert.Subset(t, envNames(notifier), []string{"MARKUPP_DATABASE_URL", "MARKUPP_SMTP_URL", "MARKUPP_SMTP_FROM"})
+}
+
+func TestNewMarkupp_ComEmail_KEDAEscalaONotificadorEntreZeroEUm(t *testing.T) {
+	monitor := deploy(t, argsComEmail())
+
+	scaled := monitor.single(t, scaledObjectType)
+	assert.Equal(t, "markupp-notifier", at(t, scaled, "spec", "scaleTargetRef", "name").StringValue())
+	assert.Equal(t, 0.0, at(t, scaled, "spec", "minReplicaCount").NumberValue())
+	assert.Equal(t, 1.0, at(t, scaled, "spec", "maxReplicaCount").NumberValue())
+	assert.Equal(t, 30.0, at(t, scaled, "spec", "pollingInterval").NumberValue())
+	trigger := at(t, scaled, "spec", "triggers").ArrayValue()[0].ObjectValue()
+	assert.Equal(t, "postgresql", trigger["type"].StringValue())
+	metadata := trigger["metadata"].ObjectValue()
+	assert.Equal(t, "SELECT markupp_pending_notifications()", metadata["query"].StringValue())
+	assert.True(t, metadata["connectionFromEnv"].IsNull(), "a URL do notificador e a do dono do banco")
+	assert.Equal(t, "markupp-scaler", at(t, trigger, "authenticationRef", "name").StringValue())
+}
+
+func TestNewMarkupp_SoEmailSemIndexador_AindaCriaOAcessoDoScaler(t *testing.T) {
+	args := argsComEmail()
+	desligado := false
+	args.Indexer = &IndexerArgs{Enabled: &desligado}
+
+	monitor := deploy(t, args)
+
+	assert.Equal(t, "markupp-scaler", at(t, monitor.single(t, triggerAuthType), "metadata", "name").StringValue(),
+		"o notificador tambem consulta o banco como markupp_scaler")
+}
+
+func TestNewMarkupp_SemIndexadorNemEmail_NaoCriaOAcessoDoScaler(t *testing.T) {
+	args := argsDeTeste()
+	desligado := false
+	args.Indexer = &IndexerArgs{Enabled: &desligado}
+
+	assert.Empty(t, deploy(t, args).byType(triggerAuthType))
+}
+
+func TestNewMarkupp_EmailSemRemetente_RetornaErroComOCampo(t *testing.T) {
+	args := argsComEmail()
+	args.Email.From = ""
+
+	err := declareErr(args)
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "email.from")
+}

@@ -39,7 +39,8 @@ type inviteResponse struct {
 
 type issuedInviteResponse struct {
 	inviteResponse
-	Token string `json:"token"`
+	// Token sai vazio quando o convite vai por email, e o campo some da resposta.
+	Token string `json:"token,omitempty"`
 }
 
 // mountAdminRoutes monta as rotas que só owner e admin do tenant alcançam. O papel vem

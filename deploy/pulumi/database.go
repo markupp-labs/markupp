@@ -74,10 +74,10 @@ func declareExternalDatabase(ctx *pulumi.Context, names resourceNames, args Mark
 	})
 	return corev1.NewSecret(ctx, names.dbSecret, &corev1.SecretArgs{
 		Metadata: namespaced(names.dbSecret, args.Namespace),
-		StringData: pulumi.StringMap{
+		StringData: withEmailSecret(pulumi.StringMap{
 			dbSecretKey: args.Database.ExternalURL, authSecretKey: secrets.auth,
 			scalerPasswordKey: secrets.scaler, scalerURIKey: pulumix.Cast[pulumi.StringOutput](scalerURI),
-		},
+		}, args),
 	}, parent)
 }
 
@@ -115,11 +115,11 @@ func declarePostgresSecret(ctx *pulumi.Context, names resourceNames, args Markup
 	address := fmt.Sprintf("%s.%s.svc:%d/%s?sslmode=disable", names.database, args.Namespace, postgresPort, postgresUser)
 	_, err := corev1.NewSecret(ctx, names.dbSecret, &corev1.SecretArgs{
 		Metadata: namespaced(names.dbSecret, args.Namespace),
-		StringData: pulumi.StringMap{
+		StringData: withEmailSecret(pulumi.StringMap{
 			dbPasswordKey: password, authSecretKey: secrets.auth, scalerPasswordKey: secrets.scaler,
 			dbSecretKey:  pulumi.Sprintf("postgres://%s:%s@%s", postgresUser, password, address),
 			scalerURIKey: pulumi.Sprintf("postgres://%s:%s@%s", scalerUser, secrets.scaler, address),
-		},
+		}, args),
 	}, parent)
 	return err
 }

@@ -54,9 +54,10 @@ func (r *PostgresAdminRepository) ListInvites(ctx context.Context) ([]auth.Invit
 	return out, err
 }
 
-// CreateInviteTx grava o convite e a auditoria juntos, ou devolve
-// auth.ErrAlreadyMember quando o email já é de um usuário do tenant.
-func (r *PostgresAdminRepository) CreateInviteTx(ctx context.Context, inv auth.Invite, tokenHash string, event auth.AuditEventRecord) error {
+// CreateInviteTx grava o convite e a auditoria juntos e, com byEmail, a notificação
+// que entrega o convite. Devolve auth.ErrAlreadyMember quando o email já é de um
+// usuário do tenant.
+func (r *PostgresAdminRepository) CreateInviteTx(ctx context.Context, inv auth.Invite, tokenHash string, event auth.AuditEventRecord, byEmail bool) error {
 	return inActorTx(ctx, r.pool, func(q *gen.Queries) error {
 		rows, err := q.CreateInvite(ctx, toCreateInviteParams(inv, tokenHash))
 		if err != nil {
@@ -65,8 +66,21 @@ func (r *PostgresAdminRepository) CreateInviteTx(ctx context.Context, inv auth.I
 		if rows == 0 {
 			return fmt.Errorf("%w: %q", auth.ErrAlreadyMember, inv.Email)
 		}
+		if err := enqueueInvite(ctx, q, inv.ID, byEmail); err != nil {
+			return err
+		}
 		return q.CreateAuditEvent(ctx, toCreateAuditEventParams(event))
 	})
+}
+
+func enqueueInvite(ctx context.Context, q *gen.Queries, inviteID string, byEmail bool) error {
+	if !byEmail {
+		return nil
+	}
+	if err := q.EnqueueInviteNotification(ctx, inviteID); err != nil {
+		return fmt.Errorf("enfileirar email do convite %q: %w", inviteID, err)
+	}
+	return nil
 }
 
 func toCreateInviteParams(inv auth.Invite, tokenHash string) gen.CreateInviteParams {
