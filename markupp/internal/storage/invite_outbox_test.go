@@ -257,3 +257,48 @@ func TestRLS_PapelDoNotificador_SoTrocaOHashPelaFuncao(t *testing.T) {
 	requirePermissaoNegada(t, comoPapel(t, db, "markupp_notifier",
 		"WITH u AS (UPDATE user_invites SET token_hash = 'x' RETURNING 1) SELECT count(*) FROM u"), "notificador escrevendo convites")
 }
+
+// esperaConexaoTravada espera alguma conexão do banco de teste ficar aguardando trava.
+func esperaConexaoTravada(t *testing.T, db *pgxpool.Pool) {
+	t.Helper()
+	for range 200 {
+		var n int
+		require.NoError(t, db.QueryRow(context.Background(),
+			"SELECT count(*) FROM pg_stat_activity WHERE datname = current_database() AND wait_event_type = 'Lock'").Scan(&n))
+		if n > 0 {
+			return
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	require.FailNow(t, "nenhuma conexao ficou aguardando trava")
+}
+
+func TestInviteOutbox_RevogarDuranteAEntrega_NaoEntraEmDeadlock(t *testing.T) {
+	db := setupTestDB(t)
+	conviteComEmail(t, db, "c1", "nova@markupp.dev")
+	reservada, libera := make(chan struct{}), make(chan struct{})
+	entrega := make(chan error, 1)
+	go func() {
+		_, err := storage.NewPostgresInviteOutbox(db).DeliverNextDue(context.Background(),
+			func(ctx context.Context, p notify.PendingInvite, reissue notify.ReissueFunc) (notify.Outcome, error) {
+				close(reservada)
+				<-libera
+				_, found, err := reissue(ctx, "hash-da-entrega")
+				return notify.Outcome{Sent: found, GiveUp: !found}, err
+			})
+		entrega <- err
+	}()
+	<-reservada
+	revogacao := make(chan error, 1)
+	go func() {
+		ctx := identity.WithActor(context.Background(), adminDoConvite)
+		revogacao <- storage.NewPostgresAdminRepository(db).RevokeInviteTx(ctx, "c1", eventoDoConvite(conviteDe(adminDoConvite, "rev", "x@x.dev")))
+	}()
+	esperaConexaoTravada(t, db)
+
+	close(libera)
+
+	require.NoError(t, <-entrega, "o notificador desiste do convite que esta sendo revogado")
+	require.NoError(t, <-revogacao)
+	assert.Zero(t, countRows(t, db, "SELECT count(*) FROM user_invites WHERE id = 'c1'"))
+}
