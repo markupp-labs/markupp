@@ -227,6 +227,11 @@ class MarkuppApiTest < ActiveSupport::TestCase
     assert_operator MarkuppApi::RoleAboveOwn, :<, MarkuppApi::Forbidden
   end
 
+  test "an error names its reason after its class, for the i18n keys" do
+    assert_equal "role_above_own", MarkuppApi::RoleAboveOwn.new.reason
+    assert_equal "local_auth_disabled", MarkuppApi::LocalAuthDisabled.new.reason
+  end
+
   private
     def assert_post_raises(error_class, body, status:)
       assert_answer_raises(error_class, body, status) { it.post("/auth/login", email: "a", password: "b") }
