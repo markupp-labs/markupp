@@ -10,6 +10,15 @@ const (
 	// a latência de indexação esperada (ADR-0032).
 	indexerPollingSeconds = 30
 	pendingVaultsQuery    = "SELECT markupp_pending_vaults()"
+	// indexerMaxJobs limita os Jobs simultâneos, cada um com seu pool no banco: sem
+	// teto o KEDA sobe até 100, o max_connections padrão do PostgreSQL.
+	indexerMaxJobs = 5
+	// Job que falha não volta pelo backoff: o cofre continua na fila e o próximo
+	// poll cria outro Job. O prazo mata o Job travado e solta a reserva do cofre.
+	indexerBackoffLimit     = 1
+	indexerDeadlineSeconds  = 600
+	indexerSucceededHistory = 3
+	indexerFailedHistory    = 5
 )
 
 // IndexerArgs liga o indexador léxico.
@@ -34,9 +43,16 @@ func declareIndexer(ctx *pulumi.Context, names resourceNames, args MarkuppArgs, 
 		return err
 	}
 	return declareCustom(ctx, "keda.sh/v1alpha1", "ScaledJob", names.indexer, args, pulumi.Map{
-		"pollingInterval": pulumi.Int(indexerPollingSeconds),
-		"jobTargetRef":    pulumi.Map{"template": indexerPodTemplate(names, args)},
-		"triggers":        pulumi.Array{pendingVaultsTrigger(names)},
+		"pollingInterval":            pulumi.Int(indexerPollingSeconds),
+		"maxReplicaCount":            pulumi.Int(indexerMaxJobs),
+		"successfulJobsHistoryLimit": pulumi.Int(indexerSucceededHistory),
+		"failedJobsHistoryLimit":     pulumi.Int(indexerFailedHistory),
+		"jobTargetRef": pulumi.Map{
+			"template":              indexerPodTemplate(names, args),
+			"backoffLimit":          pulumi.Int(indexerBackoffLimit),
+			"activeDeadlineSeconds": pulumi.Int(indexerDeadlineSeconds),
+		},
+		"triggers": pulumi.Array{pendingVaultsTrigger(names)},
 	}, opts)
 }
 
