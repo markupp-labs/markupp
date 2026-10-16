@@ -1,0 +1,33 @@
+require "application_system_test_case"
+
+class TenantMembersTest < ApplicationSystemTestCase
+  EMAIL = FakeMarkuppAccounts::DEFAULT_EMAIL
+
+  setup do
+    use_fake_api(tenants: [ { id: "tenant-1", name: "Acme research", members: { EMAIL => "owner", "caio@markupp.dev" => "member" } } ])
+    sign_in_through_form
+  end
+
+  test "an owner opens the settings from the switcher and changes a role" do
+    click_on "Acme research"
+    within("#tenant_switcher") { click_on "Tenant settings" }
+
+    assert_selector "h1", text: "Tenant settings"
+    select "viewer", from: "Role for caio@markupp.dev"
+    within("li", text: "caio@markupp.dev") { click_on "Save" }
+
+    assert_text "Role updated."
+    assert_select "Role for caio@markupp.dev", selected: "viewer"
+  end
+
+  test "an owner removes a member after confirming" do
+    visit settings_members_path
+
+    accept_confirm("Remove caio@markupp.dev from Acme research?") do
+      within("li", text: "caio@markupp.dev") { click_on "Remove" }
+    end
+
+    assert_text "Member removed."
+    assert_no_text "caio@markupp.dev"
+  end
+end

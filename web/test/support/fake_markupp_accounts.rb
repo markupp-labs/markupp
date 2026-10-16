@@ -12,6 +12,9 @@ class FakeMarkuppAccounts
     @issued_pairs = 0
   end
 
+  # Id como o de /auth/me e /users; membro sem conta na fake (dono de outro tenant, por exemplo) ganha um pelo email.
+  def id_for(email) = @accounts.find { it["email"] == email }&.fetch("id") || "account-#{email[/\A[^@]+/]}"
+
   def find_by_credentials(email, password)
     @accounts.find { |account| account["email"] == email && account["password"] == password }
   end

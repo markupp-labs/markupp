@@ -202,6 +202,19 @@ class MarkuppApiTest < ActiveSupport::TestCase
     end
   end
 
+  test "maps the error codes of the member routes to their classes" do
+    { [ "404 Not Found", "member_not_found" ] => MarkuppApi::MemberNotFound,
+      [ "409 Conflict", "last_owner" ] => MarkuppApi::LastOwner,
+      [ "403 Forbidden", "role_above_own" ] => MarkuppApi::RoleAboveOwn }.each do |(status, code), error_class|
+      assert_answer_raises(error_class, %({"error":"#{code}","message":"recusado"}), status) { it.patch("/users/1", role: "owner") }
+    end
+  end
+
+  test "member not found is a kind of NotFound and role above own a kind of Forbidden" do
+    assert_operator MarkuppApi::MemberNotFound, :<, MarkuppApi::NotFound
+    assert_operator MarkuppApi::RoleAboveOwn, :<, MarkuppApi::Forbidden
+  end
+
   private
     def assert_post_raises(error_class, body, status:)
       assert_answer_raises(error_class, body, status) { it.post("/auth/login", email: "a", password: "b") }

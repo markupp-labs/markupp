@@ -7,11 +7,13 @@ class FakeMarkuppApi
   delegate :disable_local_auth!, to: :@auth
   delegate :assign_role!, :deny_notes_in!, to: :@tenants
 
+  # email_enabled: false é o servidor sem SMTP, que devolve o token do convite emitido.
   def initialize(notes: [], unreachable: false, conflict: false, accounts: FakeMarkuppAccounts::DEFAULT_ACCOUNTS,
-                 tenants: FakeMarkuppTenants::DEFAULT_TENANTS, invites: [])
+                 tenants: FakeMarkuppTenants::DEFAULT_TENANTS, invites: [], email_enabled: true)
     @accounts = FakeMarkuppAccounts.new(accounts)
     @tenants = FakeMarkuppTenants.new(tenants, invites)
     @auth = FakeMarkuppAuth.new(@accounts, @tenants)
+    @tenant_admin = FakeMarkuppTenantAdmin.new(@tenants, @accounts, email_enabled:)
     @notes = FakeMarkuppNotes.new(notes:, conflict:)
     @unreachable = unreachable
     @received_credentials = []
@@ -46,14 +48,15 @@ class FakeMarkuppApi
 
       @received_credentials << @credentials.merge(call:) if @credentials
       account = authenticate(call)
-      fake_for(call, path).public_send(verb.downcase, path, *body, account:, role: notes_role(path, account, call))
+      membership = tenant_membership(path, account, call) || {}
+      fake_for(call, path).public_send(verb.downcase, path, *body, account:, role: membership["role"], tenant_id: membership["id"])
     end
 
-    # Só as notas agem num tenant; chamada de confiança, sem conta, não tem papel.
-    def notes_role(path, account, call)
-      return unless account && path.start_with?("/notes")
+    # Só notas e administração agem num tenant; chamada de confiança, sem conta, não tem papel.
+    def tenant_membership(path, account, call)
+      return unless account && path.start_with?("/notes", "/users")
 
-      @tenants.role_for(account, @credentials[:tenant_id], call)
+      @tenants.membership_for(account, @credentials[:tenant_id], call)
     end
 
     def authenticate(call)
@@ -66,7 +69,8 @@ class FakeMarkuppApi
       return @notes if path.start_with?("/notes")
       return @auth if path.start_with?("/auth/")
       return @tenants if path.start_with?("/me/") || path == "/tenants"
+      return @tenant_admin if path.start_with?("/users")
 
-      raise ArgumentError, "fake API has no route for #{call}, expected /notes, /auth, /me or /tenants"
+      raise ArgumentError, "fake API has no route for #{call}, expected /notes, /auth, /me, /tenants or /users"
     end
 end

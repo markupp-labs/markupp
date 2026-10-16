@@ -47,4 +47,14 @@ class TenantTest < ActiveSupport::TestCase
     assert_equal({ "owner" => true, "admin" => true, "member" => true, "viewer" => false },
                  %w[owner admin member viewer].index_with { Tenant.new(id: "tenant-1", name: "Acme research", role: it).writer? })
   end
+
+  test "admin? is true for owner and admin only" do
+    assert_equal({ "owner" => true, "admin" => true, "member" => false, "viewer" => false },
+                 Tenant::ROLES.index_with { Tenant.new(id: "tenant-1", name: "Acme research", role: it).admin? })
+  end
+
+  test "assignable_roles lists the roles up to its own, highest first" do
+    assert_equal({ "owner" => %w[owner admin member viewer], "admin" => %w[admin member viewer] },
+                 %w[owner admin].index_with { Tenant.new(id: "tenant-1", name: "Acme research", role: it).assignable_roles })
+  end
 end

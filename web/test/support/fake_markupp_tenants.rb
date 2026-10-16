@@ -1,16 +1,19 @@
 # Tenants da FakeMarkuppApi: vínculos conta-tenant-papel, /me/tenants, POST /tenants, convites recebidos em /me/invites
 # e o tenant do cabeçalho, resolvido como o RequireTenant do servidor.
 class FakeMarkuppTenants
+  # Todos os convites, de todos os tenants: a FakeMarkuppTenantAdmin emite, lista e revoga por aqui.
+  attr_reader :invites
+
   DEFAULT_TENANTS = [ { id: "tenant-1", name: "Acme research", members: { FakeMarkuppAccounts::DEFAULT_EMAIL => "owner" } } ].freeze
   NAME_LIMIT = 100
 
   INVITE_ANSWER = %r{\A/me/invites/(?<id>[^/]+)/(?<answer>accept|decline)\z}
 
   # tenants: [{ id:, name:, members: { email => papel } }]
-  # invites: [{ id:, tenant_id:, email:, role:, token:, expires_at: }], todos pendentes.
+  # invites: [{ id:, tenant_id:, email:, role:, token:, expires_at:, accepted_at: }]; sem accepted_at e no prazo, pendente.
   def initialize(tenants, invites = [])
     @tenants = tenants.map { |tenant| { "id" => tenant[:id], "name" => tenant[:name], "members" => tenant[:members].dup } }
-    @invites = invites.map { it.stringify_keys.reverse_merge("expires_at" => 7.days.from_now.utc.iso8601) }
+    @invites = invites.map { it.stringify_keys.reverse_merge("expires_at" => 7.days.from_now.utc.iso8601, "created_at" => Time.current.utc.iso8601) }
     @notes_denied = []
   end
 
@@ -30,29 +33,35 @@ class FakeMarkuppTenants
 
   # Convite do POST /auth/invites/accept, ainda sem consumir: a conta pode já existir.
   def invite_for_token(token)
-    @invites.find { it["token"].present? && it["token"] == token } or
-      raise MarkuppApi::InvalidToken, "fake API refuses invite token #{token.inspect}: invalid_invite, expected one of #{@invites.filter_map { it["token"] }}"
+    open_invites = @invites.select { pending?(it) }
+    open_invites.find { it["token"].present? && it["token"] == token } or
+      raise MarkuppApi::InvalidToken, "fake API refuses invite token #{token.inspect}: invalid_invite, expected one of #{open_invites.filter_map { it["token"] }}"
   end
 
-  # Consome o convite e cria o vínculo com o papel dele; devolve o tenant como /me/tenants.
+  # Consome o convite, que fica aceito na lista do admin, e cria o vínculo com o papel dele; devolve o tenant como /me/tenants.
   def join(invite, account)
-    @invites.delete(invite)
-    tenant = @tenants.find { it["id"] == invite["tenant_id"] }
+    invite["accepted_at"] = Time.current.utc.iso8601
+    tenant = tenant(invite["tenant_id"])
     tenant["members"][account["email"]] = invite["role"]
     membership(tenant, account)
   end
 
-  # Papel da conta no tenant do cabeçalho; sem cabeçalho vale o único tenant da conta.
-  def role_for(account, requested, call)
+  # Vínculo da conta com o tenant do cabeçalho, { id, name, role }; sem cabeçalho vale o único tenant da conta.
+  def membership_for(account, requested, call)
     raise MarkuppApi::TenantUnavailable, "fake API refuses #{call} in tenant #{requested.inspect}: tenant_forbidden" if @notes_denied.include?(requested)
-    return requested_membership(account, requested, call)["role"] if requested.present?
+    return requested_membership(account, requested, call) if requested.present?
 
-    only_membership(account, call)["role"]
+    only_membership(account, call)
   end
+
+  def tenant(id) = @tenants.find { it["id"] == id }
+
+  # Como a API: convite sem resposta e no prazo.
+  def pending?(invite) = invite["accepted_at"].nil? && Time.zone.parse(invite["expires_at"]).future?
 
   # Cenário: o papel muda (ou some, com nil) no servidor entre duas páginas.
   def assign_role!(tenant_id, email, role)
-    members = @tenants.find { it["id"] == tenant_id }.fetch("members")
+    members = tenant(tenant_id).fetch("members")
     role ? members[email] = role : members.delete(email)
   end
 
@@ -73,11 +82,11 @@ class FakeMarkuppTenants
     def pending_invites(account)
       return [] unless account.fetch("verified", true)
 
-      @invites.select { it["email"] == account["email"] }.map { pending_invite(it) }
+      @invites.select { it["email"] == account["email"] && pending?(it) }.map { pending_invite(it) }
     end
 
     def pending_invite(invite)
-      tenant = @tenants.find { it["id"] == invite["tenant_id"] }
+      tenant = tenant(invite["tenant_id"])
       { "id" => invite["id"], "tenant_id" => tenant["id"], "tenant_name" => tenant["name"], "role" => invite["role"], "expires_at" => invite["expires_at"] }
     end
 
