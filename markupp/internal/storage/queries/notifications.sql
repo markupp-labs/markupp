@@ -8,11 +8,7 @@ INSERT INTO notifications (invite_id) VALUES ($1);
 SELECT set_config('role', 'markupp_notifier', true);
 
 -- name: ReserveDueNotification :one
-SELECT id, attempts,
-       (CASE WHEN invite_id IS NOT NULL THEN 'invite'
-             WHEN email_verification_id IS NOT NULL THEN 'email_verification'
-             ELSE 'password_reset' END)::text AS kind,
-       COALESCE(invite_id, email_verification_id, password_reset_id)::text AS target_id
+SELECT id, attempts, kind, COALESCE(invite_id, account_token_id)::text AS target_id
 FROM notifications
 WHERE sent_at IS NULL AND failed_at IS NULL AND next_attempt_at <= now()
 ORDER BY next_attempt_at, id
@@ -37,10 +33,7 @@ UPDATE notifications
 SET attempts = attempts + 1, failed_at = now(), last_error = sqlc.arg(last_error)
 WHERE id = sqlc.arg(id);
 
--- name: ReissueEmailVerification :many
+-- name: ReissueAccountToken :many
 SELECT account_email::text, token_expires_at::timestamptz
-FROM markupp_reissue_email_verification(sqlc.arg(id)::text, sqlc.arg(token_hash)::text, sqlc.arg(ttl)::interval);
-
--- name: ReissuePasswordReset :many
-SELECT account_email::text, token_expires_at::timestamptz
-FROM markupp_reissue_password_reset(sqlc.arg(id)::text, sqlc.arg(token_hash)::text, sqlc.arg(ttl)::interval);
+FROM markupp_reissue_account_token(sqlc.arg(id)::text, sqlc.arg(purpose)::text,
+                                   sqlc.arg(token_hash)::text, sqlc.arg(ttl)::interval);

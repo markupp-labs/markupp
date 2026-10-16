@@ -7,76 +7,52 @@ package gen
 
 import (
 	"context"
-	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const createEmailVerification = `-- name: CreateEmailVerification :one
-INSERT INTO email_verifications (user_id, created_at) VALUES ($1, $2) RETURNING id
+const createAccountToken = `-- name: CreateAccountToken :one
+INSERT INTO account_tokens (user_id, purpose) VALUES ($1, $2) RETURNING id
 `
 
-type CreateEmailVerificationParams struct {
-	UserID    string
-	CreatedAt time.Time
+type CreateAccountTokenParams struct {
+	UserID  string
+	Purpose string
 }
 
-func (q *Queries) CreateEmailVerification(ctx context.Context, arg CreateEmailVerificationParams) (string, error) {
-	row := q.db.QueryRow(ctx, createEmailVerification, arg.UserID, arg.CreatedAt)
+func (q *Queries) CreateAccountToken(ctx context.Context, arg CreateAccountTokenParams) (string, error) {
+	row := q.db.QueryRow(ctx, createAccountToken, arg.UserID, arg.Purpose)
 	var id string
 	err := row.Scan(&id)
 	return id, err
 }
 
-const createPasswordReset = `-- name: CreatePasswordReset :one
-INSERT INTO password_resets (user_id, created_at) VALUES ($1, $2) RETURNING id
+const deleteOpenAccountTokens = `-- name: DeleteOpenAccountTokens :exec
+DELETE FROM account_tokens WHERE user_id = $1 AND purpose = $2 AND used_at IS NULL
 `
 
-type CreatePasswordResetParams struct {
-	UserID    string
-	CreatedAt time.Time
+type DeleteOpenAccountTokensParams struct {
+	UserID  string
+	Purpose string
 }
 
-func (q *Queries) CreatePasswordReset(ctx context.Context, arg CreatePasswordResetParams) (string, error) {
-	row := q.db.QueryRow(ctx, createPasswordReset, arg.UserID, arg.CreatedAt)
-	var id string
-	err := row.Scan(&id)
-	return id, err
-}
-
-const deleteOpenEmailVerifications = `-- name: DeleteOpenEmailVerifications :exec
-DELETE FROM email_verifications WHERE user_id = $1 AND used_at IS NULL
-`
-
-func (q *Queries) DeleteOpenEmailVerifications(ctx context.Context, userID string) error {
-	_, err := q.db.Exec(ctx, deleteOpenEmailVerifications, userID)
+func (q *Queries) DeleteOpenAccountTokens(ctx context.Context, arg DeleteOpenAccountTokensParams) error {
+	_, err := q.db.Exec(ctx, deleteOpenAccountTokens, arg.UserID, arg.Purpose)
 	return err
 }
 
-const deleteOpenPasswordResets = `-- name: DeleteOpenPasswordResets :exec
-DELETE FROM password_resets WHERE user_id = $1 AND used_at IS NULL
+const enqueueAccountTokenNotification = `-- name: EnqueueAccountTokenNotification :exec
+INSERT INTO notifications (tenant_id, kind, account_token_id)
+VALUES (NULL, $1, $2)
 `
 
-func (q *Queries) DeleteOpenPasswordResets(ctx context.Context, userID string) error {
-	_, err := q.db.Exec(ctx, deleteOpenPasswordResets, userID)
-	return err
+type EnqueueAccountTokenNotificationParams struct {
+	Kind           string
+	AccountTokenID pgtype.Text
 }
 
-const enqueueEmailVerificationNotification = `-- name: EnqueueEmailVerificationNotification :exec
-INSERT INTO notifications (tenant_id, email_verification_id) VALUES (NULL, $1)
-`
-
-func (q *Queries) EnqueueEmailVerificationNotification(ctx context.Context, emailVerificationID pgtype.Text) error {
-	_, err := q.db.Exec(ctx, enqueueEmailVerificationNotification, emailVerificationID)
-	return err
-}
-
-const enqueuePasswordResetNotification = `-- name: EnqueuePasswordResetNotification :exec
-INSERT INTO notifications (tenant_id, password_reset_id) VALUES (NULL, $1)
-`
-
-func (q *Queries) EnqueuePasswordResetNotification(ctx context.Context, passwordResetID pgtype.Text) error {
-	_, err := q.db.Exec(ctx, enqueuePasswordResetNotification, passwordResetID)
+func (q *Queries) EnqueueAccountTokenNotification(ctx context.Context, arg EnqueueAccountTokenNotificationParams) error {
+	_, err := q.db.Exec(ctx, enqueueAccountTokenNotification, arg.Kind, arg.AccountTokenID)
 	return err
 }
 
@@ -97,7 +73,8 @@ SELECT email_verified FROM users WHERE id = $1 FOR UPDATE
 `
 
 // Pedidos de email da conta, no papel da conexão: a conta é da instância, fora do
-// recorte por tenant. O token nunca passa por aqui, só o hash dele.
+// recorte por tenant. O token nunca passa por aqui, só o hash dele. A trava na linha da
+// conta serializa os pedidos dela, e o intervalo entre pedidos vale mesmo em paralelo.
 func (q *Queries) LockUserEmailVerified(ctx context.Context, id string) (bool, error) {
 	row := q.db.QueryRow(ctx, lockUserEmailVerified, id)
 	var email_verified bool
@@ -114,39 +91,22 @@ func (q *Queries) MarkEmailVerified(ctx context.Context, id string) error {
 	return err
 }
 
-const recentEmailVerificationExists = `-- name: RecentEmailVerificationExists :one
+const recentAccountTokenExists = `-- name: RecentAccountTokenExists :one
 SELECT EXISTS (
-    SELECT 1 FROM email_verifications
-    WHERE user_id = $1 AND used_at IS NULL AND created_at > $2
+    SELECT 1 FROM account_tokens
+    WHERE user_id = $1 AND purpose = $2 AND used_at IS NULL
+      AND created_at > now() - $3::interval
 )
 `
 
-type RecentEmailVerificationExistsParams struct {
-	UserID string
-	Since  time.Time
+type RecentAccountTokenExistsParams struct {
+	UserID   string
+	Purpose  string
+	Cooldown pgtype.Interval
 }
 
-func (q *Queries) RecentEmailVerificationExists(ctx context.Context, arg RecentEmailVerificationExistsParams) (bool, error) {
-	row := q.db.QueryRow(ctx, recentEmailVerificationExists, arg.UserID, arg.Since)
-	var exists bool
-	err := row.Scan(&exists)
-	return exists, err
-}
-
-const recentPasswordResetExists = `-- name: RecentPasswordResetExists :one
-SELECT EXISTS (
-    SELECT 1 FROM password_resets
-    WHERE user_id = $1 AND used_at IS NULL AND created_at > $2
-)
-`
-
-type RecentPasswordResetExistsParams struct {
-	UserID string
-	Since  time.Time
-}
-
-func (q *Queries) RecentPasswordResetExists(ctx context.Context, arg RecentPasswordResetExistsParams) (bool, error) {
-	row := q.db.QueryRow(ctx, recentPasswordResetExists, arg.UserID, arg.Since)
+func (q *Queries) RecentAccountTokenExists(ctx context.Context, arg RecentAccountTokenExistsParams) (bool, error) {
+	row := q.db.QueryRow(ctx, recentAccountTokenExists, arg.UserID, arg.Purpose, arg.Cooldown)
 	var exists bool
 	err := row.Scan(&exists)
 	return exists, err
@@ -166,37 +126,23 @@ func (q *Queries) UpdateLocalPassword(ctx context.Context, arg UpdateLocalPasswo
 	return err
 }
 
-const useEmailVerification = `-- name: UseEmailVerification :one
-UPDATE email_verifications SET used_at = $1::timestamptz
-WHERE token_hash = $2 AND used_at IS NULL AND expires_at > $1
+const useAccountToken = `-- name: UseAccountToken :one
+UPDATE account_tokens SET used_at = now()
+WHERE token_hash = $1 AND purpose = $2
+  AND user_id = COALESCE($3, user_id)
+  AND used_at IS NULL AND expires_at > now()
 RETURNING user_id
 `
 
-type UseEmailVerificationParams struct {
-	Now       time.Time
+type UseAccountTokenParams struct {
 	TokenHash pgtype.Text
+	Purpose   string
+	UserID    pgtype.Text
 }
 
-func (q *Queries) UseEmailVerification(ctx context.Context, arg UseEmailVerificationParams) (string, error) {
-	row := q.db.QueryRow(ctx, useEmailVerification, arg.Now, arg.TokenHash)
-	var user_id string
-	err := row.Scan(&user_id)
-	return user_id, err
-}
-
-const usePasswordReset = `-- name: UsePasswordReset :one
-UPDATE password_resets SET used_at = $1::timestamptz
-WHERE token_hash = $2 AND used_at IS NULL AND expires_at > $1
-RETURNING user_id
-`
-
-type UsePasswordResetParams struct {
-	Now       time.Time
-	TokenHash pgtype.Text
-}
-
-func (q *Queries) UsePasswordReset(ctx context.Context, arg UsePasswordResetParams) (string, error) {
-	row := q.db.QueryRow(ctx, usePasswordReset, arg.Now, arg.TokenHash)
+// Sem user_id, vale o token de qualquer conta, como na troca de senha.
+func (q *Queries) UseAccountToken(ctx context.Context, arg UseAccountTokenParams) (string, error) {
+	row := q.db.QueryRow(ctx, useAccountToken, arg.TokenHash, arg.Purpose, arg.UserID)
 	var user_id string
 	err := row.Scan(&user_id)
 	return user_id, err

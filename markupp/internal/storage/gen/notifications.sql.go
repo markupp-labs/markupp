@@ -75,31 +75,38 @@ func (q *Queries) MarkNotificationSent(ctx context.Context, id string) error {
 	return err
 }
 
-const reissueEmailVerification = `-- name: ReissueEmailVerification :many
+const reissueAccountToken = `-- name: ReissueAccountToken :many
 SELECT account_email::text, token_expires_at::timestamptz
-FROM markupp_reissue_email_verification($1::text, $2::text, $3::interval)
+FROM markupp_reissue_account_token($1::text, $2::text,
+                                   $3::text, $4::interval)
 `
 
-type ReissueEmailVerificationParams struct {
+type ReissueAccountTokenParams struct {
 	ID        string
+	Purpose   string
 	TokenHash string
 	Ttl       pgtype.Interval
 }
 
-type ReissueEmailVerificationRow struct {
+type ReissueAccountTokenRow struct {
 	AccountEmail   string
 	TokenExpiresAt time.Time
 }
 
-func (q *Queries) ReissueEmailVerification(ctx context.Context, arg ReissueEmailVerificationParams) ([]ReissueEmailVerificationRow, error) {
-	rows, err := q.db.Query(ctx, reissueEmailVerification, arg.ID, arg.TokenHash, arg.Ttl)
+func (q *Queries) ReissueAccountToken(ctx context.Context, arg ReissueAccountTokenParams) ([]ReissueAccountTokenRow, error) {
+	rows, err := q.db.Query(ctx, reissueAccountToken,
+		arg.ID,
+		arg.Purpose,
+		arg.TokenHash,
+		arg.Ttl,
+	)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []ReissueEmailVerificationRow
+	var items []ReissueAccountTokenRow
 	for rows.Next() {
-		var i ReissueEmailVerificationRow
+		var i ReissueAccountTokenRow
 		if err := rows.Scan(&i.AccountEmail, &i.TokenExpiresAt); err != nil {
 			return nil, err
 		}
@@ -156,48 +163,8 @@ func (q *Queries) ReissueInviteToken(ctx context.Context, arg ReissueInviteToken
 	return items, nil
 }
 
-const reissuePasswordReset = `-- name: ReissuePasswordReset :many
-SELECT account_email::text, token_expires_at::timestamptz
-FROM markupp_reissue_password_reset($1::text, $2::text, $3::interval)
-`
-
-type ReissuePasswordResetParams struct {
-	ID        string
-	TokenHash string
-	Ttl       pgtype.Interval
-}
-
-type ReissuePasswordResetRow struct {
-	AccountEmail   string
-	TokenExpiresAt time.Time
-}
-
-func (q *Queries) ReissuePasswordReset(ctx context.Context, arg ReissuePasswordResetParams) ([]ReissuePasswordResetRow, error) {
-	rows, err := q.db.Query(ctx, reissuePasswordReset, arg.ID, arg.TokenHash, arg.Ttl)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []ReissuePasswordResetRow
-	for rows.Next() {
-		var i ReissuePasswordResetRow
-		if err := rows.Scan(&i.AccountEmail, &i.TokenExpiresAt); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const reserveDueNotification = `-- name: ReserveDueNotification :one
-SELECT id, attempts,
-       (CASE WHEN invite_id IS NOT NULL THEN 'invite'
-             WHEN email_verification_id IS NOT NULL THEN 'email_verification'
-             ELSE 'password_reset' END)::text AS kind,
-       COALESCE(invite_id, email_verification_id, password_reset_id)::text AS target_id
+SELECT id, attempts, kind, COALESCE(invite_id, account_token_id)::text AS target_id
 FROM notifications
 WHERE sent_at IS NULL AND failed_at IS NULL AND next_attempt_at <= now()
 ORDER BY next_attempt_at, id

@@ -68,7 +68,7 @@ func commitAccount(ctx context.Context, qtx *gen.Queries, p auth.CreateAccountPa
 // que essa conta não provou.
 func registerMember(ctx context.Context, qtx *gen.Queries, p auth.CreateAccountParams) error {
 	if p.SendVerification {
-		if err := enqueueEmailVerification(ctx, qtx, p.User.ID, p.User.CreatedAt); err != nil {
+		if err := enqueueAccountToken(ctx, qtx, p.User.ID, purposeEmailVerification); err != nil {
 			return err
 		}
 	}

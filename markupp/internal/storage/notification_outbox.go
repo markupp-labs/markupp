@@ -53,30 +53,32 @@ func (o *PostgresNotificationOutbox) DeliverNextDue(ctx context.Context, deliver
 	return found, err
 }
 
-// reissuer grava o hash do token no pedido da notificação pela função do banco do
-// tipo dela, a única porta do notificador para as tabelas de pedidos.
+// accountTokenTTL é a validade de cada tipo de token da conta, contada da entrega.
+var accountTokenTTL = map[notify.Kind]time.Duration{
+	notify.KindEmailVerification: auth.EmailVerificationTTL,
+	notify.KindPasswordReset:     auth.PasswordResetTTL,
+}
+
+// reissuer grava o hash do token no alvo da notificação pela função do banco do tipo
+// dela, a única porta do notificador para convites e tokens da conta.
 func reissuer(q *gen.Queries, p notify.Pending) notify.ReissueFunc {
-	return func(ctx context.Context, tokenHash string) (notify.TokenDetails, bool, error) {
-		switch p.Kind {
-		case notify.KindEmailVerification:
-			rows, err := q.ReissueEmailVerification(ctx, gen.ReissueEmailVerificationParams{ID: p.TargetID, TokenHash: tokenHash, Ttl: interval(auth.EmailVerificationTTL)})
-			return firstAccountDetails(rows, err, func(r gen.ReissueEmailVerificationRow) notify.TokenDetails {
-				return notify.TokenDetails{Email: r.AccountEmail, ExpiresAt: r.TokenExpiresAt}
-			})
-		case notify.KindPasswordReset:
-			rows, err := q.ReissuePasswordReset(ctx, gen.ReissuePasswordResetParams{ID: p.TargetID, TokenHash: tokenHash, Ttl: interval(auth.PasswordResetTTL)})
-			return firstAccountDetails(rows, err, func(r gen.ReissuePasswordResetRow) notify.TokenDetails {
-				return notify.TokenDetails{Email: r.AccountEmail, ExpiresAt: r.TokenExpiresAt}
-			})
+	if p.Kind == notify.KindInvite {
+		return func(ctx context.Context, tokenHash string) (notify.TokenDetails, bool, error) {
+			return reissueInvite(ctx, q, p.TargetID, tokenHash)
 		}
-		return reissueInvite(ctx, q, p.TargetID, tokenHash)
+	}
+	return func(ctx context.Context, tokenHash string) (notify.TokenDetails, bool, error) {
+		return reissueAccountToken(ctx, q, p, tokenHash)
 	}
 }
 
 func reissueInvite(ctx context.Context, q *gen.Queries, inviteID, tokenHash string) (notify.TokenDetails, bool, error) {
 	rows, err := q.ReissueInviteToken(ctx, gen.ReissueInviteTokenParams{InviteID: inviteID, TokenHash: tokenHash})
-	if err != nil || len(rows) == 0 {
-		return notify.TokenDetails{}, false, err
+	if err != nil {
+		return notify.TokenDetails{}, false, fmt.Errorf("trocar hash do convite %q: %w", inviteID, err)
+	}
+	if len(rows) == 0 {
+		return notify.TokenDetails{}, false, nil
 	}
 	r := rows[0]
 	return notify.TokenDetails{
@@ -85,13 +87,19 @@ func reissueInvite(ctx context.Context, q *gen.Queries, inviteID, tokenHash stri
 	}, true, nil
 }
 
-// firstAccountDetails lê a única linha que a troca de hash de um pedido da conta
-// devolve, ou found falso quando o pedido não está mais aberto.
-func firstAccountDetails[T any](rows []T, err error, details func(T) notify.TokenDetails) (notify.TokenDetails, bool, error) {
-	if err != nil || len(rows) == 0 {
-		return notify.TokenDetails{}, false, err
+func reissueAccountToken(ctx context.Context, q *gen.Queries, p notify.Pending, tokenHash string) (notify.TokenDetails, bool, error) {
+	ttl, ok := accountTokenTTL[p.Kind]
+	if !ok {
+		return notify.TokenDetails{}, false, fmt.Errorf("notificacao %q do tipo %q, esperado %q ou %q", p.NotificationID, p.Kind, notify.KindEmailVerification, notify.KindPasswordReset)
 	}
-	return details(rows[0]), true, nil
+	rows, err := q.ReissueAccountToken(ctx, gen.ReissueAccountTokenParams{ID: p.TargetID, Purpose: string(p.Kind), TokenHash: tokenHash, Ttl: interval(ttl)})
+	if err != nil {
+		return notify.TokenDetails{}, false, fmt.Errorf("trocar hash do token %q: %w", p.TargetID, err)
+	}
+	if len(rows) == 0 {
+		return notify.TokenDetails{}, false, nil
+	}
+	return notify.TokenDetails{Email: rows[0].AccountEmail, ExpiresAt: rows[0].TokenExpiresAt}, true, nil
 }
 
 func interval(d time.Duration) pgtype.Interval {
