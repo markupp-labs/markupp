@@ -6,14 +6,16 @@ class FakeMarkuppApi
   delegate :expire_access_tokens!, :revoke_refresh_tokens!, :refresh_token_valid?, to: :@accounts
   delegate :disable_local_auth!, to: :@auth
   delegate :assign_role!, :deny_notes_in!, to: :@tenants
+  delegate :sent_tokens, to: :@account_email
 
-  # email_enabled: false é o servidor sem SMTP, que devolve o token do convite emitido.
+  # email_enabled: false é o servidor sem SMTP, que devolve o token do convite emitido e recusa os fluxos de email da conta.
   def initialize(notes: [], unreachable: false, conflict: false, accounts: FakeMarkuppAccounts::DEFAULT_ACCOUNTS,
                  tenants: FakeMarkuppTenants::DEFAULT_TENANTS, invites: [], email_enabled: true)
     @accounts = FakeMarkuppAccounts.new(accounts)
     @tenants = FakeMarkuppTenants.new(tenants, invites)
     @auth = FakeMarkuppAuth.new(@accounts, @tenants)
     @tenant_admin = FakeMarkuppTenantAdmin.new(@tenants, @accounts, email_enabled:)
+    @account_email = FakeMarkuppAccountEmail.new(@accounts, @auth, email_enabled:)
     @notes = FakeMarkuppNotes.new(notes:, conflict:)
     @unreachable = unreachable
     @received_credentials = []
@@ -60,13 +62,14 @@ class FakeMarkuppApi
     end
 
     def authenticate(call)
-      return if @credentials.nil? || @auth.public?(call)
+      return if @credentials.nil? || @auth.public?(call) || @account_email.public?(call)
 
       @accounts.account_for_access(@credentials[:access_token], call)
     end
 
     def fake_for(call, path)
       return @notes if path.start_with?("/notes")
+      return @account_email if path.start_with?("/auth/password/", "/auth/email/")
       return @auth if path.start_with?("/auth/")
       return @tenants if path.start_with?("/me/") || path == "/tenants"
       return @tenant_admin if path.start_with?("/users")

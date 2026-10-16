@@ -50,6 +50,13 @@ class TokenFormTest < ActiveSupport::TestCase
     assert_equal [ "Password login is disabled on this server." ], form.errors[:base]
   end
 
+  test "submit says when the server can't send email" do
+    form = token_form("tok-1", "senha-nova")
+
+    assert_nil form.submit(FakeMarkuppApi.new(email_enabled: false), "/auth/password/reset")
+    assert_equal [ "This server can't send email, so password reset is off. Ask an administrator." ], form.errors[:base]
+  end
+
   private
     def token_form(token, password) = TokenForm.new(token:, password:)
 end

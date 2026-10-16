@@ -14,6 +14,8 @@ class FakeMarkuppAuth
   # Cenário: servidor só com login externo, como MARKUPP_LOCAL_AUTH desligado.
   def disable_local_auth! = @local_auth = false
 
+  def local_auth? = @local_auth
+
   def get(path, account:, **)
     raise ArgumentError, "fake API has no route for GET #{path}, expected /auth/me" unless path == "/auth/me"
 

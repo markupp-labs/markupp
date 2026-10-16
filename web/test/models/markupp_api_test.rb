@@ -202,6 +202,12 @@ class MarkuppApiTest < ActiveSupport::TestCase
     end
   end
 
+  test "maps email_unavailable to EmailUnavailable" do
+    assert_answer_raises(MarkuppApi::EmailUnavailable, '{"error":"email_unavailable","message":"sem email"}', "503 Service Unavailable") do
+      it.post("/auth/password/forgot", email: "a")
+    end
+  end
+
   test "maps the error codes of the member routes to their classes" do
     { [ "404 Not Found", "member_not_found" ] => MarkuppApi::MemberNotFound,
       [ "409 Conflict", "last_owner" ] => MarkuppApi::LastOwner,
