@@ -59,14 +59,11 @@ func redacted(rawURL string) string {
 
 // Send abre uma conexão por mensagem e entrega msg.
 func (m *SMTPMailer) Send(ctx context.Context, msg Message) error {
-	client, err := m.connect(ctx)
+	client, err := m.connect(ctx, senderDomain(msg.From))
 	if err != nil {
 		return fmt.Errorf("conectar ao servidor de email %s: %w", m.addr, err)
 	}
 	defer func() { _ = client.Close() }()
-	if err := m.secure(client); err != nil {
-		return fmt.Errorf("proteger a conexao com %s: %w", m.addr, err)
-	}
 	if err := deliver(client, msg); err != nil {
 		return fmt.Errorf("entregar a %q por %s: %w", msg.To, m.addr, err)
 	}
@@ -76,7 +73,25 @@ func (m *SMTPMailer) Send(ctx context.Context, msg Message) error {
 	return nil
 }
 
-func (m *SMTPMailer) connect(ctx context.Context) (*smtp.Client, error) {
+// connect abre a sessão SMTP já apresentada com heloName, protegida e autenticada.
+func (m *SMTPMailer) connect(ctx context.Context, heloName string) (*smtp.Client, error) {
+	conn, err := m.dial(ctx)
+	if err != nil {
+		return nil, err
+	}
+	client, err := smtp.NewClient(conn, m.host)
+	if err != nil {
+		_ = conn.Close()
+		return nil, err
+	}
+	if err := m.greet(client, heloName); err != nil {
+		_ = client.Close()
+		return nil, err
+	}
+	return client, nil
+}
+
+func (m *SMTPMailer) dial(ctx context.Context) (net.Conn, error) {
 	ctx, cancel := context.WithTimeout(ctx, smtpTimeout)
 	defer cancel()
 	conn, err := (&net.Dialer{}).DialContext(ctx, "tcp", m.addr)
@@ -87,12 +102,19 @@ func (m *SMTPMailer) connect(ctx context.Context) (*smtp.Client, error) {
 	if m.implicitTLS {
 		conn = tls.Client(conn, &tls.Config{ServerName: m.host, MinVersion: tls.VersionTLS12})
 	}
-	client, err := smtp.NewClient(conn, m.host)
-	if err != nil {
-		_ = conn.Close()
-		return nil, err
+	return conn, nil
+}
+
+// greet se apresenta com o domínio do remetente: o padrão do net/smtp é EHLO
+// localhost, que os filtros de spam punem.
+func (m *SMTPMailer) greet(client *smtp.Client, heloName string) error {
+	if err := client.Hello(heloName); err != nil {
+		return err
 	}
-	return client, nil
+	if err := m.secure(client); err != nil {
+		return fmt.Errorf("proteger a conexao com %s: %w", m.addr, err)
+	}
+	return nil
 }
 
 // secure sobe para TLS quando a conexão começou em texto e o servidor oferece, e
@@ -126,7 +148,7 @@ func deliver(client *smtp.Client, msg Message) error {
 	return w.Close()
 }
 
-// senderDomain é o domínio do remetente, que assina o Message-ID.
+// senderDomain é o domínio do remetente, que assina o Message-ID e o EHLO.
 func senderDomain(from string) string {
 	return from[strings.LastIndex(from, "@")+1:]
 }
