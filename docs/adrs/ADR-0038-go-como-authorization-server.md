@@ -15,9 +15,12 @@ API o token que recebeu do agente: o token precisa ter o servidor MCP como desti
 
 O servidor Go vira authorization server OAuth 2.1, com authorization code e PKCE. Clientes se
 registram por Client ID Metadata Document, com Dynamic Client Registration como alternativa
-para quem só suporta esse. O token que o agente recebe tem o servidor MCP como audiência, e o
-servidor MCP o troca por um token curto da API pela troca de token da RFC 8693. O servidor MCP
-não valida o token por conta própria: se a troca falhar, responde 401. Na versão stdio, um
+para quem só suporta esse. A Autorização carrega escopos (ler notas, escrever notas,
+administrar) que a conta vê ao consentir. O token que o agente recebe é opaco, guardado como
+hash, e tem o servidor MCP como audiência. O servidor MCP o troca por um token curto da API pela
+troca de token da RFC 8693, autenticando-se com um segredo próprio, e o token da API leva os
+escopos que a API aplica por rota. O servidor MCP não valida o token por conta própria: se a
+troca falhar, responde 401. Na versão stdio, um
 comando de login faz o mesmo fluxo no navegador com redirect para loopback e guarda o refresh
 token na máquina
 
@@ -37,6 +40,8 @@ token na máquina
 ## Consequências
 
 - A Autorização vira estado do servidor Go, que a conta concede e pode revogar
+- Um token do agente vazado não chega à API sem o segredo do servidor MCP
+- Tokens de login continuam sem escopo e com o acesso inteiro da conta
 - Outros clientes, como o plugin, passam a poder usar o mesmo fluxo em vez de email e senha
 - Cada requisição ao servidor MCP sem token trocado em cache custa uma chamada de troca ao Go
 - O DCR abre registro anônimo de clientes, que precisa de limite de taxa e expiração
