@@ -32,8 +32,14 @@ type SearchDocument struct {
 	Text   string
 }
 
-// IndexFunc transforma um lote de mudanças nas linhas derivadas dele.
-type IndexFunc func(Changeset) []SearchDocument
+// IndexedNote são as linhas derivadas de uma nota do lote.
+type IndexedNote struct {
+	Search SearchDocument
+}
+
+// IndexFunc transforma um lote de mudanças nas linhas derivadas dele, uma
+// IndexedNote por nota.
+type IndexFunc func(Changeset) []IndexedNote
 
 // VaultIndexer reserva o próximo cofre pendente, entrega o lote dele a index e grava
 // o resultado. Devolve false quando não há cofre pendente livre.
@@ -41,13 +47,14 @@ type VaultIndexer interface {
 	IndexNextVault(ctx context.Context, index IndexFunc) (bool, error)
 }
 
-// Index devolve um documento de busca por nota mudada, com o título e o conteúdo dela.
-func Index(cs Changeset) []SearchDocument {
-	docs := make([]SearchDocument, 0, len(cs.Notes))
+// Index devolve as linhas derivadas de cada nota mudada: o documento de busca com o
+// título e o conteúdo dela.
+func Index(cs Changeset) []IndexedNote {
+	indexed := make([]IndexedNote, 0, len(cs.Notes))
 	for _, note := range cs.Notes {
-		docs = append(docs, SearchDocument{NoteID: note.NoteID, Title: Title(note.Path), Text: note.Content})
+		indexed = append(indexed, IndexedNote{Search: SearchDocument{NoteID: note.NoteID, Title: Title(note.Path), Text: note.Content}})
 	}
-	return docs
+	return indexed
 }
 
 // Title é o título da nota: o último segmento do caminho, sem a extensão .md em

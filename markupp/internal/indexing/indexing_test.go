@@ -20,9 +20,9 @@ func TestIndex_NotasMudadas_DevolveUmDocumentoPorNotaComTituloEConteudo(t *testi
 
 	docs := indexing.Index(cs)
 
-	assert.Equal(t, []indexing.SearchDocument{
-		{NoteID: "n1", Title: "Reuniao Semanal", Text: "reuniao com o cliente"},
-		{NoteID: "n2", Title: "decisao", Text: "decisao tecnica"},
+	assert.Equal(t, []indexing.IndexedNote{
+		{Search: indexing.SearchDocument{NoteID: "n1", Title: "Reuniao Semanal", Text: "reuniao com o cliente"}},
+		{Search: indexing.SearchDocument{NoteID: "n2", Title: "decisao", Text: "decisao tecnica"}},
 	}, docs)
 }
 
@@ -56,7 +56,7 @@ type fakeVaultQueue struct {
 	errs     []error
 	pending  []bool
 	calls    int
-	produced []indexing.SearchDocument
+	produced []indexing.IndexedNote
 }
 
 func (f *fakeVaultQueue) IndexNextVault(_ context.Context, index indexing.IndexFunc) (bool, error) {
@@ -100,7 +100,7 @@ func TestRunLoop_EsvaziaOsCofresPendentesAntesDeEsperar(t *testing.T) {
 	assert.ErrorIs(t, err, context.Canceled)
 	assert.Equal(t, 4, queue.calls, "dois cofres, uma rodada vazia, espera, outra rodada vazia")
 	assert.Equal(t, 2, espera.calls)
-	assert.Equal(t, []indexing.SearchDocument{{NoteID: "n1", Title: "oi", Text: "oi"}}, queue.produced,
+	assert.Equal(t, []indexing.IndexedNote{{Search: indexing.SearchDocument{NoteID: "n1", Title: "oi", Text: "oi"}}}, queue.produced,
 		"o laço indexa com indexing.Index")
 }
 

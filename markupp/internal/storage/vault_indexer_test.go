@@ -40,7 +40,7 @@ type lotesRecebidos struct {
 	lotes []indexing.Changeset
 }
 
-func (l *lotesRecebidos) index(cs indexing.Changeset) []indexing.SearchDocument {
+func (l *lotesRecebidos) index(cs indexing.Changeset) []indexing.IndexedNote {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	l.lotes = append(l.lotes, cs)
@@ -163,7 +163,7 @@ func reservaPresa(t *testing.T, idx *storage.PostgresVaultIndexer) (reservado in
 	t.Cleanup(libera)
 	fim := make(chan error, 1)
 	go func() {
-		_, err := idx.IndexNextVault(context.Background(), func(cs indexing.Changeset) []indexing.SearchDocument {
+		_, err := idx.IndexNextVault(context.Background(), func(cs indexing.Changeset) []indexing.IndexedNote {
 			cofre <- cs
 			<-solta
 			return indexing.Index(cs)

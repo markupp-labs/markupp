@@ -72,34 +72,34 @@ func toChangeset(vault gen.ReservePendingVaultRow, rows []gen.ListPendingNotesRo
 
 // saveDocuments grava os documentos num comando só. Exige um documento por nota do
 // lote: nota sem documento ficaria pendente para sempre.
-func (x *PostgresVaultIndexer) saveDocuments(ctx context.Context, q *gen.Queries, cs indexing.Changeset, docs []indexing.SearchDocument) error {
-	if err := matchBatch(cs, docs); err != nil {
+func (x *PostgresVaultIndexer) saveDocuments(ctx context.Context, q *gen.Queries, cs indexing.Changeset, indexed []indexing.IndexedNote) error {
+	if err := matchBatch(cs, indexed); err != nil {
 		return err
 	}
-	params := gen.SaveSearchDocumentsParams{SearchConfig: x.searchConfig, NoteIds: make([]string, 0, len(docs)),
-		Titles: make([]string, 0, len(docs)), Bodies: make([]string, 0, len(docs))}
-	for _, doc := range docs {
-		params.NoteIds = append(params.NoteIds, doc.NoteID)
-		params.Titles = append(params.Titles, doc.Title)
-		params.Bodies = append(params.Bodies, doc.Text)
+	params := gen.SaveSearchDocumentsParams{SearchConfig: x.searchConfig, NoteIds: make([]string, 0, len(indexed)),
+		Titles: make([]string, 0, len(indexed)), Bodies: make([]string, 0, len(indexed))}
+	for _, note := range indexed {
+		params.NoteIds = append(params.NoteIds, note.Search.NoteID)
+		params.Titles = append(params.Titles, note.Search.Title)
+		params.Bodies = append(params.Bodies, note.Search.Text)
 	}
 	if err := q.SaveSearchDocuments(ctx, params); err != nil {
-		return fmt.Errorf("gravar indice das %d notas do cofre %q: %w", len(docs), cs.VaultID, err)
+		return fmt.Errorf("gravar indice das %d notas do cofre %q: %w", len(indexed), cs.VaultID, err)
 	}
 	return nil
 }
 
-// matchBatch confere que docs tem exatamente um documento por nota de cs.
-func matchBatch(cs indexing.Changeset, docs []indexing.SearchDocument) error {
+// matchBatch confere que indexed tem exatamente um documento por nota de cs.
+func matchBatch(cs indexing.Changeset, indexed []indexing.IndexedNote) error {
 	missing := make(map[string]bool, len(cs.Notes))
 	for _, note := range cs.Notes {
 		missing[note.NoteID] = true
 	}
-	for _, doc := range docs {
-		if !missing[doc.NoteID] {
-			return fmt.Errorf("documento da nota %q fora do lote do cofre %q, esperado um documento por nota pendente", doc.NoteID, cs.VaultID)
+	for _, note := range indexed {
+		if !missing[note.Search.NoteID] {
+			return fmt.Errorf("documento da nota %q fora do lote do cofre %q, esperado um documento por nota pendente", note.Search.NoteID, cs.VaultID)
 		}
-		delete(missing, doc.NoteID)
+		delete(missing, note.Search.NoteID)
 	}
 	for id := range missing {
 		return fmt.Errorf("nota %q do cofre %q sem documento, esperado um documento por nota pendente", id, cs.VaultID)

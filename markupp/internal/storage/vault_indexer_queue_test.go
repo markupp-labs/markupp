@@ -46,7 +46,7 @@ func TestVaultIndexer_NotaApagadaDuranteAIndexacao_GravaAsOutras(t *testing.T) {
 	storagetest.SaveNote(ctx, t, repo, notaComConteudo("n1", "va", "um"))
 	storagetest.SaveNote(ctx, t, repo, notaComConteudo("n2", "va", "dois"))
 
-	found, err := novoIndexador(t, db, "simple").IndexNextVault(context.Background(), func(cs indexing.Changeset) []indexing.SearchDocument {
+	found, err := novoIndexador(t, db, "simple").IndexNextVault(context.Background(), func(cs indexing.Changeset) []indexing.IndexedNote {
 		require.NoError(t, repo.Delete(ctx, "n1"))
 		return indexing.Index(cs)
 	})
@@ -64,7 +64,7 @@ func TestVaultIndexer_EscritaDuranteAIndexacao_DeixaANotaPendente(t *testing.T) 
 	storagetest.SaveNote(ctx, t, repo, notaComConteudo("n1", "va", "antigo"))
 	idx := novoIndexador(t, db, "simple")
 
-	_, err := idx.IndexNextVault(context.Background(), func(cs indexing.Changeset) []indexing.SearchDocument {
+	_, err := idx.IndexNextVault(context.Background(), func(cs indexing.Changeset) []indexing.IndexedNote {
 		_, err := repo.Update(ctx, "n1", "n1.md", "novo", time.Now(), time.Time{}, true)
 		require.NoError(t, err)
 		return indexing.Index(cs)
@@ -116,8 +116,8 @@ func TestVaultIndexer_DocumentoDeNotaForaDoLote_RetornaErroComOID(t *testing.T) 
 	ctx := storagetest.SeedMember(t, db, identity.Actor{UserID: "ua", TenantID: "t1", Role: "member"}, "va")
 	storagetest.SaveNote(ctx, t, storage.NewPostgresNotesRepository(db, "simple"), notaComConteudo("n1", "va", "um"))
 
-	_, err := novoIndexador(t, db, "simple").IndexNextVault(context.Background(), func(indexing.Changeset) []indexing.SearchDocument {
-		return []indexing.SearchDocument{{NoteID: "n1", Text: "um"}, {NoteID: "intrusa", Text: "x"}}
+	_, err := novoIndexador(t, db, "simple").IndexNextVault(context.Background(), func(indexing.Changeset) []indexing.IndexedNote {
+		return []indexing.IndexedNote{{Search: indexing.SearchDocument{NoteID: "n1", Text: "um"}}, {Search: indexing.SearchDocument{NoteID: "intrusa", Text: "x"}}}
 	})
 
 	require.Error(t, err)
@@ -129,7 +129,7 @@ func TestVaultIndexer_IndexFuncOmiteNota_RetornaErroComOID(t *testing.T) {
 	ctx := storagetest.SeedMember(t, db, identity.Actor{UserID: "ua", TenantID: "t1", Role: "member"}, "va")
 	storagetest.SaveNote(ctx, t, storage.NewPostgresNotesRepository(db, "simple"), notaComConteudo("n1", "va", "um"))
 
-	_, err := novoIndexador(t, db, "simple").IndexNextVault(context.Background(), func(indexing.Changeset) []indexing.SearchDocument {
+	_, err := novoIndexador(t, db, "simple").IndexNextVault(context.Background(), func(indexing.Changeset) []indexing.IndexedNote {
 		return nil
 	})
 
