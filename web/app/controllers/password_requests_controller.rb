@@ -3,6 +3,8 @@ class PasswordRequestsController < ApplicationController
   layout "public"
 
   skip_before_action :require_login
+  rate_limit to: 5, within: 1.minute, only: :create,
+             with: -> { redirect_to new_password_request_path, alert: t("rate_limited") }
 
   def new
   end

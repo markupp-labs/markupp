@@ -1,4 +1,5 @@
 en:
+  rate_limited: "Too many attempts. Wait a minute."
   activemodel:
     errors:
       models:
