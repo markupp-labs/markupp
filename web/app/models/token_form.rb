@@ -22,5 +22,7 @@ class TokenForm
     errors.add(:base, :account_exists) && nil
   rescue MarkuppApi::LocalAuthDisabled
     errors.add(:base, :local_auth_disabled) && nil
+  rescue MarkuppApi::EmailUnavailable
+    errors.add(:base, :email_unavailable) && nil
   end
 end

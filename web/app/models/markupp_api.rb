@@ -23,6 +23,8 @@ class MarkuppApi
   # Levantada pelo painel, não pela API: a renovação do token falhou.
   class SessionExpired < Error; end
   class InvalidRequest < Error; end
+  # O servidor não tem SMTP: os fluxos de email da conta ficam desligados.
+  class EmailUnavailable < Error; end
   class Forbidden < Error; end
   class LocalAuthDisabled < Forbidden; end
   # viewer tentou escrever nota.
@@ -41,7 +43,8 @@ class MarkuppApi
     "read_only" => ReadOnly, "tenant_forbidden" => TenantUnavailable, "no_tenant" => TenantUnavailable, "tenant_required" => TenantUnavailable,
     "invite_not_found" => InviteNotFound, "already_member" => AlreadyMember,
     "member_not_found" => MemberNotFound, "last_owner" => LastOwner, "role_above_own" => RoleAboveOwn,
-    "invalid_invite" => InvalidToken, "invalid_token" => InvalidToken, "already_exists" => AccountExists
+    "invalid_invite" => InvalidToken, "invalid_token" => InvalidToken, "already_exists" => AccountExists,
+    "email_unavailable" => EmailUnavailable
   }.freeze
   # Para o status cujo corpo não traz código conhecido.
   ERRORS_BY_STATUS = { "401" => Unauthorized, "403" => Forbidden, "404" => NotFound }.freeze

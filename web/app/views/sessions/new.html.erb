@@ -21,7 +21,8 @@
   <%= form.button t(".submit"), class: "btn self-start", data: { turbo_submits_with: t(".submitting") } %>
 <% end %>
 
-<p class="mt-3 text-ink-muted">
+<p class="mt-3"><%= link_to t(".forgot_password"), new_password_request_path, class: "text-accent underline" %></p>
+<p class="mt-1 text-ink-muted">
   <%= t(".invite_hint") %>
   <%= link_to t(".accept_invite"), new_invite_acceptance_path, class: "text-accent underline" %>
 </p>

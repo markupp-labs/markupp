@@ -21,6 +21,7 @@ en:
             base:
               account_exists: "This email already has an account. Log in and accept the invite from your tenant list."
               local_auth_disabled: "Password login is disabled on this server."
+              email_unavailable: "This server can't send email, so password reset is off. Ask an administrator."
   layouts:
     application:
       notes: "Notes"
@@ -48,6 +49,7 @@ en:
       submitting: "Logging in"
       invite_hint: "Got an invite token?"
       accept_invite: "Accept it here."
+      forgot_password: "Forgot password?"
     create:
       rate_limited: "Too many attempts. Wait a few minutes."
     destroy:
@@ -78,6 +80,28 @@ en:
       submit: "Create account"
       submitting: "Creating account"
       log_in: "Log in"
+  password_requests:
+    new:
+      title: "Reset your password"
+      submit: "Send"
+      submitting: "Sending"
+      token_hint: "Got the token already?"
+      have_token: "I have a token"
+      log_in: "Back to log in"
+    create:
+      sent: "If an account uses that email, a reset token is on its way."
+      invalid_email: "Enter the email of your account."
+      email_unavailable: "This server can't send email. Ask an administrator to reset your password."
+      local_auth_disabled: "Password login is disabled on this server."
+  password_resets:
+    new:
+      title: "Choose a new password"
+      hint: "Paste the token from the email and choose a new password."
+      password: "New password"
+      submit: "Reset password"
+      submitting: "Resetting"
+    create:
+      changed: "Password changed. Log in with the new one."
   my_invites:
     invite:
       join: "Join %{tenant} as %{role}"

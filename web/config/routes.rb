@@ -8,6 +8,8 @@ Rails.application.routes.draw do
   resource :theme, only: :update
   resource :session, only: [ :new, :create, :destroy ]
   resource :invite_acceptance, only: [ :new, :create ]
+  resource :password_request, only: [ :new, :create ]
+  resource :password_reset, only: [ :new, :create ]
   resources :tenants, only: [ :index, :create ]
   resource :current_tenant, only: :update
   resources :my_invites, only: [ :index, :update, :destroy ]
