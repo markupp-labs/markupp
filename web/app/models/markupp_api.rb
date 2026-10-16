@@ -15,6 +15,8 @@ class MarkuppApi
   class InvalidRequest < Error; end
   class Forbidden < Error; end
   class LocalAuthDisabled < Forbidden; end
+  # viewer tentou escrever nota.
+  class ReadOnly < Forbidden; end
   # O tenant do cabeçalho não serve: não é da conta (403), a conta não tem tenant (403) ou faltou escolher (400).
   class TenantUnavailable < Forbidden; end
 
@@ -24,7 +26,7 @@ class MarkuppApi
     "conflict" => Conflict, "duplicate_path" => DuplicatePath, "invalid_path" => InvalidPath, "invalid_id" => NotFound,
     "unauthorized" => Unauthorized, "invalid_refresh_token" => RefreshRejected, "invalid_credentials" => InvalidCredentials,
     "invalid_request" => InvalidRequest, "forbidden" => Forbidden, "local_auth_disabled" => LocalAuthDisabled,
-    "tenant_forbidden" => TenantUnavailable, "no_tenant" => TenantUnavailable, "tenant_required" => TenantUnavailable
+    "read_only" => ReadOnly, "tenant_forbidden" => TenantUnavailable, "no_tenant" => TenantUnavailable, "tenant_required" => TenantUnavailable
   }.freeze
   # Para o status cujo corpo não traz código conhecido.
   ERRORS_BY_STATUS = { "401" => Unauthorized, "403" => Forbidden, "404" => NotFound }.freeze

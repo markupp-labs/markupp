@@ -13,6 +13,7 @@ class ApplicationController < ActionController::Base
 
   # O Rails procura do último para o primeiro: os específicos vêm depois do genérico.
   rescue_from MarkuppApi::Error, with: :render_unreachable
+  rescue_from MarkuppApi::Forbidden, with: :refuse_forbidden
   rescue_from MarkuppApi::TenantUnavailable, with: :forget_tenant
   rescue_from MarkuppApi::Unauthorized, MarkuppApi::SessionExpired, with: :expire_session
 
@@ -44,6 +45,13 @@ class ApplicationController < ActionController::Base
       Rails.logger.info({ event: "markupp_tenant_unavailable", tenant_id: credential.tenant_id, message: error.message }.to_json)
       credential.tenant_id = nil
       redirect_to tenants_path, alert: t("markupp_api.errors.tenant_unavailable")
+    end
+
+    # Papel mudou no meio (a página ainda oferecia a ação): volta à página de onde veio, que recarrega com o papel novo.
+    def refuse_forbidden(error)
+      Rails.logger.info({ event: "markupp_api_forbidden", message: error.message }.to_json)
+      reason = error.class.name.demodulize.underscore
+      redirect_back_or_to root_path, alert: t("markupp_api.errors.#{reason}", default: :"markupp_api.errors.forbidden")
     end
 
     # 401 que sobra depois da renovação também encerra: a sessão não vale mais.

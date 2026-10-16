@@ -26,6 +26,7 @@ en:
   markupp_api:
     errors:
       session_expired: "Your session expired. Log in again."
+      forbidden: "Your role in this tenant can't do that."
       read_only: "Your role in this tenant is viewer, it can only read notes."
       tenant_unavailable: "You no longer have access to that tenant."
   sessions:
