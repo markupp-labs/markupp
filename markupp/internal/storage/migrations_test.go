@@ -88,7 +88,7 @@ func TestMigracao00013_NaoReescreveATabelaDeNotas(t *testing.T) {
 	const arquivoDasNotas = "SELECT pg_relation_filenode('notes')::bigint"
 	antes := countRows(t, pool, arquivoDasNotas)
 
-	_, err = provider.Up(context.Background())
+	_, err = provider.UpTo(context.Background(), 13)
 
 	require.NoError(t, err)
 	assert.Equal(t, antes, countRows(t, pool, arquivoDasNotas),
