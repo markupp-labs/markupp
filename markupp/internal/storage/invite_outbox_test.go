@@ -316,3 +316,19 @@ func TestInviteOutbox_QuemConvidouSaiuDoTenant_NaoTrocaOHash(t *testing.T) {
 	assert.False(t, e.found, "o aceite recusaria o token: convite sem quem o sustente nao vai por email")
 	assert.Equal(t, antes, hashDoConvite(t, db, "c1"))
 }
+
+func TestRLS_PapelDaAplicacao_NaoEnfileiraConviteDeOutroTenant(t *testing.T) {
+	db := setupTestDB(t)
+	conviteComEmail(t, db, "c1", "nova@markupp.dev")
+	storagetest.SeedMember(t, db, identity.Actor{UserID: "admin-b", TenantID: "t2", Role: "admin"}, "vb")
+	ctx := context.Background()
+	tx, err := db.Begin(ctx)
+	require.NoError(t, err)
+	defer func() { _ = tx.Rollback(ctx) }()
+	_, err = tx.Exec(ctx, "SELECT set_config('markupp.tenant_id', 't2', true), set_config('role', 'markupp_app', true)")
+	require.NoError(t, err)
+
+	_, err = tx.Exec(ctx, "INSERT INTO notifications (invite_id) VALUES ('c1')")
+
+	requirePermissaoNegada(t, err, "tenant t2 enfileirando o convite do t1")
+}
