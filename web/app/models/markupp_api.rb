@@ -59,6 +59,9 @@ class MarkuppApi
     @tenant_id = tenant_id
   end
 
+  # Caminho da API a partir dos segmentos, cada um codificado: id com barra ou espaço não vira outra rota.
+  def self.path(*segments) = segments.map { "/#{ERB::Util.url_encode(it)}" }.join
+
   def get(path) = request(Net::HTTP::Get, path)
 
   def put(path, body) = request(Net::HTTP::Put, path, body)

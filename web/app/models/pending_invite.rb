@@ -7,7 +7,7 @@ PendingInvite = Data.define(:id, :tenant_id, :tenant_name, :role, :expires_at) d
 
   def self.decline(api, id) = api.post(answer_path(id, "decline"), {})
 
-  def self.answer_path(id, answer) = "/me/invites/#{ERB::Util.url_encode(id)}/#{answer}"
+  def self.answer_path(id, answer) = MarkuppApi.path("me", "invites", id, answer)
 
   def self.from_api(attributes)
     fields = attributes.symbolize_keys.slice(*members)

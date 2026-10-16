@@ -10,7 +10,7 @@ TenantInvite = Data.define(:id, :email, :role, :expires_at, :accepted_at) do
   end
 
   # Método de classe porque o controller só tem o id; convite já respondido levanta InviteNotFound.
-  def self.revoke(api, id) = api.delete("/users/invites/#{ERB::Util.url_encode(id)}")
+  def self.revoke(api, id) = api.delete(MarkuppApi.path("users", "invites", id))
 
   def self.from_api(attributes)
     fields = attributes.symbolize_keys

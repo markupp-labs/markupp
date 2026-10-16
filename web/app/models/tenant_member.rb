@@ -7,7 +7,7 @@ TenantMember = Data.define(:id, :email, :role, :joined_at) do
 
   def self.remove(api, id) = api.delete(member_path(id))
 
-  def self.member_path(id) = "/users/#{ERB::Util.url_encode(id)}"
+  def self.member_path(id) = MarkuppApi.path("users", id)
 
   def self.from_api(attributes)
     fields = attributes.symbolize_keys.slice(*members)

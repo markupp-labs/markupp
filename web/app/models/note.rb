@@ -28,7 +28,7 @@ class Note
   def self.from_api(attributes) = new(attributes.slice(*attribute_names))
   private_class_method :from_api
 
-  def self.api_path(id) = "/notes/#{ERB::Util.url_encode(id)}"
+  def self.api_path(id) = MarkuppApi.path("notes", id)
 
   def self.untitled(folder) = new(path: [ folder.presence, "#{untitled_name}.md" ].compact.join("/"), content: "")
 
