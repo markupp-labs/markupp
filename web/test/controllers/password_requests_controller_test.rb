@@ -83,6 +83,15 @@ class PasswordRequestsControllerTest < ActionDispatch::IntegrationTest
     assert_select "main", text: /Can't reach the markupp server/
   end
 
+  test "create stops after five requests in a minute" do
+    api = use_fake_api
+    6.times { request_reset(FakeMarkuppAccounts::DEFAULT_EMAIL) }
+
+    assert_redirected_to new_password_request_path
+    assert_equal "Too many attempts. Wait a minute.", flash[:alert]
+    assert_equal 5, api.sent_tokens.size
+  end
+
   private
     def request_reset(email)
       post password_request_path, params: { password_request: { email: } }

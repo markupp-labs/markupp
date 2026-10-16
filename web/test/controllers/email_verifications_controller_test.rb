@@ -51,4 +51,14 @@ class EmailVerificationsControllerTest < ActionDispatch::IntegrationTest
     assert_response :bad_gateway
     assert_select "main", text: /Can't reach the markupp server/
   end
+
+  test "create stops after five requests in a minute" do
+    api = use_fake_api(accounts: [ UNVERIFIED ], tenants: [])
+    sign_in_as(UNVERIFIED[:email])
+    6.times { post email_verification_path }
+
+    assert_redirected_to account_path
+    assert_equal "Too many attempts. Wait a minute.", flash[:alert]
+    assert_equal 5, api.sent_tokens.size
+  end
 end
