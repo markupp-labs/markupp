@@ -3,6 +3,7 @@ package oauth_test
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -149,4 +150,20 @@ func TestStartAuthorization_FalhaAoCriar_DevolveErroEmbrulhado(t *testing.T) {
 	_, err := newTestService(repo).StartAuthorization(context.Background(), validAuthorizeParams())
 
 	requireNotProtocolError(t, err, repo.createErr)
+}
+
+func TestStartAuthorization_ValorRecebidoNaDescricao_FicaNoConjuntoDaRFC6749(t *testing.T) {
+	repo := testRepositoryWithClient()
+	params := validAuthorizeParams()
+	params.Scope = "notas:leitura \"ação\\\x01" + strings.Repeat("x", 200)
+
+	_, err := newTestService(repo).StartAuthorization(context.Background(), params)
+
+	var protocolErr *oauth.ProtocolError
+	require.True(t, errors.As(err, &protocolErr))
+	assert.Contains(t, protocolErr.Description, "'?a??o??xxx")
+	assert.Less(t, len(protocolErr.Description), 250)
+	for _, c := range protocolErr.Description {
+		assert.True(t, c >= 0x20 && c <= 0x7e && c != '"' && c != '\\', "caractere %q fora do error_description permitido", c)
+	}
 }
