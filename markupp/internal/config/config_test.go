@@ -391,3 +391,36 @@ func TestLoad_ConvitePorEmailInvalido_RetornaErroComOValor(t *testing.T) {
 	assert.Contains(t, err.Error(), "MARKUPP_INVITE_BY_EMAIL")
 	assert.Contains(t, err.Error(), "talvez")
 }
+
+func TestLoad_SemPainel_DeixaOLinkDesligado(t *testing.T) {
+	env := fakeEnv{"MARKUPP_DATABASE_URL": urlDeTeste, "MARKUPP_AUTH_SECRET": segredoDeTesteValido}
+
+	cfg, err := config.Load(env.Lookup)
+
+	require.NoError(t, err)
+	assert.Empty(t, cfg.PanelURL, "sem painel o email leva so o token")
+}
+
+func TestLoad_PainelHTTPouHTTPS_LeAURL(t *testing.T) {
+	for _, valor := range []string{"https://painel.markupp.dev", "http://localhost:3999/", "https://markupp.dev/painel"} {
+		env := fakeEnv{"MARKUPP_DATABASE_URL": urlDeTeste, "MARKUPP_AUTH_SECRET": segredoDeTesteValido, "MARKUPP_PANEL_URL": valor}
+
+		cfg, err := config.Load(env.Lookup)
+
+		require.NoError(t, err, valor)
+		assert.Equal(t, valor, cfg.PanelURL)
+	}
+}
+
+func TestLoad_PainelForaDoFormato_RetornaErroComOValor(t *testing.T) {
+	for _, valor := range []string{"painel.markupp.dev", "/painel", "ftp://painel.markupp.dev", "https://", "https://painel.markupp.dev/?x=1"} {
+		env := fakeEnv{"MARKUPP_DATABASE_URL": urlDeTeste, "MARKUPP_AUTH_SECRET": segredoDeTesteValido, "MARKUPP_PANEL_URL": valor}
+
+		_, err := config.Load(env.Lookup)
+
+		require.Error(t, err, valor)
+		assert.Contains(t, err.Error(), "MARKUPP_PANEL_URL", valor)
+		assert.Contains(t, err.Error(), valor)
+		assert.Contains(t, err.Error(), "https://")
+	}
+}

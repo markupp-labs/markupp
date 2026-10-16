@@ -3,6 +3,7 @@ package notify_test
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -23,7 +24,7 @@ func detalhesDeTeste() notify.TokenDetails {
 }
 
 func TestInviteMessage_LevaOTokenEQuemConvidou(t *testing.T) {
-	msg := notify.InviteMessage(detalhesDeTeste(), "tok-123", "convites@markupp.dev")
+	msg := notify.InviteMessage(detalhesDeTeste(), "tok-123", "convites@markupp.dev", "")
 
 	assert.Equal(t, "convites@markupp.dev", msg.From)
 	assert.Equal(t, "nova@markupp.dev", msg.To)
@@ -100,7 +101,7 @@ func reservaPendente(attempt int) *fakeOutbox {
 func tokenFixo() (string, error) { return "tok-novo", nil }
 
 func novoDeliverer(fila notify.Outbox, mailer notify.Mailer) *notify.Deliverer {
-	return notify.NewDeliverer(fila, mailer, "convites@markupp.dev", tokenFixo, func() time.Time { return agora })
+	return notify.NewDeliverer(fila, mailer, "convites@markupp.dev", "", tokenFixo, func() time.Time { return agora })
 }
 
 func TestDeliverNext_ConvitePendente_GravaOHashEEnviaOToken(t *testing.T) {
@@ -188,7 +189,7 @@ func detalhesDaConta() notify.TokenDetails {
 }
 
 func TestVerifyEmailMessage_LevaOTokenEAValidadeComHora(t *testing.T) {
-	msg := notify.VerifyEmailMessage(detalhesDaConta(), "tok-v", "contas@markupp.dev")
+	msg := notify.VerifyEmailMessage(detalhesDaConta(), "tok-v", "contas@markupp.dev", "")
 
 	assert.Equal(t, "nova@markupp.dev", msg.To)
 	assert.Equal(t, "contas@markupp.dev", msg.From)
@@ -198,14 +199,14 @@ func TestVerifyEmailMessage_LevaOTokenEAValidadeComHora(t *testing.T) {
 }
 
 func TestVerifyEmailMessage_AvisaQuemNaoSeCadastrou(t *testing.T) {
-	msg := notify.VerifyEmailMessage(detalhesDaConta(), "tok-v", "contas@markupp.dev")
+	msg := notify.VerifyEmailMessage(detalhesDaConta(), "tok-v", "contas@markupp.dev", "")
 
 	assert.Contains(t, msg.Body, "ignore", "quem nao criou a conta sabe que nao deve usar o token")
 	assert.Contains(t, msg.Body, "logado", "o token so vale na conta que pediu")
 }
 
 func TestResetPasswordMessage_LevaOTokenEAvisaQuemNaoPediu(t *testing.T) {
-	msg := notify.ResetPasswordMessage(detalhesDaConta(), "tok-r", "contas@markupp.dev")
+	msg := notify.ResetPasswordMessage(detalhesDaConta(), "tok-r", "contas@markupp.dev", "")
 
 	assert.Contains(t, msg.Subject, "senha")
 	assert.Contains(t, msg.Body, "tok-r")
@@ -241,4 +242,51 @@ func TestDeliverNext_TipoDesconhecido_DesisteSemEnviar(t *testing.T) {
 	assert.Empty(t, mailer.sent)
 	assert.True(t, fila.recorded["n1"].GiveUp)
 	assert.Contains(t, fila.recorded["n1"].Error, "sms")
+}
+
+func TestInviteMessage_SemPainel_FicaComoAntes(t *testing.T) {
+	msg := notify.InviteMessage(detalhesDeTeste(), "tok-123", "convites@markupp.dev", "")
+
+	esperado := "admin@markupp.dev convidou você para Equipe A no markupp, com o papel member.\n\n" +
+		"Token do convite:\ntok-123\n\n" +
+		"Use o token no cliente do markupp para aceitar. O convite vale até 2026-10-22 12:00 UTC.\n"
+	assert.Equal(t, esperado, msg.Body)
+}
+
+type montaMensagem func(notify.TokenDetails, string, string, string) notify.Message
+
+func TestMensagens_SemPainel_NaoLevamLink(t *testing.T) {
+	for _, monta := range []montaMensagem{notify.InviteMessage, notify.VerifyEmailMessage, notify.ResetPasswordMessage} {
+		msg := monta(detalhesDeTeste(), "tok", "contas@markupp.dev", "")
+
+		assert.NotContains(t, msg.Body, "http")
+	}
+}
+
+func TestMensagens_ComPainel_LevamOLinkAntesDoToken(t *testing.T) {
+	caminhos := map[string]montaMensagem{
+		"/invite_acceptance/new":  notify.InviteMessage,
+		"/email_confirmation/new": notify.VerifyEmailMessage,
+		"/password_reset/new":     notify.ResetPasswordMessage,
+	}
+	for caminho, monta := range caminhos {
+		for _, base := range []string{"https://painel.markupp.dev", "https://painel.markupp.dev/"} {
+			msg := monta(detalhesDeTeste(), "a+b/c=", "contas@markupp.dev", base)
+
+			link := "https://painel.markupp.dev" + caminho + "?token=a%2Bb%2Fc%3D"
+			require.Contains(t, msg.Body, link, base)
+			assert.Less(t, strings.Index(msg.Body, link), strings.Index(msg.Body, ":\na+b/c=\n"), "o token em texto vem logo abaixo do link")
+		}
+	}
+}
+
+func TestDeliverNext_ComPainel_EnviaOLinkDoConvite(t *testing.T) {
+	mailer := &fakeMailer{}
+	deliverer := notify.NewDeliverer(reservaPendente(1), mailer, "convites@markupp.dev", "http://localhost:3999", tokenFixo, func() time.Time { return agora })
+
+	_, err := deliverer.DeliverNext(context.Background())
+
+	require.NoError(t, err)
+	require.Len(t, mailer.sent, 1)
+	assert.Contains(t, mailer.sent[0].Body, "http://localhost:3999/invite_acceptance/new?token=tok-novo")
 }
