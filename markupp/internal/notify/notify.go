@@ -24,10 +24,22 @@ type Mailer interface {
 	Send(ctx context.Context, msg Message) error
 }
 
+// Kind é o tipo da notificação, que decide a mensagem e o pedido cujo token ela leva.
+type Kind string
+
+// Tipos de notificação.
+const (
+	KindInvite            Kind = "invite"
+	KindEmailVerification Kind = "email_verification"
+	KindPasswordReset     Kind = "password_reset"
+)
+
 // Pending é a notificação reservada para entrega.
 type Pending struct {
 	NotificationID string
-	InviteID       string
+	Kind           Kind
+	// TargetID é o convite, a verificação ou a troca de senha da notificação.
+	TargetID string
 	// Attempts conta as entregas que já falharam.
 	Attempts int
 }
@@ -71,6 +83,29 @@ func InviteMessage(d TokenDetails, token, from string) Message {
 		"Use o token no cliente do markupp para aceitar. O convite vale até %s.\n",
 		d.InviterEmail, d.TenantName, d.Role, token, d.ExpiresAt.UTC().Format("2006-01-02"))
 	return Message{From: from, To: d.Email, Subject: "Convite para " + d.TenantName + " no markupp", Body: body}
+}
+
+// VerifyEmailMessage monta o email que leva o token de verificação da conta.
+func VerifyEmailMessage(d TokenDetails, token, from string) Message {
+	body := fmt.Sprintf("Confirme que este email é seu para receber convites no markupp.\n\n"+
+		"Token de verificação:\n%s\n\n"+
+		"Use o token no cliente do markupp. Ele vale até %s.\n",
+		token, untilMinute(d.ExpiresAt))
+	return Message{From: from, To: d.Email, Subject: "Confirme seu email no markupp", Body: body}
+}
+
+// ResetPasswordMessage monta o email que leva o token de troca de senha.
+func ResetPasswordMessage(d TokenDetails, token, from string) Message {
+	body := fmt.Sprintf("Alguém pediu a troca da senha da sua conta no markupp.\n\n"+
+		"Token de troca de senha:\n%s\n\n"+
+		"Use o token no cliente do markupp. Ele vale até %s.\n\n"+
+		"Se não foi você, ignore este email: a senha só muda com o token.\n",
+		token, untilMinute(d.ExpiresAt))
+	return Message{From: from, To: d.Email, Subject: "Troca de senha no markupp", Body: body}
+}
+
+func untilMinute(t time.Time) string {
+	return t.UTC().Format("2006-01-02 15:04") + " UTC"
 }
 
 const (
