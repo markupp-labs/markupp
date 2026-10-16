@@ -98,13 +98,18 @@ func (l *AccountRateLimiter) allowRequest(r *http.Request) (time.Duration, bool)
 }
 
 // clientIP usa só a conexão: sem proxy confiável configurado, X-Forwarded-For é do
-// cliente e não serve de chave.
+// cliente e não serve de chave. IPv6 vira o prefixo /64, que costuma ser de um só
+// cliente, senão cada endereço dele teria limite próprio.
 func clientIP(r *http.Request) string {
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
-		return r.RemoteAddr
+		host = r.RemoteAddr
 	}
-	return host
+	ip := net.ParseIP(host)
+	if ip == nil || ip.To4() != nil {
+		return host
+	}
+	return ip.Mask(net.CIDRMask(64, 128)).String() + "/64"
 }
 
 // peekEmail lê o email do corpo JSON e devolve o corpo inteiro para o handler.
