@@ -19,7 +19,7 @@ INSERT INTO notifications (invite_id) VALUES ($1)
 
 // A API só enfileira, no tenant do ator. O serviço de notificação trabalha no papel
 // markupp_notifier, que enxerga a fila de todos os tenants e nenhum convite.
-func (q *Queries) EnqueueInviteNotification(ctx context.Context, inviteID string) error {
+func (q *Queries) EnqueueInviteNotification(ctx context.Context, inviteID pgtype.Text) error {
 	_, err := q.db.Exec(ctx, enqueueInviteNotification, inviteID)
 	return err
 }
@@ -75,6 +75,42 @@ func (q *Queries) MarkNotificationSent(ctx context.Context, id string) error {
 	return err
 }
 
+const reissueEmailVerification = `-- name: ReissueEmailVerification :many
+SELECT account_email::text, token_expires_at::timestamptz
+FROM markupp_reissue_email_verification($1::text, $2::text, $3::interval)
+`
+
+type ReissueEmailVerificationParams struct {
+	ID        string
+	TokenHash string
+	Ttl       pgtype.Interval
+}
+
+type ReissueEmailVerificationRow struct {
+	AccountEmail   string
+	TokenExpiresAt time.Time
+}
+
+func (q *Queries) ReissueEmailVerification(ctx context.Context, arg ReissueEmailVerificationParams) ([]ReissueEmailVerificationRow, error) {
+	rows, err := q.db.Query(ctx, reissueEmailVerification, arg.ID, arg.TokenHash, arg.Ttl)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ReissueEmailVerificationRow
+	for rows.Next() {
+		var i ReissueEmailVerificationRow
+		if err := rows.Scan(&i.AccountEmail, &i.TokenExpiresAt); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const reissueInviteToken = `-- name: ReissueInviteToken :many
 SELECT invite_email::text, invite_role::text, tenant_name::text, inviter_email::text,
        invite_expires_at::timestamptz
@@ -120,8 +156,49 @@ func (q *Queries) ReissueInviteToken(ctx context.Context, arg ReissueInviteToken
 	return items, nil
 }
 
+const reissuePasswordReset = `-- name: ReissuePasswordReset :many
+SELECT account_email::text, token_expires_at::timestamptz
+FROM markupp_reissue_password_reset($1::text, $2::text, $3::interval)
+`
+
+type ReissuePasswordResetParams struct {
+	ID        string
+	TokenHash string
+	Ttl       pgtype.Interval
+}
+
+type ReissuePasswordResetRow struct {
+	AccountEmail   string
+	TokenExpiresAt time.Time
+}
+
+func (q *Queries) ReissuePasswordReset(ctx context.Context, arg ReissuePasswordResetParams) ([]ReissuePasswordResetRow, error) {
+	rows, err := q.db.Query(ctx, reissuePasswordReset, arg.ID, arg.TokenHash, arg.Ttl)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ReissuePasswordResetRow
+	for rows.Next() {
+		var i ReissuePasswordResetRow
+		if err := rows.Scan(&i.AccountEmail, &i.TokenExpiresAt); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const reserveDueNotification = `-- name: ReserveDueNotification :one
-SELECT id, invite_id, attempts FROM notifications
+SELECT id, attempts,
+       (CASE WHEN invite_id IS NOT NULL THEN 'invite'
+             WHEN email_verification_id IS NOT NULL THEN 'email_verification'
+             ELSE 'password_reset' END)::text AS kind,
+       COALESCE(invite_id, email_verification_id, password_reset_id)::text AS target_id
+FROM notifications
 WHERE sent_at IS NULL AND failed_at IS NULL AND next_attempt_at <= now()
 ORDER BY next_attempt_at, id
 LIMIT 1
@@ -130,13 +207,19 @@ FOR UPDATE SKIP LOCKED
 
 type ReserveDueNotificationRow struct {
 	ID       string
-	InviteID string
 	Attempts int32
+	Kind     string
+	TargetID string
 }
 
 func (q *Queries) ReserveDueNotification(ctx context.Context) (ReserveDueNotificationRow, error) {
 	row := q.db.QueryRow(ctx, reserveDueNotification)
 	var i ReserveDueNotificationRow
-	err := row.Scan(&i.ID, &i.InviteID, &i.Attempts)
+	err := row.Scan(
+		&i.ID,
+		&i.Attempts,
+		&i.Kind,
+		&i.TargetID,
+	)
 	return i, err
 }

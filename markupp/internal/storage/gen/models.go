@@ -20,6 +20,15 @@ type AuditEvent struct {
 	OccurredAt time.Time
 }
 
+type EmailVerification struct {
+	ID        string
+	UserID    string
+	TokenHash pgtype.Text
+	ExpiresAt pgtype.Timestamptz
+	UsedAt    pgtype.Timestamptz
+	CreatedAt time.Time
+}
+
 type Note struct {
 	ID        string
 	Path      string
@@ -40,15 +49,26 @@ type NoteSearchIndex struct {
 }
 
 type Notification struct {
-	ID            string
-	TenantID      string
-	InviteID      string
-	Attempts      int32
-	NextAttemptAt time.Time
-	SentAt        pgtype.Timestamptz
-	FailedAt      pgtype.Timestamptz
-	LastError     pgtype.Text
-	CreatedAt     time.Time
+	ID                  string
+	TenantID            pgtype.Text
+	InviteID            pgtype.Text
+	Attempts            int32
+	NextAttemptAt       time.Time
+	SentAt              pgtype.Timestamptz
+	FailedAt            pgtype.Timestamptz
+	LastError           pgtype.Text
+	CreatedAt           time.Time
+	EmailVerificationID pgtype.Text
+	PasswordResetID     pgtype.Text
+}
+
+type PasswordReset struct {
+	ID        string
+	UserID    string
+	TokenHash pgtype.Text
+	ExpiresAt pgtype.Timestamptz
+	UsedAt    pgtype.Timestamptz
+	CreatedAt time.Time
 }
 
 type RefreshToken struct {

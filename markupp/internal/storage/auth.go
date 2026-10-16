@@ -59,9 +59,20 @@ func commitAccount(ctx context.Context, qtx *gen.Queries, p auth.CreateAccountPa
 		return err
 	}
 	if userCount > 0 {
-		return qtx.CreateAuditEvent(ctx, accountEvent(p.AuditEventID, "", "auth.register", p.User))
+		return registerMember(ctx, qtx, p)
 	}
 	return bootstrapFirstTenant(ctx, qtx, p)
+}
+
+// registerMember audita o auto-registro e, com SMTP, enfileira a verificação do email,
+// que essa conta não provou.
+func registerMember(ctx context.Context, qtx *gen.Queries, p auth.CreateAccountParams) error {
+	if p.SendVerification {
+		if err := enqueueEmailVerification(ctx, qtx, p.User.ID, p.User.CreatedAt); err != nil {
+			return err
+		}
+	}
+	return qtx.CreateAuditEvent(ctx, accountEvent(p.AuditEventID, "", "auth.register", p.User))
 }
 
 // bootstrapFirstTenant entrega ao primeiro usuário da instância o tenant inicial, como

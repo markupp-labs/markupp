@@ -21,6 +21,7 @@ var arquivosForaDoAtor = map[string]bool{
 	"postgres.go":      true,
 	"vault_indexer.go": true,
 	"invite_outbox.go": true,
+	"account_email.go": true,
 }
 
 var acessoDiretoAoPool = regexp.MustCompile(`gen\.New\(|\binTx\(|pgx\.BeginFunc|pool\.\w+\(`)
