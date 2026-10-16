@@ -130,31 +130,31 @@ func readOAuthResources(lookup LookupFunc) ([]OAuthResource, error) {
 	return resources, nil
 }
 
-// appendUniqueResource recusa a segunda ocorrência da mesma URL, comparada como texto.
+// appendUniqueResource recusa a segunda ocorrência da mesma URL, comparada como
+// texto. O erro cita as posições dos pares, nunca a URL, que pode ser um segredo.
 func appendUniqueResource(resources []OAuthResource, resource OAuthResource) ([]OAuthResource, error) {
-	for _, existing := range resources {
+	for i, existing := range resources {
 		if existing.URL == resource.URL {
-			return nil, fmt.Errorf("MARKUPP_OAUTH_RESOURCES repete %q, esperado cada url uma vez so", resource.URL)
+			return nil, fmt.Errorf("MARKUPP_OAUTH_RESOURCES com o par %d repetindo a url do par %d, esperado cada url uma vez so",
+				len(resources)+1, i+1)
 		}
 	}
 	return append(resources, resource), nil
 }
 
-// parseOAuthResource separa url e segredo no primeiro "=". O erro cita a posição do
-// par, e nunca o par, que pode ser só o segredo.
+// parseOAuthResource separa url e segredo no primeiro "=". Os erros citam a posição
+// do par, nunca o par nem o lado esquerdo, que pode ser o segredo (par invertido ou
+// segredo base64 com "=" e sem url).
 func parseOAuthResource(entry string, position int) (OAuthResource, error) {
-	rawURL, secret, found := strings.Cut(entry, "=")
-	if !found || strings.TrimSpace(rawURL) == "" || strings.TrimSpace(secret) == "" {
-		return OAuthResource{}, fmt.Errorf("MARKUPP_OAUTH_RESOURCES com o par %d incompleto, esperado url=segredo", position)
+	rawURL, secret, _ := strings.Cut(entry, "=")
+	rawURL, secret = strings.TrimSpace(rawURL), strings.TrimSpace(secret)
+	if rawURL == "" || secret == "" || checkOAuthURL(rawURL, resourceURLRule) != nil {
+		return OAuthResource{}, fmt.Errorf("MARKUPP_OAUTH_RESOURCES com o par %d fora do formato, esperado %s",
+			position, resourceURLRule.expected)
 	}
-	checked := strings.TrimSpace(rawURL)
-	if err := checkOAuthURL(checked, resourceURLRule); err != nil {
-		return OAuthResource{}, err
-	}
-	secret = strings.TrimSpace(secret)
 	if len(secret) < minOAuthResourceSecretBytes {
-		return OAuthResource{}, fmt.Errorf("MARKUPP_OAUTH_RESOURCES com segredo de %d bytes para %q, esperado ao menos %d bytes aleatorios",
-			len(secret), checked, minOAuthResourceSecretBytes)
+		return OAuthResource{}, fmt.Errorf("MARKUPP_OAUTH_RESOURCES com segredo de %d bytes no par %d, esperado ao menos %d bytes aleatorios",
+			len(secret), position, minOAuthResourceSecretBytes)
 	}
-	return OAuthResource{URL: checked, Secret: secret}, nil
+	return OAuthResource{URL: rawURL, Secret: secret}, nil
 }
