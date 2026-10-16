@@ -54,6 +54,16 @@ class PanelCredentialTest < ActiveSupport::TestCase
     assert_equal({ access_token: "access-1", tenant_id: "tenant-1", call: "GET /notes" }, @fake_api.received_credentials.sole)
   end
 
+  test "tenant_id= keeps the active tenant for the next calls" do
+    @credential.sign_in(@fake_api.post("/auth/login", email: FakeMarkuppAccounts::DEFAULT_EMAIL, password: FakeMarkuppAccounts::DEFAULT_PASSWORD))
+
+    @credential.tenant_id = "tenant-1"
+    @credential.bearer_api.get("/notes")
+
+    assert_equal "tenant-1", @session[:tenant_id]
+    assert_equal "tenant-1", @fake_api.received_credentials.sole[:tenant_id]
+  end
+
   test "public_api goes without token nor tenant" do
     @session[:tenant_id] = "tenant-1"
 

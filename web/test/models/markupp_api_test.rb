@@ -171,6 +171,17 @@ class MarkuppApiTest < ActiveSupport::TestCase
     assert_operator MarkuppApi::LocalAuthDisabled, :<, MarkuppApi::Forbidden
   end
 
+  test "maps the tenant error codes of the notes routes to TenantUnavailable" do
+    [ [ "403 Forbidden", "tenant_forbidden" ], [ "403 Forbidden", "no_tenant" ], [ "400 Bad Request", "tenant_required" ] ].each do |status, code|
+      error = assert_answer_raises(MarkuppApi::TenantUnavailable, %({"error":"#{code}","message":"recusado"}), status) { it.get("/notes") }
+      assert_match code, error.message
+    end
+  end
+
+  test "tenant unavailable is a kind of Forbidden" do
+    assert_operator MarkuppApi::TenantUnavailable, :<, MarkuppApi::Forbidden
+  end
+
   private
     def assert_post_raises(error_class, body, status:)
       assert_answer_raises(error_class, body, status) { it.post("/auth/login", email: "a", password: "b") }

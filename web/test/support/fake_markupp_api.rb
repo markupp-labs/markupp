@@ -5,10 +5,13 @@ class FakeMarkuppApi
   delegate :put_requests, :post_requests, to: :@notes
   delegate :expire_access_tokens!, :revoke_refresh_tokens!, :refresh_token_valid?, to: :@accounts
   delegate :disable_local_auth!, to: :@auth
+  delegate :assign_role!, :deny_notes_in!, to: :@tenants
 
-  def initialize(notes: [], unreachable: false, conflict: false, accounts: FakeMarkuppAccounts::DEFAULT_ACCOUNTS)
+  def initialize(notes: [], unreachable: false, conflict: false, accounts: FakeMarkuppAccounts::DEFAULT_ACCOUNTS,
+                 tenants: FakeMarkuppTenants::DEFAULT_TENANTS)
     @accounts = FakeMarkuppAccounts.new(accounts)
     @auth = FakeMarkuppAuth.new(@accounts)
+    @tenants = FakeMarkuppTenants.new(tenants)
     @notes = FakeMarkuppNotes.new(notes:, conflict:)
     @unreachable = unreachable
     @received_credentials = []
@@ -42,7 +45,15 @@ class FakeMarkuppApi
       raise MarkuppApi::Error, "fake API unreachable on #{call}" if @unreachable
 
       @received_credentials << @credentials.merge(call:) if @credentials
-      fake_for(call, path).public_send(verb.downcase, path, *body, account: authenticate(call))
+      account = authenticate(call)
+      fake_for(call, path).public_send(verb.downcase, path, *body, account:, role: notes_role(path, account, call))
+    end
+
+    # Só as notas agem num tenant; chamada de confiança, sem conta, não tem papel.
+    def notes_role(path, account, call)
+      return unless account && path.start_with?("/notes")
+
+      @tenants.role_for(account, @credentials[:tenant_id], call)
     end
 
     def authenticate(call)
@@ -54,7 +65,8 @@ class FakeMarkuppApi
     def fake_for(call, path)
       return @notes if path.start_with?("/notes")
       return @auth if path.start_with?("/auth/")
+      return @tenants if path.start_with?("/me/") || path == "/tenants"
 
-      raise ArgumentError, "fake API has no route for #{call}, expected /notes or /auth"
+      raise ArgumentError, "fake API has no route for #{call}, expected /notes, /auth, /me or /tenants"
     end
 end
