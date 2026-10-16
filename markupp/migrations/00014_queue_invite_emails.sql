@@ -15,6 +15,8 @@ CREATE TABLE notifications (
 );
 CREATE INDEX notifications_due_idx ON notifications (next_attempt_at)
     WHERE sent_at IS NULL AND failed_at IS NULL;
+-- O cascade da revogação acha a notificação do convite pelo índice.
+CREATE INDEX notifications_invite_idx ON notifications (invite_id);
 
 -- Papel do serviço de notificação: lê e marca a fila de todos os tenants, e só toca no
 -- convite pela função que troca o hash.
@@ -39,14 +41,17 @@ $$;
 -- +goose StatementEnd
 
 -- Troca o hash do convite ainda pendente e devolve o que o email mostra. Convite
--- respondido, revogado ou vencido não devolve linha.
+-- respondido, revogado ou vencido não devolve linha. Convite travado por outra
+-- transação está sendo aceito, recusado ou revogado: é pulado, senão a revogação, que
+-- trava o convite e depois a notificação, e a entrega, que trava na ordem inversa,
+-- entram em deadlock.
 -- +goose StatementBegin
 CREATE FUNCTION markupp_reissue_invite_token(p_invite_id TEXT, p_token_hash TEXT)
 RETURNS TABLE (invite_email TEXT, invite_role TEXT, tenant_name TEXT, inviter_email TEXT, invite_expires_at TIMESTAMPTZ)
 LANGUAGE sql VOLATILE SECURITY DEFINER SET search_path = pg_catalog, public, pg_temp AS $$
     UPDATE user_invites i SET token_hash = p_token_hash
     FROM tenants t, users u
-    WHERE i.id = p_invite_id
+    WHERE i.id = (SELECT id FROM user_invites WHERE id = p_invite_id FOR UPDATE SKIP LOCKED)
       AND i.accepted_at IS NULL AND i.declined_at IS NULL AND i.expires_at > now()
       AND t.id = i.tenant_id AND u.id = i.invited_by
     RETURNING i.email, i.role, t.name, u.email, i.expires_at
