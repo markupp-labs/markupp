@@ -280,8 +280,8 @@ func TestInviteOutbox_RevogarDuranteAEntrega_NaoEntraEmDeadlock(t *testing.T) {
 	reservada, libera := make(chan struct{}), make(chan struct{})
 	entrega := make(chan error, 1)
 	go func() {
-		_, err := storage.NewPostgresInviteOutbox(db).DeliverNextDue(context.Background(),
-			func(ctx context.Context, p notify.PendingInvite, reissue notify.ReissueFunc) (notify.Outcome, error) {
+		_, err := storage.NewPostgresNotificationOutbox(db).DeliverNextDue(context.Background(),
+			func(ctx context.Context, p notify.Pending, reissue notify.ReissueFunc) (notify.Outcome, error) {
 				close(reservada)
 				<-libera
 				_, found, err := reissue(ctx, "hash-da-entrega")
