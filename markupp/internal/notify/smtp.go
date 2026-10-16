@@ -15,12 +15,14 @@ import (
 
 const smtpTimeout = 30 * time.Second
 
-// SMTPMailer entrega por SMTP. smtp:// sobe para TLS com STARTTLS quando o servidor
-// oferece, e smtps:// abre a conexão já em TLS.
+// SMTPMailer entrega por SMTP. smtp:// exige subir para TLS com STARTTLS, e smtps://
+// abre a conexão já em TLS. Texto puro só com smtp://...?tls=none, para servidor
+// local como o Mailpit do compose: o email leva o token do convite.
 type SMTPMailer struct {
 	addr        string
 	host        string
 	implicitTLS bool
+	plaintext   bool
 	auth        smtp.Auth
 }
 
@@ -31,13 +33,30 @@ func NewSMTPMailer(rawURL string) (*SMTPMailer, error) {
 	if err != nil || (parsed.Scheme != "smtp" && parsed.Scheme != "smtps") || parsed.Hostname() == "" {
 		return nil, fmt.Errorf("servidor de email %q, esperado smtp://usuario:senha@host:porta ou smtps://", redacted(rawURL))
 	}
-	m := &SMTPMailer{host: parsed.Hostname(), implicitTLS: parsed.Scheme == "smtps"}
+	plaintext, err := allowsPlaintext(parsed)
+	if err != nil {
+		return nil, err
+	}
+	m := &SMTPMailer{host: parsed.Hostname(), implicitTLS: parsed.Scheme == "smtps", plaintext: plaintext}
 	m.addr = net.JoinHostPort(m.host, portOrDefault(parsed))
 	if user := parsed.User; user != nil {
 		password, _ := user.Password()
 		m.auth = smtp.PlainAuth("", user.Username(), password, m.host)
 	}
 	return m, nil
+}
+
+// allowsPlaintext lê o parâmetro tls da URL: ausente exige TLS, e none, só com
+// smtp://, libera texto puro.
+func allowsPlaintext(u *url.URL) (bool, error) {
+	mode := u.Query().Get("tls")
+	if mode == "" {
+		return false, nil
+	}
+	if mode == "none" && u.Scheme == "smtp" {
+		return true, nil
+	}
+	return false, fmt.Errorf("servidor de email %q com tls=%q, esperado sem o parametro ou tls=none com smtp://", u.Redacted(), mode)
 }
 
 func portOrDefault(u *url.URL) string {
@@ -117,18 +136,28 @@ func (m *SMTPMailer) greet(client *smtp.Client, heloName string) error {
 	return nil
 }
 
-// secure sobe para TLS quando a conexão começou em texto e o servidor oferece, e
-// autentica. O net/smtp recusa senha em texto puro fora de localhost.
+// secure sobe para TLS e autentica. O net/smtp recusa senha em texto puro fora de
+// localhost.
 func (m *SMTPMailer) secure(client *smtp.Client) error {
-	if ok, _ := client.Extension("STARTTLS"); ok && !m.implicitTLS {
-		if err := client.StartTLS(&tls.Config{ServerName: m.host, MinVersion: tls.VersionTLS12}); err != nil {
-			return err
-		}
+	if err := m.startTLS(client); err != nil {
+		return err
 	}
 	if m.auth == nil {
 		return nil
 	}
 	return client.Auth(m.auth)
+}
+
+// startTLS sobe a conexão em texto para TLS. Servidor sem STARTTLS é recusado, e
+// assim quem remove o anúncio do caminho não lê o token.
+func (m *SMTPMailer) startTLS(client *smtp.Client) error {
+	if m.implicitTLS || m.plaintext {
+		return nil
+	}
+	if ok, _ := client.Extension("STARTTLS"); !ok {
+		return fmt.Errorf("servidor sem STARTTLS, esperado STARTTLS, smtps:// ou smtp://...?tls=none para servidor local")
+	}
+	return client.StartTLS(&tls.Config{ServerName: m.host, MinVersion: tls.VersionTLS12})
 }
 
 func deliver(client *smtp.Client, msg Message) error {
