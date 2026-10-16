@@ -281,14 +281,14 @@ func TestLoad_SMTPComRemetente_LeOsDois(t *testing.T) {
 	env := fakeEnv{
 		"MARKUPP_DATABASE_URL": urlDeTeste,
 		"MARKUPP_AUTH_SECRET":  segredoDeTesteValido,
-		"MARKUPP_SMTP_URL":     "smtps://markupp:senha@smtp.markupp.dev:465",
+		"MARKUPP_SMTP_URL":     "smtps://markupp@smtp.markupp.dev:465",
 		"MARKUPP_SMTP_FROM":    "convites@markupp.dev",
 	}
 
 	cfg, err := config.Load(env.Lookup)
 
 	require.NoError(t, err)
-	assert.Equal(t, "smtps://markupp:senha@smtp.markupp.dev:465", cfg.SMTPURL)
+	assert.Equal(t, "smtps://markupp@smtp.markupp.dev:465", cfg.SMTPURL)
 	assert.Equal(t, "convites@markupp.dev", cfg.SMTPFrom)
 }
 
