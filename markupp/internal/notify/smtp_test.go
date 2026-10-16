@@ -121,3 +121,13 @@ func TestSMTPMailer_Send_MandaMessageIDNoDominioDoRemetente(t *testing.T) {
 
 	assert.Regexp(t, `(?m)^Message-ID: <[^@\s]+@markupp\.dev>\r?$`, servidor.lido(&servidor.mensagem), "o Gmail recusa mensagem sem Message-ID")
 }
+
+func TestSMTPMailer_Send_ApresentaODominioDoRemetenteNoEHLO(t *testing.T) {
+	servidor := &servidorSMTPFalso{}
+	mailer, err := notify.NewSMTPMailer(servidor.sobe(t))
+	require.NoError(t, err)
+
+	require.NoError(t, mailer.Send(context.Background(), notify.InviteMessage(detalhesDeTeste(), "tok", "convites@markupp.dev")))
+
+	assert.Equal(t, "EHLO markupp.dev", servidor.lido(&servidor.ehlo), "EHLO localhost pesa contra o email nos filtros de spam")
+}
