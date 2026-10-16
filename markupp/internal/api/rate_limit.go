@@ -120,7 +120,9 @@ func peekEmail(r *http.Request) string {
 	var body struct {
 		Email string `json:"email"`
 	}
-	if json.Unmarshal(head, &body) != nil {
+	// Decoder como o decodeJSONBody: lê o primeiro valor e ignora o resto, senão
+	// lixo depois do JSON esconde o email do limite e o handler loga mesmo assim.
+	if json.NewDecoder(bytes.NewReader(head)).Decode(&body) != nil {
 		return ""
 	}
 	return strings.ToLower(strings.TrimSpace(body.Email))
