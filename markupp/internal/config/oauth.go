@@ -17,10 +17,9 @@ const minOAuthResourceSecretBytes = 32
 
 // oauthURLRule descreve o que cada variável de URL do OAuth aceita além do esquema.
 type oauthURLRule struct {
-	key        string
-	expected   string
-	allowPath  bool
-	allowQuery bool
+	key       string
+	expected  string
+	allowPath bool
 }
 
 var (
@@ -28,8 +27,8 @@ var (
 		expected: "https://host[:porta] sem caminho, query nem fragmento (http so em localhost, 127.0.0.1 ou [::1])"}
 	panelURLRule = oauthURLRule{key: "MARKUPP_PANEL_URL", allowPath: true,
 		expected: "https://host[:porta][/caminho] sem query nem fragmento (http so em localhost, 127.0.0.1 ou [::1])"}
-	resourceURLRule = oauthURLRule{key: "MARKUPP_OAUTH_RESOURCES", allowPath: true, allowQuery: true,
-		expected: "url=segredo com url https:// sem fragmento (http so em localhost, 127.0.0.1 ou [::1])"}
+	resourceURLRule = oauthURLRule{key: "MARKUPP_OAUTH_RESOURCES", allowPath: true,
+		expected: "url=segredo com url https://host[:porta][/caminho] sem query nem fragmento (http so em localhost, 127.0.0.1 ou [::1])"}
 )
 
 // OAuthEnabled diz se o authorization server está ligado, o que MARKUPP_PUBLIC_URL decide.
@@ -83,13 +82,13 @@ func checkOAuthURL(raw string, rule oauthURLRule) error {
 	return nil
 }
 
-// oauthURLAllowed confere esquema, host, ausência de userinfo e, conforme a regra,
-// caminho e query.
+// oauthURLAllowed confere esquema, host e ausência de userinfo e de query e, conforme
+// a regra, o caminho.
 func oauthURLAllowed(parsed *url.URL, rule oauthURLRule) bool {
 	if !oauthSchemeAllowed(parsed) || parsed.User != nil {
 		return false
 	}
-	if !rule.allowQuery && (parsed.RawQuery != "" || parsed.ForceQuery) {
+	if parsed.RawQuery != "" || parsed.ForceQuery {
 		return false
 	}
 	return rule.allowPath || parsed.Path == "" || parsed.Path == "/"
