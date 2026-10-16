@@ -20,7 +20,7 @@
       <% end %>
       <%= yield :sidebar %>
 
-      <footer class="mt-4 border-t border-line pt-3">
+      <footer class="mt-4 border-t border-line pt-3 first:mt-0 first:border-t-0 first:pt-0">
         <p class="truncate px-2 py-1 text-ink-muted"><%= credential.account_email %></p>
         <div class="mt-1 flex flex-wrap gap-2">
           <%= button_to t(".log_out"), session_path, method: :delete, class: "btn text-ink-muted" %>
