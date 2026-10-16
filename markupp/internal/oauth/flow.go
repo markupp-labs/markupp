@@ -1,6 +1,9 @@
 package oauth
 
-import "fmt"
+import (
+	"fmt"
+	"net/url"
+)
 
 // AuthorizeParams são os parâmetros de GET /oauth/authorize.
 type AuthorizeParams struct {
@@ -55,4 +58,29 @@ type ProtocolError struct {
 
 func (e *ProtocolError) Error() string {
 	return fmt.Sprintf("oauth %s: %s", e.Code, e.Description)
+}
+
+// RedirectLocation monta o redirect que devolve o erro ao cliente, com o issuer no
+// parâmetro iss (RFC 9207).
+func (e *ProtocolError) RedirectLocation(issuer string) string {
+	return AppendQuery(e.RedirectURI, map[string]string{
+		"error": e.Code, "error_description": e.Description, "state": e.State, "iss": issuer,
+	})
+}
+
+// AppendQuery acrescenta à URI os parâmetros não vazios, preservando a query que ela já
+// tem. Uma URI ilegível volta sem mudança, porque só chega aqui depois de validada.
+func AppendQuery(uri string, params map[string]string) string {
+	parsed, err := url.Parse(uri)
+	if err != nil {
+		return uri
+	}
+	query := parsed.Query()
+	for key, value := range params {
+		if value != "" {
+			query.Set(key, value)
+		}
+	}
+	parsed.RawQuery = query.Encode()
+	return parsed.String()
 }
