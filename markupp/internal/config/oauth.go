@@ -44,14 +44,13 @@ func loadOAuthSettings(lookup LookupFunc, cfg *Config) error {
 	if public == "" {
 		return nil
 	}
-	if err := checkOAuthURL(public, publicURLRule); err != nil {
-		return err
-	}
-	cfg.PublicURL = strings.TrimRight(public, "/")
-	if err := loadPanelURL(lookup, cfg); err != nil {
-		return err
-	}
 	var err error
+	if cfg.PublicURL, err = normalizeOAuthURL(public, publicURLRule); err != nil {
+		return err
+	}
+	if err = loadPanelURL(lookup, cfg); err != nil {
+		return err
+	}
 	cfg.OAuthResources, err = readOAuthResources(lookup)
 	return err
 }
@@ -63,23 +62,25 @@ func loadPanelURL(lookup LookupFunc, cfg *Config) error {
 	if panel == "" {
 		return fmt.Errorf("MARKUPP_PANEL_URL vazia, esperado %s quando MARKUPP_PUBLIC_URL existe", panelURLRule.expected)
 	}
-	if err := checkOAuthURL(panel, panelURLRule); err != nil {
-		return err
-	}
-	cfg.PanelURL = strings.TrimRight(panel, "/")
-	return nil
+	var err error
+	cfg.PanelURL, err = normalizeOAuthURL(panel, panelURLRule)
+	return err
 }
 
-// checkOAuthURL valida raw pela regra. A mensagem de erro mostra a URL com a senha mascarada.
-func checkOAuthURL(raw string, rule oauthURLRule) error {
+// normalizeOAuthURL valida raw pela regra e a devolve com esquema e host em
+// minúsculas e sem barra final. O erro mostra a URL com a senha mascarada.
+func normalizeOAuthURL(raw string, rule oauthURLRule) (string, error) {
 	parsed, err := url.Parse(raw)
 	if err != nil {
-		return fmt.Errorf("%s=%q, esperado %s", rule.key, "valor ilegivel", rule.expected)
+		return "", fmt.Errorf("%s=%q, esperado %s", rule.key, "valor ilegivel", rule.expected)
 	}
 	if !oauthURLAllowed(parsed, rule) || strings.Contains(raw, "#") {
-		return fmt.Errorf("%s=%q, esperado %s", rule.key, parsed.Redacted(), rule.expected)
+		return "", fmt.Errorf("%s=%q, esperado %s", rule.key, parsed.Redacted(), rule.expected)
 	}
-	return nil
+	parsed.Host = strings.ToLower(parsed.Host)
+	parsed.Path = strings.TrimRight(parsed.Path, "/")
+	parsed.RawPath = strings.TrimRight(parsed.RawPath, "/")
+	return parsed.String(), nil
 }
 
 // oauthURLAllowed confere esquema, host e ausência de userinfo e de query e, conforme
@@ -97,7 +98,7 @@ func oauthURLAllowed(parsed *url.URL, rule oauthURLRule) bool {
 // oauthSchemeAllowed aceita https com host e http só em loopback. Hostname
 // descarta a porta, então https://:8443 cai como host vazio.
 func oauthSchemeAllowed(parsed *url.URL) bool {
-	host := parsed.Hostname()
+	host := strings.ToLower(parsed.Hostname())
 	if host == "" {
 		return false
 	}
@@ -130,8 +131,8 @@ func readOAuthResources(lookup LookupFunc) ([]OAuthResource, error) {
 	return resources, nil
 }
 
-// appendUniqueResource recusa a segunda ocorrência da mesma URL, comparada como
-// texto. O erro cita as posições dos pares, nunca a URL, que pode ser um segredo.
+// appendUniqueResource recusa a segunda ocorrência da mesma URL, comparada já
+// normalizada. O erro cita as posições dos pares, nunca a URL, que pode ser um segredo.
 func appendUniqueResource(resources []OAuthResource, resource OAuthResource) ([]OAuthResource, error) {
 	for i, existing := range resources {
 		if existing.URL == resource.URL {
@@ -148,7 +149,8 @@ func appendUniqueResource(resources []OAuthResource, resource OAuthResource) ([]
 func parseOAuthResource(entry string, position int) (OAuthResource, error) {
 	rawURL, secret, _ := strings.Cut(entry, "=")
 	rawURL, secret = strings.TrimSpace(rawURL), strings.TrimSpace(secret)
-	if rawURL == "" || secret == "" || checkOAuthURL(rawURL, resourceURLRule) != nil {
+	normalized, err := normalizeOAuthURL(rawURL, resourceURLRule)
+	if rawURL == "" || secret == "" || err != nil {
 		return OAuthResource{}, fmt.Errorf("MARKUPP_OAUTH_RESOURCES com o par %d fora do formato, esperado %s",
 			position, resourceURLRule.expected)
 	}
@@ -156,5 +158,5 @@ func parseOAuthResource(entry string, position int) (OAuthResource, error) {
 		return OAuthResource{}, fmt.Errorf("MARKUPP_OAUTH_RESOURCES com segredo de %d bytes no par %d, esperado ao menos %d bytes aleatorios",
 			len(secret), position, minOAuthResourceSecretBytes)
 	}
-	return OAuthResource{URL: rawURL, Secret: secret}, nil
+	return OAuthResource{URL: normalized, Secret: secret}, nil
 }
