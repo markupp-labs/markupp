@@ -95,15 +95,16 @@ func oauthURLAllowed(parsed *url.URL, rule oauthURLRule) bool {
 	return rule.allowPath || parsed.Path == "" || parsed.Path == "/"
 }
 
-// oauthSchemeAllowed aceita https com host e http só em loopback.
+// oauthSchemeAllowed aceita https com host e http só em loopback. Hostname
+// descarta a porta, então https://:8443 cai como host vazio.
 func oauthSchemeAllowed(parsed *url.URL) bool {
-	if parsed.Host == "" {
+	host := parsed.Hostname()
+	if host == "" {
 		return false
 	}
 	if parsed.Scheme == "https" {
 		return true
 	}
-	host := parsed.Hostname()
 	return parsed.Scheme == "http" && (host == "localhost" || host == "127.0.0.1" || host == "::1")
 }
 
