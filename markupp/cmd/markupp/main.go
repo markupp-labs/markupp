@@ -92,7 +92,7 @@ func indexVaults(ctx context.Context, logger *slog.Logger, cfg config.Config, cm
 	}
 	if cmd == indexLoopCommand {
 		logger.Info("indexador em laco", "intervalo", cfg.IndexInterval.String())
-		return indexing.RunLoop(ctx, indexer, indexing.WaitInterval(cfg.IndexInterval))
+		return indexing.RunLoop(ctx, indexer, indexing.WaitInterval(cfg.IndexInterval), logger)
 	}
 	found, err := indexer.IndexNextVault(ctx, indexing.Index)
 	logger.Info("indexacao de um cofre", "cofre_pendente", found)

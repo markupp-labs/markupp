@@ -30,8 +30,8 @@ services:
       postgres:
         condition: service_healthy
 
-  # O self-host não tem KEDA: o mesmo indexador roda em laço (ADR-0032). O laço termina
-  # no primeiro erro do banco, e o compose o sobe de novo.
+  # O self-host não tem KEDA: o mesmo indexador roda em laço (ADR-0032). Erro do banco
+  # vai para o log e o laço tenta de novo no próximo intervalo.
   indexer:
     <<: *servidor
     command: ["go", "run", "-C", "/src", "./cmd/markupp", "index-loop"]

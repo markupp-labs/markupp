@@ -5,7 +5,7 @@ package indexing
 
 import (
 	"context"
-	"fmt"
+	"log/slog"
 	"time"
 )
 
@@ -15,7 +15,7 @@ type NoteChange struct {
 	Content string
 }
 
-// Changeset são as notas de um cofre que mudaram desde o cursor de revisão dele.
+// Changeset são as notas de um cofre que mudaram desde a última indexação dele.
 type Changeset struct {
 	TenantID string
 	VaultID  string
@@ -47,14 +47,15 @@ func Index(cs Changeset) []SearchDocument {
 }
 
 // RunLoop indexa os cofres pendentes até não sobrar nenhum, chama wait e recomeça.
-// Termina no primeiro erro do banco ou de wait.
-func RunLoop(ctx context.Context, indexer VaultIndexer, wait func(context.Context) error) error {
+// Erro de indexação vai para o log e também espera wait, para o laço não martelar o
+// banco. Termina só quando wait devolve erro.
+func RunLoop(ctx context.Context, indexer VaultIndexer, wait func(context.Context) error, logger *slog.Logger) error {
 	for {
 		found, err := indexer.IndexNextVault(ctx, Index)
 		if err != nil {
-			return fmt.Errorf("indexar proximo cofre: %w", err)
+			logger.Error("indexar proximo cofre", "err", err)
 		}
-		if found {
+		if found && err == nil {
 			continue
 		}
 		if err := wait(ctx); err != nil {
