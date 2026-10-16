@@ -26,6 +26,8 @@ type ServiceConfig struct {
 	RegistrationEnabled     bool
 	LocalEnabled            bool
 	RefreshExpirationPeriod time.Duration
+	// EmailEnabled diz que há SMTP: a conta de auto-registro recebe o email de verificação.
+	EmailEnabled bool
 }
 
 // Service orquestra as regras de negócio de contas, credenciais e sessões.
@@ -157,6 +159,7 @@ func (s *Service) buildAccountParams(email, hash string) CreateAccountParams {
 		InitialVaultName:        InitialVaultName,
 		AllowMemberRegistration: s.cfg.RegistrationEnabled,
 		AuditEventID:            s.newID(),
+		SendVerification:        s.cfg.EmailEnabled,
 	}
 }
 

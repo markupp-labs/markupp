@@ -92,6 +92,9 @@ type CreateAccountParams struct {
 	InitialVaultName        string
 	AllowMemberRegistration bool
 	AuditEventID            string
+	// SendVerification enfileira o email de verificação quando a conta nasce sem email
+	// provado, o que só acontece no auto-registro.
+	SendVerification bool
 }
 
 // InitialVaultName é o nome do cofre que toda conta ganha ao ser criada.
