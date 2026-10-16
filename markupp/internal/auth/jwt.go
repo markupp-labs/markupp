@@ -165,6 +165,12 @@ func generateRandomHex(n int) (string, error) {
 	return hex.EncodeToString(bytes), nil
 }
 
+// NewOpaqueToken gera um token opaco de 32 bytes aleatórios, em hexadecimal, como o
+// de convite. Só o hash dele vai para o banco.
+func NewOpaqueToken() (string, error) {
+	return generateRandomHex(32)
+}
+
 // HashOpaqueToken calcula o hash SHA-256 de um token opaco (refresh ou convite), que
 // é o que o banco guarda no lugar do token.
 func HashOpaqueToken(token string) string {
