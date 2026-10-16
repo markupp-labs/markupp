@@ -25,6 +25,9 @@ func novoIndexador(t *testing.T, db *pgxpool.Pool, searchConfig string) *storage
 	return idx
 }
 
+// consultaDoScaler é a consulta que o ScaledJob do KEDA faz ao banco.
+const consultaDoScaler = "SELECT markupp_pending_vaults()"
+
 func notaComConteudo(id, vaultID, content string) notes.Note {
 	agora := time.Date(2026, 10, 15, 12, 0, 0, 0, time.UTC)
 	return notes.Note{ID: id, VaultID: vaultID, Path: id + ".md", Content: content, CreatedAt: agora, UpdatedAt: agora}
@@ -96,7 +99,7 @@ func TestVaultIndexer_CofreJaIndexado_NaoFicaPendente(t *testing.T) {
 
 	found, lotes := indexaProximo(t, idx)
 
-	assert.False(t, found, "o cursor do cofre avança na mesma transação da indexação")
+	assert.False(t, found, "a fila do cofre esvazia na mesma transação da indexação")
 	assert.Empty(t, lotes.lotes)
 }
 
@@ -116,7 +119,7 @@ func TestVaultIndexer_NotaEditada_ReindexaSoElaComOConteudoNovo(t *testing.T) {
 	require.True(t, found)
 	require.Len(t, lotes.lotes, 1)
 	assert.Equal(t, []indexing.NoteChange{{NoteID: "n1", Content: "palavra nova"}}, lotes.lotes[0].Notes,
-		"so a nota que mudou desde o cursor entra no lote")
+		"so a nota que mudou desde a ultima indexacao entra no lote")
 	assert.Equal(t, 1, casaNoIndice(t, db, "n1", "simple", "nova"))
 	assert.Zero(t, casaNoIndice(t, db, "n1", "simple", "antiga"))
 	assert.Equal(t, 1, casaNoIndice(t, db, "n2", "simple", "intocada"))
@@ -150,21 +153,31 @@ func TestVaultIndexer_LoteSoTrazNotasDoCofreReservado(t *testing.T) {
 }
 
 // reservaPresa indexa o próximo cofre numa goroutine e segura a transação aberta
-// dentro da função de indexação até libera ser fechado.
-func reservaPresa(t *testing.T, idx *storage.PostgresVaultIndexer) (reservado <-chan indexing.Changeset, libera chan struct{}, terminou <-chan error) {
+// dentro da função de indexação até libera ser chamada. O cleanup libera a
+// transação mesmo quando um require aborta o teste antes.
+func reservaPresa(t *testing.T, idx *storage.PostgresVaultIndexer) (reservado indexing.Changeset, libera func(), terminou <-chan error) {
 	t.Helper()
 	cofre := make(chan indexing.Changeset, 1)
-	libera = make(chan struct{})
+	solta := make(chan struct{})
+	libera = sync.OnceFunc(func() { close(solta) })
+	t.Cleanup(libera)
 	fim := make(chan error, 1)
 	go func() {
 		_, err := idx.IndexNextVault(context.Background(), func(cs indexing.Changeset) []indexing.SearchDocument {
 			cofre <- cs
-			<-libera
+			<-solta
 			return indexing.Index(cs)
 		})
 		fim <- err
 	}()
-	return cofre, libera, fim
+	select {
+	case reservado = <-cofre:
+	case err := <-fim:
+		require.FailNow(t, "a indexacao terminou sem reservar cofre", "erro: %v", err)
+	case <-time.After(10 * time.Second):
+		require.FailNow(t, "a indexacao nao reservou cofre em 10s")
+	}
+	return reservado, libera, fim
 }
 
 func TestVaultIndexer_CofreReservado_OutroIndexadorPulaParaOProximo(t *testing.T) {
@@ -175,8 +188,7 @@ func TestVaultIndexer_CofreReservado_OutroIndexadorPulaParaOProximo(t *testing.T
 	require.NoError(t, repo.Save(ctxA, notaComConteudo("n1", "va", "um")))
 	require.NoError(t, repo.Save(ctxB, notaComConteudo("n2", "vb", "dois")))
 	idx := novoIndexador(t, db, "simple")
-	reservado, libera, terminou := reservaPresa(t, idx)
-	primeiro := <-reservado
+	primeiro, libera, terminou := reservaPresa(t, idx)
 
 	found, lotes := indexaProximo(t, idx)
 	require.True(t, found)
@@ -185,7 +197,7 @@ func TestVaultIndexer_CofreReservado_OutroIndexadorPulaParaOProximo(t *testing.T
 	found, _ = indexaProximo(t, idx)
 	assert.False(t, found, "o único cofre pendente que sobra está reservado")
 
-	close(libera)
+	libera()
 	require.NoError(t, <-terminou)
 }
 
@@ -194,7 +206,6 @@ func TestVaultIndexer_PendentesDoKEDA_ContaCofresComMudanca(t *testing.T) {
 	repo := storage.NewPostgresNotesRepository(db)
 	ctxA := storagetest.SeedMember(t, db, identity.Actor{UserID: "ua", TenantID: "t1", Role: "member"}, "va")
 	ctxB := storagetest.SeedMember(t, db, identity.Actor{UserID: "ub", TenantID: "t2", Role: "member"}, "vb")
-	const consultaDoScaler = "SELECT markupp_pending_vaults()"
 	assert.Zero(t, countRows(t, db, consultaDoScaler))
 
 	require.NoError(t, repo.Save(ctxA, notaComConteudo("n1", "va", "um")))
@@ -210,7 +221,13 @@ func TestNewPostgresVaultIndexer_ConfiguracaoInexistente_RetornaErroComOValor(t 
 
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "klingon")
-	assert.Contains(t, err.Error(), "pg_ts_config")
+	assert.Contains(t, err.Error(), "simple")
+}
+
+func TestNewPostgresVaultIndexer_ConfiguracaoComSchema_Aceita(t *testing.T) {
+	_, err := storage.NewPostgresVaultIndexer(context.Background(), setupTestDB(t), "pg_catalog.portuguese")
+
+	assert.NoError(t, err, "a validacao resolve o nome como o cast para regconfig resolve")
 }
 
 func TestVaultIndexer_ConfiguracaoEnglish_IndexaPorRadical(t *testing.T) {
