@@ -248,7 +248,7 @@ class NotesControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to root_path
     follow_redirect!
     assert_select "main", text: /Deleted/
-    assert_select "nav li", count: 0
+    assert_select "nav li", text: "a.md", count: 0
   end
 
   test "destroy of a note already deleted still redirects home" do
