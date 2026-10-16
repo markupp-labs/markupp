@@ -37,3 +37,18 @@ func Migrate(ctx context.Context, pool *pgxpool.Pool) error {
 	_, err = provider.Up(ctx)
 	return err
 }
+
+// EnableScalerLogin dá LOGIN com password ao papel markupp_scaler, que só conta os
+// cofres pendentes: o KEDA consulta o banco sem a credencial do dono. O próprio
+// banco cita a senha, porque ALTER ROLE não aceita parâmetro.
+func EnableScalerLogin(ctx context.Context, pool *pgxpool.Pool, password string) error {
+	var stmt string
+	err := pool.QueryRow(ctx, "SELECT format('ALTER ROLE markupp_scaler WITH LOGIN PASSWORD %L', $1::text)", password).Scan(&stmt)
+	if err != nil {
+		return fmt.Errorf("montar o ALTER ROLE do papel markupp_scaler: %w", err)
+	}
+	if _, err := pool.Exec(ctx, stmt); err != nil {
+		return fmt.Errorf("dar LOGIN ao papel markupp_scaler, esperado dono do banco com CREATEROLE: %w", err)
+	}
+	return nil
+}

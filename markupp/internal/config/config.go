@@ -30,6 +30,9 @@ type Config struct {
 	SearchConfig string
 	// IndexInterval é a espera do index-loop entre uma rodada vazia e a próxima.
 	IndexInterval time.Duration
+	// ScalerPassword, quando definida, faz o migrate dar LOGIN com essa senha ao
+	// papel markupp_scaler, que o KEDA usa para contar os cofres pendentes.
+	ScalerPassword string
 }
 
 // Default devolve a configuração usada nas variáveis não definidas.
@@ -51,12 +54,11 @@ func Default() Config {
 // Load lê as variáveis MARKUPP_*, exigindo MARKUPP_DATABASE_URL e caindo em
 // Default nas demais.
 func Load(lookup LookupFunc) (Config, error) {
-	cfg := Default()
-	url, ok := lookup("MARKUPP_DATABASE_URL")
-	if !ok || url == "" {
-		return Config{}, fmt.Errorf("MARKUPP_DATABASE_URL vazia, esperado postgres://usuario:senha@host:5432/banco")
+	cfg, err := LoadIndexer(lookup)
+	if err != nil {
+		return Config{}, err
 	}
-	cfg.DatabaseURL = url
+	readString(lookup, "MARKUPP_SCALER_PASSWORD", &cfg.ScalerPassword)
 	cfg.AllowedOrigins = splitOrigins(lookup)
 	port := int64(cfg.Port)
 	if err := readBounded(lookup, "MARKUPP_PORT", 1, 65535, "de 1 a 65535", &port); err != nil {
@@ -69,15 +71,23 @@ func Load(lookup LookupFunc) (Config, error) {
 	if err := loadAuthSettings(lookup, &cfg); err != nil {
 		return Config{}, err
 	}
-	if err := loadIndexerSettings(lookup, &cfg); err != nil {
-		return Config{}, err
-	}
 	return cfg, nil
 }
 
-func loadIndexerSettings(lookup LookupFunc, cfg *Config) error {
+// LoadIndexer lê só o que o indexador usa: o banco, a configuração de busca e o
+// intervalo. O indexador não assina token, então não exige MARKUPP_AUTH_SECRET.
+func LoadIndexer(lookup LookupFunc) (Config, error) {
+	cfg := Default()
+	url, ok := lookup("MARKUPP_DATABASE_URL")
+	if !ok || url == "" {
+		return Config{}, fmt.Errorf("MARKUPP_DATABASE_URL vazia, esperado postgres://usuario:senha@host:5432/banco")
+	}
+	cfg.DatabaseURL = url
 	readString(lookup, "MARKUPP_SEARCH_CONFIG", &cfg.SearchConfig)
-	return readInterval(lookup, "MARKUPP_INDEX_INTERVAL", &cfg.IndexInterval)
+	if err := readInterval(lookup, "MARKUPP_INDEX_INTERVAL", &cfg.IndexInterval); err != nil {
+		return Config{}, err
+	}
+	return cfg, nil
 }
 
 // readInterval lê key como duração positiva do Go, como 30s ou 2m.

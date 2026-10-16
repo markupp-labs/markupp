@@ -53,15 +53,15 @@ func run(ctx context.Context, logger *slog.Logger, args []string) error {
 	if err != nil {
 		return err
 	}
+	if cmd == indexCommand || cmd == indexLoopCommand {
+		return runIndexer(ctx, logger, cmd)
+	}
 	cfg, err := config.Load(os.LookupEnv)
 	if err != nil {
 		return fmt.Errorf("carregar config: %w", err)
 	}
-	switch cmd {
-	case migrateCommand:
-		return migrateDatabase(ctx, cfg.DatabaseURL)
-	case indexCommand, indexLoopCommand:
-		return indexVaults(ctx, logger, cfg, cmd)
+	if cmd == migrateCommand {
+		return migrateDatabase(ctx, cfg.DatabaseURL, cfg.ScalerPassword)
 	}
 	return serve(ctx, logger, cfg)
 }
@@ -76,6 +76,14 @@ func parseCommand(args []string) (command, error) {
 	}
 	return "", fmt.Errorf("subcomando %q desconhecido, esperado %q, %q, %q ou %q",
 		args[1], serveCommand, migrateCommand, indexCommand, indexLoopCommand)
+}
+
+func runIndexer(ctx context.Context, logger *slog.Logger, cmd command) error {
+	cfg, err := config.LoadIndexer(os.LookupEnv)
+	if err != nil {
+		return fmt.Errorf("carregar config do indexador: %w", err)
+	}
+	return indexVaults(ctx, logger, cfg, cmd)
 }
 
 // indexVaults roda o indexador sem estado do pacote indexing (ADR-0033): index
@@ -99,7 +107,9 @@ func indexVaults(ctx context.Context, logger *slog.Logger, cfg config.Config, cm
 	return err
 }
 
-func migrateDatabase(ctx context.Context, databaseURL string) error {
+// migrateDatabase aplica as migrações e, com scalerPassword, libera o login do
+// papel do scaler do KEDA.
+func migrateDatabase(ctx context.Context, databaseURL, scalerPassword string) error {
 	pool, err := storage.OpenPool(ctx, databaseURL)
 	if err != nil {
 		return fmt.Errorf("abrir banco: %w", err)
@@ -108,7 +118,10 @@ func migrateDatabase(ctx context.Context, databaseURL string) error {
 	if err := storage.Migrate(ctx, pool); err != nil {
 		return fmt.Errorf("aplicar migrations: %w", err)
 	}
-	return nil
+	if scalerPassword == "" {
+		return nil
+	}
+	return storage.EnableScalerLogin(ctx, pool, scalerPassword)
 }
 
 // serve sobe a API sem mexer no schema: quem migra é o subcomando migrate.
