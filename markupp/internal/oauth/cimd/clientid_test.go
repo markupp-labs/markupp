@@ -33,7 +33,7 @@ func TestParseClientID_URLsInvalidas_RecusaComValorEFormato(t *testing.T) {
 		"so barra":               "https://app.example.com/",
 		"fragmento":              "https://app.example.com/client.json#x",
 		"fragmento vazio":        "https://app.example.com/client.json#",
-		"credenciais":            "https://user:senha@app.example.com/client.json",
+		"userinfo":               "https://usuario@app.example.com/client.json",
 		"ponto":                  "https://app.example.com/./client.json",
 		"ponto ponto":            "https://app.example.com/a/../client.json",
 		"ponto ponto codificado": "https://app.example.com/a/%2e%2e/client.json",
