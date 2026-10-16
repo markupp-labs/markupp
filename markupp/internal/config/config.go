@@ -45,6 +45,9 @@ type Config struct {
 	// PanelURL é a URL base do painel web. Definida, os emails do notificador levam o
 	// link da rota do painel que recebe o token; vazia, só o token.
 	PanelURL string
+	// RateLimitPerMinute é quantas tentativas por minuto cada IP e cada email têm nas
+	// rotas de conta (ADR-0037).
+	RateLimitPerMinute int
 }
 
 // Default devolve a configuração usada nas variáveis não definidas.
@@ -60,6 +63,7 @@ func Default() Config {
 		LocalAuthEnabled:        true,
 		SearchConfig:            "simple",
 		IndexInterval:           30 * time.Second,
+		RateLimitPerMinute:      5,
 	}
 }
 
@@ -94,7 +98,19 @@ func loadServerSettings(lookup LookupFunc, cfg *Config) error {
 	if err := loadSMTPSettings(lookup, cfg); err != nil {
 		return err
 	}
+	if err := readRateLimit(lookup, &cfg.RateLimitPerMinute); err != nil {
+		return err
+	}
 	return readPanelURL(lookup, &cfg.PanelURL)
+}
+
+func readRateLimit(lookup LookupFunc, target *int) error {
+	limit := int64(*target)
+	if err := readBounded(lookup, "MARKUPP_RATE_LIMIT_PER_MINUTE", 1, 10000, "de 1 a 10000", &limit); err != nil {
+		return err
+	}
+	*target = int(limit)
+	return nil
 }
 
 // readPanelURL aceita só URL absoluta http ou https sem query nem fragmento, porque
