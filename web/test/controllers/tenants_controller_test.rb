@@ -32,6 +32,15 @@ class TenantsControllerTest < ActionDispatch::IntegrationTest
     assert_select "dialog", count: 0
   end
 
+  test "the sidebar footer without a tenant above it has no loose top border" do
+    use_fake_api(tenants: [])
+    sign_in_as
+
+    get tenants_path
+
+    assert_select "nav footer.first\\:border-t-0.first\\:mt-0.first\\:pt-0"
+  end
+
   test "the tenant list also offers a form for a new tenant" do
     use_fake_api
     sign_in_as

@@ -114,6 +114,19 @@ class TenantSelectionTest < ActionDispatch::IntegrationTest
     end
   end
 
+  test "a truncated tenant name shows whole on hover in the switcher and in the list" do
+    use_fake_api(tenants: TWO_TENANTS)
+    sign_in_as
+    patch current_tenant_path, params: { tenant_id: "tenant-2" }
+
+    get root_path
+
+    assert_select "button[popovertarget=tenant_switcher] .truncate[title=?]", "Home lab"
+    assert_select "#tenant_switcher button[title=?]", "Acme research"
+    get tenants_path
+    assert_select "main form button[title=?]", "Home lab"
+  end
+
   test "the tenant list answers bad gateway when the API is unreachable" do
     api = use_fake_api
     sign_in_as
