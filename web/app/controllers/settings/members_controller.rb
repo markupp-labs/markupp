@@ -32,7 +32,7 @@ module Settings
 
       def render_refusal(error)
         Rails.logger.info({ event: "markupp_member_change_refused", member_id: params[:id], message: error.message }.to_json)
-        @refusal = t("settings.members.errors.#{error.class.name.demodulize.underscore}")
+        @refusal = t("settings.members.errors.#{error.reason}")
         render :index, status: REFUSAL_STATUS.fetch(error.class)
       end
   end

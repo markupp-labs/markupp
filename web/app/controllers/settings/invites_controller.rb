@@ -35,7 +35,7 @@ module Settings
       def render_field_refusal(error)
         Rails.logger.info({ event: "markupp_invite_issue_refused", message: error.message }.to_json)
         field, status = FIELD_REFUSALS.fetch(error.class)
-        @field_errors = { field => t("settings.invites.errors.#{error.class.name.demodulize.underscore}", email: @email) }
+        @field_errors = { field => t("settings.invites.errors.#{error.reason}", email: @email) }
         render :index, status:
       end
   end

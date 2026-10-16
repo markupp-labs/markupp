@@ -59,8 +59,7 @@ class ApplicationController < ActionController::Base
     # Papel mudou no meio (a página ainda oferecia a ação): volta à página de onde veio, que recarrega com o papel novo.
     def refuse_forbidden(error)
       Rails.logger.info({ event: "markupp_api_forbidden", message: error.message }.to_json)
-      reason = error.class.name.demodulize.underscore
-      redirect_back_or_to root_path, alert: t("markupp_api.errors.#{reason}", default: :"markupp_api.errors.forbidden")
+      redirect_back_or_to root_path, alert: t("markupp_api.errors.#{error.reason}", default: :"markupp_api.errors.forbidden")
     end
 
     # 401 que sobra depois da renovação também encerra: a sessão não vale mais.

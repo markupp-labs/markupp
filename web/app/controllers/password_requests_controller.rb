@@ -15,7 +15,7 @@ class PasswordRequestsController < ApplicationController
     @email_error = t(".invalid_email")
     render :new, status: :unprocessable_content
   rescue MarkuppApi::EmailUnavailable, MarkuppApi::LocalAuthDisabled => error
-    flash.now[:alert] = t(".#{error.class.name.demodulize.underscore}")
+    flash.now[:alert] = t(".#{error.reason}")
     render :new, status: :unprocessable_content
   end
 end

@@ -22,6 +22,6 @@ class MyInvitesController < ApplicationController
   private
     def refuse_answer(error)
       Rails.logger.info({ event: "markupp_invite_refused", invite_id: params[:id], message: error.message }.to_json)
-      redirect_back_or_to tenants_path, alert: t("my_invites.errors.#{error.class.name.demodulize.underscore}")
+      redirect_back_or_to tenants_path, alert: t("my_invites.errors.#{error.reason}")
     end
 end

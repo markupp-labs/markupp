@@ -2,7 +2,10 @@ require "net/http"
 
 # Conexão com a API REST do servidor markupp, com a credencial de quem chama: token de acesso e tenant ativo.
 class MarkuppApi
-  class Error < StandardError; end
+  class Error < StandardError
+    # Nome da classe em snake_case: a chave i18n da mensagem para quem usa o painel.
+    def reason = self.class.name.demodulize.underscore
+  end
   class NotFound < Error; end
   # Convite inexistente, vencido, já respondido ou de outra conta: a API não distingue.
   class InviteNotFound < NotFound; end
