@@ -21,6 +21,7 @@ const (
 	uniqueViolationCode       = "23505"
 	foreignKeyViolationCode   = "23503"
 	insufficientPrivilegeCode = "42501"
+	noDataFoundCode           = "P0002"
 )
 
 // PostgresNotesRepository persiste notas em PostgreSQL através das queries geradas

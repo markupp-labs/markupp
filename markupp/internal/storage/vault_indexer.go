@@ -121,9 +121,12 @@ func dequeue(ctx context.Context, q *gen.Queries, vaultID string, rows []gen.Lis
 
 // RequeueNotes põe de volta na fila do indexador as notas do cofre vaultID, ou de
 // todos os cofres da instalação com vaultID vazio, e devolve quantas entraram. Roda
-// no papel da conexão, que precisa ser o dono do banco.
+// no papel da conexão, que precisa ser o dono do banco. Cofre inexistente é erro.
 func RequeueNotes(ctx context.Context, pool *pgxpool.Pool, vaultID string) (int64, error) {
 	n, err := gen.New(pool).RequeueNotes(ctx, pgtype.Text{String: vaultID, Valid: vaultID != ""})
+	if pgErrorCode(err) == noDataFoundCode {
+		return 0, fmt.Errorf("cofre %q inexistente, esperado id de um cofre da instalacao ou --all: %w", vaultID, err)
+	}
 	if err != nil {
 		return 0, fmt.Errorf("reenfileirar as notas do cofre %q (vazio para todos), esperado papel dono do banco: %w", vaultID, err)
 	}
