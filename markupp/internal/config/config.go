@@ -121,12 +121,32 @@ func readPanelURL(lookup LookupFunc, target *string) error {
 	if raw == "" {
 		return nil
 	}
-	parsed, err := url.Parse(raw)
-	if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" || parsed.RawQuery != "" || parsed.Fragment != "" || parsed.ForceQuery {
-		return fmt.Errorf("MARKUPP_PANEL_URL=%q, esperada URL absoluta http:// ou https:// sem query, como https://painel.exemplo.com", raw)
+	if problem := panelURLProblem(raw); problem != "" {
+		return fmt.Errorf("MARKUPP_PANEL_URL=%q: %s; esperada URL absoluta http:// ou https:// sem query nem fragmento, como https://painel.exemplo.com", raw, problem)
 	}
 	*target = raw
 	return nil
+}
+
+// panelURLProblem diz qual regra da URL do painel raw viola, ou "" quando ela serve.
+func panelURLProblem(raw string) string {
+	parsed, err := url.Parse(raw)
+	if err != nil {
+		return "nao e URL valida (" + err.Error() + ")"
+	}
+	if parsed.Scheme != "http" && parsed.Scheme != "https" {
+		return "esquema " + strconv.Quote(parsed.Scheme) + " nao e http nem https"
+	}
+	if parsed.Host == "" {
+		return "falta o host"
+	}
+	if parsed.RawQuery != "" || parsed.ForceQuery {
+		return "tem query"
+	}
+	if parsed.Fragment != "" {
+		return "tem fragmento"
+	}
+	return ""
 }
 
 // loadSMTPSettings lê o convite por email da API e o servidor de email do notificador
