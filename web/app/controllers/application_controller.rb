@@ -40,9 +40,16 @@ class ApplicationController < ActionController::Base
     # Só nas páginas que agem num tenant: o papel vem da lista, sem cache, a cada página.
     def require_tenant
       @current_tenant = Tenant.pick(current_tenants, credential.tenant_id)
-      return redirect_to(tenants_path) unless @current_tenant
+      return leave_for_tenant_choice unless @current_tenant
 
       credential.tenant_id = @current_tenant.id
+    end
+
+    # Sem tenant a página manda escolher; o frame da busca não tem como mostrar a escolha, então avisa.
+    def leave_for_tenant_choice
+      return redirect_to(tenants_path) unless turbo_frame_request?
+
+      render_frame_alert(tenants_path, t("markupp_api.errors.tenant_unavailable"), status: :forbidden)
     end
 
     def current_tenant = @current_tenant
@@ -53,20 +60,35 @@ class ApplicationController < ActionController::Base
     def forget_tenant(error)
       log_api_event("markupp_tenant_unavailable", error, tenant_id: credential.tenant_id)
       credential.tenant_id = nil
-      redirect_to tenants_path, alert: t("markupp_api.errors.tenant_unavailable")
+      leave_page(tenants_path, t("markupp_api.errors.tenant_unavailable"), frame_status: :forbidden)
     end
 
     # Papel mudou no meio (a página ainda oferecia a ação): volta à página de onde veio, que recarrega com o papel novo.
     def refuse_forbidden(error)
       log_api_event("markupp_api_forbidden", error)
-      redirect_back_or_to root_path, alert: t("markupp_api.errors.#{error.reason}", default: :"markupp_api.errors.forbidden")
+      alert = t("markupp_api.errors.#{error.reason}", default: :"markupp_api.errors.forbidden")
+      return render_frame_alert(root_path, alert, status: :forbidden) if turbo_frame_request?
+
+      redirect_back_or_to root_path, alert:
     end
 
     # 401 que sobra depois da renovação também encerra: a sessão não vale mais.
     def expire_session(error)
       log_api_event("markupp_session_expired", error)
       credential.sign_out
-      redirect_to new_session_path, alert: t("markupp_api.errors.session_expired")
+      leave_page(new_session_path, t("markupp_api.errors.session_expired"), frame_status: :unauthorized)
+    end
+
+    def leave_page(path, alert, frame_status:)
+      return render_frame_alert(path, alert, status: frame_status) if turbo_frame_request?
+
+      redirect_to path, alert:
+    end
+
+    # Num turbo frame (a busca, os convites do seletor) o redirect cairia numa página sem o frame e o Turbo mostraria
+    # "Content missing": o aviso fica dentro do frame, com um link que sai dele.
+    def render_frame_alert(path, alert, status:)
+      render partial: "application/frame_alert", locals: { path:, alert: }, status:
     end
 
     # Log estruturado de uma resposta da API que o painel tratou.
