@@ -37,5 +37,6 @@ VALUES (
 )
 ON CONFLICT (note_id) DO UPDATE SET revision = EXCLUDED.revision, document = EXCLUDED.document;
 
--- name: SearchConfigExists :one
-SELECT EXISTS (SELECT 1 FROM pg_catalog.pg_ts_config WHERE cfgname = sqlc.arg(name)::text);
+-- Resolve o nome pelo mesmo cast que a gravação usa, com o search_path da conexão.
+-- name: ResolveSearchConfig :one
+SELECT sqlc.arg(name)::text::regconfig::oid::bigint AS config_oid;

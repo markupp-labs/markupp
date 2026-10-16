@@ -19,14 +19,10 @@ type PostgresVaultIndexer struct {
 }
 
 // NewPostgresVaultIndexer monta o indexador com a configuração de texto
-// searchConfig, que precisa existir em pg_ts_config.
+// searchConfig, que o cast para regconfig precisa resolver.
 func NewPostgresVaultIndexer(ctx context.Context, pool *pgxpool.Pool, searchConfig string) (*PostgresVaultIndexer, error) {
-	exists, err := gen.New(pool).SearchConfigExists(ctx, searchConfig)
-	if err != nil {
-		return nil, fmt.Errorf("consultar configuracao de texto %q: %w", searchConfig, err)
-	}
-	if !exists {
-		return nil, fmt.Errorf("configuracao de texto %q inexistente, esperado um cfgname de pg_ts_config como simple ou portuguese", searchConfig)
+	if _, err := gen.New(pool).ResolveSearchConfig(ctx, searchConfig); err != nil {
+		return nil, fmt.Errorf("configuracao de texto %q nao resolvida, esperado nome de pg_ts_config como simple ou pg_catalog.portuguese: %w", searchConfig, err)
 	}
 	return &PostgresVaultIndexer{pool: pool, searchConfig: searchConfig}, nil
 }

@@ -88,15 +88,16 @@ func (q *Queries) ReservePendingVault(ctx context.Context) (ReservePendingVaultR
 	return i, err
 }
 
-const searchConfigExists = `-- name: SearchConfigExists :one
-SELECT EXISTS (SELECT 1 FROM pg_catalog.pg_ts_config WHERE cfgname = $1::text)
+const resolveSearchConfig = `-- name: ResolveSearchConfig :one
+SELECT $1::text::regconfig::oid::bigint AS config_oid
 `
 
-func (q *Queries) SearchConfigExists(ctx context.Context, name string) (bool, error) {
-	row := q.db.QueryRow(ctx, searchConfigExists, name)
-	var exists bool
-	err := row.Scan(&exists)
-	return exists, err
+// Resolve o nome pelo mesmo cast que a gravação usa, com o search_path da conexão.
+func (q *Queries) ResolveSearchConfig(ctx context.Context, name string) (int64, error) {
+	row := q.db.QueryRow(ctx, resolveSearchConfig, name)
+	var config_oid int64
+	err := row.Scan(&config_oid)
+	return config_oid, err
 }
 
 const upsertSearchDocument = `-- name: UpsertSearchDocument :exec
