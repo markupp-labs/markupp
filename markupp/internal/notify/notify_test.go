@@ -228,3 +228,10 @@ func TestDeliver_TipoDesconhecido_RetornaErroComOTipo(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "sms")
 }
+
+func TestVerifyEmailMessage_AvisaQuemNaoSeCadastrou(t *testing.T) {
+	msg := notify.VerifyEmailMessage(detalhesDaConta(), "tok-v", "contas@markupp.dev")
+
+	assert.Contains(t, msg.Body, "ignore", "quem nao criou a conta sabe que nao deve usar o token")
+	assert.Contains(t, msg.Body, "logado", "o token so vale na conta que pediu")
+}
