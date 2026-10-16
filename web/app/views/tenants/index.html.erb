@@ -4,7 +4,7 @@
 <div class="max-w-[65ch]">
   <h1 class="text-base font-semibold"><%= heading %></h1>
   <% if current_tenants.any? %>
-    <ul class="mt-3 space-y-px">
+    <ul class="mt-3 max-w-sm space-y-px">
       <% current_tenants.each do |tenant| %>
         <li><%= render "tenants/choice", tenant: %></li>
       <% end %>

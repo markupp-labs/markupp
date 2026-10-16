@@ -3,7 +3,7 @@
   <span class="flex items-baseline gap-1">
     <span class="shrink-0 text-ink-muted">markupp</span>
     <span class="shrink-0 text-ink-muted">/</span>
-    <span class="truncate"><%= current_tenant.name %></span>
+    <span class="truncate" title="<%= current_tenant.name %>"><%= current_tenant.name %></span>
     <span aria-hidden="true" class="ml-auto shrink-0 text-ink-muted">v</span>
   </span>
   <span class="block text-xs text-ink-muted"><%= t("tenants.roles.#{current_tenant.role}") %></span>
