@@ -15,20 +15,21 @@ import (
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/storage/gen"
 )
 
-// PostgresInviteOutbox é a fila do email de convite, lida no papel markupp_notifier.
-type PostgresInviteOutbox struct {
+// PostgresNotificationOutbox é a fila de email (convite, verificação e troca de senha),
+// lida no papel markupp_notifier.
+type PostgresNotificationOutbox struct {
 	pool *pgxpool.Pool
 }
 
-// NewPostgresInviteOutbox monta a fila sobre um pool já aberto.
-func NewPostgresInviteOutbox(pool *pgxpool.Pool) *PostgresInviteOutbox {
-	return &PostgresInviteOutbox{pool: pool}
+// NewPostgresNotificationOutbox monta a fila sobre um pool já aberto.
+func NewPostgresNotificationOutbox(pool *pgxpool.Pool) *PostgresNotificationOutbox {
+	return &PostgresNotificationOutbox{pool: pool}
 }
 
 // DeliverNextDue reserva a próxima notificação vencida, entrega com deliver e grava
 // o resultado na mesma transação. Erro de deliver desfaz tudo, inclusive a troca do
 // hash, e a notificação volta para a fila como estava.
-func (o *PostgresInviteOutbox) DeliverNextDue(ctx context.Context, deliver notify.DeliverFunc) (bool, error) {
+func (o *PostgresNotificationOutbox) DeliverNextDue(ctx context.Context, deliver notify.DeliverFunc) (bool, error) {
 	found := false
 	err := inTx(ctx, o.pool, func(q *gen.Queries) error {
 		if err := q.EnterNotifier(ctx); err != nil {

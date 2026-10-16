@@ -55,7 +55,7 @@ func (e *entregaRegistrada) deliver(ctx context.Context, p notify.Pending, reiss
 
 func entregaProxima(t *testing.T, db *pgxpool.Pool, e *entregaRegistrada) bool {
 	t.Helper()
-	found, err := storage.NewPostgresInviteOutbox(db).DeliverNextDue(context.Background(), e.deliver)
+	found, err := storage.NewPostgresNotificationOutbox(db).DeliverNextDue(context.Background(), e.deliver)
 	require.NoError(t, err)
 	return found
 }
@@ -177,7 +177,7 @@ func TestInviteOutbox_ErroNaEntrega_DesfazATrocaDoHash(t *testing.T) {
 	falha := errors.New("falha inesperada")
 	e := &entregaRegistrada{err: falha, novoHash: "h1"}
 
-	_, err := storage.NewPostgresInviteOutbox(db).DeliverNextDue(context.Background(), e.deliver)
+	_, err := storage.NewPostgresNotificationOutbox(db).DeliverNextDue(context.Background(), e.deliver)
 
 	require.ErrorIs(t, err, falha)
 	assert.Equal(t, antes, hashDoConvite(t, db, "c1"))
@@ -188,7 +188,7 @@ func TestInviteOutbox_NotificacaoReservada_OutroEnvioPulaParaAProxima(t *testing
 	db := setupTestDB(t)
 	conviteComEmail(t, db, "c1", "um@markupp.dev")
 	conviteComEmail(t, db, "c2", "dois@markupp.dev")
-	outbox := storage.NewPostgresInviteOutbox(db)
+	outbox := storage.NewPostgresNotificationOutbox(db)
 	reservada := make(chan string, 1)
 	libera := make(chan struct{})
 	terminou := make(chan error, 1)

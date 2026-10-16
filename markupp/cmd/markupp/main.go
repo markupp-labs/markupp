@@ -105,7 +105,7 @@ func deliverNotifications(ctx context.Context, logger *slog.Logger, cfg config.C
 	defer pool.Close()
 	deliverer := notify.NewDeliverer(mailer, cfg.SMTPFrom, auth.NewOpaqueToken, time.Now)
 	logger.Info("notificador em laco", "intervalo", notifyInterval.String())
-	return notify.RunLoop(ctx, storage.NewPostgresInviteOutbox(pool), deliverer.Deliver, drain.WaitInterval(notifyInterval))
+	return notify.RunLoop(ctx, storage.NewPostgresNotificationOutbox(pool), deliverer.Deliver, drain.WaitInterval(notifyInterval))
 }
 
 // indexVaults roda o indexador sem estado do pacote indexing (ADR-0033): index
