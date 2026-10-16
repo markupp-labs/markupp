@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
+	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/indexing"
 )
 
 // Note é uma nota persistida, identificada por ID e endereçada por Path dentro
@@ -191,6 +193,9 @@ func validatePath(path string) error {
 	}
 	if strings.Contains(p, "..") {
 		return ErrInvalidPath
+	}
+	if indexing.Title(p) == "" {
+		return fmt.Errorf("%w: caminho %q sem titulo, esperado nome antes da extensao .md no ultimo segmento, como pasta/nota.md", ErrInvalidPath, path)
 	}
 	return nil
 }
