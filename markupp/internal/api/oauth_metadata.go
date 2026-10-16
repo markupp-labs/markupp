@@ -49,9 +49,12 @@ func newOAuthMetadataResponse(issuer string) oauthMetadataResponse {
 }
 
 // oauthMetadataHandler serve o documento de metadados, montado uma vez e reaproveitado.
+// O documento é público e lido por clientes de qualquer origem, então libera CORS
+// para todas, sem credenciais, independente da lista de origens do servidor.
 func oauthMetadataHandler(m OAuthMetadata) http.HandlerFunc {
 	body := newOAuthMetadataResponse(m.Issuer)
 	return func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
 		writeJSON(w, http.StatusOK, body)
 	}
 }
