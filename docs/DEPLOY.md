@@ -54,6 +54,8 @@ resources:
 
 Para enviar o convite por email, informe `email` com `smtpUrl`, no formato
 `smtp://usuario:senha@host:porta` ou `smtps://`, e `from`. A URL vai para o Secret do markupp.
+O email leva o token do convite, então o notificador exige TLS: com smtp:// o servidor precisa
+oferecer STARTTLS. Texto puro só com `?tls=none` no fim da URL, para servidor local.
 Com email, a API deixa de devolver o token do convite, e o notificador gera o token na entrega e
 o envia só por email.
 
