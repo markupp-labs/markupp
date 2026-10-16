@@ -9,7 +9,9 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"os/signal"
 	"strconv"
+	"syscall"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -78,7 +80,11 @@ func parseCommand(args []string) (command, error) {
 		args[1], serveCommand, migrateCommand, indexCommand, indexLoopCommand)
 }
 
+// runIndexer para no SIGTERM do Kubernetes ou do compose: a transação aberta volta
+// atrás e o cofre fica para o próximo Job.
 func runIndexer(ctx context.Context, logger *slog.Logger, cmd command) error {
+	ctx, stop := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
+	defer stop()
 	cfg, err := config.LoadIndexer(os.LookupEnv)
 	if err != nil {
 		return fmt.Errorf("carregar config do indexador: %w", err)
