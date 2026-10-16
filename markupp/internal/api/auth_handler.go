@@ -180,18 +180,31 @@ func (h *authHandler) myTenants(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, out)
 }
 
-func (h *authHandler) handleAuthError(w http.ResponseWriter, err error) {
+// writeCredentialInputError responde aos erros de credencial comuns às rotas de
+// autenticação e de email da conta, e devolve false para os outros.
+func writeCredentialInputError(w http.ResponseWriter, err error) bool {
 	switch {
 	case errors.Is(err, auth.ErrEmptyEmail), errors.Is(err, auth.ErrEmptyPassword), errors.Is(err, auth.ErrPasswordTooLong):
 		writeError(w, "invalid_request", err.Error(), http.StatusBadRequest)
+	case errors.Is(err, auth.ErrLocalAuthDisabled):
+		writeError(w, "local_auth_disabled", "autenticacao local desativada", http.StatusForbidden)
+	default:
+		return false
+	}
+	return true
+}
+
+func (h *authHandler) handleAuthError(w http.ResponseWriter, err error) {
+	if writeCredentialInputError(w, err) {
+		return
+	}
+	switch {
 	case errors.Is(err, auth.ErrInvalidCredentials):
 		writeError(w, "invalid_credentials", "credenciais invalidas", http.StatusUnauthorized)
 	case errors.Is(err, auth.ErrInviteInvalid):
 		writeError(w, "invalid_invite", auth.ErrInviteInvalid.Error(), http.StatusBadRequest)
 	case errors.Is(err, auth.ErrUserAlreadyExists):
 		writeError(w, "already_exists", "email ja tem conta", http.StatusConflict)
-	case errors.Is(err, auth.ErrLocalAuthDisabled):
-		writeError(w, "local_auth_disabled", "autenticacao local desativada", http.StatusForbidden)
 	case errors.Is(err, auth.ErrRefreshTokenRevoked), errors.Is(err, auth.ErrRefreshTokenExpired), errors.Is(err, auth.ErrRefreshTokenInvalid):
 		writeError(w, "invalid_refresh_token", "refresh token revogado ou expirado", http.StatusUnauthorized)
 	default:
