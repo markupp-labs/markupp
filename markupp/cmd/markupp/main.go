@@ -187,7 +187,17 @@ func newHandler(cfg config.Config, pool *pgxpool.Pool, logger *slog.Logger) http
 	return api.NewRouter(api.RouterDeps{
 		Notes: notesSvc, Auth: authSvc, Admin: adminSvc, AccountEmail: accountEmail,
 		Tokens: codec, Tenants: authSvc, Probe: pool, AllowedOrigins: cfg.AllowedOrigins,
+		OAuthMetadata: oauthMetadataFrom(cfg),
 	})
+}
+
+// oauthMetadataFrom publica a metadata do authorization server só quando a
+// MARKUPP_PUBLIC_URL liga o OAuth.
+func oauthMetadataFrom(cfg config.Config) *api.OAuthMetadata {
+	if !cfg.OAuthEnabled() {
+		return nil
+	}
+	return &api.OAuthMetadata{Issuer: cfg.PublicURL}
 }
 
 func newAuthService(cfg config.Config, pool *pgxpool.Pool) (*auth.Service, api.TokenValidator) {

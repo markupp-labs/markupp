@@ -154,6 +154,23 @@ auto-registro com SMTP.
 Com SMTP, quem esqueceu a senha pede a troca em `POST /auth/password/forgot` e troca com o token
 do email em `POST /auth/password/reset`.
 
+## OAuth
+
+O authorization server OAuth 2.1 fica desligado até `MARKUPP_PUBLIC_URL` existir. Com ela, as
+outras duas variáveis passam a ser obrigatórias:
+
+- `MARKUPP_PUBLIC_URL`: o issuer, como `https://notas.exemplo.com`, sem caminho, query nem
+  fragmento
+- `MARKUPP_PANEL_URL`: o painel que faz o login e o consentimento, como
+  `https://notas.exemplo.com/painel`, sem query nem fragmento
+- `MARKUPP_OAUTH_RESOURCES`: os servidores de recursos que aceitam os tokens, em pares
+  `url=segredo` separados por vírgula, cada segredo com ao menos 32 bytes (ex.:
+  `openssl rand -hex 32`) e cada URL uma vez só, sem query nem fragmento
+
+As URLs exigem https e um host, sem usuário nem senha; http só vale para localhost, 127.0.0.1
+e [::1]. O servidor guarda cada URL com esquema e host em minúsculas e sem barra final, então
+`https://MCP.exemplo.com/mcp/` e `https://mcp.exemplo.com/mcp` contam como o mesmo recurso.
+
 ## Aviso
 
 Com o banco vazio, quem fizer o primeiro login vira owner do tenant inicial

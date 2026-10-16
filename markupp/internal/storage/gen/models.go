@@ -64,6 +64,52 @@ type Notification struct {
 	AccountTokenID pgtype.Text
 }
 
+type OauthAuthorization struct {
+	ID        string
+	UserID    string
+	ClientID  string
+	Scopes    []string
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	RevokedAt pgtype.Timestamptz
+}
+
+type OauthClient struct {
+	ID                string
+	Source            string
+	Name              string
+	RedirectUris      []string
+	MetadataExpiresAt pgtype.Timestamptz
+	CreatedAt         time.Time
+}
+
+type OauthRequest struct {
+	ID            string
+	ClientID      string
+	RedirectUri   string
+	Scopes        []string
+	Resource      string
+	State         pgtype.Text
+	CodeChallenge string
+	CreatedAt     time.Time
+	ExpiresAt     time.Time
+	DecidedAt     pgtype.Timestamptz
+	UserID        pgtype.Text
+	CodeHash      pgtype.Text
+	CodeExpiresAt pgtype.Timestamptz
+	CodeUsedAt    pgtype.Timestamptz
+}
+
+type OauthToken struct {
+	TokenHash       string
+	AuthorizationID string
+	Kind            string
+	Resource        string
+	ExpiresAt       time.Time
+	Revoked         bool
+	CreatedAt       time.Time
+}
+
 type RefreshToken struct {
 	TokenHash string
 	UserID    string
