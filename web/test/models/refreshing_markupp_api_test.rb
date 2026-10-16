@@ -53,6 +53,18 @@ class RefreshingMarkuppApiTest < ActiveSupport::TestCase
     assert_match "PATCH /nowhere", error.message
   end
 
+  test "two renewals of the same refresh token call /auth/refresh once and share the new pair" do
+    renewed_pairs = ActiveSupport::Cache::MemoryStore.new
+    twin = PanelCredential.new(ActionController::TestSession.new(@session.to_hash), ->(**credentials) { @fake_api.as(**credentials) })
+    travel 901.seconds
+
+    [ @credential, twin ].map { |credential| Thread.new { RefreshingMarkuppApi.new(credential, renewed_pairs:).get("/notes") } }.each(&:join)
+
+    assert_equal 1, @fake_api.received_credentials.count { it[:call] == "POST /auth/refresh" }
+    assert_equal [ "refresh-2", "refresh-2" ], [ @credential.refresh_token, twin.refresh_token ]
+    assert renewed_pairs.exist?("panel/renewed_pair/#{Digest::SHA256.hexdigest("refresh-1")}")
+  end
+
   private
     def access_tokens_sent(call)
       @fake_api.received_credentials.select { it[:call] == call }.map { it[:access_token] }
