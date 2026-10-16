@@ -32,7 +32,10 @@ type Config struct {
 	SearchConfig string
 	// IndexInterval é a espera do index-loop entre uma rodada vazia e a próxima.
 	IndexInterval time.Duration
-	// SMTPURL é o servidor de email, smtp:// ou smtps://. Vazio desliga o envio.
+	// InviteByEmail diz à API que o convite sai por email, e então o token não volta
+	// na resposta. Quem envia é o notificador, o único que recebe o SMTP.
+	InviteByEmail bool
+	// SMTPURL é o servidor de email do notificador, smtp:// ou smtps://.
 	SMTPURL string
 	// SMTPFrom é o remetente dos emails, obrigatório com SMTPURL.
 	SMTPFrom string
@@ -84,8 +87,12 @@ func Load(lookup LookupFunc) (Config, error) {
 	return cfg, nil
 }
 
-// loadSMTPSettings lê o servidor de email. Sem URL, o envio fica desligado (ADR-0021).
+// loadSMTPSettings lê o convite por email da API e o servidor de email do notificador
+// (ADR-0021).
 func loadSMTPSettings(lookup LookupFunc, cfg *Config) error {
+	if err := readBool(lookup, "MARKUPP_INVITE_BY_EMAIL", &cfg.InviteByEmail); err != nil {
+		return err
+	}
 	readString(lookup, "MARKUPP_SMTP_URL", &cfg.SMTPURL)
 	readString(lookup, "MARKUPP_SMTP_FROM", &cfg.SMTPFrom)
 	if cfg.SMTPURL == "" {

@@ -158,7 +158,7 @@ func newHandler(cfg config.Config, pool *pgxpool.Pool) http.Handler {
 	repo := storage.NewPostgresNotesRepository(pool)
 	notesSvc := notes.NewService(repo, cfg.MaxNoteSize)
 	authSvc, codec := newAuthService(cfg, pool)
-	adminSvc := auth.NewAdminService(storage.NewPostgresAdminRepository(pool), time.Now, cfg.SMTPURL != "")
+	adminSvc := auth.NewAdminService(storage.NewPostgresAdminRepository(pool), time.Now, cfg.InviteByEmail)
 	return api.NewRouter(api.RouterDeps{
 		Notes: notesSvc, Auth: authSvc, Admin: adminSvc,
 		Tokens: codec, Tenants: authSvc, Probe: pool, AllowedOrigins: cfg.AllowedOrigins,
