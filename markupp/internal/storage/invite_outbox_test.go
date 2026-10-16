@@ -2,7 +2,6 @@ package storage_test
 
 import (
 	"context"
-	"errors"
 	"testing"
 	"time"
 
@@ -32,32 +31,24 @@ func conviteComEmail(t *testing.T, db *pgxpool.Pool, id, email string) {
 	require.NoError(t, storage.NewPostgresAdminRepository(db).CreateInviteTx(ctx, inv, auth.HashOpaqueToken("descartado-"+id), eventoDoConvite(inv), true))
 }
 
-// entregaRegistrada faz o papel do notify.Deliverer: troca o hash pelo reissue,
-// guarda o que recebeu e devolve o resultado combinado no teste.
-type entregaRegistrada struct {
-	outcome  notify.Outcome
-	err      error
-	pending  []notify.PendingInvite
-	details  notify.InviteDetails
-	found    bool
-	novoHash string
-}
-
-func (e *entregaRegistrada) deliver(ctx context.Context, p notify.PendingInvite, reissue notify.ReissueFunc) (notify.Outcome, error) {
-	e.pending = append(e.pending, p)
-	details, found, err := reissue(ctx, e.novoHash)
-	if err != nil {
-		return notify.Outcome{}, err
-	}
-	e.details, e.found = details, found
-	return e.outcome, e.err
-}
-
-func entregaProxima(t *testing.T, db *pgxpool.Pool, e *entregaRegistrada) bool {
+// reservaProxima reserva a próxima notificação vencida por uma hora, trocando o hash
+// do convite por hash.
+func reservaProxima(t *testing.T, db *pgxpool.Pool, hash string) (notify.Claim, bool) {
 	t.Helper()
-	found, err := storage.NewPostgresInviteOutbox(db).DeliverNextDue(context.Background(), e.deliver)
+	claim, found, err := storage.NewPostgresInviteOutbox(db).ClaimNextDue(context.Background(), hash, time.Hour)
 	require.NoError(t, err)
-	return found
+	return claim, found
+}
+
+func gravaResultado(t *testing.T, db *pgxpool.Pool, claim notify.Claim, outcome notify.Outcome) {
+	t.Helper()
+	require.NoError(t, storage.NewPostgresInviteOutbox(db).Record(context.Background(), claim.NotificationID, outcome))
+}
+
+func venceAsNotificacoes(t *testing.T, db *pgxpool.Pool) {
+	t.Helper()
+	_, err := db.Exec(context.Background(), "UPDATE notifications SET next_attempt_at = now()")
+	require.NoError(t, err)
 }
 
 func hashDoConvite(t *testing.T, db *pgxpool.Pool, id string) string {
@@ -69,10 +60,10 @@ func hashDoConvite(t *testing.T, db *pgxpool.Pool, id string) string {
 
 func TestInviteOutbox_FilaVazia_DevolveFalso(t *testing.T) {
 	db := setupTestDB(t)
-	e := &entregaRegistrada{}
 
-	assert.False(t, entregaProxima(t, db, e))
-	assert.Empty(t, e.pending)
+	_, found := reservaProxima(t, db, "h")
+
+	assert.False(t, found)
 }
 
 func TestInviteOutbox_ConviteSemEmail_NaoEntraNaFila(t *testing.T) {
@@ -84,79 +75,116 @@ func TestInviteOutbox_ConviteSemEmail_NaoEntraNaFila(t *testing.T) {
 	assert.Zero(t, countRows(t, db, "SELECT count(*) FROM notifications"))
 }
 
-func TestInviteOutbox_ConvitePorEmail_TrocaOHashEEntregaOsDetalhes(t *testing.T) {
+func TestInviteOutbox_Reserva_TrocaOHashJaGravadoEDevolveOsDetalhes(t *testing.T) {
 	db := setupTestDB(t)
 	conviteComEmail(t, db, "c1", "nova@markupp.dev")
-	e := &entregaRegistrada{outcome: notify.Outcome{Sent: true}, novoHash: "hash-do-envio"}
 
-	require.True(t, entregaProxima(t, db, e))
+	claim, found := reservaProxima(t, db, "hash-do-envio")
 
-	require.Len(t, e.pending, 1)
-	assert.Equal(t, "c1", e.pending[0].InviteID)
-	assert.Zero(t, e.pending[0].Attempts)
-	require.True(t, e.found)
-	e.details.ExpiresAt = e.details.ExpiresAt.UTC()
+	require.True(t, found)
+	assert.Equal(t, 1, claim.Attempt)
+	require.True(t, claim.Pending)
+	claim.Details.ExpiresAt = claim.Details.ExpiresAt.UTC()
 	assert.Equal(t, notify.InviteDetails{
 		Email: "nova@markupp.dev", Role: "member", TenantName: "t1",
 		InviterEmail: "admin-a@markupp.dev", ExpiresAt: validadeDoConvite,
-	}, e.details)
-	assert.Equal(t, "hash-do-envio", hashDoConvite(t, db, "c1"), "o hash do token enviado substitui o da emissao")
-	assert.Equal(t, 1, countRows(t, db, "SELECT count(*) FROM notifications WHERE sent_at IS NOT NULL"))
-	assert.False(t, entregaProxima(t, db, &entregaRegistrada{}), "notificacao enviada sai da fila")
+	}, claim.Details)
+	assert.Equal(t, "hash-do-envio", hashDoConvite(t, db, "c1"), "o hash ja esta gravado antes do envio, fora de transacao")
 }
 
-func TestInviteOutbox_FalhaDoSMTP_RemarcaEContaATentativa(t *testing.T) {
+func TestInviteOutbox_Enviada_SaiDaFila(t *testing.T) {
 	db := setupTestDB(t)
 	conviteComEmail(t, db, "c1", "nova@markupp.dev")
-	retry := time.Now().Add(time.Hour)
-	entregaProxima(t, db, &entregaRegistrada{outcome: notify.Outcome{RetryAt: retry, Error: "conexao recusada"}, novoHash: "h1"})
+	claim, _ := reservaProxima(t, db, "h1")
 
-	assert.False(t, entregaProxima(t, db, &entregaRegistrada{}), "antes da hora marcada nao ha o que enviar")
+	gravaResultado(t, db, claim, notify.Outcome{Sent: true})
+	venceAsNotificacoes(t, db)
+
+	assert.Equal(t, 1, countRows(t, db, "SELECT count(*) FROM notifications WHERE sent_at IS NOT NULL"))
+	_, found := reservaProxima(t, db, "h2")
+	assert.False(t, found, "notificacao enviada sai da fila")
+}
+
+func TestInviteOutbox_Reservada_SomeDaFilaAteOLeaseVencer(t *testing.T) {
+	db := setupTestDB(t)
+	conviteComEmail(t, db, "c1", "nova@markupp.dev")
+	reservaProxima(t, db, "h1")
+
+	_, found := reservaProxima(t, db, "h2")
+	assert.False(t, found, "duas replicas nunca enviam o mesmo convite durante o lease")
+	assert.Equal(t, "h1", hashDoConvite(t, db, "c1"))
+
+	venceAsNotificacoes(t, db)
+	claim, found := reservaProxima(t, db, "h3")
+	require.True(t, found, "notificador que caiu no meio do envio devolve a notificacao quando o lease vence")
+	assert.Equal(t, 2, claim.Attempt, "a tentativa conta na reserva, e a queda tambem gasta uma")
+}
+
+func TestInviteOutbox_FalhaDoSMTP_RemarcaComOErro(t *testing.T) {
+	db := setupTestDB(t)
+	conviteComEmail(t, db, "c1", "nova@markupp.dev")
+	claim, _ := reservaProxima(t, db, "h1")
+
+	gravaResultado(t, db, claim, notify.Outcome{RetryAt: time.Now().Add(-time.Second), Error: "conexao recusada"})
+
 	assert.Equal(t, 1, countRows(t, db, "SELECT count(*) FROM notifications WHERE attempts = 1 AND last_error = 'conexao recusada'"))
+	proxima, found := reservaProxima(t, db, "h2")
+	require.True(t, found, "a remarcacao substitui o lease")
+	assert.Equal(t, 2, proxima.Attempt)
+}
 
-	_, err := db.Exec(context.Background(), "UPDATE notifications SET next_attempt_at = now()")
-	require.NoError(t, err)
-	e := &entregaRegistrada{outcome: notify.Outcome{Sent: true}, novoHash: "h2"}
-	require.True(t, entregaProxima(t, db, e))
-	assert.Equal(t, 1, e.pending[0].Attempts)
+func TestInviteOutbox_ErroComBytesForaDoUTF8_GravaMesmoAssim(t *testing.T) {
+	db := setupTestDB(t)
+	conviteComEmail(t, db, "c1", "nova@markupp.dev")
+	claim, _ := reservaProxima(t, db, "h1")
+
+	err := storage.NewPostgresInviteOutbox(db).Record(context.Background(), claim.NotificationID,
+		notify.Outcome{RetryAt: time.Now().Add(time.Hour), Error: "550 Usu\xe1rio inexistente\x00"})
+
+	require.NoError(t, err, "a resposta do relay em Latin-1 nao pode travar a fila")
+	assert.Equal(t, 1, countRows(t, db, "SELECT count(*) FROM notifications WHERE last_error LIKE '550 Usu%rio inexistente'"))
 }
 
 func TestInviteOutbox_Desistencia_FechaANotificacao(t *testing.T) {
 	db := setupTestDB(t)
 	conviteComEmail(t, db, "c1", "nova@markupp.dev")
+	claim, _ := reservaProxima(t, db, "h1")
 
-	entregaProxima(t, db, &entregaRegistrada{outcome: notify.Outcome{GiveUp: true, Error: "caixa inexistente"}, novoHash: "h1"})
+	gravaResultado(t, db, claim, notify.Outcome{GiveUp: true, Error: "caixa inexistente"})
+	venceAsNotificacoes(t, db)
 
 	assert.Equal(t, 1, countRows(t, db, "SELECT count(*) FROM notifications WHERE failed_at IS NOT NULL AND attempts = 1"))
-	assert.False(t, entregaProxima(t, db, &entregaRegistrada{}))
+	_, found := reservaProxima(t, db, "h2")
+	assert.False(t, found)
+}
+
+// conviteForaDoEnvio emite o convite c1 por email, aplica mudanca no banco e confere
+// que a reserva não troca o hash nem pede o envio.
+func conviteForaDoEnvio(t *testing.T, mudanca string) {
+	t.Helper()
+	db := setupTestDB(t)
+	conviteComEmail(t, db, "c1", "nova@markupp.dev")
+	antes := hashDoConvite(t, db, "c1")
+	_, err := db.Exec(context.Background(), mudanca)
+	require.NoError(t, err)
+
+	claim, found := reservaProxima(t, db, "h1")
+
+	require.True(t, found)
+	assert.False(t, claim.Pending)
+	assert.Equal(t, antes, hashDoConvite(t, db, "c1"))
 }
 
 func TestInviteOutbox_ConviteJaRespondido_NaoTrocaOHash(t *testing.T) {
-	db := setupTestDB(t)
-	conviteComEmail(t, db, "c1", "nova@markupp.dev")
-	antes := hashDoConvite(t, db, "c1")
-	_, err := db.Exec(context.Background(), "UPDATE user_invites SET accepted_at = now() WHERE id = 'c1'")
-	require.NoError(t, err)
-	e := &entregaRegistrada{outcome: notify.Outcome{GiveUp: true}, novoHash: "h1"}
-
-	require.True(t, entregaProxima(t, db, e))
-
-	assert.False(t, e.found)
-	assert.Equal(t, antes, hashDoConvite(t, db, "c1"))
+	conviteForaDoEnvio(t, "UPDATE user_invites SET accepted_at = now() WHERE id = 'c1'")
 }
 
 func TestInviteOutbox_ConviteVencido_NaoTrocaOHash(t *testing.T) {
-	db := setupTestDB(t)
-	conviteComEmail(t, db, "c1", "nova@markupp.dev")
-	antes := hashDoConvite(t, db, "c1")
-	_, err := db.Exec(context.Background(), "UPDATE user_invites SET expires_at = now() - interval '1 minute' WHERE id = 'c1'")
-	require.NoError(t, err)
-	e := &entregaRegistrada{outcome: notify.Outcome{GiveUp: true}, novoHash: "h1"}
+	conviteForaDoEnvio(t, "UPDATE user_invites SET expires_at = now() - interval '1 minute' WHERE id = 'c1'")
+}
 
-	require.True(t, entregaProxima(t, db, e))
-
-	assert.False(t, e.found)
-	assert.Equal(t, antes, hashDoConvite(t, db, "c1"))
+func TestInviteOutbox_QuemConvidouSaiuDoTenant_NaoTrocaOHash(t *testing.T) {
+	conviteForaDoEnvio(t, "DELETE FROM tenant_memberships WHERE user_id = 'admin-a'")
 }
 
 func TestInviteOutbox_ConviteRevogado_SaiDaFila(t *testing.T) {
@@ -169,47 +197,6 @@ func TestInviteOutbox_ConviteRevogado_SaiDaFila(t *testing.T) {
 	assert.Zero(t, countRows(t, db, "SELECT count(*) FROM notifications"))
 }
 
-func TestInviteOutbox_ErroNaEntrega_DesfazATrocaDoHash(t *testing.T) {
-	db := setupTestDB(t)
-	conviteComEmail(t, db, "c1", "nova@markupp.dev")
-	antes := hashDoConvite(t, db, "c1")
-	falha := errors.New("falha inesperada")
-	e := &entregaRegistrada{err: falha, novoHash: "h1"}
-
-	_, err := storage.NewPostgresInviteOutbox(db).DeliverNextDue(context.Background(), e.deliver)
-
-	require.ErrorIs(t, err, falha)
-	assert.Equal(t, antes, hashDoConvite(t, db, "c1"))
-	assert.Equal(t, 1, countRows(t, db, "SELECT count(*) FROM notifications WHERE attempts = 0 AND sent_at IS NULL"))
-}
-
-func TestInviteOutbox_NotificacaoReservada_OutroEnvioPulaParaAProxima(t *testing.T) {
-	db := setupTestDB(t)
-	conviteComEmail(t, db, "c1", "um@markupp.dev")
-	conviteComEmail(t, db, "c2", "dois@markupp.dev")
-	outbox := storage.NewPostgresInviteOutbox(db)
-	reservada := make(chan string, 1)
-	libera := make(chan struct{})
-	terminou := make(chan error, 1)
-	go func() {
-		_, err := outbox.DeliverNextDue(context.Background(), func(ctx context.Context, p notify.PendingInvite, _ notify.ReissueFunc) (notify.Outcome, error) {
-			reservada <- p.InviteID
-			<-libera
-			return notify.Outcome{Sent: true}, nil
-		})
-		terminou <- err
-	}()
-	primeira := <-reservada
-
-	e := &entregaRegistrada{outcome: notify.Outcome{Sent: true}, novoHash: "h"}
-	require.True(t, entregaProxima(t, db, e))
-	assert.NotEqual(t, primeira, e.pending[0].InviteID, "duas réplicas nunca enviam o mesmo convite")
-	assert.False(t, entregaProxima(t, db, &entregaRegistrada{}))
-
-	close(libera)
-	require.NoError(t, <-terminou)
-}
-
 func TestInviteOutbox_PendentesDoKEDA_ContaSoAsVencidas(t *testing.T) {
 	db := setupTestDB(t)
 	const consultaDoScaler = "SELECT markupp_pending_notifications()"
@@ -217,9 +204,9 @@ func TestInviteOutbox_PendentesDoKEDA_ContaSoAsVencidas(t *testing.T) {
 	conviteComEmail(t, db, "c2", "dois@markupp.dev")
 	assert.Equal(t, 2, countRows(t, db, consultaDoScaler))
 
-	entregaProxima(t, db, &entregaRegistrada{outcome: notify.Outcome{RetryAt: time.Now().Add(time.Hour)}, novoHash: "h"})
+	reservaProxima(t, db, "h")
 
-	assert.Equal(t, 1, countRows(t, db, consultaDoScaler), "notificacao remarcada para depois nao acorda o worker")
+	assert.Equal(t, 1, countRows(t, db, consultaDoScaler), "notificacao reservada ou remarcada para depois nao acorda o worker")
 }
 
 // comoPapel roda sql no papel role, sem passar pelo storage: prova a política do banco.
@@ -258,65 +245,6 @@ func TestRLS_PapelDoNotificador_SoTrocaOHashPelaFuncao(t *testing.T) {
 		"WITH u AS (UPDATE user_invites SET token_hash = 'x' RETURNING 1) SELECT count(*) FROM u"), "notificador escrevendo convites")
 }
 
-// esperaConexaoTravada espera alguma conexão do banco de teste ficar aguardando trava.
-func esperaConexaoTravada(t *testing.T, db *pgxpool.Pool) {
-	t.Helper()
-	for range 200 {
-		var n int
-		require.NoError(t, db.QueryRow(context.Background(),
-			"SELECT count(*) FROM pg_stat_activity WHERE datname = current_database() AND wait_event_type = 'Lock'").Scan(&n))
-		if n > 0 {
-			return
-		}
-		time.Sleep(10 * time.Millisecond)
-	}
-	require.FailNow(t, "nenhuma conexao ficou aguardando trava")
-}
-
-func TestInviteOutbox_RevogarDuranteAEntrega_NaoEntraEmDeadlock(t *testing.T) {
-	db := setupTestDB(t)
-	conviteComEmail(t, db, "c1", "nova@markupp.dev")
-	reservada, libera := make(chan struct{}), make(chan struct{})
-	entrega := make(chan error, 1)
-	go func() {
-		_, err := storage.NewPostgresInviteOutbox(db).DeliverNextDue(context.Background(),
-			func(ctx context.Context, p notify.PendingInvite, reissue notify.ReissueFunc) (notify.Outcome, error) {
-				close(reservada)
-				<-libera
-				_, found, err := reissue(ctx, "hash-da-entrega")
-				return notify.Outcome{Sent: found, GiveUp: !found}, err
-			})
-		entrega <- err
-	}()
-	<-reservada
-	revogacao := make(chan error, 1)
-	go func() {
-		ctx := identity.WithActor(context.Background(), adminDoConvite)
-		revogacao <- storage.NewPostgresAdminRepository(db).RevokeInviteTx(ctx, "c1", eventoDoConvite(conviteDe(adminDoConvite, "rev", "x@x.dev")))
-	}()
-	esperaConexaoTravada(t, db)
-
-	close(libera)
-
-	require.NoError(t, <-entrega, "o notificador desiste do convite que esta sendo revogado")
-	require.NoError(t, <-revogacao)
-	assert.Zero(t, countRows(t, db, "SELECT count(*) FROM user_invites WHERE id = 'c1'"))
-}
-
-func TestInviteOutbox_QuemConvidouSaiuDoTenant_NaoTrocaOHash(t *testing.T) {
-	db := setupTestDB(t)
-	conviteComEmail(t, db, "c1", "nova@markupp.dev")
-	antes := hashDoConvite(t, db, "c1")
-	_, err := db.Exec(context.Background(), "DELETE FROM tenant_memberships WHERE user_id = 'admin-a'")
-	require.NoError(t, err)
-	e := &entregaRegistrada{outcome: notify.Outcome{GiveUp: true}, novoHash: "h1"}
-
-	require.True(t, entregaProxima(t, db, e))
-
-	assert.False(t, e.found, "o aceite recusaria o token: convite sem quem o sustente nao vai por email")
-	assert.Equal(t, antes, hashDoConvite(t, db, "c1"))
-}
-
 func TestRLS_PapelDaAplicacao_NaoEnfileiraConviteDeOutroTenant(t *testing.T) {
 	db := setupTestDB(t)
 	conviteComEmail(t, db, "c1", "nova@markupp.dev")
@@ -331,4 +259,23 @@ func TestRLS_PapelDaAplicacao_NaoEnfileiraConviteDeOutroTenant(t *testing.T) {
 	_, err = tx.Exec(ctx, "INSERT INTO notifications (invite_id) VALUES ('c1')")
 
 	requirePermissaoNegada(t, err, "tenant t2 enfileirando o convite do t1")
+}
+
+func TestInviteOutbox_ConviteTravadoPorOutraTransacao_PulaSemEsperar(t *testing.T) {
+	db := setupTestDB(t)
+	conviteComEmail(t, db, "c1", "nova@markupp.dev")
+	antes := hashDoConvite(t, db, "c1")
+	ctx := context.Background()
+	revogacao, err := db.Begin(ctx)
+	require.NoError(t, err)
+	defer func() { _ = revogacao.Rollback(ctx) }()
+	_, err = revogacao.Exec(ctx, "SELECT 1 FROM user_invites WHERE id = 'c1' FOR UPDATE")
+	require.NoError(t, err)
+
+	claim, found := reservaProxima(t, db, "h1")
+
+	require.True(t, found)
+	assert.False(t, claim.Pending, "convite em revogacao e pulado, senao a entrega e a revogacao entram em deadlock")
+	require.NoError(t, revogacao.Rollback(ctx))
+	assert.Equal(t, antes, hashDoConvite(t, db, "c1"))
 }
