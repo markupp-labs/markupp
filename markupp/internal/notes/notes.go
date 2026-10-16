@@ -27,12 +27,14 @@ type Note struct {
 	UpdatedAt     time.Time
 }
 
-// SearchResult é a projeção de uma nota devolvida pela busca, sem o conteúdo.
+// SearchResult é a projeção de uma nota devolvida pela busca: sem o conteúdo, com o
+// trecho dele em que os termos da consulta aparecem marcados com <b>.
 type SearchResult struct {
 	ID        string    `json:"id"`
 	VaultID   string    `json:"vault_id"`
 	Path      string    `json:"path"`
 	UpdatedAt time.Time `json:"updated_at"`
+	Snippet   string    `json:"snippet"`
 }
 
 // Repository é a porta de persistência que o Service consome.
@@ -207,7 +209,7 @@ func (s *Service) validateContent(content string) error {
 	return nil
 }
 
-// SearchNotes busca por conteúdo, normalizando offset negativo para zero e
+// SearchNotes busca no índice léxico, normalizando offset negativo para zero e
 // limit não positivo para dez.
 func (s *Service) SearchNotes(ctx context.Context, query string, offset, limit int) ([]SearchResult, error) {
 	if offset < 0 {

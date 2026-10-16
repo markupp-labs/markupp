@@ -26,12 +26,14 @@ const (
 // PostgresNotesRepository persiste notas em PostgreSQL através das queries geradas
 // pelo sqlc. Toda operação roda em transação do ator do contexto, sob RLS.
 type PostgresNotesRepository struct {
-	pool *pgxpool.Pool
+	pool         *pgxpool.Pool
+	searchConfig string
 }
 
-// NewPostgresNotesRepository monta o repositório sobre um pool já aberto.
-func NewPostgresNotesRepository(pool *pgxpool.Pool) *PostgresNotesRepository {
-	return &PostgresNotesRepository{pool: pool}
+// NewPostgresNotesRepository monta o repositório sobre um pool já aberto. A busca
+// usa a configuração de texto searchConfig, a mesma do indexador.
+func NewPostgresNotesRepository(pool *pgxpool.Pool, searchConfig string) *PostgresNotesRepository {
+	return &PostgresNotesRepository{pool: pool, searchConfig: searchConfig}
 }
 
 func (r *PostgresNotesRepository) run(ctx context.Context, fn func(q *gen.Queries) error) error {
@@ -127,18 +129,18 @@ func (r *PostgresNotesRepository) GetNoteByID(ctx context.Context, id string) (n
 	return toNote(row), err
 }
 
-// SearchNotes devolve as notas cujo conteúdo casa com query, paginadas por
-// offset e limit.
+// SearchNotes devolve as notas indexadas que casam com query, na sintaxe de
+// websearch_to_tsquery, da mais relevante para a menos, paginadas por offset e limit.
 func (r *PostgresNotesRepository) SearchNotes(ctx context.Context, query string, offset, limit int32) ([]notes.SearchResult, error) {
 	var rows []gen.SearchNotesRow
 	err := r.run(ctx, func(q *gen.Queries) error {
 		var qErr error
-		rows, qErr = q.SearchNotes(ctx, gen.SearchNotesParams{Content: "%" + query + "%", Limit: limit, Offset: offset})
+		rows, qErr = q.SearchNotes(ctx, gen.SearchNotesParams{SearchConfig: r.searchConfig, Query: query, PageLimit: limit, PageOffset: offset})
 		return qErr
 	})
 	out := make([]notes.SearchResult, 0, len(rows))
 	for _, row := range rows {
-		out = append(out, notes.SearchResult{ID: row.ID, VaultID: row.VaultID, Path: row.Path, UpdatedAt: row.UpdatedAt})
+		out = append(out, notes.SearchResult{ID: row.ID, VaultID: row.VaultID, Path: row.Path, UpdatedAt: row.UpdatedAt, Snippet: row.Snippet})
 	}
 	return out, err
 }

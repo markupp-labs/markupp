@@ -120,16 +120,20 @@ func (q *Queries) ListNotes(ctx context.Context) ([]Note, error) {
 }
 
 const searchNotes = `-- name: SearchNotes :many
-SELECT id, vault_id, path, updated_at FROM notes
-WHERE content ILIKE $1
-ORDER BY updated_at DESC
-LIMIT $2 OFFSET $3
+SELECT n.id, n.vault_id, n.path, n.updated_at,
+       ts_headline($1::text::regconfig, n.content, q.query)::text AS snippet
+FROM websearch_to_tsquery($1::text::regconfig, $2::text) AS q (query)
+JOIN note_search_index s ON s.document @@ q.query
+JOIN notes n ON n.id = s.note_id
+ORDER BY ts_rank(s.document, q.query, 1) DESC, n.id
+LIMIT $4 OFFSET $3
 `
 
 type SearchNotesParams struct {
-	Content string
-	Limit   int32
-	Offset  int32
+	SearchConfig string
+	Query        string
+	PageOffset   int32
+	PageLimit    int32
 }
 
 type SearchNotesRow struct {
@@ -137,10 +141,19 @@ type SearchNotesRow struct {
 	VaultID   string
 	Path      string
 	UpdatedAt time.Time
+	Snippet   string
 }
 
+// Lê só o índice: a nota ainda não indexada fica fora (ADR-0012). Consulta sem lexema,
+// vazia ou só de stopwords, não casa com nada. O id desempata o ranking para a
+// paginação ser estável.
 func (q *Queries) SearchNotes(ctx context.Context, arg SearchNotesParams) ([]SearchNotesRow, error) {
-	rows, err := q.db.Query(ctx, searchNotes, arg.Content, arg.Limit, arg.Offset)
+	rows, err := q.db.Query(ctx, searchNotes,
+		arg.SearchConfig,
+		arg.Query,
+		arg.PageOffset,
+		arg.PageLimit,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -153,6 +166,7 @@ func (q *Queries) SearchNotes(ctx context.Context, arg SearchNotesParams) ([]Sea
 			&i.VaultID,
 			&i.Path,
 			&i.UpdatedAt,
+			&i.Snippet,
 		); err != nil {
 			return nil, err
 		}

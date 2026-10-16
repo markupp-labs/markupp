@@ -226,7 +226,7 @@ func serve(ctx context.Context, logger *slog.Logger, cfg config.Config) error {
 }
 
 func newHandler(cfg config.Config, pool *pgxpool.Pool, logger *slog.Logger) http.Handler {
-	repo := storage.NewPostgresNotesRepository(pool)
+	repo := storage.NewPostgresNotesRepository(pool, cfg.SearchConfig)
 	notesSvc := notes.NewService(repo, cfg.MaxNoteSize)
 	authSvc, codec := newAuthService(cfg, pool)
 	// A API não recebe o SMTP: o booleano diz que há quem entregue os emails dela.

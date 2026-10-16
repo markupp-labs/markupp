@@ -33,8 +33,14 @@ RETURNING *;
 -- name: DeleteNote :execrows
 DELETE FROM notes WHERE id = $1;
 
+-- Lê só o índice: a nota ainda não indexada fica fora (ADR-0012). Consulta sem lexema,
+-- vazia ou só de stopwords, não casa com nada. O id desempata o ranking para a
+-- paginação ser estável.
 -- name: SearchNotes :many
-SELECT id, vault_id, path, updated_at FROM notes
-WHERE content ILIKE $1
-ORDER BY updated_at DESC
-LIMIT $2 OFFSET $3;
+SELECT n.id, n.vault_id, n.path, n.updated_at,
+       ts_headline(sqlc.arg(search_config)::text::regconfig, n.content, q.query)::text AS snippet
+FROM websearch_to_tsquery(sqlc.arg(search_config)::text::regconfig, sqlc.arg(query)::text) AS q (query)
+JOIN note_search_index s ON s.document @@ q.query
+JOIN notes n ON n.id = s.note_id
+ORDER BY ts_rank(s.document, q.query, 1) DESC, n.id
+LIMIT sqlc.arg(page_limit) OFFSET sqlc.arg(page_offset);
