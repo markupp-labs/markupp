@@ -20,9 +20,10 @@ class ApplicationController < ActionController::Base
   private
     def credential = @credential ||= PanelCredential.new(session, markupp_api_factory)
 
-    # Só GET volta depois do login: formulário enviado sem sessão se perde.
+    # Só GET de página inteira volta depois do login: formulário enviado sem sessão se perde, e frame sozinho não é página.
     def require_login
       return if credential.signed_in?
+      return render_frame_alert(new_session_path, t("markupp_api.errors.session_expired"), status: :unauthorized) if turbo_frame_request?
 
       session[:return_to] = request.fullpath if request.get?
       redirect_to new_session_path
