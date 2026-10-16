@@ -25,6 +25,10 @@
 # Any libraries that use a connection pool or another resource pool should
 # be configured to provide at least as many connections as the number of
 # threads. This includes Active Record's `pool` parameter in `database.yml`.
+#
+# Um processo só, sem workers: a renovação do refresh token (RefreshingMarkuppApi) trava por Mutex do processo
+# e guarda o par no cache local. Com WEB_CONCURRENCY maior que 1 ou mais de uma réplica, duas requisições podem
+# renovar o mesmo refresh, e a API revoga todas as sessões da conta.
 threads_count = ENV.fetch("RAILS_MAX_THREADS", 3)
 threads threads_count, threads_count
 
