@@ -80,8 +80,13 @@ GRANT SELECT, UPDATE ON notifications TO markupp_notifier;
 GRANT INSERT ON notifications TO markupp_app;
 
 ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
+-- A checagem da chave estrangeira ignora o RLS, então a política amarra o convite ao
+-- tenant da sessão: sem isso, um tenant enfileiraria o convite de outro.
 CREATE POLICY notifications_enqueue ON notifications FOR INSERT TO markupp_app
-    WITH CHECK (tenant_id = current_setting('markupp.tenant_id', true));
+    WITH CHECK (
+        tenant_id = current_setting('markupp.tenant_id', true)
+        AND EXISTS (SELECT 1 FROM user_invites i WHERE i.id = invite_id AND i.tenant_id = notifications.tenant_id)
+    );
 CREATE POLICY notifications_notifier ON notifications TO markupp_notifier
     USING (true);
 
