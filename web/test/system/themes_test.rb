@@ -4,6 +4,7 @@ require "application_system_test_case"
 class ThemesTest < ApplicationSystemTestCase
   test "switching the theme repaints the page right away" do
     use_fake_api(notes: [])
+    sign_in_through_form
 
     visit root_path
     click_on "Dark theme"

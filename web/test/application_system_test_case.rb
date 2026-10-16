@@ -9,4 +9,13 @@ Capybara.enable_aria_label = true
 class ApplicationSystemTestCase < ActionDispatch::SystemTestCase
   # HEADED=1 abre a janela do navegador para acompanhar o teste.
   driven_by :selenium, using: ENV["HEADED"] ? :chrome : :headless_chrome, screen_size: [ 1400, 900 ]
+
+  # Entra pelo formulário de login, contra a fake, e espera a barra lateral com o email.
+  def sign_in_through_form(email = FakeMarkuppAccounts::DEFAULT_EMAIL, password: FakeMarkuppAccounts::DEFAULT_PASSWORD)
+    visit new_session_path
+    fill_in "Email", with: email
+    fill_in "Password", with: password
+    click_on "Log in"
+    assert_selector "nav", text: email
+  end
 end

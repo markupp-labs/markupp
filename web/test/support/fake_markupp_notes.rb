@@ -10,14 +10,14 @@ class FakeMarkuppNotes
     @post_requests = []
   end
 
-  def get(path)
+  def get(path, **)
     return @notes if path == "/notes"
     return search(URI(path).query) if path.start_with?("/notes/search?")
 
     note_at("GET", path)
   end
 
-  def put(path, body)
+  def put(path, body, **)
     @put_requests << body
     raise MarkuppApi::Conflict, "fake API simulates a conflict on PUT #{path}, expected force: true" if @conflict && !body[:force]
 
@@ -27,7 +27,7 @@ class FakeMarkuppNotes
   end
 
   # Como a API, recusa caminho já usado. O id segue a ordem dos POSTs: created-1, created-2...
-  def post(path, body)
+  def post(path, body, **)
     raise ArgumentError, "fake API has no route for POST #{path}, expected /notes" unless path == "/notes"
 
     @post_requests << body
@@ -37,7 +37,7 @@ class FakeMarkuppNotes
     @notes.last
   end
 
-  def delete(path)
+  def delete(path, **)
     @notes.delete(note_at("DELETE", path))
     nil
   end

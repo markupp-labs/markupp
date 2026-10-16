@@ -3,6 +3,7 @@ require "application_system_test_case"
 class NotesTest < ApplicationSystemTestCase
   test "opening a note mounts the editor with its markdown" do
     use_fake_api(notes: [ { id: "1", path: "work/plan.md", content: "# Plan\n\nShip *it* with [[ideas]]." } ])
+    sign_in_through_form
 
     visit root_path
     find("summary", text: "work").click
@@ -15,6 +16,7 @@ class NotesTest < ApplicationSystemTestCase
 
   test "ctrl+s saves the edited note" do
     api = use_fake_api(notes: [ { id: "1", path: "plan.md", content: "# Plan\n" } ])
+    sign_in_through_form
 
     visit note_path("1")
     find(".cm-content").send_keys([ :control, :end ], "Ship it.")
@@ -28,6 +30,7 @@ class NotesTest < ApplicationSystemTestCase
 
   test "ctrl+s creates a new note in the folder of the open note" do
     api = use_fake_api(notes: [ { id: "1", path: "work/plan.md", content: "# Plan\n" } ])
+    sign_in_through_form
 
     visit note_path("1")
     click_on "New note"
@@ -42,6 +45,7 @@ class NotesTest < ApplicationSystemTestCase
 
   test "editing the path marks the note unsaved and saves the rename" do
     api = use_fake_api(notes: [ { id: "1", path: "plan.md", content: "# Plan\n" } ])
+    sign_in_through_form
 
     visit note_path("1")
     fill_in "Path", with: "work/plan.md"
@@ -55,6 +59,7 @@ class NotesTest < ApplicationSystemTestCase
 
   test "saving a CRLF note keeps its line breaks" do
     api = use_fake_api(notes: [ { id: "1", path: "plan.md", content: "a\r\nb\r\n" } ])
+    sign_in_through_form
 
     visit note_path("1")
     fill_in "Path", with: "renamed.md"
@@ -66,6 +71,7 @@ class NotesTest < ApplicationSystemTestCase
 
   test "deleting a note with unsaved changes asks only once" do
     use_fake_api(notes: [ { id: "1", path: "plan.md", content: "# Plan\n" } ])
+    sign_in_through_form
 
     visit note_path("1")
     find(".cm-content").send_keys([ :control, :end ], "draft")

@@ -26,6 +26,7 @@ class ThemesControllerTest < ActionDispatch::IntegrationTest
 
   test "layout marks the html with the theme from the cookie" do
     use_fake_api(notes: [])
+    sign_in_as
     cookies[:theme] = "dark"
 
     get root_path
@@ -35,6 +36,7 @@ class ThemesControllerTest < ActionDispatch::IntegrationTest
 
   test "layout leaves the theme to the system without a cookie" do
     use_fake_api(notes: [])
+    sign_in_as
 
     get root_path
 

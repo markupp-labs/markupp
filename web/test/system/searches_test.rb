@@ -5,6 +5,7 @@ class SearchesTest < ApplicationSystemTestCase
     use_fake_api(notes: [ { id: "1", path: "work/plan.md", content: "Ship the plan" },
                           { id: "2", path: "home/list.md", content: "ship groceries" },
                           { id: "3", path: "inbox.md", content: "later" } ])
+    sign_in_through_form
 
     visit root_path
     find("body").send_keys([ :control, "k" ])
@@ -19,6 +20,7 @@ class SearchesTest < ApplicationSystemTestCase
 
   test "the sidebar button opens the search too" do
     use_fake_api(notes: [])
+    sign_in_through_form
 
     visit root_path
     click_on "Search"

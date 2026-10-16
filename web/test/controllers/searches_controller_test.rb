@@ -3,6 +3,7 @@ require "test_helper"
 class SearchesControllerTest < ActionDispatch::IntegrationTest
   test "show lists the matching notes in the results frame, linking out of it" do
     use_fake_api(notes: [ { id: "1", path: "work/plan.md", content: "Ship it" }, { id: "2", path: "inbox.md", content: "later" } ])
+    sign_in_as
 
     get search_path(q: "ship")
 
@@ -15,6 +16,7 @@ class SearchesControllerTest < ActionDispatch::IntegrationTest
 
   test "show selects the first result so Enter opens it" do
     use_fake_api(notes: [ { id: "1", path: "a.md", content: "x" }, { id: "2", path: "b.md", content: "x" } ])
+    sign_in_as
 
     get search_path(q: "x")
 
@@ -24,6 +26,7 @@ class SearchesControllerTest < ActionDispatch::IntegrationTest
 
   test "show says there are no matches" do
     use_fake_api(notes: [ { id: "1", path: "a.md", content: "x" } ])
+    sign_in_as
 
     get search_path(q: "nothing")
 
@@ -33,7 +36,9 @@ class SearchesControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "show with an empty query renders an empty frame without calling the API" do
-    use_fake_api(unreachable: true)
+    api = use_fake_api
+    sign_in_as
+    api.cut_connection!
 
     get search_path(q: "")
 
@@ -42,7 +47,9 @@ class SearchesControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "show says the server is unreachable inside the results frame" do
-    use_fake_api(unreachable: true)
+    api = use_fake_api
+    sign_in_as
+    api.cut_connection!
 
     get search_path(q: "x")
 

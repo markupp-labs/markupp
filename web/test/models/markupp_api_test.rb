@@ -113,11 +113,77 @@ class MarkuppApiTest < ActiveSupport::TestCase
     server.close
   end
 
+  test "sends the access token and the tenant in the headers" do
+    server = FakeHttpServer.new(status: "200 OK", body: "[]")
+    thread = server.serve_once
+
+    MarkuppApi.new(server.url, access_token: "jwt-1", tenant_id: "tenant-7").get("/notes")
+    thread.join
+    assert_equal "Bearer jwt-1", server.requested_headers["authorization"]
+    assert_equal "tenant-7", server.requested_headers["x-markupp-tenant"]
+  ensure
+    server.close
+  end
+
+  test "leaves out the credential headers when it has none" do
+    server = FakeHttpServer.new(status: "200 OK", body: "{}")
+    thread = server.serve_once
+
+    MarkuppApi.new(server.url).post("/auth/login", email: "ana@markupp.dev", password: "x")
+    thread.join
+    assert_not server.requested_headers.key?("authorization")
+    assert_not server.requested_headers.key?("x-markupp-tenant")
+  ensure
+    server.close
+  end
+
+  test "patch sends the body as JSON" do
+    server = FakeHttpServer.new(status: "204 No Content", body: "")
+    thread = server.serve_once
+
+    assert_nil MarkuppApi.new(server.url, access_token: "jwt-1").patch("/users/9", role: "admin")
+    thread.join
+    assert_equal [ "PATCH", "/users/9" ], [ server.requested_method, server.requested_path ]
+    assert_equal({ "role" => "admin" }, JSON.parse(server.requested_body))
+  ensure
+    server.close
+  end
+
+  test "maps the error codes of the auth routes to their classes" do
+    {
+      [ "401 Unauthorized", "unauthorized" ] => MarkuppApi::Unauthorized,
+      [ "401 Unauthorized", "invalid_credentials" ] => MarkuppApi::InvalidCredentials,
+      [ "401 Unauthorized", "invalid_refresh_token" ] => MarkuppApi::RefreshRejected,
+      [ "400 Bad Request", "invalid_request" ] => MarkuppApi::InvalidRequest,
+      [ "403 Forbidden", "local_auth_disabled" ] => MarkuppApi::LocalAuthDisabled
+    }.each do |(status, code), error_class|
+      error = assert_post_raises(error_class, %({"error":"#{code}","message":"recusado"}), status:)
+      assert_match status.split.first, error.message
+    end
+  end
+
+  test "an unknown 401 is Unauthorized and an unknown 403 is Forbidden" do
+    assert_post_raises(MarkuppApi::Unauthorized, "not json", status: "401 Unauthorized")
+    assert_post_raises(MarkuppApi::Forbidden, '{"error":"something_new"}', status: "403 Forbidden")
+  end
+
+  test "local auth disabled is a kind of Forbidden" do
+    assert_operator MarkuppApi::LocalAuthDisabled, :<, MarkuppApi::Forbidden
+  end
+
   private
+    def assert_post_raises(error_class, body, status:)
+      assert_answer_raises(error_class, body, status) { it.post("/auth/login", email: "a", password: "b") }
+    end
+
     def assert_put_raises(error_class, body, status: "409 Conflict")
+      assert_answer_raises(error_class, body, status) { it.put("/notes/1", content: "x") }
+    end
+
+    def assert_answer_raises(error_class, body, status)
       server = FakeHttpServer.new(status:, body:)
       thread = server.serve_once
-      error = assert_raises(error_class) { MarkuppApi.new(server.url).put("/notes/1", content: "x") }
+      error = assert_raises(error_class) { yield MarkuppApi.new(server.url) }
       thread.join
       error
     ensure

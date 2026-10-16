@@ -3,6 +3,7 @@ require "test_helper"
 class NotesControllerTest < ActionDispatch::IntegrationTest
   test "index shows the note tree in the sidebar" do
     use_fake_api(notes: [ { id: "1", path: "work/plan.md", content: "" }, { id: "2", path: "inbox.md", content: "" } ])
+    sign_in_as
 
     get root_path
 
@@ -14,6 +15,7 @@ class NotesControllerTest < ActionDispatch::IntegrationTest
 
   test "index shows an empty state when there are no notes" do
     use_fake_api(notes: [])
+    sign_in_as
 
     get root_path
 
@@ -23,6 +25,7 @@ class NotesControllerTest < ActionDispatch::IntegrationTest
 
   test "index links each note of the tree to its page" do
     use_fake_api(notes: [ { id: "1", path: "work/plan.md", content: "" } ])
+    sign_in_as
 
     get root_path
 
@@ -33,6 +36,7 @@ class NotesControllerTest < ActionDispatch::IntegrationTest
   test "show puts the exact markdown in the editor textarea" do
     content = "\n# Plan  \n\n\n- keep   \n\ttabs & <tags>\n\n"
     use_fake_api(notes: [ { id: "1", path: "work/plan.md", content: } ])
+    sign_in_as
 
     get note_path("1")
 
@@ -44,6 +48,7 @@ class NotesControllerTest < ActionDispatch::IntegrationTest
   test "show marks the current note and opens only its ancestors" do
     use_fake_api(notes: [ { id: "1", path: "work/2026/plan.md", content: "" }, { id: "2", path: "work/ideas.md", content: "" },
                           { id: "3", path: "home/list.md", content: "" } ])
+    sign_in_as
 
     get note_path("1")
 
@@ -56,6 +61,7 @@ class NotesControllerTest < ActionDispatch::IntegrationTest
 
   test "show answers not found for an unknown note" do
     use_fake_api(notes: [])
+    sign_in_as
 
     get note_path("missing")
 
@@ -65,6 +71,7 @@ class NotesControllerTest < ActionDispatch::IntegrationTest
 
   test "show puts the note in a save form with the version read" do
     use_fake_api(notes: [ { id: "1", path: "a.md", content: "x", updated_at: "2026-09-30T12:00:00.123Z" } ])
+    sign_in_as
 
     get note_path("1")
 
@@ -77,6 +84,7 @@ class NotesControllerTest < ActionDispatch::IntegrationTest
 
   test "update saves the note and redirects with a notice" do
     api = use_fake_api(notes: [ { id: "1", path: "a.md", content: "old" } ])
+    sign_in_as
 
     patch note_path("1"), params: { note: { path: "a.md", content: "new" }, last_modified_at: "2026-09-30T12:00:00.123Z" }
 
@@ -88,6 +96,7 @@ class NotesControllerTest < ActionDispatch::IntegrationTest
 
   test "update on a conflict keeps the text and offers reload or overwrite" do
     use_fake_api(notes: [ { id: "1", path: "a.md", content: "theirs" } ], conflict: true)
+    sign_in_as
 
     patch note_path("1"), params: { note: { path: "a.md", content: "mine" }, last_modified_at: "2026-09-30T12:00:00.123Z" }
 
@@ -100,6 +109,7 @@ class NotesControllerTest < ActionDispatch::IntegrationTest
 
   test "update with force overwrites despite the conflict" do
     api = use_fake_api(notes: [ { id: "1", path: "a.md", content: "theirs" } ], conflict: true)
+    sign_in_as
 
     patch note_path("1"), params: { note: { path: "a.md", content: "mine" }, last_modified_at: "2026-09-30T12:00:00.123Z", force: "true" }
 
@@ -109,6 +119,7 @@ class NotesControllerTest < ActionDispatch::IntegrationTest
 
   test "sidebar links new note to the folder of the open note" do
     use_fake_api(notes: [ { id: "1", path: "work/2026/plan.md", content: "" } ])
+    sign_in_as
 
     get note_path("1")
 
@@ -117,6 +128,7 @@ class NotesControllerTest < ActionDispatch::IntegrationTest
 
   test "sidebar links new note to the root when no note is open" do
     use_fake_api(notes: [])
+    sign_in_as
 
     get root_path
 
@@ -125,6 +137,7 @@ class NotesControllerTest < ActionDispatch::IntegrationTest
 
   test "new opens an empty Untitled.md in the save form" do
     use_fake_api(notes: [])
+    sign_in_as
 
     get new_note_path(folder: "work")
 
@@ -139,6 +152,7 @@ class NotesControllerTest < ActionDispatch::IntegrationTest
 
   test "create posts the note and redirects to it" do
     api = use_fake_api(notes: [])
+    sign_in_as
 
     post notes_path, params: { note: { path: "work/Untitled.md", content: "# New\n" } }
 
@@ -148,6 +162,7 @@ class NotesControllerTest < ActionDispatch::IntegrationTest
 
   test "create numbers an untitled note whose name is taken" do
     api = use_fake_api(notes: [ { id: "1", path: "Untitled.md", content: "" } ])
+    sign_in_as
 
     post notes_path, params: { note: { path: "Untitled.md", content: "" } }
 
@@ -157,6 +172,7 @@ class NotesControllerTest < ActionDispatch::IntegrationTest
 
   test "create with a taken path keeps the text and flags the path" do
     use_fake_api(notes: [ { id: "1", path: "plan.md", content: "" } ])
+    sign_in_as
 
     post notes_path, params: { note: { path: "plan.md", content: "mine" } }
 
@@ -168,6 +184,7 @@ class NotesControllerTest < ActionDispatch::IntegrationTest
 
   test "update renames the note and the tree shows the new name" do
     api = use_fake_api(notes: [ { id: "1", path: "a.md", content: "x" } ])
+    sign_in_as
 
     patch note_path("1"), params: { note: { path: "b.md", content: "x" } }
 
@@ -180,6 +197,7 @@ class NotesControllerTest < ActionDispatch::IntegrationTest
 
   test "update moves the note into a folder and opens it in the tree" do
     use_fake_api(notes: [ { id: "1", path: "a.md", content: "x" } ])
+    sign_in_as
 
     patch note_path("1"), params: { note: { path: "work/2026/a.md", content: "x" } }
     follow_redirect!
@@ -190,6 +208,7 @@ class NotesControllerTest < ActionDispatch::IntegrationTest
 
   test "update on a taken path keeps what was typed and shows the error under the field" do
     use_fake_api(notes: [ { id: "1", path: "a.md", content: "x" }, { id: "2", path: "b.md", content: "y" } ])
+    sign_in_as
 
     patch note_path("1"), params: { note: { path: "b.md", content: "mine" }, last_modified_at: "2026-09-30T12:00:00.123Z" }
 
@@ -202,6 +221,7 @@ class NotesControllerTest < ActionDispatch::IntegrationTest
 
   test "update on a path the API refuses shows its error under the field" do
     use_fake_api(notes: [ { id: "1", path: "a.md", content: "x" } ])
+    sign_in_as
 
     patch note_path("1"), params: { note: { path: "", content: "mine" } }
 
@@ -211,6 +231,7 @@ class NotesControllerTest < ActionDispatch::IntegrationTest
 
   test "show offers a delete button that asks for confirmation" do
     use_fake_api(notes: [ { id: "1", path: "a.md", content: "x" } ])
+    sign_in_as
 
     get note_path("1")
 
@@ -220,6 +241,7 @@ class NotesControllerTest < ActionDispatch::IntegrationTest
 
   test "destroy deletes the note and redirects home with a notice" do
     use_fake_api(notes: [ { id: "1", path: "a.md", content: "x" } ])
+    sign_in_as
 
     delete note_path("1")
 
@@ -231,6 +253,7 @@ class NotesControllerTest < ActionDispatch::IntegrationTest
 
   test "destroy of a note already deleted still redirects home" do
     use_fake_api(notes: [])
+    sign_in_as
 
     delete note_path("gone")
 
@@ -239,7 +262,9 @@ class NotesControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "index answers bad gateway when the API is unreachable" do
-    use_fake_api(unreachable: true)
+    api = use_fake_api
+    sign_in_as
+    api.cut_connection!
 
     get root_path
 
@@ -249,6 +274,7 @@ class NotesControllerTest < ActionDispatch::IntegrationTest
 
   test "update sends a CRLF note back with CRLF" do
     api = use_fake_api(notes: [ { id: "1", path: "a.md", content: "x\r\ny\r\n" } ])
+    sign_in_as
 
     patch note_path("1"), params: { note: { path: "a.md", content: "x\ny\nz\n" }, crlf: "true" }
 
@@ -257,6 +283,7 @@ class NotesControllerTest < ActionDispatch::IntegrationTest
 
   test "update keeps an LF note in LF when the browser sends CRLF" do
     api = use_fake_api(notes: [ { id: "1", path: "a.md", content: "x\n" } ])
+    sign_in_as
 
     patch note_path("1"), params: { note: { path: "a.md", content: "x\r\ny\r\n" }, crlf: "false" }
 
@@ -265,6 +292,7 @@ class NotesControllerTest < ActionDispatch::IntegrationTest
 
   test "show records whether the note uses CRLF" do
     use_fake_api(notes: [ { id: "1", path: "a.md", content: "x\r\n" } ])
+    sign_in_as
 
     get note_path("1")
 
@@ -273,6 +301,7 @@ class NotesControllerTest < ActionDispatch::IntegrationTest
 
   test "create with a path the API refuses keeps the text and flags the path" do
     use_fake_api(notes: [])
+    sign_in_as
 
     post notes_path, params: { note: { path: " ", content: "mine" } }
 
