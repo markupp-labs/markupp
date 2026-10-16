@@ -17,4 +17,17 @@ class TenantsTest < ApplicationSystemTestCase
 
     assert_selector "nav button[popovertarget=tenant_switcher]", text: /Acme research.*owner/m
   end
+
+  test "a new account creates its first tenant and lands on its notes" do
+    use_fake_api(tenants: [])
+    sign_in_through_form
+
+    assert_text "Create your first tenant"
+    fill_in "Name", with: "Acme research"
+    click_on "Create"
+
+    assert_text "Created Acme research."
+    assert_selector "nav button[popovertarget=tenant_switcher]", text: /Acme research.*owner/m
+    assert_link "New note"
+  end
 end

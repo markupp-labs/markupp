@@ -34,4 +34,12 @@ class TenantTest < ActiveSupport::TestCase
   test "pick answers nil without tenants" do
     assert_nil Tenant.pick([], nil)
   end
+
+  test "create answers the new tenant with the owner role" do
+    assert_equal Tenant.new(id: "tenant-3", name: "Field notes", role: "owner"), Tenant.create(@api, "Field notes")
+  end
+
+  test "create raises InvalidRequest for a name the API refuses" do
+    assert_raises(MarkuppApi::InvalidRequest) { Tenant.create(@api, " ") }
+  end
 end
