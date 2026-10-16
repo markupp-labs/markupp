@@ -269,3 +269,31 @@ func TestLoad_IntervaloInvalido_RetornaErroComOValor(t *testing.T) {
 		assert.Contains(t, err.Error(), valor)
 	}
 }
+
+func TestLoadIndexer_SemSegredoDeAutenticacao_CarregaBancoEIndexador(t *testing.T) {
+	env := fakeEnv{"MARKUPP_DATABASE_URL": urlDeTeste, "MARKUPP_SEARCH_CONFIG": "portuguese", "MARKUPP_INDEX_INTERVAL": "5s"}
+
+	cfg, err := config.LoadIndexer(env.Lookup)
+
+	require.NoError(t, err, "o indexador nao assina token, entao nao recebe o segredo dos JWT")
+	assert.Equal(t, urlDeTeste, cfg.DatabaseURL)
+	assert.Equal(t, "portuguese", cfg.SearchConfig)
+	assert.Equal(t, 5*time.Second, cfg.IndexInterval)
+	assert.Empty(t, cfg.AuthSecret)
+}
+
+func TestLoadIndexer_SemBanco_RetornaErroComAVariavel(t *testing.T) {
+	_, err := config.LoadIndexer(fakeEnv{}.Lookup)
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "MARKUPP_DATABASE_URL")
+}
+
+func TestLoad_SenhaDoScaler_LeDaVariavel(t *testing.T) {
+	env := fakeEnv{"MARKUPP_DATABASE_URL": urlDeTeste, "MARKUPP_AUTH_SECRET": segredoDeTesteValido, "MARKUPP_SCALER_PASSWORD": "senha-do-scaler"}
+
+	cfg, err := config.Load(env.Lookup)
+
+	require.NoError(t, err)
+	assert.Equal(t, "senha-do-scaler", cfg.ScalerPassword)
+}
