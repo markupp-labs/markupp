@@ -187,6 +187,13 @@ class MarkuppApiTest < ActiveSupport::TestCase
     assert_kind_of MarkuppApi::Forbidden, error
   end
 
+  test "maps the error codes of the invite answers to their classes" do
+    { [ "404 Not Found", "invite_not_found" ] => MarkuppApi::InviteNotFound,
+      [ "409 Conflict", "already_member" ] => MarkuppApi::AlreadyMember }.each do |(status, code), error_class|
+      assert_answer_raises(error_class, %({"error":"#{code}","message":"recusado"}), status) { it.post("/me/invites/1/accept", {}) }
+    end
+  end
+
   private
     def assert_post_raises(error_class, body, status:)
       assert_answer_raises(error_class, body, status) { it.post("/auth/login", email: "a", password: "b") }

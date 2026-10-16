@@ -8,10 +8,10 @@ class FakeMarkuppApi
   delegate :assign_role!, :deny_notes_in!, to: :@tenants
 
   def initialize(notes: [], unreachable: false, conflict: false, accounts: FakeMarkuppAccounts::DEFAULT_ACCOUNTS,
-                 tenants: FakeMarkuppTenants::DEFAULT_TENANTS)
+                 tenants: FakeMarkuppTenants::DEFAULT_TENANTS, invites: [])
     @accounts = FakeMarkuppAccounts.new(accounts)
     @auth = FakeMarkuppAuth.new(@accounts)
-    @tenants = FakeMarkuppTenants.new(tenants)
+    @tenants = FakeMarkuppTenants.new(tenants, invites)
     @notes = FakeMarkuppNotes.new(notes:, conflict:)
     @unreachable = unreachable
     @received_credentials = []
