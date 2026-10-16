@@ -69,7 +69,10 @@ func (m *SMTPMailer) Send(ctx context.Context, msg Message) error {
 	if err := deliver(client, msg); err != nil {
 		return fmt.Errorf("entregar a %q por %s: %w", msg.To, m.addr, err)
 	}
-	return client.Quit()
+	// O servidor já aceitou a mensagem no fim do DATA. Tratar a falha do QUIT como
+	// falha da entrega reenviaria o convite com outro token e mataria o deste email.
+	_ = client.Quit()
+	return nil
 }
 
 func (m *SMTPMailer) connect(ctx context.Context) (*smtp.Client, error) {
