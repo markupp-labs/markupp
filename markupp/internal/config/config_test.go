@@ -316,3 +316,29 @@ func TestLoad_SMTPForaDoFormato_RetornaErroSemVazarASenha(t *testing.T) {
 		assert.NotContains(t, err.Error(), "segredo", "a mensagem de erro nao repete a senha da URL")
 	}
 }
+
+func TestLoad_RemetenteComNome_Aceita(t *testing.T) {
+	env := fakeEnv{
+		"MARKUPP_DATABASE_URL": urlDeTeste, "MARKUPP_AUTH_SECRET": segredoDeTesteValido,
+		"MARKUPP_SMTP_URL": "smtp://mailpit:1025", "MARKUPP_SMTP_FROM": "Markupp <convites@markupp.dev>",
+	}
+
+	cfg, err := config.Load(env.Lookup)
+
+	require.NoError(t, err)
+	assert.Equal(t, "Markupp <convites@markupp.dev>", cfg.SMTPFrom)
+}
+
+func TestLoad_RemetenteIlegivel_RetornaErroComOValor(t *testing.T) {
+	for _, valor := range []string{"Markupp <convites@>", "a@b, c@d", "convites@markupp.dev>"} {
+		env := fakeEnv{
+			"MARKUPP_DATABASE_URL": urlDeTeste, "MARKUPP_AUTH_SECRET": segredoDeTesteValido,
+			"MARKUPP_SMTP_URL": "smtp://mailpit:1025", "MARKUPP_SMTP_FROM": valor,
+		}
+
+		_, err := config.Load(env.Lookup)
+
+		require.Error(t, err, valor)
+		assert.Contains(t, err.Error(), "MARKUPP_SMTP_FROM", valor)
+	}
+}
