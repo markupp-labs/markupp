@@ -92,7 +92,8 @@ func TestInviteOutbox_ConvitePorEmail_TrocaOHashEEntregaOsDetalhes(t *testing.T)
 	require.True(t, entregaProxima(t, db, e))
 
 	require.Len(t, e.pending, 1)
-	assert.Equal(t, "c1", e.pending[0].InviteID)
+	assert.Equal(t, notify.KindInvite, e.pending[0].Kind)
+	assert.Equal(t, "c1", e.pending[0].TargetID)
 	assert.Zero(t, e.pending[0].Attempts)
 	require.True(t, e.found)
 	e.details.ExpiresAt = e.details.ExpiresAt.UTC()
@@ -193,7 +194,7 @@ func TestInviteOutbox_NotificacaoReservada_OutroEnvioPulaParaAProxima(t *testing
 	terminou := make(chan error, 1)
 	go func() {
 		_, err := outbox.DeliverNextDue(context.Background(), func(ctx context.Context, p notify.Pending, _ notify.ReissueFunc) (notify.Outcome, error) {
-			reservada <- p.InviteID
+			reservada <- p.TargetID
 			<-libera
 			return notify.Outcome{Sent: true}, nil
 		})
@@ -203,7 +204,7 @@ func TestInviteOutbox_NotificacaoReservada_OutroEnvioPulaParaAProxima(t *testing
 
 	e := &entregaRegistrada{outcome: notify.Outcome{Sent: true}, novoHash: "h"}
 	require.True(t, entregaProxima(t, db, e))
-	assert.NotEqual(t, primeira, e.pending[0].InviteID, "duas réplicas nunca enviam o mesmo convite")
+	assert.NotEqual(t, primeira, e.pending[0].TargetID, "duas réplicas nunca enviam o mesmo convite")
 	assert.False(t, entregaProxima(t, db, &entregaRegistrada{}))
 
 	close(libera)

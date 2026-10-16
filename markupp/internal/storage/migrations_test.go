@@ -105,3 +105,16 @@ func TestMigracao00014_DownEUpComNotificacaoNaFila(t *testing.T) {
 	_, err = provider.Up(context.Background())
 	require.NoError(t, err)
 }
+
+func TestMigracao00015_DownEUpComPedidosDaConta(t *testing.T) {
+	pool := storagetest.EmptyPool(t)
+	provider := gooseProvider(t, pool)
+	_, err := provider.Up(context.Background())
+	require.NoError(t, err)
+	contaAutoRegistrada(t, pool, "u1", "nova@markupp.dev", true)
+
+	_, err = provider.DownTo(context.Background(), 14)
+	require.NoError(t, err)
+	_, err = provider.Up(context.Background())
+	require.NoError(t, err)
+}
