@@ -91,7 +91,7 @@ func TestDeliver_ConvitePendente_GravaOHashEEnviaOToken(t *testing.T) {
 	mailer := &fakeMailer{}
 	convites := &fakeInvites{}
 
-	outcome, err := novoDeliverer(mailer).Deliver(context.Background(), notify.Pending{InviteID: "c1"}, convites.reissue)
+	outcome, err := novoDeliverer(mailer).Deliver(context.Background(), notify.Pending{Kind: notify.KindInvite, TargetID: "c1"}, convites.reissue)
 
 	require.NoError(t, err)
 	assert.Equal(t, notify.Outcome{Sent: true}, outcome)
@@ -103,7 +103,7 @@ func TestDeliver_ConvitePendente_GravaOHashEEnviaOToken(t *testing.T) {
 func TestDeliver_SMTPFalha_RemarcaComEsperaCrescente(t *testing.T) {
 	mailer := &fakeMailer{err: errors.New("conexao recusada")}
 
-	outcome, err := novoDeliverer(mailer).Deliver(context.Background(), notify.Pending{InviteID: "c1", Attempts: 2}, (&fakeInvites{}).reissue)
+	outcome, err := novoDeliverer(mailer).Deliver(context.Background(), notify.Pending{Kind: notify.KindInvite, TargetID: "c1", Attempts: 2}, (&fakeInvites{}).reissue)
 
 	require.NoError(t, err, "falha do SMTP vira nova tentativa, nao erro do laco")
 	assert.False(t, outcome.Sent)
@@ -115,7 +115,7 @@ func TestDeliver_SMTPFalha_RemarcaComEsperaCrescente(t *testing.T) {
 func TestDeliver_SMTPFalhaNaOitava_Desiste(t *testing.T) {
 	mailer := &fakeMailer{err: errors.New("conexao recusada")}
 
-	outcome, err := novoDeliverer(mailer).Deliver(context.Background(), notify.Pending{InviteID: "c1", Attempts: 7}, (&fakeInvites{}).reissue)
+	outcome, err := novoDeliverer(mailer).Deliver(context.Background(), notify.Pending{Kind: notify.KindInvite, TargetID: "c1", Attempts: 7}, (&fakeInvites{}).reissue)
 
 	require.NoError(t, err)
 	assert.True(t, outcome.GiveUp)
@@ -124,7 +124,7 @@ func TestDeliver_SMTPFalhaNaOitava_Desiste(t *testing.T) {
 func TestDeliver_ConviteJaRespondido_DesisteSemEnviar(t *testing.T) {
 	mailer := &fakeMailer{}
 
-	outcome, err := novoDeliverer(mailer).Deliver(context.Background(), notify.Pending{InviteID: "c1"}, (&fakeInvites{missing: true}).reissue)
+	outcome, err := novoDeliverer(mailer).Deliver(context.Background(), notify.Pending{Kind: notify.KindInvite, TargetID: "c1"}, (&fakeInvites{missing: true}).reissue)
 
 	require.NoError(t, err)
 	assert.True(t, outcome.GiveUp)
@@ -174,4 +174,57 @@ func TestRunLoop_ErroDoBanco_DevolveOErro(t *testing.T) {
 		func(context.Context) error { return nil })
 
 	assert.ErrorIs(t, err, falha)
+}
+
+func detalhesDaConta() notify.TokenDetails {
+	return notify.TokenDetails{Email: "nova@markupp.dev", ExpiresAt: time.Date(2026, 10, 16, 13, 30, 0, 0, time.UTC)}
+}
+
+func TestVerifyEmailMessage_LevaOTokenEAValidadeComHora(t *testing.T) {
+	msg := notify.VerifyEmailMessage(detalhesDaConta(), "tok-v", "contas@markupp.dev")
+
+	assert.Equal(t, "nova@markupp.dev", msg.To)
+	assert.Equal(t, "contas@markupp.dev", msg.From)
+	assert.Contains(t, msg.Subject, "Confirme")
+	assert.Contains(t, msg.Body, "tok-v")
+	assert.Contains(t, msg.Body, "2026-10-16 13:30 UTC")
+}
+
+func TestResetPasswordMessage_LevaOTokenEAvisaQuemNaoPediu(t *testing.T) {
+	msg := notify.ResetPasswordMessage(detalhesDaConta(), "tok-r", "contas@markupp.dev")
+
+	assert.Contains(t, msg.Subject, "senha")
+	assert.Contains(t, msg.Body, "tok-r")
+	assert.Contains(t, msg.Body, "2026-10-16 13:30 UTC")
+	assert.Contains(t, msg.Body, "ignore", "quem nao pediu a troca sabe que pode ignorar")
+}
+
+// fakeConta devolve os detalhes de uma conta, como a troca do hash de verificacao ou
+// de recuperacao faz.
+func fakeConta(_ context.Context, _ string) (notify.TokenDetails, bool, error) {
+	return detalhesDaConta(), true, nil
+}
+
+func TestDeliver_CadaTipo_MontaAMensagemDele(t *testing.T) {
+	assuntos := map[notify.Kind]string{
+		notify.KindEmailVerification: "Confirme",
+		notify.KindPasswordReset:     "senha",
+	}
+	for tipo, assunto := range assuntos {
+		mailer := &fakeMailer{}
+
+		outcome, err := novoDeliverer(mailer).Deliver(context.Background(), notify.Pending{Kind: tipo, TargetID: "x"}, fakeConta)
+
+		require.NoError(t, err, tipo)
+		assert.True(t, outcome.Sent, tipo)
+		require.Len(t, mailer.sent, 1, tipo)
+		assert.Contains(t, mailer.sent[0].Subject, assunto, tipo)
+	}
+}
+
+func TestDeliver_TipoDesconhecido_RetornaErroComOTipo(t *testing.T) {
+	_, err := novoDeliverer(&fakeMailer{}).Deliver(context.Background(), notify.Pending{Kind: "sms", TargetID: "x"}, fakeConta)
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "sms")
 }
