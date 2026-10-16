@@ -42,6 +42,9 @@ type Config struct {
 	SMTPURL string
 	// SMTPFrom é o remetente dos emails, obrigatório com SMTPURL.
 	SMTPFrom string
+	// PanelURL é a URL base do painel web. Definida, os emails do notificador levam o
+	// link da rota do painel que recebe o token; vazia, só o token.
+	PanelURL string
 }
 
 // Default devolve a configuração usada nas variáveis não definidas.
@@ -88,7 +91,26 @@ func loadServerSettings(lookup LookupFunc, cfg *Config) error {
 	if err := loadAuthSettings(lookup, cfg); err != nil {
 		return err
 	}
-	return loadSMTPSettings(lookup, cfg)
+	if err := loadSMTPSettings(lookup, cfg); err != nil {
+		return err
+	}
+	return readPanelURL(lookup, &cfg.PanelURL)
+}
+
+// readPanelURL aceita só URL absoluta http ou https sem query nem fragmento, porque
+// o link do email acrescenta a rota e ?token= no fim dela.
+func readPanelURL(lookup LookupFunc, target *string) error {
+	var raw string
+	readString(lookup, "MARKUPP_PANEL_URL", &raw)
+	if raw == "" {
+		return nil
+	}
+	parsed, err := url.Parse(raw)
+	if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" || parsed.RawQuery != "" || parsed.Fragment != "" || parsed.ForceQuery {
+		return fmt.Errorf("MARKUPP_PANEL_URL=%q, esperada URL absoluta http:// ou https:// sem query, como https://painel.exemplo.com", raw)
+	}
+	*target = raw
+	return nil
 }
 
 // loadSMTPSettings lê o convite por email da API e o servidor de email do notificador
