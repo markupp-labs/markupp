@@ -12,11 +12,13 @@ import (
 )
 
 // arquivosForaDoAtor podem usar o pool direto: autenticação roda antes de existir
-// tenant (ADR-0034), e os outros abrem o pool, migram e montam a transação do ator.
+// tenant (ADR-0034), o indexador reserva o cofre antes de entrar no papel
+// markupp_indexer, e os outros abrem o pool, migram e montam a transação do ator.
 var arquivosForaDoAtor = map[string]bool{
-	"auth.go":     true,
-	"actor_tx.go": true,
-	"postgres.go": true,
+	"auth.go":          true,
+	"actor_tx.go":      true,
+	"postgres.go":      true,
+	"vault_indexer.go": true,
 }
 
 var acessoDiretoAoPool = regexp.MustCompile(`gen\.New\(|\binTx\(|pgx\.BeginFunc|pool\.\w+\(`)

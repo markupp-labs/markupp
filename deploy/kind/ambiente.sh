@@ -4,7 +4,8 @@
 #   up      sobe o cluster, o painel Headlamp e a stack dev, e deixa de pé
 #   painel  abre o Headlamp em http://localhost:4466 e mostra o token de acesso
 #   down    apaga o cluster e o estado do Pulumi do ambiente de pé
-#   smoke   sobe, testa a API por https e apaga tudo, passe ou falhe; é o do CI
+#   smoke   sobe, testa a API por https e a indexação pelo KEDA e apaga tudo,
+#           passe ou falhe; é o do CI
 set -euo pipefail
 
 REPO="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -85,6 +86,28 @@ testa_api() {
   return 1
 }
 
+# cofres_pendentes é a contagem que o scaler do KEDA faz, lida do banco do ambiente.
+cofres_pendentes() {
+  kubectl -n markupp exec statefulset/markupp-db -- \
+    psql -U markupp -tAc "SELECT markupp_pending_vaults()"
+}
+
+# testa_indexacao espera o KEDA criar o Job do indexador para a nota do smoke, o Job
+# terminar e a fila de pendências esvaziar: Job completo sem índice gravado não basta.
+testa_indexacao() {
+  for _ in $(seq 1 30); do
+    if kubectl -n markupp wait --for=condition=complete job \
+      -l scaledjob.keda.sh/name=markupp-indexer --timeout=10s 2>/dev/null &&
+      [ "$(cofres_pendentes)" = 0 ]; then
+      return 0
+    fi
+    sleep 5
+  done
+  kubectl -n markupp get scaledjob,job,pod
+  echo "cofres pendentes: $(cofres_pendentes)"
+  return 1
+}
+
 cmd_up() {
   recusa_cluster_existente
   usa_diretorio "$AMBIENTE_DIR"
@@ -116,6 +139,7 @@ cmd_smoke() {
   sobe_cluster
   aplica_stack
   testa_api
+  testa_indexacao
   echo "smoke passou"
 }
 

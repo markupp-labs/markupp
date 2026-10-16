@@ -1,5 +1,6 @@
-// Command markupp sobe o servidor HTTP de notas, ou aplica as migrações do
-// banco com o subcomando migrate.
+// Command markupp sobe o servidor HTTP de notas, aplica as migrações do banco
+// com o subcomando migrate, ou indexa os cofres pendentes com index (um cofre, para
+// o Job do KEDA) e index-loop (em laço, para o compose).
 package main
 
 import (
@@ -8,7 +9,9 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"os/signal"
 	"strconv"
+	"syscall"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -16,6 +19,7 @@ import (
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/api"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/auth"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/config"
+	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/indexing"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/notes"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/storage"
 )
@@ -28,12 +32,14 @@ const (
 )
 
 // command é o subcomando do binário: serve sobe a API, migrate aplica o schema
-// e sai.
+// e sai, index indexa um cofre pendente e sai, index-loop indexa em laço.
 type command string
 
 const (
-	serveCommand   command = "serve"
-	migrateCommand command = "migrate"
+	serveCommand     command = "serve"
+	migrateCommand   command = "migrate"
+	indexCommand     command = "index"
+	indexLoopCommand command = "index-loop"
 )
 
 func main() {
@@ -49,12 +55,15 @@ func run(ctx context.Context, logger *slog.Logger, args []string) error {
 	if err != nil {
 		return err
 	}
+	if cmd == indexCommand || cmd == indexLoopCommand {
+		return runIndexer(ctx, logger, cmd)
+	}
 	cfg, err := config.Load(os.LookupEnv)
 	if err != nil {
 		return fmt.Errorf("carregar config: %w", err)
 	}
 	if cmd == migrateCommand {
-		return migrateDatabase(ctx, cfg.DatabaseURL)
+		return migrateDatabase(ctx, cfg.DatabaseURL, cfg.ScalerPassword)
 	}
 	return serve(ctx, logger, cfg)
 }
@@ -64,13 +73,49 @@ func parseCommand(args []string) (command, error) {
 		return serveCommand, nil
 	}
 	switch cmd := command(args[1]); cmd {
-	case serveCommand, migrateCommand:
+	case serveCommand, migrateCommand, indexCommand, indexLoopCommand:
 		return cmd, nil
 	}
-	return "", fmt.Errorf("subcomando %q desconhecido, esperado %q ou %q", args[1], serveCommand, migrateCommand)
+	return "", fmt.Errorf("subcomando %q desconhecido, esperado %q, %q, %q ou %q",
+		args[1], serveCommand, migrateCommand, indexCommand, indexLoopCommand)
 }
 
-func migrateDatabase(ctx context.Context, databaseURL string) error {
+// runIndexer para no SIGTERM do Kubernetes ou do compose: a transação aberta volta
+// atrás e o cofre fica para o próximo Job.
+func runIndexer(ctx context.Context, logger *slog.Logger, cmd command) error {
+	ctx, stop := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	cfg, err := config.LoadIndexer(os.LookupEnv)
+	if err != nil {
+		return fmt.Errorf("carregar config do indexador: %w", err)
+	}
+	return indexVaults(ctx, logger, cfg, cmd)
+}
+
+// indexVaults roda o indexador sem estado do pacote indexing (ADR-0033): index
+// atende o Job que o KEDA cria por cofre, index-loop atende o compose.
+func indexVaults(ctx context.Context, logger *slog.Logger, cfg config.Config, cmd command) error {
+	pool, err := storage.OpenPool(ctx, cfg.DatabaseURL)
+	if err != nil {
+		return fmt.Errorf("abrir banco: %w", err)
+	}
+	defer pool.Close()
+	indexer, err := storage.NewPostgresVaultIndexer(ctx, pool, cfg.SearchConfig)
+	if err != nil {
+		return err
+	}
+	if cmd == indexLoopCommand {
+		logger.Info("indexador em laco", "intervalo", cfg.IndexInterval.String())
+		return indexing.RunLoop(ctx, indexer, indexing.WaitInterval(cfg.IndexInterval), logger)
+	}
+	found, err := indexer.IndexNextVault(ctx, indexing.Index)
+	logger.Info("indexacao de um cofre", "cofre_pendente", found)
+	return err
+}
+
+// migrateDatabase aplica as migrações e, com scalerPassword, libera o login do
+// papel do scaler do KEDA.
+func migrateDatabase(ctx context.Context, databaseURL, scalerPassword string) error {
 	pool, err := storage.OpenPool(ctx, databaseURL)
 	if err != nil {
 		return fmt.Errorf("abrir banco: %w", err)
@@ -79,7 +124,10 @@ func migrateDatabase(ctx context.Context, databaseURL string) error {
 	if err := storage.Migrate(ctx, pool); err != nil {
 		return fmt.Errorf("aplicar migrations: %w", err)
 	}
-	return nil
+	if scalerPassword == "" {
+		return nil
+	}
+	return storage.EnableScalerLogin(ctx, pool, scalerPassword)
 }
 
 // serve sobe a API sem mexer no schema: quem migra é o subcomando migrate.

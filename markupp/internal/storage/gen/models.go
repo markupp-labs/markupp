@@ -30,6 +30,16 @@ type Note struct {
 	VaultID   string
 }
 
+type NoteIndexQueue struct {
+	NoteID   string
+	Revision int64
+}
+
+type NoteSearchIndex struct {
+	NoteID   string
+	Document string
+}
+
 type RefreshToken struct {
 	TokenHash string
 	UserID    string

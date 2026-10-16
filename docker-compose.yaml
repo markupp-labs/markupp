@@ -30,6 +30,16 @@ services:
       postgres:
         condition: service_healthy
 
+  # O self-host não tem KEDA: o mesmo indexador roda em laço (ADR-0032). Erro do banco
+  # vai para o log e o laço tenta de novo no próximo intervalo.
+  indexer:
+    <<: *servidor
+    command: ["go", "run", "-C", "/src", "./cmd/markupp", "index-loop"]
+    restart: unless-stopped
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
   markupp:
     <<: *servidor
     ports:

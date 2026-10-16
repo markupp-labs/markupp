@@ -20,6 +20,7 @@ const imageUID = 10001
 func declareMigrationJob(ctx *pulumi.Context, names resourceNames, args MarkuppArgs, db pulumi.Resource, parent pulumi.ResourceOption) (pulumi.Resource, error) {
 	container := serverContainer(args, names)
 	container.Args = pulumi.StringArray{pulumi.String("migrate")}
+	container.Env = migrationEnv(names)
 	return batchv1.NewJob(ctx, names.component+"-migrate", &batchv1.JobArgs{
 		Metadata: metav1.ObjectMetaArgs{Namespace: pulumi.String(args.Namespace)},
 		Spec: batchv1.JobSpecArgs{

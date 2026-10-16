@@ -138,12 +138,13 @@ func TestNewMarkupp_SemBancoExterno_CriaPostgresNoNamespaceComVolume(t *testing.
 func TestNewMarkupp_SemBancoExterno_GuardaSenhaGeradaEURLNoSecret(t *testing.T) {
 	monitor := deploy(t, argsDeTeste())
 
-	require.Len(t, monitor.byType(randomPasswordType), 2)
+	require.Len(t, monitor.byType(randomPasswordType), 3, "banco, JWT e scaler")
 	secret := monitor.single(t, "kubernetes:core/v1:Secret")
 	assert.Equal(t, senhaDeTeste, plain(at(t, secret, "stringData", "password")).StringValue())
 	assert.Equal(t, senhaDeTeste, plain(at(t, secret, "stringData", "auth-secret")).StringValue())
-	assert.Equal(t, "postgres://markupp:"+senhaDeTeste+"@markupp-db:5432/markupp?sslmode=disable",
-		plain(at(t, secret, "stringData", "uri")).StringValue())
+	assert.Equal(t, "postgres://markupp:"+senhaDeTeste+"@markupp-db.markupp.svc:5432/markupp?sslmode=disable",
+		plain(at(t, secret, "stringData", "uri")).StringValue(),
+		"o scaler do KEDA consulta o banco do namespace keda, onde o nome curto do Service não resolve")
 }
 
 func TestNewMarkupp_SemBancoExterno_PostgresLeASenhaDoSecret(t *testing.T) {
@@ -168,7 +169,7 @@ func TestNewMarkupp_ComBancoExterno_NaoCriaPostgresEGuardaURLEmSecret(t *testing
 	monitor := deploy(t, args)
 
 	assert.Empty(t, monitor.byType("kubernetes:apps/v1:StatefulSet"))
-	require.Len(t, monitor.byType(randomPasswordType), 1)
+	require.Len(t, monitor.byType(randomPasswordType), 2, "JWT e scaler")
 	secret := monitor.single(t, "kubernetes:core/v1:Secret")
 	assert.Equal(t, "postgres://markupp@db.externo:5432/markupp",
 		at(t, secret, "stringData", "uri").StringValue())
