@@ -13,7 +13,8 @@ import (
 
 // arquivosForaDoAtor podem usar o pool direto: autenticação roda antes de existir
 // tenant (ADR-0034), o indexador reserva o cofre antes de entrar no papel
-// markupp_indexer, o notificador trabalha no papel markupp_notifier, e os outros
+// markupp_indexer, o notificador trabalha no papel markupp_notifier, o authorization
+// server OAuth usa tabelas da instância (ADR-0038), e os outros
 // abrem o pool, migram e montam a transação do ator.
 var arquivosForaDoAtor = map[string]bool{
 	"auth.go":                true,
@@ -22,6 +23,7 @@ var arquivosForaDoAtor = map[string]bool{
 	"vault_indexer.go":       true,
 	"notification_outbox.go": true,
 	"account_email.go":       true,
+	"oauth.go":               true,
 }
 
 var acessoDiretoAoPool = regexp.MustCompile(`gen\.New\(|\binTx\(|pgx\.BeginFunc|pool\.\w+\(`)
