@@ -26,7 +26,7 @@ func permitirQualquerIP(netip.Addr) error { return nil }
 // servidorDeMetadados é o host remoto falso que publica o documento do cliente.
 type servidorDeMetadados struct {
 	*httptest.Server
-	documento    map[string]any
+	documento    documentoDeTeste
 	contentType  string
 	cacheControl string
 	status       int
@@ -82,11 +82,19 @@ func (s *servidorDeMetadados) buscar(opts ...cimd.Option) (cimd.ClientMetadata, 
 	return s.fetcher(opts...).Fetch(context.Background(), s.clientID())
 }
 
-func documentoValido(clientID string) map[string]any {
-	return map[string]any{
-		"client_id":     clientID,
-		"client_name":   "Agente de Teste",
-		"redirect_uris": []string{"http://127.0.0.1/callback", "https://agente.example.com/cb"},
+// documentoDeTeste espelha o JSON publicado; campo nil fica fora do corpo, para os casos de ausência.
+type documentoDeTeste struct {
+	ClientID                *string   `json:"client_id,omitempty"`
+	ClientName              *string   `json:"client_name,omitempty"`
+	RedirectURIs            *[]string `json:"redirect_uris,omitempty"`
+	TokenEndpointAuthMethod *string   `json:"token_endpoint_auth_method,omitempty"`
+}
+
+func documentoValido(clientID string) documentoDeTeste {
+	return documentoDeTeste{
+		ClientID:     new(clientID),
+		ClientName:   new("Agente de Teste"),
+		RedirectURIs: new([]string{"http://127.0.0.1/callback", "https://agente.example.com/cb"}),
 	}
 }
 
@@ -105,7 +113,7 @@ func TestFetcher_DocumentoValido_DevolveMetadadosComTTLPadrao(t *testing.T) {
 
 func TestFetcher_AuthMethodNone_Aceita(t *testing.T) {
 	srv := novoServidorDeMetadados(t)
-	srv.documento["token_endpoint_auth_method"] = "none"
+	srv.documento.TokenEndpointAuthMethod = new("none")
 
 	_, err := srv.buscar()
 
@@ -191,22 +199,22 @@ func TestFetcher_ServidorLento_EstouraTimeout(t *testing.T) {
 }
 
 func TestFetcher_DocumentoInvalido_Recusa(t *testing.T) {
-	casos := map[string]func(doc map[string]any){
-		"client_id diferente":        func(d map[string]any) { d["client_id"] = "https://outro.example.com/c.json" },
-		"client_id ausente":          func(d map[string]any) { delete(d, "client_id") },
-		"redirect_uris ausente":      func(d map[string]any) { delete(d, "redirect_uris") },
-		"redirect_uris vazio":        func(d map[string]any) { d["redirect_uris"] = []string{} },
-		"redirect_uri relativa":      func(d map[string]any) { d["redirect_uris"] = []string{"/callback"} },
-		"redirect_uri com fragmento": func(d map[string]any) { d["redirect_uris"] = []string{"https://a.example.com/cb#x"} },
-		"client_name ausente":        func(d map[string]any) { delete(d, "client_name") },
-		"client_name em branco":      func(d map[string]any) { d["client_name"] = "   " },
-		"auth method com segredo":    func(d map[string]any) { d["token_endpoint_auth_method"] = "client_secret_basic" },
-		"auth method vazio":          func(d map[string]any) { d["token_endpoint_auth_method"] = "" },
+	casos := map[string]func(d *documentoDeTeste){
+		"client_id diferente":        func(d *documentoDeTeste) { d.ClientID = new("https://outro.example.com/c.json") },
+		"client_id ausente":          func(d *documentoDeTeste) { d.ClientID = nil },
+		"redirect_uris ausente":      func(d *documentoDeTeste) { d.RedirectURIs = nil },
+		"redirect_uris vazio":        func(d *documentoDeTeste) { d.RedirectURIs = new([]string{}) },
+		"redirect_uri relativa":      func(d *documentoDeTeste) { d.RedirectURIs = new([]string{"/callback"}) },
+		"redirect_uri com fragmento": func(d *documentoDeTeste) { d.RedirectURIs = new([]string{"https://a.example.com/cb#x"}) },
+		"client_name ausente":        func(d *documentoDeTeste) { d.ClientName = nil },
+		"client_name em branco":      func(d *documentoDeTeste) { d.ClientName = new("   ") },
+		"auth method com segredo":    func(d *documentoDeTeste) { d.TokenEndpointAuthMethod = new("client_secret_basic") },
+		"auth method vazio":          func(d *documentoDeTeste) { d.TokenEndpointAuthMethod = new("") },
 	}
 	for nome, alterar := range casos {
 		t.Run(nome, func(t *testing.T) {
 			srv := novoServidorDeMetadados(t)
-			alterar(srv.documento)
+			alterar(&srv.documento)
 
 			_, err := srv.buscar()
 
