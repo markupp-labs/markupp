@@ -71,6 +71,13 @@ email e troca de senha levarem o link da página do painel que recebe o token
 em texto logo abaixo. Sem ela, o email leva só o token. O componente ainda não tem opção para
 ela.
 
+A API limita login, refresh, aceite de convite, pedido de verificação de email e pedido e troca
+de senha a 5 tentativas por minuto por IP e, quando o corpo traz email, por email (ADR-0037).
+Acima disso responde 429 com Retry-After. A variável `MARKUPP_RATE_LIMIT_PER_MINUTE`, de 1 a
+10000, troca o 5. A contagem fica na memória de cada réplica, então com N réplicas o limite
+efetivo chega a N vezes o configurado. O IP é o da conexão: atrás de proxy, todo cliente aparece
+com o IP do proxy e divide o mesmo limite. O componente ainda não tem opção para a variável.
+
 Sem outra opção, o componente cria um Gateway próprio nas portas 80 e 443. Em cluster onde
 outro Gateway já ocupa essas portas, como o Cilium em hostNetwork, que exige porta única por
 Gateway, informe `existingGateway` com nome, namespace e listener. O componente cria só o
