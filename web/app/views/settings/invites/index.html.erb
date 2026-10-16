@@ -5,6 +5,8 @@
   <%= render "settings/tabs", current: "invites" %>
 
   <% if @token %>
+    <%# Sem snapshot do Turbo: Voltar depois de sair da página não traz o token de volta. %>
+    <% content_for :head, tag.meta(name: "turbo-cache-control", content: "no-cache") %>
     <div role="status" class="mt-3 rounded-md border border-line p-2">
       <p><%= t(".token_hint", email: @issued.email, date: l(@issued.expires_at.to_date, format: :short)) %></p>
       <%= label_tag :invite_token, t(".token"), class: "mt-2 block text-ink-muted" %>
