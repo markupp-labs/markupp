@@ -243,9 +243,10 @@ paths:
       summary: Convida um email para o tenant
       description: >
         Exige papel owner ou admin, e o papel do convite não passa do de quem convida.
-        Quem já tem conta vê o convite em /me/invites. O token volta uma única vez e
-        serve para quem ainda não tem conta se cadastrar; sem provedor de email, o
-        administrador o repassa. Vale por 7 dias.
+        Quem já tem conta vê o convite em /me/invites. O token serve para quem ainda
+        não tem conta se cadastrar. Sem SMTP configurado, ele volta uma única vez nesta
+        resposta e o administrador o repassa. Com SMTP, ele não volta: o servidor gera
+        o token na entrega e o envia só por email. Vale por 7 dias.
       parameters:
         - $ref: '#/components/parameters/TenantHeader'
       requestBody:
@@ -821,7 +822,9 @@ components:
           properties:
             token:
               type: string
-              description: Token do convite, devolvido só nesta resposta
+              description: >
+                Token do convite, devolvido só nesta resposta e só sem SMTP configurado.
+                Com SMTP, o campo não vem, e o token chega ao convidado por email
     LoginRequest:
       type: object
       required: [email, password]
