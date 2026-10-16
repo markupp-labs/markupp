@@ -29,11 +29,17 @@ func withEmailSecret(data pulumi.StringMap, args MarkuppArgs) pulumi.StringMap {
 	return data
 }
 
-// emailEnv diz à API que o convite sai por email e dá ao notificador o servidor.
-func emailEnv(names resourceNames, args MarkuppArgs) corev1.EnvVarArray {
+// inviteByEmailEnv diz à API que o convite sai por email. Ela não recebe o SMTP:
+// quem envia é só o notificador.
+func inviteByEmailEnv(args MarkuppArgs) corev1.EnvVarArray {
 	if args.Email == nil {
 		return nil
 	}
+	return corev1.EnvVarArray{corev1.EnvVarArgs{Name: pulumi.String("MARKUPP_INVITE_BY_EMAIL"), Value: pulumi.String("true")}}
+}
+
+// smtpEnv dá ao notificador o servidor e o remetente.
+func smtpEnv(names resourceNames, args MarkuppArgs) corev1.EnvVarArray {
 	return corev1.EnvVarArray{
 		secretEnv("MARKUPP_SMTP_URL", names.dbSecret, smtpURLKey),
 		corev1.EnvVarArgs{Name: pulumi.String("MARKUPP_SMTP_FROM"), Value: pulumi.String(args.Email.From)},
@@ -49,6 +55,7 @@ func declareNotifier(ctx *pulumi.Context, names resourceNames, args MarkuppArgs,
 	labels := pulumi.StringMap{"app.kubernetes.io/name": pulumi.String(names.notifier)}
 	container := serverContainer(args, names)
 	container.Args = pulumi.StringArray{pulumi.String("notify-loop")}
+	container.Env = append(databaseURLEnv(names), smtpEnv(names, args)...)
 	_, err := appsv1.NewDeployment(ctx, names.notifier, &appsv1.DeploymentArgs{
 		Metadata: namespaced(names.notifier, args.Namespace),
 		Spec: appsv1.DeploymentSpecArgs{

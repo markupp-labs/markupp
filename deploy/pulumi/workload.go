@@ -50,6 +50,7 @@ func declareAPI(ctx *pulumi.Context, names resourceNames, args MarkuppArgs, opts
 
 func apiDeploymentArgs(names resourceNames, args MarkuppArgs, labels pulumi.StringMap) *appsv1.DeploymentArgs {
 	container := serverContainer(args, names)
+	container.Env = append(databaseURLEnv(names), inviteByEmailEnv(args)...)
 	container.Ports = corev1.ContainerPortArray{corev1.ContainerPortArgs{ContainerPort: pulumi.Int(apiPort)}}
 	container.ReadinessProbe = healthzProbe()
 	container.LivenessProbe = processProbe()
@@ -70,7 +71,7 @@ func serverContainer(args MarkuppArgs, names resourceNames) corev1.ContainerArgs
 	return corev1.ContainerArgs{
 		Name:  pulumi.String("markupp"),
 		Image: pulumi.String(args.Image),
-		Env:   append(databaseURLEnv(names), emailEnv(names, args)...),
+		Env:   databaseURLEnv(names),
 		SecurityContext: corev1.SecurityContextArgs{
 			AllowPrivilegeEscalation: pulumi.Bool(false),
 			ReadOnlyRootFilesystem:   pulumi.Bool(true),
