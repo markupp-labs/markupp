@@ -140,3 +140,21 @@ func TestRateLimit_MesmoEmailComLixoDepoisDoJSON_Responde429(t *testing.T) {
 
 	assert.Equal(t, http.StatusTooManyRequests, rec.Code)
 }
+
+func TestRateLimit_IPv6DoMesmoPrefixo64_DividemOLimite(t *testing.T) {
+	router := newLimitedRouter(&fakeRateClock{current: time.Unix(1_000_000, 0)})
+	esgotaLimite(t, router, "/auth/refresh", "[2001:db8:0:1::1]:1234", `{}`)
+
+	rec := limitedPost(router, "/auth/refresh", "[2001:db8:0:1:ffff::2]:1234", `{}`)
+
+	assert.Equal(t, http.StatusTooManyRequests, rec.Code)
+}
+
+func TestRateLimit_IPv6DeOutroPrefixo64_TemLimiteProprio(t *testing.T) {
+	router := newLimitedRouter(&fakeRateClock{current: time.Unix(1_000_000, 0)})
+	esgotaLimite(t, router, "/auth/refresh", "[2001:db8:0:1::1]:1234", `{}`)
+
+	rec := limitedPost(router, "/auth/refresh", "[2001:db8:0:2::1]:1234", `{}`)
+
+	assert.NotEqual(t, http.StatusTooManyRequests, rec.Code)
+}
