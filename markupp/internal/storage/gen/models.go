@@ -105,6 +105,7 @@ type OauthToken struct {
 	AuthorizationID string
 	Kind            string
 	Resource        string
+	Scopes          []string
 	ExpiresAt       time.Time
 	Revoked         bool
 	CreatedAt       time.Time

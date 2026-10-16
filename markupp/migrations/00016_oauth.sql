@@ -54,6 +54,8 @@ CREATE TABLE oauth_tokens (
     authorization_id TEXT NOT NULL REFERENCES oauth_authorizations (id) ON DELETE CASCADE,
     kind             TEXT NOT NULL CHECK (kind IN ('access', 'refresh')),
     resource         TEXT NOT NULL,
+    scopes           TEXT[] NOT NULL CHECK (cardinality(scopes) > 0
+        AND scopes <@ ARRAY['notas:leitura', 'notas:escrita', 'administracao']::TEXT[]),
     expires_at       TIMESTAMPTZ NOT NULL,
     revoked          BOOLEAN NOT NULL DEFAULT FALSE,
     created_at       TIMESTAMPTZ NOT NULL DEFAULT now()
