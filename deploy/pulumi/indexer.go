@@ -6,10 +6,10 @@ import (
 )
 
 const (
-	// indexerPollingSeconds é de quanto em quanto tempo o KEDA consulta o banco, e é
-	// a latência de indexação esperada (ADR-0032).
-	indexerPollingSeconds = 30
-	pendingVaultsQuery    = "SELECT markupp_pending_vaults()"
+	// kedaPollingSeconds é de quanto em quanto tempo o KEDA consulta o banco, e é a
+	// latência esperada da indexação e do primeiro envio de email (ADR-0032).
+	kedaPollingSeconds = 30
+	pendingVaultsQuery = "SELECT markupp_pending_vaults()"
 )
 
 // IndexerArgs liga o indexador léxico.
@@ -38,19 +38,19 @@ func declareIndexer(ctx *pulumi.Context, names resourceNames, args MarkuppArgs, 
 		Containers:      corev1.ContainerArray{container},
 	}}
 	return declareCustom(ctx, "keda.sh/v1alpha1", "ScaledJob", names.indexer, args, pulumi.Map{
-		"pollingInterval": pulumi.Int(indexerPollingSeconds),
+		"pollingInterval": pulumi.Int(kedaPollingSeconds),
 		"jobTargetRef":    pulumi.Map{"template": template},
-		"triggers":        pulumi.Array{pendingVaultsTrigger()},
+		"triggers":        pulumi.Array{pendingRowsTrigger(pendingVaultsQuery)},
 	}, opts)
 }
 
-// pendingVaultsTrigger lê a conexão do env do contêiner do Job, o mesmo Secret que
-// a API usa, e pede um Job por cofre pendente.
-func pendingVaultsTrigger() pulumi.Map {
+// pendingRowsTrigger lê a conexão do env do contêiner, o mesmo Secret que a API usa,
+// e pede uma réplica, ou um Job, por linha pendente que query conta.
+func pendingRowsTrigger(query string) pulumi.Map {
 	return pulumi.Map{
 		"type": pulumi.String("postgresql"),
 		"metadata": pulumi.StringMap{
-			"query":             pulumi.String(pendingVaultsQuery),
+			"query":             pulumi.String(query),
 			"targetQueryValue":  pulumi.String("1"),
 			"connectionFromEnv": pulumi.String("MARKUPP_DATABASE_URL"),
 		},
