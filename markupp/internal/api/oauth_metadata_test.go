@@ -60,3 +60,33 @@ func TestOAuthMetadata_SobV1_Retorna404(t *testing.T) {
 
 	assert.Equal(t, http.StatusNotFound, rec.Code)
 }
+
+func TestOAuthMetadata_OrigemForaDaLista_RecebeCORSAberto(t *testing.T) {
+	router := api.NewRouter(api.RouterDeps{Tokens: &fakeTokenValidator{}, Probe: &fakeProbe{}, AllowedOrigins: []string{origemPermitida}, OAuthMetadata: &api.OAuthMetadata{Issuer: "https://markupp.exemplo"}})
+	req := httptest.NewRequest(http.MethodGet, metadataPath, nil)
+	req.Header.Set("Origin", "https://cliente.exemplo")
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	assert.Equal(t, "*", rec.Header().Get("Access-Control-Allow-Origin"))
+	assert.Empty(t, rec.Header().Get("Access-Control-Allow-Credentials"))
+}
+
+func TestOAuthMetadata_RotaDeNotasComMesmaOrigem_SegueSemCORS(t *testing.T) {
+	router := api.NewRouter(api.RouterDeps{Notes: &fakeService{listResult: nil}, Tenants: tenantDeTeste, Tokens: &fakeTokenValidator{}, Probe: &fakeProbe{}, AllowedOrigins: []string{origemPermitida}, OAuthMetadata: &api.OAuthMetadata{Issuer: "https://markupp.exemplo"}})
+	req := httptest.NewRequest(http.MethodGet, "/v1/notes", nil)
+	req.Header.Set("Authorization", "Bearer token-valido")
+	req.Header.Set("Origin", "https://cliente.exemplo")
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	assert.Empty(t, rec.Header().Get("Access-Control-Allow-Origin"))
+}
+
+func TestNewRouter_IssuerInvalido_EntraEmPanic(t *testing.T) {
+	for _, issuer := range []string{"", "markupp.exemplo", "/caminho", "https://", "://sem-esquema"} {
+		assert.Panics(t, func() {
+			api.NewRouter(api.RouterDeps{Tokens: &fakeTokenValidator{}, Probe: &fakeProbe{}, OAuthMetadata: &api.OAuthMetadata{Issuer: issuer}})
+		}, "issuer %q", issuer)
+	}
+}
