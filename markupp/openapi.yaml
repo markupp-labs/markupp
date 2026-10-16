@@ -1058,6 +1058,13 @@ components:
           type: string
           description: Conteúdo da nota
           example: "# Reunião\n- Tarefa 1\n- Tarefa 2"
+        content_sha256:
+          type: string
+          pattern: '^[0-9a-f]{64}$'
+          description: |
+            SHA-256 dos bytes UTF-8 de content, em hexadecimal minúsculo. O
+            cliente compara com o hash local antes de reenviar a nota.
+          example: "0664077f33cc3ebbaa4bbdacac0eb70e740983080f01dce29929e73b7785a7ad"
         created_at:
           type: string
           format: date-time
