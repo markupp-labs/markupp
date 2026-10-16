@@ -34,7 +34,7 @@ func oauthMetadataHandler(m OAuthMetadata) http.HandlerFunc {
 	mustBeAbsoluteIssuer(m.Issuer)
 	body := newOAuthMetadataResponse(m.Issuer)
 	return func(w http.ResponseWriter, _ *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
+		allowAnyOrigin(w)
 		writeJSON(w, http.StatusOK, body)
 	}
 }

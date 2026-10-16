@@ -45,3 +45,9 @@ func writePreflight(w http.ResponseWriter) {
 	w.Header().Set("Access-Control-Max-Age", preflightMaxAge)
 	w.WriteHeader(http.StatusNoContent)
 }
+
+// allowAnyOrigin libera CORS para qualquer origem, sem credenciais, nas rotas públicas
+// do authorization server, independente da lista de origens do servidor.
+func allowAnyOrigin(w http.ResponseWriter) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+}
