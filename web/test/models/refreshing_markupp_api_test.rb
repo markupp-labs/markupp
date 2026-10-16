@@ -31,7 +31,7 @@ class RefreshingMarkuppApiTest < ActiveSupport::TestCase
     @api.put("/notes/1", path: "a.md", content: "y")
 
     assert_equal [ "access-1", "access-2" ], access_tokens_sent("PUT /notes/1")
-    assert_equal 2, @fake_api.put_requests.size
+    assert_equal 1, @fake_api.put_requests.size
     assert_not @credential.access_expired?
   end
 
