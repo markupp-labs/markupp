@@ -17,6 +17,8 @@ namespace informado:
 - o ScaledJob do indexador, que o KEDA usa para criar um Job por cofre com nota pendente;
 - com email configurado, o Deployment do notificador e o ScaledObject que o leva a zero réplicas
   enquanto não há email na fila;
+- o TriggerAuthentication que entrega ao KEDA a URL de um papel do banco que só conta os cofres
+  pendentes e as notificações vencidas;
 - um Gateway com HTTPRoute, e um Issuer do cert-manager para o certificado.
 
 ### Pré-requisitos do cluster
@@ -24,10 +26,12 @@ namespace informado:
 - Gateway API, com um controlador e uma GatewayClass (padrão `cilium`)
 - cert-manager
 - KEDA, para o indexador e o notificador. Sem ele, informe `indexer: {enabled: false}` e deixe
-  `email` de fora, e banco e API sobem sem indexação e sem email
+  `email` de fora, e banco e API sobem sem indexação e sem email. Com banco externo, o host da URL
+  precisa resolver também do namespace do KEDA, e o usuário dela precisa de CREATEROLE para a
+  migração dar login ao papel do scaler
 - o namespace do markupp, já criado
 - uma credencial com permissão no namespace para Secret, Job, Deployment, StatefulSet, Service,
-  Gateway, HTTPRoute, Issuer, ScaledJob e ScaledObject
+  Gateway, HTTPRoute, Issuer, ScaledJob, ScaledObject e TriggerAuthentication
 - uma StorageClass para o volume do PostgreSQL. Sem informar, vale a padrão do cluster
 - um backend de estado do Pulumi
 

@@ -80,6 +80,21 @@ func TestMigracao00013_NotasAnteriores_FicamPendentesDeIndexacao(t *testing.T) {
 		"cofre com nota de antes da migração precisa ser indexado")
 }
 
+func TestMigracao00013_NaoReescreveATabelaDeNotas(t *testing.T) {
+	pool := storagetest.EmptyPool(t)
+	provider := gooseProvider(t, pool)
+	_, err := provider.UpTo(context.Background(), 12)
+	require.NoError(t, err)
+	const arquivoDasNotas = "SELECT pg_relation_filenode('notes')::bigint"
+	antes := countRows(t, pool, arquivoDasNotas)
+
+	_, err = provider.Up(context.Background())
+
+	require.NoError(t, err)
+	assert.Equal(t, antes, countRows(t, pool, arquivoDasNotas),
+		"reescrever notas trava leitura e escrita durante o upgrade")
+}
+
 func TestMigracao00013_DownEUp(t *testing.T) {
 	pool := storagetest.EmptyPool(t)
 	provider := gooseProvider(t, pool)

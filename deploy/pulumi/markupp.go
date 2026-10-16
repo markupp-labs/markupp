@@ -118,6 +118,9 @@ func declareResources(ctx *pulumi.Context, name string, args MarkuppArgs, parent
 // declareWorkers cria o que o KEDA escala a partir de consultas ao banco, e por isso
 // só depois da migração que cria as funções consultadas.
 func declareWorkers(ctx *pulumi.Context, names resourceNames, args MarkuppArgs, opts pulumi.ResourceOption) error {
+	if err := declareScalerAuth(ctx, names, args, opts); err != nil {
+		return err
+	}
 	if err := declareIndexer(ctx, names, args, opts); err != nil {
 		return err
 	}
@@ -175,7 +178,7 @@ func withDefaults(args MarkuppArgs) MarkuppArgs {
 
 // resourceNames centraliza os nomes que um recurso usa para achar outro.
 type resourceNames struct {
-	component, database, dbSecret, api, indexer, notifier, gateway, issuer, tlsSecret string
+	component, database, dbSecret, api, indexer, notifier, scaler, gateway, issuer, tlsSecret string
 }
 
 func newResourceNames(component string) resourceNames {
@@ -186,6 +189,7 @@ func newResourceNames(component string) resourceNames {
 		api:       component + "-api",
 		indexer:   component + "-indexer",
 		notifier:  component + "-notifier",
+		scaler:    component + "-scaler",
 		gateway:   component + "-gateway",
 		issuer:    component + "-issuer",
 		tlsSecret: component + "-tls",

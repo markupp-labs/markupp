@@ -209,19 +209,6 @@ func TestInviteOutbox_PendentesDoKEDA_ContaSoAsVencidas(t *testing.T) {
 	assert.Equal(t, 1, countRows(t, db, consultaDoScaler), "notificacao reservada ou remarcada para depois nao acorda o worker")
 }
 
-// comoPapel roda sql no papel role, sem passar pelo storage: prova a política do banco.
-func comoPapel(t *testing.T, db *pgxpool.Pool, role, sql string) error {
-	t.Helper()
-	ctx := context.Background()
-	tx, err := db.Begin(ctx)
-	require.NoError(t, err)
-	defer func() { _ = tx.Rollback(ctx) }()
-	_, err = tx.Exec(ctx, "SELECT set_config('role', $1, true)", role)
-	require.NoError(t, err)
-	var n int64
-	return tx.QueryRow(ctx, sql).Scan(&n)
-}
-
 func requirePermissaoNegada(t *testing.T, err error, contexto string) {
 	t.Helper()
 	var pgErr *pgconn.PgError
@@ -234,6 +221,14 @@ func TestRLS_PapelDaAplicacao_NaoLeAFila(t *testing.T) {
 	conviteComEmail(t, db, "c1", "nova@markupp.dev")
 
 	requirePermissaoNegada(t, comoPapel(t, db, "markupp_app", "SELECT count(*) FROM notifications"), "aplicacao lendo a fila")
+}
+
+func TestPendentesDoKEDA_ScalerContaANotificacaoVencida(t *testing.T) {
+	db := setupTestDB(t)
+
+	require.NoError(t, comoPapel(t, db, "markupp_scaler", "SELECT markupp_pending_notifications()"),
+		"o KEDA conta a fila de email como markupp_scaler, sem a URL do dono do banco")
+	requirePermissaoNegada(t, comoPapel(t, db, "markupp_app", "SELECT markupp_pending_notifications()"), "aplicacao contando a fila")
 }
 
 func TestRLS_PapelDoNotificador_SoTrocaOHashPelaFuncao(t *testing.T) {

@@ -76,6 +76,6 @@ func declareNotifier(ctx *pulumi.Context, names resourceNames, args MarkuppArgs,
 		"minReplicaCount": pulumi.Int(0),
 		"maxReplicaCount": pulumi.Int(1),
 		"pollingInterval": pulumi.Int(kedaPollingSeconds),
-		"triggers":        pulumi.Array{pendingRowsTrigger(pendingNotificationsQuery)},
+		"triggers":        pulumi.Array{pendingRowsTrigger(names, pendingNotificationsQuery)},
 	}, opts)
 }

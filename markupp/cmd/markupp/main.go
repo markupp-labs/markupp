@@ -9,7 +9,9 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"os/signal"
 	"strconv"
+	"syscall"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -61,15 +63,16 @@ func run(ctx context.Context, logger *slog.Logger, args []string) error {
 	if err != nil {
 		return err
 	}
+	if cmd == indexCommand || cmd == indexLoopCommand {
+		return runIndexer(ctx, logger, cmd)
+	}
 	cfg, err := config.Load(os.LookupEnv)
 	if err != nil {
 		return fmt.Errorf("carregar config: %w", err)
 	}
 	switch cmd {
 	case migrateCommand:
-		return migrateDatabase(ctx, cfg.DatabaseURL)
-	case indexCommand, indexLoopCommand:
-		return indexVaults(ctx, logger, cfg, cmd)
+		return migrateDatabase(ctx, cfg.DatabaseURL, cfg.ScalerPassword)
 	case notifyLoopCommand:
 		return deliverNotifications(ctx, logger, cfg)
 	}
@@ -108,6 +111,18 @@ func deliverNotifications(ctx context.Context, logger *slog.Logger, cfg config.C
 	return drain.Run(ctx, deliverer.DeliverNext, drain.WaitInterval(notifyInterval))
 }
 
+// runIndexer para no SIGTERM do Kubernetes ou do compose: a transação aberta volta
+// atrás e o cofre fica para o próximo Job.
+func runIndexer(ctx context.Context, logger *slog.Logger, cmd command) error {
+	ctx, stop := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	cfg, err := config.LoadIndexer(os.LookupEnv)
+	if err != nil {
+		return fmt.Errorf("carregar config do indexador: %w", err)
+	}
+	return indexVaults(ctx, logger, cfg, cmd)
+}
+
 // indexVaults roda o indexador sem estado do pacote indexing (ADR-0033): index
 // atende o Job que o KEDA cria por cofre, index-loop atende o compose.
 func indexVaults(ctx context.Context, logger *slog.Logger, cfg config.Config, cmd command) error {
@@ -122,14 +137,16 @@ func indexVaults(ctx context.Context, logger *slog.Logger, cfg config.Config, cm
 	}
 	if cmd == indexLoopCommand {
 		logger.Info("indexador em laco", "intervalo", cfg.IndexInterval.String())
-		return indexing.RunLoop(ctx, indexer, drain.WaitInterval(cfg.IndexInterval))
+		return indexing.RunLoop(ctx, indexer, drain.WaitInterval(cfg.IndexInterval), logger)
 	}
 	found, err := indexer.IndexNextVault(ctx, indexing.Index)
 	logger.Info("indexacao de um cofre", "cofre_pendente", found)
 	return err
 }
 
-func migrateDatabase(ctx context.Context, databaseURL string) error {
+// migrateDatabase aplica as migrações e, com scalerPassword, libera o login do
+// papel do scaler do KEDA.
+func migrateDatabase(ctx context.Context, databaseURL, scalerPassword string) error {
 	pool, err := storage.OpenPool(ctx, databaseURL)
 	if err != nil {
 		return fmt.Errorf("abrir banco: %w", err)
@@ -138,7 +155,10 @@ func migrateDatabase(ctx context.Context, databaseURL string) error {
 	if err := storage.Migrate(ctx, pool); err != nil {
 		return fmt.Errorf("aplicar migrations: %w", err)
 	}
-	return nil
+	if scalerPassword == "" {
+		return nil
+	}
+	return storage.EnableScalerLogin(ctx, pool, scalerPassword)
 }
 
 // serve sobe a API sem mexer no schema: quem migra é o subcomando migrate.

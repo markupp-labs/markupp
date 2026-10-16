@@ -138,7 +138,7 @@ func TestNewMarkupp_SemBancoExterno_CriaPostgresNoNamespaceComVolume(t *testing.
 func TestNewMarkupp_SemBancoExterno_GuardaSenhaGeradaEURLNoSecret(t *testing.T) {
 	monitor := deploy(t, argsDeTeste())
 
-	require.Len(t, monitor.byType(randomPasswordType), 2)
+	require.Len(t, monitor.byType(randomPasswordType), 3, "banco, JWT e scaler")
 	secret := monitor.single(t, "kubernetes:core/v1:Secret")
 	assert.Equal(t, senhaDeTeste, plain(at(t, secret, "stringData", "password")).StringValue())
 	assert.Equal(t, senhaDeTeste, plain(at(t, secret, "stringData", "auth-secret")).StringValue())
@@ -169,7 +169,7 @@ func TestNewMarkupp_ComBancoExterno_NaoCriaPostgresEGuardaURLEmSecret(t *testing
 	monitor := deploy(t, args)
 
 	assert.Empty(t, monitor.byType("kubernetes:apps/v1:StatefulSet"))
-	require.Len(t, monitor.byType(randomPasswordType), 1)
+	require.Len(t, monitor.byType(randomPasswordType), 2, "JWT e scaler")
 	secret := monitor.single(t, "kubernetes:core/v1:Secret")
 	assert.Equal(t, "postgres://markupp@db.externo:5432/markupp",
 		at(t, secret, "stringData", "uri").StringValue())
@@ -331,55 +331,6 @@ func TestNewMarkupp_LivenessDaAPI_NaoDependeDoBanco(t *testing.T) {
 	assert.Equal(t, float64(apiPort), at(t, liveness, "tcpSocket", "port").NumberValue())
 }
 
-const scaledJobType = "kubernetes:keda.sh/v1alpha1:ScaledJob"
-
-func containerDoIndexador(t *testing.T, scaledJob resource.PropertyMap) resource.PropertyMap {
-	t.Helper()
-	containers := at(t, scaledJob, "spec", "jobTargetRef", "template", "spec", "containers").ArrayValue()
-	require.NotEmpty(t, containers)
-	return containers[0].ObjectValue()
-}
-
-func TestNewMarkupp_IndexadorPorPadrao_CriaScaledJobQueRodaIndexNaImagem(t *testing.T) {
-	monitor := deploy(t, argsDeTeste())
-
-	scaledJob := monitor.single(t, scaledJobType)
-	container := containerDoIndexador(t, scaledJob)
-	assert.Equal(t, "ghcr.io/markupp-labs/markupp:v1.1.0", container["image"].StringValue())
-	assert.Equal(t, "index", container["args"].ArrayValue()[0].StringValue())
-	assert.Equal(t, "Never", at(t, scaledJob, "spec", "jobTargetRef", "template", "spec", "restartPolicy").StringValue())
-}
-
-func TestNewMarkupp_Indexador_ScalerContaCofresPendentesNoBanco(t *testing.T) {
-	monitor := deploy(t, argsDeTeste())
-
-	scaledJob := monitor.single(t, scaledJobType)
-	assert.Equal(t, 30.0, at(t, scaledJob, "spec", "pollingInterval").NumberValue())
-	triggers := at(t, scaledJob, "spec", "triggers").ArrayValue()
-	require.Len(t, triggers, 1)
-	trigger := triggers[0].ObjectValue()
-	assert.Equal(t, "postgresql", trigger["type"].StringValue())
-	metadata := trigger["metadata"].ObjectValue()
-	assert.Equal(t, "SELECT markupp_pending_vaults()", metadata["query"].StringValue())
-	assert.Equal(t, "1", metadata["targetQueryValue"].StringValue(), "um Job por cofre pendente")
-	assert.Equal(t, "MARKUPP_DATABASE_URL", metadata["connectionFromEnv"].StringValue())
-	envs := containerDoIndexador(t, scaledJob)["env"].ArrayValue()
-	require.NotEmpty(t, envs)
-	assert.Equal(t, "MARKUPP_DATABASE_URL", envs[0].ObjectValue()["name"].StringValue(),
-		"o KEDA lê a conexão do env do contêiner do Job")
-}
-
-func TestNewMarkupp_IndexadorDesligado_NaoCriaScaledJob(t *testing.T) {
-	args := argsDeTeste()
-	desligado := false
-	args.Indexer = &IndexerArgs{Enabled: &desligado}
-
-	monitor := deploy(t, args)
-
-	assert.Empty(t, monitor.byType(scaledJobType), "cluster sem KEDA instala banco e API sem o indexador")
-	monitor.single(t, "kubernetes:apps/v1:Deployment")
-}
-
 const scaledObjectType = "kubernetes:keda.sh/v1alpha1:ScaledObject"
 
 func argsComEmail() MarkuppArgs {
@@ -471,7 +422,27 @@ func TestNewMarkupp_ComEmail_KEDAEscalaONotificadorEntreZeroEUm(t *testing.T) {
 	assert.Equal(t, "postgresql", trigger["type"].StringValue())
 	metadata := trigger["metadata"].ObjectValue()
 	assert.Equal(t, "SELECT markupp_pending_notifications()", metadata["query"].StringValue())
-	assert.Equal(t, "MARKUPP_DATABASE_URL", metadata["connectionFromEnv"].StringValue())
+	assert.True(t, metadata["connectionFromEnv"].IsNull(), "a URL do notificador e a do dono do banco")
+	assert.Equal(t, "markupp-scaler", at(t, trigger, "authenticationRef", "name").StringValue())
+}
+
+func TestNewMarkupp_SoEmailSemIndexador_AindaCriaOAcessoDoScaler(t *testing.T) {
+	args := argsComEmail()
+	desligado := false
+	args.Indexer = &IndexerArgs{Enabled: &desligado}
+
+	monitor := deploy(t, args)
+
+	assert.Equal(t, "markupp-scaler", at(t, monitor.single(t, triggerAuthType), "metadata", "name").StringValue(),
+		"o notificador tambem consulta o banco como markupp_scaler")
+}
+
+func TestNewMarkupp_SemIndexadorNemEmail_NaoCriaOAcessoDoScaler(t *testing.T) {
+	args := argsDeTeste()
+	desligado := false
+	args.Indexer = &IndexerArgs{Enabled: &desligado}
+
+	assert.Empty(t, deploy(t, args).byType(triggerAuthType))
 }
 
 func TestNewMarkupp_EmailSemRemetente_RetornaErroComOCampo(t *testing.T) {

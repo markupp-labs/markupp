@@ -74,6 +74,9 @@ LANGUAGE sql STABLE SECURITY DEFINER SET search_path = pg_catalog, public, pg_te
     WHERE sent_at IS NULL AND failed_at IS NULL AND next_attempt_at <= now()
 $$;
 -- +goose StatementEnd
+-- O KEDA conta a fila como markupp_scaler (00013), que só enxerga as contagens.
+REVOKE ALL ON FUNCTION markupp_pending_notifications() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION markupp_pending_notifications() TO markupp_scaler;
 
 GRANT USAGE ON SCHEMA public TO markupp_notifier;
 GRANT SELECT, UPDATE ON notifications TO markupp_notifier;
@@ -95,6 +98,7 @@ DROP POLICY IF EXISTS notifications_notifier ON notifications;
 DROP POLICY IF EXISTS notifications_enqueue ON notifications;
 REVOKE ALL ON notifications FROM markupp_app, markupp_notifier;
 REVOKE USAGE ON SCHEMA public FROM markupp_notifier;
+REVOKE EXECUTE ON FUNCTION markupp_pending_notifications() FROM markupp_scaler;
 DROP FUNCTION IF EXISTS markupp_pending_notifications();
 DROP FUNCTION IF EXISTS markupp_reissue_invite_token(TEXT, TEXT);
 DROP TABLE IF EXISTS notifications;
