@@ -7,6 +7,9 @@ class MarkuppApi
   # Convite inexistente, vencido, já respondido ou de outra conta: a API não distingue.
   class InviteNotFound < NotFound; end
   class AlreadyMember < Error; end
+  # Token de email recusado: convite, troca de senha ou verificação, inválido, vencido ou já usado.
+  class InvalidToken < Error; end
+  class AccountExists < Error; end
   class Conflict < Error; end
   class DuplicatePath < Error; end
   class InvalidPath < Error; end
@@ -30,7 +33,8 @@ class MarkuppApi
     "unauthorized" => Unauthorized, "invalid_refresh_token" => RefreshRejected, "invalid_credentials" => InvalidCredentials,
     "invalid_request" => InvalidRequest, "forbidden" => Forbidden, "local_auth_disabled" => LocalAuthDisabled,
     "read_only" => ReadOnly, "tenant_forbidden" => TenantUnavailable, "no_tenant" => TenantUnavailable, "tenant_required" => TenantUnavailable,
-    "invite_not_found" => InviteNotFound, "already_member" => AlreadyMember
+    "invite_not_found" => InviteNotFound, "already_member" => AlreadyMember,
+    "invalid_invite" => InvalidToken, "invalid_token" => InvalidToken, "already_exists" => AccountExists
   }.freeze
   # Para o status cujo corpo não traz código conhecido.
   ERRORS_BY_STATUS = { "401" => Unauthorized, "403" => Forbidden, "404" => NotFound }.freeze

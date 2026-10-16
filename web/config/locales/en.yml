@@ -11,6 +11,16 @@ en:
             base:
               invalid_credentials: "Email or password is wrong."
               local_auth_disabled: "Password login is disabled on this server."
+        token_form:
+          attributes:
+            token:
+              blank: "Paste the token from the email."
+              invalid_token: "This token is invalid, expired or already used."
+            password:
+              invalid: "Enter a password up to 72 bytes long."
+            base:
+              account_exists: "This email already has an account. Log in and accept the invite from your tenant list."
+              local_auth_disabled: "Password login is disabled on this server."
   layouts:
     application:
       notes: "Notes"
@@ -35,6 +45,8 @@ en:
       title: "Log in"
       submit: "Log in"
       submitting: "Logging in"
+      invite_hint: "Got an invite token?"
+      accept_invite: "Accept it here."
     create:
       rate_limited: "Too many attempts. Wait a few minutes."
     destroy:
@@ -57,6 +69,13 @@ en:
     create:
       created: "Created %{name}."
       invalid_name: "Use 1 to 100 characters."
+  invite_acceptances:
+    new:
+      title: "Accept an invite"
+      hint: "Paste the token from the invite email and choose a password for your new account."
+      submit: "Create account"
+      submitting: "Creating account"
+      log_in: "Log in"
   my_invites:
     invite:
       join: "Join %{tenant} as %{role}"

@@ -1,0 +1,32 @@
+<% content_for :title, t(".title") %>
+<% token_error, password_error, base_error = [ :token, :password, :base ].map { @form.errors[it].first } %>
+<% field_class = "w-full rounded-md border border-line bg-surface px-2 py-1 aria-invalid:border-danger" %>
+
+<h1 class="text-base font-semibold"><%= t(".title") %></h1>
+<p class="mt-2 text-ink-muted"><%= t(".hint") %></p>
+
+<%= form_with model: @form, scope: :invite_acceptance, url: invite_acceptance_path, class: "mt-3 flex flex-col gap-3 rounded-md border border-line p-3" do |form| %>
+  <div>
+    <%= form.label :token, class: "block text-ink-muted" %>
+    <%= form.text_field :token, required: true, autofocus: @form.token.blank? || token_error.present?, autocomplete: "off", spellcheck: false,
+                        aria: { invalid: token_error.present?, describedby: ("invite_acceptance_token_error" if token_error) }, class: field_class %>
+    <% if token_error %>
+      <p id="invite_acceptance_token_error" class="text-danger"><%= token_error %></p>
+    <% end %>
+  </div>
+  <div>
+    <%= form.label :password, class: "block text-ink-muted" %>
+    <%= form.password_field :password, required: true, autofocus: @form.token.present? && token_error.blank?, autocomplete: "new-password",
+                            aria: { invalid: password_error.present?, describedby: ("invite_acceptance_password_error" if password_error) }, class: field_class %>
+    <% if password_error %>
+      <p id="invite_acceptance_password_error" class="text-danger"><%= password_error %></p>
+    <% end %>
+  </div>
+  <% if base_error %>
+    <p role="alert" class="text-danger">
+      <%= base_error %>
+      <%= link_to t(".log_in"), new_session_path, class: "underline" if @form.errors.of_kind?(:base, :account_exists) %>
+    </p>
+  <% end %>
+  <%= form.button t(".submit"), class: "btn self-start", data: { turbo_submits_with: t(".submitting") } %>
+<% end %>
