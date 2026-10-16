@@ -39,6 +39,18 @@ type NoteSearchIndex struct {
 	Document interface{}
 }
 
+type Notification struct {
+	ID            string
+	TenantID      string
+	InviteID      string
+	Attempts      int32
+	NextAttemptAt time.Time
+	SentAt        pgtype.Timestamptz
+	FailedAt      pgtype.Timestamptz
+	LastError     pgtype.Text
+	CreatedAt     time.Time
+}
+
 type RefreshToken struct {
 	TokenHash string
 	UserID    string
