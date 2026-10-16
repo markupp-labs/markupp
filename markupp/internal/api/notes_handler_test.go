@@ -456,7 +456,6 @@ func TestListNotes_ComNotas_RetornaArrayCompleto(t *testing.T) {
 	require.Len(t, resp, 2)
 	assert.Equal(t, "id-1", resp[0]["id"])
 	assert.Equal(t, "a.md", resp[0]["path"])
-	assert.Equal(t, "o <b>go</b> compila", resp[0]["snippet"])
 	assert.Equal(t, "aaa", resp[0]["content"])
 	assert.Equal(t, "id-2", resp[1]["id"])
 }
@@ -493,6 +492,7 @@ func TestSearchNotes_QueryValido_Retorna200(t *testing.T) {
 	assert.Equal(t, "a.md", resp[0]["path"])
 	assert.Equal(t, "id-2", resp[1]["id"])
 	assert.Equal(t, "b.md", resp[1]["path"])
+	assert.Equal(t, "o <b>go</b> compila", resp[0]["snippet"])
 	assert.True(t, svc.searchArgs.called)
 	assert.Equal(t, "go", svc.searchArgs.query)
 	assert.Equal(t, 1, svc.searchArgs.offset)
