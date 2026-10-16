@@ -77,7 +77,7 @@ func TestVaultIndexer_EscritaDuranteAIndexacao_DeixaANotaPendente(t *testing.T) 
 	assert.Equal(t, []indexing.NoteChange{{NoteID: "n1", Content: "novo"}}, lotes.lotes[0].Notes)
 }
 
-func TestVaultIndexer_NotaRenomeada_NaoVoltaParaAFila(t *testing.T) {
+func TestVaultIndexer_NotaRenomeada_VoltaParaAFila(t *testing.T) {
 	db := setupTestDB(t)
 	repo := storage.NewPostgresNotesRepository(db)
 	ctx := storagetest.SeedMember(t, db, identity.Actor{UserID: "ua", TenantID: "t1", Role: "member"}, "va")
@@ -87,7 +87,7 @@ func TestVaultIndexer_NotaRenomeada_NaoVoltaParaAFila(t *testing.T) {
 	_, err := repo.Update(ctx, "n1", "outro.md", "oi", time.Now(), time.Time{}, true)
 
 	require.NoError(t, err)
-	assert.Zero(t, countRows(t, db, consultaDoScaler), "o indice guarda o conteudo, nao o caminho")
+	assert.Equal(t, 1, countRows(t, db, consultaDoScaler), "o titulo deriva do caminho, entao renomear pede reindexacao")
 }
 
 func TestVaultIndexer_CofreMudaDeTenant_ReindexaNoTenantNovo(t *testing.T) {
