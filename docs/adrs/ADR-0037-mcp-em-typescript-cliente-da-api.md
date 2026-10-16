@@ -36,8 +36,8 @@ de cada ferramenta, e as notas também são expostas como resources
 - O CI passa a rodar três toolchains: Go, Ruby e Node
 - Os testes usam um fake nomeado do cliente da API, e um teste ponta a ponta contra o Go real
   no compose pega quebra de contrato no mesmo CI
-- A edição por trecho lê e grava em duas chamadas, então depende de ETag e If-Match na API
-  para não sobrescrever escrita alheia
+- A edição por trecho lê e grava em duas chamadas, e manda no PUT o `lastModifiedAt` lido para
+  que uma escrita alheia no meio vire 409 em vez de ser sobrescrita
 - Enquanto a busca da API for por substring, a ferramenta de busca devolve só caminhos e o
   agente lê as notas que interessarem
 - Ferramentas de cofre entram quando as rotas de cofre existirem, e até lá a criação de nota
