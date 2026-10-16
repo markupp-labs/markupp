@@ -96,6 +96,15 @@ module Settings
       assert_select "input[value=issued-token-1]", count: 0
     end
 
+    test "the page with the token stays out of the Turbo cache" do
+      use_fake_api(accounts: ACCOUNTS, tenants: [ ACME ], email_enabled: false)
+      sign_in_as
+
+      post settings_invites_path, params: { invite: { email: "gil@markupp.dev", role: "member" } }
+
+      assert_select "head meta[name=turbo-cache-control][content=no-cache]"
+    end
+
     test "an address the API refuses shows under the email field" do
       use_fake_api(accounts: ACCOUNTS, tenants: [ ACME ])
       sign_in_as
