@@ -572,11 +572,19 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
   /notes/search:
     get:
-      summary: Busca notas por substring do conteúdo
+      summary: Busca notas por texto no índice léxico
       description: |
-        Procura a substring no conteúdo das notas, sem diferenciar maiúscula de minúscula,
-        e devolve os resultados ordenados da atualização mais recente para a mais antiga.
-        O resultado não carrega o conteúdo da nota.
+        Busca por palavras no título (o nome do arquivo sem extensão) e no conteúdo das
+        notas, com a sintaxe de busca web do PostgreSQL: termos soltos exigem todos,
+        aspas pedem a frase, OR aceita qualquer um dos lados e -termo exclui. Não é busca
+        por substring, e % e _ não são curinga. A configuração de texto é a do
+        indexador (MARKUPP_SEARCH_CONFIG).
+
+        O resultado vem do mais relevante para o menos, com o título pesando mais que o
+        conteúdo, e desempate pelo id. Só aparecem notas já indexadas: a nota recém
+        escrita entra na busca quando o indexador processa o cofre dela. Consulta sem
+        palavra buscável, como só stopwords, devolve lista vazia. O resultado não
+        carrega o conteúdo da nota, só um trecho dele.
       parameters:
         - $ref: '#/components/parameters/TenantHeader'
         - name: query
@@ -584,7 +592,7 @@ paths:
           required: true
           schema:
             type: string
-          description: Substring procurada no conteúdo
+          description: Consulta na sintaxe de websearch_to_tsquery, como `"frase exata" OR termo -excluido`
         - name: offset
           in: query
           required: false
@@ -1095,6 +1103,10 @@ components:
           format: date-time
           description: Data da última atualização da nota
           example: "2026-05-14T12:00:00Z"
+        snippet:
+          type: string
+          description: Trecho do conteúdo com os termos da consulta entre <b> e </b>
+          example: "reunião sobre o <b>kubernetes</b> do cluster novo"
     HealthResponse:
       type: object
       properties:
