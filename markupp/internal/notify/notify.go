@@ -42,7 +42,8 @@ type InviteDetails struct {
 }
 
 // ReissueFunc grava tokenHash no convite ainda pendente e devolve os detalhes dele,
-// ou found falso quando o convite já foi respondido, revogado ou venceu.
+// ou found falso quando o convite já foi respondido, revogado, venceu ou perdeu quem
+// o convidou com o papel dele.
 type ReissueFunc func(ctx context.Context, tokenHash string) (details InviteDetails, found bool, err error)
 
 // Outcome é o resultado de uma entrega: enviada, remarcada para RetryAt ou abandonada.

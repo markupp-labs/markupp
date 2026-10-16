@@ -34,7 +34,7 @@ func (d *Deliverer) Deliver(ctx context.Context, p PendingInvite, reissue Reissu
 		return Outcome{}, err
 	}
 	if !found {
-		return Outcome{GiveUp: true, Error: "convite respondido, revogado ou vencido"}, nil
+		return Outcome{GiveUp: true, Error: "convite respondido, revogado, vencido ou sem quem convidou no papel"}, nil
 	}
 	if err := d.mailer.Send(ctx, InviteMessage(details, token, d.from)); err != nil {
 		return d.failure(p.Attempts+1, err), nil
