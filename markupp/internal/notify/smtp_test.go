@@ -152,3 +152,24 @@ func TestNewSMTPMailer_TLSDesconhecido_RetornaErroComOValor(t *testing.T) {
 		assert.Contains(t, err.Error(), "tls=none", raw)
 	}
 }
+
+func TestSMTPMailer_RemetenteComNome_EnvelopeLevaSoOEndereco(t *testing.T) {
+	servidor := &servidorSMTPFalso{}
+	mailer, err := notify.NewSMTPMailer(servidor.sobe(t))
+	require.NoError(t, err)
+
+	require.NoError(t, mailer.Send(context.Background(), notify.InviteMessage(detalhesDeTeste(), "tok", "Markupp <convites@markupp.dev>")))
+
+	assert.Equal(t, "MAIL FROM:<convites@markupp.dev>", servidor.lido(&servidor.mailFrom))
+	assert.Contains(t, servidor.lido(&servidor.mensagem), "From: \"Markupp\" <convites@markupp.dev>")
+}
+
+func TestSMTPMailer_RemetenteIlegivel_RetornaErroComOValor(t *testing.T) {
+	mailer, err := notify.NewSMTPMailer("smtp://127.0.0.1:1?tls=none")
+	require.NoError(t, err)
+
+	err = mailer.Send(context.Background(), notify.InviteMessage(detalhesDeTeste(), "tok", "sem-arroba"))
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "sem-arroba")
+}
