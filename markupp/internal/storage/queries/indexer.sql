@@ -43,3 +43,7 @@ WHERE q.note_id = r.note_id AND q.revision = r.revision;
 -- Resolve o nome pelo mesmo cast que a gravação usa, com o search_path da conexão.
 -- name: ResolveSearchConfig :one
 SELECT sqlc.arg(name)::text::regconfig::oid::bigint AS config_oid;
+
+-- Roda no papel da conexão, o dono do banco: o NULL reenfileira a instalação inteira.
+-- name: RequeueNotes :one
+SELECT markupp_requeue_notes(sqlc.narg(vault_id)::text) AS requeued;

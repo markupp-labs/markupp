@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/indexing"
@@ -114,4 +115,15 @@ func dequeue(ctx context.Context, q *gen.Queries, vaultID string, rows []gen.Lis
 		return fmt.Errorf("tirar da fila as %d notas do cofre %q: %w", len(rows), vaultID, err)
 	}
 	return nil
+}
+
+// RequeueNotes põe de volta na fila do indexador as notas do cofre vaultID, ou de
+// todos os cofres da instalação com vaultID vazio, e devolve quantas entraram. Roda
+// no papel da conexão, que precisa ser o dono do banco.
+func RequeueNotes(ctx context.Context, pool *pgxpool.Pool, vaultID string) (int64, error) {
+	n, err := gen.New(pool).RequeueNotes(ctx, pgtype.Text{String: vaultID, Valid: vaultID != ""})
+	if err != nil {
+		return 0, fmt.Errorf("reenfileirar as notas do cofre %q (vazio para todos), esperado papel dono do banco: %w", vaultID, err)
+	}
+	return n, nil
 }

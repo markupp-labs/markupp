@@ -7,6 +7,8 @@ package gen
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const dequeueNotes = `-- name: DequeueNotes :exec
@@ -75,6 +77,18 @@ func (q *Queries) ListPendingNotes(ctx context.Context, vaultID string) ([]ListP
 		return nil, err
 	}
 	return items, nil
+}
+
+const requeueNotes = `-- name: RequeueNotes :one
+SELECT markupp_requeue_notes($1::text) AS requeued
+`
+
+// Roda no papel da conexão, o dono do banco: o NULL reenfileira a instalação inteira.
+func (q *Queries) RequeueNotes(ctx context.Context, vaultID pgtype.Text) (int64, error) {
+	row := q.db.QueryRow(ctx, requeueNotes, vaultID)
+	var requeued int64
+	err := row.Scan(&requeued)
+	return requeued, err
 }
 
 const reservePendingVault = `-- name: ReservePendingVault :one
