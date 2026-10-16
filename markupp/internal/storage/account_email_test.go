@@ -80,26 +80,55 @@ func TestAccountEmail_AutoRegistroSemVerificacao_NaoEnfileira(t *testing.T) {
 	assert.Zero(t, countRows(t, db, "SELECT count(*) FROM notifications"))
 }
 
-func TestAccountEmail_ConfirmEmail_TokenDoEmailVerificaAConta(t *testing.T) {
+// venceTokens empurra a validade de todo token da conta para o passado, no relógio
+// do banco, que é o que grava e confere a validade.
+func venceTokens(t *testing.T, db *pgxpool.Pool) {
+	t.Helper()
+	_, err := db.Exec(context.Background(), "UPDATE account_tokens SET expires_at = now() - interval '1 minute'")
+	require.NoError(t, err)
+}
+
+// envelhecePedidos tira os pedidos da conta de dentro do intervalo entre pedidos.
+func envelhecePedidos(t *testing.T, db *pgxpool.Pool) {
+	t.Helper()
+	_, err := db.Exec(context.Background(), "UPDATE account_tokens SET created_at = now() - interval '10 minutes'")
+	require.NoError(t, err)
+}
+
+func TestAccountEmail_ConfirmEmail_TokenDoEmailVerificaAContaLogada(t *testing.T) {
 	db := setupTestDB(t)
 	repo := storage.NewPostgresAccountEmailRepository(db)
 	contaAutoRegistrada(t, db, "u1", "nova@markupp.dev", true)
 	entregaComToken(t, db, "tok-v")
 	require.False(t, emailVerificado(t, db, "u1"))
 
-	require.NoError(t, repo.ConfirmEmailTx(context.Background(), auth.HashOpaqueToken("tok-v"), time.Now()))
+	require.NoError(t, repo.ConfirmEmailTx(context.Background(), "u1", auth.HashOpaqueToken("tok-v")))
 
 	assert.True(t, emailVerificado(t, db, "u1"))
-	assert.ErrorIs(t, repo.ConfirmEmailTx(context.Background(), auth.HashOpaqueToken("tok-v"), time.Now()), auth.ErrInvalidToken,
+	assert.ErrorIs(t, repo.ConfirmEmailTx(context.Background(), "u1", auth.HashOpaqueToken("tok-v")), auth.ErrInvalidToken,
 		"o token vale uma vez")
+}
+
+func TestAccountEmail_ConfirmEmail_TokenDeOutraConta_NaoVerificaNemGastaOToken(t *testing.T) {
+	db := setupTestDB(t)
+	repo := storage.NewPostgresAccountEmailRepository(db)
+	contaAutoRegistrada(t, db, "u1", "vitima@markupp.dev", true)
+	entregaComToken(t, db, "tok-v")
+
+	err := repo.ConfirmEmailTx(context.Background(), "primeira", auth.HashOpaqueToken("tok-v"))
+
+	assert.ErrorIs(t, err, auth.ErrInvalidToken, "quem recebe o email nao verifica a conta de outra pessoa")
+	assert.False(t, emailVerificado(t, db, "u1"))
+	assert.NoError(t, repo.ConfirmEmailTx(context.Background(), "u1", auth.HashOpaqueToken("tok-v")), "a tentativa alheia nao gasta o token")
 }
 
 func TestAccountEmail_ConfirmEmail_TokenVencido_Recusa(t *testing.T) {
 	db := setupTestDB(t)
 	contaAutoRegistrada(t, db, "u1", "nova@markupp.dev", true)
 	entregaComToken(t, db, "tok-v")
+	venceTokens(t, db)
 
-	err := storage.NewPostgresAccountEmailRepository(db).ConfirmEmailTx(context.Background(), auth.HashOpaqueToken("tok-v"), time.Now().Add(25*time.Hour))
+	err := storage.NewPostgresAccountEmailRepository(db).ConfirmEmailTx(context.Background(), "u1", auth.HashOpaqueToken("tok-v"))
 
 	assert.ErrorIs(t, err, auth.ErrInvalidToken)
 	assert.False(t, emailVerificado(t, db, "u1"))
@@ -118,7 +147,7 @@ func TestAccountEmail_ContaVerificada_PassaAVerOsConvites(t *testing.T) {
 	require.NoError(t, err)
 	require.Empty(t, antes, "conta sem verificar fica fora dos convites")
 
-	require.NoError(t, storage.NewPostgresAccountEmailRepository(db).ConfirmEmailTx(context.Background(), auth.HashOpaqueToken("tok-v"), time.Now()))
+	require.NoError(t, storage.NewPostgresAccountEmailRepository(db).ConfirmEmailTx(context.Background(), "u1", auth.HashOpaqueToken("tok-v")))
 
 	depois, err := authRepo.ListPendingInvites(context.Background(), "u1", time.Now())
 	require.NoError(t, err)
@@ -130,20 +159,21 @@ func TestAccountEmail_RequestEmailVerification_NovoPedidoSubstituiOAnterior(t *t
 	repo := storage.NewPostgresAccountEmailRepository(db)
 	contaAutoRegistrada(t, db, "u1", "nova@markupp.dev", true)
 	entregaComToken(t, db, "tok-1")
+	envelhecePedidos(t, db)
 
-	require.NoError(t, repo.RequestEmailVerificationTx(context.Background(), "u1", time.Now().Add(cooldownDeTeste+time.Second), cooldownDeTeste))
+	require.NoError(t, repo.RequestEmailVerificationTx(context.Background(), "u1", cooldownDeTeste))
 	entregaComToken(t, db, "tok-2")
 
-	assert.ErrorIs(t, repo.ConfirmEmailTx(context.Background(), auth.HashOpaqueToken("tok-1"), time.Now()), auth.ErrInvalidToken,
+	assert.ErrorIs(t, repo.ConfirmEmailTx(context.Background(), "u1", auth.HashOpaqueToken("tok-1")), auth.ErrInvalidToken,
 		"o reenvio invalida o token anterior")
-	assert.NoError(t, repo.ConfirmEmailTx(context.Background(), auth.HashOpaqueToken("tok-2"), time.Now()))
+	assert.NoError(t, repo.ConfirmEmailTx(context.Background(), "u1", auth.HashOpaqueToken("tok-2")))
 }
 
 func TestAccountEmail_RequestEmailVerification_DentroDoIntervalo_NaoEnfileiraOutro(t *testing.T) {
 	db := setupTestDB(t)
 	contaAutoRegistrada(t, db, "u1", "nova@markupp.dev", true)
 
-	require.NoError(t, storage.NewPostgresAccountEmailRepository(db).RequestEmailVerificationTx(context.Background(), "u1", time.Now(), cooldownDeTeste))
+	require.NoError(t, storage.NewPostgresAccountEmailRepository(db).RequestEmailVerificationTx(context.Background(), "u1", cooldownDeTeste))
 
 	assert.Equal(t, 1, countRows(t, db, "SELECT count(*) FROM notifications"))
 }
@@ -152,15 +182,52 @@ func TestAccountEmail_RequestEmailVerification_ContaJaVerificada_Recusa(t *testi
 	db := setupTestDB(t)
 	criarConta(t, db, "primeira", "primeira@markupp.dev", false)
 
-	err := storage.NewPostgresAccountEmailRepository(db).RequestEmailVerificationTx(context.Background(), "primeira", time.Now(), cooldownDeTeste)
+	err := storage.NewPostgresAccountEmailRepository(db).RequestEmailVerificationTx(context.Background(), "primeira", cooldownDeTeste)
 
 	assert.ErrorIs(t, err, auth.ErrEmailAlreadyVerified)
+}
+
+func TestAccountEmail_RequestEmailVerification_ContaApagada_RecusaComoNaoEncontrada(t *testing.T) {
+	db := setupTestDB(t)
+
+	err := storage.NewPostgresAccountEmailRepository(db).RequestEmailVerificationTx(context.Background(), "apagada", cooldownDeTeste)
+
+	assert.ErrorIs(t, err, auth.ErrUserNotFound)
+}
+
+func TestAccountEmail_ReenvioDuranteAEntrega_NaoEntraEmDeadlock(t *testing.T) {
+	db := setupTestDB(t)
+	contaAutoRegistrada(t, db, "u1", "nova@markupp.dev", true)
+	envelhecePedidos(t, db)
+	reservada, libera := make(chan struct{}), make(chan struct{})
+	entrega := make(chan error, 1)
+	go func() {
+		_, err := storage.NewPostgresNotificationOutbox(db).DeliverNextDue(context.Background(),
+			func(ctx context.Context, _ notify.Pending, reissue notify.ReissueFunc) (notify.Outcome, error) {
+				close(reservada)
+				<-libera
+				_, found, err := reissue(ctx, "hash-da-entrega")
+				return notify.Outcome{Sent: found, GiveUp: !found}, err
+			})
+		entrega <- err
+	}()
+	<-reservada
+	reenvio := make(chan error, 1)
+	go func() {
+		reenvio <- storage.NewPostgresAccountEmailRepository(db).RequestEmailVerificationTx(context.Background(), "u1", cooldownDeTeste)
+	}()
+	esperaConexaoTravada(t, db)
+
+	close(libera)
+
+	require.NoError(t, <-entrega, "a entrega desiste do pedido que esta sendo trocado")
+	require.NoError(t, <-reenvio)
 }
 
 func TestAccountEmail_RequestPasswordReset_EmailDesconhecido_NaoFazNada(t *testing.T) {
 	db := setupTestDB(t)
 
-	require.NoError(t, storage.NewPostgresAccountEmailRepository(db).RequestPasswordResetTx(context.Background(), "ninguem@markupp.dev", time.Now(), cooldownDeTeste))
+	require.NoError(t, storage.NewPostgresAccountEmailRepository(db).RequestPasswordResetTx(context.Background(), "ninguem@markupp.dev", cooldownDeTeste))
 
 	assert.Zero(t, countRows(t, db, "SELECT count(*) FROM notifications"))
 }
@@ -170,8 +237,8 @@ func TestAccountEmail_RequestPasswordReset_UmPedidoPorIntervalo(t *testing.T) {
 	repo := storage.NewPostgresAccountEmailRepository(db)
 	criarConta(t, db, "u1", "nova@markupp.dev", false)
 
-	require.NoError(t, repo.RequestPasswordResetTx(context.Background(), "nova@markupp.dev", time.Now(), cooldownDeTeste))
-	require.NoError(t, repo.RequestPasswordResetTx(context.Background(), "nova@markupp.dev", time.Now(), cooldownDeTeste))
+	require.NoError(t, repo.RequestPasswordResetTx(context.Background(), "nova@markupp.dev", cooldownDeTeste))
+	require.NoError(t, repo.RequestPasswordResetTx(context.Background(), "nova@markupp.dev", cooldownDeTeste))
 
 	assert.Equal(t, 1, countRows(t, db, "SELECT count(*) FROM notifications"))
 	e := entregaComToken(t, db, "tok-r")
@@ -179,46 +246,100 @@ func TestAccountEmail_RequestPasswordReset_UmPedidoPorIntervalo(t *testing.T) {
 	assert.WithinDuration(t, time.Now().Add(time.Hour), e.details.ExpiresAt, time.Minute, "a troca de senha vale 1h a partir da entrega")
 }
 
+func TestAccountEmail_RequestPasswordReset_PedidosEmParalelo_GeramUmEmail(t *testing.T) {
+	db := setupTestDB(t)
+	repo := storage.NewPostgresAccountEmailRepository(db)
+	criarConta(t, db, "u1", "nova@markupp.dev", false)
+	const pedidos = 8
+	erros := make(chan error, pedidos)
+
+	for range pedidos {
+		go func() {
+			erros <- repo.RequestPasswordResetTx(context.Background(), "nova@markupp.dev", cooldownDeTeste)
+		}()
+	}
+	for range pedidos {
+		require.NoError(t, <-erros)
+	}
+
+	assert.Equal(t, 1, countRows(t, db, "SELECT count(*) FROM notifications"), "o intervalo vale tambem para pedidos simultaneos")
+	assert.Equal(t, 1, countRows(t, db, "SELECT count(*) FROM account_tokens"))
+}
+
 func pedirTroca(t *testing.T, db *pgxpool.Pool, token string) {
 	t.Helper()
-	criarConta(t, db, "u1", "nova@markupp.dev", false)
-	require.NoError(t, storage.NewPostgresAccountEmailRepository(db).RequestPasswordResetTx(context.Background(), "nova@markupp.dev", time.Now(), cooldownDeTeste))
+	contaAutoRegistrada(t, db, "u1", "nova@markupp.dev", false)
+	require.NoError(t, storage.NewPostgresAccountEmailRepository(db).RequestPasswordResetTx(context.Background(), "nova@markupp.dev", cooldownDeTeste))
 	entregaComToken(t, db, token)
 }
 
-func trocaDeSenha(token string, now time.Time) auth.PasswordResetParams {
-	return auth.PasswordResetParams{TokenHash: auth.HashOpaqueToken(token), PasswordHash: "hash-novo", AuditEventID: "ev-troca-" + token, Now: now}
+func trocaDeSenha(token string) auth.PasswordResetParams {
+	return auth.PasswordResetParams{
+		TokenHash: auth.HashOpaqueToken(token), AuditEventID: "ev-troca-" + token, Now: time.Now(),
+		HashPassword: func() (string, error) { return "hash-novo", nil },
+	}
 }
 
-func TestAccountEmail_ResetPassword_TrocaASenhaDerrubaSessoesEAudita(t *testing.T) {
+func TestAccountEmail_ResetPassword_TrocaASenhaVerificaOEmailDerrubaSessoesEAudita(t *testing.T) {
 	db := setupTestDB(t)
 	pedirTroca(t, db, "tok-r")
 	_, err := db.Exec(context.Background(), "INSERT INTO refresh_tokens (token_hash, user_id, expires_at, created_at) VALUES ('sessao', 'u1', now() + interval '1 day', now())")
 	require.NoError(t, err)
 	repo := storage.NewPostgresAccountEmailRepository(db)
 
-	require.NoError(t, repo.ResetPasswordTx(context.Background(), trocaDeSenha("tok-r", time.Now())))
+	require.NoError(t, repo.ResetPasswordTx(context.Background(), trocaDeSenha("tok-r")))
 
 	assert.Equal(t, 1, countRows(t, db, "SELECT count(*) FROM user_identities WHERE user_id = 'u1' AND password_hash = 'hash-novo'"))
+	assert.True(t, emailVerificado(t, db, "u1"), "quem usou o token do email prova que controla o email")
 	assert.Equal(t, 1, countRows(t, db, "SELECT count(*) FROM refresh_tokens WHERE token_hash = 'sessao' AND revoked"))
 	assert.Equal(t, 1, countRows(t, db, "SELECT count(*) FROM audit_events WHERE action = 'auth.password_reset' AND actor_id = 'u1'"))
-	assert.ErrorIs(t, repo.ResetPasswordTx(context.Background(), trocaDeSenha("tok-r", time.Now())), auth.ErrInvalidToken, "o token vale uma vez")
+	assert.ErrorIs(t, repo.ResetPasswordTx(context.Background(), trocaDeSenha("tok-r")), auth.ErrInvalidToken, "o token vale uma vez")
+}
+
+func TestAccountEmail_ResetPassword_TokenInvalido_NaoCalculaOHashDaSenha(t *testing.T) {
+	db := setupTestDB(t)
+	calculou := false
+	p := trocaDeSenha("lixo")
+	p.HashPassword = func() (string, error) { calculou = true; return "x", nil }
+
+	err := storage.NewPostgresAccountEmailRepository(db).ResetPasswordTx(context.Background(), p)
+
+	assert.ErrorIs(t, err, auth.ErrInvalidToken)
+	assert.False(t, calculou)
 }
 
 func TestAccountEmail_ResetPassword_TokenVencido_Recusa(t *testing.T) {
 	db := setupTestDB(t)
 	pedirTroca(t, db, "tok-r")
+	venceTokens(t, db)
 
-	err := storage.NewPostgresAccountEmailRepository(db).ResetPasswordTx(context.Background(), trocaDeSenha("tok-r", time.Now().Add(2*time.Hour)))
+	err := storage.NewPostgresAccountEmailRepository(db).ResetPasswordTx(context.Background(), trocaDeSenha("tok-r"))
 
 	assert.ErrorIs(t, err, auth.ErrInvalidToken)
 	assert.Equal(t, 1, countRows(t, db, "SELECT count(*) FROM user_identities WHERE user_id = 'u1' AND password_hash = 'hash-antigo'"))
 }
 
-func TestRLS_PapelDoNotificador_NaoLeOsPedidosDaConta(t *testing.T) {
+func TestAccountEmail_TokenDeTroca_NaoVerificaEmail(t *testing.T) {
 	db := setupTestDB(t)
 	pedirTroca(t, db, "tok-r")
 
-	requirePermissaoNegada(t, comoPapel(t, db, "markupp_notifier", "SELECT count(*) FROM password_resets"), "notificador lendo trocas de senha")
-	requirePermissaoNegada(t, comoPapel(t, db, "markupp_notifier", "SELECT count(*) FROM email_verifications"), "notificador lendo verificacoes")
+	err := storage.NewPostgresAccountEmailRepository(db).ConfirmEmailTx(context.Background(), "u1", auth.HashOpaqueToken("tok-r"))
+
+	assert.ErrorIs(t, err, auth.ErrInvalidToken, "cada token so serve ao proprio proposito")
+}
+
+func TestRLS_PapelDoNotificador_NaoLeOsTokensDaConta(t *testing.T) {
+	db := setupTestDB(t)
+	pedirTroca(t, db, "tok-r")
+
+	requirePermissaoNegada(t, comoPapel(t, db, "markupp_notifier", "SELECT count(*) FROM account_tokens"), "notificador lendo tokens da conta")
+}
+
+func TestNotificacoes_ConviteSemTenant_Recusado(t *testing.T) {
+	db := setupTestDB(t)
+	conviteComEmail(t, db, "c1", "nova@markupp.dev")
+
+	_, err := db.Exec(context.Background(), "INSERT INTO notifications (tenant_id, kind, invite_id) VALUES (NULL, 'invite', 'c1')")
+
+	require.Error(t, err, "notificacao de convite sempre carrega o tenant dele")
 }
