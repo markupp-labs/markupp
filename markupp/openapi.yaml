@@ -1,10 +1,15 @@
 openapi: 3.0.3
 info:
   title: Markupp Server API
-  description: API REST para gerenciamento de notas do projeto Markupp.
+  description: |
+    API REST para gerenciamento de notas do projeto Markupp.
+
+    Todas as rotas vivem sob /v1 (ADR-0026). Durante a transição, os mesmos caminhos
+    continuam servidos sem prefixo, com os cabeçalhos Deprecation (RFC 9745) e
+    Link rel="successor-version" apontando o caminho sob /v1.
   version: 0.1.0
 servers:
-  - url: http://localhost:8080
+  - url: http://localhost:8080/v1
     description: Servidor local padrão
 security:
   - bearerAuth: []
