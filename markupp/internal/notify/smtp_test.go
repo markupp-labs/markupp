@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -18,7 +19,8 @@ import (
 const mailpitImage = "axllent/mailpit:v1.31.4"
 
 // mailpit sobe um servidor SMTP de verdade, que guarda o que recebe e expõe as
-// mensagens por HTTP, e devolve as URLs do SMTP e da API dele.
+// mensagens por HTTP, e devolve as URLs do SMTP e da API dele. Ele aceita qualquer
+// usuário e senha sem TLS, para o teste da autenticação.
 func mailpit(t *testing.T) (smtpURL, apiURL string) {
 	t.Helper()
 	ctx := context.Background()
@@ -26,6 +28,7 @@ func mailpit(t *testing.T) (smtpURL, apiURL string) {
 		ContainerRequest: testcontainers.ContainerRequest{
 			Image:        mailpitImage,
 			ExposedPorts: []string{"1025/tcp", "8025/tcp"},
+			Env:          map[string]string{"MP_SMTP_AUTH_ACCEPT_ANY": "true", "MP_SMTP_AUTH_ALLOW_INSECURE": "true"},
 			WaitingFor:   wait.ForHTTP("/livez").WithPort("8025/tcp"),
 		},
 		Started: true,
@@ -64,6 +67,21 @@ func TestSMTPMailer_Send_EntregaAoServidor(t *testing.T) {
 	require.Len(t, caixa.Messages, 1)
 	assert.Contains(t, caixa.Messages[0].Subject, "Equipe A")
 	assert.Equal(t, "nova@markupp.dev", caixa.Messages[0].To[0].Address)
+}
+
+func TestSMTPMailer_ComUsuario_AutenticaEEntrega(t *testing.T) {
+	smtpURL, apiURL := mailpit(t)
+	mailer, err := notify.NewSMTPMailer(strings.Replace(smtpURL, "smtp://", "smtp://markupp:qualquer@", 1))
+	require.NoError(t, err)
+
+	require.NoError(t, mailer.Send(context.Background(), notify.InviteMessage(detalhesDeTeste(), "tok", "convites@markupp.dev")))
+
+	resp, err := http.Get(apiURL + "/api/v1/messages")
+	require.NoError(t, err)
+	defer func() { _ = resp.Body.Close() }()
+	var caixa caixaDoMailpit
+	require.NoError(t, json.NewDecoder(resp.Body).Decode(&caixa))
+	assert.Len(t, caixa.Messages, 1)
 }
 
 func TestSMTPMailer_ServidorInalcancavel_RetornaErroComOEndereco(t *testing.T) {
