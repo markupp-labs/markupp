@@ -1,0 +1,12 @@
+<%# Cabeçalho comum às abas; current é a aba aberta, que leva o mesmo realce da nota atual. %>
+<% content_for :title, t("settings.tabs.title") %>
+<% content_for :sidebar do %>
+  <%= link_to t("settings.tabs.back"), root_path, class: "tree-row mb-2 block" %>
+  <%= render "settings/tab_links", current: %>
+<% end %>
+
+<h1 class="text-base font-semibold"><%= t("settings.tabs.title") %></h1>
+<p class="truncate text-ink-muted" title="<%= current_tenant.name %>"><%= current_tenant.name %></p>
+<nav aria-label="<%= t("settings.tabs.title") %>" class="mt-3 flex gap-1 border-b border-line pb-2">
+  <%= render "settings/tab_links", current: %>
+</nav>

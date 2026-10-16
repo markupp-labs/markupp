@@ -33,6 +33,7 @@ en:
       log_out: "Log out"
     tenant_switcher:
       new_tenant: "New tenant"
+      settings: "Tenant settings"
       loading: "Loading"
   markupp_api:
     errors:
@@ -91,6 +92,12 @@ en:
     errors:
       invite_not_found: "That invite is no longer valid."
       already_member: "You are already a member of that tenant."
+  settings:
+    tabs:
+      title: "Tenant settings"
+      back: "Back to notes"
+      members: "Members"
+      invites: "Invites"
   notes:
     untitled: "Untitled"
     index:

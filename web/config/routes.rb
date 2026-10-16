@@ -11,4 +11,10 @@ Rails.application.routes.draw do
   resources :tenants, only: [ :index, :create ]
   resource :current_tenant, only: :update
   resources :my_invites, only: [ :index, :update, :destroy ]
+
+  get "settings" => redirect("/settings/members"), as: :settings
+  namespace :settings do
+    resources :members, only: [ :index, :update, :destroy ]
+    resources :invites, only: [ :index, :create, :destroy ]
+  end
 end

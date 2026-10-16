@@ -1,5 +1,8 @@
 # Vínculo da conta com um tenant, como GET /me/tenants devolve: o papel vem daqui a cada página, sem cache.
 Tenant = Data.define(:id, :name, :role) do
+  # Mesma ordem do servidor, do posto mais alto ao mais baixo.
+  self::ROLES = %w[owner admin member viewer].freeze
+
   def self.mine(api) = api.get("/me/tenants").map { from_api(it) }
 
   # Quem cria é owner; nome recusado pela API levanta InvalidRequest, a regra fica no servidor.
@@ -10,6 +13,9 @@ Tenant = Data.define(:id, :name, :role) do
   # Tenant ativo: o da sessão enquanto estiver na lista; sem ele, o único que houver.
   # viewer só lê notas; os outros papéis escrevem.
   def writer? = role != "viewer"
+
+  # owner e admin administram membros e convites.
+  def admin? = %w[owner admin].include?(role)
 
   def self.pick(tenants, id) = tenants.find { it.id == id } || (tenants.sole if tenants.one?)
 end

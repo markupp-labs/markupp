@@ -22,5 +22,8 @@
   <% end %>
   <div class="mt-1 border-t border-line pt-1">
     <%= link_to t(".new_tenant"), tenants_path, class: "tree-row block" %>
+    <% if current_tenant.admin? %>
+      <%= link_to t(".settings"), settings_path, class: "tree-row block" %>
+    <% end %>
   </div>
 </div>
