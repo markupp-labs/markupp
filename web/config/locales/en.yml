@@ -32,12 +32,13 @@ en:
       search: "Search"
       search_notes: "Search notes"
       search_placeholder: "Search note content"
-      log_out: "Log out"
     tenant_switcher:
       switch: "Switch tenant"
       new_tenant: "New tenant"
-      settings: "Tenant settings"
       loading: "Loading"
+    sidebar_footer:
+      settings: "Settings"
+      log_out: "Log out"
   markupp_api:
     errors:
       session_expired: "Your session expired. Log in again."

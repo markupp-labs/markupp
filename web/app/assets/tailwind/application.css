@@ -87,7 +87,7 @@
   /* No desktop a barra lateral fica sempre visível; no celular é popover (gaveta). */
   @media (width >= 48rem) {
     .sidebar {
-      display: block;
+      display: flex;
       position: sticky;
       top: 0;
       inset: auto;
