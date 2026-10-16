@@ -24,6 +24,7 @@ en:
   markupp_api:
     errors:
       session_expired: "Your session expired. Log in again."
+      tenant_unavailable: "You no longer have access to that tenant."
   sessions:
     new:
       title: "Log in"
@@ -33,6 +34,14 @@ en:
       rate_limited: "Too many attempts. Wait a few minutes."
     destroy:
       logged_out: "Logged out."
+  tenants:
+    roles:
+      owner: "owner"
+      admin: "admin"
+      member: "member"
+      viewer: "viewer"
+    index:
+      choose: "Choose a tenant"
   notes:
     untitled: "Untitled"
     index:

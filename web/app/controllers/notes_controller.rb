@@ -1,6 +1,7 @@
 class NotesController < ApplicationController
   rescue_from MarkuppApi::NotFound, with: :render_not_found
 
+  before_action :require_tenant
   before_action :set_tree, except: :destroy
 
   def index

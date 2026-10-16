@@ -9,10 +9,11 @@ class ApplicationController < ActionController::Base
   class_attribute :markupp_api_factory
 
   before_action :require_login
-  helper_method :credential
+  helper_method :credential, :current_tenant, :current_tenants
 
   # O Rails procura do último para o primeiro: os específicos vêm depois do genérico.
   rescue_from MarkuppApi::Error, with: :render_unreachable
+  rescue_from MarkuppApi::TenantUnavailable, with: :forget_tenant
   rescue_from MarkuppApi::Unauthorized, MarkuppApi::SessionExpired, with: :expire_session
 
   private
@@ -24,6 +25,25 @@ class ApplicationController < ActionController::Base
 
       session[:return_to] = request.fullpath if request.get?
       redirect_to new_session_path
+    end
+
+    # Só nas páginas que agem num tenant: o papel vem da lista, sem cache, a cada página.
+    def require_tenant
+      @current_tenant = Tenant.pick(current_tenants, credential.tenant_id)
+      return redirect_to(tenants_path) unless @current_tenant
+
+      credential.tenant_id = @current_tenant.id
+    end
+
+    def current_tenant = @current_tenant
+
+    def current_tenants = @current_tenants ||= Tenant.mine(credential.api)
+
+    # O tenant some entre a lista e a chamada de notas (vínculo removido no meio): esquece e manda escolher outro.
+    def forget_tenant(error)
+      Rails.logger.info({ event: "markupp_tenant_unavailable", tenant_id: credential.tenant_id, message: error.message }.to_json)
+      credential.tenant_id = nil
+      redirect_to tenants_path, alert: t("markupp_api.errors.tenant_unavailable")
     end
 
     # 401 que sobra depois da renovação também encerra: a sessão não vale mais.
