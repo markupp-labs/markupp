@@ -31,9 +31,9 @@ func notaComCaminho(id, path, content string) notes.Note {
 	return notes.Note{ID: id, VaultID: cofreDeTeste, Path: path, Content: content, CreatedAt: agora, UpdatedAt: agora}
 }
 
-// cofreIndexado salva as notas em cofreDeTeste, indexa com config e devolve o
+// cofreBuscavel salva as notas em cofreDeTeste, indexa com config e devolve o
 // repositório que busca com a mesma config.
-func cofreIndexado(t *testing.T, config string, lista ...notes.Note) *storage.PostgresNotesRepository {
+func cofreBuscavel(t *testing.T, config string, lista ...notes.Note) *storage.PostgresNotesRepository {
 	t.Helper()
 	db := setupNotesDB(t)
 	repo := storage.NewPostgresNotesRepository(db, config)
@@ -56,7 +56,7 @@ func idsDaBusca(ctx context.Context, t *testing.T, repo *storage.PostgresNotesRe
 }
 
 func TestSearchNotes_TituloPesaMaisQueCorpo(t *testing.T) {
-	repo := cofreIndexado(t, "simple",
+	repo := cofreBuscavel(t, "simple",
 		notaComCaminho("corpo", "cluster.md", "nota sobre kubernetes"),
 		notaComCaminho("titulo", "kubernetes.md", "nota sobre cluster"))
 
@@ -64,7 +64,7 @@ func TestSearchNotes_TituloPesaMaisQueCorpo(t *testing.T) {
 }
 
 func TestSearchNotes_EmpateNoRanking_DesempataPeloID(t *testing.T) {
-	repo := cofreIndexado(t, "simple",
+	repo := cofreBuscavel(t, "simple",
 		notaComCaminho("b", "b.md", "golang"),
 		notaComCaminho("a", "a.md", "golang"),
 		notaComCaminho("c", "c.md", "golang"))
@@ -73,7 +73,7 @@ func TestSearchNotes_EmpateNoRanking_DesempataPeloID(t *testing.T) {
 }
 
 func TestSearchNotes_SintaxeWebsearch(t *testing.T) {
-	repo := cofreIndexado(t, "simple",
+	repo := cofreBuscavel(t, "simple",
 		notaComCaminho("ambos", "x1.md", "go e rust"),
 		notaComCaminho("go", "x2.md", "go puro"),
 		notaComCaminho("rust", "x3.md", "rust puro"),
@@ -87,7 +87,7 @@ func TestSearchNotes_SintaxeWebsearch(t *testing.T) {
 }
 
 func TestSearchNotes_DevolveTrechoComOTermoMarcado(t *testing.T) {
-	repo := cofreIndexado(t, "simple", notaComCaminho("n1", "n1.md", "o kubernetes orquestra containers"))
+	repo := cofreBuscavel(t, "simple", notaComCaminho("n1", "n1.md", "o kubernetes orquestra containers"))
 
 	achadas, err := repo.SearchNotes(ctxDeTeste, "kubernetes", 0, 10)
 
@@ -97,7 +97,7 @@ func TestSearchNotes_DevolveTrechoComOTermoMarcado(t *testing.T) {
 }
 
 func TestSearchNotes_PorcentoESublinhado_NaoSaoCuringa(t *testing.T) {
-	repo := cofreIndexado(t, "simple",
+	repo := cofreBuscavel(t, "simple",
 		notaComCaminho("n1", "n1.md", "qualquer coisa"),
 		notaComCaminho("n2", "n2.md", "outra coisa"))
 
@@ -107,7 +107,7 @@ func TestSearchNotes_PorcentoESublinhado_NaoSaoCuringa(t *testing.T) {
 }
 
 func TestSearchNotes_ConsultaVaziaOuSoStopwords_DevolveVazioSemErro(t *testing.T) {
-	repo := cofreIndexado(t, "portuguese", notaComCaminho("n1", "n1.md", "a casa de pedra"))
+	repo := cofreBuscavel(t, "portuguese", notaComCaminho("n1", "n1.md", "a casa de pedra"))
 
 	for _, query := range []string{"", "   ", "de", "a de o"} {
 		assert.Empty(t, idsDaBusca(ctxDeTeste, t, repo, query), "busca %q", query)
@@ -116,7 +116,7 @@ func TestSearchNotes_ConsultaVaziaOuSoStopwords_DevolveVazioSemErro(t *testing.T
 }
 
 func TestSearchNotes_TituloCitadoEmWikilink_ViraTexto(t *testing.T) {
-	repo := cofreIndexado(t, "simple", notaComCaminho("n1", "n1.md", "veja [[Kubernetes|k8s]] depois"))
+	repo := cofreBuscavel(t, "simple", notaComCaminho("n1", "n1.md", "veja [[Kubernetes|k8s]] depois"))
 
 	assert.Equal(t, []string{"n1"}, idsDaBusca(ctxDeTeste, t, repo, "kubernetes"))
 	assert.Equal(t, []string{"n1"}, idsDaBusca(ctxDeTeste, t, repo, "k8s"))
