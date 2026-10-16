@@ -20,7 +20,7 @@ const mailpitImage = "axllent/mailpit:v1.31.4"
 
 // mailpit sobe um servidor SMTP de verdade, que guarda o que recebe e expõe as
 // mensagens por HTTP, e devolve as URLs do SMTP e da API dele. Ele aceita qualquer
-// usuário e senha sem TLS, para o teste da autenticação.
+// usuário e senha sem TLS, para o teste da autenticação, e por isso a URL leva tls=none.
 func mailpit(t *testing.T) (smtpURL, apiURL string) {
 	t.Helper()
 	ctx := context.Background()
@@ -41,7 +41,7 @@ func mailpit(t *testing.T) (smtpURL, apiURL string) {
 	require.NoError(t, err)
 	apiPort, err := ctr.MappedPort(ctx, "8025")
 	require.NoError(t, err)
-	return fmt.Sprintf("smtp://%s:%s", host, smtpPort.Port()), fmt.Sprintf("http://%s:%s", host, apiPort.Port())
+	return fmt.Sprintf("smtp://%s:%s?tls=none", host, smtpPort.Port()), fmt.Sprintf("http://%s:%s", host, apiPort.Port())
 }
 
 type caixaDoMailpit struct {
@@ -130,4 +130,25 @@ func TestSMTPMailer_Send_ApresentaODominioDoRemetenteNoEHLO(t *testing.T) {
 	require.NoError(t, mailer.Send(context.Background(), notify.InviteMessage(detalhesDeTeste(), "tok", "convites@markupp.dev")))
 
 	assert.Equal(t, "EHLO markupp.dev", servidor.lido(&servidor.ehlo), "EHLO localhost pesa contra o email nos filtros de spam")
+}
+
+func TestSMTPMailer_ServidorSemSTARTTLS_RecusaMandarEmTextoPuro(t *testing.T) {
+	servidor := &servidorSMTPFalso{}
+	mailer, err := notify.NewSMTPMailer(strings.TrimSuffix(servidor.sobe(t), "?tls=none"))
+	require.NoError(t, err)
+
+	err = mailer.Send(context.Background(), notify.InviteMessage(detalhesDeTeste(), "tok-123", "convites@markupp.dev"))
+
+	require.Error(t, err, "sem TLS o token do convite viaja legivel")
+	assert.Contains(t, err.Error(), "STARTTLS")
+	assert.Empty(t, servidor.lido(&servidor.mensagem))
+}
+
+func TestNewSMTPMailer_TLSDesconhecido_RetornaErroComOValor(t *testing.T) {
+	for _, raw := range []string{"smtp://smtp.markupp.dev?tls=talvez", "smtps://smtp.markupp.dev?tls=none"} {
+		_, err := notify.NewSMTPMailer(raw)
+
+		require.Error(t, err, raw)
+		assert.Contains(t, err.Error(), "tls=none", raw)
+	}
 }
