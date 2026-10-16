@@ -6,7 +6,7 @@ x-servidor: &servidor
     MARKUPP_DATABASE_URL: postgres://markupp:${POSTGRES_PASSWORD:-markupp}@postgres:5432/markupp?sslmode=disable
     MARKUPP_AUTH_SECRET: ${MARKUPP_AUTH_SECRET:?MARKUPP_AUTH_SECRET obrigatoria, execute make compose-env}
     # O Mailpit recebe todo email de desenvolvimento; a caixa fica em http://localhost:8025
-    MARKUPP_SMTP_URL: smtp://mailpit:1025
+    MARKUPP_SMTP_URL: smtp://mailpit:1025?tls=none
     MARKUPP_SMTP_FROM: convites@markupp.local
   volumes:
     - ./markupp:/src
