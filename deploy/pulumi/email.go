@@ -51,7 +51,7 @@ func inviteByEmailEnv(args MarkuppArgs) corev1.EnvVarArray {
 	if args.Email == nil {
 		return nil
 	}
-	return corev1.EnvVarArray{corev1.EnvVarArgs{Name: pulumi.String("MARKUPP_INVITE_BY_EMAIL"), Value: pulumi.String("true")}}
+	return corev1.EnvVarArray{plainEnv("MARKUPP_INVITE_BY_EMAIL", "true")}
 }
 
 // smtpEnv dá ao notificador o servidor, o remetente e, quando informada, a URL do painel.
