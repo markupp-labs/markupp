@@ -76,15 +76,12 @@ func TestExchangeCode_ResourceEquivalente_Aceita(t *testing.T) {
 
 func TestExchangeCode_GrantQueNaoBateComOPedido_InvalidGrant(t *testing.T) {
 	casos := map[string]func(*oauth.CodeGrant){
-		"client_id diferente":     func(g *oauth.CodeGrant) { g.ClientID = "https://outro.dev/oauth.json" },
-		"client_id vazio":         func(g *oauth.CodeGrant) { g.ClientID = "" },
-		"redirect_uri diferente":  func(g *oauth.CodeGrant) { g.RedirectURI = testRedirectURI },
-		"redirect_uri vazia":      func(g *oauth.CodeGrant) { g.RedirectURI = "" },
-		"verifier errado":         func(g *oauth.CodeGrant) { g.CodeVerifier = testVerifier + "x" },
-		"verifier vazio":          func(g *oauth.CodeGrant) { g.CodeVerifier = "" },
-		"resource diferente":      func(g *oauth.CodeGrant) { g.Resource = "https://outro.dev/mcp" },
-		"resource ilegivel":       func(g *oauth.CodeGrant) { g.Resource = "http://[::1" },
-		"resource com outro path": func(g *oauth.CodeGrant) { g.Resource = testResource + "/sub" },
+		"client_id diferente":    func(g *oauth.CodeGrant) { g.ClientID = "https://outro.dev/oauth.json" },
+		"client_id vazio":        func(g *oauth.CodeGrant) { g.ClientID = "" },
+		"redirect_uri diferente": func(g *oauth.CodeGrant) { g.RedirectURI = testRedirectURI },
+		"redirect_uri vazia":     func(g *oauth.CodeGrant) { g.RedirectURI = "" },
+		"verifier errado":        func(g *oauth.CodeGrant) { g.CodeVerifier = testVerifier + "x" },
+		"verifier vazio":         func(g *oauth.CodeGrant) { g.CodeVerifier = "" },
 	}
 	for nome, altera := range casos {
 		t.Run(nome, func(t *testing.T) {
@@ -98,6 +95,27 @@ func TestExchangeCode_GrantQueNaoBateComOPedido_InvalidGrant(t *testing.T) {
 			assert.Len(t, repo.redeemCalls, 1, "o código é consumido antes das conferências")
 			assert.Empty(t, repo.saved)
 			assert.Empty(t, repo.revoked)
+		})
+	}
+}
+
+func TestExchangeCode_ResourceQueNaoBateComOPedido_InvalidTarget(t *testing.T) {
+	casos := map[string]string{
+		"resource diferente":      "https://outro.dev/mcp",
+		"resource ilegivel":       "http://[::1",
+		"resource com outro path": testResource + "/sub",
+	}
+	for nome, resource := range casos {
+		t.Run(nome, func(t *testing.T) {
+			repo := testRepositoryWithRedeemableCode()
+			grant := validCodeGrant()
+			grant.Resource = resource
+
+			_, err := newTestService(repo).ExchangeCode(context.Background(), grant)
+
+			requireProtocolError(t, err, "invalid_target", "", "")
+			assert.Len(t, repo.redeemCalls, 1, "o código é consumido antes das conferências")
+			assert.Empty(t, repo.saved)
 		})
 	}
 }
