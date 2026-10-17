@@ -89,3 +89,18 @@ func TestNewRouter_IssuerInvalido_EntraEmPanic(t *testing.T) {
 		}, "issuer %q", issuer)
 	}
 }
+
+func TestOAuthMetadata_Preflight_Retorna204ComCORSAbertoEMCPProtocolVersion(t *testing.T) {
+	req := httptest.NewRequest(http.MethodOptions, metadataPath, nil)
+	req.Header.Set("Origin", "https://cliente.exemplo")
+	req.Header.Set("Access-Control-Request-Method", http.MethodGet)
+	req.Header.Set("Access-Control-Request-Headers", "mcp-protocol-version")
+
+	rec := serveOAuth(&fakeOAuthService{}, req)
+
+	assert.Equal(t, http.StatusNoContent, rec.Code)
+	assert.Equal(t, "*", rec.Header().Get("Access-Control-Allow-Origin"))
+	assert.Equal(t, "GET, OPTIONS", rec.Header().Get("Access-Control-Allow-Methods"))
+	assert.Equal(t, "Content-Type, MCP-Protocol-Version", rec.Header().Get("Access-Control-Allow-Headers"))
+	assert.Empty(t, rec.Header().Get("Access-Control-Allow-Credentials"))
+}
