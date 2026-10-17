@@ -24,15 +24,7 @@ type RouterDeps struct {
 // prefixo e marcadas como obsoletas. As rotas do authorization server OAuth que os
 // clientes acessam ficam na raiz, sem versão.
 func NewRouter(d RouterDeps) chi.Router {
-	if d.Tokens == nil {
-		panic("api: Tokens obrigatorio para proteger as rotas")
-	}
-	if d.Tenants == nil && (d.Notes != nil || d.Admin != nil) {
-		panic("api: Tenants obrigatorio para as rotas de notas e de administracao")
-	}
-	if d.OAuth != nil && d.OAuthMetadata == nil {
-		panic("api: OAuthMetadata obrigatorio para as rotas OAuth, que usam o Issuer")
-	}
+	mustHaveRouterDeps(d)
 	routes := newVersionRoutes(d)
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
@@ -42,6 +34,19 @@ func NewRouter(d RouterDeps) chi.Router {
 	r.Mount(currentVersionPrefix, routes)
 	r.Mount("/", markDeprecated(routes))
 	return r
+}
+
+// mustHaveRouterDeps barra na montagem as dependências que faltam às rotas ligadas.
+func mustHaveRouterDeps(d RouterDeps) {
+	if d.Tokens == nil {
+		panic("api: Tokens obrigatorio para proteger as rotas")
+	}
+	if d.Tenants == nil && (d.Notes != nil || d.Admin != nil) {
+		panic("api: Tenants obrigatorio para as rotas de notas e de administracao")
+	}
+	if d.OAuth != nil && d.OAuthMetadata == nil {
+		panic("api: OAuthMetadata obrigatorio para as rotas OAuth, que usam o Issuer")
+	}
 }
 
 func newVersionRoutes(d RouterDeps) chi.Router {
