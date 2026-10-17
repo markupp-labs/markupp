@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"net/http"
 	"net/http/httptest"
+	"net/netip"
 	"strconv"
 	"testing"
 	"time"
@@ -29,7 +30,7 @@ func newLimitedRouter(clock *fakeRateClock) http.Handler {
 		Auth:               &fakeAuthService{},
 		AccountEmail:       &fakeAccountEmailService{},
 		Tokens:             &fakeTokenValidator{claims: auth.Claims{Subject: "u1"}},
-		AccountRateLimiter: api.NewAccountRateLimiter(limiteDeTeste, time.Minute, clock.Now),
+		AccountRateLimiter: api.NewAccountRateLimiter(limiteDeTeste, time.Minute, clock.Now, nil),
 	})
 }
 
@@ -111,7 +112,7 @@ func TestRateLimit_RotaLimitada_EntregaOCorpoIntactoAoHandler(t *testing.T) {
 	router := api.NewRouter(api.RouterDeps{
 		AccountEmail:       svc,
 		Tokens:             &fakeTokenValidator{},
-		AccountRateLimiter: api.NewAccountRateLimiter(limiteDeTeste, time.Minute, time.Now),
+		AccountRateLimiter: api.NewAccountRateLimiter(limiteDeTeste, time.Minute, time.Now, nil),
 	})
 
 	rec := limitedPost(router, "/auth/password/forgot", "10.0.0.1:1234", `{"email":"ana@markupp.dev"}`)
@@ -157,4 +158,83 @@ func TestRateLimit_IPv6DeOutroPrefixo64_TemLimiteProprio(t *testing.T) {
 	rec := limitedPost(router, "/auth/refresh", "[2001:db8:0:2::1]:1234", `{}`)
 
 	assert.NotEqual(t, http.StatusTooManyRequests, rec.Code)
+}
+
+var proxiesDeTeste = []netip.Prefix{netip.MustParsePrefix("10.0.0.0/8"), netip.MustParsePrefix("fd00::/8")}
+
+func newRouterAtrasDeProxy() http.Handler {
+	clock := &fakeRateClock{current: time.Unix(1_000_000, 0)}
+	return api.NewRouter(api.RouterDeps{
+		Auth:               &fakeAuthService{},
+		Tokens:             &fakeTokenValidator{claims: auth.Claims{Subject: "u1"}},
+		AccountRateLimiter: api.NewAccountRateLimiter(limiteDeTeste, time.Minute, clock.Now, proxiesDeTeste),
+	})
+}
+
+func refreshPeloProxy(router http.Handler, remoteAddr, forwardedFor string) *httptest.ResponseRecorder {
+	req := httptest.NewRequest(http.MethodPost, "/auth/refresh", bytes.NewBufferString(`{}`))
+	req.RemoteAddr = remoteAddr
+	if forwardedFor != "" {
+		req.Header.Set("X-Forwarded-For", forwardedFor)
+	}
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	return rec
+}
+
+func esgotaPeloProxy(t *testing.T, router http.Handler, remoteAddr string, forwardedFor func(int) string) {
+	t.Helper()
+	for i := 0; i < limiteDeTeste; i++ {
+		rec := refreshPeloProxy(router, remoteAddr, forwardedFor(i))
+		require.NotEqual(t, http.StatusTooManyRequests, rec.Code, "tentativa %d", i+1)
+	}
+}
+
+func TestRateLimit_ProxyConfiavel_DaLimiteProprioACadaClienteDoHeader(t *testing.T) {
+	router := newRouterAtrasDeProxy()
+	esgotaPeloProxy(t, router, "10.0.0.1:443", func(int) string { return "198.51.100.1" })
+
+	rec := refreshPeloProxy(router, "10.0.0.1:443", "198.51.100.2")
+
+	assert.NotEqual(t, http.StatusTooManyRequests, rec.Code, "outro cliente atras do mesmo proxy")
+}
+
+func TestRateLimit_HeaderDeOrigemNaoConfiavel_EhIgnorado(t *testing.T) {
+	router := newRouterAtrasDeProxy()
+	esgotaPeloProxy(t, router, "203.0.113.9:1234", func(i int) string { return "198.51.100." + strconv.Itoa(i+1) })
+
+	rec := refreshPeloProxy(router, "203.0.113.9:1234", "198.51.100.99")
+
+	assert.Equal(t, http.StatusTooManyRequests, rec.Code, "cliente fora dos proxies nao escolhe o proprio IP")
+}
+
+func TestRateLimit_CadeiaDeProxies_UsaOPrimeiroIPNaoConfiavelDaDireita(t *testing.T) {
+	router := newRouterAtrasDeProxy()
+	esgotaPeloProxy(t, router, "10.0.0.1:443", func(i int) string {
+		return "192.0.2." + strconv.Itoa(i+1) + ", 198.51.100.7, 10.0.0.2"
+	})
+
+	rec := refreshPeloProxy(router, "10.0.0.3:443", "198.51.100.7")
+
+	assert.Equal(t, http.StatusTooManyRequests, rec.Code, "o que vem antes do cliente no header e forjavel")
+}
+
+func TestRateLimit_ProxyConfiavelSemHeaderOuComLixo_UsaOIPDaConexao(t *testing.T) {
+	for _, header := range []string{"lixo", "198.51.100.1, lixo", "198.51.100.1:5678", " , "} {
+		router := newRouterAtrasDeProxy()
+		esgotaPeloProxy(t, router, "10.0.0.1:443", func(int) string { return "" })
+
+		rec := refreshPeloProxy(router, "10.0.0.1:443", header)
+
+		assert.Equal(t, http.StatusTooManyRequests, rec.Code, header)
+	}
+}
+
+func TestRateLimit_ProxyConfiavel_AgrupaIPv6DoHeaderPeloPrefixo64(t *testing.T) {
+	router := newRouterAtrasDeProxy()
+	esgotaPeloProxy(t, router, "[fd00::1]:443", func(int) string { return "2001:db8:0:1::1" })
+
+	rec := refreshPeloProxy(router, "[fd00::1]:443", "2001:db8:0:1:ffff::2")
+
+	assert.Equal(t, http.StatusTooManyRequests, rec.Code)
 }

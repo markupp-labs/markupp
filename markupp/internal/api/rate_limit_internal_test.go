@@ -9,7 +9,7 @@ import (
 
 func TestAccountRateLimiter_EntradaDeJanelaVencida_EhDescartada(t *testing.T) {
 	current := time.Unix(1_000_000, 0)
-	limiter := NewAccountRateLimiter(5, time.Minute, func() time.Time { return current })
+	limiter := NewAccountRateLimiter(5, time.Minute, func() time.Time { return current }, nil)
 	limiter.Allow("ip 10.0.0.1")
 	limiter.Allow("ip 10.0.0.2")
 	current = current.Add(time.Minute)
