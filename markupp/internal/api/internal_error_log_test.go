@@ -33,6 +33,22 @@ func TestLogin_ErroInesperado_RegistraOErroNoLog(t *testing.T) {
 	assert.Contains(t, buf.String(), "banco fora", "o 500 sem log esconde a causa de quem opera")
 }
 
+func TestOAuth_ErroInesperado_RegistraComMensagemDoOAuth(t *testing.T) {
+	for _, req := range []*http.Request{
+		httptest.NewRequest(http.MethodGet, "/oauth/authorize?client_id=c1", nil),
+		httptest.NewRequest(http.MethodGet, "/v1/oauth/requests/p1", nil),
+	} {
+		buf := logCapturado(t)
+		req.Header.Set("Authorization", "Bearer token-valido")
+
+		rec := serveOAuth(&fakeOAuthService{err: errors.New("banco fora")}, req)
+
+		assert.Equal(t, http.StatusInternalServerError, rec.Code, req.URL.Path)
+		assert.Contains(t, buf.String(), `"msg":"falha no oauth"`, req.URL.Path)
+		assert.Contains(t, buf.String(), "banco fora", req.URL.Path)
+	}
+}
+
 func TestAccountEmail_ErroInesperado_RegistraOErroNoLog(t *testing.T) {
 	buf := logCapturado(t)
 
