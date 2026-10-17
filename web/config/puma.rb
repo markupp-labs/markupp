@@ -31,6 +31,8 @@
 # renovar o mesmo refresh, e a API revoga todas as sessões da conta.
 # Para escalar, o deploy do painel usa mais réplicas com 1 processo Puma cada e sessão fixa (afinidade por cookie)
 # no Gateway: a mesma sessão cai sempre na mesma réplica. Sem cache compartilhado nem Postgres próprio do painel.
+# Por isso o rate_limit (login 10 em 3 min, senha e verificação 5 por minuto) conta por réplica: quem não manda
+# o cookie de afinidade pode ganhar N vezes o limite com N réplicas.
 threads_count = ENV.fetch("RAILS_MAX_THREADS", 3)
 threads threads_count, threads_count
 
