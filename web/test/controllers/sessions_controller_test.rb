@@ -105,7 +105,7 @@ class SessionsControllerTest < ActionDispatch::IntegrationTest
 
     assert_redirected_to new_session_path
     follow_redirect!
-    assert_select "[role=alert]", "Too many attempts. Wait a few minutes."
+    assert_select "[role=alert]", "Too many attempts. Try again in 3 minutes."
   end
 
   test "the tokens stay out of the page" do

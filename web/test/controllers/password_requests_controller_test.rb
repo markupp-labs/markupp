@@ -88,7 +88,7 @@ class PasswordRequestsControllerTest < ActionDispatch::IntegrationTest
     6.times { request_reset(FakeMarkuppAccounts::DEFAULT_EMAIL) }
 
     assert_redirected_to new_password_request_path
-    assert_equal "Too many attempts. Wait a minute.", flash[:alert]
+    assert_equal "Too many attempts. Try again in 1 minute.", flash[:alert]
     assert_equal 5, api.sent_tokens.size
   end
 

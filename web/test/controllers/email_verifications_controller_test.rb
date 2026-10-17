@@ -58,7 +58,7 @@ class EmailVerificationsControllerTest < ActionDispatch::IntegrationTest
     6.times { post email_verification_path }
 
     assert_redirected_to account_path
-    assert_equal "Too many attempts. Wait a minute.", flash[:alert]
+    assert_equal "Too many attempts. Try again in 1 minute.", flash[:alert]
     assert_equal 5, api.sent_tokens.size
   end
 end
