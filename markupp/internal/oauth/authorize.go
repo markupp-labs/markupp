@@ -26,20 +26,23 @@ func (s *Service) StartAuthorization(ctx context.Context, p AuthorizeParams) (st
 	return s.cfg.PanelURL + "/oauth/consentimento?pedido=" + url.QueryEscape(req.ID), nil
 }
 
+// registeredClientShape descreve o client_id aceito, para as mensagens de erro.
+const registeredClientShape = "um cliente registrado por CIMD ou DCR"
+
 // checkClientRedirect confirma que o cliente existe e registrou a redirect_uri pedida.
 func (s *Service) checkClientRedirect(ctx context.Context, p AuthorizeParams) error {
 	if p.ClientID == "" {
-		return &ProtocolError{Code: errInvalidRequest, Description: "client_id ausente"}
+		return &ProtocolError{Code: errInvalidRequest, Description: "client_id ausente; esperado " + registeredClientShape}
 	}
 	client, err := s.repo.GetClient(ctx, p.ClientID)
 	if errors.Is(err, ErrClientNotFound) {
-		return &ProtocolError{Code: errInvalidRequest, Description: "client_id " + describeValue(p.ClientID) + " nao registrado"}
+		return &ProtocolError{Code: errInvalidRequest, Description: "client_id " + describeValue(p.ClientID) + " nao registrado; esperado " + registeredClientShape}
 	}
 	if err != nil {
 		return fmt.Errorf("oauth: buscando o cliente %q: %w", p.ClientID, err)
 	}
 	if !MatchRedirectURI(client.RedirectURIs, p.RedirectURI) {
-		return &ProtocolError{Code: errInvalidRequest, Description: "redirect_uri " + describeValue(p.RedirectURI) + " nao registrada para o cliente"}
+		return &ProtocolError{Code: errInvalidRequest, Description: "redirect_uri " + describeValue(p.RedirectURI) + " nao registrada para o cliente; esperada uma das redirect_uris registradas por ele"}
 	}
 	return nil
 }
@@ -82,13 +85,23 @@ func checkCodeFlow(p AuthorizeParams) error {
 // requestedResource devolve o resource na forma canônica, se for um servidor protegido.
 func (s *Service) requestedResource(p AuthorizeParams) (string, error) {
 	if p.Resource == "" {
-		return "", redirectError(p, errInvalidTarget, "resource ausente")
+		return "", redirectError(p, errInvalidTarget, "resource ausente; esperado "+s.knownResources())
 	}
 	resource, ok := canonicalize(p.Resource)
 	if !ok || !slices.Contains(s.cfg.Resources, resource) {
-		return "", redirectError(p, errInvalidTarget, "resource "+describeValue(p.Resource)+" desconhecido")
+		return "", redirectError(p, errInvalidTarget, "resource "+describeValue(p.Resource)+" desconhecido; esperado "+s.knownResources())
 	}
 	return resource, nil
+}
+
+// knownResources lista os servidores protegidos aceitos como resource, no conjunto de
+// caracteres do error_description.
+func (s *Service) knownResources() string {
+	described := make([]string, 0, len(s.cfg.Resources))
+	for _, resource := range s.cfg.Resources {
+		described = append(described, describeValue(resource))
+	}
+	return "um de " + strings.Join(described, ", ")
 }
 
 // requestedScopes separa o scope por espaço, recusa escopo fora de SupportedScopes e
