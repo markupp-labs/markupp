@@ -70,7 +70,9 @@ func (h *oauthHandler) denyRequest(w http.ResponseWriter, r *http.Request) {
 	decideRequest(w, r, h.svc.Deny, "recusar pedido oauth")
 }
 
+// decideRequest responde sem cache, porque o redirect da aprovação carrega o código.
 func decideRequest(w http.ResponseWriter, r *http.Request, decide requestDecision, operation string) {
+	w.Header().Set("Cache-Control", "no-store")
 	actor, _ := identity.ActorFrom(r.Context())
 	redirectTo, err := decide(r.Context(), chi.URLParam(r, "id"), actor.UserID)
 	if err != nil {
