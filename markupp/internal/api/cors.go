@@ -47,20 +47,24 @@ func writePreflight(w http.ResponseWriter) {
 }
 
 // allowAnyOrigin libera CORS para qualquer origem, sem credenciais, nas rotas públicas
-// do authorization server, independente da lista de origens do servidor.
-func allowAnyOrigin(w http.ResponseWriter) {
-	w.Header().Set("Access-Control-Allow-Origin", "*")
+// do authorization server, independente da lista de origens do servidor. Como
+// middleware do subroteador, cobre também o 404 e o 405 que ele responde.
+func allowAnyOrigin(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		next.ServeHTTP(w, r)
+	})
 }
 
 // mcpProtocolVersionHeader é o cabeçalho que clientes MCP de navegador mandam já na
 // descoberta do authorization server.
 const mcpProtocolVersionHeader = "MCP-Protocol-Version"
 
-// openPreflight responde o preflight de uma rota pública do authorization server com
-// CORS aberto, liberando o método da rota, OPTIONS e os cabeçalhos dados.
+// openPreflight responde o preflight de uma rota pública do authorization server,
+// liberando o método da rota, OPTIONS e os cabeçalhos dados. A origem fica a cargo
+// do allowAnyOrigin do subroteador.
 func openPreflight(method, headers string) http.HandlerFunc {
 	return func(w http.ResponseWriter, _ *http.Request) {
-		allowAnyOrigin(w)
 		w.Header().Set("Access-Control-Allow-Methods", method+", "+http.MethodOptions)
 		w.Header().Set("Access-Control-Allow-Headers", headers)
 		w.Header().Set("Access-Control-Max-Age", preflightMaxAge)

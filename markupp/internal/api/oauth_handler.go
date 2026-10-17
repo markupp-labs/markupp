@@ -50,15 +50,23 @@ func mountOAuthServerRoutes(r chi.Router, d RouterDeps) {
 		return
 	}
 	r.Route(oauthMetadataPath, func(m chi.Router) {
+		m.Use(allowAnyOrigin)
 		m.Get("/", oauthMetadataHandler(*d.OAuthMetadata))
 		m.Options("/", openPreflight(http.MethodGet, "Content-Type, "+mcpProtocolVersionHeader))
 	})
-	if d.OAuth == nil {
-		return
+	if d.OAuth != nil {
+		mountOAuthProtocolRoutes(r, &oauthHandler{svc: d.OAuth, issuer: d.OAuthMetadata.Issuer})
 	}
-	h := &oauthHandler{svc: d.OAuth, issuer: d.OAuthMetadata.Issuer}
+}
+
+// mountOAuthProtocolRoutes deixa o authorize, aberto por navegação, sem CORS, e o resto
+// de /oauth com CORS aberto, inclusive no 404 e no 405.
+func mountOAuthProtocolRoutes(r chi.Router, h *oauthHandler) {
+	r.Route("/oauth/authorize", func(a chi.Router) {
+		a.Get("/", h.authorize)
+	})
 	r.Route("/oauth", func(p chi.Router) {
-		p.Get("/authorize", h.authorize)
+		p.Use(allowAnyOrigin)
 		p.Post("/token", h.token)
 		p.Options("/token", openPreflight(http.MethodPost, "Content-Type"))
 	})
@@ -119,10 +127,9 @@ func (h *oauthHandler) writeAuthorizeError(w http.ResponseWriter, r *http.Reques
 	http.Redirect(w, r, protoErr.RedirectLocation(h.issuer), http.StatusFound)
 }
 
-// token atende o endpoint de token, chamado por clientes de qualquer origem: CORS
-// aberto sem credenciais e nenhuma resposta guardada em cache.
+// token atende o endpoint de token, chamado por clientes de qualquer origem com o CORS
+// aberto do subroteador, sem nenhuma resposta guardada em cache.
 func (h *oauthHandler) token(w http.ResponseWriter, r *http.Request) {
-	allowAnyOrigin(w)
 	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("Pragma", "no-cache")
 	form, protoErr := readTokenForm(w, r)
