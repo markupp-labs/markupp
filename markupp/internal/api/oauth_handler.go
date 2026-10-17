@@ -40,14 +40,16 @@ type oauthErrorResponse struct {
 }
 
 // mountOAuthServerRoutes monta na raiz, fora das rotas versionadas, a metadata e os
-// endpoints de autorização e de token que os clientes OAuth acessam direto. Os
-// endpoints ficam num subroteador próprio para que método não suportado responda 405
-// ali mesmo, sem cair no alias obsoleto sem prefixo.
+// endpoints de autorização e de token que os clientes OAuth acessam direto. Cada um
+// fica num subroteador próprio para que método não suportado responda 405 ali mesmo,
+// sem cair no alias obsoleto sem prefixo nem no CORS da lista de origens.
 func mountOAuthServerRoutes(r chi.Router, d RouterDeps) {
 	if d.OAuthMetadata == nil {
 		return
 	}
-	r.Get(oauthMetadataPath, oauthMetadataHandler(*d.OAuthMetadata))
+	r.Route(oauthMetadataPath, func(m chi.Router) {
+		m.Get("/", oauthMetadataHandler(*d.OAuthMetadata))
+	})
 	if d.OAuth == nil {
 		return
 	}
