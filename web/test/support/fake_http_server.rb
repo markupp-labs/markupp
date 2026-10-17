@@ -32,6 +32,14 @@ class FakeHttpServer
     end
   end
 
+  # Conexão esperando no backlog sem ser aceita: o cliente tentou de novo.
+  def pending_connection?
+    @server.accept_nonblock.close
+    true
+  rescue IO::WaitReadable
+    false
+  end
+
   def close = @server.close
 
   private
