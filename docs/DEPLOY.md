@@ -68,8 +68,8 @@ Com o painel web publicado, a variável `MARKUPP_PANEL_URL` no notificador, uma 
 http:// ou https:// como https://painel.exemplo.com, faz os emails de convite, verificação de
 email e troca de senha levarem primeiro o link da página do painel que recebe o token
 (/invite_acceptance/new, /email_confirmation/new e /password_reset/new, com ?token=), e depois o
-token em texto para quem não conseguir abrir o link. Sem ela, o email leva só o token. O componente ainda não tem opção para
-ela.
+token em texto para quem não conseguir abrir o link. Sem ela, o email leva só o token. No
+componente, ela vem de `email.panelUrl`.
 
 A API limita login, refresh, aceite de convite, pedido de verificação de email e pedido e troca
 de senha a 5 tentativas por minuto por IP e, quando o corpo traz email, por email (ADR-0037).
@@ -82,7 +82,8 @@ IPv6 separados por vírgula, como 10.0.0.0/8,fd00::/8. Com ela, a conexão que v
 redes tem o X-Forwarded-For lido da direita para a esquerda, e o IP que conta é o primeiro que
 não é proxy confiável. Header vazio ou malformado fica com o IP da conexão, e conexão de fora da
 lista nunca tem o header lido. Liste só as redes dos proxies: um CIDR que cubra clientes deixa
-qualquer um deles escolher o IP que conta. O componente ainda não tem opção para as variáveis.
+qualquer um deles escolher o IP que conta. No componente, `trustedProxies` recebe a lista de
+CIDRs e `rateLimitPerMinute` o limite, e os dois vão só para a API.
 
 Sem outra opção, o componente cria um Gateway próprio nas portas 80 e 443. Em cluster onde
 outro Gateway já ocupa essas portas, como o Cilium em hostNetwork, que exige porta única por
