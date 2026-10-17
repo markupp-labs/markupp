@@ -5,8 +5,4 @@ class CacheWithoutExpiry
   def read(key, **) = @entries[key]
 
   def write(key, value, **) = @entries[key] = value
-
-  def fetch(key, **)
-    @entries.fetch(key) { @entries[key] = yield }
-  end
 end
