@@ -158,15 +158,6 @@ func TestApprove_PedidoInexistente_DevolveErrRequestNotFound(t *testing.T) {
 	assert.ErrorIs(t, err, oauth.ErrRequestNotFound)
 }
 
-func TestApprove_ClienteApagadoDepoisDoPedido_DevolveErrRequestNotFound(t *testing.T) {
-	repo := testRepositoryWithPendingRequest()
-	repo.approveErr = fmt.Errorf("%w: client_id %q", oauth.ErrClientNotFound, testClientID)
-
-	_, err := newTestService(repo).Approve(context.Background(), "pedido-9", testUserID)
-
-	assert.ErrorIs(t, err, oauth.ErrRequestNotFound)
-}
-
 func TestApprove_FalhaDoRepositorio_DevolveErroEmbrulhado(t *testing.T) {
 	repo := testRepositoryWithPendingRequest()
 	repo.approveErr = errors.New("banco fora do ar")

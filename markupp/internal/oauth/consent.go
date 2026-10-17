@@ -78,9 +78,6 @@ func (s *Service) Approve(ctx context.Context, requestID, userID string) (string
 		RequestID: requestID, UserID: userID, CodeHash: auth.HashOpaqueToken(code),
 		CodeExpiresAt: now.Add(s.cfg.CodeTTL), DecidedAt: now,
 	})
-	if errors.Is(err, ErrClientNotFound) {
-		return "", clientGoneErr(requestID)
-	}
 	if err != nil {
 		return "", fmt.Errorf("oauth: aprovando o pedido %s: %w", ClientValue(requestID), err)
 	}
