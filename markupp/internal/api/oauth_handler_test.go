@@ -344,3 +344,43 @@ func TestOAuthProtocolo_MetodoNaoSuportado_Retorna405SemObsolescencia(t *testing
 		assert.Empty(t, rec.Header().Get("Link"), route.method+" "+route.path)
 	}
 }
+
+func oauthRequestDeOutraOrigem(method, path string) *httptest.ResponseRecorder {
+	req := httptest.NewRequest(method, path, nil)
+	req.Header.Set("Origin", "https://cliente.exemplo")
+	return serveOAuth(&fakeOAuthService{}, req)
+}
+
+func TestOAuthPublico_ErroDeRoteamento_RecebeCORSAberto(t *testing.T) {
+	for _, route := range []struct {
+		method, path string
+		status       int
+	}{
+		{http.MethodGet, "/oauth/token", http.StatusMethodNotAllowed},
+		{http.MethodGet, "/oauth/inexistente", http.StatusNotFound},
+		{http.MethodPost, "/.well-known/oauth-authorization-server", http.StatusMethodNotAllowed},
+		{http.MethodGet, "/.well-known/oauth-authorization-server/inexistente", http.StatusNotFound},
+	} {
+		rec := oauthRequestDeOutraOrigem(route.method, route.path)
+
+		assert.Equal(t, route.status, rec.Code, route.method+" "+route.path)
+		assert.Equal(t, "*", rec.Header().Get("Access-Control-Allow-Origin"), route.method+" "+route.path)
+	}
+}
+
+func TestAuthorize_QualquerResposta_NaoRecebeCORS(t *testing.T) {
+	for _, route := range []struct {
+		method, path string
+		status       int
+	}{
+		{http.MethodGet, "/oauth/authorize?client_id=c1", http.StatusFound},
+		{http.MethodGet, "/oauth/authorize?client_id=c1&client_id=c2", http.StatusBadRequest},
+		{http.MethodPost, "/oauth/authorize", http.StatusMethodNotAllowed},
+		{http.MethodOptions, "/oauth/authorize", http.StatusMethodNotAllowed},
+	} {
+		rec := oauthRequestDeOutraOrigem(route.method, route.path)
+
+		assert.Equal(t, route.status, rec.Code, route.method+" "+route.path)
+		assert.Empty(t, rec.Header().Get("Access-Control-Allow-Origin"), route.method+" "+route.path)
+	}
+}
