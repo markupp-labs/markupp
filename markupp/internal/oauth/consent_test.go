@@ -3,6 +3,7 @@ package oauth_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/url"
 	"testing"
 	"time"
@@ -93,6 +94,25 @@ func TestDescribeRequest_PedidoInexistente_DevolveErrRequestNotFound(t *testing.
 	assert.ErrorIs(t, err, oauth.ErrRequestNotFound)
 }
 
+func TestDescribeRequest_ClienteApagadoDepoisDoPedido_DevolveErrRequestNotFound(t *testing.T) {
+	repo := testRepositoryWithPendingRequest()
+	repo.getClientErr = fmt.Errorf("%w: client_id %q", oauth.ErrClientNotFound, testClientID)
+
+	_, err := newTestService(repo).DescribeRequest(context.Background(), "pedido-9", testUserID)
+
+	assert.ErrorIs(t, err, oauth.ErrRequestNotFound)
+}
+
+func TestDescribeRequest_FalhaAoBuscarCliente_DevolveErroEmbrulhado(t *testing.T) {
+	repo := testRepositoryWithPendingRequest()
+	repo.getClientErr = errors.New("banco fora do ar")
+
+	_, err := newTestService(repo).DescribeRequest(context.Background(), "pedido-9", testUserID)
+
+	requireNotProtocolError(t, err, repo.getClientErr)
+	assert.NotErrorIs(t, err, oauth.ErrRequestNotFound)
+}
+
 func TestDescribeRequest_FalhaNaAutorizacao_DevolveErroEmbrulhado(t *testing.T) {
 	repo := testRepositoryWithPendingRequest()
 	repo.activeErr = errors.New("banco fora do ar")
@@ -122,6 +142,15 @@ func TestApprove_PedidoPendente_GravaHashDoCodigoEDevolveRedirect(t *testing.T) 
 
 func TestApprove_PedidoInexistente_DevolveErrRequestNotFound(t *testing.T) {
 	_, err := newTestService(testRepositoryWithClient()).Approve(context.Background(), "pedido-x", testUserID)
+
+	assert.ErrorIs(t, err, oauth.ErrRequestNotFound)
+}
+
+func TestApprove_ClienteApagadoDepoisDoPedido_DevolveErrRequestNotFound(t *testing.T) {
+	repo := testRepositoryWithPendingRequest()
+	repo.approveErr = fmt.Errorf("%w: client_id %q", oauth.ErrClientNotFound, testClientID)
+
+	_, err := newTestService(repo).Approve(context.Background(), "pedido-9", testUserID)
 
 	assert.ErrorIs(t, err, oauth.ErrRequestNotFound)
 }

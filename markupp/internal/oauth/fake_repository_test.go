@@ -15,7 +15,7 @@ type fakeOAuthRepository struct {
 	authorizations map[string]oauth.Authorization
 	redeemed       oauth.RedeemedCode
 
-	createErr, approveErr, activeErr, redeemErr, saveErr, revokeErr error
+	getClientErr, createErr, approveErr, activeErr, redeemErr, saveErr, revokeErr error
 
 	created     []oauth.AuthorizationRequest
 	pendingNow  []time.Time
@@ -40,6 +40,9 @@ func authorizationKey(userID, clientID string) string {
 }
 
 func (f *fakeOAuthRepository) GetClient(_ context.Context, id string) (oauth.Client, error) {
+	if f.getClientErr != nil {
+		return oauth.Client{}, f.getClientErr
+	}
 	client, ok := f.clients[id]
 	if !ok {
 		return oauth.Client{}, oauth.ErrClientNotFound
