@@ -66,9 +66,9 @@ o envia só por email.
 
 Com o painel web publicado, a variável `MARKUPP_PANEL_URL` no notificador, uma URL absoluta
 http:// ou https:// como https://painel.exemplo.com, faz os emails de convite, verificação de
-email e troca de senha levarem o link da página do painel que recebe o token
-(/invite_acceptance/new, /email_confirmation/new e /password_reset/new, com ?token=), e o token
-em texto logo abaixo. Sem ela, o email leva só o token. O componente ainda não tem opção para
+email e troca de senha levarem primeiro o link da página do painel que recebe o token
+(/invite_acceptance/new, /email_confirmation/new e /password_reset/new, com ?token=), e depois o
+token em texto para quem não conseguir abrir o link. Sem ela, o email leva só o token. O componente ainda não tem opção para
 ela.
 
 A API limita login, refresh, aceite de convite, pedido de verificação de email e pedido e troca
