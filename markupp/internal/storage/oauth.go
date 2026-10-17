@@ -73,22 +73,28 @@ func (r *PostgresOAuthRepository) ApproveRequest(ctx context.Context, a oauth.Ap
 	var row gen.OauthRequest
 	err := inTx(ctx, r.pool, func(qtx *gen.Queries) error {
 		var err error
-		row, err = qtx.ApproveOAuthRequest(ctx, gen.ApproveOAuthRequestParams{
-			ID: a.RequestID, UserID: a.UserID, CodeHash: a.CodeHash,
-			CodeExpiresAt: a.CodeExpiresAt, DecidedAt: a.DecidedAt,
-		})
-		if err != nil {
-			return requestErr("aprovar pedido", err)
-		}
-		if err := grantScopes(ctx, qtx, row, a.DecidedAt); err != nil {
-			return err
-		}
-		return qtx.CreateAuditEvent(ctx, authorizeEvent(row, "success", a.DecidedAt))
+		row, err = approveInTx(ctx, qtx, a)
+		return err
 	})
 	if err != nil {
 		return oauth.AuthorizationRequest{}, err
 	}
 	return toAuthorizationRequest(row), nil
+}
+
+// approveInTx decide o pedido como aprovado, concede os escopos e audita o sucesso.
+func approveInTx(ctx context.Context, qtx *gen.Queries, a oauth.Approval) (gen.OauthRequest, error) {
+	row, err := qtx.ApproveOAuthRequest(ctx, gen.ApproveOAuthRequestParams{
+		ID: a.RequestID, UserID: a.UserID, CodeHash: a.CodeHash,
+		CodeExpiresAt: a.CodeExpiresAt, DecidedAt: a.DecidedAt,
+	})
+	if err != nil {
+		return row, requestErr("aprovar pedido", err)
+	}
+	if err := grantScopes(ctx, qtx, row, a.DecidedAt); err != nil {
+		return row, err
+	}
+	return row, qtx.CreateAuditEvent(ctx, authorizeEvent(row, "success", a.DecidedAt))
 }
 
 // DenyRequest decide o pedido como recusado e audita a falha, numa transação.
