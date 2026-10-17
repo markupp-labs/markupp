@@ -132,9 +132,18 @@ func readTrustedProxies(lookup LookupFunc, target *[]netip.Prefix) error {
 		if err != nil {
 			return fmt.Errorf("MARKUPP_TRUSTED_PROXIES=%q: %q nao e CIDR; esperada lista de CIDRs IPv4 ou IPv6 separada por virgula, como 10.0.0.0/8,fd00::/8", raw, item)
 		}
-		*target = append(*target, prefix.Masked())
+		*target = append(*target, unmapPrefix(prefix).Masked())
 	}
 	return nil
+}
+
+// unmapPrefix converte o CIDR IPv4 mapeado em IPv6 (::ffff:a.b.c.d/n, n >= 96) no
+// CIDR IPv4 equivalente, porque o limite compara o IP da conexão já sem o mapeamento.
+func unmapPrefix(prefix netip.Prefix) netip.Prefix {
+	if !prefix.Addr().Is4In6() || prefix.Bits() < 96 {
+		return prefix
+	}
+	return netip.PrefixFrom(prefix.Addr().Unmap(), prefix.Bits()-96)
 }
 
 // readPanelURL aceita só URL absoluta http ou https sem query nem fragmento, porque
