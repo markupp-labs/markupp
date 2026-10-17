@@ -55,6 +55,18 @@ class MarkuppApiTest < ActiveSupport::TestCase
     assert_match url, error.message
   end
 
+  test "get raises with method, path and base URL when the API takes longer than the read timeout" do
+    server = FakeHttpServer.new(status: "200 OK", body: "[]")
+    thread = server.hold_once(1)
+
+    error = assert_raises(MarkuppApi::Error) { MarkuppApi.new(server.url, read_timeout: 0.1).get("/notes") }
+    assert_match "GET /notes", error.message
+    assert_match server.url, error.message
+    thread.join
+  ensure
+    server.close
+  end
+
   test "put sends the body as JSON and parses the answer" do
     server = FakeHttpServer.new(status: "200 OK", body: '{"id":"1","content":"v2"}')
     thread = server.serve_once

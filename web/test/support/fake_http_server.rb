@@ -22,6 +22,16 @@ class FakeHttpServer
     end
   end
 
+  # Lê o pedido e segura a conexão sem responder, para o cliente esgotar o read_timeout.
+  def hold_once(seconds)
+    Thread.new do
+      client = @server.accept
+      read_request(client)
+      sleep seconds
+      client.close
+    end
+  end
+
   def close = @server.close
 
   private
