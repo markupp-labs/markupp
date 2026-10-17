@@ -21,7 +21,7 @@ func (s *Service) StartAuthorization(ctx context.Context, p AuthorizeParams) (st
 		return "", err
 	}
 	if err := s.repo.CreateRequest(ctx, req); err != nil {
-		return "", fmt.Errorf("oauth: gravando o pedido de autorização do cliente %q: %w", p.ClientID, err)
+		return "", fmt.Errorf("oauth: gravando o pedido de autorização do cliente %s: %w", describeValue(p.ClientID), err)
 	}
 	return s.cfg.PanelURL + "/oauth/consentimento?pedido=" + url.QueryEscape(req.ID), nil
 }
@@ -39,7 +39,7 @@ func (s *Service) checkClientRedirect(ctx context.Context, p AuthorizeParams) er
 		return &ProtocolError{Code: errInvalidRequest, Description: "client_id " + describeValue(p.ClientID) + " nao registrado; esperado " + registeredClientShape}
 	}
 	if err != nil {
-		return fmt.Errorf("oauth: buscando o cliente %q: %w", p.ClientID, err)
+		return fmt.Errorf("oauth: buscando o cliente %s: %w", describeValue(p.ClientID), err)
 	}
 	if !MatchRedirectURI(client.RedirectURIs, p.RedirectURI) {
 		return &ProtocolError{Code: errInvalidRequest, Description: "redirect_uri " + describeValue(p.RedirectURI) + " nao registrada para o cliente; esperada uma das redirect_uris registradas por ele"}
