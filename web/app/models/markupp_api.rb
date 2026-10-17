@@ -38,6 +38,9 @@ class MarkuppApi
   # Conceder papel acima do próprio, ou mexer em quem está acima.
   class RoleAboveOwn < Forbidden; end
 
+  # Sem eles valem os 60s do Net::HTTP, e a trava de renovação do RefreshingMarkuppApi fica presa esse tempo todo.
+  OPEN_TIMEOUT = 2
+  READ_TIMEOUT = 10
   NETWORK_ERRORS = [ SystemCallError, SocketError, Net::OpenTimeout, Net::ReadTimeout ].freeze
   # Erros que o painel trata, pelo campo error do corpo; 409 tem dois motivos. Id recusado é nota que não existe.
   ERRORS_BY_CODE = {
@@ -53,10 +56,11 @@ class MarkuppApi
   # Para o status cujo corpo não traz código conhecido.
   ERRORS_BY_STATUS = { "401" => Unauthorized, "403" => Forbidden, "404" => NotFound }.freeze
 
-  def initialize(base_url, access_token: nil, tenant_id: nil)
+  def initialize(base_url, access_token: nil, tenant_id: nil, read_timeout: READ_TIMEOUT)
     @base_url = base_url
     @access_token = access_token
     @tenant_id = tenant_id
+    @read_timeout = read_timeout
   end
 
   # Caminho da API a partir dos segmentos, cada um codificado: id com barra ou espaço não vira outra rota.
@@ -75,7 +79,9 @@ class MarkuppApi
   private
     def request(verb, path, body = nil)
       uri = URI.join(@base_url, path)
-      response = Net::HTTP.start(uri.host, uri.port, use_ssl: uri.scheme == "https") { |http| http.request(build_request(verb, uri, body)) }
+      response = Net::HTTP.start(uri.host, uri.port, use_ssl: uri.scheme == "https", open_timeout: OPEN_TIMEOUT, read_timeout: @read_timeout) do |http|
+        http.request(build_request(verb, uri, body))
+      end
       parse_response(response, "#{verb::METHOD} #{path}")
     rescue *NETWORK_ERRORS => error
       raise Error, "#{verb::METHOD} #{path} could not reach #{@base_url}: #{error.message}"

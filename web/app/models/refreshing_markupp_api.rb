@@ -10,7 +10,7 @@ class RefreshingMarkuppApi
   # ponytail: travas do processo, valem para as threads do Puma; com mais de um processo ou réplica,
   # só o memo em renewed_pairs protege, e ele precisa de cache compartilhado entre eles.
   # ponytail: a trava fica presa durante o POST /auth/refresh e são 64 faixas pelo digest; sessões da mesma faixa
-  # esperam umas pelas outras, até o read_timeout padrão do Net::HTTP (60s), já que o MarkuppApi não define timeout.
+  # esperam umas pelas outras, até o MarkuppApi::READ_TIMEOUT.
   RENEWAL_LOCKS = Array.new(64) { Mutex.new }
 
   PAIR_KEY_SALT = "panel/renewed_pair"
