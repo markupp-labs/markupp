@@ -1,18 +1,25 @@
 <!DOCTYPE html>
-<%= tag.html lang: "en", data: { theme: cookies[:theme].presence_in(ThemesController::THEMES) } do %>
+<% html_attributes = sidebar_html_attributes %>
+<%= tag.html lang: "en", style: html_attributes[:style],
+             data: { theme: cookies[:theme].presence_in(ThemesController::THEMES), **html_attributes[:data] } do %>
   <%= render "layouts/head" %>
 
   <%# Sem tenant ativo (onboarding) não há notas para buscar: sem busca, sem seletor. %>
-  <body class="min-h-dvh bg-surface font-mono text-sm text-ink md:grid md:grid-cols-[17rem_1fr]"
-        <%= tag.attributes(data: { controller: "search", action: "keydown.ctrl+k@window->search#open:prevent keydown.meta+k@window->search#open:prevent" }) if current_tenant %>>
+  <%# Ctrl+B/Cmd+B recolhe a barra lateral como no VS Code; o grid e o fechado vêm do CSS (.app-shell). %>
+  <% shortcuts = "keydown.ctrl+b@window->sidebar#toggleFromShortcut keydown.meta+b@window->sidebar#toggleFromShortcut" %>
+  <% shortcuts += " keydown.ctrl+k@window->search#open:prevent keydown.meta+k@window->search#open:prevent" if current_tenant %>
+  <body class="app-shell min-h-dvh bg-surface font-mono text-sm text-ink"
+        <%= tag.attributes(data: { controller: [ "sidebar", ("search" if current_tenant) ].compact.join(" "), action: shortcuts }) %>>
     <button popovertarget="sidebar" class="btn m-2 text-ink-muted md:hidden">
       <%= icon("list") %><%= t(".open_notes") %>
     </button>
 
     <%# A lista rola dentro de .sidebar-scroll; o rodape com conta, configuracoes, tema e sair fica sempre no fundo. %>
     <nav id="sidebar" popover aria-label="<%= t(".notes") %>"
-         class="sidebar m-0 h-dvh w-72 max-w-[85vw] flex-col border-0 border-r border-line bg-surface-sunken p-0 text-ink open:flex">
+         data-sidebar-target="panel"
+         class="sidebar m-0 h-dvh w-72 max-w-[85vw] flex-col border-0 border-r border-line bg-surface-sunken p-0 text-ink open:flex md:w-auto md:max-w-none">
       <div class="sidebar-scroll min-h-0 flex-1 overflow-y-auto p-3">
+        <%= sidebar_toggle_button(t(".hide_sidebar"), classes: "float-right ml-1 hidden md:inline-flex") %>
         <% if current_tenant %>
           <%= render "layouts/tenant_switcher" %>
           <button type="button" data-action="search#open" title="Ctrl+K" aria-keyshortcuts="Control+K Meta+K"
@@ -25,6 +32,14 @@
       </div>
 
       <%= render "layouts/sidebar_footer" %>
+
+      <%# Alça na borda: arrastar com o ponteiro ou setas com o foco. Só no desktop; no celular é gaveta. %>
+      <div role="separator" aria-orientation="vertical" tabindex="0" aria-label="<%= t(".resize_sidebar") %>"
+           aria-valuemin="<%= SidebarHelper::SIDEBAR_WIDTH_RANGE.min %>" aria-valuemax="<%= SidebarHelper::SIDEBAR_WIDTH_RANGE.max %>"
+           aria-valuenow="<%= current_sidebar_width %>"
+           data-sidebar-target="handle"
+           data-action="pointerdown->sidebar#startResize pointermove->sidebar#resize pointerup->sidebar#endResize pointercancel->sidebar#endResize keydown->sidebar#resizeByKey"
+           class="sidebar-handle absolute inset-y-0 right-0 hidden w-1.5 cursor-col-resize touch-none md:block"></div>
     </nav>
 
     <% if current_tenant %>
@@ -42,6 +57,7 @@
     <% end %>
 
     <main class="min-w-0 p-4 md:p-6">
+      <%= sidebar_toggle_button(t(".show_sidebar"), classes: "sidebar-expand mb-2") %>
       <%= render "layouts/flash" %>
       <%= yield %>
     </main>

@@ -32,6 +32,9 @@ en:
       search: "Search"
       search_notes: "Search notes"
       search_placeholder: "Search note content"
+      hide_sidebar: "Hide sidebar"
+      show_sidebar: "Show sidebar"
+      resize_sidebar: "Resize sidebar"
     tenant_switcher:
       switch: "Switch tenant"
       new_tenant: "New tenant"

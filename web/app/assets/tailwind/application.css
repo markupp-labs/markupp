@@ -105,3 +105,36 @@
   outline: 2px solid var(--accent);
   outline-offset: 1px;
 }
+
+/* Barra lateral no desktop, estilo VS Code: coluna na largura escolhida (cookie, --sidebar-width no <html>);
+   fechada some e o botão de expandir aparece no conteúdo. Fora de @layer para vencer os utilitários. */
+.sidebar-expand {
+  display: none;
+}
+
+@media (width >= 48rem) {
+  .app-shell {
+    display: grid;
+    grid-template-columns: var(--sidebar-width, 18rem) minmax(0, 1fr);
+  }
+
+  :root[data-sidebar="closed"] .app-shell {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  :root[data-sidebar="closed"] .sidebar {
+    display: none;
+  }
+
+  :root[data-sidebar="closed"] .sidebar-expand {
+    display: inline-flex;
+  }
+}
+
+/* Alça de redimensionar: invisível até o ponteiro ou o foco chegar, aí vira uma linha de destaque na borda. */
+.sidebar-handle:hover,
+.sidebar-handle:focus-visible,
+.sidebar-handle[data-dragging] {
+  background: linear-gradient(var(--accent), var(--accent)) right / 2px 100% no-repeat;
+  outline: none;
+}
