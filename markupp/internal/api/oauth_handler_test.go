@@ -272,3 +272,17 @@ func TestToken_Preflight_Retorna204ComCORSAberto(t *testing.T) {
 	assert.Contains(t, rec.Header().Get("Access-Control-Allow-Headers"), "Content-Type")
 	assert.Empty(t, rec.Header().Get("Access-Control-Allow-Credentials"))
 }
+
+func TestOAuthProtocolo_MetodoNaoSuportado_Retorna405SemObsolescencia(t *testing.T) {
+	for _, route := range []struct{ method, path string }{
+		{http.MethodGet, "/oauth/token"},
+		{http.MethodPost, "/oauth/authorize"},
+		{http.MethodHead, "/oauth/authorize"},
+	} {
+		rec := serveOAuth(&fakeOAuthService{}, httptest.NewRequest(route.method, route.path, nil))
+
+		assert.Equal(t, http.StatusMethodNotAllowed, rec.Code, route.method+" "+route.path)
+		assert.Empty(t, rec.Header().Get("Deprecation"), route.method+" "+route.path)
+		assert.Empty(t, rec.Header().Get("Link"), route.method+" "+route.path)
+	}
+}

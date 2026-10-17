@@ -90,3 +90,19 @@ func TestOAuthRequests_SemTenant_Atende(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, rec.Code)
 }
+
+func TestOAuthRequests_SemPrefixo_Retorna404SemObsolescencia(t *testing.T) {
+	for _, route := range []struct{ method, path string }{
+		{http.MethodGet, "/oauth/requests/p1"},
+		{http.MethodPost, "/oauth/requests/p1/approve"},
+		{http.MethodPost, "/oauth/requests/p1/deny"},
+	} {
+		svc := &fakeOAuthService{view: oauth.RequestView{ID: "p1"}}
+
+		rec := consentRequest(svc, route.method, route.path, true)
+
+		assert.Equal(t, http.StatusNotFound, rec.Code, route.path)
+		assert.Empty(t, rec.Header().Get("Deprecation"), route.path)
+		assert.Empty(t, svc.gotRequestID, route.path)
+	}
+}
