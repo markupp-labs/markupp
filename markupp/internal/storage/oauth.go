@@ -160,7 +160,7 @@ func (r *PostgresOAuthRepository) ActiveAuthorization(ctx context.Context, userI
 func activeAuthorization(ctx context.Context, q *gen.Queries, userID, clientID string) (oauth.Authorization, error) {
 	row, err := q.GetActiveOAuthAuthorization(ctx, gen.GetActiveOAuthAuthorizationParams{UserID: userID, ClientID: clientID})
 	if errors.Is(err, pgx.ErrNoRows) {
-		return oauth.Authorization{}, fmt.Errorf("%w: usuario %q, cliente %q", oauth.ErrAuthorizationNotFound, userID, clientID)
+		return oauth.Authorization{}, fmt.Errorf("%w: usuário %q, cliente %q", oauth.ErrAuthorizationNotFound, userID, clientID)
 	}
 	if err != nil {
 		return oauth.Authorization{}, fmt.Errorf("buscar autorização de %q para %q: %w", userID, clientID, err)
