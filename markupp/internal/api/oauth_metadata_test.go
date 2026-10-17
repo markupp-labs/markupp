@@ -62,6 +62,17 @@ func TestOAuthMetadata_OrigemForaDaLista_RecebeCORSAberto(t *testing.T) {
 	assert.Empty(t, rec.Header().Get("Access-Control-Allow-Credentials"))
 }
 
+func TestOAuthMetadata_OrigemDaLista_RecebeCORSAbertoSemEco(t *testing.T) {
+	router := api.NewRouter(api.RouterDeps{Tokens: &fakeTokenValidator{}, Probe: &fakeProbe{}, AllowedOrigins: []string{origemPermitida}, OAuthMetadata: &api.OAuthMetadata{Issuer: "https://markupp.exemplo"}})
+	req := httptest.NewRequest(http.MethodGet, metadataPath, nil)
+	req.Header.Set("Origin", origemPermitida)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	assert.Equal(t, "*", rec.Header().Get("Access-Control-Allow-Origin"))
+	assert.Empty(t, rec.Header().Get("Vary"))
+}
+
 func TestOAuthMetadata_RotaDeNotasComMesmaOrigem_SegueSemCORS(t *testing.T) {
 	router := api.NewRouter(api.RouterDeps{Notes: &fakeService{listResult: nil}, Tenants: tenantDeTeste, Tokens: &fakeTokenValidator{}, Probe: &fakeProbe{}, AllowedOrigins: []string{origemPermitida}, OAuthMetadata: &api.OAuthMetadata{Issuer: "https://markupp.exemplo"}})
 	req := httptest.NewRequest(http.MethodGet, "/v1/notes", nil)

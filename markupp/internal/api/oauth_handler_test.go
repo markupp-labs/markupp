@@ -273,6 +273,24 @@ func TestToken_Preflight_Retorna204ComCORSAberto(t *testing.T) {
 	assert.Empty(t, rec.Header().Get("Access-Control-Allow-Credentials"))
 }
 
+func TestToken_PreflightDeOrigemDaLista_UsaOCORSAbertoDoToken(t *testing.T) {
+	router := api.NewRouter(api.RouterDeps{
+		Tokens: &fakeTokenValidator{}, Probe: &fakeProbe{}, AllowedOrigins: []string{origemPermitida},
+		OAuth: &fakeOAuthService{}, OAuthMetadata: &api.OAuthMetadata{Issuer: issuerDeTeste},
+	})
+	req := httptest.NewRequest(http.MethodOptions, "/oauth/token", nil)
+	req.Header.Set("Origin", origemPermitida)
+	req.Header.Set("Access-Control-Request-Method", http.MethodPost)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusNoContent, rec.Code)
+	assert.Equal(t, "*", rec.Header().Get("Access-Control-Allow-Origin"))
+	assert.Equal(t, "POST, OPTIONS", rec.Header().Get("Access-Control-Allow-Methods"))
+	assert.Equal(t, "Content-Type", rec.Header().Get("Access-Control-Allow-Headers"))
+	assert.Empty(t, rec.Header().Get("Vary"))
+}
+
 func TestOAuthProtocolo_MetodoNaoSuportado_Retorna405SemObsolescencia(t *testing.T) {
 	for _, route := range []struct{ method, path string }{
 		{http.MethodGet, "/oauth/token"},
