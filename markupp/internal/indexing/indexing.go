@@ -8,6 +8,8 @@ import (
 	"log/slog"
 	"path"
 	"strings"
+
+	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/markdown"
 )
 
 // NoteChange é uma nota que mudou desde a última indexação do cofre.
@@ -25,16 +27,20 @@ type Changeset struct {
 }
 
 // SearchDocument é o texto que o banco converte em tsvector para a busca léxica: o
-// título com peso A e o corpo com peso D.
+// título e os aliases com peso A e o corpo com peso D.
 type SearchDocument struct {
-	NoteID string
-	Title  string
-	Text   string
+	NoteID  string
+	Title   string
+	Aliases []string
+	Text    string
 }
 
-// IndexedNote são as linhas derivadas de uma nota do lote.
+// IndexedNote são as linhas derivadas de uma nota do lote: o documento de busca, as
+// chaves dos títulos dela (TitleKey) e as ligações que ela faz.
 type IndexedNote struct {
-	Search SearchDocument
+	Search    SearchDocument
+	TitleKeys []string
+	Links     []Link
 }
 
 // IndexFunc transforma um lote de mudanças nas linhas derivadas dele, uma
@@ -47,14 +53,24 @@ type VaultIndexer interface {
 	IndexNextVault(ctx context.Context, index IndexFunc) (bool, error)
 }
 
-// Index devolve as linhas derivadas de cada nota mudada: o documento de busca com o
-// título e o conteúdo dela.
+// Index devolve as linhas derivadas de cada nota mudada. Depende só da nota: quem
+// ela cita é resolvido na leitura, contra os títulos do cofre naquele momento.
 func Index(cs Changeset) []IndexedNote {
 	indexed := make([]IndexedNote, 0, len(cs.Notes))
 	for _, note := range cs.Notes {
-		indexed = append(indexed, IndexedNote{Search: SearchDocument{NoteID: note.NoteID, Title: Title(note.Path), Text: note.Content}})
+		indexed = append(indexed, indexNote(note))
 	}
 	return indexed
+}
+
+func indexNote(note NoteChange) IndexedNote {
+	doc := markdown.Parse(note.Content)
+	title := Title(note.Path)
+	return IndexedNote{
+		Search:    SearchDocument{NoteID: note.NoteID, Title: title, Aliases: doc.Aliases, Text: note.Content},
+		TitleKeys: titleKeys(title, doc.Aliases),
+		Links:     extractLinks(note.Path, doc.Links),
+	}
 }
 
 // Title é o título da nota: o último segmento do caminho, sem a extensão .md em
