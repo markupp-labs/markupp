@@ -186,6 +186,40 @@ func TestPostgresOAuthRepo_ApproveRequest_UneEscoposNaOrdemSuportada(t *testing.
 	assert.Equal(t, 2, auditoriasOAuth(t, pool, "success"))
 }
 
+func TestPostgresOAuthRepo_ApproveRequest_UneEscopoRepetidoNosDoisLados(t *testing.T) {
+	repo, _ := repoOAuth(t)
+	ctx := context.Background()
+	pedidoAprovado(t, repo, "r1", "h1", oauth.ScopeNotesRead, oauth.ScopeNotesWrite)
+	require.NoError(t, repo.CreateRequest(ctx, pedidoOAuth("r2", oauth.ScopeNotesWrite, oauth.ScopeAdmin)))
+
+	_, err := repo.ApproveRequest(ctx, aprovacao("r2", "h2", instanteOAuth.Add(3*time.Minute)))
+
+	require.NoError(t, err)
+	authz, err := repo.ActiveAuthorization(ctx, "u1", "c1")
+	require.NoError(t, err)
+	assert.Equal(t, []string{oauth.ScopeNotesRead, oauth.ScopeNotesWrite, oauth.ScopeAdmin}, authz.Scopes)
+}
+
+func TestPostgresOAuthRepo_ApproveRequest_DepoisDeRevogarCriaNova(t *testing.T) {
+	repo, pool := repoOAuth(t)
+	ctx := context.Background()
+	pedidoAprovado(t, repo, "r1", "h1", oauth.ScopeAdmin)
+	revogada, err := repo.ActiveAuthorization(ctx, "u1", "c1")
+	require.NoError(t, err)
+	_, err = pool.Exec(ctx, "UPDATE oauth_authorizations SET revoked_at = now()")
+	require.NoError(t, err)
+	require.NoError(t, repo.CreateRequest(ctx, pedidoOAuth("r2", oauth.ScopeNotesRead)))
+
+	_, err = repo.ApproveRequest(ctx, aprovacao("r2", "h2", instanteOAuth.Add(3*time.Minute)))
+
+	require.NoError(t, err)
+	authz, err := repo.ActiveAuthorization(ctx, "u1", "c1")
+	require.NoError(t, err)
+	assert.NotEqual(t, revogada.ID, authz.ID)
+	assert.Equal(t, []string{oauth.ScopeNotesRead}, authz.Scopes, "não herda os escopos da revogada")
+	assert.Equal(t, 2, countRows(t, pool, "SELECT count(*) FROM oauth_authorizations"))
+}
+
 func TestPostgresOAuthRepo_DenyRequest_DecideEAuditaFalha(t *testing.T) {
 	repo, pool := repoOAuth(t)
 	ctx := context.Background()
@@ -226,6 +260,15 @@ func TestPostgresOAuthRepo_DenyRequest_DuplaRecusaRecusada(t *testing.T) {
 
 	require.ErrorIs(t, err, oauth.ErrRequestNotFound)
 	assert.Equal(t, 1, auditoriasOAuth(t, pool, "failure"))
+}
+
+func TestPostgresOAuthRepo_DenyRequest_InexistenteRecusado(t *testing.T) {
+	repo, pool := repoOAuth(t)
+
+	_, err := repo.DenyRequest(context.Background(), oauth.Denial{RequestID: "r-nenhum", UserID: "u1", DecidedAt: instanteOAuth})
+
+	require.ErrorIs(t, err, oauth.ErrRequestNotFound)
+	assert.Equal(t, 0, auditoriasOAuth(t, pool, "failure"))
 }
 
 func TestPostgresOAuthRepo_ActiveAuthorization_Inexistente(t *testing.T) {
@@ -272,6 +315,36 @@ func TestPostgresOAuthRepo_RedeemCode_ReusoDevolveOriginalComErro(t *testing.T) 
 	require.ErrorIs(t, err, oauth.ErrCodeAlreadyUsed)
 	assert.Equal(t, "r1", got.Request.ID)
 	assert.Equal(t, primeiro.Authorization.ID, got.Authorization.ID, "serve para revogar os tokens da Autorização")
+}
+
+func TestPostgresOAuthRepo_RedeemCode_ReusoDepoisDeExpirarContinuaJaUsado(t *testing.T) {
+	repo, _ := repoOAuth(t)
+	ctx := context.Background()
+	pedidoAprovado(t, repo, "r1", "h1", oauth.ScopeNotesRead)
+	_, err := repo.RedeemCode(ctx, "h1", instanteOAuth.Add(90*time.Second))
+	require.NoError(t, err)
+
+	got, err := repo.RedeemCode(ctx, "h1", instanteOAuth.Add(time.Hour))
+
+	require.ErrorIs(t, err, oauth.ErrCodeAlreadyUsed)
+	assert.Equal(t, "r1", got.Request.ID)
+}
+
+func TestPostgresOAuthRepo_RedeemCode_ReusoSemAutorizacaoAtiva(t *testing.T) {
+	repo, pool := repoOAuth(t)
+	ctx := context.Background()
+	pedidoAprovado(t, repo, "r1", "h1", oauth.ScopeNotesRead)
+	_, err := repo.RedeemCode(ctx, "h1", instanteOAuth.Add(90*time.Second))
+	require.NoError(t, err)
+	_, err = pool.Exec(ctx, "UPDATE oauth_authorizations SET revoked_at = now()")
+	require.NoError(t, err)
+
+	got, err := repo.RedeemCode(ctx, "h1", instanteOAuth.Add(100*time.Second))
+
+	require.ErrorIs(t, err, oauth.ErrCodeAlreadyUsed)
+	assert.Equal(t, "r1", got.Request.ID)
+	assert.Equal(t, "u1", got.Request.UserID)
+	assert.Empty(t, got.Authorization.ID)
 }
 
 func TestPostgresOAuthRepo_RedeemCode_ExpiradoNoInstanteExato(t *testing.T) {
