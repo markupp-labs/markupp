@@ -38,10 +38,10 @@ func NewPostgresOAuthRepository(pool *pgxpool.Pool) *PostgresOAuthRepository {
 func (r *PostgresOAuthRepository) GetClient(ctx context.Context, id string) (oauth.Client, error) {
 	row, err := r.q.GetOAuthClient(ctx, id)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return oauth.Client{}, fmt.Errorf("%w: client_id %q", oauth.ErrClientNotFound, id)
+		return oauth.Client{}, fmt.Errorf("%w: client_id %s", oauth.ErrClientNotFound, oauth.ClientValue(id))
 	}
 	if err != nil {
-		return oauth.Client{}, fmt.Errorf("buscar cliente oauth %q: %w", id, err)
+		return oauth.Client{}, fmt.Errorf("buscar cliente oauth %s: %w", oauth.ClientValue(id), err)
 	}
 	return oauth.Client{ID: row.ID, Name: row.Name, RedirectURIs: row.RedirectUris}, nil
 }
@@ -54,7 +54,7 @@ func (r *PostgresOAuthRepository) CreateRequest(ctx context.Context, req oauth.A
 		CodeChallenge: req.CodeChallenge, CreatedAt: req.CreatedAt, ExpiresAt: req.ExpiresAt,
 	})
 	if err != nil {
-		return fmt.Errorf("gravar pedido de autorização do cliente %q: %w", req.ClientID, err)
+		return fmt.Errorf("gravar pedido de autorização do cliente %s: %w", oauth.ClientValue(req.ClientID), err)
 	}
 	return nil
 }
@@ -126,7 +126,7 @@ func grantScopes(ctx context.Context, qtx *gen.Queries, req gen.OauthRequest, at
 		Scopes: orderedScopes(req.Scopes), At: at, Supported: oauth.SupportedScopes(),
 	})
 	if err != nil {
-		return fmt.Errorf("conceder escopos de %q para %q: %w", req.UserID.String, req.ClientID, err)
+		return fmt.Errorf("conceder escopos de %q para %s: %w", req.UserID.String, oauth.ClientValue(req.ClientID), err)
 	}
 	return nil
 }
@@ -146,7 +146,7 @@ func auditAuthorize(ctx context.Context, qtx *gen.Queries, req gen.OauthRequest,
 		Target: req.ClientID, Result: result, OccurredAt: at,
 	}))
 	if err != nil {
-		return fmt.Errorf("registrar auditoria %s (%s) para o cliente %q: %w", auditActionOAuthAuthorize, result, req.ClientID, err)
+		return fmt.Errorf("registrar auditoria %s (%s) para o cliente %s: %w", auditActionOAuthAuthorize, result, oauth.ClientValue(req.ClientID), err)
 	}
 	return nil
 }
@@ -160,10 +160,10 @@ func (r *PostgresOAuthRepository) ActiveAuthorization(ctx context.Context, userI
 func activeAuthorization(ctx context.Context, q *gen.Queries, userID, clientID string) (oauth.Authorization, error) {
 	row, err := q.GetActiveOAuthAuthorization(ctx, gen.GetActiveOAuthAuthorizationParams{UserID: userID, ClientID: clientID})
 	if errors.Is(err, pgx.ErrNoRows) {
-		return oauth.Authorization{}, fmt.Errorf("%w: usuário %q, cliente %q", oauth.ErrAuthorizationNotFound, userID, clientID)
+		return oauth.Authorization{}, fmt.Errorf("%w: usuário %q, cliente %s", oauth.ErrAuthorizationNotFound, userID, oauth.ClientValue(clientID))
 	}
 	if err != nil {
-		return oauth.Authorization{}, fmt.Errorf("buscar autorização de %q para %q: %w", userID, clientID, err)
+		return oauth.Authorization{}, fmt.Errorf("buscar autorização de %q para %s: %w", userID, oauth.ClientValue(clientID), err)
 	}
 	return toAuthorization(row), nil
 }

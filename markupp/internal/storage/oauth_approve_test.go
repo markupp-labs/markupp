@@ -78,7 +78,7 @@ func TestPostgresOAuthRepo_ApproveRequest_FalhaDeAuditoriaTemContexto(t *testing
 	_, err := repo.ApproveRequest(ctx, aprovacao("r1", "h1", instanteOAuth.Add(time.Minute)))
 
 	require.ErrorContains(t, err, `oauth.authorize`)
-	require.ErrorContains(t, err, `"c1"`)
+	require.ErrorContains(t, err, "'c1'")
 	assert.Equal(t, 0, countRows(t, pool, "SELECT count(*) FROM oauth_authorizations"))
 }
 
@@ -91,5 +91,5 @@ func TestPostgresOAuthRepo_DenyRequest_FalhaDeAuditoriaTemContexto(t *testing.T)
 	_, err := repo.DenyRequest(ctx, oauth.Denial{RequestID: "r1", UserID: "u1", DecidedAt: instanteOAuth.Add(time.Minute)})
 
 	require.ErrorContains(t, err, `oauth.authorize`)
-	require.ErrorContains(t, err, `"c1"`)
+	require.ErrorContains(t, err, "'c1'")
 }
