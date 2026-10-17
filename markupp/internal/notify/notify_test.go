@@ -290,3 +290,35 @@ func TestDeliverNext_ComPainel_EnviaOLinkDoConvite(t *testing.T) {
 	require.Len(t, mailer.sent, 1)
 	assert.Contains(t, mailer.sent[0].Body, "http://localhost:3999/invite_acceptance/new?token=tok-novo")
 }
+
+func TestMensagens_ComPainel_DizemOQueOLinkFazEOferecemOTokenComoAlternativa(t *testing.T) {
+	casos := map[string]struct {
+		monta   montaMensagem
+		frase   string
+		rotulo  string
+		caminho string
+	}{
+		"convite":     {notify.InviteMessage, "Abra o link para aceitar o convite:", "Token do convite:", "/invite_acceptance/new"},
+		"verificacao": {notify.VerifyEmailMessage, "Abra o link para confirmar seu email:", "Token de verificação:", "/email_confirmation/new"},
+		"senha":       {notify.ResetPasswordMessage, "Abra o link para trocar sua senha:", "Token de troca de senha:", "/password_reset/new"},
+	}
+	for nome, c := range casos {
+		msg := c.monta(detalhesDeTeste(), "tok", "contas@markupp.dev", "https://painel.markupp.dev")
+
+		bloco := c.frase + "\nhttps://painel.markupp.dev" + c.caminho + "?token=tok\n\n" +
+			"Se o link não abrir, cole este token no markupp:\ntok\n\n"
+		assert.Contains(t, msg.Body, bloco, nome)
+		assert.NotContains(t, msg.Body, c.rotulo, nome)
+		assert.NotContains(t, msg.Body, "Abra no painel", nome)
+	}
+}
+
+func TestInviteMessage_ComPainel_TrazOLinkPrimeiroEOTokenComoAlternativa(t *testing.T) {
+	msg := notify.InviteMessage(detalhesDeTeste(), "tok-123", "convites@markupp.dev", "https://painel.markupp.dev")
+
+	esperado := "admin@markupp.dev convidou você para Equipe A no markupp, com o papel member.\n\n" +
+		"Abra o link para aceitar o convite:\nhttps://painel.markupp.dev/invite_acceptance/new?token=tok-123\n\n" +
+		"Se o link não abrir, cole este token no markupp:\ntok-123\n\n" +
+		"Use o token no cliente do markupp para aceitar. O convite vale até 2026-10-22 12:00 UTC.\n"
+	assert.Equal(t, esperado, msg.Body)
+}
