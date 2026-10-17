@@ -59,7 +59,7 @@ func mountOAuthServerRoutes(r chi.Router, d RouterDeps) {
 	r.Route("/oauth", func(p chi.Router) {
 		p.Get("/authorize", h.authorize)
 		p.Post("/token", h.token)
-		p.Options("/token", h.tokenPreflight)
+		p.Options("/token", openPreflight(http.MethodPost, "Content-Type"))
 	})
 }
 
@@ -135,14 +135,6 @@ func (h *oauthHandler) token(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, tokens)
-}
-
-func (h *oauthHandler) tokenPreflight(w http.ResponseWriter, _ *http.Request) {
-	allowAnyOrigin(w)
-	w.Header().Set("Access-Control-Allow-Methods", http.MethodPost+", "+http.MethodOptions)
-	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
-	w.Header().Set("Access-Control-Max-Age", preflightMaxAge)
-	w.WriteHeader(http.StatusNoContent)
 }
 
 // readTokenForm lê só o corpo do formulário, sem a query, e recusa com o erro do

@@ -51,3 +51,15 @@ func writePreflight(w http.ResponseWriter) {
 func allowAnyOrigin(w http.ResponseWriter) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 }
+
+// openPreflight responde o preflight de uma rota pública do authorization server com
+// CORS aberto, liberando o método da rota, OPTIONS e os cabeçalhos dados.
+func openPreflight(method, headers string) http.HandlerFunc {
+	return func(w http.ResponseWriter, _ *http.Request) {
+		allowAnyOrigin(w)
+		w.Header().Set("Access-Control-Allow-Methods", method+", "+http.MethodOptions)
+		w.Header().Set("Access-Control-Allow-Headers", headers)
+		w.Header().Set("Access-Control-Max-Age", preflightMaxAge)
+		w.WriteHeader(http.StatusNoContent)
+	}
+}
