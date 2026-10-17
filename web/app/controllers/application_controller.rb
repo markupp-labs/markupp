@@ -23,8 +23,8 @@ class ApplicationController < ActionController::Base
                with: -> { redirect_to send(redirect_path), alert: t("rate_limited", count: self.class.retry_minutes(within)) }
   end
 
-  # Minutos da janela para a mensagem de limite.
-  def self.retry_minutes(within) = within.in_minutes.to_i
+  # Minutos da janela para a mensagem de limite, arredondados para cima: 90s viram 2, nunca 0.
+  def self.retry_minutes(within) = within.in_minutes.ceil
 
   private
     def credential = @credential ||= PanelCredential.new(session, markupp_api_factory)
