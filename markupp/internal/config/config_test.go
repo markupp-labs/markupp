@@ -492,6 +492,15 @@ func TestLoad_ProxiesConfiaveis_LeOsCIDRsIPv4EIPv6(t *testing.T) {
 	assert.Equal(t, []netip.Prefix{netip.MustParsePrefix("10.0.0.0/8"), netip.MustParsePrefix("fd00::/8")}, cfg.TrustedProxies)
 }
 
+func TestLoad_ProxyConfiavelIPv4MapeadoEmIPv6_ViraCIDRIPv4(t *testing.T) {
+	env := fakeEnv{"MARKUPP_DATABASE_URL": urlDeTeste, "MARKUPP_AUTH_SECRET": segredoDeTesteValido, "MARKUPP_TRUSTED_PROXIES": "::ffff:10.0.0.0/104"}
+
+	cfg, err := config.Load(env.Lookup)
+
+	require.NoError(t, err)
+	assert.Equal(t, []netip.Prefix{netip.MustParsePrefix("10.0.0.0/8")}, cfg.TrustedProxies, "o limite compara o IP da conexao ja sem o mapeamento 4in6")
+}
+
 func TestLoad_ProxyConfiavelForaDoFormato_RetornaErroComOValor(t *testing.T) {
 	for _, valor := range []string{"10.0.0.1", "lixo", "10.0.0.0/33", "10.0.0.0/8;fd00::/8"} {
 		env := fakeEnv{"MARKUPP_DATABASE_URL": urlDeTeste, "MARKUPP_AUTH_SECRET": segredoDeTesteValido, "MARKUPP_TRUSTED_PROXIES": valor}
