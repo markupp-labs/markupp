@@ -59,11 +59,17 @@ func checkGrant(g CodeGrant, req AuthorizationRequest) error {
 	if !VerifyPKCE(g.CodeVerifier, req.CodeChallenge) {
 		return grantError("code_verifier nao confere com o code_challenge do pedido")
 	}
-	if g.Resource == "" {
+	return checkGrantResource(g.Resource, req.Resource)
+}
+
+// checkGrantResource confere o resource opcional do grant contra o do pedido. Divergente
+// ou ilegível é invalid_target (RFC 8707, seção 2.2), não invalid_grant.
+func checkGrantResource(raw, requested string) error {
+	if raw == "" {
 		return nil
 	}
-	if resource, ok := canonicalize(g.Resource); !ok || resource != req.Resource {
-		return grantError("resource " + describeValue(g.Resource) + " diferente do pedido")
+	if resource, ok := canonicalize(raw); !ok || resource != requested {
+		return &ProtocolError{Code: errInvalidTarget, Description: "resource " + describeValue(raw) + " diferente do pedido"}
 	}
 	return nil
 }
