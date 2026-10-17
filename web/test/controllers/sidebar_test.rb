@@ -23,9 +23,9 @@ class SidebarTest < ActionDispatch::IntegrationTest
     get root_path
 
     assert_select "nav > footer" do
-      assert_select "a[href=?] svg[data-icon=user-circle]", account_path
-      assert_select "a[href=?]", account_path, text: EMAIL
-      assert_select "a[href=?]", settings_path, text: "Settings" do
+      assert_select "a[href=?] svg[data-icon=user-circle]", settings_account_path
+      assert_select "a[href=?]", settings_account_path, text: EMAIL
+      assert_select "a[href=?][title=?][aria-keyshortcuts=?]", settings_path, "Settings (Ctrl+,)", "Control+, Meta+,", text: "Settings" do
         assert_select "svg[data-icon=gear-six]"
       end
       assert_select "form[action=?] button", session_path, text: "Log out" do
@@ -34,13 +34,13 @@ class SidebarTest < ActionDispatch::IntegrationTest
     end
   end
 
-  test "the footer hides the settings from a member" do
+  test "the footer shows the settings to a member too" do
     use_fake_api(notes: [], tenants: [ { id: "tenant-1", name: "Acme research", members: { EMAIL => "member" } } ])
     sign_in_as
 
     get root_path
 
-    assert_select "nav > footer a[href=?]", settings_path, count: 0
+    assert_select "nav > footer a[href=?]", settings_path, text: "Settings"
   end
 
   test "the notes scroll apart from the fixed footer" do

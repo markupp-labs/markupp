@@ -10,37 +10,29 @@ module Settings
     ACCOUNTS = [ { email: ANA, password: PASSWORD }, { email: BIA, password: PASSWORD } ].freeze
     ACME = { id: "tenant-1", name: "Acme research", members: { ANA => "owner", BIA => "admin", CAIO => "member" } }.freeze
 
-    test "settings opens on the members tab" do
-      use_fake_api(accounts: ACCOUNTS, tenants: [ ACME ])
-      sign_in_as
-
-      get "/settings"
-
-      assert_redirected_to settings_members_path
-    end
-
-    test "the members tab shows the tenant and both tabs with members current" do
+    test "the members section shows the tenant and the settings nav with members current" do
       use_fake_api(accounts: ACCOUNTS, tenants: [ ACME ])
       sign_in_as
 
       get settings_members_path
 
       assert_response :success
-      assert_select "main h1", "Tenant settings"
+      assert_select "main h1", "Members"
       assert_select "main", text: /Acme research/
       assert_select "main nav a[href=?][aria-current=page]", settings_members_path, text: "Members"
       assert_select "main nav a[href=?]:not([aria-current])", settings_invites_path, text: "Invites"
+      assert_select "main nav a[href=?]:not([aria-current])", settings_account_path, text: "Account"
     end
 
-    test "the sidebar leads back to the notes and to both tabs" do
+    test "the sidebar no longer repeats the settings nav" do
       use_fake_api(accounts: ACCOUNTS, tenants: [ ACME ])
       sign_in_as
 
       get settings_members_path
 
-      assert_select "nav#sidebar a[href=?]", root_path, text: "Back to notes"
-      assert_select "nav#sidebar a[href=?]", settings_members_path, text: "Members"
-      assert_select "nav#sidebar a[href=?]", settings_invites_path, text: "Invites"
+      assert_select "nav#sidebar a", text: "Back to notes", count: 0
+      assert_select "nav#sidebar a[href=?]", settings_members_path, count: 0
+      assert_select "nav#sidebar a[href=?]", settings_invites_path, count: 0
     end
 
     test "a member or viewer is sent back to the notes" do
@@ -53,23 +45,14 @@ module Settings
       assert_equal "Your role in this tenant can't do that.", flash[:alert]
     end
 
-    test "the sidebar footer links to the settings for owner and admin" do
-      use_fake_api(accounts: ACCOUNTS, tenants: [ ACME ])
-      sign_in_as(BIA)
-
-      get root_path
-
-      assert_select "nav > footer a[href=?]", settings_path, text: "Settings"
-      assert_select "#tenant_switcher a[href=?]", settings_path, count: 0
-    end
-
-    test "the sidebar hides the settings from members" do
+    test "the sidebar footer links to the settings for every role" do
       use_fake_api(tenants: [ ACME.merge(members: { ANA => "member" }) ])
       sign_in_as
 
       get root_path
 
-      assert_select "nav a[href=?]", settings_path, count: 0
+      assert_select "nav > footer a[href=?]", settings_path, text: "Settings"
+      assert_select "#tenant_switcher a[href=?]", settings_path, count: 0
     end
 
     test "lists each member with role, join date and the account marked as you" do

@@ -10,8 +10,9 @@ class TenantMembersTest < ApplicationSystemTestCase
 
   test "an owner opens the settings from the sidebar footer and changes a role" do
     within("nav > footer") { click_on "Settings" }
+    within("main nav") { click_on "Members" }
 
-    assert_selector "h1", text: "Tenant settings"
+    assert_selector "h1", text: "Members"
     select "viewer", from: "Role for caio@markupp.dev"
     within("li", text: "caio@markupp.dev") { click_on "Save" }
 

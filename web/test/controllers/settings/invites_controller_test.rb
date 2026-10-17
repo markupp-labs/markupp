@@ -14,13 +14,14 @@ module Settings
       { id: "invite-3", tenant_id: "tenant-1", email: "dani@markupp.dev", role: "admin", expires_at: "2099-10-23T12:00:00Z" }
     ].freeze
 
-    test "the invites tab is current in the tabs" do
+    test "the invites section is current in the settings nav" do
       use_fake_api(accounts: ACCOUNTS, tenants: [ ACME ])
       sign_in_as
 
       get settings_invites_path
 
       assert_response :success
+      assert_select "main h1", "Invites"
       assert_select "main nav a[href=?][aria-current=page]", settings_invites_path, text: "Invites"
     end
 

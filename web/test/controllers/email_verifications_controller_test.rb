@@ -16,7 +16,7 @@ class EmailVerificationsControllerTest < ActionDispatch::IntegrationTest
 
     post email_verification_path
 
-    assert_redirected_to account_path
+    assert_redirected_to settings_account_path
     assert_equal "Confirmation email sent. It may take a few minutes.", flash[:notice]
     assert_equal [ [ :email_verification, UNVERIFIED[:email] ] ], api.sent_tokens.map { it.values_at(:kind, :email) }
   end
@@ -27,7 +27,7 @@ class EmailVerificationsControllerTest < ActionDispatch::IntegrationTest
 
     post email_verification_path
 
-    assert_redirected_to account_path
+    assert_redirected_to settings_account_path
     assert_equal "Your email is already confirmed.", flash[:notice]
   end
 
@@ -37,7 +37,7 @@ class EmailVerificationsControllerTest < ActionDispatch::IntegrationTest
 
     post email_verification_path
 
-    assert_redirected_to account_path
+    assert_redirected_to settings_account_path
     assert_equal "This server can't send email. Ask an administrator to confirm your email.", flash[:alert]
   end
 
@@ -57,7 +57,7 @@ class EmailVerificationsControllerTest < ActionDispatch::IntegrationTest
     sign_in_as(UNVERIFIED[:email])
     6.times { post email_verification_path }
 
-    assert_redirected_to account_path
+    assert_redirected_to settings_account_path
     assert_equal "Too many attempts. Wait a minute.", flash[:alert]
     assert_equal 5, api.sent_tokens.size
   end
