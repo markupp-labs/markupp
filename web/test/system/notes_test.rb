@@ -34,7 +34,7 @@ class NotesTest < ApplicationSystemTestCase
 
     visit note_path("1")
     click_on "New note"
-    assert_field "Path", with: "work/Untitled.md"
+    assert_field "Folder", with: "work"
     find(".cm-content").send_keys("Fresh idea.")
     find(".cm-content").send_keys([ :control, "s" ])
 
@@ -43,18 +43,95 @@ class NotesTest < ApplicationSystemTestCase
     assert_equal({ path: "work/Untitled.md", content: "Fresh idea." }, api.post_requests.sole)
   end
 
-  test "editing the path marks the note unsaved and saves the rename" do
+  test "renaming and moving the note marks it unsaved and saves the new path" do
     api = use_fake_api(notes: [ { id: "1", path: "plan.md", content: "# Plan\n" } ])
     sign_in_through_form
 
     visit note_path("1")
-    fill_in "Path", with: "work/plan.md"
+    fill_in "Title", with: "roadmap"
+    fill_in "Folder", with: "work"
     assert_text "Unsaved changes"
     click_on "Save"
 
     assert_text "Saved"
-    assert_selector "nav a[aria-current=page]", text: "plan.md"
-    assert_equal "work/plan.md", api.put_requests.sole[:path]
+    assert_selector "nav a[aria-current=page]", text: "roadmap.md"
+    assert_equal({ path: "work/roadmap.md", content: "# Plan\n" }, api.put_requests.sole.slice(:path, :content))
+  end
+
+  test "the home is a blank note: the title takes the focus and tab moves to the content" do
+    api = use_fake_api(notes: [])
+    sign_in_through_form
+
+    visit root_path
+    assert_equal "note_title", evaluate_script("document.activeElement.id")
+    send_keys "Plan"
+    assert_selector ".cm-content", text: "Plan"
+    send_keys :tab
+    assert_selector ".cm-content:focus"
+    send_keys "Ship it."
+    send_keys [ :control, "s" ]
+
+    assert_text "Created"
+    assert_equal({ path: "Plan.md", content: "# Plan\n\nShip it." }, api.post_requests.sole)
+  end
+
+  test "shift+tab goes back from the content to the title" do
+    use_fake_api(notes: [])
+    sign_in_through_form
+
+    visit root_path
+    send_keys "Plan", :tab
+    assert_selector ".cm-content:focus"
+    send_keys [ :shift, :tab ]
+
+    assert_equal "note_title", evaluate_script("document.activeElement.id")
+  end
+
+  test "the heading follows the title while the note is new" do
+    use_fake_api(notes: [])
+    sign_in_through_form
+
+    visit root_path
+    send_keys "Pla", :tab, "Body", [ :shift, :tab ], "n"
+
+    assert_equal "# Plan\n\nBody", find("textarea", visible: :hidden).value
+  end
+
+  test "after creation the title no longer touches the heading" do
+    api = use_fake_api(notes: [ { id: "1", path: "Plan.md", content: "# Plan\n" } ])
+    sign_in_through_form
+
+    visit note_path("1")
+    fill_in "Title", with: "Roadmap"
+    click_on "Save"
+
+    assert_text "Saved"
+    assert_equal({ path: "Roadmap.md", content: "# Plan\n" }, api.put_requests.sole.slice(:path, :content))
+  end
+
+  test "leaving the blank home untouched creates nothing and asks nothing" do
+    api = use_fake_api(notes: [ { id: "1", path: "plan.md", content: "# Plan\n" } ])
+    sign_in_through_form
+
+    visit root_path
+    send_keys [ :control, "s" ]
+    click_on "plan.md"
+
+    assert_current_path note_path("1")
+    assert_empty api.post_requests
+  end
+
+  test "the save button shows up only once something changed" do
+    use_fake_api(notes: [ { id: "1", path: "plan.md", content: "# Plan\n" } ])
+    sign_in_through_form
+
+    visit note_path("1")
+    assert_no_button "Save"
+    find(".cm-content").send_keys([ :control, :end ], "!")
+    assert_button "Save"
+    find(".cm-content").send_keys(:backspace)
+
+    assert_no_button "Save"
   end
 
   test "saving a CRLF note keeps its line breaks" do
@@ -62,7 +139,7 @@ class NotesTest < ApplicationSystemTestCase
     sign_in_through_form
 
     visit note_path("1")
-    fill_in "Path", with: "renamed.md"
+    fill_in "Title", with: "renamed"
     click_on "Save"
 
     assert_text "Saved"
