@@ -129,21 +129,10 @@ func (h *notesHandler) search(w http.ResponseWriter, r *http.Request) {
 		writeError(w, "invalid_request", "query string 'query' é obrigatória", http.StatusBadRequest)
 		return
 	}
-
-	offset, err := parseQueryInt(r.URL.Query().Get("offset"), 0)
-	if err != nil {
-		writeError(w, "invalid_request", "offset deve ser um inteiro", http.StatusBadRequest)
+	offset, limit, ok := parsePage(w, r)
+	if !ok {
 		return
 	}
-
-	limit, err := parseQueryInt(r.URL.Query().Get("limit"), 10)
-	if err != nil {
-		writeError(w, "invalid_request", "limit deve ser um inteiro", http.StatusBadRequest)
-		return
-	}
-
-	offset = clamp(offset, 0, maxOffset)
-	limit = clamp(limit, minLimit, maxLimit)
 
 	results, err := h.svc.SearchNotes(r.Context(), query, offset, limit)
 	if err != nil {
@@ -151,6 +140,22 @@ func (h *notesHandler) search(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, results)
+}
+
+// parsePage lê offset e limit da query string, limitados ao intervalo aceito, ou
+// responde 400 e devolve ok falso quando um deles não é inteiro.
+func parsePage(w http.ResponseWriter, r *http.Request) (offset, limit int, ok bool) {
+	offset, err := parseQueryInt(r.URL.Query().Get("offset"), 0)
+	if err != nil {
+		writeError(w, "invalid_request", "offset deve ser um inteiro", http.StatusBadRequest)
+		return 0, 0, false
+	}
+	limit, err = parseQueryInt(r.URL.Query().Get("limit"), 10)
+	if err != nil {
+		writeError(w, "invalid_request", "limit deve ser um inteiro", http.StatusBadRequest)
+		return 0, 0, false
+	}
+	return clamp(offset, 0, maxOffset), clamp(limit, minLimit, maxLimit), true
 }
 
 func parseQueryInt(value string, defaultValue int) (int, error) {
