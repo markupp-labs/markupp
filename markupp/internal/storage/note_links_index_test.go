@@ -20,8 +20,8 @@ func linhasDoGrafo(t *testing.T, db *pgxpool.Pool, noteID string) (ligacoes, tit
 	t.Helper()
 	ctx := context.Background()
 	require.NoError(t, db.QueryRow(ctx, `SELECT coalesce(array_agg(cited_title || '|' || title_key || '|' || coalesce(target_path, '') || '|' || kind
-		|| '|' || tenant_id || '|' || vault_id ORDER BY title_key, kind), '{}') FROM note_links WHERE note_id = $1`, noteID).Scan(&ligacoes))
-	require.NoError(t, db.QueryRow(ctx, `SELECT coalesce(array_agg(title_key || '|' || tenant_id || '|' || vault_id ORDER BY title_key), '{}')
+		|| '|' || vault_id ORDER BY title_key, kind), '{}') FROM note_links WHERE note_id = $1`, noteID).Scan(&ligacoes))
+	require.NoError(t, db.QueryRow(ctx, `SELECT coalesce(array_agg(title_key || '|' || vault_id ORDER BY title_key), '{}')
 		FROM note_titles WHERE note_id = $1`, noteID).Scan(&titulos))
 	return ligacoes, titulos
 }
@@ -36,11 +36,11 @@ func TestVaultIndexer_GravaLigacoesETitulosDaNota(t *testing.T) {
 
 	ligacoes, titulos := linhasDoGrafo(t, db, "n1")
 	assert.Equal(t, []string{
-		"Alvo|alvo||explicit|default|cofre-teste",
-		"foto.png|foto.png||embed|default|cofre-teste",
-		"Irma|irma|pasta/Irma.md|explicit|default|cofre-teste",
+		"Alvo|alvo||explicit|cofre-teste",
+		"foto.png|foto.png||embed|cofre-teste",
+		"Irma|irma|pasta/Irma.md|explicit|cofre-teste",
 	}, ligacoes)
-	assert.Equal(t, []string{"apelido|default|cofre-teste", "origem|default|cofre-teste"}, titulos)
+	assert.Equal(t, []string{"apelido|cofre-teste", "origem|cofre-teste"}, titulos)
 }
 
 func TestVaultIndexer_NotaReindexada_SubstituiLigacoesETitulos(t *testing.T) {
@@ -54,8 +54,8 @@ func TestVaultIndexer_NotaReindexada_SubstituiLigacoesETitulos(t *testing.T) {
 	indexaTodosOsCofres(t, db, "simple")
 
 	ligacoes, titulos := linhasDoGrafo(t, db, "n1")
-	assert.Equal(t, []string{"Novo|novo||explicit|default|cofre-teste"}, ligacoes)
-	assert.Equal(t, []string{"nova|default|cofre-teste"}, titulos)
+	assert.Equal(t, []string{"Novo|novo||explicit|cofre-teste"}, ligacoes)
+	assert.Equal(t, []string{"nova|cofre-teste"}, titulos)
 }
 
 func TestVaultIndexer_NotaApagada_LevaLigacoesETitulos(t *testing.T) {

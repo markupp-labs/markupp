@@ -11,6 +11,17 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const deleteNoteGraph = `-- name: DeleteNoteGraph :exec
+WITH apagadas AS (DELETE FROM note_links WHERE note_id = ANY ($1::text[]))
+DELETE FROM note_titles WHERE note_id = ANY ($1::text[])
+`
+
+// O lote substitui as linhas do grafo das notas dele: apaga e grava de novo.
+func (q *Queries) DeleteNoteGraph(ctx context.Context, noteIds []string) error {
+	_, err := q.db.Exec(ctx, deleteNoteGraph, noteIds)
+	return err
+}
+
 const dequeueNotes = `-- name: DequeueNotes :exec
 DELETE FROM note_index_queue q
 USING (SELECT unnest($1::text[]) AS note_id, unnest($2::bigint[]) AS revision) r
@@ -134,6 +145,53 @@ func (q *Queries) ResolveSearchConfig(ctx context.Context, name string) (int64, 
 	var config_oid int64
 	err := row.Scan(&config_oid)
 	return config_oid, err
+}
+
+const saveNoteLinks = `-- name: SaveNoteLinks :exec
+INSERT INTO note_links (note_id, vault_id, cited_title, title_key, target_path, kind)
+SELECT n.id, n.vault_id, d.cited_title, d.title_key, NULLIF(d.target_path, ''), d.kind
+FROM (SELECT unnest($1::text[]) AS note_id, unnest($2::text[]) AS cited_title,
+             unnest($3::text[]) AS title_key, unnest($4::text[]) AS target_path,
+             unnest($5::text[]) AS kind) d
+JOIN notes n ON n.id = d.note_id
+`
+
+type SaveNoteLinksParams struct {
+	NoteIds     []string
+	CitedTitles []string
+	TitleKeys   []string
+	TargetPaths []string
+	Kinds       []string
+}
+
+// Caminho vazio é ligação sem caminho, isto é, que não veio de link markdown.
+func (q *Queries) SaveNoteLinks(ctx context.Context, arg SaveNoteLinksParams) error {
+	_, err := q.db.Exec(ctx, saveNoteLinks,
+		arg.NoteIds,
+		arg.CitedTitles,
+		arg.TitleKeys,
+		arg.TargetPaths,
+		arg.Kinds,
+	)
+	return err
+}
+
+const saveNoteTitles = `-- name: SaveNoteTitles :exec
+INSERT INTO note_titles (note_id, vault_id, title_key)
+SELECT n.id, n.vault_id, d.title_key
+FROM (SELECT unnest($1::text[]) AS note_id, unnest($2::text[]) AS title_key) d
+JOIN notes n ON n.id = d.note_id
+`
+
+type SaveNoteTitlesParams struct {
+	NoteIds   []string
+	TitleKeys []string
+}
+
+// O cofre vem da nota. Nota apagada depois da leitura some no JOIN.
+func (q *Queries) SaveNoteTitles(ctx context.Context, arg SaveNoteTitlesParams) error {
+	_, err := q.db.Exec(ctx, saveNoteTitles, arg.NoteIds, arg.TitleKeys)
+	return err
 }
 
 const saveSearchDocuments = `-- name: SaveSearchDocuments :exec

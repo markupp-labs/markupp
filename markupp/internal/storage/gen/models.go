@@ -41,14 +41,36 @@ type Note struct {
 	ContentSha256 []byte
 }
 
+type NoteEdge struct {
+	SourceID string
+	TargetID string
+	VaultID  string
+	Kind     string
+}
+
 type NoteIndexQueue struct {
 	NoteID   string
 	Revision int64
 }
 
+type NoteLink struct {
+	NoteID     string
+	VaultID    string
+	CitedTitle string
+	TitleKey   string
+	TargetPath pgtype.Text
+	Kind       string
+}
+
 type NoteSearchIndex struct {
 	NoteID   string
 	Document string
+}
+
+type NoteTitle struct {
+	NoteID   string
+	VaultID  string
+	TitleKey string
 }
 
 type Notification struct {

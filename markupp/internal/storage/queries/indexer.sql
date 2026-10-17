@@ -50,3 +50,24 @@ SELECT sqlc.arg(name)::text::regconfig::oid::bigint AS config_oid;
 -- Roda no papel da conexão, o dono do banco: o NULL reenfileira a instalação inteira.
 -- name: RequeueNotes :one
 SELECT markupp_requeue_notes(sqlc.narg(vault_id)::text) AS requeued;
+
+-- O lote substitui as linhas do grafo das notas dele: apaga e grava de novo.
+-- name: DeleteNoteGraph :exec
+WITH apagadas AS (DELETE FROM note_links WHERE note_id = ANY (sqlc.arg(note_ids)::text[]))
+DELETE FROM note_titles WHERE note_id = ANY (sqlc.arg(note_ids)::text[]);
+
+-- O cofre vem da nota. Nota apagada depois da leitura some no JOIN.
+-- name: SaveNoteTitles :exec
+INSERT INTO note_titles (note_id, vault_id, title_key)
+SELECT n.id, n.vault_id, d.title_key
+FROM (SELECT unnest(sqlc.arg(note_ids)::text[]) AS note_id, unnest(sqlc.arg(title_keys)::text[]) AS title_key) d
+JOIN notes n ON n.id = d.note_id;
+
+-- Caminho vazio é ligação sem caminho, isto é, que não veio de link markdown.
+-- name: SaveNoteLinks :exec
+INSERT INTO note_links (note_id, vault_id, cited_title, title_key, target_path, kind)
+SELECT n.id, n.vault_id, d.cited_title, d.title_key, NULLIF(d.target_path, ''), d.kind
+FROM (SELECT unnest(sqlc.arg(note_ids)::text[]) AS note_id, unnest(sqlc.arg(cited_titles)::text[]) AS cited_title,
+             unnest(sqlc.arg(title_keys)::text[]) AS title_key, unnest(sqlc.arg(target_paths)::text[]) AS target_path,
+             unnest(sqlc.arg(kinds)::text[]) AS kind) d
+JOIN notes n ON n.id = d.note_id;

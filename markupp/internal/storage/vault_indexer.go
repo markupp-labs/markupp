@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -56,7 +57,11 @@ func (x *PostgresVaultIndexer) indexVault(ctx context.Context, q *gen.Queries, v
 		return fmt.Errorf("listar notas pendentes do cofre %q: %w", vault.VaultID, err)
 	}
 	cs := toChangeset(vault, rows)
-	if err := x.saveDocuments(ctx, q, cs, index(cs)); err != nil {
+	indexed := index(cs)
+	if err := x.saveDocuments(ctx, q, cs, indexed); err != nil {
+		return err
+	}
+	if err := saveGraph(ctx, q, cs, indexed); err != nil {
 		return err
 	}
 	return dequeue(ctx, q, vault.VaultID, rows)
@@ -80,7 +85,7 @@ func (x *PostgresVaultIndexer) saveDocuments(ctx context.Context, q *gen.Queries
 		Titles: make([]string, 0, len(indexed)), Bodies: make([]string, 0, len(indexed))}
 	for _, note := range indexed {
 		params.NoteIds = append(params.NoteIds, note.Search.NoteID)
-		params.Titles = append(params.Titles, note.Search.Title)
+		params.Titles = append(params.Titles, strings.Join(append([]string{note.Search.Title}, note.Search.Aliases...), " "))
 		params.Bodies = append(params.Bodies, note.Search.Text)
 	}
 	if err := q.SaveSearchDocuments(ctx, params); err != nil {
