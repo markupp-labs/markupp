@@ -79,7 +79,7 @@ type memberResponse struct {
 func (h *adminHandler) listMembers(w http.ResponseWriter, r *http.Request) {
 	members, err := h.svc.ListMembers(r.Context())
 	if err != nil {
-		writeInternal(w, "listar membros", err)
+		writeAdminInternal(w, "listar membros", err)
 		return
 	}
 	out := make([]memberResponse, 0, len(members))
@@ -92,7 +92,7 @@ func (h *adminHandler) listMembers(w http.ResponseWriter, r *http.Request) {
 func (h *adminHandler) listInvites(w http.ResponseWriter, r *http.Request) {
 	invites, err := h.svc.ListInvites(r.Context())
 	if err != nil {
-		writeInternal(w, "listar convites", err)
+		writeAdminInternal(w, "listar convites", err)
 		return
 	}
 	out := make([]inviteResponse, 0, len(invites))
@@ -167,7 +167,7 @@ func writeAdminError(w http.ResponseWriter, err error) {
 	case errors.Is(err, auth.ErrRoleAboveOwn):
 		writeError(w, "role_above_own", err.Error(), http.StatusForbidden)
 	default:
-		writeInternal(w, "administrar o tenant", err)
+		writeAdminInternal(w, "administrar o tenant", err)
 	}
 }
 
@@ -178,7 +178,7 @@ func toInviteResponse(inv auth.Invite) inviteResponse {
 	}
 }
 
-func writeInternal(w http.ResponseWriter, operation string, err error) {
+func writeAdminInternal(w http.ResponseWriter, operation string, err error) {
 	writeLoggedInternal(w, "falha na administracao", operation, err)
 }
 
