@@ -56,6 +56,14 @@ func TestOAuthRequests_Decidir_DevolveORedirect(t *testing.T) {
 	}
 }
 
+func TestOAuthRequests_Decidir_RespondeSemCache(t *testing.T) {
+	for _, decision := range []string{"approve", "deny"} {
+		rec := consentRequest(&fakeOAuthService{redirectTo: "https://cli.exemplo/cb?code=x"}, http.MethodPost, "/v1/oauth/requests/p1/"+decision, true)
+
+		assert.Equal(t, "no-store", rec.Header().Get("Cache-Control"), decision)
+	}
+}
+
 func TestOAuthRequests_PedidoInexistente_Retorna404(t *testing.T) {
 	wrapped := fmt.Errorf("decidir: %w", oauth.ErrRequestNotFound)
 	for _, route := range []struct{ method, path string }{
