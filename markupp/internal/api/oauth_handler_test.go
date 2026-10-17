@@ -61,8 +61,13 @@ func (f *fakeOAuthService) ExchangeCode(_ context.Context, g oauth.CodeGrant) (o
 }
 
 func oauthRouter(svc *fakeOAuthService) http.Handler {
+	return oauthRouterComOrigens(svc, nil)
+}
+
+// oauthRouterComOrigens monta o roteador OAuth com a lista de origens do CORS da API.
+func oauthRouterComOrigens(svc *fakeOAuthService, origins []string) http.Handler {
 	return api.NewRouter(api.RouterDeps{
-		Tokens: &fakeTokenValidator{claims: auth.Claims{Subject: "u1"}}, Probe: &fakeProbe{},
+		Tokens: &fakeTokenValidator{claims: auth.Claims{Subject: "u1"}}, Probe: &fakeProbe{}, AllowedOrigins: origins,
 		OAuth: svc, OAuthMetadata: &api.OAuthMetadata{Issuer: issuerDeTeste},
 	})
 }
@@ -313,15 +318,11 @@ func TestToken_Preflight_Retorna204ComCORSAberto(t *testing.T) {
 }
 
 func TestToken_PreflightDeOrigemDaLista_UsaOCORSAbertoDoToken(t *testing.T) {
-	router := api.NewRouter(api.RouterDeps{
-		Tokens: &fakeTokenValidator{}, Probe: &fakeProbe{}, AllowedOrigins: []string{origemPermitida},
-		OAuth: &fakeOAuthService{}, OAuthMetadata: &api.OAuthMetadata{Issuer: issuerDeTeste},
-	})
 	req := httptest.NewRequest(http.MethodOptions, "/oauth/token", nil)
 	req.Header.Set("Origin", origemPermitida)
 	req.Header.Set("Access-Control-Request-Method", http.MethodPost)
 	rec := httptest.NewRecorder()
-	router.ServeHTTP(rec, req)
+	oauthRouterComOrigens(&fakeOAuthService{}, []string{origemPermitida}).ServeHTTP(rec, req)
 
 	assert.Equal(t, http.StatusNoContent, rec.Code)
 	assert.Equal(t, "*", rec.Header().Get("Access-Control-Allow-Origin"))
