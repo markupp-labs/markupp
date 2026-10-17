@@ -173,3 +173,25 @@ func TestOAuthMetadataFrom_ComPublicURL_UsaComoIssuer(t *testing.T) {
 	require.NotNil(t, meta)
 	assert.Equal(t, "https://notas.markupp.dev", meta.Issuer)
 }
+
+func TestOAuthServiceConfigFrom_ConverteDuracoesEListaOsResources(t *testing.T) {
+	cfg := config.Config{
+		PublicURL: "https://notas.markupp.dev", PanelURL: "https://painel.markupp.dev",
+		OAuthResources:     []config.OAuthResource{{URL: "https://mcp.markupp.dev", Secret: "s"}},
+		OAuthAccessMinutes: 60, OAuthRefreshDays: 30, OAuthRequestMinutes: 10, OAuthCodeSeconds: 60,
+	}
+
+	got := oauthServiceConfigFrom(cfg)
+
+	assert.Equal(t, "https://notas.markupp.dev", got.Issuer)
+	assert.Equal(t, "https://painel.markupp.dev", got.PanelURL)
+	assert.Equal(t, []string{"https://mcp.markupp.dev"}, got.Resources)
+	assert.Equal(t, time.Hour, got.AccessTTL)
+	assert.Equal(t, 30*24*time.Hour, got.RefreshTTL)
+	assert.Equal(t, 10*time.Minute, got.RequestTTL)
+	assert.Equal(t, time.Minute, got.CodeTTL)
+}
+
+func TestNewOAuthService_SemPublicURL_DevolveNilDeInterface(t *testing.T) {
+	assert.Nil(t, newOAuthService(config.Config{}, nil))
+}
