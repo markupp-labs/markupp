@@ -1,7 +1,9 @@
 <%# Cabeçalho comum às abas; current é a aba aberta, que leva o mesmo realce da nota atual. %>
 <% content_for :title, t("settings.tabs.title") %>
 <% content_for :sidebar do %>
-  <%= link_to t("settings.tabs.back"), root_path, class: "tree-row mb-2 block" %>
+  <%= link_to root_path, class: "tree-row mb-2 flex items-center gap-2" do %>
+    <%= icon("arrow-left") %><%= t("settings.tabs.back") %>
+  <% end %>
   <%= render "settings/tab_links", current: %>
 <% end %>
 

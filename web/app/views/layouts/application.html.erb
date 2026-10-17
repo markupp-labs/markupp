@@ -6,7 +6,7 @@
   <body class="min-h-dvh bg-surface font-mono text-sm text-ink md:grid md:grid-cols-[17rem_1fr]"
         <%= tag.attributes(data: { controller: "search", action: "keydown.ctrl+k@window->search#open:prevent keydown.meta+k@window->search#open:prevent" }) if current_tenant %>>
     <button popovertarget="sidebar" class="btn m-2 text-ink-muted md:hidden">
-      <%= t(".open_notes") %>
+      <%= icon("list") %><%= t(".open_notes") %>
     </button>
 
     <%# A lista rola dentro de .sidebar-scroll; o rodape com conta, configuracoes, tema e sair fica sempre no fundo. %>
@@ -16,8 +16,9 @@
         <% if current_tenant %>
           <%= render "layouts/tenant_switcher" %>
           <button type="button" data-action="search#open" title="Ctrl+K" aria-keyshortcuts="Control+K Meta+K"
-                  class="tree-row mb-2 w-full border border-line text-left text-ink-muted">
-            <%= t(".search") %>
+                  class="tree-row mb-2 flex w-full items-center gap-2 border border-line text-left text-ink-muted">
+            <%= icon("magnifying-glass") %><%= t(".search") %>
+            <kbd aria-hidden="true" class="ml-auto text-xs">Ctrl K</kbd>
           </button>
         <% end %>
         <%= yield :sidebar %>

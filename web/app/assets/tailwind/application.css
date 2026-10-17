@@ -63,7 +63,7 @@
 
 @layer components {
   .btn {
-    @apply rounded-md border border-line px-3 py-1 hover:bg-accent-soft;
+    @apply inline-flex items-center gap-1.5 rounded-md border border-line px-3 py-1 hover:bg-accent-soft;
   }
 
   /* Botão só de ícone: quadrado, sem borda, com o mesmo realce das linhas da árvore. */
@@ -82,6 +82,12 @@
 
   .tree-row {
     @apply rounded-md px-2 py-1 hover:bg-accent-soft;
+  }
+
+  /* Pasta da árvore: o ícone aberto ou fechado mostra o estado no lugar do triângulo do details. */
+  details[open] > summary > [data-icon="folder"],
+  details:not([open]) > summary > [data-icon="folder-open"] {
+    display: none;
   }
 
   /* No desktop a barra lateral fica sempre visível; no celular é popover (gaveta). */

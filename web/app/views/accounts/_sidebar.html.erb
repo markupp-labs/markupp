@@ -1,3 +1,5 @@
 <% content_for :sidebar do %>
-  <%= link_to t("accounts.sidebar.back"), root_path, class: "tree-row mb-2 block" %>
+  <%= link_to root_path, class: "tree-row mb-2 flex items-center gap-2" do %>
+    <%= icon("arrow-left") %><%= t("accounts.sidebar.back") %>
+  <% end %>
 <% end %>
