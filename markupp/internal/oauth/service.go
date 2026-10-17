@@ -56,10 +56,10 @@ func canonicalize(raw string) (string, bool) {
 	return CanonicalURL(parsed), true
 }
 
-// describeValue prepara um valor vindo do cliente para citar no error_description, que
+// ClientValue prepara um valor vindo do cliente para citar no error_description, que
 // a RFC 6749 restringe a ASCII visível sem aspas duplas nem barra invertida, e nos erros
 // embrulhados que vão para o log, com o mesmo limite de tamanho.
-func describeValue(value string) string {
+func ClientValue(value string) string {
 	clean := strings.Map(func(r rune) rune {
 		if r < 0x20 || r > 0x7e || r == '"' || r == '\\' {
 			return '?'

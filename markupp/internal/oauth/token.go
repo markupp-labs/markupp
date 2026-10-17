@@ -54,10 +54,10 @@ func (s *Service) revokeReusedCode(ctx context.Context, authorizationID string) 
 // checkGrant confere o grant contra o pedido que originou o código.
 func checkGrant(g CodeGrant, req AuthorizationRequest) error {
 	if g.ClientID != req.ClientID {
-		return grantError("client_id " + describeValue(g.ClientID) + " diferente do pedido; esperado o client_id que pediu o codigo")
+		return grantError("client_id " + ClientValue(g.ClientID) + " diferente do pedido; esperado o client_id que pediu o codigo")
 	}
 	if g.RedirectURI != req.RedirectURI {
-		return grantError("redirect_uri " + describeValue(g.RedirectURI) + " diferente da usada no pedido; esperada a mesma redirect_uri do pedido")
+		return grantError("redirect_uri " + ClientValue(g.RedirectURI) + " diferente da usada no pedido; esperada a mesma redirect_uri do pedido")
 	}
 	if !VerifyPKCE(g.CodeVerifier, req.CodeChallenge) {
 		return grantError("code_verifier nao confere com o code_challenge do pedido; esperado o verifier que gerou o challenge S256")
@@ -72,7 +72,7 @@ func checkGrantResource(raw, requested string) error {
 		return nil
 	}
 	if resource, ok := canonicalize(raw); !ok || resource != requested {
-		return &ProtocolError{Code: errInvalidTarget, Description: "resource " + describeValue(raw) + " diferente do pedido; esperado " + describeValue(requested)}
+		return &ProtocolError{Code: errInvalidTarget, Description: "resource " + ClientValue(raw) + " diferente do pedido; esperado " + ClientValue(requested)}
 	}
 	return nil
 }

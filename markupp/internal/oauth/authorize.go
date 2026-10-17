@@ -21,7 +21,7 @@ func (s *Service) StartAuthorization(ctx context.Context, p AuthorizeParams) (st
 		return "", err
 	}
 	if err := s.repo.CreateRequest(ctx, req); err != nil {
-		return "", fmt.Errorf("oauth: gravando o pedido de autorização do cliente %s: %w", describeValue(p.ClientID), err)
+		return "", fmt.Errorf("oauth: gravando o pedido de autorização do cliente %s: %w", ClientValue(p.ClientID), err)
 	}
 	return s.cfg.PanelURL + "/oauth/consentimento?pedido=" + url.QueryEscape(req.ID), nil
 }
@@ -36,13 +36,13 @@ func (s *Service) checkClientRedirect(ctx context.Context, p AuthorizeParams) er
 	}
 	client, err := s.repo.GetClient(ctx, p.ClientID)
 	if errors.Is(err, ErrClientNotFound) {
-		return &ProtocolError{Code: errInvalidRequest, Description: "client_id " + describeValue(p.ClientID) + " nao registrado; esperado " + registeredClientShape}
+		return &ProtocolError{Code: errInvalidRequest, Description: "client_id " + ClientValue(p.ClientID) + " nao registrado; esperado " + registeredClientShape}
 	}
 	if err != nil {
-		return fmt.Errorf("oauth: buscando o cliente %s: %w", describeValue(p.ClientID), err)
+		return fmt.Errorf("oauth: buscando o cliente %s: %w", ClientValue(p.ClientID), err)
 	}
 	if !MatchRedirectURI(client.RedirectURIs, p.RedirectURI) {
-		return &ProtocolError{Code: errInvalidRequest, Description: "redirect_uri " + describeValue(p.RedirectURI) + " nao registrada para o cliente; esperada uma das redirect_uris registradas por ele"}
+		return &ProtocolError{Code: errInvalidRequest, Description: "redirect_uri " + ClientValue(p.RedirectURI) + " nao registrada para o cliente; esperada uma das redirect_uris registradas por ele"}
 	}
 	return nil
 }
@@ -71,10 +71,10 @@ func (s *Service) buildRequest(p AuthorizeParams) (AuthorizationRequest, error) 
 // checkCodeFlow exige response_type=code e PKCE com S256.
 func checkCodeFlow(p AuthorizeParams) error {
 	if p.ResponseType != "code" {
-		return redirectError(p, errUnsupportedResponseType, "response_type "+describeValue(p.ResponseType)+" nao suportado; esperado 'code'")
+		return redirectError(p, errUnsupportedResponseType, "response_type "+ClientValue(p.ResponseType)+" nao suportado; esperado 'code'")
 	}
 	if p.CodeChallengeMethod != "S256" {
-		return redirectError(p, errInvalidRequest, "code_challenge_method "+describeValue(p.CodeChallengeMethod)+" nao suportado; esperado 'S256'")
+		return redirectError(p, errInvalidRequest, "code_challenge_method "+ClientValue(p.CodeChallengeMethod)+" nao suportado; esperado 'S256'")
 	}
 	if !ValidChallenge(p.CodeChallenge) {
 		return redirectError(p, errInvalidRequest, "code_challenge invalido; esperado SHA-256 em base64url sem padding, 43 caracteres")
@@ -89,7 +89,7 @@ func (s *Service) requestedResource(p AuthorizeParams) (string, error) {
 	}
 	resource, ok := canonicalize(p.Resource)
 	if !ok || !slices.Contains(s.cfg.Resources, resource) {
-		return "", redirectError(p, errInvalidTarget, "resource "+describeValue(p.Resource)+" desconhecido; esperado "+s.knownResources())
+		return "", redirectError(p, errInvalidTarget, "resource "+ClientValue(p.Resource)+" desconhecido; esperado "+s.knownResources())
 	}
 	return resource, nil
 }
@@ -99,7 +99,7 @@ func (s *Service) requestedResource(p AuthorizeParams) (string, error) {
 func (s *Service) knownResources() string {
 	described := make([]string, 0, len(s.cfg.Resources))
 	for _, resource := range s.cfg.Resources {
-		described = append(described, describeValue(resource))
+		described = append(described, ClientValue(resource))
 	}
 	return "um de " + strings.Join(described, ", ")
 }
@@ -110,7 +110,7 @@ func requestedScopes(p AuthorizeParams) ([]string, error) {
 	requested := map[string]bool{}
 	for _, scope := range strings.Split(p.Scope, " ") {
 		if scope != "" && !slices.Contains(SupportedScopes(), scope) {
-			return nil, redirectError(p, errInvalidScope, "escopo "+describeValue(scope)+" nao suportado; esperado um de "+strings.Join(SupportedScopes(), ", "))
+			return nil, redirectError(p, errInvalidScope, "escopo "+ClientValue(scope)+" nao suportado; esperado um de "+strings.Join(SupportedScopes(), ", "))
 		}
 		requested[scope] = scope != ""
 	}
