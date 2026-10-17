@@ -46,6 +46,8 @@ en:
       read_only: "Your role in this tenant is viewer, it can only read notes."
       tenant_unavailable: "You no longer have access to that tenant."
   sessions:
+    back_to_login:
+      label: "Back to log in"
     new:
       title: "Log in"
       submit: "Log in"
@@ -91,7 +93,6 @@ en:
       submitting: "Sending"
       token_hint: "Got the token already?"
       have_token: "I have a token"
-      log_in: "Back to log in"
     create:
       sent: "If an account uses that email, a reset token is on its way."
       invalid_email: "Enter the email of your account."
