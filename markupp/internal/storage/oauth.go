@@ -168,18 +168,37 @@ func activeAuthorization(ctx context.Context, q *gen.Queries, userID, clientID s
 	return toAuthorization(row), nil
 }
 
-// RedeemCode consome o código e devolve o pedido com a Autorização ativa. No reuso,
-// devolve o mesmo resultado junto com oauth.ErrCodeAlreadyUsed.
+// RedeemCode consome o código e lê a Autorização ativa na mesma transação, devolvendo o
+// pedido com ela. Sem Autorização ativa, o consumo fica gravado e o erro volta junto com
+// o pedido. No reuso, devolve o mesmo resultado junto com oauth.ErrCodeAlreadyUsed.
 func (r *PostgresOAuthRepository) RedeemCode(ctx context.Context, codeHash string, now time.Time) (oauth.RedeemedCode, error) {
-	row, err := r.q.RedeemOAuthCode(ctx, gen.RedeemOAuthCodeParams{CodeHash: codeHash, Now: now})
+	var redeemed oauth.RedeemedCode
+	var missing error
+	err := inTx(ctx, r.pool, func(qtx *gen.Queries) error {
+		var err error
+		redeemed, err = redeemInTx(ctx, qtx, codeHash, now)
+		if errors.Is(err, oauth.ErrAuthorizationNotFound) {
+			missing, err = err, nil
+		}
+		return err
+	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return r.usedCode(ctx, codeHash)
 	}
 	if err != nil {
+		return oauth.RedeemedCode{}, err
+	}
+	return redeemed, missing
+}
+
+// redeemInTx marca o código como usado e busca a Autorização ativa do pedido.
+func redeemInTx(ctx context.Context, qtx *gen.Queries, codeHash string, now time.Time) (oauth.RedeemedCode, error) {
+	row, err := qtx.RedeemOAuthCode(ctx, gen.RedeemOAuthCodeParams{CodeHash: codeHash, Now: now})
+	if err != nil {
 		return oauth.RedeemedCode{}, fmt.Errorf("consumir código de autorização: %w", err)
 	}
 	req := toAuthorizationRequest(row)
-	authz, err := r.ActiveAuthorization(ctx, req.UserID, req.ClientID)
+	authz, err := activeAuthorization(ctx, qtx, req.UserID, req.ClientID)
 	return oauth.RedeemedCode{Request: req, Authorization: authz}, err
 }
 
