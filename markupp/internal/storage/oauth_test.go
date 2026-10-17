@@ -374,6 +374,8 @@ func TestPostgresOAuthRepo_RedeemCode_SemAutorizacaoAtiva(t *testing.T) {
 	_, err = repo.RedeemCode(context.Background(), "h1", instanteOAuth.Add(90*time.Second))
 
 	require.ErrorIs(t, err, oauth.ErrAuthorizationNotFound)
+	_, err = repo.RedeemCode(context.Background(), "h1", instanteOAuth.Add(100*time.Second))
+	require.ErrorIs(t, err, oauth.ErrCodeAlreadyUsed, "o consumo fica gravado mesmo sem Autorização ativa")
 }
 
 func tokensOAuth(authorizationID string) []oauth.IssuedToken {
