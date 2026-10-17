@@ -41,6 +41,7 @@ en:
       loading: "Loading"
     sidebar_footer:
       settings: "Settings"
+      settings_shortcut: "Settings (Ctrl+,)"
       log_out: "Log out"
   markupp_api:
     errors:
@@ -110,18 +111,6 @@ en:
       submitting: "Resetting"
     create:
       changed: "Password changed. Log in with the new one."
-  accounts:
-    already_confirmed: "Your email is already confirmed."
-    sidebar:
-      back: "Back to notes"
-    show:
-      title: "Account"
-      email: "Email"
-      confirmation: "Email confirmation"
-      confirmation_hint: "Confirm your email to see the invites sent to it. The confirmation email brings a token."
-      send: "Send confirmation email"
-      sending: "Sending"
-      have_token: "I have a token"
   email_verifications:
     create:
       sent: "Confirmation email sent. It may take a few minutes."
@@ -150,11 +139,31 @@ en:
       invite_not_found: "That invite is no longer valid."
       already_member: "You are already a member of that tenant."
   settings:
-    tabs:
-      title: "Tenant settings"
-      back: "Back to notes"
+    nav:
+      title: "Settings"
+      close: "Close settings"
+      accounts: "Account"
+      appearances: "Appearance"
+      tenant: "Tenant"
       members: "Members"
       invites: "Invites"
+    accounts:
+      already_confirmed: "Your email is already confirmed."
+      show:
+        title: "Account"
+        email: "Email"
+        confirmation: "Email confirmation"
+        confirmation_hint: "Confirm your email to see the invites sent to it. The confirmation email brings a token."
+        send: "Send confirmation email"
+        sending: "Sending"
+        have_token: "I have a token"
+    appearances:
+      show:
+        title: "Appearance"
+        theme: "Theme"
+        light: "Light"
+        dark: "Dark"
+        follows_system: "Follows your system theme until you pick one."
     members:
       index:
         email: "Email"

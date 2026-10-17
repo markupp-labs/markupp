@@ -80,6 +80,12 @@
     content: "]";
   }
 
+  /* Título de seção com o # do markdown na frente, apagado e fora do nome acessível. */
+  .md-heading::before {
+    content: "# " / "";
+    color: var(--ink-muted);
+  }
+
   .tree-row {
     @apply rounded-md px-2 py-1 hover:bg-accent-soft;
   }

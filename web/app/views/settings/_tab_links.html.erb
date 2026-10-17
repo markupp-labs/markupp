@@ -1,4 +1,0 @@
-<% { "members" => settings_members_path, "invites" => settings_invites_path }.each do |tab, path| %>
-  <%= link_to t("settings.tabs.#{tab}"), path, aria: { current: ("page" if tab == current) },
-              class: "tree-row block aria-[current=page]:bg-accent-soft aria-[current=page]:text-accent" %>
-<% end %>

@@ -1,0 +1,4 @@
+<%# Cabeçalho das seções do tenant: o nome da seção e o tenant a que ela se refere. %>
+<% content_for :title, title %>
+<h1 class="md-heading text-base font-semibold"><%= title %></h1>
+<p class="truncate text-ink-muted" title="<%= current_tenant.name %>"><%= current_tenant.name %></p>
