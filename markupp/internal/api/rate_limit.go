@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"io"
 	"math"
-	"net"
 	"net/http"
+	"net/netip"
 	"strconv"
 	"strings"
 	"sync"
@@ -22,6 +22,7 @@ type AccountRateLimiter struct {
 	mu        sync.Mutex
 	windows   map[string]attemptWindow
 	lastSweep time.Time
+	trusted   []netip.Prefix
 }
 
 type attemptWindow struct {
@@ -29,9 +30,10 @@ type attemptWindow struct {
 	attempts int
 }
 
-// NewAccountRateLimiter aceita limit tentativas por chave a cada window.
-func NewAccountRateLimiter(limit int, window time.Duration, now func() time.Time) *AccountRateLimiter {
-	return &AccountRateLimiter{limit: limit, window: window, now: now, windows: map[string]attemptWindow{}}
+// NewAccountRateLimiter aceita limit tentativas por chave a cada window. Só conexões
+// vindas de trusted têm o X-Forwarded-For lido para achar o IP do cliente.
+func NewAccountRateLimiter(limit int, window time.Duration, now func() time.Time, trusted []netip.Prefix) *AccountRateLimiter {
+	return &AccountRateLimiter{limit: limit, window: window, now: now, windows: map[string]attemptWindow{}, trusted: trusted}
 }
 
 // Allow registra uma tentativa de key e diz se ela cabe no limite. Recusada, diz
@@ -85,7 +87,7 @@ func limitAccountAttempts(l *AccountRateLimiter) func(http.Handler) http.Handler
 }
 
 func (l *AccountRateLimiter) allowRequest(r *http.Request) (time.Duration, bool) {
-	keys := []string{r.URL.Path + " ip " + clientIP(r)}
+	keys := []string{r.URL.Path + " ip " + l.clientIP(r)}
 	if email := peekEmail(r); email != "" {
 		keys = append(keys, r.URL.Path+" email "+email)
 	}
@@ -97,19 +99,54 @@ func (l *AccountRateLimiter) allowRequest(r *http.Request) (time.Duration, bool)
 	return 0, true
 }
 
-// clientIP usa só a conexão: sem proxy confiável configurado, X-Forwarded-For é do
-// cliente e não serve de chave. IPv6 vira o prefixo /64, que costuma ser de um só
-// cliente, senão cada endereço dele teria limite próprio.
-func clientIP(r *http.Request) string {
-	host, _, err := net.SplitHostPort(r.RemoteAddr)
-	if err != nil {
-		host = r.RemoteAddr
+// clientIP usa o IP da conexão e, quando ela vem de proxy confiável, o primeiro IP
+// não confiável do X-Forwarded-For lido da direita, porque o que está à esquerda
+// dele o cliente escreve como quiser. Header vazio ou malformado fica com a conexão.
+func (l *AccountRateLimiter) clientIP(r *http.Request) string {
+	host := r.RemoteAddr
+	if addrPort, err := netip.ParseAddrPort(r.RemoteAddr); err == nil {
+		host = addrPort.Addr().String()
 	}
-	ip := net.ParseIP(host)
-	if ip == nil || ip.To4() != nil {
+	remote, err := netip.ParseAddr(host)
+	if err != nil {
 		return host
 	}
-	return ip.Mask(net.CIDRMask(64, 128)).String() + "/64"
+	if forwarded, ok := l.forwardedClient(r, remote.Unmap()); ok {
+		return ipKey(forwarded)
+	}
+	return ipKey(remote.Unmap())
+}
+
+// forwardedClient percorre o X-Forwarded-For da direita para a esquerda enquanto o
+// salto anterior é proxy confiável. Entrada que não é IP invalida o header.
+func (l *AccountRateLimiter) forwardedClient(r *http.Request, remote netip.Addr) (netip.Addr, bool) {
+	hops := strings.Split(strings.Join(r.Header.Values("X-Forwarded-For"), ","), ",")
+	for i := len(hops) - 1; i >= 0 && l.isTrusted(remote); i-- {
+		hop, err := netip.ParseAddr(strings.TrimSpace(hops[i]))
+		if err != nil {
+			return netip.Addr{}, false
+		}
+		remote = hop.Unmap()
+	}
+	return remote, !l.isTrusted(remote)
+}
+
+func (l *AccountRateLimiter) isTrusted(addr netip.Addr) bool {
+	for _, prefix := range l.trusted {
+		if prefix.Contains(addr) {
+			return true
+		}
+	}
+	return false
+}
+
+// ipKey agrupa IPv6 pelo prefixo /64, que costuma ser de um só cliente, senão cada
+// endereço dele teria limite próprio.
+func ipKey(addr netip.Addr) string {
+	if addr.Is4() {
+		return addr.String()
+	}
+	return netip.PrefixFrom(addr.WithZone(""), 64).Masked().String()
 }
 
 // peekEmail lê o email do corpo JSON e devolve o corpo inteiro para o handler.

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math"
 	"net/mail"
+	"net/netip"
 	"net/url"
 	"strconv"
 	"strings"
@@ -48,6 +49,9 @@ type Config struct {
 	// RateLimitPerMinute é quantas tentativas por minuto cada IP e cada email têm nas
 	// rotas de conta (ADR-0037).
 	RateLimitPerMinute int
+	// TrustedProxies são as redes dos proxies cujo X-Forwarded-For o limite de
+	// tentativas aceita. Vazia, o limite usa só o IP da conexão.
+	TrustedProxies []netip.Prefix
 }
 
 // Default devolve a configuração usada nas variáveis não definidas.
@@ -101,6 +105,9 @@ func loadServerSettings(lookup LookupFunc, cfg *Config) error {
 	if err := readRateLimit(lookup, &cfg.RateLimitPerMinute); err != nil {
 		return err
 	}
+	if err := readTrustedProxies(lookup, &cfg.TrustedProxies); err != nil {
+		return err
+	}
 	return readPanelURL(lookup, &cfg.PanelURL)
 }
 
@@ -110,6 +117,23 @@ func readRateLimit(lookup LookupFunc, target *int) error {
 		return err
 	}
 	*target = int(limit)
+	return nil
+}
+
+// readTrustedProxies lê a lista de CIDRs separada por vírgula, ignorando itens vazios.
+func readTrustedProxies(lookup LookupFunc, target *[]netip.Prefix) error {
+	raw, _ := lookup("MARKUPP_TRUSTED_PROXIES")
+	for _, item := range strings.Split(raw, ",") {
+		item = strings.TrimSpace(item)
+		if item == "" {
+			continue
+		}
+		prefix, err := netip.ParsePrefix(item)
+		if err != nil {
+			return fmt.Errorf("MARKUPP_TRUSTED_PROXIES=%q: %q nao e CIDR; esperada lista de CIDRs IPv4 ou IPv6 separada por virgula, como 10.0.0.0/8,fd00::/8", raw, item)
+		}
+		*target = append(*target, prefix.Masked())
+	}
 	return nil
 }
 
