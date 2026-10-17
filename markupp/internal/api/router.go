@@ -8,6 +8,7 @@ import (
 // RouterDeps reúne o que o roteador expõe. As rotas de um serviço nil não são montadas.
 type RouterDeps struct {
 	Notes          NoteService
+	Graph          NoteGraph
 	Auth           AuthService
 	Admin          AdminService
 	AccountEmail   AccountEmailService
@@ -23,8 +24,8 @@ func NewRouter(d RouterDeps) chi.Router {
 	if d.Tokens == nil {
 		panic("api: Tokens obrigatorio para proteger as rotas")
 	}
-	if d.Tenants == nil && (d.Notes != nil || d.Admin != nil) {
-		panic("api: Tenants obrigatorio para as rotas de notas e de administracao")
+	if d.Tenants == nil && (d.Notes != nil || d.Graph != nil || d.Admin != nil) {
+		panic("api: Tenants obrigatorio para as rotas de notas, do grafo e de administracao")
 	}
 	r := newBaseRouter(d.Probe, d.AllowedOrigins)
 	if d.Auth != nil {
@@ -32,6 +33,9 @@ func NewRouter(d RouterDeps) chi.Router {
 	}
 	if d.Notes != nil {
 		mountProtectedNotesRoutes(r, d.Notes, d.Tokens, d.Tenants)
+	}
+	if d.Graph != nil {
+		mountProtectedGraphRoutes(r, d.Graph, d.Tokens, d.Tenants)
 	}
 	if d.Admin != nil {
 		mountAdminRoutes(r, d.Admin, d.Tokens, d.Tenants)
@@ -55,6 +59,13 @@ func mountProtectedNotesRoutes(r chi.Router, svc NoteService, tokenValidator Tok
 	r.Group(func(g chi.Router) {
 		g.Use(RequireAuth(tokenValidator), RequireTenant(tenants))
 		mountNotesRoutes(g, svc)
+	})
+}
+
+func mountProtectedGraphRoutes(r chi.Router, graph NoteGraph, tokenValidator TokenValidator, tenants TenantResolver) {
+	r.Group(func(g chi.Router) {
+		g.Use(RequireAuth(tokenValidator), RequireTenant(tenants))
+		mountNoteGraphRoutes(g, graph)
 	})
 }
 

@@ -30,12 +30,12 @@ CREATE INDEX note_links_note_idx ON note_links (note_id);
 CREATE INDEX note_links_vault_title_idx ON note_links (vault_id, title_key);
 
 -- Ligação resolvida: liga a todas as notas com o título citado, salvo o link markdown
--- cujo caminho existe, que liga só à nota daquele caminho. security_invoker faz a
--- leitura passar pelo RLS de quem consulta.
+-- cujo caminho existe, que liga só à nota daquele caminho. A nota que cita a si mesma
+-- não ganha aresta. security_invoker faz a leitura passar pelo RLS de quem consulta.
 CREATE VIEW note_edges WITH (security_invoker = true) AS
 SELECT l.note_id AS source_id, t.note_id AS target_id, l.vault_id, l.kind
 FROM note_links l
-JOIN note_titles t ON t.vault_id = l.vault_id AND t.title_key = l.title_key
+JOIN note_titles t ON t.vault_id = l.vault_id AND t.title_key = l.title_key AND t.note_id <> l.note_id
 WHERE l.target_path IS NULL
    OR EXISTS (SELECT 1 FROM notes p WHERE p.id = t.note_id AND p.path = l.target_path)
    OR NOT EXISTS (SELECT 1 FROM notes p WHERE p.vault_id = l.vault_id AND p.path = l.target_path);
