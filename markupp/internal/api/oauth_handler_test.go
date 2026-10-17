@@ -167,6 +167,16 @@ func TestAuthorize_VariosParametrosRepetidos_CitaSempreOPrimeiroEmOrdem(t *testi
 	}
 }
 
+func TestAuthorize_QueryMalformada_Retorna400SemChamarServico(t *testing.T) {
+	svc := &fakeOAuthService{}
+
+	rec := authorizeRequest(svc, "client_id=c1&state=%zz")
+
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+	assert.Contains(t, rec.Body.String(), `"error":"invalid_request"`)
+	assert.Empty(t, svc.gotParams.ClientID)
+}
+
 func TestAuthorize_ErroInterno_Retorna500(t *testing.T) {
 	rec := authorizeRequest(&fakeOAuthService{err: errors.New("banco fora")}, "client_id=c1")
 
