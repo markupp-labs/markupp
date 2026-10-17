@@ -59,8 +59,8 @@ func indexaCofreSintetico(b *testing.B, pool *pgxpool.Pool) {
 	}
 }
 
-// roteadorDoCofreSintetico monta o roteador real sobre um banco com o cofre
-// sintético inteiro, visto por um membro dele.
+// roteadorDoCofreSintetico monta o roteador real, com busca e grafo, sobre um banco
+// com o cofre sintético inteiro indexado, visto por um membro dele.
 func roteadorDoCofreSintetico(b *testing.B) http.Handler {
 	b.Helper()
 	pool := storagetest.EmptyPool(b)
@@ -71,6 +71,7 @@ func roteadorDoCofreSintetico(b *testing.B) http.Handler {
 	svc := notes.NewService(storage.NewPostgresNotesRepository(pool, "simple"), integrationMaxNoteSize)
 	return api.NewRouter(api.RouterDeps{
 		Notes:   svc,
+		Graph:   storage.NewPostgresNoteGraph(pool),
 		Tenants: &fakeTenantResolver{membership: auth.Membership{TenantID: ator.TenantID, Role: ator.Role}},
 		Tokens:  &fakeTokenValidator{claims: auth.Claims{Subject: ator.UserID}},
 		Probe:   pool,
