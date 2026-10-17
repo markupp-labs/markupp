@@ -95,8 +95,11 @@ func (s *Service) requestedResource(p AuthorizeParams) (string, error) {
 }
 
 // knownResources lista os servidores protegidos aceitos como resource, no conjunto de
-// caracteres do error_description.
+// caracteres do error_description. Sem nenhum configurado, diz isso em vez de listar.
 func (s *Service) knownResources() string {
+	if len(s.cfg.Resources) == 0 {
+		return "um servidor protegido, mas nao ha nenhum servidor protegido configurado"
+	}
 	described := make([]string, 0, len(s.cfg.Resources))
 	for _, resource := range s.cfg.Resources {
 		described = append(described, ClientValue(resource))
