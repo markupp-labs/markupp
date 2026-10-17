@@ -76,8 +76,13 @@ de senha a 5 tentativas por minuto por IP e, quando o corpo traz email, por emai
 Acima disso responde 429 com Retry-After. A variável `MARKUPP_RATE_LIMIT_PER_MINUTE`, de 1 a
 10000, troca o 5. A contagem fica na memória de cada réplica, então com N réplicas o limite
 efetivo chega a N vezes o configurado. O IP é o da conexão, e endereços IPv6 do mesmo prefixo
-/64 contam como um só. Atrás de proxy, todo cliente aparece
-com o IP do proxy e divide o mesmo limite. O componente ainda não tem opção para a variável.
+/64 contam como um só. Atrás de proxy, todo cliente aparece com o IP do proxy e divide o mesmo
+limite, a menos que a variável `MARKUPP_TRUSTED_PROXIES` liste a rede do proxy: CIDRs IPv4 ou
+IPv6 separados por vírgula, como 10.0.0.0/8,fd00::/8. Com ela, a conexão que vem de uma dessas
+redes tem o X-Forwarded-For lido da direita para a esquerda, e o IP que conta é o primeiro que
+não é proxy confiável. Header vazio ou malformado fica com o IP da conexão, e conexão de fora da
+lista nunca tem o header lido. Liste só as redes dos proxies: um CIDR que cubra clientes deixa
+qualquer um deles escolher o IP que conta. O componente ainda não tem opção para as variáveis.
 
 Sem outra opção, o componente cria um Gateway próprio nas portas 80 e 443. Em cluster onde
 outro Gateway já ocupa essas portas, como o Cilium em hostNetwork, que exige porta única por
