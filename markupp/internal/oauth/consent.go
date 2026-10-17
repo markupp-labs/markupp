@@ -12,13 +12,17 @@ import (
 )
 
 // DescribeRequest devolve o que a tela de consentimento mostra sobre um pedido pendente.
-// Pedido inexistente, expirado ou decidido sai como ErrRequestNotFound embrulhado.
+// Pedido inexistente, expirado, decidido ou cujo cliente foi apagado sai como
+// ErrRequestNotFound embrulhado.
 func (s *Service) DescribeRequest(ctx context.Context, requestID, userID string) (RequestView, error) {
 	req, err := s.repo.GetPendingRequest(ctx, requestID, s.clock())
 	if err != nil {
 		return RequestView{}, fmt.Errorf("oauth: buscando o pedido %q: %w", requestID, err)
 	}
 	client, err := s.repo.GetClient(ctx, req.ClientID)
+	if errors.Is(err, ErrClientNotFound) {
+		return RequestView{}, clientGoneErr(requestID)
+	}
 	if err != nil {
 		return RequestView{}, fmt.Errorf("oauth: buscando o cliente %q do pedido %q: %w", req.ClientID, requestID, err)
 	}
@@ -30,6 +34,12 @@ func (s *Service) DescribeRequest(ctx context.Context, requestID, userID string)
 		ID: req.ID, ClientID: client.ID, ClientName: client.Name, RedirectHost: redirectHost(req.RedirectURI),
 		Scopes: req.Scopes, AlreadyAuthorized: authorized, ExpiresAt: req.ExpiresAt.UTC().Format(time.RFC3339),
 	}, nil
+}
+
+// clientGoneErr é o erro do pedido cujo cliente foi apagado depois de criado: para a
+// conta, o pedido deixou de existir.
+func clientGoneErr(requestID string) error {
+	return fmt.Errorf("oauth: o cliente do pedido %q foi apagado: %w", requestID, ErrRequestNotFound)
 }
 
 // alreadyAuthorized diz se a Autorização ativa da conta para o cliente já cobre todos os
@@ -68,6 +78,9 @@ func (s *Service) Approve(ctx context.Context, requestID, userID string) (string
 		RequestID: requestID, UserID: userID, CodeHash: auth.HashOpaqueToken(code),
 		CodeExpiresAt: now.Add(s.cfg.CodeTTL), DecidedAt: now,
 	})
+	if errors.Is(err, ErrClientNotFound) {
+		return "", clientGoneErr(requestID)
+	}
 	if err != nil {
 		return "", fmt.Errorf("oauth: aprovando o pedido %q: %w", requestID, err)
 	}
