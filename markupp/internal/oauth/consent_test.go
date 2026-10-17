@@ -54,6 +54,18 @@ func TestDescribeRequest_PedidoPendente_DevolveVisaoDoConsentimento(t *testing.T
 	assert.Equal(t, []time.Time{testNow}, repo.pendingNow)
 }
 
+func TestDescribeRequest_RedirectComPorta_RedirectHostMantemAPorta(t *testing.T) {
+	repo := testRepositoryWithPendingRequest()
+	req := pendingTestRequest()
+	req.RedirectURI = "http://127.0.0.1:53682/callback"
+	repo.requests["pedido-9"] = req
+
+	view, err := newTestService(repo).DescribeRequest(context.Background(), "pedido-9", testUserID)
+
+	require.NoError(t, err)
+	assert.Equal(t, "127.0.0.1:53682", view.RedirectHost)
+}
+
 func TestDescribeRequest_AutorizacaoAtiva_MarcaJaAutorizadoSeCobreOsEscopos(t *testing.T) {
 	casos := map[string]struct {
 		concedidos []string
