@@ -60,7 +60,9 @@ func indexaCofreSintetico(b *testing.B, pool *pgxpool.Pool) {
 }
 
 // roteadorDoCofreSintetico monta o roteador real, com busca e grafo, sobre um banco
-// com o cofre sintético inteiro indexado, visto por um membro dele.
+// com o cofre sintético inteiro indexado e analisado, visto por um membro dele. Sem
+// ANALYZE o planejador não conhece a carga recém-feita e escolhe laços aninhados que
+// o autovacuum de uma instalação real já teria evitado.
 func roteadorDoCofreSintetico(b *testing.B) http.Handler {
 	b.Helper()
 	pool := storagetest.EmptyPool(b)
@@ -68,6 +70,8 @@ func roteadorDoCofreSintetico(b *testing.B) http.Handler {
 	ator := identity.Actor{UserID: "u-bench", TenantID: "t-bench", Role: "member"}
 	storagetest.SeedVault(b, pool, ator, "cofre-bench", benchfixture.GenerateVault(benchfixture.VaultSeed, benchfixture.VaultSize))
 	indexaCofreSintetico(b, pool)
+	_, err := pool.Exec(context.Background(), "ANALYZE")
+	require.NoError(b, err, "estatisticas da carga, como o autovacuum deixaria")
 	svc := notes.NewService(storage.NewPostgresNotesRepository(pool, "simple"), integrationMaxNoteSize)
 	return api.NewRouter(api.RouterDeps{
 		Notes:   svc,
