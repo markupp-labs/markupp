@@ -39,6 +39,7 @@ class MarkuppApi
   class RoleAboveOwn < Forbidden; end
 
   # Sem eles valem os 60s do Net::HTTP, e a trava de renovação do RefreshingMarkuppApi fica presa esse tempo todo.
+  # Sem repetição (max_retries 0): o Net::HTTP repetiria GET, PUT e DELETE e dobraria a espera.
   OPEN_TIMEOUT = 2
   READ_TIMEOUT = 10
   NETWORK_ERRORS = [ SystemCallError, SocketError, Net::OpenTimeout, Net::ReadTimeout ].freeze
@@ -79,7 +80,8 @@ class MarkuppApi
   private
     def request(verb, path, body = nil)
       uri = URI.join(@base_url, path)
-      response = Net::HTTP.start(uri.host, uri.port, use_ssl: uri.scheme == "https", open_timeout: OPEN_TIMEOUT, read_timeout: @read_timeout) do |http|
+      response = Net::HTTP.start(uri.host, uri.port, use_ssl: uri.scheme == "https",
+                                 open_timeout: OPEN_TIMEOUT, read_timeout: @read_timeout, max_retries: 0) do |http|
         http.request(build_request(verb, uri, body))
       end
       parse_response(response, "#{verb::METHOD} #{path}")
