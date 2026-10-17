@@ -14,6 +14,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/api"
@@ -23,6 +24,7 @@ import (
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/indexing"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/notes"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/notify"
+	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/oauth"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/storage"
 )
 
@@ -187,8 +189,43 @@ func newHandler(cfg config.Config, pool *pgxpool.Pool, logger *slog.Logger) http
 	return api.NewRouter(api.RouterDeps{
 		Notes: notesSvc, Auth: authSvc, Admin: adminSvc, AccountEmail: accountEmail,
 		Tokens: codec, Tenants: authSvc, Probe: pool, AllowedOrigins: cfg.AllowedOrigins,
-		OAuthMetadata: oauthMetadataFrom(cfg),
+		OAuthMetadata: oauthMetadataFrom(cfg), OAuth: newOAuthService(cfg, pool),
 	})
+}
+
+// newOAuthService monta o authorization server só com o OAuth ligado. Devolve nil de
+// interface, e não um *oauth.Service nil, para o roteador não montar as rotas.
+func newOAuthService(cfg config.Config, pool *pgxpool.Pool) api.OAuthService {
+	if !cfg.OAuthEnabled() {
+		return nil
+	}
+	repo := storage.NewPostgresOAuthRepository(pool)
+	return oauth.NewService(repo, oauthServiceConfigFrom(cfg), time.Now, uuid.NewString, newOAuthToken)
+}
+
+// newOAuthToken gera os tokens opacos do OAuth. A leitura de crypto/rand não falha num
+// sistema saudável, então a falha derruba o processo em vez de emitir token fraco.
+func newOAuthToken() string {
+	token, err := auth.NewOpaqueToken()
+	if err != nil {
+		panic(fmt.Sprintf("oauth: gerar token opaco: %v", err))
+	}
+	return token
+}
+
+// oauthServiceConfigFrom traduz a config do processo para o serviço OAuth.
+func oauthServiceConfigFrom(cfg config.Config) oauth.ServiceConfig {
+	resources := make([]string, 0, len(cfg.OAuthResources))
+	for _, resource := range cfg.OAuthResources {
+		resources = append(resources, resource.URL)
+	}
+	return oauth.ServiceConfig{
+		Issuer: cfg.PublicURL, PanelURL: cfg.PanelURL, Resources: resources,
+		AccessTTL:  time.Duration(cfg.OAuthAccessMinutes) * time.Minute,
+		RefreshTTL: time.Duration(cfg.OAuthRefreshDays) * 24 * time.Hour,
+		RequestTTL: time.Duration(cfg.OAuthRequestMinutes) * time.Minute,
+		CodeTTL:    time.Duration(cfg.OAuthCodeSeconds) * time.Second,
+	}
 }
 
 // oauthMetadataFrom publica a metadata do authorization server só quando a
