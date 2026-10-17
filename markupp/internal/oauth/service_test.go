@@ -71,7 +71,8 @@ func testRepositoryWithClient() *fakeOAuthRepository {
 	return repo
 }
 
-// requireProtocolError confere o código e o destino do erro de protocolo.
+// requireProtocolError confere o código e o destino do erro de protocolo, e que a
+// descrição diz o formato esperado.
 func requireProtocolError(t *testing.T, err error, code, redirectURI, state string) {
 	t.Helper()
 	var protocolErr *oauth.ProtocolError
@@ -79,6 +80,7 @@ func requireProtocolError(t *testing.T, err error, code, redirectURI, state stri
 	assert.Equal(t, code, protocolErr.Code)
 	assert.Equal(t, redirectURI, protocolErr.RedirectURI)
 	assert.Equal(t, state, protocolErr.State)
+	assert.Contains(t, protocolErr.Description, "; esperad", "a descrição deve dizer o formato esperado")
 }
 
 // requireNotProtocolError confere que a falha de infraestrutura não virou erro de protocolo.
