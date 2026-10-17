@@ -167,3 +167,17 @@ func TestStartAuthorization_ValorRecebidoNaDescricao_FicaNoConjuntoDaRFC6749(t *
 		assert.True(t, c >= 0x20 && c <= 0x7e && c != '"' && c != '\\', "caractere %q fora do error_description permitido", c)
 	}
 }
+
+func TestStartAuthorization_SemResourcesConfigurados_DescricaoCompleta(t *testing.T) {
+	cfg := testServiceConfig()
+	cfg.Resources = nil
+	service := oauth.NewService(testRepositoryWithClient(), cfg, func() time.Time { return testNow }, nil, nil)
+
+	_, err := service.StartAuthorization(context.Background(), validAuthorizeParams())
+
+	var protocolErr *oauth.ProtocolError
+	require.True(t, errors.As(err, &protocolErr))
+	assert.Equal(t, "invalid_target", protocolErr.Code)
+	assert.NotContains(t, protocolErr.Description, "um de ")
+	assert.Contains(t, protocolErr.Description, "nenhum servidor protegido configurado")
+}
