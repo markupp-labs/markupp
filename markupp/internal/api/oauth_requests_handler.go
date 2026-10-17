@@ -88,5 +88,5 @@ func writeOAuthRequestError(w http.ResponseWriter, operation string, err error) 
 		writeError(w, "request_not_found", "pedido de autorizacao inexistente, vencido ou ja decidido", http.StatusNotFound)
 		return
 	}
-	writeInternal(w, operation, err)
+	writeOAuthInternal(w, operation, err)
 }

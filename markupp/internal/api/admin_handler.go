@@ -179,6 +179,12 @@ func toInviteResponse(inv auth.Invite) inviteResponse {
 }
 
 func writeInternal(w http.ResponseWriter, operation string, err error) {
-	slog.Error("falha na administracao", "operacao", operation, "error", err)
+	writeLoggedInternal(w, "falha na administracao", operation, err)
+}
+
+// writeLoggedInternal registra a falha com a mensagem da área e responde 500 sem expor
+// a causa ao cliente.
+func writeLoggedInternal(w http.ResponseWriter, message, operation string, err error) {
+	slog.Error(message, "operacao", operation, "error", err)
 	writeError(w, "internal", "erro interno", http.StatusInternalServerError)
 }

@@ -93,7 +93,7 @@ func authorizeParamsFrom(query url.Values) oauth.AuthorizeParams {
 func (h *oauthHandler) writeAuthorizeError(w http.ResponseWriter, r *http.Request, err error) {
 	var protoErr *oauth.ProtocolError
 	if !errors.As(err, &protoErr) {
-		writeInternal(w, "iniciar autorizacao oauth", err)
+		writeOAuthInternal(w, "iniciar autorizacao oauth", err)
 		return
 	}
 	if protoErr.RedirectURI == "" {
@@ -166,7 +166,7 @@ func writeTokenError(w http.ResponseWriter, err error) {
 		writeOAuthError(w, protoErr)
 		return
 	}
-	writeInternal(w, "trocar codigo oauth", err)
+	writeOAuthInternal(w, "trocar codigo oauth", err)
 }
 
 // rejectRepeatedParam recusa parâmetro enviado mais de uma vez (RFC 6749, seção 3.1),
@@ -182,6 +182,10 @@ func rejectRepeatedParam(values url.Values) *oauth.ProtocolError {
 
 func invalidRequest(description string) *oauth.ProtocolError {
 	return &oauth.ProtocolError{Code: "invalid_request", Description: description}
+}
+
+func writeOAuthInternal(w http.ResponseWriter, operation string, err error) {
+	writeLoggedInternal(w, "falha no oauth", operation, err)
 }
 
 func writeOAuthError(w http.ResponseWriter, e *oauth.ProtocolError) {
