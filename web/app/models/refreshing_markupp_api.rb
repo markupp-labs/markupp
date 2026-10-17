@@ -3,6 +3,8 @@
 # A API rotaciona o refresh a cada uso e, se um refresh usado voltar, derruba todas as sessões da conta. Por isso
 # requisições simultâneas com o mesmo refresh renovam uma vez só: a trava é pelo digest do refresh e o par novo
 # fica em renewed_pairs por RENEWED_PAIR_TTL, também pelo digest, para a requisição que chega depois reaproveitar.
+# O par vai cifrado e com a validade dentro da mensagem: quem lê o cache não vê token, e valor adulterado, de outra
+# chave ou vencido é ignorado, como se não houvesse memo.
 class RefreshingMarkuppApi
   RENEWED_PAIR_TTL = 30.seconds
   # ponytail: travas do processo, valem para as threads do Puma; com mais de um processo ou réplica,
@@ -11,9 +13,17 @@ class RefreshingMarkuppApi
   # esperam umas pelas outras, até o read_timeout padrão do Net::HTTP (60s), já que o MarkuppApi não define timeout.
   RENEWAL_LOCKS = Array.new(64) { Mutex.new }
 
+  PAIR_KEY_SALT = "panel/renewed_pair"
+
   def initialize(credential, renewed_pairs: Rails.cache)
     @credential = credential
     @renewed_pairs = renewed_pairs
+  end
+
+  # key_generator do Rails guarda a chave derivada: não refaz o PBKDF2 a cada requisição.
+  def self.pair_encryptor
+    key = Rails.application.key_generator.generate_key(PAIR_KEY_SALT, ActiveSupport::MessageEncryptor.key_len)
+    ActiveSupport::MessageEncryptor.new(key)
   end
 
   def get(path) = with_fresh_token("GET #{path}") { it.get(path) }
@@ -45,10 +55,22 @@ class RefreshingMarkuppApi
     # Só o digest vira chave: o refresh cru não vai para o cache nem para o log do cache.
     def renewed_pair(refresh_token)
       digest = Digest::SHA256.hexdigest(refresh_token.to_s)
+      key = "panel/renewed_pair/#{digest}"
       RENEWAL_LOCKS[digest.hex % RENEWAL_LOCKS.size].synchronize do
-        @renewed_pairs.fetch("panel/renewed_pair/#{digest}", expires_in: RENEWED_PAIR_TTL) do
-          @credential.public_api.post("/auth/refresh", refresh_token:)
-        end
+        remembered_pair(key) || remember_pair(key, @credential.public_api.post("/auth/refresh", refresh_token:))
       end
+    end
+
+    def remembered_pair(key)
+      sealed = @renewed_pairs.read(key)
+      self.class.pair_encryptor.decrypt_and_verify(sealed, purpose: key) if sealed.is_a?(String)
+    rescue ActiveSupport::MessageEncryptor::InvalidMessage
+      nil
+    end
+
+    def remember_pair(key, pair)
+      sealed = self.class.pair_encryptor.encrypt_and_sign(pair, purpose: key, expires_in: RENEWED_PAIR_TTL)
+      @renewed_pairs.write(key, sealed, expires_in: RENEWED_PAIR_TTL)
+      pair
     end
 end
