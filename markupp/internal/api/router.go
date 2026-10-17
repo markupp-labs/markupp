@@ -16,11 +16,13 @@ type RouterDeps struct {
 	Probe          StorageProbe
 	AllowedOrigins []string
 	OAuthMetadata  *OAuthMetadata
+	OAuth          OAuthService
 }
 
 // NewRouter monta o roteador com sonda, rotas de autenticação, de notas e de
 // administração, servidas sob /v1 e, durante a transição do ADR-0026, também sem
-// prefixo e marcadas como obsoletas.
+// prefixo e marcadas como obsoletas. As rotas do authorization server OAuth que os
+// clientes acessam ficam na raiz, sem versão.
 func NewRouter(d RouterDeps) chi.Router {
 	if d.Tokens == nil {
 		panic("api: Tokens obrigatorio para proteger as rotas")
@@ -28,14 +30,15 @@ func NewRouter(d RouterDeps) chi.Router {
 	if d.Tenants == nil && (d.Notes != nil || d.Admin != nil) {
 		panic("api: Tenants obrigatorio para as rotas de notas e de administracao")
 	}
+	if d.OAuth != nil && d.OAuthMetadata == nil {
+		panic("api: OAuthMetadata obrigatorio para as rotas OAuth, que usam o Issuer")
+	}
 	routes := newVersionRoutes(d)
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
 	r.Use(middleware.Recoverer)
 	r.Use(allowOrigins(d.AllowedOrigins))
-	if d.OAuthMetadata != nil {
-		r.Get(oauthMetadataPath, oauthMetadataHandler(*d.OAuthMetadata))
-	}
+	mountOAuthServerRoutes(r, d)
 	r.Mount(currentVersionPrefix, routes)
 	r.Mount("/", markDeprecated(routes))
 	return r
@@ -55,6 +58,9 @@ func newVersionRoutes(d RouterDeps) chi.Router {
 	}
 	if d.AccountEmail != nil {
 		mountAccountEmailRoutes(r, d.AccountEmail, d.Tokens)
+	}
+	if d.OAuth != nil {
+		mountOAuthRequestRoutes(r, d.OAuth, d.Tokens)
 	}
 	return r
 }
