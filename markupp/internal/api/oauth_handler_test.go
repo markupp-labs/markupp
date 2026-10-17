@@ -159,6 +159,14 @@ func TestAuthorize_ParametroRepetido_Retorna400SemChamarServico(t *testing.T) {
 	assert.Empty(t, svc.gotParams.ClientID)
 }
 
+func TestAuthorize_VariosParametrosRepetidos_CitaSempreOPrimeiroEmOrdem(t *testing.T) {
+	for range 20 {
+		rec := authorizeRequest(&fakeOAuthService{}, "state=a&state=b&scope=x&scope=y&client_id=1&client_id=2&resource=r&resource=s")
+
+		assert.Contains(t, rec.Body.String(), `\"client_id\"`)
+	}
+}
+
 func TestAuthorize_ErroInterno_Retorna500(t *testing.T) {
 	rec := authorizeRequest(&fakeOAuthService{err: errors.New("banco fora")}, "client_id=c1")
 
