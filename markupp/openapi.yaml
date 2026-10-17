@@ -574,14 +574,14 @@ paths:
     get:
       summary: Busca notas por texto no índice léxico
       description: |
-        Busca por palavras no título (o nome do arquivo sem extensão) e no conteúdo das
-        notas, com a sintaxe de busca web do PostgreSQL: termos soltos exigem todos,
+        Busca por palavras no título (o nome do arquivo sem extensão, mais os aliases do
+        frontmatter) e no conteúdo das notas, com a sintaxe de busca web do PostgreSQL: termos soltos exigem todos,
         aspas pedem a frase, OR aceita qualquer um dos lados e -termo exclui. Não é busca
         por substring, e % e _ não são curinga. A configuração de texto é a do
         indexador (MARKUPP_SEARCH_CONFIG).
 
-        O resultado vem do mais relevante para o menos, com o título pesando mais que o
-        conteúdo, e desempate pelo id. Só aparecem notas já indexadas: a nota recém
+        O resultado vem do mais relevante para o menos, com o título e os aliases pesando
+        mais que o conteúdo, e desempate pelo id. Só aparecem notas já indexadas: a nota recém
         escrita entra na busca quando o indexador processa o cofre dela. Consulta sem
         palavra buscável, como só stopwords, devolve lista vazia. O resultado não
         carrega o conteúdo da nota, só um trecho dele.
@@ -593,24 +593,8 @@ paths:
           schema:
             type: string
           description: Consulta na sintaxe de websearch_to_tsquery, como `"frase exata" OR termo -excluido`
-        - name: offset
-          in: query
-          required: false
-          schema:
-            type: integer
-            default: 0
-            minimum: 0
-            maximum: 10000
-          description: Quantos resultados pular. Valor fora da faixa é ajustado para o limite.
-        - name: limit
-          in: query
-          required: false
-          schema:
-            type: integer
-            default: 10
-            minimum: 1
-            maximum: 100
-          description: Quantos resultados devolver. Valor fora da faixa é ajustado para o limite.
+        - $ref: '#/components/parameters/PageOffset'
+        - $ref: '#/components/parameters/PageLimit'
       responses:
         '401':
           $ref: '#/components/responses/Unauthorized'
@@ -769,6 +753,182 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /notes/{id}/backlinks:
+    get:
+      summary: Lista as notas que ligam a esta
+      description: |
+        Notas do mesmo cofre com ligação para esta, ordenadas por caminho, sem o
+        conteúdo. O viewer também lê.
+
+        Uma ligação é um wikilink ([[Título]], [[Título|apelido]], [[Título#Seção]],
+        [[Título^bloco]]), um embed (![[...]], anexos inclusive) ou um link markdown para
+        um arquivo .md, escritos fora de bloco e de trecho de código. Âncora de seção e
+        de bloco é descartada, e [[#Seção]] não é ligação. A ligação cita um título e
+        liga a todas as notas do mesmo cofre com esse título: o último segmento do
+        caminho sem .md, ou um dos aliases do frontmatter, sem diferença de caixa nem de
+        forma Unicode, mas com diferença de acento. O link markdown resolve pelo
+        caminho, relativo à pasta da nota ou à raiz do cofre se começar com /; sem nota
+        nesse caminho, vale o título do último segmento. A nota que cita a si mesma não
+        conta. A resolução é feita na leitura, então renomear ou apagar uma nota muda as
+        ligações das outras na hora; o que a própria nota cita só muda quando o
+        indexador processa o cofre dela. Ligação para outro cofre é sempre não
+        resolvida.
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+        - $ref: '#/components/parameters/NoteID'
+        - $ref: '#/components/parameters/PageOffset'
+        - $ref: '#/components/parameters/PageLimit'
+      responses:
+        '200':
+          description: Lista, vazia quando não há nenhum item
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LinkedNoteResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '400':
+          description: offset ou limit não inteiros
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Nota inexistente ou fora dos cofres do usuário (not_found)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Erro interno do servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /notes/{id}/neighbors:
+    get:
+      summary: Lista as notas ligadas a esta em qualquer sentido
+      description: |
+        Vizinhança de raio 1: as notas que ligam a esta e as notas a que esta liga, uma
+        vez cada, ordenadas por caminho, com o sentido da ligação. A resolução segue as regras de GET /notes/{id}/backlinks. O viewer também lê.
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+        - $ref: '#/components/parameters/NoteID'
+        - $ref: '#/components/parameters/PageOffset'
+        - $ref: '#/components/parameters/PageLimit'
+      responses:
+        '200':
+          description: Lista, vazia quando não há nenhum item
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/NeighborResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '400':
+          description: offset ou limit não inteiros
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Nota inexistente ou fora dos cofres do usuário (not_found)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Erro interno do servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /vaults/{id}/orphans:
+    get:
+      summary: Lista as notas órfãs do cofre
+      description: |
+        Notas do cofre sem nenhuma ligação, nem de entrada nem de saída, ordenadas por
+        caminho. Ligação não resolvida não tira a nota da lista. Só aparecem notas já
+        indexadas. A resolução segue as regras de GET /notes/{id}/backlinks. O viewer também lê.
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+        - $ref: '#/components/parameters/VaultID'
+        - $ref: '#/components/parameters/PageOffset'
+        - $ref: '#/components/parameters/PageLimit'
+      responses:
+        '200':
+          description: Lista, vazia quando não há nenhum item
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LinkedNoteResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '400':
+          description: offset ou limit não inteiros
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Cofre inexistente ou de que o usuário não é membro (vault_forbidden)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Erro interno do servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /vaults/{id}/unresolved-links:
+    get:
+      summary: Lista as ligações não resolvidas do cofre
+      description: |
+        Ligações para títulos que nenhuma nota do cofre tem, ordenadas pelo caminho da
+        nota que liga, com o título como escrito. Embed de anexo sem nota com aquele
+        título entra aqui. A resolução segue as regras de GET /notes/{id}/backlinks. O viewer também lê.
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+        - $ref: '#/components/parameters/VaultID'
+        - $ref: '#/components/parameters/PageOffset'
+        - $ref: '#/components/parameters/PageLimit'
+      responses:
+        '200':
+          description: Lista, vazia quando não há nenhum item
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UnresolvedLinkResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '400':
+          description: offset ou limit não inteiros
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Cofre inexistente ou de que o usuário não é membro (vault_forbidden)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Erro interno do servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /healthz:
     get:
       security: []
@@ -789,6 +949,40 @@ paths:
                 $ref: '#/components/schemas/HealthResponse'
 components:
   parameters:
+    PageOffset:
+      name: offset
+      in: query
+      required: false
+      schema:
+        type: integer
+        default: 0
+        minimum: 0
+        maximum: 10000
+      description: Quantos resultados pular. Valor fora da faixa é ajustado para o limite.
+    PageLimit:
+      name: limit
+      in: query
+      required: false
+      schema:
+        type: integer
+        default: 10
+        minimum: 1
+        maximum: 100
+      description: Quantos resultados devolver. Valor fora da faixa é ajustado para o limite.
+    NoteID:
+      name: id
+      in: path
+      required: true
+      description: Identificador único da nota
+      schema:
+        type: string
+    VaultID:
+      name: id
+      in: path
+      required: true
+      description: Identificador do cofre
+      schema:
+        type: string
     TenantHeader:
       name: X-Markupp-Tenant
       in: header
@@ -1011,7 +1205,10 @@ components:
           example: "3b241101-e2bb-4255-8caf-4136c566a962"
         path:
           type: string
-          description: Caminho/identificador do arquivo de nota
+          description: >-
+            Caminho/identificador do arquivo de nota. O último segmento sem a extensão .md
+            é o título da nota e não pode ficar vazio: pasta/.md é recusado com
+            invalid_path, e a mensagem traz o caminho.
           example: "notas/meeting.md"
         content:
           type: string
@@ -1026,7 +1223,10 @@ components:
       properties:
         path:
           type: string
-          description: Caminho/identificador do arquivo de nota
+          description: >-
+            Caminho/identificador do arquivo de nota. O último segmento sem a extensão .md
+            é o título da nota e não pode ficar vazio: pasta/.md é recusado com
+            invalid_path, e a mensagem traz o caminho.
           example: "notas/meeting.md"
         content:
           type: string
@@ -1111,6 +1311,51 @@ components:
             O cliente deve escapar o texto e só então trocar os marcadores pelo
             destaque que preferir.
           example: "reunião sobre o \u0002kubernetes\u0003 do cluster novo"
+    LinkedNoteResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Identificador único da nota
+        vault_id:
+          type: string
+          description: Cofre da nota
+        path:
+          type: string
+          description: Caminho da nota
+          example: "notas/meeting.md"
+        updated_at:
+          type: string
+          format: date-time
+          description: Data da última atualização da nota
+    NeighborResponse:
+      allOf:
+        - $ref: '#/components/schemas/LinkedNoteResponse'
+        - type: object
+          properties:
+            incoming:
+              type: boolean
+              description: A vizinha liga a esta nota
+            outgoing:
+              type: boolean
+              description: Esta nota liga à vizinha
+    UnresolvedLinkResponse:
+      type: object
+      properties:
+        note_id:
+          type: string
+          description: Nota que faz a ligação
+        path:
+          type: string
+          description: Caminho da nota que faz a ligação
+        title:
+          type: string
+          description: Título citado, como escrito na nota
+          example: "Reunião Semanal"
+        kind:
+          type: string
+          enum: [explicit, embed]
+          description: explicit para wikilink e link markdown, embed para ![[...]]
     HealthResponse:
       type: object
       properties:
