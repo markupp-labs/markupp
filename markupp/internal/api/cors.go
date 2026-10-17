@@ -52,6 +52,10 @@ func allowAnyOrigin(w http.ResponseWriter) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 }
 
+// mcpProtocolVersionHeader é o cabeçalho que clientes MCP de navegador mandam já na
+// descoberta do authorization server.
+const mcpProtocolVersionHeader = "MCP-Protocol-Version"
+
 // openPreflight responde o preflight de uma rota pública do authorization server com
 // CORS aberto, liberando o método da rota, OPTIONS e os cabeçalhos dados.
 func openPreflight(method, headers string) http.HandlerFunc {

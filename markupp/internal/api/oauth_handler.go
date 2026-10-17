@@ -51,6 +51,7 @@ func mountOAuthServerRoutes(r chi.Router, d RouterDeps) {
 	}
 	r.Route(oauthMetadataPath, func(m chi.Router) {
 		m.Get("/", oauthMetadataHandler(*d.OAuthMetadata))
+		m.Options("/", openPreflight(http.MethodGet, "Content-Type, "+mcpProtocolVersionHeader))
 	})
 	if d.OAuth == nil {
 		return
