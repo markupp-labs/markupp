@@ -66,7 +66,43 @@ class RefreshingMarkuppApiTest < ActiveSupport::TestCase
     assert renewed_pairs.exist?("panel/renewed_pair/#{Digest::SHA256.hexdigest("refresh-1")}")
   end
 
+  test "the renewed pair goes to the cache sealed, with no token in plain text" do
+    renewed_pairs = ActiveSupport::Cache::MemoryStore.new
+    travel 901.seconds
+
+    RefreshingMarkuppApi.new(@credential, renewed_pairs:).get("/notes")
+
+    sealed = renewed_pairs.read(renewed_pair_key("refresh-1")).to_s
+    [ "access-1", "refresh-1", "access-2", "refresh-2" ].each { assert_not_includes sealed, it }
+  end
+
+  test "a forged or corrupted value in the cache is ignored and the token is renewed" do
+    renewed_pairs = CacheWithoutExpiry.new
+    forged_pair = { "access_token" => "forged", "refresh_token" => "forged", "expires_in" => 900 }
+
+    [ forged_pair, "Zm9yZ2Vk--Zm9yZ2Vk--Zm9yZ2Vk" ].each.with_index(2) do |value, generation|
+      renewed_pairs.write(renewed_pair_key(@credential.refresh_token), value)
+      travel 901.seconds
+      renew_and_list_notes(@credential, renewed_pairs)
+      assert_equal "refresh-#{generation}", @credential.refresh_token
+    end
+  end
+
+  test "a remembered pair past its embedded expiry is ignored even if the cache still holds it" do
+    renewed_pairs = CacheWithoutExpiry.new
+    twin = PanelCredential.new(ActionController::TestSession.new(@session.to_hash), ->(**credentials) { @fake_api.as(**credentials) })
+    travel 901.seconds
+    RefreshingMarkuppApi.new(@credential, renewed_pairs:).get("/notes")
+
+    travel RefreshingMarkuppApi::RENEWED_PAIR_TTL + 1.second
+    renew_and_list_notes(twin, renewed_pairs)
+
+    assert_equal 2, @fake_api.received_credentials.count { it[:call] == "POST /auth/refresh" }
+    assert_not_equal "refresh-2", twin.refresh_token
+  end
+
   private
+    def renewed_pair_key(refresh_token) = "panel/renewed_pair/#{Digest::SHA256.hexdigest(refresh_token)}"
     # A segunda renovação com o refresh já usado é recusada; o teste confere a contagem de chamadas, não a exceção.
     def renew_and_list_notes(credential, renewed_pairs)
       RefreshingMarkuppApi.new(credential, renewed_pairs:).get("/notes")
