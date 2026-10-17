@@ -69,7 +69,11 @@ func (r *PostgresOAuthRepository) GetPendingRequest(ctx context.Context, id stri
 }
 
 // ApproveRequest decide o pedido, cria ou amplia a Autorização e audita, numa transação.
+// Recusa sem gravar nada a aprovação sem hash de código.
 func (r *PostgresOAuthRepository) ApproveRequest(ctx context.Context, a oauth.Approval) (oauth.AuthorizationRequest, error) {
+	if a.CodeHash == "" {
+		return oauth.AuthorizationRequest{}, errors.New(`aprovar pedido de autorização: code_hash "" vazio, esperado o hash do código emitido`)
+	}
 	var row gen.OauthRequest
 	err := inTx(ctx, r.pool, func(qtx *gen.Queries) error {
 		var err error
