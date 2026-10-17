@@ -108,46 +108,24 @@ func (r *PostgresOAuthRepository) DenyRequest(ctx context.Context, d oauth.Denia
 	return toAuthorizationRequest(row), nil
 }
 
-// grantScopes amplia a Autorização ativa da conta para o cliente com os escopos do
-// pedido, ou a cria. A trava na linha serializa aprovações concorrentes do mesmo par.
+// grantScopes cria a Autorização ativa da conta para o cliente com os escopos do pedido,
+// ou amplia a existente com eles, num upsert atômico.
 func grantScopes(ctx context.Context, qtx *gen.Queries, req gen.OauthRequest, at time.Time) error {
-	userID := req.UserID.String
-	current, err := qtx.LockActiveOAuthAuthorization(ctx, gen.LockActiveOAuthAuthorizationParams{UserID: userID, ClientID: req.ClientID})
-	if errors.Is(err, pgx.ErrNoRows) {
-		return createAuthorization(ctx, qtx, req, at)
-	}
-	if err != nil {
-		return fmt.Errorf("travar autorização de %q para %q: %w", userID, req.ClientID, err)
-	}
-	err = qtx.UpdateOAuthAuthorizationScopes(ctx, gen.UpdateOAuthAuthorizationScopesParams{
-		ID: current.ID, Scopes: unionScopes(current.Scopes, req.Scopes), UpdatedAt: at,
-	})
-	if err != nil {
-		return fmt.Errorf("ampliar escopos da autorização %q: %w", current.ID, err)
-	}
-	return nil
-}
-
-func createAuthorization(ctx context.Context, qtx *gen.Queries, req gen.OauthRequest, at time.Time) error {
-	err := qtx.CreateOAuthAuthorization(ctx, gen.CreateOAuthAuthorizationParams{
+	err := qtx.UpsertOAuthAuthorization(ctx, gen.UpsertOAuthAuthorizationParams{
 		ID: uuid.NewString(), UserID: req.UserID.String, ClientID: req.ClientID,
-		Scopes: unionScopes(nil, req.Scopes), CreatedAt: at,
+		Scopes: orderedScopes(req.Scopes), At: at, Supported: oauth.SupportedScopes(),
 	})
 	if err != nil {
-		return fmt.Errorf("criar autorização de %q para %q: %w", req.UserID.String, req.ClientID, err)
+		return fmt.Errorf("conceder escopos de %q para %q: %w", req.UserID.String, req.ClientID, err)
 	}
 	return nil
 }
 
-// unionScopes soma os escopos na ordem de oauth.SupportedScopes, sem repetir.
-func unionScopes(a, b []string) []string {
-	out := make([]string, 0, len(a)+len(b))
-	for _, scope := range oauth.SupportedScopes() {
-		if slices.Contains(a, scope) || slices.Contains(b, scope) {
-			out = append(out, scope)
-		}
-	}
-	return out
+// orderedScopes devolve os escopos na ordem de oauth.SupportedScopes, sem repetir.
+func orderedScopes(scopes []string) []string {
+	return slices.DeleteFunc(oauth.SupportedScopes(), func(scope string) bool {
+		return !slices.Contains(scopes, scope)
+	})
 }
 
 func authorizeEvent(req gen.OauthRequest, result string, at time.Time) gen.CreateAuditEventParams {

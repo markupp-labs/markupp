@@ -56,30 +56,6 @@ func (q *Queries) ApproveOAuthRequest(ctx context.Context, arg ApproveOAuthReque
 	return i, err
 }
 
-const createOAuthAuthorization = `-- name: CreateOAuthAuthorization :exec
-INSERT INTO oauth_authorizations (id, user_id, client_id, scopes, created_at, updated_at)
-VALUES ($1, $2, $3, $4, $5, $5)
-`
-
-type CreateOAuthAuthorizationParams struct {
-	ID        string
-	UserID    string
-	ClientID  string
-	Scopes    []string
-	CreatedAt time.Time
-}
-
-func (q *Queries) CreateOAuthAuthorization(ctx context.Context, arg CreateOAuthAuthorizationParams) error {
-	_, err := q.db.Exec(ctx, createOAuthAuthorization,
-		arg.ID,
-		arg.UserID,
-		arg.ClientID,
-		arg.Scopes,
-		arg.CreatedAt,
-	)
-	return err
-}
-
 const createOAuthRequest = `-- name: CreateOAuthRequest :exec
 INSERT INTO oauth_requests (id, client_id, redirect_uri, scopes, resource, state, code_challenge, created_at, expires_at)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
@@ -249,32 +225,6 @@ func (q *Queries) GetPendingOAuthRequest(ctx context.Context, arg GetPendingOAut
 	return i, err
 }
 
-const lockActiveOAuthAuthorization = `-- name: LockActiveOAuthAuthorization :one
-SELECT id, user_id, client_id, scopes, created_at, updated_at, revoked_at FROM oauth_authorizations WHERE user_id = $1 AND client_id = $2 AND revoked_at IS NULL
-FOR UPDATE
-`
-
-type LockActiveOAuthAuthorizationParams struct {
-	UserID   string
-	ClientID string
-}
-
-// A trava serializa as aprovações da mesma conta para o mesmo cliente.
-func (q *Queries) LockActiveOAuthAuthorization(ctx context.Context, arg LockActiveOAuthAuthorizationParams) (OauthAuthorization, error) {
-	row := q.db.QueryRow(ctx, lockActiveOAuthAuthorization, arg.UserID, arg.ClientID)
-	var i OauthAuthorization
-	err := row.Scan(
-		&i.ID,
-		&i.UserID,
-		&i.ClientID,
-		&i.Scopes,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-		&i.RevokedAt,
-	)
-	return i, err
-}
-
 const redeemOAuthCode = `-- name: RedeemOAuthCode :one
 UPDATE oauth_requests SET code_used_at = $1::TIMESTAMPTZ
 WHERE code_hash = $2::TEXT AND code_used_at IS NULL AND code_expires_at > $1::TIMESTAMPTZ
@@ -343,17 +293,37 @@ func (q *Queries) SaveOAuthToken(ctx context.Context, arg SaveOAuthTokenParams) 
 	return err
 }
 
-const updateOAuthAuthorizationScopes = `-- name: UpdateOAuthAuthorizationScopes :exec
-UPDATE oauth_authorizations SET scopes = $2, updated_at = $3 WHERE id = $1
+const upsertOAuthAuthorization = `-- name: UpsertOAuthAuthorization :exec
+INSERT INTO oauth_authorizations (id, user_id, client_id, scopes, created_at, updated_at)
+VALUES ($1, $2, $3, $4, $5, $5)
+ON CONFLICT (user_id, client_id) WHERE revoked_at IS NULL DO UPDATE
+SET scopes = ARRAY(
+        SELECT s.scope FROM unnest($6::TEXT[]) WITH ORDINALITY AS s(scope, pos)
+        WHERE s.scope = ANY (oauth_authorizations.scopes) OR s.scope = ANY (EXCLUDED.scopes)
+        ORDER BY s.pos),
+    updated_at = EXCLUDED.updated_at
 `
 
-type UpdateOAuthAuthorizationScopesParams struct {
+type UpsertOAuthAuthorizationParams struct {
 	ID        string
+	UserID    string
+	ClientID  string
 	Scopes    []string
-	UpdatedAt time.Time
+	At        time.Time
+	Supported []string
 }
 
-func (q *Queries) UpdateOAuthAuthorizationScopes(ctx context.Context, arg UpdateOAuthAuthorizationScopesParams) error {
-	_, err := q.db.Exec(ctx, updateOAuthAuthorizationScopes, arg.ID, arg.Scopes, arg.UpdatedAt)
+// Cria a Autorização ativa ou amplia a existente num único comando, o que serializa as
+// aprovações concorrentes da mesma conta para o mesmo cliente. A união segue a ordem de
+// supported, sem repetir.
+func (q *Queries) UpsertOAuthAuthorization(ctx context.Context, arg UpsertOAuthAuthorizationParams) error {
+	_, err := q.db.Exec(ctx, upsertOAuthAuthorization,
+		arg.ID,
+		arg.UserID,
+		arg.ClientID,
+		arg.Scopes,
+		arg.At,
+		arg.Supported,
+	)
 	return err
 }

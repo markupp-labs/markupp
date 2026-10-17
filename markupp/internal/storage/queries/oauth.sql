@@ -27,17 +27,18 @@ RETURNING *;
 -- name: GetActiveOAuthAuthorization :one
 SELECT * FROM oauth_authorizations WHERE user_id = $1 AND client_id = $2 AND revoked_at IS NULL;
 
--- A trava serializa as aprovações da mesma conta para o mesmo cliente.
--- name: LockActiveOAuthAuthorization :one
-SELECT * FROM oauth_authorizations WHERE user_id = $1 AND client_id = $2 AND revoked_at IS NULL
-FOR UPDATE;
-
--- name: CreateOAuthAuthorization :exec
+-- Cria a Autorização ativa ou amplia a existente num único comando, o que serializa as
+-- aprovações concorrentes da mesma conta para o mesmo cliente. A união segue a ordem de
+-- supported, sem repetir.
+-- name: UpsertOAuthAuthorization :exec
 INSERT INTO oauth_authorizations (id, user_id, client_id, scopes, created_at, updated_at)
-VALUES (sqlc.arg(id), sqlc.arg(user_id), sqlc.arg(client_id), sqlc.arg(scopes), sqlc.arg(created_at), sqlc.arg(created_at));
-
--- name: UpdateOAuthAuthorizationScopes :exec
-UPDATE oauth_authorizations SET scopes = $2, updated_at = $3 WHERE id = $1;
+VALUES (sqlc.arg(id), sqlc.arg(user_id), sqlc.arg(client_id), sqlc.arg(scopes), sqlc.arg(at), sqlc.arg(at))
+ON CONFLICT (user_id, client_id) WHERE revoked_at IS NULL DO UPDATE
+SET scopes = ARRAY(
+        SELECT s.scope FROM unnest(sqlc.arg(supported)::TEXT[]) WITH ORDINALITY AS s(scope, pos)
+        WHERE s.scope = ANY (oauth_authorizations.scopes) OR s.scope = ANY (EXCLUDED.scopes)
+        ORDER BY s.pos),
+    updated_at = EXCLUDED.updated_at;
 
 -- name: RedeemOAuthCode :one
 UPDATE oauth_requests SET code_used_at = sqlc.arg(now)::TIMESTAMPTZ
