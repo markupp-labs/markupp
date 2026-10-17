@@ -153,7 +153,12 @@ func auditAuthorize(ctx context.Context, qtx *gen.Queries, req gen.OauthRequest,
 
 // ActiveAuthorization devolve a Autorização não revogada da conta para o cliente.
 func (r *PostgresOAuthRepository) ActiveAuthorization(ctx context.Context, userID, clientID string) (oauth.Authorization, error) {
-	row, err := r.q.GetActiveOAuthAuthorization(ctx, gen.GetActiveOAuthAuthorizationParams{UserID: userID, ClientID: clientID})
+	return activeAuthorization(ctx, r.q, userID, clientID)
+}
+
+// activeAuthorization busca a Autorização ativa por q, que pode ser a de uma transação.
+func activeAuthorization(ctx context.Context, q *gen.Queries, userID, clientID string) (oauth.Authorization, error) {
+	row, err := q.GetActiveOAuthAuthorization(ctx, gen.GetActiveOAuthAuthorizationParams{UserID: userID, ClientID: clientID})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return oauth.Authorization{}, fmt.Errorf("%w: usuario %q, cliente %q", oauth.ErrAuthorizationNotFound, userID, clientID)
 	}
