@@ -494,6 +494,59 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/InviteNotFound'
+  /oauth/requests/{id}:
+    get:
+      summary: Descreve um pedido de autorização OAuth para a tela de consentimento
+      description: >
+        Rota do painel. Exige login, mas não o cabeçalho de tenant: o pedido é da conta.
+        O pedido vale 10 minutos e é de uso único.
+      parameters:
+        - $ref: '#/components/parameters/OAuthRequestID'
+      responses:
+        '200':
+          description: Pedido pendente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OAuthRequestResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/OAuthRequestNotFound'
+  /oauth/requests/{id}/approve:
+    post:
+      summary: Aprova um pedido de autorização OAuth
+      description: Devolve o endereço do cliente, com o código, para onde o painel leva o navegador.
+      parameters:
+        - $ref: '#/components/parameters/OAuthRequestID'
+      responses:
+        '200':
+          description: Pedido aprovado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OAuthDecisionResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/OAuthRequestNotFound'
+  /oauth/requests/{id}/deny:
+    post:
+      summary: Recusa um pedido de autorização OAuth
+      description: Devolve o endereço do cliente, com o erro access_denied, para onde o painel leva o navegador.
+      parameters:
+        - $ref: '#/components/parameters/OAuthRequestID'
+      responses:
+        '200':
+          description: Pedido recusado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OAuthDecisionResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/OAuthRequestNotFound'
   /auth/me:
     get:
       summary: Devolve a conta autenticada
@@ -809,6 +862,13 @@ components:
       required: true
       schema:
         type: string
+    OAuthRequestID:
+      name: id
+      in: path
+      required: true
+      description: Id do pedido de autorização
+      schema:
+        type: string
   securitySchemes:
     bearerAuth:
       type: http
@@ -851,7 +911,41 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/ErrorResponse'
+    OAuthRequestNotFound:
+      description: Pedido de autorização inexistente, vencido ou já decidido (request_not_found)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
   schemas:
+    OAuthRequestResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        client_id:
+          type: string
+        client_name:
+          type: string
+        redirect_host:
+          type: string
+          description: Host para onde o navegador volta depois da decisão
+        scopes:
+          type: array
+          items:
+            type: string
+        already_authorized:
+          type: boolean
+          description: A conta já autorizou esse cliente com esses escopos
+        expires_at:
+          type: string
+          format: date-time
+    OAuthDecisionResponse:
+      type: object
+      properties:
+        redirect_to:
+          type: string
+          description: URL do cliente para onde o painel leva o navegador
     Role:
       type: string
       enum: [owner, admin, member, viewer]
