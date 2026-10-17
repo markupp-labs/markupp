@@ -98,7 +98,7 @@ func approveInTx(ctx context.Context, qtx *gen.Queries, a oauth.Approval) (gen.O
 	if err := grantScopes(ctx, qtx, row, a.DecidedAt); err != nil {
 		return row, err
 	}
-	return row, qtx.CreateAuditEvent(ctx, authorizeEvent(row, "success", a.DecidedAt))
+	return row, auditAuthorize(ctx, qtx, row, "success", a.DecidedAt)
 }
 
 // DenyRequest decide o pedido como recusado e audita a falha, numa transação.
@@ -110,7 +110,7 @@ func (r *PostgresOAuthRepository) DenyRequest(ctx context.Context, d oauth.Denia
 		if err != nil {
 			return requestErr("recusar pedido", err)
 		}
-		return qtx.CreateAuditEvent(ctx, authorizeEvent(row, "failure", d.DecidedAt))
+		return auditAuthorize(ctx, qtx, row, "failure", d.DecidedAt)
 	})
 	if err != nil {
 		return oauth.AuthorizationRequest{}, err
@@ -138,11 +138,17 @@ func orderedScopes(scopes []string) []string {
 	})
 }
 
-func authorizeEvent(req gen.OauthRequest, result string, at time.Time) gen.CreateAuditEventParams {
-	return toCreateAuditEventParams(auth.AuditEventRecord{
+// auditAuthorize registra a decisão do pedido como oauth.authorize, com o cliente como
+// alvo e a conta que decidiu como ator.
+func auditAuthorize(ctx context.Context, qtx *gen.Queries, req gen.OauthRequest, result string, at time.Time) error {
+	err := qtx.CreateAuditEvent(ctx, toCreateAuditEventParams(auth.AuditEventRecord{
 		ID: uuid.NewString(), ActorID: req.UserID.String, Action: auditActionOAuthAuthorize,
 		Target: req.ClientID, Result: result, OccurredAt: at,
-	})
+	}))
+	if err != nil {
+		return fmt.Errorf("registrar auditoria %s (%s) para o cliente %q: %w", auditActionOAuthAuthorize, result, req.ClientID, err)
+	}
+	return nil
 }
 
 // ActiveAuthorization devolve a Autorização não revogada da conta para o cliente.
