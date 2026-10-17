@@ -3,6 +3,7 @@ package api_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -132,6 +133,16 @@ func TestAuthorize_ErroComRedirect_VoltaAoClienteComIssuer(t *testing.T) {
 	assert.Equal(t, issuerDeTeste, location.Query().Get("iss"))
 }
 
+func TestAuthorize_ErroEmbrulhadoComRedirect_VoltaAoCliente(t *testing.T) {
+	protoErr := &oauth.ProtocolError{Code: "access_denied", Description: "x", RedirectURI: "https://cli.exemplo/cb"}
+	svc := &fakeOAuthService{err: fmt.Errorf("iniciar: %w", protoErr)}
+
+	rec := authorizeRequest(svc, "client_id=c1")
+
+	require.Equal(t, http.StatusFound, rec.Code)
+	assert.True(t, strings.HasPrefix(rec.Header().Get("Location"), "https://cli.exemplo/cb?"), rec.Header().Get("Location"))
+}
+
 func TestAuthorize_ErroSemRedirect_Retorna400ComErroOAuth(t *testing.T) {
 	svc := &fakeOAuthService{err: &oauth.ProtocolError{Code: "invalid_request", Description: "redirect_uri não registrada"}}
 
@@ -221,6 +232,16 @@ func TestToken_ErroDoProtocolo_Retorna400SemCache(t *testing.T) {
 	assert.JSONEq(t, `{"error":"invalid_grant","error_description":"código usado"}`, rec.Body.String())
 	assert.Equal(t, "no-store", rec.Header().Get("Cache-Control"))
 	assert.Equal(t, "*", rec.Header().Get("Access-Control-Allow-Origin"))
+}
+
+func TestToken_ErroDoProtocoloComRedirect_Retorna400SemRedirecionar(t *testing.T) {
+	svc := &fakeOAuthService{err: &oauth.ProtocolError{Code: "invalid_grant", Description: "código usado", RedirectURI: "https://cli.exemplo/cb", State: "s1"}}
+
+	rec := tokenRequest(svc, codeForm())
+
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+	assert.Empty(t, rec.Header().Get("Location"))
+	assert.JSONEq(t, `{"error":"invalid_grant","error_description":"código usado"}`, rec.Body.String())
 }
 
 func TestToken_GrantTypeAusenteOuOutro_Retorna400UnsupportedGrantType(t *testing.T) {
