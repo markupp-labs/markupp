@@ -31,10 +31,12 @@ var (
 // User representa uma conta da instância com chave estável (UUID). O acesso a cada
 // tenant vem de um Membership.
 type User struct {
-	ID        string
-	Email     string
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	ID    string
+	Email string
+	// EmailVerified diz se a pessoa já provou o email; na criação da conta quem decide é o caminho de cadastro, não este campo.
+	EmailVerified bool
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
 }
 
 // Member é um usuário visto de dentro do tenant, com o papel dele lá.

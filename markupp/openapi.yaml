@@ -48,6 +48,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/RateLimited'
   /auth/refresh:
     post:
       summary: Troca o refresh token por um novo par
@@ -74,6 +76,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/RateLimited'
   /auth/logout:
     post:
       summary: Revoga o refresh token da sessão
@@ -121,6 +125,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/RateLimited'
   /auth/email/verification:
     post:
       summary: Envia de novo o email de verificação da conta
@@ -144,6 +150,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/RateLimited'
   /auth/email/verify:
     post:
       summary: Verifica o email da conta logada com o token recebido por email
@@ -203,6 +211,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/RateLimited'
   /auth/password/reset:
     post:
       summary: Troca a senha com o token recebido por email
@@ -231,6 +241,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/RateLimited'
   /users:
     get:
       summary: Lista os membros do tenant
@@ -810,6 +822,20 @@ components:
       scheme: bearer
       bearerFormat: JWT
   responses:
+    RateLimited:
+      description: >
+        Tentativas demais (rate_limited). Cada rota de conta aceita 5 por minuto por IP e,
+        quando o corpo traz email, 5 por minuto por email, ajustável em
+        MARKUPP_RATE_LIMIT_PER_MINUTE. Com várias réplicas, o limite vale por réplica.
+      headers:
+        Retry-After:
+          description: Segundos até a janela do limite acabar
+          schema:
+            type: integer
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
     Unauthorized:
       description: Token ausente, inválido ou expirado (unauthorized)
       content:
@@ -991,6 +1017,9 @@ components:
           format: uuid
         email:
           type: string
+        email_verified:
+          type: boolean
+          description: Se a conta já confirmou o email. Lido do estado atual da conta.
     NoteRequest:
       type: object
       required:

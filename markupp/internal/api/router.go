@@ -1,6 +1,8 @@
 package api
 
 import (
+	"net/http"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 )
@@ -15,6 +17,8 @@ type RouterDeps struct {
 	Tenants        TenantResolver
 	Probe          StorageProbe
 	AllowedOrigins []string
+	// AccountRateLimiter limita as rotas de conta (ADR-0037). Nil deixa as rotas livres.
+	AccountRateLimiter *AccountRateLimiter
 }
 
 // NewRouter monta o roteador com sonda, rotas de autenticação, de notas e de
@@ -27,8 +31,9 @@ func NewRouter(d RouterDeps) chi.Router {
 		panic("api: Tenants obrigatorio para as rotas de notas e de administracao")
 	}
 	r := newBaseRouter(d.Probe, d.AllowedOrigins)
+	limit := limitAccountAttempts(d.AccountRateLimiter)
 	if d.Auth != nil {
-		mountAuthRoutes(r, d.Auth, d.Tokens)
+		mountAuthRoutes(r, d.Auth, d.Tokens, limit)
 	}
 	if d.Notes != nil {
 		mountProtectedNotesRoutes(r, d.Notes, d.Tokens, d.Tenants)
@@ -37,7 +42,7 @@ func NewRouter(d RouterDeps) chi.Router {
 		mountAdminRoutes(r, d.Admin, d.Tokens, d.Tenants)
 	}
 	if d.AccountEmail != nil {
-		mountAccountEmailRoutes(r, d.AccountEmail, d.Tokens)
+		mountAccountEmailRoutes(r, d.AccountEmail, d.Tokens, limit)
 	}
 	return r
 }
@@ -58,12 +63,12 @@ func mountProtectedNotesRoutes(r chi.Router, svc NoteService, tokenValidator Tok
 	})
 }
 
-func mountAuthRoutes(r chi.Router, authSvc AuthService, tokenValidator TokenValidator) {
+func mountAuthRoutes(r chi.Router, authSvc AuthService, tokenValidator TokenValidator, limit func(http.Handler) http.Handler) {
 	h := &authHandler{svc: authSvc}
-	r.Post("/auth/login", h.login)
-	r.Post("/auth/refresh", h.refresh)
+	r.With(limit).Post("/auth/login", h.login)
+	r.With(limit).Post("/auth/refresh", h.refresh)
 	r.Post("/auth/logout", h.logout)
-	r.Post("/auth/invites/accept", h.acceptInvite)
+	r.With(limit).Post("/auth/invites/accept", h.acceptInvite)
 	r.Group(func(g chi.Router) {
 		g.Use(RequireAuth(tokenValidator))
 		g.Get("/auth/me", h.me)

@@ -106,7 +106,7 @@ func deliverNotifications(ctx context.Context, logger *slog.Logger, cfg config.C
 		return fmt.Errorf("abrir banco: %w", err)
 	}
 	defer pool.Close()
-	deliverer := notify.NewDeliverer(storage.NewPostgresNotificationOutbox(pool), mailer, cfg.SMTPFrom, auth.NewOpaqueToken, time.Now)
+	deliverer := notify.NewDeliverer(storage.NewPostgresNotificationOutbox(pool), mailer, cfg.SMTPFrom, cfg.PanelURL, auth.NewOpaqueToken, time.Now)
 	logger.Info("notificador em laco", "intervalo", notifyInterval.String())
 	return drain.Run(ctx, deliverer.DeliverNext, drain.WaitInterval(notifyInterval))
 }
@@ -187,6 +187,7 @@ func newHandler(cfg config.Config, pool *pgxpool.Pool, logger *slog.Logger) http
 	return api.NewRouter(api.RouterDeps{
 		Notes: notesSvc, Auth: authSvc, Admin: adminSvc, AccountEmail: accountEmail,
 		Tokens: codec, Tenants: authSvc, Probe: pool, AllowedOrigins: cfg.AllowedOrigins,
+		AccountRateLimiter: api.NewAccountRateLimiter(cfg.RateLimitPerMinute, time.Minute, time.Now, cfg.TrustedProxies),
 	})
 }
 

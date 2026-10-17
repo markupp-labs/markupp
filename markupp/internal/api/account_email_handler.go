@@ -38,13 +38,13 @@ type passwordResetRequest struct {
 
 // mountAccountEmailRoutes expõe a verificação só à conta logada, que é a única a quem o
 // token dela serve, e a troca de senha a quem tem o token do email.
-func mountAccountEmailRoutes(r chi.Router, svc AccountEmailService, validator TokenValidator) {
+func mountAccountEmailRoutes(r chi.Router, svc AccountEmailService, validator TokenValidator, limit func(http.Handler) http.Handler) {
 	h := &accountEmailHandler{svc: svc}
-	r.Post("/auth/password/forgot", h.forgotPassword)
-	r.Post("/auth/password/reset", h.resetPassword)
+	r.With(limit).Post("/auth/password/forgot", h.forgotPassword)
+	r.With(limit).Post("/auth/password/reset", h.resetPassword)
 	r.Group(func(g chi.Router) {
 		g.Use(RequireAuth(validator))
-		g.Post("/auth/email/verification", h.requestVerification)
+		g.With(limit).Post("/auth/email/verification", h.requestVerification)
 		g.Post("/auth/email/verify", h.confirmEmail)
 	})
 }

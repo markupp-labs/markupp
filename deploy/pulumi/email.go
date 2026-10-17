@@ -21,6 +21,9 @@ type EmailArgs struct {
 	SMTPURL pulumi.StringInput `pulumi:"smtpUrl" provider:"secret"`
 	// From é o remetente dos emails.
 	From string `pulumi:"from"`
+	// PanelURL é a URL base do painel web, que põe nos emails o link da página que
+	// recebe o token (MARKUPP_PANEL_URL). Vazia, o email leva só o token.
+	PanelURL string `pulumi:"panelUrl,optional"`
 }
 
 // withEmailSecret acrescenta a URL do SMTP ao Secret do markupp quando há email.
@@ -48,15 +51,19 @@ func inviteByEmailEnv(args MarkuppArgs) corev1.EnvVarArray {
 	if args.Email == nil {
 		return nil
 	}
-	return corev1.EnvVarArray{corev1.EnvVarArgs{Name: pulumi.String("MARKUPP_INVITE_BY_EMAIL"), Value: pulumi.String("true")}}
+	return corev1.EnvVarArray{plainEnv("MARKUPP_INVITE_BY_EMAIL", "true")}
 }
 
-// smtpEnv dá ao notificador o servidor e o remetente.
+// smtpEnv dá ao notificador o servidor, o remetente e, quando informada, a URL do painel.
 func smtpEnv(names resourceNames, args MarkuppArgs) corev1.EnvVarArray {
-	return corev1.EnvVarArray{
+	env := corev1.EnvVarArray{
 		secretEnv("MARKUPP_SMTP_URL", names.dbSecret, smtpURLKey),
-		corev1.EnvVarArgs{Name: pulumi.String("MARKUPP_SMTP_FROM"), Value: pulumi.String(args.Email.From)},
+		plainEnv("MARKUPP_SMTP_FROM", args.Email.From),
 	}
+	if args.Email.PanelURL != "" {
+		env = append(env, plainEnv("MARKUPP_PANEL_URL", args.Email.PanelURL))
+	}
+	return env
 }
 
 // declareNotifier cria o Deployment do notify-loop e o ScaledObject que o leva a

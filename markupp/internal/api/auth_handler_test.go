@@ -315,6 +315,21 @@ func TestAuthHandler_Me_Sucesso(t *testing.T) {
 	assert.Equal(t, "user-id-42", resp["id"])
 	assert.Equal(t, "admin@markupp.dev", resp["email"])
 	assert.NotContains(t, resp, "tenant_id", "a conta e global")
+	assert.Equal(t, false, resp["email_verified"], "conta sem email verificado")
+}
+
+func TestAuthHandler_Me_EmailVerificado_DevolveTrue(t *testing.T) {
+	svc := &fakeAuthService{accountUser: auth.User{ID: "user-id-42", Email: "admin@markupp.dev", EmailVerified: true}}
+	router := setupAuthRouter(svc, &fakeTokenValidator{claims: auth.Claims{Subject: "user-id-42"}})
+
+	req := httptest.NewRequest(http.MethodGet, "/auth/me", nil)
+	req.Header.Set("Authorization", "Bearer token-valido")
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	var resp map[string]any
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &resp))
+	assert.Equal(t, true, resp["email_verified"])
 }
 
 func TestAuthHandler_Login_EmailOuSenhaVazios_Retorna400(t *testing.T) {

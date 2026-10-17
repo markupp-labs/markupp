@@ -1,6 +1,9 @@
 package main
 
 import (
+	"strconv"
+	"strings"
+
 	appsv1 "github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/apps/v1"
 	batchv1 "github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/batch/v1"
 	corev1 "github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/core/v1"
@@ -50,11 +53,27 @@ func declareAPI(ctx *pulumi.Context, names resourceNames, args MarkuppArgs, opts
 
 func apiDeploymentArgs(names resourceNames, args MarkuppArgs) *appsv1.DeploymentArgs {
 	container := serverContainer(args, names)
-	container.Env = append(databaseURLEnv(names), inviteByEmailEnv(args)...)
+	container.Env = append(append(databaseURLEnv(names), inviteByEmailEnv(args)...), rateLimitEnv(args)...)
 	container.Ports = corev1.ContainerPortArray{corev1.ContainerPortArgs{ContainerPort: pulumi.Int(apiPort)}}
 	container.ReadinessProbe = healthzProbe()
 	container.LivenessProbe = processProbe()
 	return serverDeploymentArgs(names.api, args, pulumi.Int(*args.APIReplicas), container)
+}
+
+// rateLimitEnv repassa à API só as opções do limite de tentativas que foram informadas.
+func rateLimitEnv(args MarkuppArgs) corev1.EnvVarArray {
+	var env corev1.EnvVarArray
+	if len(args.TrustedProxies) > 0 {
+		env = append(env, plainEnv("MARKUPP_TRUSTED_PROXIES", strings.Join(args.TrustedProxies, ",")))
+	}
+	if args.RateLimitPerMinute != nil {
+		env = append(env, plainEnv("MARKUPP_RATE_LIMIT_PER_MINUTE", strconv.Itoa(*args.RateLimitPerMinute)))
+	}
+	return env
+}
+
+func plainEnv(name, value string) corev1.EnvVarArgs {
+	return corev1.EnvVarArgs{Name: pulumi.String(name), Value: pulumi.String(value)}
 }
 
 // serverDeploymentArgs é o Deployment de um contêiner só do servidor, sem root. Sem

@@ -1,6 +1,7 @@
 package config_test
 
 import (
+	"net/netip"
 	"testing"
 	"time"
 
@@ -390,4 +391,125 @@ func TestLoad_ConvitePorEmailInvalido_RetornaErroComOValor(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "MARKUPP_INVITE_BY_EMAIL")
 	assert.Contains(t, err.Error(), "talvez")
+}
+
+func TestLoad_SemPainel_DeixaOLinkDesligado(t *testing.T) {
+	env := fakeEnv{"MARKUPP_DATABASE_URL": urlDeTeste, "MARKUPP_AUTH_SECRET": segredoDeTesteValido}
+
+	cfg, err := config.Load(env.Lookup)
+
+	require.NoError(t, err)
+	assert.Empty(t, cfg.PanelURL, "sem painel o email leva so o token")
+}
+
+func TestLoad_PainelHTTPouHTTPS_LeAURL(t *testing.T) {
+	for _, valor := range []string{"https://painel.markupp.dev", "http://localhost:3999/", "https://markupp.dev/painel"} {
+		env := fakeEnv{"MARKUPP_DATABASE_URL": urlDeTeste, "MARKUPP_AUTH_SECRET": segredoDeTesteValido, "MARKUPP_PANEL_URL": valor}
+
+		cfg, err := config.Load(env.Lookup)
+
+		require.NoError(t, err, valor)
+		assert.Equal(t, valor, cfg.PanelURL)
+	}
+}
+
+func TestLoad_PainelForaDoFormato_RetornaErroComOValor(t *testing.T) {
+	for _, valor := range []string{"painel.markupp.dev", "/painel", "ftp://painel.markupp.dev", "https://", "https://painel.markupp.dev/?x=1"} {
+		env := fakeEnv{"MARKUPP_DATABASE_URL": urlDeTeste, "MARKUPP_AUTH_SECRET": segredoDeTesteValido, "MARKUPP_PANEL_URL": valor}
+
+		_, err := config.Load(env.Lookup)
+
+		require.Error(t, err, valor)
+		assert.Contains(t, err.Error(), "MARKUPP_PANEL_URL", valor)
+		assert.Contains(t, err.Error(), valor)
+		assert.Contains(t, err.Error(), "https://")
+	}
+}
+
+func TestLoad_PainelForaDoFormato_DizQualRegraFalhou(t *testing.T) {
+	casos := map[string]string{
+		"ftp://painel.markupp.dev":        "esquema",
+		"https://":                        "host",
+		"https://painel.markupp.dev/?x=1": "query",
+		"https://painel.markupp.dev/?":    "query",
+		"https://painel.markupp.dev/#x":   "fragmento",
+	}
+	for valor, regra := range casos {
+		env := fakeEnv{"MARKUPP_DATABASE_URL": urlDeTeste, "MARKUPP_AUTH_SECRET": segredoDeTesteValido, "MARKUPP_PANEL_URL": valor}
+
+		_, err := config.Load(env.Lookup)
+
+		require.Error(t, err, valor)
+		assert.Contains(t, err.Error(), regra, valor)
+	}
+}
+
+func TestLoad_SemLimiteDeTentativas_UsaCincoPorMinuto(t *testing.T) {
+	env := fakeEnv{"MARKUPP_DATABASE_URL": urlDeTeste, "MARKUPP_AUTH_SECRET": segredoDeTesteValido}
+
+	cfg, err := config.Load(env.Lookup)
+
+	require.NoError(t, err)
+	assert.Equal(t, 5, cfg.RateLimitPerMinute)
+}
+
+func TestLoad_LimiteDeTentativasDefinido_LeOValor(t *testing.T) {
+	env := fakeEnv{"MARKUPP_DATABASE_URL": urlDeTeste, "MARKUPP_AUTH_SECRET": segredoDeTesteValido, "MARKUPP_RATE_LIMIT_PER_MINUTE": "20"}
+
+	cfg, err := config.Load(env.Lookup)
+
+	require.NoError(t, err)
+	assert.Equal(t, 20, cfg.RateLimitPerMinute)
+}
+
+func TestLoad_LimiteDeTentativasForaDaFaixa_RetornaErroComOValor(t *testing.T) {
+	for _, valor := range []string{"0", "-1", "cinco", "10001"} {
+		env := fakeEnv{"MARKUPP_DATABASE_URL": urlDeTeste, "MARKUPP_AUTH_SECRET": segredoDeTesteValido, "MARKUPP_RATE_LIMIT_PER_MINUTE": valor}
+
+		_, err := config.Load(env.Lookup)
+
+		require.Error(t, err, valor)
+		assert.Contains(t, err.Error(), "MARKUPP_RATE_LIMIT_PER_MINUTE", valor)
+		assert.Contains(t, err.Error(), "de 1 a 10000", valor)
+	}
+}
+
+func TestLoad_SemProxiesConfiaveis_DeixaAListaVazia(t *testing.T) {
+	env := fakeEnv{"MARKUPP_DATABASE_URL": urlDeTeste, "MARKUPP_AUTH_SECRET": segredoDeTesteValido}
+
+	cfg, err := config.Load(env.Lookup)
+
+	require.NoError(t, err)
+	assert.Empty(t, cfg.TrustedProxies, "sem proxy confiavel o limite usa so o IP da conexao")
+}
+
+func TestLoad_ProxiesConfiaveis_LeOsCIDRsIPv4EIPv6(t *testing.T) {
+	env := fakeEnv{"MARKUPP_DATABASE_URL": urlDeTeste, "MARKUPP_AUTH_SECRET": segredoDeTesteValido, "MARKUPP_TRUSTED_PROXIES": " 10.0.0.0/8, fd00::/8 ,"}
+
+	cfg, err := config.Load(env.Lookup)
+
+	require.NoError(t, err)
+	assert.Equal(t, []netip.Prefix{netip.MustParsePrefix("10.0.0.0/8"), netip.MustParsePrefix("fd00::/8")}, cfg.TrustedProxies)
+}
+
+func TestLoad_ProxyConfiavelIPv4MapeadoEmIPv6_ViraCIDRIPv4(t *testing.T) {
+	env := fakeEnv{"MARKUPP_DATABASE_URL": urlDeTeste, "MARKUPP_AUTH_SECRET": segredoDeTesteValido, "MARKUPP_TRUSTED_PROXIES": "::ffff:10.0.0.0/104"}
+
+	cfg, err := config.Load(env.Lookup)
+
+	require.NoError(t, err)
+	assert.Equal(t, []netip.Prefix{netip.MustParsePrefix("10.0.0.0/8")}, cfg.TrustedProxies, "o limite compara o IP da conexao ja sem o mapeamento 4in6")
+}
+
+func TestLoad_ProxyConfiavelForaDoFormato_RetornaErroComOValor(t *testing.T) {
+	for _, valor := range []string{"10.0.0.1", "lixo", "10.0.0.0/33", "10.0.0.0/8;fd00::/8"} {
+		env := fakeEnv{"MARKUPP_DATABASE_URL": urlDeTeste, "MARKUPP_AUTH_SECRET": segredoDeTesteValido, "MARKUPP_TRUSTED_PROXIES": valor}
+
+		_, err := config.Load(env.Lookup)
+
+		require.Error(t, err, valor)
+		assert.Contains(t, err.Error(), "MARKUPP_TRUSTED_PROXIES", valor)
+		assert.Contains(t, err.Error(), valor)
+		assert.Contains(t, err.Error(), "CIDR", valor)
+	}
 }

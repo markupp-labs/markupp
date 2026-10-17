@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math"
 	"net/mail"
+	"net/netip"
 	"net/url"
 	"strconv"
 	"strings"
@@ -42,6 +43,15 @@ type Config struct {
 	SMTPURL string
 	// SMTPFrom é o remetente dos emails, obrigatório com SMTPURL.
 	SMTPFrom string
+	// PanelURL é a URL base do painel web. Definida, os emails do notificador levam o
+	// link da rota do painel que recebe o token; vazia, só o token.
+	PanelURL string
+	// RateLimitPerMinute é quantas tentativas por minuto cada IP e cada email têm nas
+	// rotas de conta (ADR-0037).
+	RateLimitPerMinute int
+	// TrustedProxies são as redes dos proxies cujo X-Forwarded-For o limite de
+	// tentativas aceita. Vazia, o limite usa só o IP da conexão.
+	TrustedProxies []netip.Prefix
 }
 
 // Default devolve a configuração usada nas variáveis não definidas.
@@ -57,6 +67,7 @@ func Default() Config {
 		LocalAuthEnabled:        true,
 		SearchConfig:            "simple",
 		IndexInterval:           30 * time.Second,
+		RateLimitPerMinute:      5,
 	}
 }
 
@@ -88,7 +99,87 @@ func loadServerSettings(lookup LookupFunc, cfg *Config) error {
 	if err := loadAuthSettings(lookup, cfg); err != nil {
 		return err
 	}
-	return loadSMTPSettings(lookup, cfg)
+	if err := loadSMTPSettings(lookup, cfg); err != nil {
+		return err
+	}
+	if err := readRateLimit(lookup, &cfg.RateLimitPerMinute); err != nil {
+		return err
+	}
+	if err := readTrustedProxies(lookup, &cfg.TrustedProxies); err != nil {
+		return err
+	}
+	return readPanelURL(lookup, &cfg.PanelURL)
+}
+
+func readRateLimit(lookup LookupFunc, target *int) error {
+	limit := int64(*target)
+	if err := readBounded(lookup, "MARKUPP_RATE_LIMIT_PER_MINUTE", 1, 10000, "de 1 a 10000", &limit); err != nil {
+		return err
+	}
+	*target = int(limit)
+	return nil
+}
+
+// readTrustedProxies lê a lista de CIDRs separada por vírgula, ignorando itens vazios.
+func readTrustedProxies(lookup LookupFunc, target *[]netip.Prefix) error {
+	raw, _ := lookup("MARKUPP_TRUSTED_PROXIES")
+	for _, item := range strings.Split(raw, ",") {
+		item = strings.TrimSpace(item)
+		if item == "" {
+			continue
+		}
+		prefix, err := netip.ParsePrefix(item)
+		if err != nil {
+			return fmt.Errorf("MARKUPP_TRUSTED_PROXIES=%q: %q nao e CIDR; esperada lista de CIDRs IPv4 ou IPv6 separada por virgula, como 10.0.0.0/8,fd00::/8", raw, item)
+		}
+		*target = append(*target, unmapPrefix(prefix).Masked())
+	}
+	return nil
+}
+
+// unmapPrefix converte o CIDR IPv4 mapeado em IPv6 (::ffff:a.b.c.d/n, n >= 96) no
+// CIDR IPv4 equivalente, porque o limite compara o IP da conexão já sem o mapeamento.
+func unmapPrefix(prefix netip.Prefix) netip.Prefix {
+	if !prefix.Addr().Is4In6() || prefix.Bits() < 96 {
+		return prefix
+	}
+	return netip.PrefixFrom(prefix.Addr().Unmap(), prefix.Bits()-96)
+}
+
+// readPanelURL aceita só URL absoluta http ou https sem query nem fragmento, porque
+// o link do email acrescenta a rota e ?token= no fim dela.
+func readPanelURL(lookup LookupFunc, target *string) error {
+	var raw string
+	readString(lookup, "MARKUPP_PANEL_URL", &raw)
+	if raw == "" {
+		return nil
+	}
+	if problem := panelURLProblem(raw); problem != "" {
+		return fmt.Errorf("MARKUPP_PANEL_URL=%q: %s; esperada URL absoluta http:// ou https:// sem query nem fragmento, como https://painel.exemplo.com", raw, problem)
+	}
+	*target = raw
+	return nil
+}
+
+// panelURLProblem diz qual regra da URL do painel raw viola, ou "" quando ela serve.
+func panelURLProblem(raw string) string {
+	parsed, err := url.Parse(raw)
+	if err != nil {
+		return "nao e URL valida (" + err.Error() + ")"
+	}
+	if parsed.Scheme != "http" && parsed.Scheme != "https" {
+		return "esquema " + strconv.Quote(parsed.Scheme) + " nao e http nem https"
+	}
+	if parsed.Host == "" {
+		return "falta o host"
+	}
+	if parsed.RawQuery != "" || parsed.ForceQuery {
+		return "tem query"
+	}
+	if parsed.Fragment != "" {
+		return "tem fragmento"
+	}
+	return ""
 }
 
 // loadSMTPSettings lê o convite por email da API e o servidor de email do notificador
