@@ -2,6 +2,7 @@ package storage_test
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -67,6 +68,27 @@ func TestPostgresOAuthRepo_GetClient_Inexistente(t *testing.T) {
 	_, err := repo.GetClient(context.Background(), "c-nenhum")
 
 	require.ErrorIs(t, err, oauth.ErrClientNotFound)
+}
+
+func TestPostgresOAuthRepo_ClientIDLongo_ChegaLimitadoAoErro(t *testing.T) {
+	repo, _ := repoOAuth(t)
+	ctx := context.Background()
+	longo := strings.Repeat("c", 500)
+	pedido := pedidoOAuth("r1", oauth.ScopeNotesRead)
+	pedido.ClientID = longo
+	casos := map[string]func() error{
+		"cliente inexistente":           func() error { _, err := repo.GetClient(ctx, longo); return err },
+		"pedido de cliente inexistente": func() error { return repo.CreateRequest(ctx, pedido) },
+		"autorização inexistente":       func() error { _, err := repo.ActiveAuthorization(ctx, "u1", longo); return err },
+	}
+	for nome, falha := range casos {
+		t.Run(nome, func(t *testing.T) {
+			err := falha()
+
+			require.Error(t, err)
+			assert.NotContains(t, err.Error(), longo)
+		})
+	}
 }
 
 func TestPostgresOAuthRepo_CreateRequest_PendenteVoltaIgual(t *testing.T) {
