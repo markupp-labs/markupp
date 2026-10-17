@@ -17,6 +17,12 @@ class ApplicationController < ActionController::Base
   rescue_from MarkuppApi::TenantUnavailable, with: :forget_tenant
   rescue_from MarkuppApi::Unauthorized, MarkuppApi::SessionExpired, with: :expire_session
 
+  # rate_limit do create com a mensagem que cita a janela; quem passa do limite volta para redirect_path.
+  def self.limit_create_attempts(to:, within:, redirect_path:)
+    rate_limit to:, within:, only: :create,
+               with: -> { redirect_to send(redirect_path), alert: t("rate_limited", count: within.in_minutes.to_i) }
+  end
+
   private
     def credential = @credential ||= PanelCredential.new(session, markupp_api_factory)
 

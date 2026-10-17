@@ -1,5 +1,7 @@
 en:
-  rate_limited: "Too many attempts. Wait a minute."
+  rate_limited:
+    one: "Too many attempts. Try again in %{count} minute."
+    other: "Too many attempts. Try again in %{count} minutes."
   activemodel:
     errors:
       models:
@@ -51,8 +53,6 @@ en:
       invite_hint: "Got an invite token?"
       accept_invite: "Accept it here."
       forgot_password: "Forgot password?"
-    create:
-      rate_limited: "Too many attempts. Wait a few minutes."
     destroy:
       logged_out: "Logged out."
   tenants:
