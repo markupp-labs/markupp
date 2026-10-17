@@ -64,8 +64,8 @@ func mountOAuthServerRoutes(r chi.Router, d RouterDeps) {
 }
 
 func (h *oauthHandler) authorize(w http.ResponseWriter, r *http.Request) {
-	query := r.URL.Query()
-	if protoErr := rejectRepeatedParam(query); protoErr != nil {
+	query, protoErr := readAuthorizeQuery(r)
+	if protoErr != nil {
 		writeOAuthError(w, protoErr)
 		return
 	}
@@ -75,6 +75,19 @@ func (h *oauthHandler) authorize(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	http.Redirect(w, r, consentURL, http.StatusFound) //nolint:gosec // G710: o serviço monta o destino sobre a URL do painel, não a partir da query
+}
+
+// readAuthorizeQuery lê a query sem descartar o par malformado, que r.URL.Query
+// ignoraria, e recusa parâmetro repetido.
+func readAuthorizeQuery(r *http.Request) (url.Values, *oauth.ProtocolError) {
+	query, err := url.ParseQuery(r.URL.RawQuery)
+	if err != nil {
+		return nil, invalidRequest(fmt.Sprintf("query malformada (%v), esperado %s valido", err, formURLEncoded))
+	}
+	if protoErr := rejectRepeatedParam(query); protoErr != nil {
+		return nil, protoErr
+	}
+	return query, nil
 }
 
 func authorizeParamsFrom(query url.Values) oauth.AuthorizeParams {
