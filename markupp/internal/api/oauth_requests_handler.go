@@ -28,15 +28,16 @@ type oauthDecisionResponse struct {
 // requestDecision é Approve ou Deny do serviço, que devolvem o redirect ao cliente.
 type requestDecision func(ctx context.Context, requestID, userID string) (string, error)
 
-// mountOAuthRequestRoutes monta as rotas da tela de consentimento do painel: exigem
-// login, mas não tenant, porque o pedido é da conta.
+// mountOAuthRequestRoutes monta as rotas da tela de consentimento do painel só sob /v1,
+// sem o alias obsoleto sem prefixo: exigem login, mas não tenant, porque o pedido é
+// da conta.
 func mountOAuthRequestRoutes(r chi.Router, svc OAuthService, tokenValidator TokenValidator) {
 	h := &oauthHandler{svc: svc}
-	r.Group(func(g chi.Router) {
+	r.Route(currentVersionPrefix+"/oauth/requests", func(g chi.Router) {
 		g.Use(RequireAuth(tokenValidator))
-		g.Get("/oauth/requests/{id}", h.describeRequest)
-		g.Post("/oauth/requests/{id}/approve", h.approveRequest)
-		g.Post("/oauth/requests/{id}/deny", h.denyRequest)
+		g.Get("/{id}", h.describeRequest)
+		g.Post("/{id}/approve", h.approveRequest)
+		g.Post("/{id}/deny", h.denyRequest)
 	})
 }
 

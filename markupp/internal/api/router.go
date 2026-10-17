@@ -22,7 +22,7 @@ type RouterDeps struct {
 // NewRouter monta o roteador com sonda, rotas de autenticação, de notas e de
 // administração, servidas sob /v1 e, durante a transição do ADR-0026, também sem
 // prefixo e marcadas como obsoletas. As rotas do authorization server OAuth que os
-// clientes acessam ficam na raiz, sem versão.
+// clientes acessam ficam na raiz, sem versão, e as da tela de consentimento só sob /v1.
 func NewRouter(d RouterDeps) chi.Router {
 	mustHaveRouterDeps(d)
 	routes := newVersionRoutes(d)
@@ -31,6 +31,9 @@ func NewRouter(d RouterDeps) chi.Router {
 	r.Use(middleware.Recoverer)
 	r.Use(allowOrigins(d.AllowedOrigins))
 	mountOAuthServerRoutes(r, d)
+	if d.OAuth != nil {
+		mountOAuthRequestRoutes(r, d.OAuth, d.Tokens)
+	}
 	r.Mount(currentVersionPrefix, routes)
 	r.Mount("/", markDeprecated(routes))
 	return r
@@ -63,9 +66,6 @@ func newVersionRoutes(d RouterDeps) chi.Router {
 	}
 	if d.AccountEmail != nil {
 		mountAccountEmailRoutes(r, d.AccountEmail, d.Tokens)
-	}
-	if d.OAuth != nil {
-		mountOAuthRequestRoutes(r, d.OAuth, d.Tokens)
 	}
 	return r
 }
