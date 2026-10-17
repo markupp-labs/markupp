@@ -20,8 +20,11 @@ class ApplicationController < ActionController::Base
   # rate_limit do create com a mensagem que cita a janela; quem passa do limite volta para redirect_path.
   def self.limit_create_attempts(to:, within:, redirect_path:)
     rate_limit to:, within:, only: :create,
-               with: -> { redirect_to send(redirect_path), alert: t("rate_limited", count: within.in_minutes.to_i) }
+               with: -> { redirect_to send(redirect_path), alert: t("rate_limited", count: self.class.retry_minutes(within)) }
   end
+
+  # Minutos da janela para a mensagem de limite.
+  def self.retry_minutes(within) = within.in_minutes.to_i
 
   private
     def credential = @credential ||= PanelCredential.new(session, markupp_api_factory)
