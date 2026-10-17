@@ -30,6 +30,7 @@ func TestLogin_ErroInesperado_RegistraOErroNoLog(t *testing.T) {
 	router.ServeHTTP(rec, req)
 
 	assert.Equal(t, http.StatusInternalServerError, rec.Code)
+	assert.Contains(t, buf.String(), `"msg":"falha na autenticacao"`)
 	assert.Contains(t, buf.String(), "banco fora", "o 500 sem log esconde a causa de quem opera")
 }
 
@@ -55,5 +56,16 @@ func TestAccountEmail_ErroInesperado_RegistraOErroNoLog(t *testing.T) {
 	rec := accountEmailRequest(&fakeAccountEmailService{err: errors.New("banco fora")}, http.MethodPost, "/auth/password/reset", `{"token":"x","password":"senhaNova123"}`, false)
 
 	assert.Equal(t, http.StatusInternalServerError, rec.Code)
+	assert.Contains(t, buf.String(), `"msg":"falha no email da conta"`)
+	assert.Contains(t, buf.String(), "banco fora")
+}
+
+func TestMyInvites_ErroInesperado_RegistraComMensagemDosConvitesDaConta(t *testing.T) {
+	buf := logCapturado(t)
+
+	rec := myInviteRequest(&fakeAuthService{answerErr: errors.New("banco fora")}, http.MethodPost, "/me/invites/c1/accept")
+
+	assert.Equal(t, http.StatusInternalServerError, rec.Code)
+	assert.Contains(t, buf.String(), `"msg":"falha nos convites da conta"`)
 	assert.Contains(t, buf.String(), "banco fora")
 }
