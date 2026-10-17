@@ -2,26 +2,48 @@ import { Controller } from "@hotwired/stimulus"
 
 // Salvar explícito: Ctrl+S ou Cmd+S submete, marca alterações não salvas e avisa antes de sair com elas.
 // Com aviso de conflito ou erro de caminho na tela, o que o usuário digitou ainda não está no servidor.
-// O caminho conta como alteração: renomear também precisa salvar.
+// Pasta e título contam como alteração: renomear e mover também precisam salvar.
+// Nota nova sem nada escrito não é alteração: sair dela a descarta sem perguntar.
 export default class extends Controller {
-  static targets = [ "source", "path", "unsaved", "pending" ]
-  static values = { leaveMessage: String }
+  static targets = [ "source", "title", "folder", "unsaved", "save", "pending" ]
+  static values = { leaveMessage: String, new: Boolean }
 
   connect() {
-    this.originalContent = this.sourceTarget.defaultValue
-    this.originalPath = this.pathTarget.defaultValue
+    this.originals = this.fields.map((field) => field.defaultValue)
+    const heading = headingFor(this.titleTarget.value)
+    this.heading = this.newValue && this.sourceTarget.value.startsWith(heading) ? heading : ""
     this.track()
   }
 
-  // Nota só de leitura (papel viewer) não tem o que salvar.
+  // Nota só de leitura (papel viewer) ou sem mudança não tem o que salvar.
   save() {
-    if (this.sourceTarget.readOnly) return
+    if (this.sourceTarget.readOnly || !this.changed) return
 
     this.element.requestSubmit()
   }
 
   track() {
     this.unsavedTarget.hidden = !this.changed
+    if (this.hasSaveTarget) this.saveTarget.hidden = !this.changed
+  }
+
+  // Só na nota nova: o "# título" no começo do conteúdo acompanha o título, enquanto o usuário não mexer nele.
+  // O editor troca o cabeçalho anterior pelo novo e marca applied; se o começo mudou, deixa como está.
+  syncHeading() {
+    if (!this.newValue) return
+
+    const next = headingFor(this.titleTarget.value)
+    const { detail } = this.dispatch("heading", { detail: { from: this.heading, to: next, applied: false } })
+    if (detail.applied) this.heading = next
+  }
+
+  // Shift+Tab no conteúdo volta ao título, com o cursor no fim dele.
+  focusTitle(event) {
+    if (!event.target.closest(".cm-editor")) return
+
+    event.preventDefault()
+    this.titleTarget.focus()
+    this.titleTarget.setSelectionRange(this.titleTarget.value.length, this.titleTarget.value.length)
   }
 
   allowLeaving() {
@@ -41,8 +63,18 @@ export default class extends Controller {
     if (this.changed && !confirm(this.leaveMessageValue)) event.preventDefault()
   }
 
+  get fields() {
+    return [ this.sourceTarget, this.titleTarget, this.folderTarget ]
+  }
+
   get changed() {
-    const edited = this.sourceTarget.value != this.originalContent || this.pathTarget.value != this.originalPath
+    const edited = this.fields.some((field, index) => field.value != this.originals[index])
     return !this.leaving && (this.hasPendingTarget || edited)
   }
+}
+
+// O mesmo cabeçalho que o servidor põe na criação (Note.with_title_heading).
+function headingFor(title) {
+  const trimmed = title.trim()
+  return trimmed ? `# ${trimmed}\n\n` : ""
 }

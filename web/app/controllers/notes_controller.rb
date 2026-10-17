@@ -5,7 +5,9 @@ class NotesController < ApplicationController
   before_action :require_writer, only: :new
   before_action :set_tree, except: :destroy
 
+  # A tela padrão é uma nota nova em branco; viewer não cria, então só escolhe na árvore.
   def index
+    @note = Note.untitled(nil) if current_tenant.writer?
   end
 
   def show
@@ -17,7 +19,7 @@ class NotesController < ApplicationController
   end
 
   def create
-    @note = Note.new(note_params)
+    @note = Note.new(path: note_path_param, content: Note.with_title_heading(note_content_param, params.dig(:note, :title)))
     if @note.save(credential.api)
       redirect_to note_path(@note), notice: t(".created")
     else
@@ -27,7 +29,7 @@ class NotesController < ApplicationController
 
   def update
     @note = Note.new(id: params[:id], updated_at: params[:last_modified_at])
-    if @note.update(credential.api, note_params, force: params[:force] == "true")
+    if @note.update(credential.api, { path: note_path_param, content: note_content_param }, force: params[:force] == "true")
       redirect_to note_path(@note), notice: t(".saved")
     else
       render :show, status: path_error_status
@@ -43,10 +45,14 @@ class NotesController < ApplicationController
   end
 
   private
-    def note_params
-      attributes = params.expect(note: [ :path, :content ])
-      attributes.merge(content: Note.restore_line_breaks(attributes[:content], crlf: params[:crlf] == "true"))
+    def note_params = params.expect(note: [ :folder, :title, :content ])
+
+    # Sem o campo markdown (nota nova) o nome ganha .md; nota existente sem .md continua sem.
+    def note_path_param
+      Note.compose_path(folder: note_params[:folder], title: note_params[:title], markdown: params[:markdown] != "false")
     end
+
+    def note_content_param = Note.restore_line_breaks(note_params[:content], crlf: params[:crlf] == "true")
 
     # A API recusaria o POST; o formulário vazio nem abre.
     def require_writer

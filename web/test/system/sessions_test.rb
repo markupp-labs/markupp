@@ -10,7 +10,7 @@ class SessionsTest < ApplicationSystemTestCase
     fill_in "Password", with: FakeMarkuppAccounts::DEFAULT_PASSWORD
     click_on "Log in"
 
-    assert_field "Path", with: "plan.md"
+    assert_field "Title", with: "plan"
     click_on "Log out"
     assert_text "Logged out."
     assert_current_path new_session_path

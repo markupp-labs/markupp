@@ -219,6 +219,7 @@ en:
     form:
       save: "Save"
       unsaved: "Unsaved changes"
+      top_level: "Top level"
       leave: "You have unsaved changes. Leave anyway?"
       conflict: "This note changed on the server since you opened it."
       reload: "Reload and discard my changes"

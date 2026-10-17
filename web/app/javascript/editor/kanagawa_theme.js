@@ -7,7 +7,8 @@ const editorTheme = EditorView.theme({
   "&": { flexGrow: "1", color: "var(--ink)", backgroundColor: "transparent" },
   "&.cm-focused": { outline: "none" },
   ".cm-scroller": { fontFamily: "inherit", lineHeight: "1.6" },
-  ".cm-content": { caretColor: "var(--accent)" },
+  // Área de escrita alta mesmo vazia: clicar abaixo do texto já escreve (nota em branco não some na tela).
+  ".cm-content": { caretColor: "var(--accent)", minHeight: "50dvh" },
   ".cm-cursor": { borderLeftColor: "var(--accent)" },
   ".cm-wikilink": { color: "var(--accent)", textDecoration: "underline" },
 })
