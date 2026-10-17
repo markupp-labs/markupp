@@ -4,9 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"mime"
 	"net/http"
 	"net/url"
+	"slices"
 
 	"github.com/go-chi/chi/v5"
 
@@ -170,11 +172,12 @@ func writeTokenError(w http.ResponseWriter, err error) {
 }
 
 // rejectRepeatedParam recusa parâmetro enviado mais de uma vez (RFC 6749, seção 3.1),
-// nomeando o primeiro encontrado sem ecoar os valores.
+// nomeando o primeiro em ordem alfabética, para a resposta não variar, sem ecoar os
+// valores.
 func rejectRepeatedParam(values url.Values) *oauth.ProtocolError {
-	for name, list := range values {
-		if len(list) > 1 {
-			return invalidRequest(fmt.Sprintf("parametro %q deve aparecer uma vez, recebido %d vezes", name, len(list)))
+	for _, name := range slices.Sorted(maps.Keys(values)) {
+		if count := len(values[name]); count > 1 {
+			return invalidRequest(fmt.Sprintf("parametro %q deve aparecer uma vez, recebido %d vezes", name, count))
 		}
 	}
 	return nil
