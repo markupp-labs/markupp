@@ -89,4 +89,42 @@ class SidebarTest < ActionDispatch::IntegrationTest
       assert_select "svg[data-icon=trash]"
     end
   end
+
+  test "the sidebar starts open at its default width with a button to hide it and a resize handle" do
+    use_fake_api(notes: [])
+    sign_in_as
+
+    get root_path
+
+    assert_select "html[data-sidebar]", count: 0
+    assert_select "html[style]", count: 0
+    assert_select "nav#sidebar button[aria-controls=sidebar][aria-expanded=true][aria-label=?][title=?] svg[data-icon=sidebar-simple]",
+                  "Hide sidebar", "Hide sidebar (Ctrl+B)"
+    assert_select "main button[aria-controls=sidebar][aria-expanded=true][aria-label=?]", "Show sidebar"
+    assert_select "nav#sidebar [role=separator][aria-orientation=vertical][tabindex='0'][aria-label=?]", "Resize sidebar" do |handle|
+      assert_equal %w[240 480 288], %w[aria-valuemin aria-valuemax aria-valuenow].map { handle.first[it] }
+    end
+  end
+
+  test "the closed sidebar comes back closed from its cookie" do
+    use_fake_api(notes: [])
+    sign_in_as
+    cookies[:sidebar] = "closed"
+
+    get root_path
+
+    assert_select "html[data-sidebar=closed]"
+    assert_select "button[aria-controls=sidebar][aria-expanded=false]", count: 2
+  end
+
+  test "the sidebar width comes back from its cookie" do
+    use_fake_api(notes: [])
+    sign_in_as
+    cookies[:sidebar_width] = "320"
+
+    get root_path
+
+    assert_select "html[style=?]", "--sidebar-width: 320px"
+    assert_select "nav#sidebar [role=separator][aria-valuenow='320']"
+  end
 end
