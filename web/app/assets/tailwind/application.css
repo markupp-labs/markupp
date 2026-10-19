@@ -258,16 +258,10 @@
 
 @media (width >= 48rem) {
   /* No lado a lado a nota ocupa a altura da tela e cada painel rola sozinho, como no VS Code: o editor rola o
-     próprio scroller e o preview acompanha (note_mode_controller.js). */
+     próprio scroller e o preview acompanha (note_mode_controller.js). O main já é coluna com a nota e o form fica
+     com o que sobra (layouts/application.html.erb e notes/_form.html.erb). */
   main:has(.note-form[data-mode="split"]) {
-    display: flex;
-    flex-direction: column;
     height: 100dvh;
-  }
-
-  .note-form[data-mode="split"] {
-    flex: 1 1 0;
-    min-height: 0;
   }
 
   /* Conteúdo estreito (o main é o container): editor em cima, preview embaixo, metade da altura cada. */
