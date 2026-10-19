@@ -74,6 +74,17 @@ class NoteModesTest < ApplicationSystemTestCase
     assert_nil evaluate_script("window.pwned")
   end
 
+  test "tab in the title moves on when the editor is hidden in read mode" do
+    use_fake_api(notes: [ { id: "1", path: "plan.md", content: "# Plan\n" } ])
+    sign_in_through_form
+
+    visit note_path("1")
+    click_on "Read"
+    find_field("Title").send_keys(:tab)
+
+    assert_not_equal "note_title", evaluate_script("document.activeElement.id")
+  end
+
   test "side by side is not offered at phone width" do
     use_fake_api(notes: [ { id: "1", path: "plan.md", content: "# Plan\n" } ])
     sign_in_through_form
