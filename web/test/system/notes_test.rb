@@ -296,6 +296,17 @@ class NotesTest < ApplicationSystemTestCase
     assert_empty api.put_requests
   end
 
+  test "after deleting a note the blank note opens with the focus on its path" do
+    use_fake_api(notes: [ { id: "1", path: "work/plan.md", content: "# Plan\n" } ])
+    sign_in_through_form
+
+    visit note_path("1")
+    accept_confirm("Delete this note? This cannot be undone.") { click_on "Delete" }
+
+    assert_text "Deleted"
+    assert_field "Path", with: "/", focused: true
+  end
+
   test "a viewer gets the editor read only and ctrl+s does nothing" do
     api = use_fake_api(notes: [ { id: "1", path: "plan.md", content: "# Plan\n" } ],
                        tenants: [ { id: "tenant-1", name: "Acme research", members: { FakeMarkuppAccounts::DEFAULT_EMAIL => "viewer" } } ])
