@@ -198,6 +198,22 @@ func TestOAuthServiceConfigFrom_ConverteDuracoesEListaOsResources(t *testing.T) 
 	assert.Equal(t, time.Minute, got.CodeTTL)
 }
 
+func TestOAuthMetadataFrom_RegistroDinamico_SegueAConfig(t *testing.T) {
+	for _, ligado := range []bool{true, false} {
+		meta := oauthMetadataFrom(config.Config{PublicURL: "https://notas.markupp.dev", OAuthDCREnabled: ligado})
+
+		require.NotNil(t, meta)
+		assert.Equal(t, ligado, meta.DynamicRegistration)
+	}
+}
+
+func TestOAuthServiceConfigFrom_ConverteOTetoEOPrazoDoDCR(t *testing.T) {
+	got := oauthServiceConfigFrom(config.Config{OAuthDCRMaxPending: 1000, OAuthDCRPendingHours: 24})
+
+	assert.Equal(t, 1000, got.DCRMaxPending)
+	assert.Equal(t, 24*time.Hour, got.DCRPendingTTL)
+}
+
 func TestOAuthServiceConfigFrom_CacheNegativoDoCIMDUsaOMinimoDoCache(t *testing.T) {
 	got := oauthServiceConfigFrom(config.Config{OAuthCIMDCacheMinMinutes: 7})
 
