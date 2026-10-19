@@ -137,6 +137,22 @@ class WikilinksTest < ApplicationSystemTestCase
     assert_heading_in_view "bottom-part"
   end
 
+  # Slug sem acento: com ou sem acento no link dá o mesmo id, e o endereço antigo (com acento) ainda acha o título.
+  test "a heading slug drops accents and an old accented link still finds the heading" do
+    use_fake_api(notes: [ { id: "1", path: "plan.md", content: "[[deep#Configuração inicial]] [[deep#Configuracao inicial|plain]] [old](/notes/2#configuração-inicial)\n" },
+                          { id: "2", path: "deep.md", content: "# Top\n\n#{FILLER}\n\n## Configuração inicial\n\nThe end.\n" } ])
+    sign_in_through_form
+
+    visit note_path("1")
+    click_on "Read"
+    assert_link "deep#Configuração inicial", href: "/notes/2#configuracao-inicial"
+    assert_link "plain", href: "/notes/2#configuracao-inicial"
+
+    click_on "old"
+    assert_current_path note_path("2")
+    assert_heading_in_view "configuracao-inicial"
+  end
+
   test "an anchor link with a malformed hash raises no error in the reading" do
     use_fake_api(notes: [ { id: "1", path: "plan.md", content: "<a href=\"#%\">broken anchor</a>\n" } ])
     sign_in_through_form
