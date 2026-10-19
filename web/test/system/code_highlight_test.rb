@@ -93,6 +93,8 @@ class CodeHighlightTest < ApplicationSystemTestCase
           return color
         })()
       JS
-      assert_selector(".cm-line span", text:, exact_text: true) { |token| token.style("color")["color"] == expected }
+      assert_selector(".cm-line span", text:, exact_text: true) do |token|
+        evaluate_script("getComputedStyle(arguments[0]).color", token) == expected
+      end
     end
 end
