@@ -200,7 +200,7 @@ tem limites próprios, também opcionais e lidos só com o OAuth ligado:
 |---|---|---|---|
 | `MARKUPP_OAUTH_CIMD_TIMEOUT_SECONDS` | 5 | 1 a 30 | tempo máximo da busca do documento |
 | `MARKUPP_OAUTH_CIMD_MAX_KB` | 64 | 1 a 1024 | tamanho máximo do documento |
-| `MARKUPP_OAUTH_CIMD_CACHE_MIN_MINUTES` | 5 | 1 a 60 | menor tempo de cache do documento |
+| `MARKUPP_OAUTH_CIMD_CACHE_MIN_MINUTES` | 5 | 1 a 60 | menor tempo de cache do documento e tempo em que uma busca que falhou fica lembrada, recusando o client_id sem buscar de novo |
 | `MARKUPP_OAUTH_CIMD_CACHE_MAX_HOURS` | 24 | 1 a 168 | maior tempo de cache do documento |
 
 O tempo de cache vem do max-age do Cache-Control da resposta, limitado ao intervalo acima;
