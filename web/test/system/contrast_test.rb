@@ -29,7 +29,7 @@ class ContrastTest < ApplicationSystemTestCase
 
     assert_readable find("main nav a[aria-current=page]")
     assert_readable find("footer a[aria-current=page]")
-    assert_readable find("main button[aria-pressed=true]")
+    assert_readable find("main button[aria-pressed=true]", text: "Light")
 
     visit note_path("1")
     assert_readable find("#sidebar a[aria-current=page]")
