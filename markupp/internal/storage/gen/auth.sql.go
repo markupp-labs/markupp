@@ -534,7 +534,8 @@ type ListTenantSummariesRow struct {
 }
 
 // Roda fora do RLS, que só enxerga um tenant por transação, e por isso repete a regra de
-// leitura de notes_read: nota do tenant em cofre de que a conta é membro.
+// notes_read: a conta lê a nota do cofre de que é membro, no tenant desse cofre, que a
+// chave estrangeira de notes amarra ao tenant_id da nota.
 func (q *Queries) ListTenantSummaries(ctx context.Context, userID string) ([]ListTenantSummariesRow, error) {
 	rows, err := q.db.Query(ctx, listTenantSummaries, userID)
 	if err != nil {
