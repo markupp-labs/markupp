@@ -181,6 +181,7 @@ inteiro dentro da faixa, e um valor fora dela impede o servidor de subir:
 | `MARKUPP_OAUTH_REFRESH_DAYS` | 30 | 1 a 365 | validade do refresh token |
 | `MARKUPP_OAUTH_REQUEST_MINUTES` | 10 | 1 a 60 | espera pelo consentimento no painel |
 | `MARKUPP_OAUTH_CODE_SECONDS` | 60 | 10 a 600 | validade do authorization code |
+| `MARKUPP_OAUTH_EXCHANGE_MINUTES` | 5 | 1 a 15 | validade do token da API entregue ao resource pela troca de token |
 
 ## Aviso
 
