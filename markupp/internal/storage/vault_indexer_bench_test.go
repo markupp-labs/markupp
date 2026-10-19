@@ -51,11 +51,15 @@ WHERE n.pos <= $1`
 
 // BenchmarkSegundoEstagio_CofreInteiro mede o segundo estágio sobre o cofre de 10 mil
 // notas já indexado, com 500 ligações não resolvidas, num Job sem nota pendente: df,
-// ligações inferidas, PageRank, graus e comunidades.
+// ligações inferidas, PageRank, graus e comunidades. O ANALYZE antes da medida é o
+// caso comum; o primeiro Job de um cofre recém-importado roda sem estatística da
+// carga, e as consultas por título ficam mais lentas.
 func BenchmarkSegundoEstagio_CofreInteiro(b *testing.B) {
 	pool, idx := cofreIndexado(b)
 	_, err := pool.Exec(context.Background(), citaComErroDeDigitacao, citacoesComErro)
 	require.NoError(b, err)
+	_, err = pool.Exec(context.Background(), "ANALYZE")
+	require.NoError(b, err, "estatisticas da carga, como o autovacuum deixaria entre dois Jobs")
 	b.ReportAllocs()
 	b.ResetTimer()
 	for range b.N {
