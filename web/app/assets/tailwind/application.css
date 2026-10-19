@@ -219,8 +219,8 @@
     color: var(--ink-muted);
   }
 
+  /* Hover sem fundo próprio: a aba continua sendo a borda da barra; só o ícone sobe para a cor do texto. */
   .sidebar-spine:hover {
-    background: var(--accent-soft);
     color: var(--ink);
   }
 
