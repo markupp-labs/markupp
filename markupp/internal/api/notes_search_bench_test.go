@@ -75,7 +75,7 @@ func roteadorDoCofreSintetico(b *testing.B) http.Handler {
 	svc := notes.NewService(storage.NewPostgresNotesRepository(pool, "simple"), integrationMaxNoteSize)
 	return api.NewRouter(api.RouterDeps{
 		Notes:   svc,
-		Graph:   storage.NewPostgresNoteGraph(pool),
+		Graph:   storage.NewPostgresNoteGraph(pool, "simple"),
 		Tenants: &fakeTenantResolver{membership: auth.Membership{TenantID: ator.TenantID, Role: ator.Role}},
 		Tokens:  &fakeTokenValidator{claims: auth.Claims{Subject: ator.UserID}},
 		Probe:   pool,

@@ -30,7 +30,7 @@ func cofreTipado(t *testing.T) *storage.PostgresNoteGraph {
 		storagetest.SaveNote(ctxDeTeste, t, repo, nota)
 	}
 	indexaTodosOsCofres(t, db, "simple")
-	return storage.NewPostgresNoteGraph(db)
+	return storage.NewPostgresNoteGraph(db, "simple")
 }
 
 func TestNoteGraph_Backlinks_TrazemOsPredicadosDasLigacoesTipadas(t *testing.T) {

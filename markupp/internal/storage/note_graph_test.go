@@ -35,7 +35,7 @@ func cofreLigado(t *testing.T) (*pgxpool.Pool, *storage.PostgresNotesRepository,
 		storagetest.SaveNote(ctxDeTeste, t, repo, nota)
 	}
 	indexaTodosOsCofres(t, db, "simple")
-	return db, repo, storage.NewPostgresNoteGraph(db)
+	return db, repo, storage.NewPostgresNoteGraph(db, "simple")
 }
 
 func idsDe(lidas []notes.LinkedNote) []string {

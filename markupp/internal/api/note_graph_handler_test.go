@@ -22,6 +22,7 @@ type fakeNoteGraph struct {
 	backlinks  []notes.Backlink
 	neighbors  []notes.Neighbor
 	unresolved []notes.UnresolvedLink
+	mentions   []notes.UnlinkedMention
 	err        error
 
 	method string
@@ -52,6 +53,11 @@ func (f *fakeNoteGraph) Orphans(_ context.Context, vaultID string, offset, limit
 func (f *fakeNoteGraph) UnresolvedLinks(_ context.Context, vaultID string, offset, limit int) ([]notes.UnresolvedLink, error) {
 	f.record("unresolved", vaultID, offset, limit)
 	return f.unresolved, f.err
+}
+
+func (f *fakeNoteGraph) Mentions(_ context.Context, noteID string, offset, limit int) ([]notes.UnlinkedMention, error) {
+	f.record("mentions", noteID, offset, limit)
+	return f.mentions, f.err
 }
 
 func getGrafo(t *testing.T, graph api.NoteGraph, role, target string) *httptest.ResponseRecorder {
@@ -114,6 +120,19 @@ func TestGetUnresolvedLinks_DevolveOTituloCitadoEOTipo(t *testing.T) {
 	assert.Equal(t, []any{"unresolved", "va"}, []any{graph.method, graph.id})
 }
 
+func TestGetMentions_DizOSentidoOTituloEAProbabilidade(t *testing.T) {
+	graph := &fakeNoteGraph{mentions: []notes.UnlinkedMention{
+		{LinkedNote: notaLigada, Title: "kubernetes", Direction: notes.MentionIncoming, Prior: 0.5},
+	}}
+
+	rec := getGrafo(t, graph, "viewer", "/notes/n1/mentions?limit=5")
+
+	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+	assert.JSONEq(t, `[{"id":"n2","vault_id":"va","path":"b.md","updated_at":"2026-10-16T12:00:00Z",
+		"title":"kubernetes","direction":"incoming","prior":0.5}]`, rec.Body.String())
+	assert.Equal(t, []any{"mentions", "n1", 0, 5}, []any{graph.method, graph.id, graph.offset, graph.limit})
+}
+
 func TestGrafo_ErrosDeDominio_ViramStatus(t *testing.T) {
 	casos := map[string]struct {
 		err    error
@@ -121,6 +140,7 @@ func TestGrafo_ErrosDeDominio_ViramStatus(t *testing.T) {
 		status int
 	}{
 		"nota inexistente":   {notes.ErrNotFound, "/notes/x/backlinks", http.StatusNotFound},
+		"mencao sem nota":    {notes.ErrNotFound, "/notes/x/mentions", http.StatusNotFound},
 		"cofre sem acesso":   {notes.ErrVaultForbidden, "/vaults/x/orphans", http.StatusForbidden},
 		"limit nao inteiro":  {nil, "/vaults/x/unresolved-links?limit=abc", http.StatusBadRequest},
 		"offset nao inteiro": {nil, "/notes/x/neighbors?offset=abc", http.StatusBadRequest},
