@@ -11,100 +11,120 @@ import (
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/vaultgraph"
 )
 
-// anchorKey identifica o par (chave de título, nota com o título) da probabilidade a
-// priori da âncora.
-type anchorKey struct {
-	titleKey string
-	noteID   string
+// vaultCitations são os títulos do cofre e o que as notas citam, lidos uma vez e
+// cruzados em memória: a anti-junção no banco, sob RLS e sem estatística da carga
+// recém-gravada, levava segundos num cofre de 10 mil notas.
+type vaultCitations struct {
+	titles     []inference.Title
+	titleNotes map[string]int             // notas com cada chave de título
+	citers     map[string]map[string]bool // notas que citam cada chave de título
+	unresolved []gen.ListVaultCitationsRow
 }
 
 // inferLinks grava uma ligação inferida para cada título sem nota citado no cofre,
 // quando há candidata, e devolve as arestas gravadas. O grafo g é o das ligações
 // resolvidas, sem inferidas, e dá o parentesco entre a nota que cita e a candidata.
 func inferLinks(ctx context.Context, q *gen.Queries, vaultID, searchConfig string, g *vaultgraph.Graph) ([]vaultgraph.Edge, error) {
-	citations, err := q.ListUnresolvedCitations(ctx, vaultID)
-	if err != nil || len(citations) == 0 {
-		return nil, wrapVault(err, "listar as ligacoes nao resolvidas", vaultID)
+	vc, err := loadCitations(ctx, q, vaultID)
+	if err != nil || len(vc.unresolved) == 0 {
+		return nil, err
 	}
-	candidates, err := citationCandidates(ctx, q, vaultID, citations)
+	candidates := vc.candidates()
+	occurrences, err := countOccurrences(ctx, q, vaultID, searchConfig, candidates)
 	if err != nil {
 		return nil, err
 	}
-	priors, err := anchorPriors(ctx, q, vaultID, searchConfig, candidates)
-	if err != nil {
-		return nil, err
-	}
-	params, edges := chooseTargets(citations, candidates, priors, g)
+	params, edges := vc.chooseTargets(candidates, occurrences, g)
 	if err := q.SaveInferredLinks(ctx, params); err != nil {
 		return nil, fmt.Errorf("gravar as %d ligacoes inferidas do cofre %q: %w", len(edges), vaultID, err)
 	}
 	return edges, nil
 }
 
-// citationCandidates devolve, na ordem das citações, as notas com título perto do
-// citado, fora a própria nota que cita. O mesmo título citado é comparado uma vez.
-func citationCandidates(ctx context.Context, q *gen.Queries, vaultID string, citations []gen.ListUnresolvedCitationsRow) ([][]inference.Candidate, error) {
-	rows, err := q.ListVaultTitleKeys(ctx, vaultID)
+// loadCitations lê os títulos e as citações do cofre e separa as citações de título
+// sem nota, uma por nota e título, com a primeira grafia.
+func loadCitations(ctx context.Context, q *gen.Queries, vaultID string) (vaultCitations, error) {
+	titles, err := q.ListVaultTitleKeys(ctx, vaultID)
 	if err != nil {
-		return nil, fmt.Errorf("listar os titulos do cofre %q: %w", vaultID, err)
+		return vaultCitations{}, fmt.Errorf("listar os titulos do cofre %q: %w", vaultID, err)
 	}
-	titles := make([]inference.Title, len(rows))
-	for i, r := range rows {
-		titles[i] = inference.Title{NoteID: r.NoteID, Key: r.TitleKey}
+	cited, err := q.ListVaultCitations(ctx, vaultID)
+	if err != nil {
+		return vaultCitations{}, fmt.Errorf("listar as ligacoes do cofre %q: %w", vaultID, err)
 	}
-	idx := inference.NewTitleIndex(titles)
+	vc := vaultCitations{titleNotes: make(map[string]int), citers: make(map[string]map[string]bool)}
+	for _, t := range titles {
+		vc.titles = append(vc.titles, inference.Title{NoteID: t.NoteID, Key: t.TitleKey})
+		vc.titleNotes[t.TitleKey]++
+	}
+	for _, c := range cited {
+		vc.addCitation(c)
+	}
+	return vc, nil
+}
+
+// addCitation conta a nota que cita o título e guarda a citação se o título não é de
+// nota nenhuma e a nota ainda não o tinha citado; as citações chegam por nota e
+// título, então a repetida vem logo depois.
+func (vc *vaultCitations) addCitation(c gen.ListVaultCitationsRow) {
+	if vc.citers[c.TitleKey] == nil {
+		vc.citers[c.TitleKey] = make(map[string]bool)
+	}
+	vc.citers[c.TitleKey][c.NoteID] = true
+	last := len(vc.unresolved) - 1
+	repeated := last >= 0 && vc.unresolved[last].NoteID == c.NoteID && vc.unresolved[last].TitleKey == c.TitleKey
+	if vc.titleNotes[c.TitleKey] == 0 && !repeated {
+		vc.unresolved = append(vc.unresolved, c)
+	}
+}
+
+// candidates devolve, na ordem das citações sem nota, as notas com título perto do
+// citado, fora a própria nota que cita. O mesmo título citado é comparado uma vez.
+func (vc *vaultCitations) candidates() [][]inference.Candidate {
+	idx := inference.NewTitleIndex(vc.titles)
 	byKey := make(map[string][]inference.Candidate)
-	out := make([][]inference.Candidate, len(citations))
-	for i, c := range citations {
+	out := make([][]inference.Candidate, len(vc.unresolved))
+	for i, c := range vc.unresolved {
 		if _, ok := byKey[c.TitleKey]; !ok {
 			byKey[c.TitleKey] = idx.Candidates("", c.TitleKey)
 		}
 		out[i] = slices.DeleteFunc(slices.Clone(byKey[c.TitleKey]), func(k inference.Candidate) bool { return k.NoteID == c.NoteID })
 	}
-	return out, nil
+	return out
 }
 
-// anchorPriors devolve a probabilidade a priori, com Laplace, de cada título
-// candidato apontar para a nota dele. Só as citações com mais de uma candidata
-// precisam dela.
-func anchorPriors(ctx context.Context, q *gen.Queries, vaultID, searchConfig string, candidates [][]inference.Candidate) (map[anchorKey]float64, error) {
-	params := gen.MentionAnchorStatsParams{SearchConfig: searchConfig, VaultID: vaultID}
-	seen := make(map[anchorKey]bool)
+// countOccurrences conta as notas com cada título candidato no corpo. Só as citações
+// com mais de uma candidata precisam da probabilidade a priori, e com ela da conta.
+func countOccurrences(ctx context.Context, q *gen.Queries, vaultID, searchConfig string, candidates [][]inference.Candidate) (map[string]int, error) {
+	params := gen.CountTitleOccurrencesParams{SearchConfig: searchConfig, VaultID: vaultID}
+	seen := make(map[string]bool)
 	for _, cs := range candidates {
 		for _, c := range cs {
-			key := anchorKey{titleKey: c.TitleKey, noteID: c.NoteID}
-			if len(cs) > 1 && !seen[key] {
-				seen[key] = true
-				params.TitleKeys, params.TargetIds = append(params.TitleKeys, c.TitleKey), append(params.TargetIds, c.NoteID)
+			if len(cs) > 1 && !seen[c.TitleKey] {
+				seen[c.TitleKey] = true
+				params.TitleKeys = append(params.TitleKeys, c.TitleKey)
 			}
 		}
 	}
-	return queryAnchorPriors(ctx, q, params)
-}
-
-func queryAnchorPriors(ctx context.Context, q *gen.Queries, params gen.MentionAnchorStatsParams) (map[anchorKey]float64, error) {
-	priors := make(map[anchorKey]float64, len(params.TitleKeys))
+	occurrences := make(map[string]int, len(params.TitleKeys))
 	if len(params.TitleKeys) == 0 {
-		return priors, nil
+		return occurrences, nil
 	}
-	rows, err := q.MentionAnchorStats(ctx, params)
-	if err != nil {
-		return nil, fmt.Errorf("contar as ancoras de %d titulos candidatos do cofre %q: %w", len(params.TitleKeys), params.VaultID, err)
-	}
+	rows, err := q.CountTitleOccurrences(ctx, params)
 	for _, r := range rows {
-		priors[anchorKey{titleKey: r.TitleKey, noteID: r.TargetID}] = mention.Prior(int(r.AnchorLinks), int(r.Occurrences), int(r.Candidates))
+		occurrences[r.TitleKey] = int(r.Occurrences)
 	}
-	return priors, nil
+	return occurrences, wrapVault(err, fmt.Sprintf("contar as ocorrencias de %d titulos candidatos", len(params.TitleKeys)), vaultID)
 }
 
-// chooseTargets escolhe a nota de cada citação e monta as linhas e as arestas das
-// ligações inferidas.
-func chooseTargets(citations []gen.ListUnresolvedCitationsRow, candidates [][]inference.Candidate,
-	priors map[anchorKey]float64, g *vaultgraph.Graph) (gen.SaveInferredLinksParams, []vaultgraph.Edge) {
+// chooseTargets escolhe a nota de cada citação sem nota e monta as linhas e as
+// arestas das ligações inferidas.
+func (vc *vaultCitations) chooseTargets(candidates [][]inference.Candidate, occurrences map[string]int,
+	g *vaultgraph.Graph) (gen.SaveInferredLinksParams, []vaultgraph.Edge) {
 	var params gen.SaveInferredLinksParams
 	var edges []vaultgraph.Edge
-	for i, c := range citations {
-		scoreCandidates(c.NoteID, candidates[i], priors, g)
+	for i, c := range vc.unresolved {
+		vc.scoreCandidates(c.NoteID, candidates[i], occurrences, g)
 		target, ok := inference.Choose(candidates[i])
 		if !ok {
 			continue
@@ -116,12 +136,17 @@ func chooseTargets(citations []gen.ListUnresolvedCitationsRow, candidates [][]in
 	return params, edges
 }
 
-// scoreCandidates preenche a probabilidade a priori e o parentesco com a nota
-// sourceID de cada candidata.
-func scoreCandidates(sourceID string, candidates []inference.Candidate, priors map[anchorKey]float64, g *vaultgraph.Graph) {
+// scoreCandidates preenche a probabilidade a priori, com Laplace, de o título de cada
+// candidata apontar para ela, e o parentesco dela com a nota sourceID. As ligações
+// da âncora são as notas que citam o título, fora a própria candidata.
+func (vc *vaultCitations) scoreCandidates(sourceID string, candidates []inference.Candidate, occurrences map[string]int, g *vaultgraph.Graph) {
 	for i := range candidates {
 		k := &candidates[i]
-		k.Prior = priors[anchorKey{titleKey: k.TitleKey, noteID: k.NoteID}]
+		anchorLinks := len(vc.citers[k.TitleKey])
+		if vc.citers[k.TitleKey][k.NoteID] {
+			anchorLinks--
+		}
+		k.Prior = mention.Prior(anchorLinks, occurrences[k.TitleKey], vc.titleNotes[k.TitleKey])
 		k.Relatedness = g.ResourceAllocation(sourceID, k.NoteID)
 	}
 }

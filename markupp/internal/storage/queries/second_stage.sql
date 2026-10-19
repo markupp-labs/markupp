@@ -13,14 +13,22 @@ SELECT source_id, target_id FROM note_edges WHERE vault_id = sqlc.arg(vault_id) 
 -- name: ListVaultTitleKeys :many
 SELECT note_id, title_key FROM note_titles WHERE vault_id = sqlc.arg(vault_id) ORDER BY note_id, title_key;
 
--- Cada título sem nota citado por uma nota, uma vez por nota, com a primeira grafia.
--- name: ListUnresolvedCitations :many
-SELECT DISTINCT ON (l.note_id, l.title_key) l.note_id, l.cited_title, l.title_key
-FROM note_links l
-WHERE l.vault_id = sqlc.arg(vault_id)
-  AND l.kind <> 'inferred'
-  AND NOT EXISTS (SELECT 1 FROM note_titles t WHERE t.vault_id = l.vault_id AND t.title_key = l.title_key)
-ORDER BY l.note_id, l.title_key, l.cited_title;
+-- Os títulos que cada nota do cofre cita, fora as ligações inferidas, com a grafia.
+-- name: ListVaultCitations :many
+SELECT note_id, cited_title, title_key
+FROM note_links
+WHERE vault_id = sqlc.arg(vault_id) AND kind <> 'inferred'
+ORDER BY note_id, title_key, cited_title;
+
+-- Para cada título, as notas do cofre que o têm no corpo (peso D), como a menção não
+-- ligada conta as ocorrências da âncora.
+-- name: CountTitleOccurrences :many
+SELECT k.title_key::text AS title_key,
+       (SELECT count(*) FROM note_search_index s
+        JOIN notes n ON n.id = s.note_id
+        CROSS JOIN phraseto_tsquery(sqlc.arg(search_config)::text::regconfig, k.title_key) AS q (query)
+        WHERE n.vault_id = sqlc.arg(vault_id) AND s.document @@ q.query AND ts_filter(s.document, '{d}') @@ q.query)::int AS occurrences
+FROM unnest(sqlc.arg(title_keys)::text[]) AS k (title_key);
 
 -- A ligação inferida guarda o título citado como escrito, a chave do título da nota
 -- escolhida e o caminho dela, que a faz ligar só àquela nota. Nota apagada some no JOIN.

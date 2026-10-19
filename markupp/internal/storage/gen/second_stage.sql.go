@@ -9,6 +9,48 @@ import (
 	"context"
 )
 
+const countTitleOccurrences = `-- name: CountTitleOccurrences :many
+SELECT k.title_key::text AS title_key,
+       (SELECT count(*) FROM note_search_index s
+        JOIN notes n ON n.id = s.note_id
+        CROSS JOIN phraseto_tsquery($1::text::regconfig, k.title_key) AS q (query)
+        WHERE n.vault_id = $2 AND s.document @@ q.query AND ts_filter(s.document, '{d}') @@ q.query)::int AS occurrences
+FROM unnest($3::text[]) AS k (title_key)
+`
+
+type CountTitleOccurrencesParams struct {
+	SearchConfig string
+	VaultID      string
+	TitleKeys    []string
+}
+
+type CountTitleOccurrencesRow struct {
+	TitleKey    string
+	Occurrences int32
+}
+
+// Para cada título, as notas do cofre que o têm no corpo (peso D), como a menção não
+// ligada conta as ocorrências da âncora.
+func (q *Queries) CountTitleOccurrences(ctx context.Context, arg CountTitleOccurrencesParams) ([]CountTitleOccurrencesRow, error) {
+	rows, err := q.db.Query(ctx, countTitleOccurrences, arg.SearchConfig, arg.VaultID, arg.TitleKeys)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CountTitleOccurrencesRow
+	for rows.Next() {
+		var i CountTitleOccurrencesRow
+		if err := rows.Scan(&i.TitleKey, &i.Occurrences); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const deleteInferredLinks = `-- name: DeleteInferredLinks :exec
 
 DELETE FROM note_links WHERE vault_id = $1 AND kind = 'inferred'
@@ -68,31 +110,29 @@ func (q *Queries) ListNoteCommunities(ctx context.Context, vaultID string) ([]Li
 	return items, nil
 }
 
-const listUnresolvedCitations = `-- name: ListUnresolvedCitations :many
-SELECT DISTINCT ON (l.note_id, l.title_key) l.note_id, l.cited_title, l.title_key
-FROM note_links l
-WHERE l.vault_id = $1
-  AND l.kind <> 'inferred'
-  AND NOT EXISTS (SELECT 1 FROM note_titles t WHERE t.vault_id = l.vault_id AND t.title_key = l.title_key)
-ORDER BY l.note_id, l.title_key, l.cited_title
+const listVaultCitations = `-- name: ListVaultCitations :many
+SELECT note_id, cited_title, title_key
+FROM note_links
+WHERE vault_id = $1 AND kind <> 'inferred'
+ORDER BY note_id, title_key, cited_title
 `
 
-type ListUnresolvedCitationsRow struct {
+type ListVaultCitationsRow struct {
 	NoteID     string
 	CitedTitle string
 	TitleKey   string
 }
 
-// Cada título sem nota citado por uma nota, uma vez por nota, com a primeira grafia.
-func (q *Queries) ListUnresolvedCitations(ctx context.Context, vaultID string) ([]ListUnresolvedCitationsRow, error) {
-	rows, err := q.db.Query(ctx, listUnresolvedCitations, vaultID)
+// Os títulos que cada nota do cofre cita, fora as ligações inferidas, com a grafia.
+func (q *Queries) ListVaultCitations(ctx context.Context, vaultID string) ([]ListVaultCitationsRow, error) {
+	rows, err := q.db.Query(ctx, listVaultCitations, vaultID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []ListUnresolvedCitationsRow
+	var items []ListVaultCitationsRow
 	for rows.Next() {
-		var i ListUnresolvedCitationsRow
+		var i ListVaultCitationsRow
 		if err := rows.Scan(&i.NoteID, &i.CitedTitle, &i.TitleKey); err != nil {
 			return nil, err
 		}
