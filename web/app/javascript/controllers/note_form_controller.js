@@ -63,6 +63,16 @@ export default class extends Controller {
     this.titleTarget.focus()
   }
 
+  // O aviso de título em branco sai assim que há título; outro erro de caminho fica até o servidor responder.
+  clearBlankTitle() {
+    if (!this.titleTarget.value.trim() || this.titleErrorTarget.textContent != this.blankTitleValue) return
+
+    this.titleErrorTarget.textContent = ""
+    this.titleErrorTarget.hidden = true
+    this.titleTarget.removeAttribute("aria-invalid")
+    this.titleTarget.removeAttribute("aria-describedby")
+  }
+
   allowLeaving() {
     this.leaving = true
   }
