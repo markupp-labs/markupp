@@ -1,13 +1,11 @@
 // Package vaultgraph calcula as medidas do grafo de ligações de um cofre inteiro:
-// grau, alocação de recursos, PageRank e comunidades. O gonum fica atrás deste
-// pacote; quem chama vê só ids de nota.
+// grau, alocação de recursos, PageRank e comunidades. O gonum, que calcula o
+// PageRank, fica atrás deste pacote; quem chama vê só ids de nota.
 package vaultgraph
 
 import (
-	"math/rand/v2"
 	"slices"
 
-	"gonum.org/v1/gonum/graph/community"
 	"gonum.org/v1/gonum/graph/network"
 )
 
@@ -16,8 +14,6 @@ const (
 	damping = 0.85
 	// pageRankTolerance é a norma 2 da diferença entre iterações que encerra o PageRank.
 	pageRankTolerance = 1e-10
-	// louvainResolution é a resolução da modularidade, a de Blondel et al. (2008).
-	louvainResolution = 1
 	// louvainSeed fixa a ordem de visita do Louvain: o mesmo grafo dá a mesma partição.
 	louvainSeed = 20261016
 )
@@ -97,21 +93,31 @@ func (g *Graph) PageRank() map[string]float64 {
 // resolução 1 e semente fixa. Nota sozinha não é comunidade e fica de fora. Cada
 // comunidade sai com os ids em ordem, e a lista por tamanho e pelo primeiro id.
 func (g *Graph) Communities() [][]string {
-	reduced := community.Modularize(g.undirected, louvainResolution, rand.NewPCG(louvainSeed, louvainSeed))
+	groups := make(map[int][]string)
+	for i, c := range louvain(g.undirectedIndexes(), louvainSeed) {
+		groups[c] = append(groups[c], g.ids[i])
+	}
 	var out [][]string
-	for _, members := range reduced.Communities() {
-		if len(members) < 2 {
-			continue
+	for _, ids := range groups {
+		if len(ids) > 1 {
+			slices.Sort(ids)
+			out = append(out, ids)
 		}
-		ids := make([]string, 0, len(members))
-		for _, n := range members {
-			ids = append(ids, g.ids[n.ID()])
-		}
-		slices.Sort(ids)
-		out = append(out, ids)
 	}
 	slices.SortFunc(out, bySizeThenFirst)
 	return out
+}
+
+// undirectedIndexes devolve os vizinhos de cada nota na projeção não dirigida, por
+// índice e em ordem.
+func (g *Graph) undirectedIndexes() [][]int {
+	adj := make([][]int, len(g.ids))
+	for i, ns := range g.undirected.from {
+		for _, n := range ns {
+			adj[i] = append(adj[i], int(n.ID()))
+		}
+	}
+	return adj
 }
 
 func bySizeThenFirst(a, b []string) int {
