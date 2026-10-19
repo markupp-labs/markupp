@@ -76,9 +76,17 @@ func activeAuthorizationByID(ctx context.Context, q *gen.Queries, id string) (oa
 	return toAuthorization(row), nil
 }
 
-// SaveRefreshedTokens grava o novo par e audita o evento, numa transação.
-func (r *PostgresOAuthRepository) SaveRefreshedTokens(ctx context.Context, _ string, tokens []oauth.IssuedToken, event oauth.AuditEvent) error {
+// SaveRefreshedTokens trava a Autorização do par novo e, se ela segue ativa e o refresh
+// pai não foi revogado, grava o par e audita o evento, numa transação. A trava serializa
+// a gravação com as revogações, que travam a mesma linha.
+func (r *PostgresOAuthRepository) SaveRefreshedTokens(ctx context.Context, parentHash string, tokens []oauth.IssuedToken, event oauth.AuditEvent) error {
+	if len(tokens) == 0 {
+		return errors.New("gravar par rotacionado: nenhum token recebido, esperado o access e o refresh novos")
+	}
 	return inTx(ctx, r.pool, func(qtx *gen.Queries) error {
+		if err := checkRefreshParentInTx(ctx, qtx, parentHash, tokens[0].AuthorizationID); err != nil {
+			return err
+		}
 		if err := saveTokensInTx(ctx, qtx, tokens); err != nil {
 			return err
 		}
@@ -86,10 +94,46 @@ func (r *PostgresOAuthRepository) SaveRefreshedTokens(ctx context.Context, _ str
 	})
 }
 
-// RevokeAuthorizationTokensAudited revoga os tokens da Autorização, que segue ativa, e
-// audita o evento, numa transação.
+// checkRefreshParentInTx trava a Autorização e confere que ela segue ativa e que o
+// refresh pai dela não foi revogado.
+func checkRefreshParentInTx(ctx context.Context, qtx *gen.Queries, parentHash, authorizationID string) error {
+	row, err := lockAuthorization(ctx, qtx, authorizationID)
+	if err != nil {
+		return err
+	}
+	if row.RevokedAt.Valid {
+		return fmt.Errorf("%w: autorização %q revogada antes de gravar o par rotacionado", oauth.ErrAuthorizationNotFound, authorizationID)
+	}
+	live, err := qtx.IsUnrevokedOAuthToken(ctx, gen.IsUnrevokedOAuthTokenParams{TokenHash: parentHash, AuthorizationID: authorizationID})
+	if err != nil {
+		return fmt.Errorf("conferir refresh pai da autorização %q: %w", authorizationID, err)
+	}
+	if !live {
+		return fmt.Errorf("%w: refresh pai da autorização %q revogado antes de gravar o par rotacionado", oauth.ErrTokenNotFound, authorizationID)
+	}
+	return nil
+}
+
+// lockAuthorization trava a linha da Autorização, revogada ou não, até o fim da
+// transação, ou devolve oauth.ErrAuthorizationNotFound se ela não existe.
+func lockAuthorization(ctx context.Context, qtx *gen.Queries, id string) (gen.OauthAuthorization, error) {
+	row, err := qtx.LockOAuthAuthorization(ctx, id)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return row, fmt.Errorf("%w: autorização %s", oauth.ErrAuthorizationNotFound, oauth.ClientValue(id))
+	}
+	if err != nil {
+		return row, fmt.Errorf("travar autorização %s: %w", oauth.ClientValue(id), err)
+	}
+	return row, nil
+}
+
+// RevokeAuthorizationTokensAudited trava a Autorização, revoga os tokens dela, que segue
+// ativa, e audita o evento, numa transação.
 func (r *PostgresOAuthRepository) RevokeAuthorizationTokensAudited(ctx context.Context, authorizationID string, event oauth.AuditEvent) error {
 	return inTx(ctx, r.pool, func(qtx *gen.Queries) error {
+		if _, err := lockAuthorization(ctx, qtx, authorizationID); err != nil {
+			return err
+		}
 		if err := revokeTokens(ctx, qtx, authorizationID); err != nil {
 			return err
 		}
@@ -126,10 +170,13 @@ func (r *PostgresOAuthRepository) ListActiveAuthorizations(ctx context.Context, 
 	return summaries, nil
 }
 
-// RevokeAuthorization revoga a Autorização ativa da conta em event.OccurredAt, os tokens
-// dela, e audita o evento, numa transação.
+// RevokeAuthorization trava a Autorização e revoga a ativa da conta em
+// event.OccurredAt, os tokens dela, e audita o evento, numa transação.
 func (r *PostgresOAuthRepository) RevokeAuthorization(ctx context.Context, userID, authorizationID string, event oauth.AuditEvent) error {
 	return inTx(ctx, r.pool, func(qtx *gen.Queries) error {
+		if _, err := lockAuthorization(ctx, qtx, authorizationID); err != nil {
+			return err
+		}
 		if err := revokeAuthorizationInTx(ctx, qtx, userID, authorizationID, event.OccurredAt); err != nil {
 			return err
 		}

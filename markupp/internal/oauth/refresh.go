@@ -50,10 +50,13 @@ func (s *Service) consumeRefresh(ctx context.Context, refresh string, now time.T
 	case errors.Is(err, ErrRefreshReused):
 		return TokenGrant{}, s.revokeReusedRefresh(ctx, grant.Authorization, now)
 	case errors.Is(err, ErrTokenNotFound), errors.Is(err, ErrAuthorizationNotFound):
-		return TokenGrant{}, grantError("refresh token invalido, expirado ou revogado; esperado um refresh token emitido por este servidor e ainda valido")
+		return TokenGrant{}, grantError(revokedRefreshDescription)
 	}
 	return TokenGrant{}, fmt.Errorf("oauth: consumindo o refresh token: %w", err)
 }
+
+// revokedRefreshDescription é a descrição do refresh que não vale mais.
+const revokedRefreshDescription = "refresh token invalido, expirado ou revogado; esperado um refresh token emitido por este servidor e ainda valido"
 
 // reusedRefreshDescription é a descrição do refresh já rotacionado reapresentado.
 const reusedRefreshDescription = "refresh token ja rotacionado; esperado o refresh token mais recente emitido para o cliente"
@@ -98,11 +101,16 @@ func narrowScopes(raw string, granted []string) ([]string, error) {
 }
 
 // saveRefreshed grava o par novo com o mesmo resource e audita o refresh, numa transação.
+// Uma revogação que entrou depois do consumo derruba o grant sem gravar nada.
 func (s *Service) saveRefreshed(ctx context.Context, grant TokenGrant, scopes []string, now time.Time) (TokenResponse, error) {
 	base := IssuedToken{AuthorizationID: grant.Authorization.ID, Resource: grant.Token.Resource, Scopes: scopes}
 	pair := s.newTokenPair(base, now)
 	event := auditEvent(AuditActionRefresh, AuditResultSuccess, grant.Authorization, now)
-	if err := s.repo.SaveRefreshedTokens(ctx, "", pair.tokens, event); err != nil {
+	err := s.repo.SaveRefreshedTokens(ctx, grant.Token.Hash, pair.tokens, event)
+	if errors.Is(err, ErrTokenNotFound) || errors.Is(err, ErrAuthorizationNotFound) {
+		return TokenResponse{}, grantError(revokedRefreshDescription)
+	}
+	if err != nil {
 		return TokenResponse{}, fmt.Errorf("oauth: gravando os tokens rotacionados da autorização %q: %w", grant.Authorization.ID, err)
 	}
 	return pair.response, nil

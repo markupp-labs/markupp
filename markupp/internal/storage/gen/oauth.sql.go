@@ -331,6 +331,24 @@ func (q *Queries) GetRotatedOAuthRefreshToken(ctx context.Context, tokenHash str
 	return i, err
 }
 
+const isUnrevokedOAuthToken = `-- name: IsUnrevokedOAuthToken :one
+SELECT EXISTS (
+    SELECT 1 FROM oauth_tokens WHERE token_hash = $1 AND authorization_id = $2 AND NOT revoked
+)
+`
+
+type IsUnrevokedOAuthTokenParams struct {
+	TokenHash       string
+	AuthorizationID string
+}
+
+func (q *Queries) IsUnrevokedOAuthToken(ctx context.Context, arg IsUnrevokedOAuthTokenParams) (bool, error) {
+	row := q.db.QueryRow(ctx, isUnrevokedOAuthToken, arg.TokenHash, arg.AuthorizationID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
 const listActiveOAuthAuthorizations = `-- name: ListActiveOAuthAuthorizations :many
 SELECT oauth_authorizations.id, oauth_authorizations.user_id, oauth_authorizations.client_id, oauth_authorizations.scopes, oauth_authorizations.created_at, oauth_authorizations.updated_at, oauth_authorizations.revoked_at, oauth_clients.name AS client_name
 FROM oauth_authorizations JOIN oauth_clients ON oauth_clients.id = oauth_authorizations.client_id
@@ -370,6 +388,27 @@ func (q *Queries) ListActiveOAuthAuthorizations(ctx context.Context, userID stri
 		return nil, err
 	}
 	return items, nil
+}
+
+const lockOAuthAuthorization = `-- name: LockOAuthAuthorization :one
+SELECT id, user_id, client_id, scopes, created_at, updated_at, revoked_at FROM oauth_authorizations WHERE id = $1 FOR UPDATE
+`
+
+// Trava a Autorização, revogada ou não, para serializar a gravação do par rotacionado
+// com as revogações dela.
+func (q *Queries) LockOAuthAuthorization(ctx context.Context, id string) (OauthAuthorization, error) {
+	row := q.db.QueryRow(ctx, lockOAuthAuthorization, id)
+	var i OauthAuthorization
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.ClientID,
+		&i.Scopes,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.RevokedAt,
+	)
+	return i, err
 }
 
 const redeemOAuthCode = `-- name: RedeemOAuthCode :one

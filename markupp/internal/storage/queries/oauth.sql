@@ -83,3 +83,13 @@ ORDER BY oauth_authorizations.updated_at DESC;
 -- name: RevokeOAuthAuthorization :execrows
 UPDATE oauth_authorizations SET revoked_at = sqlc.arg(at)::TIMESTAMPTZ
 WHERE id = sqlc.arg(id) AND user_id = sqlc.arg(user_id) AND revoked_at IS NULL;
+
+-- Trava a Autorização, revogada ou não, para serializar a gravação do par rotacionado
+-- com as revogações dela.
+-- name: LockOAuthAuthorization :one
+SELECT * FROM oauth_authorizations WHERE id = $1 FOR UPDATE;
+
+-- name: IsUnrevokedOAuthToken :one
+SELECT EXISTS (
+    SELECT 1 FROM oauth_tokens WHERE token_hash = $1 AND authorization_id = $2 AND NOT revoked
+);
