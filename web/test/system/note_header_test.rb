@@ -10,9 +10,9 @@ class NoteHeaderTest < ApplicationSystemTestCase
     page.current_window.resize_to(390, 844)
     find(".cm-content").send_keys([ :control, :end ], "Ship it.")
 
-    assert_selector "button[title='Save']"
+    assert_selector "button[title='Save (Ctrl+S)']"
     assert_selector "button[title='Delete']"
-    assert_selector "button[title='Save'] [data-unsaved-dot]", visible: true
+    assert_selector "button[title='Save (Ctrl+S)'] [data-unsaved-dot]", visible: true
     assert_equal 1, header_row_tops.uniq.size, "expected the header in one line, got rows at #{header_row_tops.inspect}"
   ensure
     page.current_window.resize_to(1400, 900)
