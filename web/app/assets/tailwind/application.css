@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "./motion.css";
 
+/* A fonte mora em public/, sem digest, para as páginas de erro estáticas usarem a mesma URL sem o app. */
 @font-face {
   font-family: "Fira Code";
   src: url("/FiraCode-VF.woff2") format("woff2");
