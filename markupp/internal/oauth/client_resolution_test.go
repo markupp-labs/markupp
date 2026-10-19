@@ -150,3 +150,26 @@ func TestStartAuthorization_CIMDBuscadoSemARedirect_RecusaSemRedirect(t *testing
 	requireProtocolError(t, err, "invalid_request", "", "")
 	assert.Empty(t, repo.created)
 }
+
+func TestStartAuthorization_CIMDDocumentoForaDoContrato_RecusaSemGravar(t *testing.T) {
+	casos := map[string]func(*oauth.ClientMetadata){
+		"client_id diferente": func(m *oauth.ClientMetadata) { m.ClientID = "https://outro.exemplo.dev/oauth.json" },
+		"sem redirect_uris":   func(m *oauth.ClientMetadata) { m.RedirectURIs = nil },
+		"ttl zero":            func(m *oauth.ClientMetadata) { m.TTL = 0 },
+		"ttl negativo":        func(m *oauth.ClientMetadata) { m.TTL = -time.Minute },
+	}
+	for nome, estraga := range casos {
+		t.Run(nome, func(t *testing.T) {
+			repo := newFakeOAuthRepository()
+			fetcher := testMetadataFetcher()
+			estraga(&fetcher.metadata)
+
+			_, err := newTestServiceWithMetadata(repo, fetcher).StartAuthorization(context.Background(), validAuthorizeParams())
+
+			requireProtocolError(t, err, "invalid_request", "", "")
+			assert.Contains(t, err.Error(), "inacessivel ou invalido", "a mesma recusa genérica da busca falhando")
+			assert.Empty(t, repo.savedCIMD)
+			assert.Empty(t, repo.created)
+		})
+	}
+}
