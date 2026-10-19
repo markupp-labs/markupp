@@ -7,6 +7,7 @@ class MotionTest < ApplicationSystemTestCase
   POPIN_IN = { "opacity" => "410 #{QUINT}", "transform" => "410 #{QUINT}" }.freeze
   LAYER_IN = { "opacity" => "380 #{QUINT}", "transform" => "380 #{QUINT}" }.freeze
   LAYER_OUT = { "display" => "150 linear", "opacity" => "150 linear", "overlay" => "150 linear", "transform" => "150 linear" }.freeze
+  AREA_MOVE = [ "::view-transition-new(root) area-in 410 #{QUINT}", "::view-transition-old(root) area-out 150 linear" ].freeze
 
   setup do
     emulate_motion_preference("no-preference")
@@ -118,6 +119,39 @@ class MotionTest < ApplicationSystemTestCase
     page.current_window.resize_to(1400, 900)
   end
 
+  # Troca de área (notas, configurações, tenants, telas públicas) como a troca de workspace do Hyprland: a página que
+  # sai some rápida e linear deslizando um pouco, a que entra vem na easeOutQuint. A barra lateral, igual dos dois
+  # lados, fica parada.
+  test "entering and leaving the settings and the tenants slides the area, the sidebar holds still" do
+    visit note_path("1")
+
+    assert_equal AREA_MOVE, area_motions_of_visit(settings_account_path)
+    assert_equal AREA_MOVE, area_motions_of_visit(note_path("1"))
+    assert_equal AREA_MOVE, area_motions_of_visit(tenants_path)
+  end
+
+  test "going from a note to a note swaps at once" do
+    visit note_path("1")
+
+    assert_empty area_motions_of_visit(root_path)
+    assert_empty area_motions_of_visit(note_path("1"))
+  end
+
+  test "logging out slides to the login, with the sidebar leaving along" do
+    visit note_path("1")
+    click_on FakeMarkuppAccounts::DEFAULT_EMAIL
+
+    motions = area_motions_while(%(document.querySelector("form[action='#{session_path}'] button").click()))
+    assert_equal AREA_MOVE + [ "::view-transition-old(sidebar) area-out 150 linear" ], motions
+  end
+
+  test "reduced motion swaps the area at once" do
+    emulate_motion_preference("reduce")
+    visit note_path("1")
+
+    assert_empty area_motions_of_visit(settings_account_path)
+  end
+
   test "reduced motion swaps everything at once" do
     emulate_motion_preference("reduce")
     visit note_path("1")
@@ -163,6 +197,28 @@ class MotionTest < ApplicationSystemTestCase
           element.replaceWith(copy)
           return Object.fromEntries(copy.getAnimations().map((motion) => [ motion.transitionProperty || motion.animationName, true ]))
         })()
+      JS
+    end
+
+    def area_motions_of_visit(path) = area_motions_while("Turbo.visit(#{path.to_json})")
+
+    # Roda a ação e junta, quadro a quadro até o turbo:load (que vem depois do fim da view transition), as animações
+    # dos pseudo-elementos da view transition: "pseudo nome duração curva", em ordem.
+    def area_motions_while(action)
+      evaluate_async_script(<<~JS)
+        const done = arguments[0], seen = new Set()
+        let loaded = false
+        addEventListener("turbo:load", () => (loaded = true), { once: true })
+        const tick = () => {
+          document.getAnimations().filter((motion) => motion.effect.pseudoElement?.startsWith("::view-transition")).forEach((motion) => {
+            const pseudo = motion.effect.pseudoElement
+            const easing = getComputedStyle(document.documentElement, pseudo).animationTimingFunction
+            seen.add(`${pseudo} ${motion.animationName} ${motion.effect.getComputedTiming().duration} ${easing}`)
+          })
+          loaded ? done([ ...seen ].sort()) : requestAnimationFrame(tick)
+        }
+        ;(() => { #{action} })()
+        requestAnimationFrame(tick)
       JS
     end
 
