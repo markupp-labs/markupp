@@ -28,7 +28,7 @@ func (s *Service) RevokeToken(ctx context.Context, r RevokeRequest) error {
 	if r.ClientID != grant.Authorization.ClientID || !liveGrant(grant, now) {
 		return nil
 	}
-	return s.revokeTokens(ctx, grant.Authorization, now)
+	return s.revokeTokens(ctx, grant, now)
 }
 
 func checkRevokeParams(r RevokeRequest) error {
@@ -46,9 +46,11 @@ func liveGrant(grant TokenGrant, now time.Time) bool {
 	return !grant.Token.Revoked && grant.Token.ExpiresAt.After(now) && !grant.Authorization.Revoked
 }
 
-func (s *Service) revokeTokens(ctx context.Context, authorization Authorization, now time.Time) error {
+// revokeTokens derruba os tokens da Autorização do token, que precisa seguir vigente.
+func (s *Service) revokeTokens(ctx context.Context, grant TokenGrant, now time.Time) error {
+	authorization := grant.Authorization
 	event := auditEvent(AuditActionRevoke, AuditResultSuccess, authorization, now)
-	if err := s.repo.RevokeAuthorizationTokensAudited(ctx, authorization.ID, event); err != nil {
+	if _, err := s.repo.RevokeAuthorizationTokensAudited(ctx, authorization.ID, grant.Token.Hash, true, event); err != nil {
 		return fmt.Errorf("oauth: revogando os tokens da autorização %q: %w", authorization.ID, err)
 	}
 	return nil

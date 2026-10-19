@@ -48,7 +48,7 @@ func (s *Service) consumeRefresh(ctx context.Context, refresh string, now time.T
 	case err == nil:
 		return grant, nil
 	case errors.Is(err, ErrRefreshReused):
-		return TokenGrant{}, s.revokeReusedRefresh(ctx, grant.Authorization, now)
+		return TokenGrant{}, s.revokeReusedRefresh(ctx, grant, now)
 	case errors.Is(err, ErrTokenNotFound), errors.Is(err, ErrAuthorizationNotFound):
 		return TokenGrant{}, grantError(revokedRefreshDescription)
 	}
@@ -61,12 +61,15 @@ const revokedRefreshDescription = "refresh token invalido, expirado ou revogado;
 // reusedRefreshDescription é a descrição do refresh já rotacionado reapresentado.
 const reusedRefreshDescription = "refresh token ja rotacionado; esperado o refresh token mais recente emitido para o cliente"
 
-func (s *Service) revokeReusedRefresh(ctx context.Context, authorization Authorization, now time.Time) error {
+// revokeReusedRefresh derruba os tokens da Autorização do refresh reapresentado. Expirado
+// também dispara: o que importa é ele seguir sem revogação.
+func (s *Service) revokeReusedRefresh(ctx context.Context, grant TokenGrant, now time.Time) error {
+	authorization := grant.Authorization
 	if authorization.ID == "" {
 		return grantError(reusedRefreshDescription)
 	}
 	event := auditEvent(AuditActionRefreshReuse, AuditResultFailure, authorization, now)
-	if err := s.repo.RevokeAuthorizationTokensAudited(ctx, authorization.ID, event); err != nil {
+	if _, err := s.repo.RevokeAuthorizationTokensAudited(ctx, authorization.ID, grant.Token.Hash, false, event); err != nil {
 		return fmt.Errorf("oauth: revogando os tokens da autorização %q após reuso de refresh token: %w", authorization.ID, err)
 	}
 	return grantError(reusedRefreshDescription)

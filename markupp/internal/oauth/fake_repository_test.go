@@ -17,6 +17,8 @@ type fakeOAuthRepository struct {
 	consumed       oauth.TokenGrant
 	found          oauth.TokenGrant
 	summaries      []oauth.AuthorizationSummary
+	// revokeAuditedStale simula o token que disparou a revogação já revogado por outra.
+	revokeAuditedStale bool
 
 	getClientErr, createErr, approveErr, activeErr, redeemErr, saveErr, revokeErr   error
 	consumeErr, saveRefreshedErr, revokeAuditedErr, findErr, listErr, revokeAuthErr error
@@ -43,8 +45,10 @@ type fakeOAuthRepository struct {
 
 // auditedRevoke é uma chamada a RevokeAuthorizationTokensAudited.
 type auditedRevoke struct {
-	AuthorizationID string
-	Event           oauth.AuditEvent
+	AuthorizationID  string
+	TriggerHash      string
+	RequireUnexpired bool
+	Event            oauth.AuditEvent
 }
 
 // revokedAuthorization é uma chamada a RevokeAuthorization.
@@ -152,9 +156,13 @@ func (f *fakeOAuthRepository) SaveRefreshedTokens(_ context.Context, parentHash 
 	return f.saveRefreshedErr
 }
 
-func (f *fakeOAuthRepository) RevokeAuthorizationTokensAudited(_ context.Context, authorizationID string, event oauth.AuditEvent) error {
-	f.auditedRevokes = append(f.auditedRevokes, auditedRevoke{AuthorizationID: authorizationID, Event: event})
-	return f.revokeAuditedErr
+// RevokeAuthorizationTokensAudited devolve revogou só sem revokeAuditedErr e enquanto
+// revokeAuditedStale não foi ligado.
+func (f *fakeOAuthRepository) RevokeAuthorizationTokensAudited(_ context.Context, authorizationID, triggerHash string, requireUnexpired bool, event oauth.AuditEvent) (bool, error) {
+	f.auditedRevokes = append(f.auditedRevokes, auditedRevoke{
+		AuthorizationID: authorizationID, TriggerHash: triggerHash, RequireUnexpired: requireUnexpired, Event: event,
+	})
+	return f.revokeAuditedErr == nil && !f.revokeAuditedStale, f.revokeAuditedErr
 }
 
 // FindToken devolve found, ou ErrTokenNotFound enquanto found não foi configurado.

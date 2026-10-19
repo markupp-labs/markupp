@@ -129,13 +129,14 @@ func lockAuthorization(ctx context.Context, qtx *gen.Queries, id string) (gen.Oa
 
 // RevokeAuthorizationTokensAudited trava a Autorização, revoga os tokens dela, que segue
 // ativa, e audita o evento, numa transação.
-func (r *PostgresOAuthRepository) RevokeAuthorizationTokensAudited(ctx context.Context, authorizationID string, event oauth.AuditEvent) error {
-	return inTx(ctx, r.pool, func(qtx *gen.Queries) error {
+func (r *PostgresOAuthRepository) RevokeAuthorizationTokensAudited(ctx context.Context, authorizationID, _ string, _ bool, event oauth.AuditEvent) (bool, error) {
+	err := inTx(ctx, r.pool, func(qtx *gen.Queries) error {
 		if _, err := revokeTokens(ctx, qtx, authorizationID); err != nil {
 			return err
 		}
 		return auditOAuth(ctx, qtx, event)
 	})
+	return err == nil, err
 }
 
 // FindToken devolve o token de qualquer tipo, mesmo revogado ou expirado, com a

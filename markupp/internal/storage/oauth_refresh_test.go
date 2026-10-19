@@ -148,6 +148,12 @@ func parNovo() []oauth.IssuedToken {
 	return tokens
 }
 
+// revogarPorGatilho revoga os tokens de a1 como o reuso de refresh, disparado por gatilho.
+func revogarPorGatilho(repo *storage.PostgresOAuthRepository, gatilho string, evento oauth.AuditEvent) error {
+	_, err := repo.RevokeAuthorizationTokensAudited(context.Background(), "a1", gatilho, false, evento)
+	return err
+}
+
 func salvarParNovo(repo *storage.PostgresOAuthRepository, tokens []oauth.IssuedToken) error {
 	return repo.SaveRefreshedTokens(context.Background(), "t-refresh", tokens,
 		eventoOAuth(oauth.AuditActionRefresh, oauth.AuditResultSuccess))
@@ -185,7 +191,7 @@ func TestPostgresOAuthRepo_SaveRefreshedTokens_RevogacaoEntreConsumoEGravacao(t 
 	}{
 		"tokens revogados por reuso ou /oauth/revoke": {
 			revogar: func(r *storage.PostgresOAuthRepository) error {
-				return r.RevokeAuthorizationTokensAudited(context.Background(), "a1", evento)
+				return revogarPorGatilho(r, "t-refresh", evento)
 			},
 			want: oauth.ErrTokenNotFound,
 		},
@@ -236,10 +242,11 @@ func TestPostgresOAuthRepo_RevokeAuthorizationTokensAudited_RevogaTokensEAudita(
 	repo, pool := repoComTokens(t)
 	require.NoError(t, emitirTokenDe(pool, "a0", "t-outro"))
 
-	err := repo.RevokeAuthorizationTokensAudited(context.Background(), "a1",
+	revogou, err := repo.RevokeAuthorizationTokensAudited(context.Background(), "a1", "t-refresh", false,
 		eventoOAuth(oauth.AuditActionRefreshReuse, oauth.AuditResultFailure))
 
 	require.NoError(t, err)
+	assert.True(t, revogou)
 	assert.Equal(t, 2, countRows(t, pool, "SELECT count(*) FROM oauth_tokens WHERE authorization_id = 'a1' AND revoked"))
 	assert.Equal(t, 0, countRows(t, pool, "SELECT count(*) FROM oauth_tokens WHERE authorization_id = 'a0' AND revoked"))
 	assert.Equal(t, 1, countRows(t, pool, "SELECT count(*) FROM oauth_authorizations WHERE id = 'a1' AND revoked_at IS NULL"),

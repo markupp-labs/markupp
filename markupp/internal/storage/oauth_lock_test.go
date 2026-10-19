@@ -43,7 +43,7 @@ func TestPostgresOAuthRepo_Revogacao_EsperaGravacaoDoParRotacionado(t *testing.T
 			return r.RevokeAuthorizationTokens(context.Background(), "a1")
 		},
 		"reuso de refresh ou /oauth/revoke": func(r *storage.PostgresOAuthRepository) error {
-			return r.RevokeAuthorizationTokensAudited(context.Background(), "a1", evento)
+			return revogarPorGatilho(r, "t-refresh", evento)
 		},
 		"autorizacao revogada pela conta": func(r *storage.PostgresOAuthRepository) error {
 			return r.RevokeAuthorization(context.Background(), "u1", "a1", evento)

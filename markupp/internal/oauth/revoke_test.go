@@ -34,7 +34,8 @@ func TestRevokeToken_TokenDoCliente_DerrubaOsTokensDaAutorizacaoEAudita(t *testi
 	require.NoError(t, err)
 	assert.Equal(t, []string{auth.HashOpaqueToken(testAccessToken)}, repo.findCalls)
 	assert.Equal(t, []auditedRevoke{{
-		AuthorizationID: "aut-1", Event: testAuditEvent(oauth.AuditActionRevoke, oauth.AuditResultSuccess),
+		AuthorizationID: "aut-1", TriggerHash: repo.found.Token.Hash, RequireUnexpired: true,
+		Event: testAuditEvent(oauth.AuditActionRevoke, oauth.AuditResultSuccess),
 	}}, repo.auditedRevokes)
 	assert.Empty(t, repo.revokedAuths, "o /oauth/revoke mantém o consentimento")
 }

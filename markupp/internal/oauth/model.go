@@ -137,8 +137,10 @@ type Repository interface {
 	// revogado depois do consumo.
 	SaveRefreshedTokens(ctx context.Context, parentHash string, tokens []IssuedToken, event AuditEvent) error
 	// RevokeAuthorizationTokensAudited trava a Autorização, revoga os tokens dela e audita
-	// o evento, numa transação.
-	RevokeAuthorizationTokensAudited(ctx context.Context, authorizationID string, event AuditEvent) error
+	// o evento, numa transação. triggerHash é o token que disparou a revogação e
+	// requireUnexpired diz se ele também precisa estar vigente em event.OccurredAt.
+	// Devolve se revogou.
+	RevokeAuthorizationTokensAudited(ctx context.Context, authorizationID, triggerHash string, requireUnexpired bool, event AuditEvent) (bool, error)
 	// FindToken devolve o dono de um token de qualquer tipo, mesmo revogado ou expirado,
 	// ou ErrTokenNotFound.
 	FindToken(ctx context.Context, tokenHash string) (TokenGrant, error)

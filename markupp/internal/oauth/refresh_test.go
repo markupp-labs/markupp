@@ -172,8 +172,9 @@ func TestRefreshToken_RefreshJaRotacionado_RevogaTokensEAuditaReuso(t *testing.T
 
 	requireProtocolError(t, err, "invalid_grant", "", "")
 	assert.Equal(t, []auditedRevoke{{
-		AuthorizationID: "aut-1", Event: testAuditEvent(oauth.AuditActionRefreshReuse, oauth.AuditResultFailure),
-	}}, repo.auditedRevokes)
+		AuthorizationID: "aut-1", TriggerHash: auth.HashOpaqueToken(testRefreshToken), RequireUnexpired: false,
+		Event: testAuditEvent(oauth.AuditActionRefreshReuse, oauth.AuditResultFailure),
+	}}, repo.auditedRevokes, "o reuso revoga mesmo com o refresh rotacionado já expirado")
 	assert.Empty(t, repo.refreshed)
 	assert.Empty(t, repo.revokedAuths, "o reuso derruba os tokens, não a Autorização")
 }
