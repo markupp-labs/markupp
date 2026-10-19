@@ -1,9 +1,11 @@
 import MarkdownIt from "markdown-it"
 import DOMPurify from "dompurify"
+import { wikilinkRule } from "editor/wikilinks"
 
 // Markdown para HTML na leitura e no lado a lado. HTML dentro do markdown é aceito, como no Obsidian,
 // mas tudo passa pelo DOMPurify antes de entrar na página: sem script, sem on*, sem javascript:.
 const markdownIt = new MarkdownIt({ html: true, linkify: true })
+markdownIt.inline.ruler.before("link", "wikilink", wikilinkRule)
 const purifier = DOMPurify()
 // O preview mora dentro do form da nota: um input ou botão vindo do markdown seria enviado (ou submeteria) junto
 // com ela, como um _method=delete. Controles de formulário não passam.
@@ -17,6 +19,7 @@ purifier.addHook("afterSanitizeAttributes", (node) => {
   node.setAttribute("rel", "noopener noreferrer")
 })
 
-export function renderMarkdown(source) {
-  return purifier.sanitize(markdownIt.render(source), { FORBID_TAGS: FORM_CONTROLS })
+// env.wikilinks resolve os [[wikilinks]] (editor/wikilinks.js); sem ele ficam como texto.
+export function renderMarkdown(source, env = {}) {
+  return purifier.sanitize(markdownIt.render(source, env), { FORBID_TAGS: FORM_CONTROLS })
 }

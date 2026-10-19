@@ -1,5 +1,6 @@
 import { Controller } from "@hotwired/stimulus"
 import { renderMarkdown } from "editor/render_markdown"
+import { resolveWikilink } from "editor/wikilinks"
 
 // Modos da nota: edição (CodeMirror), leitura (markdown renderizado) e lado a lado (preview a cada tecla).
 // O modo vai no data-mode do form (o CSS mostra e esconde os painéis) e no cookie note_mode (NoteModeHelper).
@@ -40,7 +41,15 @@ export default class extends Controller {
   render() {
     if (this.mode == "edit") return
 
-    this.previewTarget.innerHTML = renderMarkdown(this.sourceTarget.value)
+    this.previewTarget.innerHTML = renderMarkdown(this.sourceTarget.value, { wikilinks: this.wikilinkLookup })
+  }
+
+  // [[nome]] resolvido pelo mapa de notas que veio do servidor (WikilinkHelper), sem chamar a API.
+  get wikilinkLookup() {
+    return {
+      resolve: (name) => resolveWikilink(name, this.wikilinksValue, this.folderValue),
+      missingTitle: (name) => this.missingNoteValue.replace("%{name}", name),
+    }
   }
 
   get mode() {
