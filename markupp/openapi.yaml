@@ -768,59 +768,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-  /notes/{id}/suggestions:
-    get:
-      summary: Lista as notas que esta nota poderia ligar
-      description: |
-        Sugestão de ligação calculada na leitura, sobre o que o indexador já processou,
-        fundindo duas listas por Reciprocal Rank Fusion com k=60: score é a soma de
-        1/(60 + posição) em cada lista em que a nota aparece.
-
-        A lista estrutural ordena pela alocação de recursos na vizinhança de dois
-        saltos, ignorando o sentido das ligações e contando todas: a soma de 1/grau de
-        cada nota ligada às duas. A lista léxica ordena pelo cosseno tf-idf entre os 50
-        termos de maior peso de cada nota, no analisador da busca, e só considera notas
-        que dividem algum desses termos com esta. O idf usa a frequência de documento
-        do cofre, recalculada quando ligações ou títulos do cofre mudam, então fica
-        levemente defasado entre uma mudança e outra.
-
-        Ficam de fora a própria nota e as notas já ligadas a ela em qualquer sentido.
-        A lista vem da maior score para a menor, depois por caminho. O viewer também
-        lê.
-      parameters:
-        - $ref: '#/components/parameters/TenantHeader'
-        - $ref: '#/components/parameters/NoteID'
-        - $ref: '#/components/parameters/PageOffset'
-        - $ref: '#/components/parameters/PageLimit'
-      responses:
-        '200':
-          description: Lista, vazia quando não há nenhum item
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/LinkSuggestionResponse'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '400':
-          description: offset ou limit não inteiros
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
-          description: Nota inexistente ou fora dos cofres do usuário (not_found)
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: Erro interno do servidor
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
   /vaults/{id}/clusters:
     get:
       summary: Lista as comunidades do cofre
@@ -1238,6 +1185,59 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '400':
           description: offset ou limit não inteiros (invalid_request)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Nota inexistente ou fora dos cofres do usuário (not_found)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Erro interno do servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/notes/{id}/suggestions:
+    get:
+      summary: Lista as notas que esta nota poderia ligar
+      description: |
+        Sugestão de ligação calculada na leitura, sobre o que o indexador já processou,
+        fundindo duas listas por Reciprocal Rank Fusion com k=60: score é a soma de
+        1/(60 + posição) em cada lista em que a nota aparece.
+
+        A lista estrutural ordena pela alocação de recursos na vizinhança de dois
+        saltos, ignorando o sentido das ligações e contando todas: a soma de 1/grau de
+        cada nota ligada às duas. A lista léxica ordena pelo cosseno tf-idf entre os 50
+        termos de maior peso de cada nota, no analisador da busca, e só considera notas
+        que dividem algum desses termos com esta. O idf usa a frequência de documento
+        do cofre, recalculada quando ligações ou títulos do cofre mudam, então fica
+        levemente defasado entre uma mudança e outra.
+
+        Ficam de fora a própria nota e as notas já ligadas a ela em qualquer sentido.
+        A lista vem da maior score para a menor, depois por caminho. O viewer também
+        lê.
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+        - $ref: '#/components/parameters/NoteID'
+        - $ref: '#/components/parameters/PageOffset'
+        - $ref: '#/components/parameters/PageLimit'
+      responses:
+        '200':
+          description: Lista, vazia quando não há nenhum item
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LinkSuggestionResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '400':
+          description: offset ou limit não inteiros
           content:
             application/json:
               schema:
@@ -1915,25 +1915,25 @@ components:
           format: date-time
           description: Data da última atualização da nota
     LinkSuggestionResponse:
-      allOf:
-        - $ref: '#/components/schemas/LinkedNoteResponse'
-        - type: object
-          properties:
-            score:
-              type: number
-              format: double
-              description: Pontuação RRF que ordena a lista
-              example: 0.0325
-            resource_allocation:
-              type: number
-              format: double
-              description: Alocação de recursos com esta nota, zero fora da lista estrutural
-              example: 0.5
-            cosine:
-              type: number
-              format: double
-              description: Cosseno tf-idf com esta nota, zero fora da lista léxica
-              example: 0.38
+      type: object
+      properties:
+        note:
+          $ref: '#/components/schemas/NoteSummary'
+        score:
+          type: number
+          format: double
+          description: Pontuação RRF que ordena a lista
+          example: 0.0325
+        resource_allocation:
+          type: number
+          format: double
+          description: Alocação de recursos com esta nota, zero fora da lista estrutural
+          example: 0.5
+        cosine:
+          type: number
+          format: double
+          description: Cosseno tf-idf com esta nota, zero fora da lista léxica
+          example: 0.38
     CommunityMemberResponse:
       allOf:
         - $ref: '#/components/schemas/LinkedNoteResponse'
