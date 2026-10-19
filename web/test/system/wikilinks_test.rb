@@ -39,6 +39,17 @@ class WikilinksTest < ApplicationSystemTestCase
     assert_no_selector ".note-preview a", text: /nobody|someone/
   end
 
+  # O title só aparece com mouse: para o leitor de tela o motivo vem no texto da página, escondido da vista.
+  test "a broken wikilink says why without hover" do
+    use_fake_api(notes: [ { id: "1", path: "plan.md", content: "Ask [[ghost|someone]].\n" } ])
+    sign_in_through_form
+
+    visit note_path("1")
+    click_on "Read"
+
+    assert_includes find(".note-preview .wikilink-missing", text: "someone").text(:all), "No note named ghost"
+  end
+
   test "a missing name with dollar signs keeps them in the title" do
     use_fake_api(notes: [ { id: "1", path: "plan.md", content: "Ask [[a$'b]] and [[c$&d]].\n" } ])
     sign_in_through_form
