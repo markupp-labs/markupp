@@ -22,6 +22,26 @@ class CodeBlocksTest < ApplicationSystemTestCase
     assert_equal RUBY, evaluate_async_script("navigator.clipboard.readText().then(arguments[0])")
   end
 
+  # Faixa de cabeçalho como a barra de título de um terminal: linguagem à esquerda ("text" sem linguagem), copiar à
+  # direita, acima do código e não por cima dele.
+  test "each block has a header strip above the code with the language on the left and copy on the right" do
+    assert_equal %w[ruby text js], all(".note-preview pre .code-header .code-language", count: 3).map(&:text)
+
+    all(".note-preview pre").each do |pre|
+      layout = pre.evaluate_script(<<~JS)
+        (() => { const box = (selector) => this.querySelector(selector).getBoundingClientRect(), pre = this.getBoundingClientRect()
+                 const header = box(".code-header"), language = box(".code-language"), copy = box(".code-header button[aria-label='Copy code']")
+                 return { header: header.bottom <= box(":scope > code").top, top: header.top - pre.top,
+                          width: pre.width - header.width, order: language.right < copy.left, right: pre.right - copy.right } })()
+      JS
+      assert layout["header"], "expected the header above the code, got #{layout}"
+      assert layout["order"], "expected the language left of the copy button, got #{layout}"
+      assert_operator layout["top"], :<=, 1
+      assert_operator layout["width"], :<=, 2
+      assert_operator layout["right"], :<=, 12
+    end
+  end
+
   test "line numbers sit beside the code and stay out of the selection" do
     assert_selector ".note-preview pre .code-lines[aria-hidden=true]", count: 3
     assert_equal "1\n2\n3", first(".note-preview pre .code-lines").evaluate_script("this.textContent")
