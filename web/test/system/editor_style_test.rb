@@ -33,7 +33,11 @@ class EditorStyleTest < ApplicationSystemTestCase
 
   test "styled from the appearance makes headings larger" do
     visit settings_appearance_path
-    within("[aria-labelledby=editor_style_heading]") { click_on "Styled" }
+    within("[aria-labelledby=editor_style_heading]") do
+      click_on "Styled"
+      # Espera a volta do PATCH: visitar antes dela perde o cookie.
+      assert_selector "button[aria-pressed=true]", text: "Styled"
+    end
 
     visit note_path("1")
     assert_selector ".cm-content", text: "Plan"
