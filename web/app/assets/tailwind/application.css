@@ -219,9 +219,10 @@
     color: var(--ink-muted);
   }
 
-  /* Hover sem fundo próprio: a aba continua sendo a borda da barra; só o ícone sobe para a cor do texto. */
-  .sidebar-spine:hover {
-    color: var(--ink);
+  /* Hover e foco sem fundo próprio: a aba continua sendo a borda da barra; só o ícone sobe para o accent (o ink ficava
+     a 1.11:1 do ink-muted no claro e o hover não aparecia). */
+  .sidebar-spine:is(:hover, :focus-visible) {
+    color: var(--accent);
   }
 
   /* Contorno do foco por dentro: fechada, a aba encosta na borda da tela e o de fora sumiria à esquerda. */
