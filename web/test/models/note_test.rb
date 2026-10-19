@@ -97,6 +97,15 @@ class NoteTest < ActiveSupport::TestCase
     assert_equal Time.utc(2026, 10, 1, 12), note.updated_at
   end
 
+  test "save with a blank title flags the title without calling the API" do
+    api = FakeMarkuppApi.new(notes: [])
+    note = Note.new(path: Note.compose_path(folder: "work", title: "  "), content: "x")
+
+    assert_not note.save(api)
+    assert note.errors.of_kind?(:title, :blank)
+    assert_empty api.post_requests
+  end
+
   test "save flags a taken path after a single try" do
     api = FakeMarkuppApi.new(notes: [ { id: "1", path: "plan.md" } ])
 

@@ -132,6 +132,35 @@ class NotesTest < ApplicationSystemTestCase
     assert_empty api.post_requests
   end
 
+  test "saving a new note without a title asks for one in place, keeping folder and content" do
+    api = use_fake_api(notes: [])
+    sign_in_through_form
+
+    visit new_note_path(folder: "work")
+    execute_script("window.stayedOnPage = true")
+    send_keys :tab, "Fresh idea.", [ :control, "s" ]
+
+    assert_blank_title_refused_in_place
+    assert_field "Folder", with: "work"
+    assert_selector ".cm-content", text: "Fresh idea."
+    assert_empty api.post_requests
+  end
+
+  test "saving a note with its title cleared asks for one in place" do
+    api = use_fake_api(notes: [ { id: "1", path: "plan.md", content: "# Plan\n" } ])
+    sign_in_through_form
+
+    visit note_path("1")
+    execute_script("window.stayedOnPage = true")
+    fill_in "Title", with: ""
+    find(".cm-content").click
+    click_on "Save"
+
+    assert_blank_title_refused_in_place
+    assert_selector ".cm-content", text: "Plan"
+    assert_empty api.put_requests
+  end
+
   test "the save button shows up only once something changed" do
     use_fake_api(notes: [ { id: "1", path: "plan.md", content: "# Plan\n" } ])
     sign_in_through_form
@@ -183,4 +212,13 @@ class NotesTest < ApplicationSystemTestCase
     assert_no_selector "[role=alert]"
     assert_empty api.received_credentials.select { it[:call] == "PUT /notes/1" }
   end
+
+  private
+    # Recusado no navegador: a página não recarregou e o foco voltou ao título.
+    def assert_blank_title_refused_in_place
+      assert_selector "#note_path_error", text: "Title can't be blank"
+      assert_selector "#note_title[aria-invalid=true][aria-describedby=note_path_error]"
+      assert_equal "note_title", evaluate_script("document.activeElement.id")
+      assert evaluate_script("window.stayedOnPage"), "expected the page to stay, got a reload from the server"
+    end
 end
