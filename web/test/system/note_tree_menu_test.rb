@@ -71,15 +71,16 @@ class NoteTreeMenuTest < ApplicationSystemTestCase
     assert_path_selected "/work/plan"
   end
 
+  # O Delete da própria nota aberta também se chama Delete (pelo title): o clique é no item do menu.
   test "delete asks first, in the danger color, and removes the note" do
     visit note_path("1")
     row("ideas").right_click
     assert_selector "[role=menuitem].btn-danger", text: "Delete"
-    dismiss_confirm { click_on "Delete" }
+    dismiss_confirm { find("[role=menuitem]", text: "Delete").click }
     assert_selector "[role=treeitem]", text: "ideas"
 
     row("ideas").right_click
-    accept_confirm("Delete this note? This cannot be undone.") { click_on "Delete" }
+    accept_confirm("Delete this note? This cannot be undone.") { find("[role=menuitem]", text: "Delete").click }
 
     assert_text "Deleted"
     assert_no_selector "[role=treeitem]", text: "ideas"
