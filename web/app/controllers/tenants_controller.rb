@@ -5,6 +5,11 @@ class TenantsController < ApplicationController
   def index
   end
 
+  # A lista com o formulário do tenant novo aberto: é para onde o New tenant do seletor e da paleta leva.
+  def new
+    render :index
+  end
+
   # Tenant criado já fica ativo e abre as notas dele.
   def create
     @name = params.expect(tenant: [ :name ])[:name]
