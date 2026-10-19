@@ -440,13 +440,15 @@ paths:
       description: Os valores de id são os que vão no cabeçalho X-Markupp-Tenant.
       responses:
         '200':
-          description: Tenants da conta, por nome, com o papel em cada um
+          description: >
+            Tenants da conta, por nome, com o papel e o resumo das notas que a conta lê em
+            cada um
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/TenantResponse'
+                  $ref: '#/components/schemas/MyTenantResponse'
         '401':
           $ref: '#/components/responses/Unauthorized'
   /me/invites:
@@ -885,6 +887,21 @@ components:
           type: string
         role:
           $ref: '#/components/schemas/Role'
+    MyTenantResponse:
+      allOf:
+        - $ref: '#/components/schemas/TenantResponse'
+        - type: object
+          properties:
+            notes_count:
+              type: integer
+              description: >
+                Notas do tenant que a conta lê, as dos cofres de que é membro lá, como em
+                GET /notes com o tenant no cabeçalho
+            last_note_at:
+              type: string
+              format: date-time
+              nullable: true
+              description: Última alteração entre essas notas, null quando não há nenhuma
     MemberResponse:
       type: object
       properties:

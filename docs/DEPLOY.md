@@ -162,7 +162,8 @@ Esperado: o login devolve `access_token`, `POST` retorna JSON com `id` UUID, `GE
 A conta é da instância e participa de vários tenants, cada um com um papel
 ([ADR-0035](adrs/ADR-0035-conta-global-com-vinculo-por-tenant.md)). Quem tem um tenant só não
 precisa dizer nada. Quem tem mais de um escolhe por requisição com o cabeçalho
-`X-Markupp-Tenant`, usando um id de `GET /me/tenants`. Qualquer conta cria tenant em
+`X-Markupp-Tenant`, usando um id de `GET /me/tenants`, que mostra também quantas notas a conta
+lê em cada tenant e quando a mais recente mudou. Qualquer conta cria tenant em
 `POST /tenants` e vira owner dele.
 
 A conta de auto-registro (`MARKUPP_AUTH_REGISTRATION_ENABLED=true`) nasce sem email provado e
