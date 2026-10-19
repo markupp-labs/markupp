@@ -48,3 +48,52 @@ WHERE l.vault_id = sqlc.arg(vault_id)
   AND NOT EXISTS (SELECT 1 FROM note_titles t WHERE t.vault_id = l.vault_id AND t.title_key = l.title_key)
 ORDER BY n.path, l.title_key, l.kind
 LIMIT sqlc.arg(page_limit) OFFSET sqlc.arg(page_offset);
+
+-- Chaves de título da nota, para achar quem a menciona.
+-- name: ListNoteTitleKeys :many
+SELECT title_key FROM note_titles WHERE note_id = sqlc.arg(note_id) ORDER BY title_key;
+
+-- Notas do cofre, fora a própria e as ligadas a ela, cujo corpo (peso D) tem alguma
+-- das frases. O GIN acha as candidatas; a aplicação confere título inteiro, fronteira
+-- de palavra e texto fora de ligação. Frase só de stopwords não entra na consulta.
+-- name: ListMentioningNotes :many
+WITH q AS (
+    SELECT string_agg('(' || phraseto_tsquery(sqlc.arg(search_config)::text::regconfig, p)::text || ')', ' | ')::tsquery AS query
+    FROM unnest(sqlc.arg(phrases)::text[]) AS p
+    WHERE numnode(phraseto_tsquery(sqlc.arg(search_config)::text::regconfig, p)) > 0
+)
+SELECT n.id, n.vault_id, n.path, n.updated_at, n.content
+FROM q
+JOIN note_search_index s ON s.document @@ q.query
+JOIN notes n ON n.id = s.note_id
+WHERE n.vault_id = sqlc.arg(vault_id)
+  AND n.id <> sqlc.arg(note_id)
+  AND ts_filter(s.document, '{d}') @@ q.query
+  AND n.id NOT IN (SELECT markupp_linked_notes(sqlc.arg(note_id)));
+
+-- Títulos das outras notas do cofre que não se ligam à nota: o dicionário do que ela
+-- pode mencionar.
+-- name: ListMentionableTitles :many
+SELECT n.id, n.vault_id, n.path, n.updated_at, t.title_key
+FROM note_titles t
+JOIN notes n ON n.id = t.note_id
+WHERE t.vault_id = sqlc.arg(vault_id)
+  AND t.note_id <> sqlc.arg(note_id)
+  AND t.note_id NOT IN (SELECT markupp_linked_notes(sqlc.arg(note_id)));
+
+-- Para cada par (título, nota com o título): se o título é stopword em português ou
+-- inglês, as notas do cofre com o título no corpo (ocorrências), as notas que ligam à
+-- nota por esse título e as notas do cofre com o título (candidatas).
+-- name: MentionAnchorStats :many
+SELECT a.title_key::text AS title_key, a.target_id::text AS target_id,
+       (to_tsvector('pg_catalog.portuguese', a.title_key) = ''::tsvector
+        OR to_tsvector('pg_catalog.english', a.title_key) = ''::tsvector)::bool AS stopword,
+       (SELECT count(*) FROM note_search_index s
+        JOIN notes n ON n.id = s.note_id
+        CROSS JOIN phraseto_tsquery(sqlc.arg(search_config)::text::regconfig, a.title_key) AS q (query)
+        WHERE n.vault_id = sqlc.arg(vault_id) AND s.document @@ q.query AND ts_filter(s.document, '{d}') @@ q.query)::int AS occurrences,
+       (SELECT count(DISTINCT e.source_id) FROM note_edges e
+        WHERE e.target_id = a.target_id AND e.title_key = a.title_key)::int AS anchor_links,
+       (SELECT count(*) FROM note_titles t
+        WHERE t.vault_id = sqlc.arg(vault_id) AND t.title_key = a.title_key)::int AS candidates
+FROM (SELECT unnest(sqlc.arg(title_keys)::text[]) AS title_key, unnest(sqlc.arg(target_ids)::text[]) AS target_id) a;

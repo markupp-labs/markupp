@@ -47,6 +47,7 @@ type NoteEdge struct {
 	VaultID   string
 	Kind      string
 	Predicate pgtype.Text
+	TitleKey  string
 }
 
 type NoteIndexQueue struct {

@@ -61,6 +61,121 @@ func (q *Queries) ListBacklinks(ctx context.Context, arg ListBacklinksParams) ([
 	return items, nil
 }
 
+const listMentionableTitles = `-- name: ListMentionableTitles :many
+SELECT n.id, n.vault_id, n.path, n.updated_at, t.title_key
+FROM note_titles t
+JOIN notes n ON n.id = t.note_id
+WHERE t.vault_id = $1
+  AND t.note_id <> $2
+  AND t.note_id NOT IN (SELECT markupp_linked_notes($2))
+`
+
+type ListMentionableTitlesParams struct {
+	VaultID string
+	NoteID  string
+}
+
+type ListMentionableTitlesRow struct {
+	ID        string
+	VaultID   string
+	Path      string
+	UpdatedAt time.Time
+	TitleKey  string
+}
+
+// Títulos das outras notas do cofre que não se ligam à nota: o dicionário do que ela
+// pode mencionar.
+func (q *Queries) ListMentionableTitles(ctx context.Context, arg ListMentionableTitlesParams) ([]ListMentionableTitlesRow, error) {
+	rows, err := q.db.Query(ctx, listMentionableTitles, arg.VaultID, arg.NoteID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListMentionableTitlesRow
+	for rows.Next() {
+		var i ListMentionableTitlesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.VaultID,
+			&i.Path,
+			&i.UpdatedAt,
+			&i.TitleKey,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listMentioningNotes = `-- name: ListMentioningNotes :many
+WITH q AS (
+    SELECT string_agg('(' || phraseto_tsquery($3::text::regconfig, p)::text || ')', ' | ')::tsquery AS query
+    FROM unnest($4::text[]) AS p
+    WHERE numnode(phraseto_tsquery($3::text::regconfig, p)) > 0
+)
+SELECT n.id, n.vault_id, n.path, n.updated_at, n.content
+FROM q
+JOIN note_search_index s ON s.document @@ q.query
+JOIN notes n ON n.id = s.note_id
+WHERE n.vault_id = $1
+  AND n.id <> $2
+  AND ts_filter(s.document, '{d}') @@ q.query
+  AND n.id NOT IN (SELECT markupp_linked_notes($2))
+`
+
+type ListMentioningNotesParams struct {
+	VaultID      string
+	NoteID       string
+	SearchConfig string
+	Phrases      []string
+}
+
+type ListMentioningNotesRow struct {
+	ID        string
+	VaultID   string
+	Path      string
+	UpdatedAt time.Time
+	Content   string
+}
+
+// Notas do cofre, fora a própria e as ligadas a ela, cujo corpo (peso D) tem alguma
+// das frases. O GIN acha as candidatas; a aplicação confere título inteiro, fronteira
+// de palavra e texto fora de ligação. Frase só de stopwords não entra na consulta.
+func (q *Queries) ListMentioningNotes(ctx context.Context, arg ListMentioningNotesParams) ([]ListMentioningNotesRow, error) {
+	rows, err := q.db.Query(ctx, listMentioningNotes,
+		arg.VaultID,
+		arg.NoteID,
+		arg.SearchConfig,
+		arg.Phrases,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListMentioningNotesRow
+	for rows.Next() {
+		var i ListMentioningNotesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.VaultID,
+			&i.Path,
+			&i.UpdatedAt,
+			&i.Content,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listNeighbors = `-- name: ListNeighbors :many
 WITH v AS (
     SELECT e.target_id AS id, false AS incoming, true AS outgoing, e.predicate FROM note_edges e WHERE e.source_id = $3
@@ -115,6 +230,31 @@ func (q *Queries) ListNeighbors(ctx context.Context, arg ListNeighborsParams) ([
 			return nil, err
 		}
 		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listNoteTitleKeys = `-- name: ListNoteTitleKeys :many
+SELECT title_key FROM note_titles WHERE note_id = $1 ORDER BY title_key
+`
+
+// Chaves de título da nota, para achar quem a menciona.
+func (q *Queries) ListNoteTitleKeys(ctx context.Context, noteID string) ([]string, error) {
+	rows, err := q.db.Query(ctx, listNoteTitleKeys, noteID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var title_key string
+		if err := rows.Scan(&title_key); err != nil {
+			return nil, err
+		}
+		items = append(items, title_key)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -210,6 +350,72 @@ func (q *Queries) ListUnresolvedLinks(ctx context.Context, arg ListUnresolvedLin
 			&i.Path,
 			&i.CitedTitle,
 			&i.Kind,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const mentionAnchorStats = `-- name: MentionAnchorStats :many
+SELECT a.title_key::text AS title_key, a.target_id::text AS target_id,
+       (to_tsvector('pg_catalog.portuguese', a.title_key) = ''::tsvector
+        OR to_tsvector('pg_catalog.english', a.title_key) = ''::tsvector)::bool AS stopword,
+       (SELECT count(*) FROM note_search_index s
+        JOIN notes n ON n.id = s.note_id
+        CROSS JOIN phraseto_tsquery($1::text::regconfig, a.title_key) AS q (query)
+        WHERE n.vault_id = $2 AND s.document @@ q.query AND ts_filter(s.document, '{d}') @@ q.query)::int AS occurrences,
+       (SELECT count(DISTINCT e.source_id) FROM note_edges e
+        WHERE e.target_id = a.target_id AND e.title_key = a.title_key)::int AS anchor_links,
+       (SELECT count(*) FROM note_titles t
+        WHERE t.vault_id = $2 AND t.title_key = a.title_key)::int AS candidates
+FROM (SELECT unnest($3::text[]) AS title_key, unnest($4::text[]) AS target_id) a
+`
+
+type MentionAnchorStatsParams struct {
+	SearchConfig string
+	VaultID      string
+	TitleKeys    []string
+	TargetIds    []string
+}
+
+type MentionAnchorStatsRow struct {
+	TitleKey    string
+	TargetID    string
+	Stopword    bool
+	Occurrences int32
+	AnchorLinks int32
+	Candidates  int32
+}
+
+// Para cada par (título, nota com o título): se o título é stopword em português ou
+// inglês, as notas do cofre com o título no corpo (ocorrências), as notas que ligam à
+// nota por esse título e as notas do cofre com o título (candidatas).
+func (q *Queries) MentionAnchorStats(ctx context.Context, arg MentionAnchorStatsParams) ([]MentionAnchorStatsRow, error) {
+	rows, err := q.db.Query(ctx, mentionAnchorStats,
+		arg.SearchConfig,
+		arg.VaultID,
+		arg.TitleKeys,
+		arg.TargetIds,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []MentionAnchorStatsRow
+	for rows.Next() {
+		var i MentionAnchorStatsRow
+		if err := rows.Scan(
+			&i.TitleKey,
+			&i.TargetID,
+			&i.Stopword,
+			&i.Occurrences,
+			&i.AnchorLinks,
+			&i.Candidates,
 		); err != nil {
 			return nil, err
 		}

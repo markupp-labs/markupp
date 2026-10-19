@@ -14,12 +14,14 @@ import (
 // ligação pelos títulos do cofre no momento da leitura. Toda leitura roda em
 // transação do ator do contexto, sob RLS.
 type PostgresNoteGraph struct {
-	pool *pgxpool.Pool
+	pool         *pgxpool.Pool
+	searchConfig string
 }
 
-// NewPostgresNoteGraph monta a leitura do grafo sobre um pool já aberto.
-func NewPostgresNoteGraph(pool *pgxpool.Pool) *PostgresNoteGraph {
-	return &PostgresNoteGraph{pool: pool}
+// NewPostgresNoteGraph monta a leitura do grafo sobre um pool já aberto; a menção não
+// ligada consulta o índice léxico com searchConfig, a mesma do indexador.
+func NewPostgresNoteGraph(pool *pgxpool.Pool, searchConfig string) *PostgresNoteGraph {
+	return &PostgresNoteGraph{pool: pool, searchConfig: searchConfig}
 }
 
 // Backlinks devolve as notas que ligam à nota noteID, por caminho, com os predicados
