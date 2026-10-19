@@ -148,31 +148,35 @@ func (h *oauthHandler) token(w http.ResponseWriter, r *http.Request) {
 		writeOAuthError(w, protoErr)
 		return
 	}
-	if form.Get("grant_type") == oauth.GrantTypeTokenExchange {
+	h.dispatchGrant(w, r, form)
+}
+
+// dispatchGrant despacha pelo grant_type e recusa com unsupported_grant_type o que não
+// for authorization_code, refresh_token nem a troca de token.
+func (h *oauthHandler) dispatchGrant(w http.ResponseWriter, r *http.Request, form url.Values) {
+	switch grantType := form.Get("grant_type"); grantType {
+	case grantTypeAuthorizationCode:
+		tokens, err := h.svc.ExchangeCode(r.Context(), codeGrantFrom(form))
+		writeGrantResult(w, tokens, err)
+	case grantTypeRefreshToken:
+		tokens, err := h.svc.RefreshToken(r.Context(), refreshGrantFrom(form))
+		writeGrantResult(w, tokens, err)
+	case oauth.GrantTypeTokenExchange:
 		h.exchangeToken(w, r, form)
-		return
+	default:
+		writeOAuthError(w, &oauth.ProtocolError{Code: "unsupported_grant_type", Description: fmt.Sprintf(
+			"grant_type deve ser %s, %s ou %s, recebido %s", grantTypeAuthorizationCode, grantTypeRefreshToken,
+			oauth.GrantTypeTokenExchange, oauth.ClientValue(grantType))})
 	}
-	tokens, err := h.grantTokens(r.Context(), form)
+}
+
+// writeGrantResult responde 200 com os tokens emitidos, ou o erro do grant.
+func writeGrantResult(w http.ResponseWriter, tokens oauth.TokenResponse, err error) {
 	if err != nil {
 		writeOAuthServiceError(w, "emitir tokens oauth", err)
 		return
 	}
 	writeJSON(w, http.StatusOK, tokens)
-}
-
-// grantTokens despacha pelo grant_type e recusa com unsupported_grant_type o que não
-// for authorization_code nem refresh_token; a troca de token já saiu antes, em token.
-func (h *oauthHandler) grantTokens(ctx context.Context, form url.Values) (oauth.TokenResponse, error) {
-	switch grantType := form.Get("grant_type"); grantType {
-	case grantTypeAuthorizationCode:
-		return h.svc.ExchangeCode(ctx, codeGrantFrom(form))
-	case grantTypeRefreshToken:
-		return h.svc.RefreshToken(ctx, refreshGrantFrom(form))
-	default:
-		return oauth.TokenResponse{}, &oauth.ProtocolError{Code: "unsupported_grant_type", Description: fmt.Sprintf(
-			"grant_type deve ser %s, %s ou %s, recebido %s", grantTypeAuthorizationCode, grantTypeRefreshToken,
-			oauth.GrantTypeTokenExchange, oauth.ClientValue(grantType))}
-	}
 }
 
 // exchangeToken atende a troca de token (RFC 8693): só o resource autenticado por HTTP
