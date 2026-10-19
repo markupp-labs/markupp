@@ -23,6 +23,7 @@ type OAuthService interface {
 	Deny(ctx context.Context, requestID, userID string) (redirectTo string, err error)
 	ExchangeCode(ctx context.Context, g oauth.CodeGrant) (oauth.TokenResponse, error)
 	RefreshToken(ctx context.Context, g oauth.RefreshGrant) (oauth.TokenResponse, error)
+	ExchangeToken(ctx context.Context, g oauth.ExchangeGrant) (oauth.ExchangeResponse, error)
 	RevokeToken(ctx context.Context, r oauth.RevokeRequest) error
 	ListAuthorizations(ctx context.Context, userID string) ([]oauth.AuthorizationView, error)
 	RevokeAuthorization(ctx context.Context, userID, authorizationID string) error
@@ -32,6 +33,7 @@ const (
 	grantTypeAuthorizationCode = "authorization_code"
 	grantTypeRefreshToken      = "refresh_token"
 	formURLEncoded             = "application/x-www-form-urlencoded"
+	oauthErrInvalidClient      = "invalid_client"
 )
 
 type oauthHandler struct {
@@ -73,6 +75,8 @@ func mountOAuthProtocolRoutes(r chi.Router, h *oauthHandler) {
 	r.Route("/oauth", func(p chi.Router) {
 		p.Use(allowAnyOrigin)
 		p.Post("/token", h.token)
+		// A troca de token chega de servidor para servidor, sem navegador, por isso o
+		// preflight não libera o Authorization do Basic.
 		p.Options("/token", openPreflight(http.MethodPost, "Content-Type"))
 		p.Post("/revoke", h.revoke)
 		p.Options("/revoke", openPreflight(http.MethodPost, "Content-Type"))
@@ -144,6 +148,10 @@ func (h *oauthHandler) token(w http.ResponseWriter, r *http.Request) {
 		writeOAuthError(w, protoErr)
 		return
 	}
+	if form.Get("grant_type") == oauth.GrantTypeTokenExchange {
+		h.exchangeToken(w, r, form)
+		return
+	}
 	tokens, err := h.grantTokens(r.Context(), form)
 	if err != nil {
 		writeOAuthServiceError(w, "emitir tokens oauth", err)
@@ -153,7 +161,7 @@ func (h *oauthHandler) token(w http.ResponseWriter, r *http.Request) {
 }
 
 // grantTokens despacha pelo grant_type e recusa com unsupported_grant_type o que não
-// for authorization_code nem refresh_token.
+// for authorization_code nem refresh_token; a troca de token já saiu antes, em token.
 func (h *oauthHandler) grantTokens(ctx context.Context, form url.Values) (oauth.TokenResponse, error) {
 	switch grantType := form.Get("grant_type"); grantType {
 	case grantTypeAuthorizationCode:
@@ -162,8 +170,72 @@ func (h *oauthHandler) grantTokens(ctx context.Context, form url.Values) (oauth.
 		return h.svc.RefreshToken(ctx, refreshGrantFrom(form))
 	default:
 		return oauth.TokenResponse{}, &oauth.ProtocolError{Code: "unsupported_grant_type", Description: fmt.Sprintf(
-			"grant_type deve ser %s ou %s, recebido %s", grantTypeAuthorizationCode, grantTypeRefreshToken, oauth.ClientValue(grantType))}
+			"grant_type deve ser %s, %s ou %s, recebido %s", grantTypeAuthorizationCode, grantTypeRefreshToken,
+			oauth.GrantTypeTokenExchange, oauth.ClientValue(grantType))}
 	}
+}
+
+// exchangeToken atende a troca de token (RFC 8693): só o resource autenticado por HTTP
+// Basic troca, e a recusa da credencial sai como invalid_client.
+func (h *oauthHandler) exchangeToken(w http.ResponseWriter, r *http.Request, form url.Values) {
+	grant, protoErr := exchangeGrantFrom(r, form)
+	if protoErr != nil {
+		writeExchangeError(w, protoErr)
+		return
+	}
+	issued, err := h.svc.ExchangeToken(r.Context(), grant)
+	if err != nil {
+		writeExchangeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, issued)
+}
+
+func exchangeGrantFrom(r *http.Request, form url.Values) (oauth.ExchangeGrant, *oauth.ProtocolError) {
+	resourceID, secret, protoErr := resourceCredentials(r)
+	if protoErr != nil {
+		return oauth.ExchangeGrant{}, protoErr
+	}
+	return oauth.ExchangeGrant{
+		ResourceID:         resourceID,
+		ResourceSecret:     secret,
+		SubjectToken:       form.Get("subject_token"),
+		SubjectTokenType:   form.Get("subject_token_type"),
+		RequestedTokenType: form.Get("requested_token_type"),
+		Audience:           form.Get("audience"),
+		Resource:           form.Get("resource"),
+	}, nil
+}
+
+// resourceCredentials lê o Basic do resource e decodifica usuário e senha de
+// application/x-www-form-urlencoded (RFC 6749, seção 2.3.1), sem ecoar nenhum dos dois.
+func resourceCredentials(r *http.Request) (resourceID, secret string, protoErr *oauth.ProtocolError) {
+	user, password, ok := r.BasicAuth()
+	if !ok {
+		return "", "", invalidClient("autenticacao HTTP Basic obrigatoria, esperado usuario = URL do resource e senha = segredo dele")
+	}
+	resourceID, errID := url.QueryUnescape(user)
+	secret, errSecret := url.QueryUnescape(password)
+	if errID != nil || errSecret != nil {
+		return "", "", invalidClient("credencial HTTP Basic mal codificada, esperado usuario e senha em " + formURLEncoded)
+	}
+	return resourceID, secret, nil
+}
+
+func invalidClient(description string) *oauth.ProtocolError {
+	return &oauth.ProtocolError{Code: oauthErrInvalidClient, Description: description}
+}
+
+// writeExchangeError responde invalid_client com 401 e o desafio Basic (RFC 6749, seção
+// 5.2) e o resto como os outros grants.
+func writeExchangeError(w http.ResponseWriter, err error) {
+	var protoErr *oauth.ProtocolError
+	if !errors.As(err, &protoErr) || protoErr.Code != oauthErrInvalidClient {
+		writeOAuthServiceError(w, "trocar token oauth", err)
+		return
+	}
+	w.Header().Set("WWW-Authenticate", `Basic realm="markupp"`)
+	writeJSON(w, http.StatusUnauthorized, oauthErrorResponse{Error: protoErr.Code, ErrorDescription: protoErr.Description})
 }
 
 // readOAuthForm lê só o corpo do formulário, sem a query, e recusa com o erro do

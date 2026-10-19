@@ -48,7 +48,7 @@ func newOAuthMetadataResponse(issuer string) oauthMetadataResponse {
 		RevocationEndpoint:                     issuer + oauthRevokePath,
 		ScopesSupported:                        oauth.SupportedScopes(),
 		ResponseTypesSupported:                 []string{"code"},
-		GrantTypesSupported:                    []string{grantTypeAuthorizationCode, grantTypeRefreshToken},
+		GrantTypesSupported:                    []string{grantTypeAuthorizationCode, grantTypeRefreshToken, oauth.GrantTypeTokenExchange},
 		CodeChallengeMethodsSupported:          []string{"S256"},
 		TokenEndpointAuthMethodsSupported:      []string{"none"},
 		RevocationEndpointAuthMethodsSupported: []string{"none"},
