@@ -81,6 +81,19 @@ class SidebarTest < ApplicationSystemTestCase
     assert_in_delta top, edge(spine, "top"), 0.5
   end
 
+  # Hover não pinta o fundo (a aba segue sendo a borda puxada da barra); só o ícone sobe para a cor do texto.
+  test "hovering the spine keeps the sidebar background and lifts only the icon to the text color" do
+    use_fake_api(notes: [])
+    sign_in_through_form
+
+    visit root_path
+    spine = find("button[aria-controls=sidebar]")
+    spine.hover
+
+    assert_equal style(find("nav#sidebar"), "backgroundColor"), style(spine, "backgroundColor")
+    assert_equal style(find("body"), "color"), style(spine, "color")
+  end
+
   test "the spine leaves room around its icon" do
     use_fake_api(notes: [])
     sign_in_through_form
