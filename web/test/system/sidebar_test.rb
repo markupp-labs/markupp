@@ -81,17 +81,22 @@ class SidebarTest < ApplicationSystemTestCase
     assert_in_delta top, edge(spine, "top"), 0.5
   end
 
-  # Hover não pinta o fundo (a aba segue sendo a borda puxada da barra); só o ícone sobe para a cor do texto.
-  test "hovering the spine keeps the sidebar background and lifts only the icon to the text color" do
+  # Hover e foco não pintam o fundo (a aba segue sendo a borda puxada da barra); só o ícone sobe para o accent, que
+  # aparece também no claro (do ink-muted para o ink a diferença era 1.11:1).
+  test "hovering or focusing the spine keeps the sidebar background and lifts only the icon to the accent" do
     use_fake_api(notes: [])
     sign_in_through_form
 
     visit root_path
     spine = find("button[aria-controls=sidebar]")
     spine.hover
-
     assert_equal style(find("nav#sidebar"), "backgroundColor"), style(spine, "backgroundColor")
-    assert_equal style(find("body"), "color"), style(spine, "color")
+    assert_equal accent_color, style(spine, "color")
+
+    find("body").hover
+    spine.evaluate_script("this.focus()")
+    assert spine.evaluate_script("this.matches(':focus-visible')")
+    assert_equal accent_color, style(spine, "color")
   end
 
   test "the spine leaves room around its icon" do
@@ -182,6 +187,17 @@ class SidebarTest < ApplicationSystemTestCase
 
     def style(element, property)
       element.evaluate_script("getComputedStyle(this).#{property}")
+    end
+
+    def accent_color
+      evaluate_script(<<~JS)
+        (() => {
+          const probe = document.body.appendChild(Object.assign(document.createElement("span"), { style: "color: var(--accent)" }))
+          const color = getComputedStyle(probe).color
+          probe.remove()
+          return color
+        })()
+      JS
     end
 
     def sidebar_width
