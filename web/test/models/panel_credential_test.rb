@@ -35,6 +35,18 @@ class PanelCredentialTest < ActiveSupport::TestCase
     assert_equal "ana@markupp.dev", @credential.account_email
   end
 
+  test "password_login? stays true when /auth/me does not say, as the current server" do
+    @credential.account = { "id" => "account-1", "email" => "ana@markupp.dev" }
+
+    assert @credential.password_login?
+  end
+
+  test "password_login? follows /auth/me when it says the account can't use a password" do
+    @credential.account = { "id" => "account-1", "email" => "ana@markupp.dev", "password_login" => false }
+
+    assert_not @credential.password_login?
+  end
+
   test "sign_out forgets everything in the session" do
     @credential.sign_in({ "access_token" => "access-1", "refresh_token" => "refresh-1", "expires_in" => 900 })
     @session[:tenant_id] = "tenant-1"

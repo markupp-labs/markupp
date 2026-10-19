@@ -53,6 +53,24 @@ module Settings
       assert_select "main a[href=?]", new_password_reset_path, text: "I have a reset token"
     end
 
+    test "show hides change password when /auth/me says the account can't use a password" do
+      use_fake_api(accounts: [ { email: EMAIL, password: FakeMarkuppAccounts::DEFAULT_PASSWORD, password_login: false } ])
+      sign_in_as
+
+      get settings_account_path
+
+      assert_select "main form[action=?]", password_change_path, count: 0
+    end
+
+    test "show keeps change password when /auth/me says the account can use a password" do
+      use_fake_api(accounts: [ { email: EMAIL, password: FakeMarkuppAccounts::DEFAULT_PASSWORD, password_login: true } ])
+      sign_in_as
+
+      get settings_account_path
+
+      assert_select "main form[action=?] button", password_change_path, text: "Change password"
+    end
+
     test "the sidebar shows the note tree and new note, as on the note pages" do
       use_fake_api(notes: [ { id: "1", path: "work/plan.md", content: "" } ])
       sign_in_as

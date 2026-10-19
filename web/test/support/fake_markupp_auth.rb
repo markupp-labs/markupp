@@ -19,10 +19,11 @@ class FakeMarkuppAuth
   # Cenário: a API demora no POST /auth/refresh até `callers` renovações chegarem juntas, ou até o timeout.
   def hold_refreshes_together!(callers, timeout:) = @refresh_gate = FakeRefreshGate.new(callers, timeout:)
 
+  # password_login só sai quando a conta da fake o define, como o servidor que ainda não manda o campo.
   def get(path, account:, **)
     raise ArgumentError, "fake API has no route for GET #{path}, expected /auth/me" unless path == "/auth/me"
 
-    account.slice("id", "email")
+    account.slice("id", "email", "password_login")
   end
 
   def post(path, body, **)
