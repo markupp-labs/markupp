@@ -29,10 +29,11 @@ class SidebarTest < ActionDispatch::IntegrationTest
       assert_select "a[href=?][aria-label=Settings][title=?][aria-keyshortcuts=?]", settings_path, "Settings (Ctrl+,)", "Control+, Meta+," do
         assert_select "svg[data-icon=gear-six]"
       end
+      # A engrenagem já leva às configurações: o menu da conta só mostra quem está logado e o sair.
       assert_select "#account_menu[role=menu][popover]" do
-        assert_select "a[role=menuitem][href=?]", settings_account_path, text: "Account"
-        assert_select "a[role=menuitem][href=?][aria-keyshortcuts=?]", settings_path, "Control+, Meta+,", text: /Settings/
+        assert_select "[role=menuitem]", count: 1
         assert_select "form[action=?] button[role=menuitem]", session_path, text: "Log out"
+        assert_select "p", text: EMAIL
       end
     end
     assert_select "nav > footer button", text: "Log out", count: 1

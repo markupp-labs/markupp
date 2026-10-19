@@ -1,7 +1,7 @@
 require "application_system_test_case"
 
-# Rodapé da barra lateral numa linha: o email abre o menu da conta (Account, Settings, Log out), à direita só os ícones
-# de tema e configurações. O menu anda pelo teclado como o menu de contexto da árvore.
+# Rodapé da barra lateral numa linha: o email abre o menu da conta (quem está logado e o sair), à direita só os ícones
+# de tema e configurações, que é a única entrada das configurações. O menu anda pelo teclado como o da árvore.
 class AccountMenuTest < ApplicationSystemTestCase
   EMAIL = FakeMarkuppAccounts::DEFAULT_EMAIL
 
@@ -21,14 +21,10 @@ class AccountMenuTest < ApplicationSystemTestCase
     assert_equal 1, tops.uniq.size, "expected one line, got middles at #{tops.inspect}"
   end
 
-  test "the email opens the menu with the focus on the first item, j and k move and esc gives the focus back" do
+  test "the email opens the menu with the focus on log out and esc gives the focus back" do
     click_on EMAIL
 
     assert_selector "#account_menu[role=menu]:popover-open"
-    assert_selector "[role=menuitem]:focus", text: "Account"
-    send_keys "j"
-    assert_selector "[role=menuitem]:focus", text: "Settings"
-    send_keys "k", "k"
     assert_selector "[role=menuitem]:focus", text: "Log out"
     send_keys :escape
 
@@ -44,12 +40,14 @@ class AccountMenuTest < ApplicationSystemTestCase
     assert_no_selector "#account_menu:popover-open"
   end
 
-  test "the menu items lead to the account and the settings" do
+  test "the menu shows the whole email and only log out, the gear is the way to the settings" do
     click_on EMAIL
     assert_selector "#account_menu:popover-open"
-    within("#account_menu") { click_on "Account" }
 
-    assert_selector "main h1", text: "Account"
+    within("#account_menu") do
+      assert_text EMAIL
+      assert_selector "[role=menuitem]", count: 1
+    end
   end
 
   test "log out from the keyboard" do

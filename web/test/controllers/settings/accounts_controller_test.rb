@@ -171,7 +171,7 @@ module Settings
 
       get settings_account_path
 
-      assert_select "nav footer #account_menu a[href=?][aria-current=page]", settings_account_path, text: "Account"
+      assert_select "nav footer a[href=?][aria-label=Settings][aria-current=page]", settings_path
     end
 
     test "show works for an account without tenant" do
