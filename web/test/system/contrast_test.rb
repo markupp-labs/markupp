@@ -35,6 +35,12 @@ class ContrastTest < ApplicationSystemTestCase
     assert_readable find("#sidebar a[aria-current=page]")
   end
 
+  test "the untitled placeholder of a new note reads as large text" do
+    visit new_note_path
+
+    assert_readable find_field("Title"), pseudo: "::placeholder", minimum: 3
+  end
+
   private
     def assert_readable(element, pseudo: nil, minimum: 4.5)
       ratio = evaluate_script("(function() { #{CONTRAST_SCRIPT} }).apply(null, arguments)", element, pseudo)
