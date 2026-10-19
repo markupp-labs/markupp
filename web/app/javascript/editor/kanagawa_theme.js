@@ -1,6 +1,11 @@
 import { EditorView } from "@codemirror/view"
 import { HighlightStyle, syntaxHighlighting } from "@codemirror/language"
-import { tags } from "@lezer/highlight"
+import { Tag, styleTags, tags } from "@lezer/highlight"
+
+// O markdown marca InlineCode e o texto do bloco cercado com a mesma tag (monospace), e o fundo pintado no
+// bloco sai trecho a trecho, serrilhado. A tag própria deixa o fundo só no código inline.
+const inlineCode = Tag.define(tags.monospace)
+export const inlineCodeTag = { props: [ styleTags({ InlineCode: inlineCode }) ] }
 
 // Cores só pelas variáveis CSS do tema (application.css), então vale para o claro e o escuro.
 const editorTheme = EditorView.theme({
@@ -18,7 +23,7 @@ const commonHighlight = [
   { tag: tags.heading, color: "var(--accent)", fontWeight: "700" },
   { tag: tags.strong, fontWeight: "700" },
   { tag: tags.emphasis, fontStyle: "italic" },
-  { tag: tags.monospace, backgroundColor: "var(--surface-sunken)", borderRadius: "0.375rem" },
+  { tag: inlineCode, backgroundColor: "var(--surface-sunken)", borderRadius: "0.375rem" },
   { tag: [ tags.link, tags.url ], color: "var(--accent)" },
   { tag: [ tags.processingInstruction, tags.quote ], color: "var(--ink-muted)" },
 ]

@@ -4,7 +4,7 @@ import { EditorView, keymap } from "@codemirror/view"
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands"
 import { markdown, markdownLanguage } from "@codemirror/lang-markdown"
 import { wikilinkMarks } from "editor/wikilink_marks"
-import { kanagawaTheme } from "editor/kanagawa_theme"
+import { inlineCodeTag, kanagawaTheme } from "editor/kanagawa_theme"
 
 // Monta o CodeMirror sobre o textarea, que segue como fonte do formulário: cada edição volta para ele
 // e dispara input, como se o usuário tivesse digitado no textarea.
@@ -27,7 +27,7 @@ export default class extends Controller {
     return [
       EditorState.readOnly.of(readOnly), EditorView.editable.of(!readOnly),
       history(), keymap.of([ ...defaultKeymap, ...historyKeymap ]), EditorView.lineWrapping,
-      markdown({ base: markdownLanguage }), wikilinkMarks, kanagawaTheme(document.documentElement.dataset.editorStyle),
+      markdown({ base: markdownLanguage, extensions: inlineCodeTag }), wikilinkMarks, kanagawaTheme(document.documentElement.dataset.editorStyle),
       EditorView.updateListener.of((update) => this.syncSource(update)),
     ]
   }
