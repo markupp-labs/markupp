@@ -31,7 +31,7 @@ func cofreComDoisGrupos(t *testing.T) (*pgxpool.Pool, *storage.PostgresNotesRepo
 		notaComCaminho("d", "d.md", "[[e]] [[indise]]"),
 		notaComCaminho("e", "e.md", "[[f]]"),
 		notaComCaminho("f", "f.md", "[[d]]"),
-		notaComCaminho("indice", "indice.md", "[[a]]"),
+		notaComCaminho("indice", "indice.md", "sem ligacao de saida"),
 		notaComCaminho("solta", "solta.md", "nada"),
 	} {
 		storagetest.SaveNote(ctxDeTeste, t, repo, nota)
@@ -48,7 +48,7 @@ func TestHubs_OrdenaPorPageRankContandoALigacaoInferida(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, hubs, 8, "toda nota do cofre tem centralidade")
 	assert.Equal(t, "indice", hubs[0].ID)
-	assert.Equal(t, []int{4, 1}, []int{hubs[0].InDegree, hubs[0].OutDegree}, "d cita indice por inferencia")
+	assert.Equal(t, []int{4, 0}, []int{hubs[0].InDegree, hubs[0].OutDegree}, "d cita indice por inferencia")
 	assert.True(t, slices.IsSortedFunc(hubs, func(x, y notes.Hub) int { return cmp.Compare(y.PageRank, x.PageRank) }))
 	total := 0.0
 	for _, h := range hubs {
