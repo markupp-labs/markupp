@@ -207,8 +207,12 @@ func newOAuthService(cfg config.Config, pool *pgxpool.Pool, scoped oauth.ScopedT
 	if !cfg.OAuthEnabled() {
 		return nil, nil
 	}
+	metadata, err := newCIMDClientMetadataFetcher(cimdLimitsFrom(cfg))
+	if err != nil {
+		return nil, err
+	}
 	repo := storage.NewPostgresOAuthRepository(pool)
-	return oauth.NewService(repo, oauthServiceConfigFrom(cfg), scoped, nil, time.Now, uuid.NewString, newOAuthToken), nil
+	return oauth.NewService(repo, oauthServiceConfigFrom(cfg), scoped, metadata, time.Now, uuid.NewString, newOAuthToken), nil
 }
 
 // newOAuthToken gera os tokens opacos do OAuth. A leitura de crypto/rand não falha num
