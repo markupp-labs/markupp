@@ -19,7 +19,7 @@ class PublicLayoutTest < ApplicationSystemTestCase
     page.current_window.resize_to(390, 844)
     visit new_session_path
 
-    assert_centered find("form[action=\"#{session_path}\"]"), axes: [ :horizontal, :vertical ]
+    assert_centered find("main > div", text: "Log in"), axes: [ :horizontal, :vertical ]
   ensure
     page.current_window.resize_to(1400, 900)
   end
