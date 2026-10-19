@@ -51,6 +51,25 @@ class MotionTest < ApplicationSystemTestCase
     end
   end
 
+  # A entrada roda uma vez, na troca: depois dela, o mesmo conteúdo desenhado de novo (morph do Turbo, connect de
+  # controller, re-render) ou a alça arrastada não anima nada.
+  test "an entrance plays once and content already on screen never comes in again" do
+    visit note_path("1")
+
+    execute_script("document.querySelector('[data-note-mode-mode-param=split]').click()")
+    wait_until_still ".note-preview"
+    assert_equal({}, motions_of_redrawn(".note-preview"))
+    assert_equal({}, motions_of_redrawn(".note-editor-pane"))
+
+    2.times do
+      execute_script("document.querySelector('.sidebar-spine').click()")
+      wait_until_still "body"
+    end
+    wait_until_still "nav#sidebar"
+    assert_equal({}, motions_of_redrawn("nav#sidebar"))
+    assert_equal [ {} ], motions_after("document.documentElement.style.setProperty('--sidebar-width', '320px')", "body")
+  end
+
   test "the pane that comes in pops in and the one that leaves is gone at once" do
     visit note_path("1")
 
@@ -131,6 +150,18 @@ class MotionTest < ApplicationSystemTestCase
           document.getAnimations().length ? requestAnimationFrame(tick) : done([ start, frames ])
         }
         requestAnimationFrame(tick)
+      JS
+    end
+
+    # Troca o elemento por uma cópia, como um morph ou re-render faria, e devolve as transições e animações da cópia.
+    def motions_of_redrawn(selector)
+      evaluate_script(<<~JS, selector)
+        (() => {
+          const element = document.querySelector(arguments[0])
+          const copy = element.cloneNode(true)
+          element.replaceWith(copy)
+          return Object.fromEntries(copy.getAnimations().map((motion) => [ motion.transitionProperty || motion.animationName, true ]))
+        })()
       JS
     end
 
