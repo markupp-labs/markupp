@@ -36,10 +36,26 @@ func BenchmarkIndexNextVault_LoteIncremental(b *testing.B) {
 const marcaCofre = `INSERT INTO vault_second_stage_queue (vault_id) VALUES ('cofre-bench')
 ON CONFLICT (vault_id) DO UPDATE SET revision = nextval('vault_second_stage_revision_seq')`
 
+// citacoesComErro é quantas notas do cofre sintético ganham uma ligação não resolvida
+// para o segundo estágio inferir.
+const citacoesComErro = 500
+
+// citaComErroDeDigitacao faz a nota de posição i citar o título da nota seguinte com
+// a primeira letra trocada, para cada uma das $1 primeiras notas, como o indexador
+// gravaria a ligação escrita com erro.
+const citaComErroDeDigitacao = `INSERT INTO note_links (note_id, vault_id, cited_title, title_key, kind)
+SELECT n.id, n.vault_id, 'x' || substr(t.title_key, 2), 'x' || substr(t.title_key, 2), 'explicit'
+FROM (SELECT id, vault_id, row_number() OVER (ORDER BY id) AS pos FROM notes) n
+JOIN (SELECT title_key, row_number() OVER (ORDER BY note_id, title_key) AS pos FROM note_titles) t ON t.pos = n.pos + 1
+WHERE n.pos <= $1`
+
 // BenchmarkSegundoEstagio_CofreInteiro mede o segundo estágio sobre o cofre de 10 mil
-// notas já indexado, num Job sem nota pendente: hoje, o recálculo do df.
+// notas já indexado, com 500 ligações não resolvidas, num Job sem nota pendente: df,
+// ligações inferidas, PageRank, graus e comunidades.
 func BenchmarkSegundoEstagio_CofreInteiro(b *testing.B) {
 	pool, idx := cofreIndexado(b)
+	_, err := pool.Exec(context.Background(), citaComErroDeDigitacao, citacoesComErro)
+	require.NoError(b, err)
 	b.ReportAllocs()
 	b.ResetTimer()
 	for range b.N {

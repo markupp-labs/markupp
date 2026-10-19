@@ -19,6 +19,8 @@ func BenchmarkNoteGraph(b *testing.B) {
 		"suggestions":      "/notes/cofre-bench-00042/suggestions",
 		"orphans":          "/vaults/cofre-bench/orphans",
 		"unresolved_links": "/vaults/cofre-bench/unresolved-links",
+		"hubs":             "/vaults/cofre-bench/hubs",
+		"clusters":         "/vaults/cofre-bench/clusters",
 	}
 	for nome, rota := range rotas {
 		b.Run(nome, func(b *testing.B) { benchGet(b, router, rota) })
