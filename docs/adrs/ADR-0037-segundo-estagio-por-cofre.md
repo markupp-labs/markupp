@@ -14,10 +14,25 @@ notas que não estão no lote
 ## Decisão
 
 O indexador ganha um segundo estágio, a única exceção ao ADR-0033. Ele roda no mesmo Job do
-cofre, na mesma transação, depois de aplicar o lote, e só quando ligações ou títulos do cofre
-mudaram: o lote que cria, renomeia ou muda as ligações de uma nota marca o cofre, e um trigger
-de exclusão em notes também marca. O scaler do KEDA conta o cofre marcado como pendente, e o
-reindex marca os cofres que reenfileira. Hoje o segundo estágio recalcula o df do cofre
+cofre, depois do commit do lote, em transação própria, e só quando ligações ou títulos do
+cofre mudaram: o lote que cria, renomeia ou muda as ligações de uma nota marca o cofre, e um
+trigger de exclusão em notes também marca. O scaler do KEDA conta o cofre marcado como
+pendente, e o reindex marca os cofres que reenfileira. Hoje o segundo estágio recalcula as
+ligações inferidas, o PageRank, as comunidades, o df e o N do cofre, e repesa com eles as
+postagens tf-idf e a norma de cada nota
+
+A reserva do cofre acaba no commit do lote. O segundo estágio roda sob uma trava consultiva
+da transação, por cofre: outro Job no segundo estágio do mesmo cofre faz o seguinte pular, e
+o cofre só marcado não é reservado enquanto a trava existe. Um lote pode gravar o cofre
+durante o segundo estágio; a marcação dele aumenta a revisão, o segundo estágio desmarca só
+a revisão que leu, e o próximo Job recalcula. Recalcular sem mudança grava o mesmo
+
+Quando o lote passa de 50 notas mais 10% das notas do cofre, o Job roda ANALYZE das tabelas
+derivadas que o lote grava antes do segundo estágio. É o limiar padrão do autovacuum: o
+segundo estágio roda logo depois do commit, antes de o autovacuum acordar, e sem a
+estatística da carga nova o planejador trata as tabelas como se tivessem o tamanho anterior.
+O primeiro lote de um cofre importado é o caso típico; o lote incremental não passa do
+limiar
 
 ## Alternativas consideradas
 
@@ -27,11 +42,18 @@ reindex marca os cofres que reenfileira. Hoje o segundo estágio recalcula o df 
 - Recalcular a cada lote: simples, mas cada edição pagaria o custo do cofre inteiro
 - Job ou CronJob separado para o segundo estágio: outro disparo, outra credencial e outra
   corrida com o indexador do mesmo cofre
+- Segundo estágio na transação do lote: um snapshot só, mas a reserva do cofre fica presa
+  durante o cálculo do cofre inteiro e o lote seguinte espera por ele
+- ANALYZE a cada lote, ou nunca: o primeiro paga a amostragem em toda edição, o segundo
+  deixa o primeiro segundo estágio de um cofre importado planejar sem estatística
 
 ## Consequências
 
 - Edição que não muda ligação nem título não paga o custo do cofre inteiro
-- O df fica levemente defasado entre uma mudança de ligação ou título e outra
-- O cofre continua travado por um Job só, então lote e segundo estágio não disputam o cofre
+- O df fica levemente defasado entre uma mudança de ligação ou título e outra; o lote pesa
+  as postagens das notas dele com o df e o N vigentes
+- Lote e segundo estágio do mesmo cofre podem rodar ao mesmo tempo em Jobs diferentes, e a
+  edição não espera o cálculo do cofre inteiro. A repesagem das postagens vem por último e
+  pula a nota que um lote concorrente está regravando, que fica com o df anterior
 - Quem precisar de mais dado do cofre inteiro acrescenta um passo ao segundo estágio, sem
   novo disparo
