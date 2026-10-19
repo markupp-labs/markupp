@@ -90,7 +90,7 @@ class SidebarTest < ActionDispatch::IntegrationTest
     end
   end
 
-  test "the sidebar starts open at its default width with one button outside it to hide it and a resize handle" do
+  test "the sidebar starts open at its default width with a spine right after it to hide it and a resize handle" do
     use_fake_api(notes: [])
     sign_in_as
 
@@ -99,7 +99,7 @@ class SidebarTest < ActionDispatch::IntegrationTest
     assert_select "html[data-sidebar]", count: 0
     assert_select "html[style]", count: 0
     assert_select "button[aria-controls=sidebar]", count: 1
-    assert_select "main button[aria-controls=sidebar][aria-expanded=true][aria-label=?][title=?] svg[data-icon=sidebar-simple]",
+    assert_select "nav#sidebar + button[aria-controls=sidebar][aria-expanded=true][aria-label=?][title=?] svg[data-icon=sidebar-simple]",
                   "Hide sidebar", "Hide sidebar (Ctrl+B)"
     assert_select "nav#sidebar [role=separator][aria-orientation=vertical][tabindex='0'][aria-label=?]", "Resize sidebar" do |handle|
       assert_equal %w[240 480 288], %w[aria-valuemin aria-valuemax aria-valuenow].map { handle.first[it] }
@@ -115,7 +115,7 @@ class SidebarTest < ActionDispatch::IntegrationTest
 
     assert_select "html[data-sidebar=closed]"
     assert_select "button[aria-controls=sidebar]", count: 1
-    assert_select "main button[aria-controls=sidebar][aria-expanded=false][aria-label=?][title=?]", "Show sidebar", "Show sidebar (Ctrl+B)"
+    assert_select "nav#sidebar + button[aria-controls=sidebar][aria-expanded=false][aria-label=?][title=?]", "Show sidebar", "Show sidebar (Ctrl+B)"
   end
 
   test "the sidebar width comes back from its cookie" do

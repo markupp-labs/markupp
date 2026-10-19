@@ -125,7 +125,7 @@ class NoteModesTest < ApplicationSystemTestCase
     page.current_window.resize_to(1024, 768)
     assert_preview_below_editor
 
-    within("main") { click_on "Hide sidebar" }
+    click_on "Hide sidebar"
     assert_preview_beside_editor
   ensure
     page.current_window.resize_to(1400, 900)

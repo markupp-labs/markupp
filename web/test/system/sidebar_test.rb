@@ -42,23 +42,55 @@ class SidebarTest < ApplicationSystemTestCase
     assert name.evaluate_script("this.scrollWidth <= this.clientWidth"), "expected Laboratorio de Dados not to be cut at 288px"
   end
 
-  test "one button in the content corner hides and shows the sidebar and the state survives a reload" do
+  test "the spine on the sidebar edge hides and shows it and the state survives a reload" do
     use_fake_api(notes: [])
     sign_in_through_form
 
     visit root_path
     assert_no_button "Show sidebar"
-    within("main") { click_on "Hide sidebar" }
+    click_on "Hide sidebar"
     assert_no_selector "nav#sidebar"
-    assert_equal "Show sidebar (Ctrl+B)", find("main button[aria-controls=sidebar][aria-expanded=false]")["title"]
-    within("main") { click_on "Show sidebar" }
+    assert_equal "Show sidebar (Ctrl+B)", find("button[aria-controls=sidebar][aria-expanded=false]")["title"]
+    click_on "Show sidebar"
     assert_selector "nav#sidebar"
-    within("main") { click_on "Hide sidebar" }
+    click_on "Hide sidebar"
 
     refresh
     assert_no_selector "nav#sidebar"
-    within("main") { click_on "Show sidebar" }
+    click_on "Show sidebar"
     assert_selector "nav#sidebar"
+  end
+
+  test "the spine sticks out of the sidebar edge near the top in its colors and stays at the screen edge when closed" do
+    use_fake_api(notes: [])
+    sign_in_through_form
+
+    visit root_path
+    spine = find("button[aria-controls=sidebar]")
+    sidebar = find("nav#sidebar")
+    assert_in_delta edge(sidebar, "right") - 1, edge(spine, "left"), 0.5
+    assert_operator edge(spine, "top"), :<, 40
+    assert_equal style(sidebar, "backgroundColor"), style(spine, "backgroundColor")
+    assert_equal style(sidebar, "borderRightColor"), style(spine, "borderTopColor")
+    assert_equal "0px", style(spine, "borderLeftWidth")
+
+    top = edge(spine, "top")
+    spine.click
+    assert_no_selector "nav#sidebar"
+    assert_in_delta 0, edge(spine, "left"), 0.5
+    assert_in_delta top, edge(spine, "top"), 0.5
+  end
+
+  test "the resize handle stays reachable right beside the spine" do
+    use_fake_api(notes: [])
+    sign_in_through_form
+
+    visit root_path
+    y = edge(find("button[aria-controls=sidebar]"), "top") + 8
+    right = edge(find("nav#sidebar"), "right")
+
+    assert evaluate_script("document.elementFromPoint(#{right - 3}, #{y})?.matches('[role=separator]') == true")
+    assert evaluate_script("document.elementFromPoint(#{right + 8}, #{y})?.closest('[aria-controls=sidebar]') != null")
   end
 
   test "ctrl+b toggles the sidebar with the focus in the editor and leaves the note untouched" do
@@ -101,6 +133,14 @@ class SidebarTest < ApplicationSystemTestCase
   private
     def drag_by(element, dx)
       page.driver.browser.action.click_and_hold(element.native).move_by(dx, 0).release.perform
+    end
+
+    def edge(element, side)
+      element.evaluate_script("this.getBoundingClientRect().#{side}")
+    end
+
+    def style(element, property)
+      element.evaluate_script("getComputedStyle(this).#{property}")
     end
 
     def sidebar_width
