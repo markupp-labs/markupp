@@ -108,6 +108,7 @@ type OauthToken struct {
 	Scopes          []string
 	ExpiresAt       time.Time
 	Revoked         bool
+	RotatedAt       pgtype.Timestamptz
 	CreatedAt       time.Time
 }
 

@@ -58,6 +58,7 @@ CREATE TABLE oauth_tokens (
         AND scopes <@ ARRAY['notas:leitura', 'notas:escrita', 'administracao']::TEXT[]),
     expires_at       TIMESTAMPTZ NOT NULL,
     revoked          BOOLEAN NOT NULL DEFAULT FALSE,
+    rotated_at       TIMESTAMPTZ NULL,
     created_at       TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX oauth_tokens_authorization_id_idx ON oauth_tokens (authorization_id);
