@@ -12,6 +12,8 @@ CREATE TABLE note_centrality (
     out_degree INTEGER NOT NULL
 );
 CREATE INDEX note_centrality_vault_rank_idx ON note_centrality (vault_id, pagerank DESC);
+-- Nota órfã é a de grau zero: o filtro orphan=true lê só estas linhas do cofre.
+CREATE INDEX note_centrality_vault_orphan_idx ON note_centrality (vault_id) WHERE in_degree = 0 AND out_degree = 0;
 
 -- Comunidade de cada nota pelo Louvain. O id vem da sequência quando a comunidade não
 -- herda o de uma anterior, então nunca volta a ser usado. Nota sozinha não tem linha.
