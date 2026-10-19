@@ -16,6 +16,7 @@ class ApplicationSystemTestCase < ActionDispatch::SystemTestCase
     fill_in "Email", with: email
     fill_in "Password", with: password
     click_on "Log in"
-    assert_selector "nav", text: email
+    # O login cruza login, /auth/me e /me/tenants; com um Chrome por núcleo em paralelo passa dos 2s padrão.
+    assert_selector "nav", text: email, wait: 10
   end
 end
