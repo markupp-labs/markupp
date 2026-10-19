@@ -41,7 +41,7 @@ func (g *PostgresNoteGraph) Mentions(ctx context.Context, noteID string, offset,
 			return err
 		}
 		ranked, err := g.rankMentions(ctx, q, note.VaultID, found)
-		out = ranked[min(offset, len(ranked)):min(offset+limit, len(ranked))]
+		out = pageOf(ranked, offset, limit)
 		return err
 	})
 	return out, err
