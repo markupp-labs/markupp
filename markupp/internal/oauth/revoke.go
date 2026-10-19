@@ -10,11 +10,12 @@ import (
 )
 
 // RevokeToken atende POST /oauth/revoke (RFC 7009): derruba todos os tokens da
-// Autorização do token, que continua ativa. Token desconhecido ou de outro cliente não
-// revoga nada e não é erro, para não revelar ao cliente se o token existe.
+// Autorização do token, que continua ativa. Token desconhecido, de outro cliente ou que
+// já não vale (revogado, expirado ou de Autorização revogada) não revoga nada e não é
+// erro, para não revelar ao cliente se o token existe.
 func (s *Service) RevokeToken(ctx context.Context, r RevokeRequest) error {
-	if r.Token == "" {
-		return &ProtocolError{Code: errInvalidRequest, Description: "token ausente; esperado o access ou refresh token a revogar"}
+	if err := checkRevokeParams(r); err != nil {
+		return err
 	}
 	grant, err := s.repo.FindToken(ctx, auth.HashOpaqueToken(r.Token))
 	if errors.Is(err, ErrTokenNotFound) {
@@ -23,14 +24,30 @@ func (s *Service) RevokeToken(ctx context.Context, r RevokeRequest) error {
 	if err != nil {
 		return fmt.Errorf("oauth: buscando o token a revogar: %w", err)
 	}
-	if r.ClientID != "" && r.ClientID != grant.Authorization.ClientID {
+	now := s.clock()
+	if r.ClientID != grant.Authorization.ClientID || !liveGrant(grant, now) {
 		return nil
 	}
-	return s.revokeTokens(ctx, grant.Authorization)
+	return s.revokeTokens(ctx, grant.Authorization, now)
 }
 
-func (s *Service) revokeTokens(ctx context.Context, authorization Authorization) error {
-	event := auditEvent(AuditActionRevoke, AuditResultSuccess, authorization, s.clock())
+func checkRevokeParams(r RevokeRequest) error {
+	if r.Token == "" {
+		return &ProtocolError{Code: errInvalidRequest, Description: "token ausente; esperado o access ou refresh token a revogar"}
+	}
+	if r.ClientID == "" {
+		return &ProtocolError{Code: errInvalidRequest, Description: "client_id ausente; esperado o client_id que recebeu o token"}
+	}
+	return nil
+}
+
+// liveGrant diz se o token ainda vale em now, numa Autorização ativa.
+func liveGrant(grant TokenGrant, now time.Time) bool {
+	return !grant.Token.Revoked && grant.Token.ExpiresAt.After(now) && !grant.Authorization.Revoked
+}
+
+func (s *Service) revokeTokens(ctx context.Context, authorization Authorization, now time.Time) error {
+	event := auditEvent(AuditActionRevoke, AuditResultSuccess, authorization, now)
 	if err := s.repo.RevokeAuthorizationTokensAudited(ctx, authorization.ID, event); err != nil {
 		return fmt.Errorf("oauth: revogando os tokens da autorização %q: %w", authorization.ID, err)
 	}

@@ -281,6 +281,6 @@ func toAuthorizationRequest(row gen.OauthRequest) oauth.AuthorizationRequest {
 func toAuthorization(row gen.OauthAuthorization) oauth.Authorization {
 	return oauth.Authorization{
 		ID: row.ID, UserID: row.UserID, ClientID: row.ClientID, Scopes: row.Scopes,
-		CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
+		CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt, Revoked: row.RevokedAt.Valid,
 	}
 }

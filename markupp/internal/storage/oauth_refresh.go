@@ -203,6 +203,6 @@ func revokeAuthorizationInTx(ctx context.Context, qtx *gen.Queries, userID, auth
 func toIssuedToken(row gen.OauthToken) oauth.IssuedToken {
 	return oauth.IssuedToken{
 		Hash: row.TokenHash, AuthorizationID: row.AuthorizationID, Kind: row.Kind,
-		Resource: row.Resource, Scopes: row.Scopes, ExpiresAt: row.ExpiresAt,
+		Resource: row.Resource, Scopes: row.Scopes, ExpiresAt: row.ExpiresAt, Revoked: row.Revoked,
 	}
 }

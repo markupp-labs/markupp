@@ -38,7 +38,8 @@ type Authorization struct {
 	Scopes    []string
 	CreatedAt time.Time
 	UpdatedAt time.Time
-	// Revoked só é lido em FindToken, que devolve a Autorização mesmo revogada.
+	// Revoked é preenchido por FindToken e no reuso de ConsumeRefreshToken, que
+	// devolvem a Autorização mesmo revogada.
 	Revoked bool
 }
 
@@ -57,7 +58,7 @@ type IssuedToken struct {
 	Resource        string
 	Scopes          []string
 	ExpiresAt       time.Time
-	// Revoked só é lido em FindToken, que devolve o token mesmo revogado.
+	// Revoked é preenchido por FindToken, que devolve o token mesmo revogado.
 	Revoked bool
 }
 
