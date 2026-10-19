@@ -163,6 +163,12 @@ type Repository interface {
 	// ListActiveAuthorizations devolve as Autorizações ativas da conta com o nome do
 	// cliente, da mais recente para a mais antiga.
 	ListActiveAuthorizations(ctx context.Context, userID string) ([]AuthorizationSummary, error)
+	// GetFreshCIMDClient devolve o cliente registrado por CIMD cujo documento em cache
+	// ainda vale em relação a now, ou ErrClientNotFound.
+	GetFreshCIMDClient(ctx context.Context, id string, now time.Time) (Client, error)
+	// SaveCIMDClient cria ou atualiza o cliente de origem CIMD com o documento buscado,
+	// válido até expiresAt. Nunca sobrescreve um cliente de outra origem.
+	SaveCIMDClient(ctx context.Context, client Client, expiresAt time.Time) error
 	// RecordAuditEvent grava um evento avulso do authorization server.
 	RecordAuditEvent(ctx context.Context, event AuditEvent) error
 	// RevokeAuthorization trava a Autorização, confere que ela é da conta e segue ativa
@@ -182,6 +188,22 @@ const (
 	// ExpiredTriggerIgnored não revoga com o gatilho expirado, como no /oauth/revoke.
 	ExpiredTriggerIgnored
 )
+
+// ClientMetadata é o Client ID Metadata Document de um cliente já buscado e validado,
+// com o tempo que ele pode ficar em cache.
+type ClientMetadata struct {
+	ClientID     string
+	Name         string
+	RedirectURIs []string
+	TTL          time.Duration
+}
+
+// ClientMetadataFetcher busca e valida o documento de metadados de um client_id que é
+// URL (draft-ietf-oauth-client-id-metadata-document). Erro de busca ou de validação
+// volta embrulhado, sem detalhe de rede que sirva de oráculo ao cliente.
+type ClientMetadataFetcher interface {
+	FetchClientMetadata(ctx context.Context, clientID string) (ClientMetadata, error)
+}
 
 // ScopedTokenIssuer emite o token curto da API que a troca de token entrega ao
 // resource, com a conta como sujeito e os escopos da Autorização.

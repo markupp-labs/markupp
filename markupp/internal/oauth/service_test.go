@@ -61,7 +61,7 @@ func newTestServiceWithIssuer(repo *fakeOAuthRepository, scoped oauth.ScopedToke
 	ids := &sequenceSource{prefix: "pedido"}
 	tokens := &sequenceSource{prefix: "token"}
 	clock := func() time.Time { return testNow }
-	return oauth.NewService(repo, testServiceConfig(), scoped, clock, ids.next, tokens.next)
+	return oauth.NewService(repo, testServiceConfig(), scoped, nil, clock, ids.next, tokens.next)
 }
 
 func testChallenge(verifier string) string {

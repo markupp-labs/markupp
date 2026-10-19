@@ -68,7 +68,7 @@ func oauthServiceDeIntegracao(pool *pgxpool.Pool, codec *auth.TokenCodec) *oauth
 		Issuer: issuerDeIntegracao, PanelURL: painelDeIntegracao, Resources: []string{resourceDeIntegracao},
 		AccessTTL: time.Hour, RefreshTTL: 24 * time.Hour, RequestTTL: 10 * time.Minute, CodeTTL: time.Minute, ExchangeTTL: 5 * time.Minute,
 		ResourceSecrets: map[string]string{resourceDeIntegracao: segredoDoResource},
-	}, codec, time.Now, uuid.NewString, func() string { return uuid.NewString() + uuid.NewString() })
+	}, codec, nil, time.Now, uuid.NewString, func() string { return uuid.NewString() + uuid.NewString() })
 }
 
 func loginDeIntegracao(t *testing.T, server *httptest.Server) string {

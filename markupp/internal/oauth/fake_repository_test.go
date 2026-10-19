@@ -186,3 +186,11 @@ func (f *fakeOAuthRepository) RecordAuditEvent(_ context.Context, event oauth.Au
 	f.recordedEvents = append(f.recordedEvents, event)
 	return f.recordErr
 }
+
+func (f *fakeOAuthRepository) GetFreshCIMDClient(context.Context, string, time.Time) (oauth.Client, error) {
+	return oauth.Client{}, oauth.ErrClientNotFound
+}
+
+func (f *fakeOAuthRepository) SaveCIMDClient(context.Context, oauth.Client, time.Time) error {
+	return nil
+}

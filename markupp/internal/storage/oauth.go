@@ -235,3 +235,16 @@ func toAuthorization(row gen.OauthAuthorization) oauth.Authorization {
 func (r *PostgresOAuthRepository) RecordAuditEvent(ctx context.Context, event oauth.AuditEvent) error {
 	return auditOAuth(ctx, gen.New(r.pool), event)
 }
+
+// errCIMDClientPending marca o cache dos clientes CIMD ainda sem implementação.
+var errCIMDClientPending = errors.New("storage: cache de clientes cimd ainda não implementado")
+
+// GetFreshCIMDClient ainda devolve errCIMDClientPending.
+func (r *PostgresOAuthRepository) GetFreshCIMDClient(context.Context, string, time.Time) (oauth.Client, error) {
+	return oauth.Client{}, errCIMDClientPending
+}
+
+// SaveCIMDClient ainda devolve errCIMDClientPending.
+func (r *PostgresOAuthRepository) SaveCIMDClient(context.Context, oauth.Client, time.Time) error {
+	return errCIMDClientPending
+}

@@ -42,15 +42,17 @@ type Service struct {
 	repo     Repository
 	cfg      ServiceConfig
 	scoped   ScopedTokenIssuer
+	metadata ClientMetadataFetcher
 	clock    func() time.Time
 	newID    func() string
 	newToken func() string
 }
 
-// NewService monta o Service. scoped emite o token da API entregue pela troca, e
-// newToken gera os códigos e tokens opacos, que só chegam ao repositório pelo hash.
-func NewService(repo Repository, cfg ServiceConfig, scoped ScopedTokenIssuer, clock func() time.Time, newID func() string, newToken func() string) *Service {
-	return &Service{repo: repo, cfg: cfg, scoped: scoped, clock: clock, newID: newID, newToken: newToken}
+// NewService monta o Service. scoped emite o token da API entregue pela troca, metadata
+// busca o documento dos clientes registrados por CIMD, e newToken gera os códigos e
+// tokens opacos, que só chegam ao repositório pelo hash.
+func NewService(repo Repository, cfg ServiceConfig, scoped ScopedTokenIssuer, metadata ClientMetadataFetcher, clock func() time.Time, newID func() string, newToken func() string) *Service {
+	return &Service{repo: repo, cfg: cfg, scoped: scoped, metadata: metadata, clock: clock, newID: newID, newToken: newToken}
 }
 
 // canonicalize devolve a forma canônica de uma URL recebida; ok falso se ela não parseia.

@@ -200,7 +200,7 @@ func newOAuthService(cfg config.Config, pool *pgxpool.Pool, scoped oauth.ScopedT
 		return nil
 	}
 	repo := storage.NewPostgresOAuthRepository(pool)
-	return oauth.NewService(repo, oauthServiceConfigFrom(cfg), scoped, time.Now, uuid.NewString, newOAuthToken)
+	return oauth.NewService(repo, oauthServiceConfigFrom(cfg), scoped, nil, time.Now, uuid.NewString, newOAuthToken)
 }
 
 // newOAuthToken gera os tokens opacos do OAuth. A leitura de crypto/rand não falha num

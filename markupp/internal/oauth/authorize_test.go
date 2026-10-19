@@ -50,7 +50,7 @@ func TestStartAuthorization_PedidoValido_CriaPedidoEDevolveConsentimento(t *test
 func TestStartAuthorization_IDComCaracteresEspeciais_EscapaNaQuery(t *testing.T) {
 	repo := testRepositoryWithClient()
 	clock := func() time.Time { return testNow }
-	service := oauth.NewService(repo, testServiceConfig(), nil, clock, func() string { return "a b&c" }, func() string { return "t" })
+	service := oauth.NewService(repo, testServiceConfig(), nil, nil, clock, func() string { return "a b&c" }, func() string { return "t" })
 
 	consentURL, err := service.StartAuthorization(context.Background(), validAuthorizeParams())
 
@@ -171,7 +171,7 @@ func TestStartAuthorization_ValorRecebidoNaDescricao_FicaNoConjuntoDaRFC6749(t *
 func TestStartAuthorization_SemResourcesConfigurados_DescricaoCompleta(t *testing.T) {
 	cfg := testServiceConfig()
 	cfg.Resources = nil
-	service := oauth.NewService(testRepositoryWithClient(), cfg, nil, func() time.Time { return testNow }, nil, nil)
+	service := oauth.NewService(testRepositoryWithClient(), cfg, nil, nil, func() time.Time { return testNow }, nil, nil)
 
 	_, err := service.StartAuthorization(context.Background(), validAuthorizeParams())
 
