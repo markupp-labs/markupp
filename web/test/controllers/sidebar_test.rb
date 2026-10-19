@@ -49,7 +49,7 @@ class SidebarTest < ActionDispatch::IntegrationTest
 
     get root_path
 
-    assert_select "nav > .sidebar-scroll li", text: "plan.md"
+    assert_select "nav > .sidebar-scroll [role=treeitem]", text: "└── plan"
     assert_select "nav > .sidebar-scroll footer", count: 0
   end
 
@@ -63,7 +63,7 @@ class SidebarTest < ActionDispatch::IntegrationTest
     assert_select "nav footer form.theme-to-dark button[aria-label=?][title=?] svg[data-icon=moon]", "Dark theme", "Dark theme"
   end
 
-  test "search, new note and the tree carry icons" do
+  test "search and new note carry icons" do
     use_fake_api(notes: [ { id: "1", path: "work/plan.md", content: "" } ])
     sign_in_as
 
@@ -71,9 +71,6 @@ class SidebarTest < ActionDispatch::IntegrationTest
 
     assert_select "nav button[aria-keyshortcuts] svg[data-icon=magnifying-glass]"
     assert_select "nav a[href=?] svg[data-icon=file-plus]", new_note_path
-    assert_select "nav summary svg[data-icon=folder]"
-    assert_select "nav summary svg[data-icon=folder-open]"
-    assert_select "nav a[href=?] svg[data-icon=file-text]", note_path("1")
   end
 
   test "save and delete carry icons" do

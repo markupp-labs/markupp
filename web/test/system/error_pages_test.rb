@@ -33,7 +33,7 @@ class ErrorPagesTest < ApplicationSystemTestCase
 
     assert_selector "main h1", text: "404: Note not found"
     assert_selector "main pre[data-mascot=large]"
-    assert_selector "nav#sidebar", text: "plan.md"
+    assert_selector "nav#sidebar", text: "plan"
   end
 
   test "the static 500 page draws in the panel font without the app" do

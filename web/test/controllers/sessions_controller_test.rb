@@ -32,7 +32,7 @@ class SessionsControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to root_path
     follow_redirect!
     assert_response :success
-    assert_select "nav li", text: "plan.md"
+    assert_select "nav [role=treeitem]", text: "└── plan"
     assert_select "nav footer", text: /#{FakeMarkuppAccounts::DEFAULT_EMAIL}/
     assert_select "nav footer form[action=?] button", session_path, text: "Log out"
   end
@@ -134,7 +134,7 @@ class SessionsControllerTest < ActionDispatch::IntegrationTest
     get root_path
 
     assert_response :success
-    assert_select "nav li", text: "plan.md"
+    assert_select "nav [role=treeitem]", text: "└── plan"
   end
 
   test "a refused renewal ends the session and asks for login again" do

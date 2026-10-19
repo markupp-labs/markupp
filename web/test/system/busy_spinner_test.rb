@@ -20,13 +20,13 @@ class BusySpinnerTest < ApplicationSystemTestCase
     visit note_path("1")
     @api.hold_calls!("GET /notes/2")
 
-    assert_spinner_after_threshold(".busy-spinner-page") { within("nav") { click_on "ideas.md" } }
+    assert_spinner_after_threshold(".busy-spinner-page") { within("nav") { click_on "ideas" } }
     assert_selector ".turbo-progress-bar", visible: :all
     assert_no_selector ".turbo-progress-bar"
     assert_selector ".busy-spinner-page", text: "Loading", visible: :all
 
     @api.release_calls!
-    assert_selector "nav a[aria-current=page]", text: "ideas.md"
+    assert_selector "nav a[aria-current=page]", text: "ideas"
     assert_no_spinner
   end
 

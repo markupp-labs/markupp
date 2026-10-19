@@ -6,8 +6,8 @@ class NotesTest < ApplicationSystemTestCase
     sign_in_through_form
 
     visit root_path
-    find("summary", text: "work").click
-    click_on "plan.md"
+    click_on "work"
+    click_on "plan"
 
     assert_selector ".cm-editor .cm-content", text: "Ship *it* with [[ideas]]."
     assert_selector ".cm-wikilink", text: "[[ideas]]"
@@ -38,7 +38,7 @@ class NotesTest < ApplicationSystemTestCase
     send_keys "Idea", :tab, "Fresh idea.", [ :control, "s" ]
 
     assert_text "Created"
-    assert_selector "nav a[aria-current=page]", text: "Idea.md"
+    assert_selector "nav a[aria-current=page]", text: "Idea"
     assert_equal({ path: "work/Idea.md", content: "# Idea\n\nFresh idea." }, api.post_requests.sole)
   end
 
@@ -53,7 +53,7 @@ class NotesTest < ApplicationSystemTestCase
     click_on "Save"
 
     assert_text "Saved"
-    assert_selector "nav a[aria-current=page]", text: "roadmap.md"
+    assert_selector "nav a[aria-current=page]", text: "roadmap"
     assert_equal({ path: "work/roadmap.md", content: "# Plan\n" }, api.put_requests.sole.slice(:path, :content))
   end
 
@@ -154,7 +154,7 @@ class NotesTest < ApplicationSystemTestCase
 
     visit root_path
     send_keys [ :control, "s" ]
-    click_on "plan.md"
+    click_on "plan"
 
     assert_current_path note_path("1")
     assert_empty api.post_requests

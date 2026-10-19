@@ -15,7 +15,7 @@ class SearchesTest < ApplicationSystemTestCase
     find_field("Search notes").send_keys(:down, :enter)
 
     assert_field "Path", with: "/home/list"
-    assert_selector "nav a[aria-current=page]", text: "list.md"
+    assert_selector "nav a[aria-current=page]", text: "list"
   end
 
   test "the sidebar button opens the search too" do

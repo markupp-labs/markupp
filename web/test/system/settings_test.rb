@@ -66,7 +66,7 @@ class SettingsTest < ApplicationSystemTestCase
 
   test "the settings sidebar opens a note from the tree" do
     visit settings_appearance_path
-    within("nav#sidebar") { click_on "plan.md" }
+    within("nav#sidebar") { click_on "plan" }
 
     assert_current_path note_path("1")
   end

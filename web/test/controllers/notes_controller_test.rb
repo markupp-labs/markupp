@@ -8,9 +8,9 @@ class NotesControllerTest < ActionDispatch::IntegrationTest
     get root_path
 
     assert_response :success
-    assert_select "nav[aria-label=?] details summary", "Notes", text: "work"
-    assert_select "nav li", text: "plan.md"
-    assert_select "nav li", text: "inbox.md"
+    assert_select "nav[aria-label=?] [role=tree] [role=treeitem][aria-expanded=false]", "Notes", text: "├── work/"
+    assert_select "nav [role=treeitem]", text: "│   └── plan"
+    assert_select "nav [role=treeitem]", text: "└── inbox"
   end
 
   test "index shows an empty state when there are no notes" do
@@ -29,8 +29,8 @@ class NotesControllerTest < ActionDispatch::IntegrationTest
 
     get root_path
 
-    assert_select "nav a[href=?]", note_path("1"), text: "plan.md"
-    assert_select "nav details[open]", count: 0
+    assert_select "nav a[href=?]", note_path("1"), text: "└── plan"
+    assert_select "nav [role=group]:not([hidden])", count: 0
   end
 
   test "show puts the exact markdown in the editor textarea" do
@@ -55,11 +55,11 @@ class NotesControllerTest < ActionDispatch::IntegrationTest
 
     get note_path("1")
 
-    assert_select "nav a[aria-current=page]", text: "plan.md", count: 1
+    assert_select "nav a[aria-current=page]", text: "│   └── plan", count: 1
     assert_select "nav a[aria-current]", count: 1
-    assert_select "nav details[open] > summary", text: "work"
-    assert_select "nav details[open] details[open] > summary", text: "2026"
-    assert_select "nav details:not([open]) > summary", text: "home"
+    assert_select "nav [role=treeitem][aria-expanded=true]", text: "└── work/"
+    assert_select "nav [role=treeitem][aria-expanded=true]", text: "├── 2026/"
+    assert_select "nav [role=treeitem][aria-expanded=false]", text: "├── home/"
   end
 
   test "show answers not found for an unknown note" do
@@ -309,8 +309,8 @@ class NotesControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to note_path("1")
     assert_equal "b.md", api.put_requests.sole[:path]
     follow_redirect!
-    assert_select "nav a[aria-current=page]", text: "b.md"
-    assert_select "nav li", text: "a.md", count: 0
+    assert_select "nav a[aria-current=page]", text: "└── b"
+    assert_select "nav [role=treeitem]", text: "└── a", count: 0
   end
 
   test "update moves the note into a folder and opens it in the tree" do
@@ -321,7 +321,7 @@ class NotesControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to note_path("1")
     follow_redirect!
 
-    assert_select "nav details[open] details[open] a[aria-current=page]", text: "a.md"
+    assert_select "nav [role=group]:not([hidden]) [role=group]:not([hidden]) a[aria-current=page]", text: "└── a"
     assert_select "input[name=?][value=?]", "note[path]", "/work/2026/a"
   end
 
@@ -382,7 +382,7 @@ class NotesControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to root_path
     follow_redirect!
     assert_select "main", text: /Deleted/
-    assert_select "nav li", text: "a.md", count: 0
+    assert_select "nav [role=treeitem]", count: 0
   end
 
   test "destroy of a note already deleted still redirects home" do

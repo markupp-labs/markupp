@@ -79,8 +79,8 @@ module Settings
 
       assert_select "nav#sidebar .sidebar-scroll" do
         assert_select "a[href=?]", new_note_path, text: "New note"
-        assert_select "details summary", text: "work"
-        assert_select "a[href=?]", note_path("1"), text: "plan.md"
+        assert_select "[role=treeitem][aria-expanded]", text: "└── work/"
+        assert_select "a[href=?]", note_path("1"), text: "└── plan"
         assert_select "button[data-action='search#open']", text: /Search/
       end
     end

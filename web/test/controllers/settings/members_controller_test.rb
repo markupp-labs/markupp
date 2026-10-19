@@ -41,7 +41,7 @@ module Settings
 
       get settings_members_path
 
-      assert_select "nav#sidebar .sidebar-scroll a[href=?]", note_path("1"), text: "plan.md"
+      assert_select "nav#sidebar .sidebar-scroll a[href=?]", note_path("1"), text: "└── plan"
     end
 
     test "a member or viewer is sent back to the notes" do
