@@ -1,7 +1,7 @@
 require "application_system_test_case"
 
-# "?" fora de campo de texto abre a ajuda de atalhos, como no GitHub e no Gmail; Esc fecha. O ? vai pelo CDP: o
-# chromedriver manda a pontuação com key vazio.
+# "?" fora de campo de texto abre a ajuda de atalhos, como no GitHub e no Gmail; Esc fecha. O ? vai pelo CDP
+# (press_through_cdp).
 class ShortcutHelpTest < ApplicationSystemTestCase
   setup do
     use_fake_api(notes: [ { id: "1", path: "plan.md", content: "# Plan\n" } ])
@@ -35,9 +35,5 @@ class ShortcutHelpTest < ApplicationSystemTestCase
   end
 
   private
-    def press_question_mark
-      %w[keyDown keyUp].each do |type|
-        page.driver.browser.execute_cdp("Input.dispatchKeyEvent", type:, key: "?", code: "Slash", text: "?", modifiers: 8, windowsVirtualKeyCode: 191)
-      end
-    end
+    def press_question_mark = press_through_cdp("?", "Slash", keycode: 191, modifiers: 8)
 end

@@ -64,7 +64,7 @@ class TenantsTest < ApplicationSystemTestCase
     sign_in_through_form
     assert_selector "h1", text: "Tenants"
 
-    send_keys "/"
+    press_through_cdp("/", "Slash", keycode: 191)
     assert_selector "input[aria-label='Filter tenants']:focus"
     send_keys "LAB"
     assert_equal [ "Home lab" ], all("#tenant_cards .tenant-card-open").map(&:text)
@@ -127,7 +127,7 @@ class TenantsTest < ApplicationSystemTestCase
     assert_selector "h1", text: "Tenants"
     click_on "Acme research"
     assert_field "Path", with: "/"
-    find("body").click
+    execute_script("document.activeElement.blur()")
 
     send_keys "g", "t"
     assert_selector "h1", text: "Tenants"

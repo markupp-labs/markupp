@@ -18,6 +18,13 @@ class ApplicationSystemTestCase < ActionDispatch::SystemTestCase
     page.driver.browser.execute_cdp("Emulation.setEmulatedMedia", features: [ { name: "prefers-reduced-motion", value: } ])
   end
 
+  # Tecla de pontuação pelo CDP: o chromedriver manda a pontuação com key vazio. modifiers 8 é o Shift.
+  def press_through_cdp(key, code, keycode:, modifiers: 0)
+    %w[keyDown keyUp].each do |type|
+      page.driver.browser.execute_cdp("Input.dispatchKeyEvent", type:, key:, code:, text: key, modifiers:, windowsVirtualKeyCode: keycode)
+    end
+  end
+
   # Entra pelo formulário de login, contra a fake, e espera a barra lateral com o email.
   def sign_in_through_form(email = FakeMarkuppAccounts::DEFAULT_EMAIL, password: FakeMarkuppAccounts::DEFAULT_PASSWORD)
     visit new_session_path
