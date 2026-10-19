@@ -13,11 +13,10 @@ const editorTheme = EditorView.theme({
   ".cm-wikilink": { color: "var(--accent)", textDecoration: "underline" },
 })
 
+// Como no VS Code: o markdown aparece como está escrito, tudo no mesmo tamanho, e a sintaxe só ganha cor e peso.
 const markdownHighlight = HighlightStyle.define([
-  { tag: tags.heading1, fontWeight: "700", fontSize: "1.5em" },
-  { tag: tags.heading2, fontWeight: "700", fontSize: "1.3em" },
-  { tag: tags.heading3, fontWeight: "700", fontSize: "1.15em" },
-  { tag: [ tags.heading4, tags.heading5, tags.heading6, tags.strong ], fontWeight: "700" },
+  { tag: tags.heading, color: "var(--accent)", fontWeight: "700" },
+  { tag: tags.strong, fontWeight: "700" },
   { tag: tags.emphasis, fontStyle: "italic" },
   { tag: tags.monospace, backgroundColor: "var(--surface-sunken)", borderRadius: "0.375rem" },
   { tag: [ tags.link, tags.url ], color: "var(--accent)" },
