@@ -32,6 +32,16 @@ class SidebarTest < ApplicationSystemTestCase
     assert name.evaluate_script("this.scrollWidth <= this.clientWidth"), "expected Acme research not to be cut at 288px"
   end
 
+  test "a tenant name of twenty characters fits beside the mascot at the default width" do
+    use_fake_api(notes: [], tenants: [ { id: "tenant-1", name: "Laboratorio de Dados", members: { FakeMarkuppAccounts::DEFAULT_EMAIL => "owner" } } ])
+    sign_in_through_form
+
+    visit root_path
+
+    name = find("#current_tenant [title='Laboratorio de Dados']")
+    assert name.evaluate_script("this.scrollWidth <= this.clientWidth"), "expected Laboratorio de Dados not to be cut at 288px"
+  end
+
   test "one button in the content corner hides and shows the sidebar and the state survives a reload" do
     use_fake_api(notes: [])
     sign_in_through_form
