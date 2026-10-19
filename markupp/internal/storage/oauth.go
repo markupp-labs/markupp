@@ -251,7 +251,12 @@ func saveTokensInTx(ctx context.Context, qtx *gen.Queries, tokens []oauth.Issued
 
 // RevokeAuthorizationTokens revoga todos os tokens da Autorização.
 func (r *PostgresOAuthRepository) RevokeAuthorizationTokens(ctx context.Context, authorizationID string) error {
-	if err := r.q.RevokeOAuthAuthorizationTokens(ctx, authorizationID); err != nil {
+	return revokeTokens(ctx, r.q, authorizationID)
+}
+
+// revokeTokens revoga os tokens da Autorização por q, que pode ser a de uma transação.
+func revokeTokens(ctx context.Context, q *gen.Queries, authorizationID string) error {
+	if err := q.RevokeOAuthAuthorizationTokens(ctx, authorizationID); err != nil {
 		return fmt.Errorf("revogar tokens da autorização %q: %w", authorizationID, err)
 	}
 	return nil
