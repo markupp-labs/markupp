@@ -25,7 +25,8 @@ A reserva do cofre acaba no commit do lote. O segundo estágio roda sob uma trav
 da transação, por cofre: outro Job no segundo estágio do mesmo cofre faz o seguinte pular, e
 o cofre só marcado não é reservado enquanto a trava existe. Um lote pode gravar o cofre
 durante o segundo estágio; a marcação dele aumenta a revisão, o segundo estágio desmarca só
-a revisão que leu, e o próximo Job recalcula. Recalcular sem mudança grava o mesmo
+a revisão que leu, e o próximo Job recalcula. Recalcular sem mudança grava o mesmo, a menos
+da tolerância de convergência do PageRank
 
 Quando o lote passa de 50 notas mais 10% das notas do cofre, o Job roda ANALYZE das tabelas
 derivadas que o lote grava antes do segundo estágio. É o limiar padrão do autovacuum: o
