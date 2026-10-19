@@ -56,7 +56,7 @@
                         aria: { invalid: path_error.present?, describedby: ("note_path_error" if path_error) },
                         data: { note_form_target: "title", action: "input->note-form#syncHeading keydown.tab->editor#focusEnd" },
                         class: "w-full rounded-md border border-transparent bg-transparent px-1 py-0.5 text-2xl font-semibold text-ink " \
-                               "placeholder:text-ink-muted/60 hover:border-line focus:border-accent focus-visible:outline-none aria-invalid:border-danger" %>
+                               "placeholder:text-ink-muted hover:border-line focus:border-accent focus-visible:outline-none aria-invalid:border-danger" %>
     <% if path_error %>
       <p id="note_path_error" data-note-form-target="pending" class="px-1 text-danger"><%= path_error %></p>
     <% end %>
