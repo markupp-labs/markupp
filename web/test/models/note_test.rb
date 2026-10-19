@@ -220,4 +220,72 @@ class NoteTest < ActiveSupport::TestCase
     assert_empty api.put_requests
     assert_equal "work/a.md", Note.find(api, "1").path
   end
+
+  # Campo único da nota: o caminho digitado segue o :e do Vim, com a pasta da nota como diretório atual.
+  test "resolve reads a path without a leading slash from the folder of the note" do
+    note = Note.new(path: "work/plano.md")
+
+    assert_equal "work/teste.md", note.resolve("teste")
+    assert_equal "work/dev/teste.md", note.resolve("dev/teste")
+    assert_equal "work/teste.md", note.resolve("  teste ")
+  end
+
+  test "resolve reads a leading slash from the root" do
+    assert_equal "dev/teste.md", Note.new(path: "work/plano.md").resolve("/dev/teste")
+  end
+
+  test "resolve absorbs a typed .md and keeps any other extension in the name" do
+    note = Note.new(path: "work/plano.md")
+
+    assert_equal "dev/teste.md", note.resolve("/dev/teste.md")
+    assert_equal "work/teste.pdf.md", note.resolve("teste.pdf")
+  end
+
+  test "resolve leaves the name empty for a trailing slash, so saving asks for a name" do
+    api = FakeMarkuppApi.new(notes: [])
+    note = Note.new(path: Note.new(path: "work/plano.md").resolve("/dev/teste/"), content: "x")
+
+    assert_not note.save(api)
+    assert note.errors.of_kind?(:title, :blank)
+    assert_empty api.post_requests
+  end
+
+  test "resolve in a blank note starts from the folder it came from, or the root" do
+    assert_equal "work/Idea.md", Note.blank("work").resolve("Idea")
+    assert_equal "Plan.md", Note.blank(nil).resolve("Plan")
+    assert_equal "", Note.blank(nil).resolve(" ")
+  end
+
+  test "resolve keeps a note without .md without it while the name stays" do
+    note = Note.new(path: "docs/README")
+
+    assert_equal "docs/README", note.resolve("/docs/README")
+    assert_equal "other/README", note.resolve("/other/README")
+    assert_equal "docs/LEIAME.md", note.resolve("LEIAME")
+  end
+
+  test "resolve sends dots and empty segments as typed, for the API to judge" do
+    note = Note.new(path: "work/plano.md")
+
+    assert_equal "work/../teste.md", note.resolve("../teste")
+    assert_equal "work/./teste.md", note.resolve("./teste")
+    assert_equal "dev//teste.md", note.resolve("/dev//teste")
+  end
+
+  test "a path the API refuses tells what a valid path looks like" do
+    api = FakeMarkuppApi.new(notes: [ { id: "1", path: "work/a.md", content: "x" } ])
+    note = Note.new(id: "1", path: "work/a.md")
+
+    assert_not note.update(api, { path: note.resolve("../teste"), content: "x" })
+
+    assert_equal [ "Path can't contain .. or pass 1024 characters" ], note.errors.full_messages_for(:path)
+  end
+
+  test "location is the absolute path without .md, as the field shows it" do
+    assert_equal "/work/plano", Note.new(path: "work/plano.md").location
+    assert_equal "/docs/README", Note.new(path: "docs/README").location
+    assert_equal "/work/", Note.blank("work").location
+    assert_equal "/work/2026/", Note.blank("/work/2026/").location
+    assert_equal "/", Note.blank(nil).location
+  end
 end
