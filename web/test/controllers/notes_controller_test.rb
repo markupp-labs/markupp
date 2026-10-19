@@ -405,6 +405,17 @@ class NotesControllerTest < ActionDispatch::IntegrationTest
     assert_select "main", text: /Can't reach the markupp server/
   end
 
+  test "show as json answers bad gateway without the page when the API is unreachable" do
+    api = use_fake_api(notes: [ { id: "1", path: "plan.md", content: "" } ])
+    sign_in_as
+    api.cut_connection!
+
+    get note_path("1", format: :json)
+
+    assert_response :bad_gateway
+    assert response.body.empty?, "expected an empty json 502, got a #{response.media_type} body"
+  end
+
   test "update sends a CRLF note back with CRLF" do
     api = use_fake_api(notes: [ { id: "1", path: "a.md", content: "x\r\ny\r\n" } ])
     sign_in_as
