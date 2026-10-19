@@ -55,7 +55,17 @@ WHERE n.pos <= $1`
 // caso comum; o primeiro Job de um cofre recém-importado roda sem estatística da
 // carga, e as consultas por título ficam mais lentas.
 func BenchmarkSegundoEstagio_CofreInteiro(b *testing.B) {
-	pool, idx := cofreIndexado(b)
+	benchSegundoEstagio(b, benchfixture.GenerateVault(benchfixture.VaultSeed, benchfixture.VaultSize))
+}
+
+// BenchmarkSegundoEstagio_CofreUniforme mede o mesmo no cofre uniforme, o pior caso:
+// títulos de mesmo formato e ligações espalhadas sem hub.
+func BenchmarkSegundoEstagio_CofreUniforme(b *testing.B) {
+	benchSegundoEstagio(b, benchfixture.GenerateUniformVault(benchfixture.VaultSeed, benchfixture.VaultSize))
+}
+
+func benchSegundoEstagio(b *testing.B, vault []benchfixture.Note) {
+	pool, idx := cofreIndexado(b, vault)
 	_, err := pool.Exec(context.Background(), citaComErroDeDigitacao, citacoesComErro)
 	require.NoError(b, err)
 	_, err = pool.Exec(context.Background(), "ANALYZE")
@@ -74,7 +84,7 @@ func BenchmarkSegundoEstagio_CofreInteiro(b *testing.B) {
 // benchIndexacao mede IndexNextVault sobre lotes de porLote notas do cofre de 10
 // mil notas já indexado, e reporta o custo por nota do lote.
 func benchIndexacao(b *testing.B, porLote int) {
-	pool, idx := cofreIndexado(b)
+	pool, idx := cofreIndexado(b, benchfixture.GenerateVault(benchfixture.VaultSeed, benchfixture.VaultSize))
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := range b.N {
@@ -86,13 +96,13 @@ func benchIndexacao(b *testing.B, porLote int) {
 	b.ReportMetric(float64(b.Elapsed().Nanoseconds())/float64(b.N*porLote), "ns/nota")
 }
 
-// cofreIndexado semeia o cofre sintético inteiro e esvazia a fila dele uma vez.
-func cofreIndexado(b *testing.B) (*pgxpool.Pool, *storage.PostgresVaultIndexer) {
+// cofreIndexado semeia o cofre sintético vault inteiro e esvazia a fila dele uma vez.
+func cofreIndexado(b *testing.B, vault []benchfixture.Note) (*pgxpool.Pool, *storage.PostgresVaultIndexer) {
 	b.Helper()
 	pool := storagetest.EmptyPool(b)
 	require.NoError(b, storage.Migrate(context.Background(), pool))
 	ator := identity.Actor{UserID: "u-bench", TenantID: "t-bench", Role: "member"}
-	storagetest.SeedVault(b, pool, ator, "cofre-bench", benchfixture.GenerateVault(benchfixture.VaultSeed, benchfixture.VaultSize))
+	storagetest.SeedVault(b, pool, ator, "cofre-bench", vault)
 	idx, err := storage.NewPostgresVaultIndexer(context.Background(), pool, "simple")
 	require.NoError(b, err)
 	indexaLote(b, idx)
