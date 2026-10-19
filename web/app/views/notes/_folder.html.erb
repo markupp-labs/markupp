@@ -13,7 +13,7 @@
       <% group = "tree_#{child_path.unpack1("H*")}" %>
       <button type="button" role="treeitem" aria-expanded="<%= open %>" aria-owns="<%= group %>" data-path="/<%= child_path %>"
               data-action="note-tree#toggle" class="tree-row w-full text-left text-ink-muted">
-        <span aria-hidden="true" class="tree-guide"><%= branch %></span><span class="tree-marker"></span><span class="truncate"><%= entry.name %><span aria-hidden="true">/</span></span>
+        <%= tree_guide(branch) %><span class="tree-marker"></span><span class="truncate"><%= entry.name %><span aria-hidden="true">/</span></span>
       </button>
       <ul role="group" id="<%= group %>" <%= "hidden" unless open %>>
         <%= render "notes/folder", folder: entry, path: child_path, guide: "#{guide}#{last ? "    " : "│   "}",
@@ -23,7 +23,7 @@
       <%= link_to note_path(entry), role: "treeitem", title: entry.path, data: { path: entry.location },
                   aria: { current: ("page" if entry.id == current&.id) },
                   class: "tree-row aria-[current=page]:bg-accent-soft aria-[current=page]:text-ink" do %>
-        <span aria-hidden="true" class="tree-guide"><%= branch %></span><span class="truncate"><%= entry.title %></span>
+        <%= tree_guide(branch) %><span class="truncate"><%= entry.title %></span>
       <% end %>
     <% end %>
   </li>

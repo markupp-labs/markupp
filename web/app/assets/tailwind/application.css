@@ -165,7 +165,44 @@
   }
 
   .tree-guide {
-    @apply shrink-0 whitespace-pre text-ink-muted;
+    @apply shrink-0 self-stretch whitespace-pre text-ink-muted;
+  }
+
+  /* Célula de 4 caracteres da guia (NoteTreeHelper#tree_guide): a vertical sai do centro do primeiro caractere e vai de
+     cima a baixo (│, ├) ou até o meio (└); o traço (──) vai do centro dele até o fim do terceiro. O texto fica
+     transparente por baixo, só para copiar. */
+  .tree-cell {
+    position: relative;
+    display: inline-block;
+    height: 100%;
+    vertical-align: top;
+    color: transparent;
+  }
+
+  .tree-cell:is([data-cell="pipe"], [data-cell="tee"], [data-cell="elbow"])::before,
+  .tree-cell:is([data-cell="tee"], [data-cell="elbow"])::after {
+    content: "";
+    position: absolute;
+    left: calc(0.5ch - 0.5px);
+    background: var(--ink-muted);
+  }
+
+  .tree-cell:is([data-cell="pipe"], [data-cell="tee"])::before {
+    top: 0;
+    width: 1px;
+    height: 100%;
+  }
+
+  .tree-cell[data-cell="elbow"]::before {
+    top: 0;
+    width: 1px;
+    height: 50%;
+  }
+
+  .tree-cell:is([data-cell="tee"], [data-cell="elbow"])::after {
+    top: 50%;
+    width: 2.5ch;
+    height: 1px;
   }
 
   /* Item do menu de contexto da árvore (com o .tree-row): a linha da árvore com o atalho à direita, apagado. O foco (teclado ou o
