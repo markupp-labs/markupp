@@ -126,9 +126,11 @@ class ApplicationController < ActionController::Base
       Rails.logger.public_send(level, { event:, **details, message: error.message }.to_json)
     end
 
-    # Cada controller tem a sua view unreachable: página inteira nas notas, aviso dentro da paleta na busca.
+    # Cada controller tem a sua view unreachable: página inteira nas notas, aviso dentro da paleta na busca. Json só o status.
     def render_unreachable(error)
       log_api_event("markupp_api_unreachable", error, level: :error)
+      return head :bad_gateway if request.format.json?
+
       render :unreachable, status: :bad_gateway
     end
 end
