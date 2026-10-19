@@ -54,10 +54,11 @@ type fakeRepo struct {
 	searchResult []notes.SearchResult
 	searchErr    error
 	searchArgs   struct {
-		query  string
-		offset int32
-		limit  int32
-		called bool
+		query   string
+		vaultID string
+		offset  int32
+		limit   int32
+		called  bool
 	}
 }
 
@@ -104,9 +105,10 @@ func (f *fakeRepo) ListVaultNotes(ctx context.Context, vaultID string, q notes.V
 	return f.listResult, f.listErr
 }
 
-func (f *fakeRepo) SearchNotes(ctx context.Context, query string, offset, limit int32) ([]notes.SearchResult, error) {
+func (f *fakeRepo) SearchNotes(ctx context.Context, query, vaultID string, offset, limit int32) ([]notes.SearchResult, error) {
 	f.searchArgs.called = true
 	f.searchArgs.query = query
+	f.searchArgs.vaultID = vaultID
 	f.searchArgs.offset = offset
 	f.searchArgs.limit = limit
 	return f.searchResult, f.searchErr
@@ -502,11 +504,20 @@ func TestListVaultNotes_ErroDoRepo_DizOCofreEMantemOErroDeDominio(t *testing.T) 
 	assert.Contains(t, err.Error(), "cofre-a")
 }
 
+func TestSearch_RepassaOCofreAoRepo(t *testing.T) {
+	repo := &fakeRepo{}
+
+	_, err := newServiceForTest(repo).SearchNotes(context.Background(), "golang", "cofre-a", 0, 10)
+
+	require.NoError(t, err)
+	assert.Equal(t, "cofre-a", repo.searchArgs.vaultID)
+}
+
 func TestSearch_RepoRetornaErro_Propagado(t *testing.T) {
 	repo := &fakeRepo{searchErr: errors.New("erro ao buscar")}
 	svc := newServiceForTest(repo)
 
-	_, err := svc.SearchNotes(context.Background(), "golang", 0, 10)
+	_, err := svc.SearchNotes(context.Background(), "golang", "", 0, 10)
 
 	require.Error(t, err)
 	assert.True(t, repo.searchArgs.called)
@@ -516,7 +527,7 @@ func TestSearch_SemResultados_RetornaSliceVazio(t *testing.T) {
 	repo := &fakeRepo{searchResult: []notes.SearchResult{}}
 	svc := newServiceForTest(repo)
 
-	results, err := svc.SearchNotes(context.Background(), "golang", 0, 10)
+	results, err := svc.SearchNotes(context.Background(), "golang", "", 0, 10)
 
 	require.NoError(t, err)
 	assert.Empty(t, results)
@@ -530,7 +541,7 @@ func TestSearch_ComResultados_RetornaSomenteIdPathUpdatedAt(t *testing.T) {
 	}}
 	svc := newServiceForTest(repo)
 
-	results, err := svc.SearchNotes(context.Background(), "golang", 0, 10)
+	results, err := svc.SearchNotes(context.Background(), "golang", "", 0, 10)
 
 	require.NoError(t, err)
 	require.Len(t, results, 2)
@@ -550,7 +561,7 @@ func TestSearch_PaginacaoComOffset_PassaParametrosCorretosAoRepo(t *testing.T) {
 	}}
 	svc := newServiceForTest(repo)
 
-	results, err := svc.SearchNotes(context.Background(), "golang", 1, 2)
+	results, err := svc.SearchNotes(context.Background(), "golang", "", 1, 2)
 
 	require.NoError(t, err)
 	require.Len(t, results, 2)
@@ -566,7 +577,7 @@ func TestSearch_LimitZero_UsaPadraoDeZ(t *testing.T) {
 	repo := &fakeRepo{searchResult: make([]notes.SearchResult, 10)}
 	svc := newServiceForTest(repo)
 
-	_, err := svc.SearchNotes(context.Background(), "golang", 0, 0)
+	_, err := svc.SearchNotes(context.Background(), "golang", "", 0, 0)
 
 	require.NoError(t, err)
 	assert.Equal(t, int32(10), repo.searchArgs.limit)
@@ -576,7 +587,7 @@ func TestSearch_LimitNegativo_UsaPadraoDeZ(t *testing.T) {
 	repo := &fakeRepo{searchResult: make([]notes.SearchResult, 10)}
 	svc := newServiceForTest(repo)
 
-	_, err := svc.SearchNotes(context.Background(), "golang", 0, -5)
+	_, err := svc.SearchNotes(context.Background(), "golang", "", 0, -5)
 
 	require.NoError(t, err)
 	assert.Equal(t, int32(10), repo.searchArgs.limit)
@@ -586,7 +597,7 @@ func TestSearch_OffsetNegativo_UsaZero(t *testing.T) {
 	repo := &fakeRepo{searchResult: []notes.SearchResult{}}
 	svc := newServiceForTest(repo)
 
-	_, err := svc.SearchNotes(context.Background(), "golang", -10, 5)
+	_, err := svc.SearchNotes(context.Background(), "golang", "", -10, 5)
 
 	require.NoError(t, err)
 	assert.Equal(t, int32(0), repo.searchArgs.offset)
@@ -596,7 +607,7 @@ func TestSearch_PassaQueryCruaAoRepo(t *testing.T) {
 	repo := &fakeRepo{searchResult: []notes.SearchResult{}}
 	svc := newServiceForTest(repo)
 
-	_, err := svc.SearchNotes(context.Background(), "test", 0, 10)
+	_, err := svc.SearchNotes(context.Background(), "test", "", 0, 10)
 	require.NoError(t, err)
 
 	assert.Equal(t, "test", repo.searchArgs.query)
@@ -606,7 +617,7 @@ func TestSearch_QueryVazia_PassaVaziaAoRepo(t *testing.T) {
 	repo := &fakeRepo{searchResult: []notes.SearchResult{}}
 	svc := newServiceForTest(repo)
 
-	_, err := svc.SearchNotes(context.Background(), "", 0, 10)
+	_, err := svc.SearchNotes(context.Background(), "", "", 0, 10)
 	require.NoError(t, err)
 
 	assert.Equal(t, "", repo.searchArgs.query)

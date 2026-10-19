@@ -20,8 +20,8 @@ import (
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/storage/storagetest"
 )
 
-// BenchmarkSearchNotes mede GET /notes/search sobre o cofre sintético de 10 mil
-// notas, do roteador ao banco, como linha de base da busca léxica.
+// BenchmarkSearchNotes mede GET /v1/search/notes no cofre sintético de 10 mil notas,
+// do roteador ao banco, como linha de base da busca léxica.
 func BenchmarkSearchNotes(b *testing.B) {
 	router := roteadorDoCofreSintetico(b)
 	termos := map[string]string{
@@ -37,7 +37,7 @@ func BenchmarkSearchNotes(b *testing.B) {
 func benchBusca(b *testing.B, router http.Handler, termo string) {
 	b.ReportAllocs()
 	for b.Loop() {
-		req := httptest.NewRequest(http.MethodGet, "/notes/search?query="+url.QueryEscape(termo), nil)
+		req := httptest.NewRequest(http.MethodGet, "/v1/search/notes?vault=cofre-bench&q="+url.QueryEscape(termo), nil)
 		req.Header.Set("Authorization", "Bearer token-valido")
 		rec := httptest.NewRecorder()
 		router.ServeHTTP(rec, req)

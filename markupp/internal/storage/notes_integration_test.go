@@ -29,7 +29,7 @@ func TestSearchNotes_ComResultados_RetornaPaginado(t *testing.T) {
 	}
 
 	indexaTodosOsCofres(t, db, "simple")
-	results, err := repo.SearchNotes(ctx, "golang", 0, 10)
+	results, err := repo.SearchNotes(ctx, "golang", "", 0, 10)
 
 	require.NoError(t, err)
 	require.Len(t, results, 3)
@@ -58,7 +58,7 @@ func TestSearchNotes_ComPaginacao_RetornaApenasLimitAndOffset(t *testing.T) {
 	}
 
 	indexaTodosOsCofres(t, db, "simple")
-	results, err := repo.SearchNotes(ctx, "golang", 1, 2)
+	results, err := repo.SearchNotes(ctx, "golang", "", 1, 2)
 
 	require.NoError(t, err)
 	require.Len(t, results, 2)
@@ -82,7 +82,7 @@ func TestSearchNotes_OffsetMaiorQueTotal_RetornaVazio(t *testing.T) {
 	require.NoError(t, err)
 
 	indexaTodosOsCofres(t, db, "simple")
-	results, err := repo.SearchNotes(ctx, "golang", 100, 10)
+	results, err := repo.SearchNotes(ctx, "golang", "", 100, 10)
 
 	require.NoError(t, err)
 	assert.Empty(t, results)
@@ -106,7 +106,7 @@ func TestSearchNotes_NaoEncontra_RetornaVazio(t *testing.T) {
 	require.NoError(t, err)
 
 	indexaTodosOsCofres(t, db, "simple")
-	results, err := repo.SearchNotes(ctx, "golang", 0, 10)
+	results, err := repo.SearchNotes(ctx, "golang", "", 0, 10)
 
 	require.NoError(t, err)
 	assert.Empty(t, results)
@@ -128,7 +128,7 @@ func TestSearchNotes_IgnoraCaixa(t *testing.T) {
 	}
 
 	indexaTodosOsCofres(t, db, "simple")
-	results, err := repo.SearchNotes(ctx, "golang", 0, 10)
+	results, err := repo.SearchNotes(ctx, "golang", "", 0, 10)
 
 	require.NoError(t, err)
 	require.Len(t, results, 2)

@@ -53,10 +53,11 @@ type fakeService struct {
 	searchResult []notes.SearchResult
 	searchErr    error
 	searchArgs   struct {
-		query  string
-		offset int
-		limit  int
-		called bool
+		query   string
+		vaultID string
+		offset  int
+		limit   int
+		called  bool
 	}
 }
 
@@ -95,8 +96,9 @@ func (f *fakeService) ListVaultNotes(ctx context.Context, vaultID string, q note
 	return f.listResult, f.listErr
 }
 
-func (f *fakeService) SearchNotes(ctx context.Context, query string, offset, limit int) ([]notes.SearchResult, error) {
+func (f *fakeService) SearchNotes(ctx context.Context, query, vaultID string, offset, limit int) ([]notes.SearchResult, error) {
 	f.searchArgs.called = true
+	f.searchArgs.vaultID = vaultID
 	f.searchArgs.query = query
 	f.searchArgs.offset = offset
 	f.searchArgs.limit = limit
@@ -392,7 +394,7 @@ func (s *stubRepository) ListVaultNotes(ctx context.Context, vaultID string, q n
 	return nil, nil
 }
 
-func (s *stubRepository) SearchNotes(ctx context.Context, query string, offset, limit int32) ([]notes.SearchResult, error) {
+func (s *stubRepository) SearchNotes(ctx context.Context, query, vaultID string, offset, limit int32) ([]notes.SearchResult, error) {
 	return nil, nil
 }
 

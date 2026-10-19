@@ -46,7 +46,7 @@ func cofreBuscavel(t *testing.T, config string, lista ...notes.Note) *storage.Po
 
 func idsDaBusca(ctx context.Context, t *testing.T, repo *storage.PostgresNotesRepository, query string) []string {
 	t.Helper()
-	achadas, err := repo.SearchNotes(ctx, query, 0, 10)
+	achadas, err := repo.SearchNotes(ctx, query, "", 0, 10)
 	require.NoError(t, err, "busca %q", query)
 	ids := make([]string, 0, len(achadas))
 	for _, achada := range achadas {
@@ -89,7 +89,7 @@ func TestSearchNotes_SintaxeWebsearch(t *testing.T) {
 func TestSearchNotes_DevolveTrechoComOTermoMarcado(t *testing.T) {
 	repo := cofreBuscavel(t, "simple", notaComCaminho("n1", "n1.md", "o kubernetes orquestra containers"))
 
-	achadas, err := repo.SearchNotes(ctxDeTeste, "kubernetes", 0, 10)
+	achadas, err := repo.SearchNotes(ctxDeTeste, "kubernetes", "", 0, 10)
 
 	require.NoError(t, err)
 	require.Len(t, achadas, 1)
@@ -99,13 +99,46 @@ func TestSearchNotes_DevolveTrechoComOTermoMarcado(t *testing.T) {
 func TestSearchNotes_TrechoSemHTML_DevolveTextoCruComMarcadoresNeutros(t *testing.T) {
 	repo := cofreBuscavel(t, "simple", notaComCaminho("n1", "n1.md", "<script>alert(1)</script> kubernetes"))
 
-	achadas, err := repo.SearchNotes(ctxDeTeste, "kubernetes", 0, 10)
+	achadas, err := repo.SearchNotes(ctxDeTeste, "kubernetes", "", 0, 10)
 
 	require.NoError(t, err)
 	require.Len(t, achadas, 1)
 	assert.Contains(t, achadas[0].Snippet, "\u0002kubernetes\u0003")
 	assert.NotContains(t, achadas[0].Snippet, "<b>", "o servidor nao gera tag")
 	assert.NotContains(t, achadas[0].Snippet, "</b>", "o servidor nao gera tag")
+}
+
+func TestSearchNotes_FiltraPeloCofreEDevolveARelevancia(t *testing.T) {
+	db := setupNotesDB(t)
+	repo := storage.NewPostgresNotesRepository(db, "simple")
+	ctxOutro := storagetest.SeedMember(t, db, membroDeTeste, "outro-cofre")
+	storagetest.SaveNote(ctxDeTeste, t, repo, notaComCaminho("titulo", "kubernetes.md", "cluster"))
+	storagetest.SaveNote(ctxDeTeste, t, repo, notaComCaminho("corpo", "c.md", "sobre kubernetes"))
+	fora := notaComCaminho("fora", "k.md", "kubernetes")
+	fora.VaultID = "outro-cofre"
+	storagetest.SaveNote(ctxOutro, t, repo, fora)
+	indexaTodosOsCofres(t, db, "simple")
+
+	noCofre, err := repo.SearchNotes(ctxDeTeste, "kubernetes", cofreDeTeste, 0, 10)
+	require.NoError(t, err)
+	todas, err := repo.SearchNotes(ctxDeTeste, "kubernetes", "", 0, 10)
+	require.NoError(t, err)
+
+	require.Len(t, noCofre, 2)
+	assert.Equal(t, []string{"titulo", "corpo"}, []string{noCofre[0].ID, noCofre[1].ID})
+	assert.Greater(t, noCofre[0].Rank, noCofre[1].Rank, "o titulo pesa mais")
+	assert.Positive(t, noCofre[1].Rank)
+	assert.Len(t, todas, 3, "sem cofre, busca em todos os do ator")
+}
+
+func TestSearchNotes_CofreInvisivel_ErrVaultForbidden(t *testing.T) {
+	db := setupNotesDB(t)
+	repo := storage.NewPostgresNotesRepository(db, "simple")
+	storagetest.SeedMember(t, db, identity.Actor{UserID: "u-fora", TenantID: "outro", Role: "admin"}, "cofre-fora")
+
+	_, err := repo.SearchNotes(ctxDeTeste, "kubernetes", "cofre-fora", 0, 10)
+
+	require.ErrorIs(t, err, notes.ErrVaultForbidden)
 }
 
 func TestSearchNotes_PorcentoESublinhado_NaoSaoCuringa(t *testing.T) {

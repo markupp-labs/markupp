@@ -28,7 +28,7 @@ func assertNotaInvisivel(ctx context.Context, t *testing.T, repo *storage.Postgr
 	lista, err := repo.ListNotes(ctx)
 	require.NoError(t, err)
 	assert.Empty(t, lista)
-	achadas, err := repo.SearchNotes(ctx, "segredo", 0, 10)
+	achadas, err := repo.SearchNotes(ctx, "segredo", "", 0, 10)
 	require.NoError(t, err)
 	assert.Empty(t, achadas)
 	_, err = repo.Update(ctx, id, "invadida.md", "x", time.Now(), time.Time{}, true)

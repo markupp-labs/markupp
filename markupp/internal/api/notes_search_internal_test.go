@@ -65,7 +65,7 @@ func (f *fakeBuscaService) ListVaultNotes(ctx context.Context, vaultID string, q
 	return nil, nil
 }
 
-func (f *fakeBuscaService) SearchNotes(ctx context.Context, query string, offset, limit int) ([]notes.SearchResult, error) {
+func (f *fakeBuscaService) SearchNotes(ctx context.Context, query, vaultID string, offset, limit int) ([]notes.SearchResult, error) {
 	f.chamado = true
 	f.offset = offset
 	f.limit = limit
