@@ -80,6 +80,17 @@ module Settings
       assert_select "nav#sidebar .sidebar-scroll a[href=?]", note_path("1"), count: 0
     end
 
+    # Com a listagem fora a barra mostra só o aviso, sem oferecer uma nota nova.
+    test "the sidebar offers no new note when the note listing fails" do
+      api = use_fake_api(notes: [ { id: "1", path: "plan.md", content: "" } ])
+      sign_in_as
+      api.cut_notes!
+
+      get settings_account_path
+
+      assert_select "nav#sidebar a[href=?]", new_note_path, count: 0
+    end
+
     test "without tenant the sidebar has no note tree" do
       use_fake_api(tenants: [])
       sign_in_as
