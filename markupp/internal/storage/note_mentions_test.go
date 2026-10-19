@@ -1,6 +1,7 @@
 package storage_test
 
 import (
+	"context"
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -43,64 +44,74 @@ func cofreComMencoes(t *testing.T) (*pgxpool.Pool, *storage.PostgresNoteGraph) {
 	return db, storage.NewPostgresNoteGraph(db, "simple")
 }
 
-func mencoes(t *testing.T, graph *storage.PostgresNoteGraph, noteID string, offset, limit int) []notes.UnlinkedMention {
+// mencoes lê as menções da nota noteID em mentions, os títulos que ela menciona, ou
+// em backmentions, as notas que a mencionam.
+func mencoes(t *testing.T, graph *storage.PostgresNoteGraph, sentido, noteID string, offset, limit int) []notes.Mention {
 	t.Helper()
-	lidas, err := graph.Mentions(ctxDeTeste, noteID, offset, limit)
-	require.NoError(t, err, "mencoes de %q", noteID)
+	ler := map[string]func(context.Context, string, notes.Page) ([]notes.Mention, error){
+		"mentions": graph.Mentions, "backmentions": graph.Backmentions,
+	}[sentido]
+	lidas, err := ler(ctxDeTeste, noteID, notes.Page{Offset: offset, Limit: limit})
+	require.NoError(t, err, "%s de %q", sentido, noteID)
 	return lidas
 }
 
-func resumoDasMencoes(lidas []notes.UnlinkedMention) []string {
+func resumoDasMencoes(lidas []notes.Mention) []string {
 	resumo := make([]string, 0, len(lidas))
 	for _, lida := range lidas {
-		resumo = append(resumo, lida.Direction+" "+lida.Path+" "+lida.Title)
+		resumo = append(resumo, lida.Note.Path+" "+lida.CitedTitle)
 	}
 	return resumo
 }
 
-func TestNoteGraph_Mentions_QuemMencionaANota(t *testing.T) {
+func TestNoteGraph_Backmentions_QuemMencionaANota(t *testing.T) {
 	_, graph := cofreComMencoes(t)
 
-	lidas := mencoes(t, graph, "k", 0, 100)
+	lidas := mencoes(t, graph, "backmentions", "k", 0, 100)
 
-	assert.Equal(t, []string{"incoming deploy.md kubernetes"}, resumoDasMencoes(lidas),
+	assert.Equal(t, []string{"deploy.md kubernetes"}, resumoDasMencoes(lidas),
 		"sem quem liga em algum sentido, sem parte de palavra, sem texto de ligacao e sem a propria nota")
 	require.Len(t, lidas, 1)
-	assert.Equal(t, notes.LinkedNote{ID: "dep", VaultID: cofreDeTeste, Path: "deploy.md", UpdatedAt: lidas[0].UpdatedAt}, lidas[0].LinkedNote)
+	assert.Equal(t, resumo("dep", "deploy.md"), lidas[0].Note)
 	assert.InDelta(t, 2.0/6.0, lidas[0].Prior, 1e-9, "uma ligacao com o titulo, cinco notas com o termo e uma candidata")
+	assert.Empty(t, mencoes(t, graph, "mentions", "k", 0, 100), "k nao cita titulo de nota nao ligada")
 }
 
 func TestNoteGraph_Mentions_TitulosQueANotaMenciona(t *testing.T) {
 	_, graph := cofreComMencoes(t)
 
-	assert.Equal(t, []string{"outgoing Kubernetes.md kubernetes"}, resumoDasMencoes(mencoes(t, graph, "dep", 0, 100)))
+	lidas := mencoes(t, graph, "mentions", "dep", 0, 100)
+
+	assert.Equal(t, []string{"Kubernetes.md kubernetes"}, resumoDasMencoes(lidas))
+	assert.Equal(t, resumo("k", "Kubernetes.md"), lidas[0].Note)
+	assert.Empty(t, mencoes(t, graph, "backmentions", "dep", 0, 100))
 }
 
 func TestNoteGraph_Mentions_SemAcento(t *testing.T) {
 	_, graph := cofreComMencoes(t)
 
-	assert.Equal(t, []string{"incoming sem-acento.md indexação"}, resumoDasMencoes(mencoes(t, graph, "idx", 0, 100)))
-	assert.Equal(t, []string{"outgoing Indexação.md indexação"}, resumoDasMencoes(mencoes(t, graph, "sem", 0, 100)))
+	assert.Equal(t, []string{"sem-acento.md indexação"}, resumoDasMencoes(mencoes(t, graph, "backmentions", "idx", 0, 100)))
+	assert.Equal(t, []string{"Indexação.md indexação"}, resumoDasMencoes(mencoes(t, graph, "mentions", "sem", 0, 100)))
 }
 
 func TestNoteGraph_Mentions_IgnoraTituloCurtoEStopword(t *testing.T) {
 	_, graph := cofreComMencoes(t)
 
-	assert.Empty(t, mencoes(t, graph, "usa", 0, 100))
-	assert.Empty(t, mencoes(t, graph, "go", 0, 100))
-	assert.Empty(t, mencoes(t, graph, "para", 0, 100))
+	assert.Empty(t, mencoes(t, graph, "mentions", "usa", 0, 100))
+	assert.Empty(t, mencoes(t, graph, "backmentions", "go", 0, 100))
+	assert.Empty(t, mencoes(t, graph, "backmentions", "para", 0, 100))
 }
 
 func TestNoteGraph_Mentions_OrdenaPelaProbabilidadeDaAncora(t *testing.T) {
 	_, graph := cofreComMencoes(t)
 
-	lidas := mencoes(t, graph, "m", 0, 100)
+	lidas := mencoes(t, graph, "mentions", "m", 0, 100)
 
-	assert.Equal(t, []string{"outgoing a/plano.md plano", "outgoing b/plano.md plano"}, resumoDasMencoes(lidas),
+	assert.Equal(t, []string{"a/plano.md plano", "b/plano.md plano"}, resumoDasMencoes(lidas),
 		"o plano que ja recebe ligacao com esse titulo vem antes")
 	require.Len(t, lidas, 2)
 	assert.Greater(t, lidas[0].Prior, lidas[1].Prior)
-	assert.Equal(t, []string{"outgoing b/plano.md plano"}, resumoDasMencoes(mencoes(t, graph, "m", 1, 1)), "paginado")
+	assert.Equal(t, []string{"b/plano.md plano"}, resumoDasMencoes(mencoes(t, graph, "mentions", "m", 1, 1)), "paginado")
 }
 
 func TestNoteGraph_Mentions_ViewerLeEEstranhoNaoVe(t *testing.T) {
@@ -110,9 +121,9 @@ func TestNoteGraph_Mentions_ViewerLeEEstranhoNaoVe(t *testing.T) {
 	estranho := identity.Actor{UserID: "u-fora", TenantID: "outro", Role: "admin"}
 	ctxFora := storagetest.SeedMember(t, db, estranho, "cofre-fora")
 
-	lidas, err := graph.Mentions(ctxViewer, "dep", 0, 10)
+	lidas, err := graph.Mentions(ctxViewer, "dep", notes.Page{Limit: 10})
 	require.NoError(t, err)
 	assert.Len(t, lidas, 1)
-	_, err = graph.Mentions(ctxFora, "dep", 0, 10)
+	_, err = graph.Backmentions(ctxFora, "k", notes.Page{Limit: 10})
 	require.ErrorIs(t, err, notes.ErrNotFound)
 }
