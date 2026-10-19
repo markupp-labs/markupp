@@ -23,7 +23,9 @@
     <div class="flex min-w-0 flex-1 items-center gap-1 text-ink-muted">
       <%= icon("folder") %>
       <%= form.label :folder, class: "sr-only" %>
-      <%= form.text_field :folder, value: @note.folder, placeholder: t(".top_level"), spellcheck: false, autocomplete: "off", readonly: !writer,
+      <%# Como no Unix: a raiz é só a barra, e uma pasta lê /work/ideas. %>
+      <span aria-hidden="true">/</span>
+      <%= form.text_field :folder, value: @note.folder, spellcheck: false, autocomplete: "off", readonly: !writer,
                           data: { note_form_target: "folder" },
                           class: "field-sizing-content min-w-24 max-w-full rounded-md border border-transparent bg-transparent px-1 py-0.5 " \
                                  "placeholder:text-ink-muted hover:border-line focus:border-line focus:text-ink focus:outline-none" %>

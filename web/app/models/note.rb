@@ -38,7 +38,7 @@ class Note
 
   # O título é o nome do arquivo sem .md, como no Obsidian; título em branco deixa o nome vazio (update recusa).
   def self.compose_path(folder:, title:, markdown: true)
-    [ folder.presence, "#{title.to_s.strip}#{MARKDOWN_EXTENSION if markdown}" ].compact.join("/")
+    [ folder.to_s.gsub(%r{\A/+|/+\z}, "").presence, "#{title.to_s.strip}#{MARKDOWN_EXTENSION if markdown}" ].compact.join("/")
   end
 
   def persisted? = id.present?
