@@ -29,6 +29,10 @@ func TestPublicOnly_FaixasNaoPublicas_Recusa(t *testing.T) {
 		"cgnat fim":           "100.127.255.254",
 		"v4 mapeado em v6":    "::ffff:10.0.0.1",
 		"loopback mapeado v6": "::ffff:127.0.0.1",
+		"nat64 de loopback":   "64:ff9b::7f00:1",
+		"nat64 de publico":    "64:ff9b::808:808",
+		"6to4 de privado":     "2002:c0a8:1::1",
+		"6to4 de publico":     "2002:808:808::1",
 	}
 	for nome, ip := range bloqueados {
 		t.Run(nome, func(t *testing.T) {
@@ -41,7 +45,7 @@ func TestPublicOnly_FaixasNaoPublicas_Recusa(t *testing.T) {
 }
 
 func TestPublicOnly_IPsPublicos_Permite(t *testing.T) {
-	publicos := []string{"8.8.8.8", "100.128.0.1", "172.32.0.1", "2001:4860:4860::8888"}
+	publicos := []string{"8.8.8.8", "100.128.0.1", "172.32.0.1", "2001:4860:4860::8888", "64:ff9c::1", "2003::1"}
 	for _, ip := range publicos {
 		t.Run(ip, func(t *testing.T) {
 			assert.NoError(t, cimd.PublicOnly(netip.MustParseAddr(ip)))
