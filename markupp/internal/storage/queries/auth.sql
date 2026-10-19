@@ -112,6 +112,24 @@ FROM tenant_memberships m JOIN tenants t ON t.id = m.tenant_id
 WHERE m.user_id = $1
 ORDER BY t.name, m.tenant_id;
 
+-- Roda fora do RLS, que só enxerga um tenant por transação, e por isso repete a regra de
+-- notes_read: a conta lê a nota do cofre de que é membro, no tenant desse cofre, que a
+-- chave estrangeira de notes amarra ao tenant_id da nota.
+-- name: ListTenantSummaries :many
+WITH visible AS (
+    SELECT n.tenant_id, count(*) AS notes_count, max(n.updated_at)::timestamptz AS last_note_at
+    FROM notes n JOIN vault_members vm ON vm.vault_id = n.vault_id
+    WHERE vm.user_id = $1
+    GROUP BY n.tenant_id
+)
+SELECT m.tenant_id, t.name AS tenant_name, m.role,
+       coalesce(v.notes_count, 0)::int AS notes_count, v.last_note_at
+FROM tenant_memberships m
+JOIN tenants t ON t.id = m.tenant_id
+LEFT JOIN visible v ON v.tenant_id = m.tenant_id
+WHERE m.user_id = $1
+ORDER BY t.name, m.tenant_id;
+
 -- O convite é da conta cujo email ele cita, e só enquanto não foi respondido nem venceu e
 -- quem convidou ainda sustenta o papel dele no tenant.
 -- name: ListPendingInvites :many
