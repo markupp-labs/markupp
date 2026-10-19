@@ -85,9 +85,10 @@ class MotionTest < ApplicationSystemTestCase
     wait_until_still "#tenant_switcher"
     assert_equal [ LAYER_OUT ], motions_after("document.querySelector('#tenant_switcher').hidePopover()", "#tenant_switcher")
 
-    assert_equal [ LAYER_IN ], motions_after("document.querySelector('[data-action=\"search#open\"]').click()", "dialog")
-    wait_until_still "dialog"
-    assert_equal [ LAYER_OUT ], motions_after("document.querySelector('dialog').close()", "dialog")
+    search = "dialog[data-search-target=dialog]"
+    assert_equal [ LAYER_IN ], motions_after("document.querySelector('[data-action=\"search#open\"]').click()", search)
+    wait_until_still search
+    assert_equal [ LAYER_OUT ], motions_after("document.querySelector('#{search}').close()", search)
   end
 
   # Gaveta do celular: desliza da borda esquerda (translateX de -100%, sem popin nem fade) sobre o fundo escurecido e

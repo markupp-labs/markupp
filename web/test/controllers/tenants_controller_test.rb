@@ -29,7 +29,7 @@ class TenantsControllerTest < ActionDispatch::IntegrationTest
     assert_select "nav", text: /#{FakeMarkuppAccounts::DEFAULT_EMAIL}/
     assert_select "nav button", text: "Search", count: 0
     assert_select "button[popovertarget=tenant_switcher]", count: 0
-    assert_select "dialog", count: 0
+    assert_select "dialog[data-search-target]", count: 0
   end
 
   test "the sidebar footer stays fixed at the bottom even without a tenant above it" do
