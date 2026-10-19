@@ -179,6 +179,16 @@ func TestRefreshToken_RefreshJaRotacionado_RevogaTokensEAuditaReuso(t *testing.T
 	assert.Empty(t, repo.revokedAuths, "o reuso derruba os tokens, não a Autorização")
 }
 
+func TestRefreshToken_ReusoJaRevogadoPorOutro_InvalidGrantMesmoAssim(t *testing.T) {
+	repo := testRepositoryWithRefreshableToken()
+	repo.consumeErr, repo.revokeAuditedStale = oauth.ErrRefreshReused, true
+
+	_, err := newTestService(repo).RefreshToken(context.Background(), validRefreshGrant())
+
+	requireProtocolError(t, err, "invalid_grant", "", "")
+	assert.Len(t, repo.auditedRevokes, 1)
+}
+
 func TestRefreshToken_ReusoSemAutorizacao_NaoRevoga(t *testing.T) {
 	repo := newFakeOAuthRepository()
 	repo.consumeErr = oauth.ErrRefreshReused
