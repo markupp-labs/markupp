@@ -82,11 +82,18 @@ func newVersionRoutes(d RouterDeps) chi.Router {
 	return r
 }
 
+// mountProtectedNotesRoutes confere o escopo do token antes de resolver o tenant, para
+// falhar cedo, como em /users.
 func mountProtectedNotesRoutes(r chi.Router, svc NoteService, tokenValidator TokenValidator, tenants TenantResolver) {
-	r.Group(func(g chi.Router) {
-		g.Use(RequireAuth(tokenValidator), RequireTenant(tenants))
-		mountNotesRoutes(g, svc)
-	})
+	h := &notesHandler{svc: svc}
+	read := r.With(RequireAuth(tokenValidator), requireOAuthScope(oauth.ScopeNotesRead), RequireTenant(tenants))
+	read.Get("/notes", h.list)
+	read.Get("/notes/search", h.search)
+	read.Get("/notes/{id}", h.get)
+	write := r.With(RequireAuth(tokenValidator), requireOAuthScope(oauth.ScopeNotesWrite), RequireTenant(tenants), requireWriter)
+	write.Post("/notes", h.create)
+	write.Put("/notes/{id}", h.update)
+	write.Delete("/notes/{id}", h.delete)
 }
 
 func mountAuthRoutes(r chi.Router, authSvc AuthService, tokenValidator TokenValidator) {
@@ -105,16 +112,4 @@ func mountAuthRoutes(r chi.Router, authSvc AuthService, tokenValidator TokenVali
 		admin.Post("/me/invites/{id}/accept", h.acceptMyInvite)
 		admin.Post("/me/invites/{id}/decline", h.declineMyInvite)
 	})
-}
-
-func mountNotesRoutes(r chi.Router, svc NoteService) {
-	h := &notesHandler{svc: svc}
-	read := r.With(requireOAuthScope(oauth.ScopeNotesRead))
-	read.Get("/notes", h.list)
-	read.Get("/notes/search", h.search)
-	read.Get("/notes/{id}", h.get)
-	write := r.With(requireOAuthScope(oauth.ScopeNotesWrite), requireWriter)
-	write.Post("/notes", h.create)
-	write.Put("/notes/{id}", h.update)
-	write.Delete("/notes/{id}", h.delete)
 }
