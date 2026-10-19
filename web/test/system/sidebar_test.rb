@@ -22,6 +22,16 @@ class SidebarTest < ApplicationSystemTestCase
     assert_current_path root_path
   end
 
+  test "the tenant name fits beside the mascot at the default width" do
+    use_fake_api(notes: [])
+    sign_in_through_form
+
+    visit root_path
+
+    name = find("#current_tenant [title='Acme research']")
+    assert name.evaluate_script("this.scrollWidth <= this.clientWidth"), "expected Acme research not to be cut at 288px"
+  end
+
   test "the sidebar hides and shows from its buttons and keeps that state after a reload" do
     use_fake_api(notes: [])
     sign_in_through_form

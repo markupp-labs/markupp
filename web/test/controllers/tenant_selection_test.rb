@@ -96,7 +96,7 @@ class TenantSelectionTest < ActionDispatch::IntegrationTest
 
     get root_path
 
-    assert_select "nav #current_tenant", text: /markupp\s*\/\s*Acme research.*owner/m
+    assert_select "nav #current_tenant", text: /Acme research\s*owner/
   end
 
   test "the switcher lists every tenant with the active one marked" do

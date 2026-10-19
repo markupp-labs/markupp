@@ -13,16 +13,26 @@ class MascotTest < ActionDispatch::IntegrationTest
     end
   end
 
-  test "the sidebar brand has the small mascot next to markupp" do
+  test "the sidebar brand is the small mascot beside the tenant name, inside the link home" do
     use_fake_api(notes: [])
     sign_in_as
 
     get root_path
 
-    assert_select "nav #current_tenant", text: /markupp/ do
+    assert_select "nav #current_tenant a[href=?]", root_path, text: /Acme research/ do
       assert_select SMALL, count: 1
     end
+    assert_select "nav #current_tenant", text: /markupp/, count: 0
     assert_select LARGE, count: 0
+  end
+
+  test "without a tenant the sidebar shows the brand with the word markupp" do
+    use_fake_api(tenants: [])
+    sign_in_as
+
+    get tenants_path
+
+    assert_brand_without_tenant
   end
 
   test "a note that is not found shows the large mascot" do
@@ -44,6 +54,7 @@ class MascotTest < ActionDispatch::IntegrationTest
 
     assert_response :bad_gateway
     assert_select "main #{LARGE}", count: 1
+    assert_brand_without_tenant
   end
 
   test "an unreachable API on the login shows the mascot only once" do
@@ -54,4 +65,11 @@ class MascotTest < ActionDispatch::IntegrationTest
     assert_response :bad_gateway
     assert_select LARGE, count: 1
   end
+
+  private
+    def assert_brand_without_tenant
+      assert_select "nav a[href=?]", root_path, text: /markupp/ do
+        assert_select SMALL, count: 1
+      end
+    end
 end

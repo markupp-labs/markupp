@@ -16,6 +16,14 @@ class MascotHelperTest < ActionView::TestCase
     assert_operator small.lines.size, :<, large.lines.size
   end
 
+  # 12x6 caracteres viravam uma mancha: o rosto precisa de pelo menos 20x8 para os olhos e a franja aparecerem.
+  test "the small mascot has room for a recognizable face" do
+    lines = Nokogiri::HTML5.fragment(mascot(:small)).at_css("pre").text.lines.map(&:chomp)
+
+    assert_operator lines.size, :>=, 8
+    assert_operator lines.map(&:size).max, :>=, 20
+  end
+
   test "the mascot takes extra classes" do
     pre = Nokogiri::HTML5.fragment(mascot(:small, class: "hidden")).at_css("pre")
 
