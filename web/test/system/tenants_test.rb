@@ -28,6 +28,6 @@ class TenantsTest < ApplicationSystemTestCase
 
     assert_text "Created Acme research."
     assert_selector "nav #current_tenant", text: /Acme research.*owner/m
-    assert_link "New note"
+    assert_field "Path", with: "/"
   end
 end

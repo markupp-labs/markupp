@@ -176,22 +176,23 @@ class NotesControllerTest < ActionDispatch::IntegrationTest
     assert api.put_requests.sole[:force]
   end
 
-  test "sidebar links new note to the folder of the open note" do
+  test "alt+n in the sidebar makes a new note in the folder of the open note, with no new note button" do
     use_fake_api(notes: [ { id: "1", path: "work/2026/plan.md", content: "" } ])
     sign_in_as
 
     get note_path("1")
 
-    assert_select "nav a[href=?]", new_note_path(folder: "work/2026"), text: "New note"
+    assert_select "nav [data-note-tree-new-note-url-value=?]", new_note_path(folder: "work/2026")
+    assert_select "nav a", text: "New note", count: 0
   end
 
-  test "sidebar links new note to the root when no note is open" do
+  test "alt+n in the sidebar makes a new note at the root when no note is open" do
     use_fake_api(notes: [])
     sign_in_as
 
     get root_path
 
-    assert_select "nav a[href=?]", new_note_path, text: "New note"
+    assert_select "nav [data-note-tree-new-note-url-value=?]", new_note_path
   end
 
   test "new opens a blank note with the path of its folder and the focus on it" do

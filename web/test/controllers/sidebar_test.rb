@@ -63,14 +63,13 @@ class SidebarTest < ActionDispatch::IntegrationTest
     assert_select "nav footer form.theme-to-dark button[aria-label=?][title=?] svg[data-icon=moon]", "Dark theme", "Dark theme"
   end
 
-  test "search and new note carry icons" do
+  test "search carries its icon" do
     use_fake_api(notes: [ { id: "1", path: "work/plan.md", content: "" } ])
     sign_in_as
 
     get root_path
 
     assert_select "nav button[aria-keyshortcuts] svg[data-icon=magnifying-glass]"
-    assert_select "nav a[href=?] svg[data-icon=file-plus]", new_note_path
   end
 
   test "save and delete carry icons" do

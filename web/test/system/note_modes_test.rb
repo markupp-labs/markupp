@@ -29,7 +29,7 @@ class NoteModesTest < ApplicationSystemTestCase
     refresh
     assert_selector ".note-preview h1", text: "Plan"
 
-    click_on "New note"
+    find("body").send_keys([ :alt, "n" ])
     assert_selector ".cm-editor"
     assert_no_selector ".note-preview"
     assert_selector "button[aria-label=Edit][aria-pressed=true]"

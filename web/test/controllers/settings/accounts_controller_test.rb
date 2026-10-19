@@ -71,14 +71,14 @@ module Settings
       assert_select "main form[action=?] button", password_change_path, text: "Change password"
     end
 
-    test "the sidebar shows the note tree and new note, as on the note pages" do
+    test "the sidebar shows the note tree and alt+n, as on the note pages" do
       use_fake_api(notes: [ { id: "1", path: "work/plan.md", content: "" } ])
       sign_in_as
 
       get settings_account_path
 
       assert_select "nav#sidebar .sidebar-scroll" do
-        assert_select "a[href=?]", new_note_path, text: "New note"
+        assert_select "[data-note-tree-new-note-url-value=?]", new_note_path
         assert_select "[role=treeitem][aria-expanded]", text: "└── work/"
         assert_select "a[href=?]", note_path("1"), text: "└── plan"
         assert_select "button[data-action='search#open']", text: /Search/
@@ -106,7 +106,7 @@ module Settings
 
       get settings_account_path
 
-      assert_select "nav#sidebar a[href=?]", new_note_path, count: 0
+      assert_select "nav#sidebar [data-note-tree-new-note-url-value]", count: 0
     end
 
     test "without tenant the sidebar has no note tree" do
@@ -116,7 +116,7 @@ module Settings
       get settings_account_path
 
       assert_response :success
-      assert_select "nav#sidebar a[href=?]", new_note_path, count: 0
+      assert_select "nav#sidebar [data-note-tree-new-note-url-value]", count: 0
     end
 
     test "a close button leads back to the notes" do

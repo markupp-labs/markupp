@@ -33,7 +33,7 @@ class NotesTest < ApplicationSystemTestCase
     sign_in_through_form
 
     visit note_path("1")
-    click_on "New note"
+    send_keys [ :alt, "n" ]
     assert_field "Path", with: "/work/"
     send_keys "Idea", :tab, "Fresh idea.", [ :control, "s" ]
 
