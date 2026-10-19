@@ -1,6 +1,6 @@
 require "application_system_test_case"
 
-# Contraste WCAG AA no tema claro (o do Chromium headless): 4.5:1 para texto comum, 3:1 para texto grande.
+# Contraste WCAG AA no tema claro (o do Chromium headless; o código confere também o escuro): 4.5:1 para texto comum, 3:1 para texto grande.
 class ContrastTest < ApplicationSystemTestCase
   # Cor de qualquer formato (light-dark, color-mix, oklab) vira rgba pelo canvas; o fundo é o do primeiro
   # ancestral com fundo, e o texto translúcido é misturado sobre ele antes da conta.
@@ -18,8 +18,25 @@ class ContrastTest < ApplicationSystemTestCase
     return (light + 0.05) / (dark + 0.05)
   JS
 
+  # Um bloco por família de token do tema: comentário, classe, título, string, número, símbolo, literal, variável, diff.
+  CODE_NOTE = <<~MARKDOWN.freeze
+    ```ruby
+    # Greets someone
+    class Greeter < Base
+      def greet(name = nil)
+        puts "Hi \#{name}", 42, :ok, true, @count
+      end
+    end
+    ```
+
+    ```diff
+    - old
+    + new
+    ```
+  MARKDOWN
+
   setup do
-    use_fake_api(notes: [ { id: "1", path: "plan.md", content: "# Plan\n" } ])
+    use_fake_api(notes: [ { id: "1", path: "plan.md", content: "# Plan\n" }, { id: "2", path: "code.md", content: CODE_NOTE } ])
     sign_in_through_form
   end
 
@@ -41,7 +58,24 @@ class ContrastTest < ApplicationSystemTestCase
     assert_readable find_field("Title"), pseudo: "::placeholder", minimum: 3
   end
 
+  test "highlighted code reads clearly in the light and the dark theme" do
+    %w[Light Dark].each do |theme|
+      visit settings_appearance_path
+      within("main") { click_on theme }
+      visit note_path("2")
+      click_on "Read"
+      assert_code_tokens_readable
+    end
+  end
+
   private
+    def assert_code_tokens_readable
+      assert_selector ".note-preview pre code"
+      tokens = all(".note-preview pre code span[class*=hljs-]")
+      assert_not_empty tokens, "expected highlighted tokens in the code blocks, found none"
+      tokens.each { |token| assert_readable token }
+    end
+
     def assert_readable(element, pseudo: nil, minimum: 4.5)
       ratio = evaluate_script("(function() { #{CONTRAST_SCRIPT} }).apply(null, arguments)", element, pseudo)
       assert_operator ratio, :>=, minimum, "contrast of #{element.tag_name} #{element.text.inspect}#{pseudo} is #{ratio.round(2)}:1, expected at least #{minimum}:1"
