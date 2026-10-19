@@ -1,9 +1,10 @@
 require "application_system_test_case"
 
-# Cabeçalho da nota no celular: Save e Delete só com ícone e o "Unsaved changes" num ponto no Save, tudo numa linha.
+# Cabeçalho da nota no celular: a pasta numa linha só dela; embaixo o seletor de modo, Save e Delete só com ícone e o
+# "Unsaved changes" num ponto no Save.
 class NoteHeaderTest < ApplicationSystemTestCase
-  test "at phone width the edited note header fits one line with icon buttons" do
-    use_fake_api(notes: [ { id: "1", path: "work/plan.md", content: "# Plan\n" } ])
+  test "at phone width the folder gets its own line above the mode switch and the icon buttons" do
+    use_fake_api(notes: [ { id: "1", path: "work/research/plan.md", content: "# Plan\n" } ])
     sign_in_through_form
 
     visit note_path("1")
@@ -13,7 +14,10 @@ class NoteHeaderTest < ApplicationSystemTestCase
     assert_selector "button[title='Save (Ctrl+S)']"
     assert_selector "button[title='Delete']"
     assert_selector "button[title='Save (Ctrl+S)'] [data-unsaved-dot]", visible: true
-    assert_equal 1, header_row_tops.uniq.size, "expected the header in one line, got rows at #{header_row_tops.inspect}"
+    folder, *controls = header_row_tops
+    assert_equal 1, controls.uniq.size, "expected the mode switch and the buttons in one line, got rows at #{controls.inspect}"
+    assert_operator folder, :<, controls.first, "expected the folder above the controls, got #{folder} and #{controls.first}"
+    assert_folder_uncut
   ensure
     page.current_window.resize_to(1400, 900)
   end
@@ -32,6 +36,12 @@ class NoteHeaderTest < ApplicationSystemTestCase
   end
 
   private
+    # O campo da pasta mostra o caminho inteiro, sem rolar o texto para dentro.
+    def assert_folder_uncut
+      visible, full = evaluate_script("(({ clientWidth, scrollWidth }) => [clientWidth, scrollWidth])(document.querySelector('#note_folder'))")
+      assert_operator visible, :>=, full, "expected the whole folder in its field, got #{visible}px of #{full}px"
+    end
+
     # Topo de cada item visível do cabeçalho, arredondado: uma linha só dá um valor.
     def header_row_tops
       evaluate_script(<<~JS)
