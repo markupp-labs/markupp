@@ -21,6 +21,18 @@
   --accent: light-dark(#4d699b, #7e9cd8);
   --accent-soft: light-dark(#c7d7e0, #223249);
   --danger: light-dark(#a8344a, #e46876);
+  /* Sintaxe dos blocos de código (hljs-*), nas cores de sintaxe do Kanagawa. As do lotus foram escurecidas
+     no mesmo matiz até 4.6:1 sobre o surface-sunken do pre (#e7dba0; davam de 2.5 a 4:1); as do wave já passam
+     de 5:1 sobre #16161d. O comentário usa o ink-muted (o fujiGray dava 3.7:1 no escuro). */
+  --code-keyword: light-dark(#624c83, #957fb8);
+  --code-string: light-dark(#516439, #98bb6c);
+  --code-number: light-dark(#92445e, #d27e99);
+  --code-function: light-dark(#455f8c, #7e9cd8);
+  --code-type: light-dark(#48635e, #7aa89f);
+  --code-constant: light-dark(#8f4c00, #ffa066);
+  --code-builtin: light-dark(#386474, #7fb4ca);
+  --code-identifier: light-dark(#635e34, #e6c384);
+  --code-special: light-dark(#ab3142, #e46876);
 }
 
 :root[data-theme="light"] {
@@ -256,6 +268,21 @@
   & code { background: var(--surface-sunken); border-radius: 0.375rem; padding: 0.1em 0.35em; font-size: 0.95em; }
   & pre { background: var(--surface-sunken); border: 1px solid var(--line); border-radius: 0.375rem; padding: 0.75rem 1rem; overflow-x: auto; }
   & pre code { background: none; padding: 0; overflow-wrap: normal; }
+  /* Destaque de sintaxe (editor/highlight_code.js): classes do highlight.js nas variáveis --code-*.
+     Tudo em :where (especificidade zero): a regra composta (.hljs-variable.language_) vem depois da simples. */
+  & :where(.hljs-keyword, .hljs-selector-tag, .hljs-doctag, .hljs-template-tag) { color: var(--code-keyword); }
+  & :where(.hljs-string, .hljs-regexp, .hljs-addition) { color: var(--code-string); }
+  & :where(.hljs-number, .hljs-literal) { color: var(--code-number); }
+  & :where(.hljs-title, .hljs-section, .hljs-name) { color: var(--code-function); }
+  & :where(.hljs-type, .hljs-title.class_, .hljs-title.class_.inherited__) { color: var(--code-type); }
+  & :where(.hljs-attr, .hljs-attribute, .hljs-property, .hljs-variable, .hljs-template-variable) { color: var(--code-identifier); }
+  & :where(.hljs-symbol, .hljs-variable.language_, .hljs-variable.constant_, .hljs-link) { color: var(--code-constant); }
+  & :where(.hljs-built_in, .hljs-selector-id, .hljs-selector-class, .hljs-selector-attr, .hljs-selector-pseudo) { color: var(--code-builtin); }
+  & :where(.hljs-meta, .hljs-deletion, .hljs-bullet) { color: var(--code-special); }
+  & :where(.hljs-subst) { color: var(--ink); }
+  & :where(.hljs-comment, .hljs-quote) { color: var(--ink-muted); font-style: italic; }
+  & :where(.hljs-section, .hljs-strong) { font-weight: 700; }
+  & :where(.hljs-emphasis) { font-style: italic; }
   & hr { border: 0; border-top: 1px dashed var(--line); }
   & table { display: block; overflow-x: auto; border-collapse: collapse; }
   & :where(th, td) { border: 1px solid var(--line); padding: 0.25rem 0.75rem; text-align: left; }

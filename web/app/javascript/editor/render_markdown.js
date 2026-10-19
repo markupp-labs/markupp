@@ -1,10 +1,11 @@
 import MarkdownIt from "markdown-it"
 import DOMPurify from "dompurify"
 import { wikilinkRule } from "editor/wikilinks"
+import { highlightCode } from "editor/highlight_code"
 
 // Markdown para HTML na leitura e no lado a lado. HTML dentro do markdown é aceito, como no Obsidian,
 // mas tudo passa pelo DOMPurify antes de entrar na página: sem script, sem on*, sem javascript:.
-const markdownIt = new MarkdownIt({ html: true, linkify: true })
+const markdownIt = new MarkdownIt({ html: true, linkify: true, highlight: highlightCode })
 markdownIt.inline.ruler.before("link", "wikilink", wikilinkRule)
 // Cada bloco leva a linha do markdown onde começa, para o lado a lado alinhar o preview ao editor (scroll_sync.js).
 markdownIt.core.ruler.push("source_line", ({ tokens }) => {
