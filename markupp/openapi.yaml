@@ -1021,9 +1021,18 @@ components:
           type: string
         client_name:
           type: string
+        client_source:
+          type: string
+          enum: [cimd, dcr]
+          description: >-
+            Origem do registro do cliente. O nome do cliente cimd vem do documento publicado
+            no domínio do client_id; o do cliente dcr é declarado pelo próprio cliente e não
+            é verificado
         redirect_host:
           type: string
-          description: Host para onde o navegador volta depois da decisão
+          description: >-
+            Host para onde o navegador volta depois da decisão ou, na redirect_uri de
+            esquema privado sem host, o esquema com dois-pontos (como cursor:)
         scopes:
           type: array
           items:
