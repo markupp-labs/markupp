@@ -50,7 +50,7 @@ func redeemInTx(ctx context.Context, qtx *gen.Queries, codeHash string, now time
 }
 
 // reuseCodeInTx marca o reuso do código já usado e, com a trava da Autorização do
-// pedido, revoga os tokens dela (RFC 9700, 4.4.2). A marca faz falhar a gravação do par
+// pedido, revoga os tokens dela (RFC 9700, 4.4.2) e audita oauth.code_reuse. A marca faz falhar a gravação do par
 // do primeiro uso que ainda esteja por vir. Código inexistente ou expirado sem uso é
 // oauth.ErrCodeNotFound.
 func reuseCodeInTx(ctx context.Context, qtx *gen.Queries, codeHash string, now time.Time) (oauth.RedeemedCode, error) {
@@ -68,7 +68,19 @@ func reuseCodeInTx(ctx context.Context, qtx *gen.Queries, codeHash string, now t
 	if err := revokeLockedTokens(ctx, qtx, redeemed.Authorization.ID); err != nil {
 		return redeemed, err
 	}
+	if err := auditOAuth(ctx, qtx, codeReuseEvent(row, now)); err != nil {
+		return redeemed, err
+	}
 	return redeemed, oauth.ErrCodeAlreadyUsed
+}
+
+// codeReuseEvent descreve o reuso do código como falha da conta que o aprovou para o
+// cliente do pedido.
+func codeReuseEvent(row gen.OauthRequest, at time.Time) oauth.AuditEvent {
+	return oauth.AuditEvent{
+		Action: oauth.AuditActionCodeReuse, Result: oauth.AuditResultFailure,
+		UserID: row.UserID.String, ClientID: row.ClientID, OccurredAt: at,
+	}
 }
 
 // lockRequestAuthorization trava a Autorização gravada no pedido, revogada ou não, e

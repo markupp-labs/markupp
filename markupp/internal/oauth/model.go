@@ -195,6 +195,7 @@ const (
 	AuditActionRefresh      = "oauth.refresh"
 	AuditActionRefreshReuse = "oauth.refresh_reuse"
 	AuditActionRevoke       = "oauth.revoke"
+	AuditActionCodeReuse    = "oauth.code_reuse"
 )
 
 // Resultados de um evento auditado.
