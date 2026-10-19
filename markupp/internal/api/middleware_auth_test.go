@@ -55,6 +55,22 @@ func TestRequireAuth_TokenValido_InjetaContextoEProssegue(t *testing.T) {
 	assert.Equal(t, "user-123", capturedUser.UserID)
 	assert.Empty(t, capturedUser.TenantID, "o tenant vem do vinculo, nao do token")
 	assert.Empty(t, capturedUser.Role)
+	assert.False(t, capturedUser.FromOAuth, "token sem scope e de login")
+	assert.Empty(t, capturedUser.OAuthScopes)
+}
+
+func TestRequireAuth_TokenComScope_MarcaOAtorComoOAuth(t *testing.T) {
+	validator := &fakeTokenValidator{claims: auth.Claims{Subject: "user-123", Scope: "notas:leitura administracao"}}
+	var ator identity.Actor
+	handler := api.RequireAuth(validator)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ator, _ = identity.ActorFrom(r.Context())
+	}))
+	req := httptest.NewRequest(http.MethodGet, "/protegido", nil)
+	req.Header.Set("Authorization", "Bearer token-oauth")
+
+	handler.ServeHTTP(httptest.NewRecorder(), req)
+
+	assert.Equal(t, identity.Actor{UserID: "user-123", FromOAuth: true, OAuthScopes: []string{"notas:leitura", "administracao"}}, ator)
 }
 
 func TestRequireAuth_SemHeaderAuthorization_Retorna401(t *testing.T) {
