@@ -52,7 +52,8 @@ func newCIMDClientMetadataFetcher(limits cimdLimits, extra ...cimd.Option) (*cim
 }
 
 // FetchClientMetadata implementa oauth.ClientMetadataFetcher. O erro embrulhado leva
-// detalhe de rede e o corpo do documento, então serve só para o log, nunca para o cliente.
+// detalhe de rede e o corpo do documento, que serve só para o log; o serviço responde ao
+// cliente com um invalid_request genérico.
 func (a *cimdClientMetadataFetcher) FetchClientMetadata(ctx context.Context, clientID string) (oauth.ClientMetadata, error) {
 	meta, err := a.fetcher.Fetch(ctx, clientID)
 	if err != nil {

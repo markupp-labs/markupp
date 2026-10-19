@@ -200,7 +200,8 @@ type ClientMetadata struct {
 
 // ClientMetadataFetcher busca e valida o documento de metadados de um client_id que é
 // URL (draft-ietf-oauth-client-id-metadata-document). Erro de busca ou de validação
-// volta embrulhado, sem detalhe de rede que sirva de oráculo ao cliente.
+// volta com o detalhe (rede, IP resolvido, corpo), que serve só para o log: o serviço
+// responde ao cliente com um invalid_request genérico e guarda o erro como causa interna.
 type ClientMetadataFetcher interface {
 	FetchClientMetadata(ctx context.Context, clientID string) (ClientMetadata, error)
 }

@@ -53,15 +53,22 @@ func (s *Service) cimdClient(ctx context.Context, clientID string) (Client, erro
 }
 
 // fetchCIMDClient busca o documento e grava o cliente até o fim do TTL dele. O erro da
-// busca não vai ao cliente, para não servir de oráculo da rede interna.
+// busca vai só para o log, como causa interna, para não servir de oráculo da rede interna.
 func (s *Service) fetchCIMDClient(ctx context.Context, clientID string, now time.Time) (Client, error) {
 	metadata, err := s.metadata.FetchClientMetadata(ctx, clientID)
 	if err != nil {
-		return Client{}, &ProtocolError{Code: errInvalidRequest, Description: "documento de metadados do client_id " + ClientValue(clientID) + " inacessivel ou invalido; esperado " + metadataDocumentShape}
+		return Client{}, unusableMetadataError(clientID, err)
 	}
 	client := Client{ID: clientID, Name: metadata.Name, RedirectURIs: metadata.RedirectURIs}
 	if err := s.repo.SaveCIMDClient(ctx, client, now.Add(metadata.TTL)); err != nil {
 		return Client{}, fmt.Errorf("oauth: gravando o cliente cimd %s: %w", ClientValue(clientID), err)
 	}
 	return client, nil
+}
+
+// unusableMetadataError é a recusa genérica do documento CIMD, igual para toda falha;
+// cause fica só para o log.
+func unusableMetadataError(clientID string, cause error) error {
+	recusa := &ProtocolError{Code: errInvalidRequest, Description: "documento de metadados do client_id " + ClientValue(clientID) + " inacessivel ou invalido; esperado " + metadataDocumentShape}
+	return recusa.WithInternalCause(cause)
 }

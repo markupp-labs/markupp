@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"maps"
 	"mime"
 	"net/http"
@@ -130,6 +131,9 @@ func (h *oauthHandler) writeAuthorizeError(w http.ResponseWriter, r *http.Reques
 	if !errors.As(err, &protoErr) {
 		writeOAuthInternal(w, "iniciar autorizacao oauth", err)
 		return
+	}
+	if cause := protoErr.Unwrap(); cause != nil {
+		slog.Warn("recusa do oauth com causa interna", "operacao", "iniciar autorizacao oauth", "code", protoErr.Code, "error", cause)
 	}
 	if protoErr.RedirectURI == "" {
 		writeOAuthError(w, protoErr)

@@ -117,12 +117,14 @@ func (e *ProtocolError) Error() string {
 
 // WithInternalCause devolve uma cópia do erro com a causa que só vai para o log.
 func (e *ProtocolError) WithInternalCause(cause error) *ProtocolError {
-	return e
+	withCause := *e
+	withCause.cause = cause
+	return &withCause
 }
 
 // Unwrap devolve a causa interna, ou nil.
 func (e *ProtocolError) Unwrap() error {
-	return nil
+	return e.cause
 }
 
 // RedirectLocation monta o redirect que devolve o erro ao cliente, com o issuer no
