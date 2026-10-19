@@ -35,32 +35,40 @@ func cofreComErroDeDigitacao(t *testing.T) (*pgxpool.Pool, *storage.PostgresNote
 	return db, repo, storage.NewPostgresNoteGraph(db, "simple")
 }
 
-func TestLigacaoInferida_ApareceMarcadaEmBacklinksEVizinhanca(t *testing.T) {
+func TestLigacaoInferida_ApareceComOTipoInferredNasLigacoesDasDuasNotas(t *testing.T) {
 	_, _, graph := cofreComErroDeDigitacao(t)
 
-	lidas, err := graph.Backlinks(ctxDeTeste, "k", 0, 10)
+	entrada, err := graph.Backlinks(ctxDeTeste, "k", todas)
 	require.NoError(t, err)
-	require.Len(t, lidas, 1)
-	assert.Equal(t, notes.Backlink{
-		LinkedNote: notes.LinkedNote{ID: "a", VaultID: cofreDeTeste, Path: "a.md", UpdatedAt: lidas[0].UpdatedAt},
-		Predicates: []string{}, Inferred: true,
-	}, lidas[0])
+	saida, err := graph.Links(ctxDeTeste, "a", todas)
+	require.NoError(t, err)
 
-	vizinhos, err := graph.Neighbors(ctxDeTeste, "a", 0, 10)
-	require.NoError(t, err)
-	require.Len(t, vizinhos, 1)
-	assert.True(t, vizinhos[0].Outgoing)
-	assert.True(t, vizinhos[0].Inferred, "a so se liga a k por inferencia")
+	k := resumoPtr("k", "Kubernetes.md")
+	inferida := notes.Link{Source: resumo("a", "a.md"), Target: k, CitedTitle: "Kubernets", Type: "inferred"}
+	assert.Equal(t, []notes.Link{inferida}, entrada)
+	assert.Equal(t, []notes.Link{
+		inferida,
+		{Source: resumo("a", "a.md"), CitedTitle: "Kubernets", Type: "explicit", InferredTarget: k},
+	}, saida, "a ligacao escrita continua nao resolvida, com o palpite em inferred_target")
 }
 
 func TestLigacaoInferida_ExplicitaNaoEMarcada(t *testing.T) {
 	_, _, graph := cofreComErroDeDigitacao(t)
 
-	lidas, err := graph.Backlinks(ctxDeTeste, "hub", 0, 10)
+	lidas, err := graph.Backlinks(ctxDeTeste, "hub", todas)
 
 	require.NoError(t, err)
 	require.Len(t, lidas, 1)
-	assert.False(t, lidas[0].Inferred)
+	assert.Equal(t, "explicit", lidas[0].Type)
+}
+
+func TestLigacaoInferida_FiltroPorTipo(t *testing.T) {
+	_, _, graph := cofreComErroDeDigitacao(t)
+
+	lidas, err := graph.VaultLinks(ctxDeTeste, cofreDeTeste, notes.VaultLinkQuery{LinkFilter: notes.LinkFilter{Type: "inferred", Page: todas.Page}})
+
+	require.NoError(t, err)
+	assert.Len(t, lidas, 2, "a cita Kubernets e s cita postgresqk")
 }
 
 func TestLigacaoInferida_ParentescoDecideEntreDistanciaEProbabilidade(t *testing.T) {
@@ -70,14 +78,14 @@ func TestLigacaoInferida_ParentescoDecideEntreDistanciaEProbabilidade(t *testing
 	assert.Empty(t, backlinks(ctxDeTeste, t, graph, "p"))
 }
 
-func TestLigacaoInferida_NaoViraNaoResolvida(t *testing.T) {
+func TestLigacaoInferida_NaoViraNaoResolvidaEMarcaOPalpite(t *testing.T) {
 	_, _, graph := cofreComErroDeDigitacao(t)
 
-	soltas, err := graph.UnresolvedLinks(ctxDeTeste, cofreDeTeste, 0, 100)
-	require.NoError(t, err)
-	assert.Equal(t, []notes.UnresolvedLink{
-		{NoteID: "a", Path: "a.md", Title: "Kubernets", Kind: "explicit"},
-		{NoteID: "s", Path: "s.md", Title: "postgresqk", Kind: "explicit"},
+	soltas := ligacoesDoCofre(t, graph, notes.LinkUnresolved)
+
+	assert.Equal(t, []notes.Link{
+		{Source: resumo("a", "a.md"), CitedTitle: "Kubernets", Type: "explicit", InferredTarget: resumoPtr("k", "Kubernetes.md")},
+		{Source: resumo("s", "s.md"), CitedTitle: "postgresqk", Type: "explicit", InferredTarget: resumoPtr("x", "postgresqlx.md")},
 	}, soltas, "a ligacao escrita continua nao resolvida; a inferida nao entra")
 }
 

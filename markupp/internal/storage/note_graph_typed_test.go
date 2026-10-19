@@ -33,33 +33,29 @@ func cofreTipado(t *testing.T) (*storage.PostgresNotesRepository, *storage.Postg
 	return repo, storage.NewPostgresNoteGraph(db, "simple")
 }
 
-func TestNoteGraph_Backlinks_TrazemOsPredicadosDasLigacoesTipadas(t *testing.T) {
+func TestNoteGraph_Backlinks_TrazemOPredicadoDeCadaLigacaoTipada(t *testing.T) {
 	_, graph := cofreTipado(t)
 
-	lidas, err := graph.Backlinks(ctxDeTeste, "f", 0, 100)
+	lidas, err := graph.Backlinks(ctxDeTeste, "f", todas)
 
 	require.NoError(t, err)
-	require.Len(t, lidas, 2)
-	assert.Equal(t, []notes.Backlink{
-		{LinkedNote: notes.LinkedNote{ID: "p", VaultID: cofreDeTeste, Path: "p.md", UpdatedAt: lidas[0].UpdatedAt}, Predicates: []string{"autor", "revisor"}},
-		{LinkedNote: notes.LinkedNote{ID: "q", VaultID: cofreDeTeste, Path: "q.md", UpdatedAt: lidas[1].UpdatedAt}, Predicates: []string{"autor"}},
-	}, lidas, "uma linha por nota, com as chaves que a citam")
+	fulana := resumoPtr("f", "Fulana.md")
+	assert.Equal(t, []notes.Link{
+		{Source: resumo("p", "p.md"), Target: fulana, CitedTitle: "Fulana", Type: "typed", Predicate: ptr("autor")},
+		{Source: resumo("p", "p.md"), Target: fulana, CitedTitle: "fulana", Type: "typed", Predicate: ptr("revisor")},
+		{Source: resumo("q", "q.md"), Target: fulana, CitedTitle: "Fulana", Type: "explicit"},
+		{Source: resumo("q", "q.md"), Target: fulana, CitedTitle: "Fulana", Type: "typed", Predicate: ptr("autor")},
+	}, lidas, "um item por ligacao, a tipada com a chave que a declara")
 }
 
-func TestNoteGraph_Neighbors_SeparamOsPredicadosPorSentido(t *testing.T) {
+func TestNoteGraph_Links_FiltraAsTipadas(t *testing.T) {
 	_, graph := cofreTipado(t)
 
-	vizinhos, err := graph.Neighbors(ctxDeTeste, "f", 0, 100)
+	lidas, err := graph.Links(ctxDeTeste, "q", notes.LinkFilter{Type: "typed", Page: todas.Page})
 
 	require.NoError(t, err)
-	require.Len(t, vizinhos, 2)
-	assert.Equal(t, notes.Neighbor{
-		LinkedNote: notes.LinkedNote{ID: "p", VaultID: cofreDeTeste, Path: "p.md", UpdatedAt: vizinhos[0].UpdatedAt},
-		Incoming:   true, Outgoing: true,
-		IncomingPredicates: []string{"autor", "revisor"}, OutgoingPredicates: []string{"escreveu"},
-	}, vizinhos[0])
-	assert.Equal(t, []string{"autor"}, vizinhos[1].IncomingPredicates)
-	assert.Equal(t, []string{}, vizinhos[1].OutgoingPredicates)
+	require.Len(t, lidas, 1)
+	assert.Equal(t, ptr("autor"), lidas[0].Predicate)
 }
 
 func TestListVaultNotes_Orfas_LigacaoTipadaContaEValorLiteralNao(t *testing.T) {
@@ -70,13 +66,12 @@ func TestListVaultNotes_Orfas_LigacaoTipadaContaEValorLiteralNao(t *testing.T) {
 	assert.Equal(t, []string{"o", "r"}, idsDasNotas(orfas), "p so tem ligacao tipada e nao e orfa")
 }
 
-func TestNoteGraph_UnresolvedLinks_IncluiLigacaoTipadaSemNota(t *testing.T) {
+func TestNoteGraph_VaultLinks_IncluiLigacaoTipadaSemNota(t *testing.T) {
 	_, graph := cofreTipado(t)
 
-	soltas, err := graph.UnresolvedLinks(ctxDeTeste, cofreDeTeste, 0, 100)
+	soltas := ligacoesDoCofre(t, graph, notes.LinkUnresolved)
 
-	require.NoError(t, err)
-	assert.Equal(t, []notes.UnresolvedLink{{NoteID: "r", Path: "r.md", Title: "Ninguem", Kind: "typed"}}, soltas)
+	assert.Equal(t, []notes.Link{{Source: resumo("r", "r.md"), CitedTitle: "Ninguem", Type: "typed", Predicate: ptr("relacionada")}}, soltas)
 }
 
 func TestVaultIndexer_GravaOPredicadoDaLigacaoTipada(t *testing.T) {

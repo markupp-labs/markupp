@@ -13,14 +13,15 @@ import (
 func BenchmarkNoteGraph(b *testing.B) {
 	router := roteadorDoCofreSintetico(b)
 	rotas := map[string]string{
-		"backlinks":        "/notes/cofre-bench-00042/backlinks",
-		"neighbors":        "/notes/cofre-bench-00042/neighbors",
+		"links":            "/v1/notes/cofre-bench-00042/links",
+		"backlinks":        "/v1/notes/cofre-bench-00042/backlinks",
 		"mentions":         "/notes/cofre-bench-00042/mentions",
 		"suggestions":      "/notes/cofre-bench-00042/suggestions",
 		"note":             "/v1/notes/cofre-bench-00042",
 		"orphans":          "/v1/vaults/cofre-bench/notes?orphan=true",
 		"by_pagerank":      "/v1/vaults/cofre-bench/notes?sort=pagerank",
-		"unresolved_links": "/vaults/cofre-bench/unresolved-links",
+		"vault_links":      "/v1/vaults/cofre-bench/links",
+		"unresolved_links": "/v1/vaults/cofre-bench/links?status=unresolved",
 		"clusters":         "/vaults/cofre-bench/clusters",
 	}
 	for nome, rota := range rotas {

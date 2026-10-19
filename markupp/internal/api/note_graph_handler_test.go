@@ -18,37 +18,39 @@ import (
 
 // fakeNoteGraph devolve listas fixas e guarda o último pedido recebido.
 type fakeNoteGraph struct {
-	backlinks  []notes.Backlink
-	neighbors  []notes.Neighbor
-	unresolved []notes.UnresolvedLink
-	mentions   []notes.UnlinkedMention
-	suggested  []notes.LinkSuggestion
-	members    []notes.CommunityMember
-	err        error
+	links     []notes.Link
+	mentions  []notes.UnlinkedMention
+	suggested []notes.LinkSuggestion
+	members   []notes.CommunityMember
+	err       error
 
 	method string
 	id     string
 	offset int
 	limit  int
+	query  any
 }
 
 func (f *fakeNoteGraph) record(method, id string, offset, limit int) {
 	f.method, f.id, f.offset, f.limit = method, id, offset, limit
 }
 
-func (f *fakeNoteGraph) Backlinks(_ context.Context, noteID string, offset, limit int) ([]notes.Backlink, error) {
-	f.record("backlinks", noteID, offset, limit)
-	return f.backlinks, f.err
+func (f *fakeNoteGraph) Links(_ context.Context, noteID string, q notes.LinkFilter) ([]notes.Link, error) {
+	f.record("links", noteID, q.Offset, q.Limit)
+	f.query = q
+	return f.links, f.err
 }
 
-func (f *fakeNoteGraph) Neighbors(_ context.Context, noteID string, offset, limit int) ([]notes.Neighbor, error) {
-	f.record("neighbors", noteID, offset, limit)
-	return f.neighbors, f.err
+func (f *fakeNoteGraph) Backlinks(_ context.Context, noteID string, q notes.LinkFilter) ([]notes.Link, error) {
+	f.record("backlinks", noteID, q.Offset, q.Limit)
+	f.query = q
+	return f.links, f.err
 }
 
-func (f *fakeNoteGraph) UnresolvedLinks(_ context.Context, vaultID string, offset, limit int) ([]notes.UnresolvedLink, error) {
-	f.record("unresolved", vaultID, offset, limit)
-	return f.unresolved, f.err
+func (f *fakeNoteGraph) VaultLinks(_ context.Context, vaultID string, q notes.VaultLinkQuery) ([]notes.Link, error) {
+	f.record("vault_links", vaultID, q.Offset, q.Limit)
+	f.query = q
+	return f.links, f.err
 }
 
 func (f *fakeNoteGraph) Mentions(_ context.Context, noteID string, offset, limit int) ([]notes.UnlinkedMention, error) {
@@ -82,38 +84,71 @@ func getGrafo(t *testing.T, graph api.NoteGraph, role, target string) *httptest.
 
 var notaLigada = notes.LinkedNote{ID: "n2", VaultID: "va", Path: "b.md", UpdatedAt: time.Date(2026, 10, 16, 12, 0, 0, 0, time.UTC)}
 
-func TestGetBacklinks_DevolveAsNotasEPaginaNoPadrao(t *testing.T) {
-	graph := &fakeNoteGraph{backlinks: []notes.Backlink{{LinkedNote: notaLigada, Predicates: []string{"autor"}, Inferred: true}}}
-
-	rec := getGrafo(t, graph, "viewer", "/notes/n1/backlinks?offset=3&limit=500")
-
-	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
-	assert.JSONEq(t, `[{"id":"n2","vault_id":"va","path":"b.md","updated_at":"2026-10-16T12:00:00Z","predicates":["autor"],"inferred":true}]`, rec.Body.String())
-	assert.Equal(t, []any{"backlinks", "n1", 3, 100}, []any{graph.method, graph.id, graph.offset, graph.limit}, "limit acima do teto vira 100")
+var ligacaoDeTeste = notes.Link{
+	Source:     notes.NoteSummary{ID: "n1", Title: "a", Path: "a.md"},
+	Target:     &notes.NoteSummary{ID: "n2", Title: "b", Path: "pasta/b.md"},
+	CitedTitle: "B", Type: "typed", Predicate: ptr("autor"),
 }
 
-func TestGetNeighbors_DizOSentidoDeCadaVizinho(t *testing.T) {
-	graph := &fakeNoteGraph{neighbors: []notes.Neighbor{{
-		LinkedNote: notaLigada, Incoming: true, Outgoing: false,
-		IncomingPredicates: []string{"autor"}, OutgoingPredicates: []string{},
-	}}}
+const ligacaoDeTesteJSON = `{"source":{"id":"n1","title":"a","path":"a.md"},"target":{"id":"n2","title":"b","path":"pasta/b.md"},
+	"cited_title":"B","type":"typed","predicate":"autor","inferred_target":null}`
 
-	rec := getGrafo(t, graph, "member", "/notes/n1/neighbors")
+func ptr[T any](v T) *T { return &v }
 
-	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
-	assert.JSONEq(t, `[{"id":"n2","vault_id":"va","path":"b.md","updated_at":"2026-10-16T12:00:00Z","incoming":true,"outgoing":false,
-		"incoming_predicates":["autor"],"outgoing_predicates":[],"inferred":false}]`, rec.Body.String())
-	assert.Equal(t, []any{"neighbors", "n1", 0, 10}, []any{graph.method, graph.id, graph.offset, graph.limit})
+func TestV1GetLinksEBacklinks_UmItemPorLigacaoComFiltroDeTipo(t *testing.T) {
+	for _, sentido := range []string{"links", "backlinks"} {
+		graph := &fakeNoteGraph{links: []notes.Link{ligacaoDeTeste}}
+
+		rec := getGrafo(t, graph, "viewer", "/v1/notes/n1/"+sentido+"?type=typed&offset=3&limit=500")
+
+		require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+		assert.JSONEq(t, "["+ligacaoDeTesteJSON+"]", rec.Body.String())
+		assert.Equal(t, []any{sentido, "n1", 3, 100}, []any{graph.method, graph.id, graph.offset, graph.limit}, "limit acima do teto vira 100")
+		assert.Equal(t, notes.LinkFilter{Type: "typed", Page: notes.Page{Offset: 3, Limit: 100}}, graph.query)
+	}
 }
 
-func TestGetUnresolvedLinks_DevolveOTituloCitadoEOTipo(t *testing.T) {
-	graph := &fakeNoteGraph{unresolved: []notes.UnresolvedLink{{NoteID: "n1", Path: "a.md", Title: "Inexistente", Kind: "explicit"}}}
+func TestV1GetLinks_NaoResolvidaComPalpite(t *testing.T) {
+	palpite := notes.NoteSummary{ID: "k", Title: "Kubernetes", Path: "Kubernetes.md"}
+	graph := &fakeNoteGraph{links: []notes.Link{{Source: ligacaoDeTeste.Source, CitedTitle: "Kubernets", Type: "explicit", InferredTarget: &palpite}}}
 
-	rec := getGrafo(t, graph, "member", "/vaults/va/unresolved-links")
+	rec := getGrafo(t, graph, "member", "/v1/notes/n1/links")
 
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
-	assert.JSONEq(t, `[{"note_id":"n1","path":"a.md","title":"Inexistente","kind":"explicit"}]`, rec.Body.String())
-	assert.Equal(t, []any{"unresolved", "va"}, []any{graph.method, graph.id})
+	assert.JSONEq(t, `[{"source":{"id":"n1","title":"a","path":"a.md"},"target":null,"cited_title":"Kubernets","type":"explicit",
+		"predicate":null,"inferred_target":{"id":"k","title":"Kubernetes","path":"Kubernetes.md"}}]`, rec.Body.String())
+	assert.Equal(t, notes.LinkFilter{Page: notes.Page{Limit: 10}}, graph.query, "sem filtro, na pagina padrao")
+}
+
+func TestV1GetVaultLinks_FiltraPorStatusETipo(t *testing.T) {
+	graph := &fakeNoteGraph{}
+
+	rec := getGrafo(t, graph, "viewer", "/v1/vaults/va/links?status=unresolved&type=embed")
+
+	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+	assert.JSONEq(t, `[]`, rec.Body.String(), "lista vazia sai como array")
+	assert.Equal(t, "va", graph.id)
+	assert.Equal(t, notes.VaultLinkQuery{Status: notes.LinkUnresolved, LinkFilter: notes.LinkFilter{Type: "embed", Page: notes.Page{Limit: 10}}}, graph.query)
+}
+
+func TestV1Ligacoes_FiltroInvalido_Retorna400ComOValor(t *testing.T) {
+	for _, alvo := range []string{"/v1/notes/n1/links?type=forte", "/v1/notes/n1/backlinks?type=forte", "/v1/vaults/va/links?status=talvez", "/v1/vaults/va/links?type=forte"} {
+		rec := getGrafo(t, &fakeNoteGraph{}, "member", alvo)
+
+		assert.Equal(t, http.StatusBadRequest, rec.Code, alvo)
+		var corpo map[string]string
+		require.NoError(t, json.NewDecoder(rec.Body).Decode(&corpo), alvo)
+		assert.Equal(t, "invalid_request", corpo["error"], alvo)
+		assert.Regexp(t, "forte|talvez", corpo["message"], alvo)
+	}
+}
+
+func TestRotasDasLigacoesSemVersao_SaemSemVersaoObsoleta(t *testing.T) {
+	for _, rota := range []string{"/notes/n1/backlinks", "/notes/n1/neighbors", "/v1/notes/n1/neighbors", "/vaults/va/unresolved-links"} {
+		rec := getGrafo(t, &fakeNoteGraph{}, "member", rota)
+
+		assert.Equal(t, http.StatusNotFound, rec.Code, rota)
+	}
 }
 
 func TestGetMentions_DizOSentidoOTituloEAProbabilidade(t *testing.T) {
@@ -159,13 +194,14 @@ func TestGrafo_ErrosDeDominio_ViramStatus(t *testing.T) {
 		target string
 		status int
 	}{
-		"nota inexistente":      {notes.ErrNotFound, "/notes/x/backlinks", http.StatusNotFound},
+		"nota inexistente":      {notes.ErrNotFound, "/v1/notes/x/backlinks", http.StatusNotFound},
+		"saida sem nota":        {notes.ErrNotFound, "/v1/notes/x/links", http.StatusNotFound},
 		"mencao sem nota":       {notes.ErrNotFound, "/notes/x/mentions", http.StatusNotFound},
 		"sugestao sem nota":     {notes.ErrNotFound, "/notes/x/suggestions", http.StatusNotFound},
-		"cofre sem acesso":      {notes.ErrVaultForbidden, "/vaults/x/unresolved-links", http.StatusForbidden},
+		"cofre sem acesso":      {notes.ErrVaultForbidden, "/v1/vaults/x/links", http.StatusForbidden},
 		"comunidade sem acesso": {notes.ErrVaultForbidden, "/vaults/x/clusters", http.StatusForbidden},
-		"limit nao inteiro":     {nil, "/vaults/x/unresolved-links?limit=abc", http.StatusBadRequest},
-		"offset nao inteiro":    {nil, "/notes/x/neighbors?offset=abc", http.StatusBadRequest},
+		"limit nao inteiro":     {nil, "/v1/vaults/x/links?limit=abc", http.StatusBadRequest},
+		"offset nao inteiro":    {nil, "/v1/notes/x/links?offset=abc", http.StatusBadRequest},
 	}
 	for nome, caso := range casos {
 		rec := getGrafo(t, &fakeNoteGraph{err: caso.err}, "member", caso.target)
