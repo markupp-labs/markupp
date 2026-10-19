@@ -14,8 +14,8 @@ import (
 )
 
 // cofreComErroDeDigitacao monta um cofre indexado em que a nota a cita
-// "Kubernets", que não existe, e as notas postgres e postgrex ficam à mesma
-// distância de "postgrea", citada por s.
+// "Kubernets", que não existe, e s cita "postgresqk", mais perto do título de p, que
+// m menciona sem ligar, do que do título de x, que hub liga e que divide hub com s.
 func cofreComErroDeDigitacao(t *testing.T) (*pgxpool.Pool, *storage.PostgresNotesRepository, *storage.PostgresNoteGraph) {
 	t.Helper()
 	db := setupNotesDB(t)
@@ -23,10 +23,11 @@ func cofreComErroDeDigitacao(t *testing.T) (*pgxpool.Pool, *storage.PostgresNote
 	for _, nota := range []notes.Note{
 		notaComCaminho("k", "Kubernetes.md", "orquestrador"),
 		notaComCaminho("a", "a.md", "[[Kubernets]]"),
-		notaComCaminho("p", "postgres.md", "banco"),
-		notaComCaminho("x", "postgrex.md", "driver"),
-		notaComCaminho("hub", "hub.md", "[[postgrex]]"),
-		notaComCaminho("s", "s.md", "[[postgrea]] [[hub]]"),
+		notaComCaminho("p", "postgresql.md", "banco"),
+		notaComCaminho("x", "postgresqlx.md", "driver"),
+		notaComCaminho("m", "m.md", "postgresql sem ligar"),
+		notaComCaminho("hub", "hub.md", "[[postgresqlx]]"),
+		notaComCaminho("s", "s.md", "[[postgresqk]] [[hub]]"),
 	} {
 		storagetest.SaveNote(ctxDeTeste, t, repo, nota)
 	}
@@ -62,10 +63,10 @@ func TestLigacaoInferida_ExplicitaNaoEMarcada(t *testing.T) {
 	assert.False(t, lidas[0].Inferred)
 }
 
-func TestLigacaoInferida_ParentescoNoGrafoDesempataADistancia(t *testing.T) {
+func TestLigacaoInferida_ParentescoDecideEntreDistanciaEProbabilidade(t *testing.T) {
 	_, _, graph := cofreComErroDeDigitacao(t)
 
-	assert.Equal(t, []string{"hub", "s"}, backlinks(ctxDeTeste, t, graph, "x"), "x divide o hub com s")
+	assert.Equal(t, []string{"hub", "s"}, backlinks(ctxDeTeste, t, graph, "x"), "p esta mais perto; x e mais ligada e divide o hub com s")
 	assert.Empty(t, backlinks(ctxDeTeste, t, graph, "p"))
 }
 
@@ -74,13 +75,13 @@ func TestLigacaoInferida_ContaParaNotaOrfaENaoViraNaoResolvida(t *testing.T) {
 
 	orfas, err := graph.Orphans(ctxDeTeste, cofreDeTeste, 0, 100)
 	require.NoError(t, err)
-	assert.Equal(t, []string{"p"}, idsDe(orfas))
+	assert.Equal(t, []string{"m", "p"}, idsDe(orfas))
 
 	soltas, err := graph.UnresolvedLinks(ctxDeTeste, cofreDeTeste, 0, 100)
 	require.NoError(t, err)
 	assert.Equal(t, []notes.UnresolvedLink{
 		{NoteID: "a", Path: "a.md", Title: "Kubernets", Kind: "explicit"},
-		{NoteID: "s", Path: "s.md", Title: "postgrea", Kind: "explicit"},
+		{NoteID: "s", Path: "s.md", Title: "postgresqk", Kind: "explicit"},
 	}, soltas, "a ligacao escrita continua nao resolvida; a inferida nao entra")
 }
 
