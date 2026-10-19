@@ -82,6 +82,7 @@ func TestStartAuthorization_CIMDBuscaFalha_RecusaSemRedirectNemDetalhe(t *testin
 			assert.ErrorIs(t, err, fetcher.err, "a causa segue para o log")
 			assert.NotContains(t, err.Error(), "10.0.0.7")
 			assert.NotContains(t, err.Error(), "connection refused")
+			assert.Equal(t, []string{testClientID}, fetcher.calls, "sem documento fresco, a busca acontece")
 			assert.Empty(t, repo.savedCIMD)
 			assert.Empty(t, repo.created)
 		})
@@ -149,10 +150,14 @@ func TestStartAuthorization_CIMDBuscadoSemARedirect_RecusaSemRedirect(t *testing
 	repo := newFakeOAuthRepository()
 	params := validAuthorizeParams()
 	params.RedirectURI = "https://cliente.exemplo.dev/outra"
+	fetcher := testMetadataFetcher()
 
-	_, err := newTestServiceWithMetadata(repo, testMetadataFetcher()).StartAuthorization(context.Background(), params)
+	_, err := newTestServiceWithMetadata(repo, fetcher).StartAuthorization(context.Background(), params)
 
 	requireProtocolError(t, err, "invalid_request", "", "")
+	assert.Equal(t, []string{testClientID}, fetcher.calls)
+	assert.Equal(t, []savedCIMDClient{{Client: testClient(), ExpiresAt: testNow.Add(testMetadataTTL)}}, repo.savedCIMD,
+		"o documento válido fica em cache mesmo sem a redirect_uri pedida")
 	assert.Empty(t, repo.created)
 }
 
