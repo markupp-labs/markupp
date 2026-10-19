@@ -79,8 +79,12 @@ func NewFetcher(opts ...Option) (*Fetcher, error) {
 }
 
 // validateOptions recusa valores que deixariam a busca sem limite de tempo, o corpo
-// sempre vazio (ou limit+1 estourando em readLimited) ou o TTL fora de um intervalo.
+// sempre vazio (ou limit+1 estourando em readLimited), o TTL fora de um intervalo ou
+// a conexão sem política de IP (o Control entraria em pânico no dial).
 func (f *Fetcher) validateOptions() error {
+	if f.policy == nil {
+		return fmt.Errorf("%w: politica de IP nil; esperado IPPolicy nao nula", ErrInvalidOption)
+	}
 	if f.timeout <= 0 {
 		return fmt.Errorf("%w: timeout %s; esperado maior que zero", ErrInvalidOption, f.timeout)
 	}
