@@ -70,8 +70,9 @@
       </dialog>
     <% end %>
 
-    <%# @container: o lado a lado escolhe colunas ou pilha pela largura do main (application.css). md:pl-10 deixa a lombada (21px) fora do conteúdo. %>
-    <main class="@container min-w-0 p-4 md:p-6 md:pl-10">
+    <%# @container: o lado a lado escolhe colunas ou pilha pela largura do main (application.css). md:pl-10 deixa a lombada (21px) fora do conteúdo.
+        Com a nota, o main vira coluna e o form fica com o que sobra depois do aviso, sem rolar a página por ele. %>
+    <main class="@container min-w-0 p-4 has-[>.note-form]:flex has-[>.note-form]:flex-col md:p-6 md:pl-10">
       <%= render "layouts/flash" %>
       <% page = content_for?(:main) ? yield(:main) : yield %>
       <%# Páginas de erro pedem o mascote ao lado da mensagem (content_for :mascot). %>
