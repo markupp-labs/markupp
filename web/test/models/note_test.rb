@@ -149,7 +149,7 @@ class NoteTest < ActiveSupport::TestCase
 
     assert_not note.update(api, { path: " ", content: "x" })
 
-    assert_equal [ "Path is invalid" ], note.errors.full_messages_for(:path)
+    assert_equal [ "Path can't contain .. or pass 1024 characters" ], note.errors.full_messages_for(:path)
   end
 
   test "destroy deletes the note on the server" do
