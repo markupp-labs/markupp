@@ -56,6 +56,36 @@ func (q *Queries) ApproveOAuthRequest(ctx context.Context, arg ApproveOAuthReque
 	return i, err
 }
 
+const consumeOAuthRefreshToken = `-- name: ConsumeOAuthRefreshToken :one
+UPDATE oauth_tokens SET rotated_at = $1::TIMESTAMPTZ
+WHERE token_hash = $2::TEXT AND kind = 'refresh' AND NOT revoked
+  AND rotated_at IS NULL AND expires_at > $1::TIMESTAMPTZ
+RETURNING token_hash, authorization_id, kind, resource, scopes, expires_at, revoked, rotated_at, created_at
+`
+
+type ConsumeOAuthRefreshTokenParams struct {
+	Now       time.Time
+	TokenHash string
+}
+
+// Marca o refresh token como rotacionado; só um refresh válido e ainda não usado casa.
+func (q *Queries) ConsumeOAuthRefreshToken(ctx context.Context, arg ConsumeOAuthRefreshTokenParams) (OauthToken, error) {
+	row := q.db.QueryRow(ctx, consumeOAuthRefreshToken, arg.Now, arg.TokenHash)
+	var i OauthToken
+	err := row.Scan(
+		&i.TokenHash,
+		&i.AuthorizationID,
+		&i.Kind,
+		&i.Resource,
+		&i.Scopes,
+		&i.ExpiresAt,
+		&i.Revoked,
+		&i.RotatedAt,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const createOAuthRequest = `-- name: CreateOAuthRequest :exec
 INSERT INTO oauth_requests (id, client_id, redirect_uri, scopes, resource, state, code_challenge, created_at, expires_at)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
@@ -146,6 +176,25 @@ func (q *Queries) GetActiveOAuthAuthorization(ctx context.Context, arg GetActive
 	return i, err
 }
 
+const getActiveOAuthAuthorizationByID = `-- name: GetActiveOAuthAuthorizationByID :one
+SELECT id, user_id, client_id, scopes, created_at, updated_at, revoked_at FROM oauth_authorizations WHERE id = $1 AND revoked_at IS NULL
+`
+
+func (q *Queries) GetActiveOAuthAuthorizationByID(ctx context.Context, id string) (OauthAuthorization, error) {
+	row := q.db.QueryRow(ctx, getActiveOAuthAuthorizationByID, id)
+	var i OauthAuthorization
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.ClientID,
+		&i.Scopes,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.RevokedAt,
+	)
+	return i, err
+}
+
 const getOAuthClient = `-- name: GetOAuthClient :one
 
 SELECT id, source, name, redirect_uris, metadata_expires_at, created_at FROM oauth_clients WHERE id = $1
@@ -193,6 +242,42 @@ func (q *Queries) GetOAuthRequestByUsedCode(ctx context.Context, codeHash string
 	return i, err
 }
 
+const getOAuthTokenWithAuthorization = `-- name: GetOAuthTokenWithAuthorization :one
+SELECT oauth_tokens.token_hash, oauth_tokens.authorization_id, oauth_tokens.kind, oauth_tokens.resource, oauth_tokens.scopes, oauth_tokens.expires_at, oauth_tokens.revoked, oauth_tokens.rotated_at, oauth_tokens.created_at, oauth_authorizations.id, oauth_authorizations.user_id, oauth_authorizations.client_id, oauth_authorizations.scopes, oauth_authorizations.created_at, oauth_authorizations.updated_at, oauth_authorizations.revoked_at
+FROM oauth_tokens JOIN oauth_authorizations ON oauth_authorizations.id = oauth_tokens.authorization_id
+WHERE oauth_tokens.token_hash = $1
+`
+
+type GetOAuthTokenWithAuthorizationRow struct {
+	OauthToken         OauthToken
+	OauthAuthorization OauthAuthorization
+}
+
+// Qualquer token, mesmo revogado ou expirado, com a Autorização dona, mesmo revogada.
+func (q *Queries) GetOAuthTokenWithAuthorization(ctx context.Context, tokenHash string) (GetOAuthTokenWithAuthorizationRow, error) {
+	row := q.db.QueryRow(ctx, getOAuthTokenWithAuthorization, tokenHash)
+	var i GetOAuthTokenWithAuthorizationRow
+	err := row.Scan(
+		&i.OauthToken.TokenHash,
+		&i.OauthToken.AuthorizationID,
+		&i.OauthToken.Kind,
+		&i.OauthToken.Resource,
+		&i.OauthToken.Scopes,
+		&i.OauthToken.ExpiresAt,
+		&i.OauthToken.Revoked,
+		&i.OauthToken.RotatedAt,
+		&i.OauthToken.CreatedAt,
+		&i.OauthAuthorization.ID,
+		&i.OauthAuthorization.UserID,
+		&i.OauthAuthorization.ClientID,
+		&i.OauthAuthorization.Scopes,
+		&i.OauthAuthorization.CreatedAt,
+		&i.OauthAuthorization.UpdatedAt,
+		&i.OauthAuthorization.RevokedAt,
+	)
+	return i, err
+}
+
 const getPendingOAuthRequest = `-- name: GetPendingOAuthRequest :one
 SELECT id, client_id, redirect_uri, scopes, resource, state, code_challenge, created_at, expires_at, decided_at, user_id, code_hash, code_expires_at, code_used_at FROM oauth_requests
 WHERE id = $1 AND decided_at IS NULL AND expires_at > $2::TIMESTAMPTZ
@@ -223,6 +308,68 @@ func (q *Queries) GetPendingOAuthRequest(ctx context.Context, arg GetPendingOAut
 		&i.CodeUsedAt,
 	)
 	return i, err
+}
+
+const getRotatedOAuthRefreshToken = `-- name: GetRotatedOAuthRefreshToken :one
+SELECT token_hash, authorization_id, kind, resource, scopes, expires_at, revoked, rotated_at, created_at FROM oauth_tokens WHERE token_hash = $1 AND kind = 'refresh' AND rotated_at IS NOT NULL
+`
+
+func (q *Queries) GetRotatedOAuthRefreshToken(ctx context.Context, tokenHash string) (OauthToken, error) {
+	row := q.db.QueryRow(ctx, getRotatedOAuthRefreshToken, tokenHash)
+	var i OauthToken
+	err := row.Scan(
+		&i.TokenHash,
+		&i.AuthorizationID,
+		&i.Kind,
+		&i.Resource,
+		&i.Scopes,
+		&i.ExpiresAt,
+		&i.Revoked,
+		&i.RotatedAt,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const listActiveOAuthAuthorizations = `-- name: ListActiveOAuthAuthorizations :many
+SELECT oauth_authorizations.id, oauth_authorizations.user_id, oauth_authorizations.client_id, oauth_authorizations.scopes, oauth_authorizations.created_at, oauth_authorizations.updated_at, oauth_authorizations.revoked_at, oauth_clients.name AS client_name
+FROM oauth_authorizations JOIN oauth_clients ON oauth_clients.id = oauth_authorizations.client_id
+WHERE oauth_authorizations.user_id = $1 AND oauth_authorizations.revoked_at IS NULL
+ORDER BY oauth_authorizations.updated_at DESC
+`
+
+type ListActiveOAuthAuthorizationsRow struct {
+	OauthAuthorization OauthAuthorization
+	ClientName         string
+}
+
+func (q *Queries) ListActiveOAuthAuthorizations(ctx context.Context, userID string) ([]ListActiveOAuthAuthorizationsRow, error) {
+	rows, err := q.db.Query(ctx, listActiveOAuthAuthorizations, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListActiveOAuthAuthorizationsRow
+	for rows.Next() {
+		var i ListActiveOAuthAuthorizationsRow
+		if err := rows.Scan(
+			&i.OauthAuthorization.ID,
+			&i.OauthAuthorization.UserID,
+			&i.OauthAuthorization.ClientID,
+			&i.OauthAuthorization.Scopes,
+			&i.OauthAuthorization.CreatedAt,
+			&i.OauthAuthorization.UpdatedAt,
+			&i.OauthAuthorization.RevokedAt,
+			&i.ClientName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const redeemOAuthCode = `-- name: RedeemOAuthCode :one
@@ -256,6 +403,25 @@ func (q *Queries) RedeemOAuthCode(ctx context.Context, arg RedeemOAuthCodeParams
 		&i.CodeUsedAt,
 	)
 	return i, err
+}
+
+const revokeOAuthAuthorization = `-- name: RevokeOAuthAuthorization :execrows
+UPDATE oauth_authorizations SET revoked_at = $1::TIMESTAMPTZ
+WHERE id = $2 AND user_id = $3 AND revoked_at IS NULL
+`
+
+type RevokeOAuthAuthorizationParams struct {
+	At     time.Time
+	ID     string
+	UserID string
+}
+
+func (q *Queries) RevokeOAuthAuthorization(ctx context.Context, arg RevokeOAuthAuthorizationParams) (int64, error) {
+	result, err := q.db.Exec(ctx, revokeOAuthAuthorization, arg.At, arg.ID, arg.UserID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const revokeOAuthAuthorizationTokens = `-- name: RevokeOAuthAuthorizationTokens :exec

@@ -54,3 +54,32 @@ VALUES ($1, $2, $3, $4, $5, $6);
 
 -- name: RevokeOAuthAuthorizationTokens :exec
 UPDATE oauth_tokens SET revoked = TRUE WHERE authorization_id = $1;
+
+-- Marca o refresh token como rotacionado; só um refresh válido e ainda não usado casa.
+-- name: ConsumeOAuthRefreshToken :one
+UPDATE oauth_tokens SET rotated_at = sqlc.arg(now)::TIMESTAMPTZ
+WHERE token_hash = sqlc.arg(token_hash)::TEXT AND kind = 'refresh' AND NOT revoked
+  AND rotated_at IS NULL AND expires_at > sqlc.arg(now)::TIMESTAMPTZ
+RETURNING *;
+
+-- name: GetRotatedOAuthRefreshToken :one
+SELECT * FROM oauth_tokens WHERE token_hash = $1 AND kind = 'refresh' AND rotated_at IS NOT NULL;
+
+-- name: GetActiveOAuthAuthorizationByID :one
+SELECT * FROM oauth_authorizations WHERE id = $1 AND revoked_at IS NULL;
+
+-- Qualquer token, mesmo revogado ou expirado, com a Autorização dona, mesmo revogada.
+-- name: GetOAuthTokenWithAuthorization :one
+SELECT sqlc.embed(oauth_tokens), sqlc.embed(oauth_authorizations)
+FROM oauth_tokens JOIN oauth_authorizations ON oauth_authorizations.id = oauth_tokens.authorization_id
+WHERE oauth_tokens.token_hash = $1;
+
+-- name: ListActiveOAuthAuthorizations :many
+SELECT sqlc.embed(oauth_authorizations), oauth_clients.name AS client_name
+FROM oauth_authorizations JOIN oauth_clients ON oauth_clients.id = oauth_authorizations.client_id
+WHERE oauth_authorizations.user_id = $1 AND oauth_authorizations.revoked_at IS NULL
+ORDER BY oauth_authorizations.updated_at DESC;
+
+-- name: RevokeOAuthAuthorization :execrows
+UPDATE oauth_authorizations SET revoked_at = sqlc.arg(at)::TIMESTAMPTZ
+WHERE id = sqlc.arg(id) AND user_id = sqlc.arg(user_id) AND revoked_at IS NULL;

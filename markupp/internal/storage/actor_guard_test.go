@@ -24,6 +24,7 @@ var arquivosForaDoAtor = map[string]bool{
 	"notification_outbox.go": true,
 	"account_email.go":       true,
 	"oauth.go":               true,
+	"oauth_refresh.go":       true,
 }
 
 var acessoDiretoAoPool = regexp.MustCompile(`gen\.New\(|\binTx\(|pgx\.BeginFunc|pool\.\w+\(`)
