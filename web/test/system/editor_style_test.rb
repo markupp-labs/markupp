@@ -2,6 +2,8 @@ require "application_system_test_case"
 
 # Edição mostra o markdown como está escrito; o renderizado fica para a leitura e o lado a lado.
 class EditorStyleTest < ApplicationSystemTestCase
+  TRANSPARENT = "rgba(0, 0, 0, 0)".freeze
+  CODE_CONTENT = "Run `make` now.\n\n```\nlong fenced line\nx\n```\n".freeze
   CONTENT = "intro\n\n# Plan\n\nSome **bold** and [docs](https://example.com).\n".freeze
 
   FONT_SIZES_SCRIPT = <<~JS.freeze
@@ -11,7 +13,7 @@ class EditorStyleTest < ApplicationSystemTestCase
   JS
 
   setup do
-    use_fake_api(notes: [ { id: "1", path: "plan.md", content: CONTENT } ])
+    use_fake_api(notes: [ { id: "1", path: "plan.md", content: CONTENT }, { id: "2", path: "code.md", content: CODE_CONTENT } ])
     sign_in_through_form
   end
 
@@ -45,4 +47,20 @@ class EditorStyleTest < ApplicationSystemTestCase
     heading_size, text_size = evaluate_script("(function() { #{FONT_SIZES_SCRIPT} })()")
     assert_operator heading_size.to_f, :>, text_size.to_f
   end
+
+  # Fundo pintado por trecho de linha deixa o bloco cercado serrilhado: só o código inline leva fundo.
+  test "the editor gives a background to inline code but not to a fenced block" do
+    visit note_path("2")
+    assert_selector ".cm-content", text: "long fenced line"
+
+    assert_not_equal TRANSPARENT, background_of_innermost(".cm-line", "make")
+    assert_equal TRANSPARENT, background_of_innermost(".cm-line", "long fenced line")
+  end
+
+  private
+    def background_of_innermost(line_selector, text)
+      line = find(line_selector, text: text, match: :first)
+      element = line.all("span", text: text).last || line
+      element.style("background-color")["background-color"]
+    end
 end
