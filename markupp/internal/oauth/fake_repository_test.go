@@ -24,7 +24,7 @@ type fakeOAuthRepository struct {
 
 	getClientErr, createErr, approveErr, activeErr, redeemErr, saveErr              error
 	consumeErr, saveRefreshedErr, revokeAuditedErr, findErr, listErr, revokeAuthErr error
-	getFreshCIMDErr, saveCIMDErr                                                    error
+	getFreshCIMDErr, saveCIMDErr, registerDCRErr                                    error
 
 	created     []oauth.AuthorizationRequest
 	pendingNow  []time.Time
@@ -50,6 +50,8 @@ type fakeOAuthRepository struct {
 	getClientCalls []string
 	freshCIMDCalls []freshCIMDLookup
 	savedCIMD      []savedCIMDClient
+	// dcrRegistrations guarda cada chamada a RegisterDCRClient.
+	dcrRegistrations []oauth.DCRRegistration
 }
 
 // freshCIMDLookup é uma chamada a GetFreshCIMDClient.
@@ -218,6 +220,11 @@ func (f *fakeOAuthRepository) GetFreshCIMDClient(_ context.Context, id string, n
 		return oauth.Client{}, oauth.ErrClientNotFound
 	}
 	return client, nil
+}
+
+func (f *fakeOAuthRepository) RegisterDCRClient(_ context.Context, reg oauth.DCRRegistration) error {
+	f.dcrRegistrations = append(f.dcrRegistrations, reg)
+	return f.registerDCRErr
 }
 
 func (f *fakeOAuthRepository) SaveCIMDClient(_ context.Context, client oauth.Client, expiresAt, now time.Time) error {

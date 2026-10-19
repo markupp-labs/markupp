@@ -3,6 +3,7 @@ package oauth
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 )
 
@@ -171,6 +172,11 @@ type Repository interface {
 	// now, válido até expiresAt. Nunca sobrescreve um cliente de outra origem: nesse caso
 	// devolve ErrClientSourceConflict embrulhado.
 	SaveCIMDClient(ctx context.Context, client Client, expiresAt, now time.Time) error
+	// RegisterDCRClient grava o cliente de origem DCR criado em reg.IssuedAt. Numa
+	// transação serializada por uma trava única, apaga antes os pendentes criados há
+	// reg.PendingTTL ou mais e conta os que sobram: com reg.MaxPending ou mais, não grava
+	// e devolve *PendingClientLimitError.
+	RegisterDCRClient(ctx context.Context, reg DCRRegistration) error
 	// RecordAuditEvent grava um evento avulso do authorization server.
 	RecordAuditEvent(ctx context.Context, event AuditEvent) error
 	// RevokeAuthorization trava a Autorização, confere que ela é da conta e segue ativa
@@ -178,6 +184,27 @@ type Repository interface {
 	// com event.ClientID preenchido pela Autorização, numa transação. Devolve
 	// ErrAuthorizationNotFound se ela não existe, já foi revogada ou é de outra conta.
 	RevokeAuthorization(ctx context.Context, userID, authorizationID string, event AuditEvent) error
+}
+
+// DCRRegistration é o cliente a registrar por DCR (RFC 7591) com o teto e o prazo dos
+// registros pendentes: clientes DCR que nunca ganharam Autorização, revogada ou não.
+type DCRRegistration struct {
+	Client     Client
+	IssuedAt   time.Time
+	MaxPending int
+	PendingTTL time.Duration
+}
+
+// PendingClientLimitError recusa o registro DCR com o teto de pendentes atingido. FreesAt
+// é quando o pendente mais antigo expira e abre vaga.
+type PendingClientLimitError struct {
+	MaxPending int
+	FreesAt    time.Time
+}
+
+func (e *PendingClientLimitError) Error() string {
+	return fmt.Sprintf("teto de %d clientes dcr pendentes atingido; esperada vaga a partir de %s",
+		e.MaxPending, e.FreesAt.UTC().Format(time.RFC3339))
 }
 
 // TriggerExpiry diz se o token que disparou a revogação auditada ainda revoga depois de
