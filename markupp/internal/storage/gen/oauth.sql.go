@@ -17,7 +17,7 @@ UPDATE oauth_requests
 SET decided_at = $1::TIMESTAMPTZ, user_id = $2::TEXT,
     code_hash = $3::TEXT, code_expires_at = $4::TIMESTAMPTZ
 WHERE id = $5 AND decided_at IS NULL AND expires_at > $1::TIMESTAMPTZ
-RETURNING id, client_id, redirect_uri, scopes, resource, state, code_challenge, created_at, expires_at, decided_at, user_id, code_hash, code_expires_at, code_used_at
+RETURNING id, client_id, redirect_uri, scopes, resource, state, code_challenge, created_at, expires_at, decided_at, user_id, code_hash, code_expires_at, code_used_at, authorization_id, code_reused_at
 `
 
 type ApproveOAuthRequestParams struct {
@@ -52,6 +52,8 @@ func (q *Queries) ApproveOAuthRequest(ctx context.Context, arg ApproveOAuthReque
 		&i.CodeHash,
 		&i.CodeExpiresAt,
 		&i.CodeUsedAt,
+		&i.AuthorizationID,
+		&i.CodeReusedAt,
 	)
 	return i, err
 }
@@ -121,7 +123,7 @@ func (q *Queries) CreateOAuthRequest(ctx context.Context, arg CreateOAuthRequest
 const denyOAuthRequest = `-- name: DenyOAuthRequest :one
 UPDATE oauth_requests SET decided_at = $1::TIMESTAMPTZ, user_id = $2::TEXT
 WHERE id = $3 AND decided_at IS NULL AND expires_at > $1::TIMESTAMPTZ
-RETURNING id, client_id, redirect_uri, scopes, resource, state, code_challenge, created_at, expires_at, decided_at, user_id, code_hash, code_expires_at, code_used_at
+RETURNING id, client_id, redirect_uri, scopes, resource, state, code_challenge, created_at, expires_at, decided_at, user_id, code_hash, code_expires_at, code_used_at, authorization_id, code_reused_at
 `
 
 type DenyOAuthRequestParams struct {
@@ -148,6 +150,8 @@ func (q *Queries) DenyOAuthRequest(ctx context.Context, arg DenyOAuthRequestPara
 		&i.CodeHash,
 		&i.CodeExpiresAt,
 		&i.CodeUsedAt,
+		&i.AuthorizationID,
+		&i.CodeReusedAt,
 	)
 	return i, err
 }
@@ -217,7 +221,7 @@ func (q *Queries) GetOAuthClient(ctx context.Context, id string) (OauthClient, e
 }
 
 const getOAuthRequestByUsedCode = `-- name: GetOAuthRequestByUsedCode :one
-SELECT id, client_id, redirect_uri, scopes, resource, state, code_challenge, created_at, expires_at, decided_at, user_id, code_hash, code_expires_at, code_used_at FROM oauth_requests WHERE code_hash = $1::TEXT AND code_used_at IS NOT NULL
+SELECT id, client_id, redirect_uri, scopes, resource, state, code_challenge, created_at, expires_at, decided_at, user_id, code_hash, code_expires_at, code_used_at, authorization_id, code_reused_at FROM oauth_requests WHERE code_hash = $1::TEXT AND code_used_at IS NOT NULL
 `
 
 func (q *Queries) GetOAuthRequestByUsedCode(ctx context.Context, codeHash string) (OauthRequest, error) {
@@ -238,6 +242,8 @@ func (q *Queries) GetOAuthRequestByUsedCode(ctx context.Context, codeHash string
 		&i.CodeHash,
 		&i.CodeExpiresAt,
 		&i.CodeUsedAt,
+		&i.AuthorizationID,
+		&i.CodeReusedAt,
 	)
 	return i, err
 }
@@ -279,7 +285,7 @@ func (q *Queries) GetOAuthTokenWithAuthorization(ctx context.Context, tokenHash 
 }
 
 const getPendingOAuthRequest = `-- name: GetPendingOAuthRequest :one
-SELECT id, client_id, redirect_uri, scopes, resource, state, code_challenge, created_at, expires_at, decided_at, user_id, code_hash, code_expires_at, code_used_at FROM oauth_requests
+SELECT id, client_id, redirect_uri, scopes, resource, state, code_challenge, created_at, expires_at, decided_at, user_id, code_hash, code_expires_at, code_used_at, authorization_id, code_reused_at FROM oauth_requests
 WHERE id = $1 AND decided_at IS NULL AND expires_at > $2::TIMESTAMPTZ
 `
 
@@ -306,6 +312,8 @@ func (q *Queries) GetPendingOAuthRequest(ctx context.Context, arg GetPendingOAut
 		&i.CodeHash,
 		&i.CodeExpiresAt,
 		&i.CodeUsedAt,
+		&i.AuthorizationID,
+		&i.CodeReusedAt,
 	)
 	return i, err
 }
@@ -393,7 +401,7 @@ func (q *Queries) LockOAuthAuthorization(ctx context.Context, id string) (OauthA
 const redeemOAuthCode = `-- name: RedeemOAuthCode :one
 UPDATE oauth_requests SET code_used_at = $1::TIMESTAMPTZ
 WHERE code_hash = $2::TEXT AND code_used_at IS NULL AND code_expires_at > $1::TIMESTAMPTZ
-RETURNING id, client_id, redirect_uri, scopes, resource, state, code_challenge, created_at, expires_at, decided_at, user_id, code_hash, code_expires_at, code_used_at
+RETURNING id, client_id, redirect_uri, scopes, resource, state, code_challenge, created_at, expires_at, decided_at, user_id, code_hash, code_expires_at, code_used_at, authorization_id, code_reused_at
 `
 
 type RedeemOAuthCodeParams struct {
@@ -419,6 +427,8 @@ func (q *Queries) RedeemOAuthCode(ctx context.Context, arg RedeemOAuthCodeParams
 		&i.CodeHash,
 		&i.CodeExpiresAt,
 		&i.CodeUsedAt,
+		&i.AuthorizationID,
+		&i.CodeReusedAt,
 	)
 	return i, err
 }

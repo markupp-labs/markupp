@@ -84,20 +84,22 @@ type OauthClient struct {
 }
 
 type OauthRequest struct {
-	ID            string
-	ClientID      string
-	RedirectUri   string
-	Scopes        []string
-	Resource      string
-	State         pgtype.Text
-	CodeChallenge string
-	CreatedAt     time.Time
-	ExpiresAt     time.Time
-	DecidedAt     pgtype.Timestamptz
-	UserID        pgtype.Text
-	CodeHash      pgtype.Text
-	CodeExpiresAt pgtype.Timestamptz
-	CodeUsedAt    pgtype.Timestamptz
+	ID              string
+	ClientID        string
+	RedirectUri     string
+	Scopes          []string
+	Resource        string
+	State           pgtype.Text
+	CodeChallenge   string
+	CreatedAt       time.Time
+	ExpiresAt       time.Time
+	DecidedAt       pgtype.Timestamptz
+	UserID          pgtype.Text
+	CodeHash        pgtype.Text
+	CodeExpiresAt   pgtype.Timestamptz
+	CodeUsedAt      pgtype.Timestamptz
+	AuthorizationID pgtype.Text
+	CodeReusedAt    pgtype.Timestamptz
 }
 
 type OauthToken struct {

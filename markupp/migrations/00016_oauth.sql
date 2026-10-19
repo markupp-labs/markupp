@@ -27,27 +27,32 @@ CREATE UNIQUE INDEX oauth_authorizations_active_idx ON oauth_authorizations (use
 CREATE INDEX oauth_authorizations_client_id_idx ON oauth_authorizations (client_id);
 
 -- Pedido de autorização: nasce na chegada ao /oauth/authorize, recebe a conta na decisão
--- e o hash do código quando aprovado.
+-- e, quando aprovado, o hash do código e a Autorização criada ou ampliada por ele.
+-- code_reused_at marca a reapresentação do código já usado (RFC 9700, 4.4.2): com ela, o
+-- par do primeiro uso não é mais gravado.
 CREATE TABLE oauth_requests (
-    id              TEXT PRIMARY KEY,
-    client_id       TEXT NOT NULL REFERENCES oauth_clients (id) ON DELETE CASCADE,
-    redirect_uri    TEXT NOT NULL,
-    scopes          TEXT[] NOT NULL CHECK (cardinality(scopes) > 0
+    id               TEXT PRIMARY KEY,
+    client_id        TEXT NOT NULL REFERENCES oauth_clients (id) ON DELETE CASCADE,
+    redirect_uri     TEXT NOT NULL,
+    scopes           TEXT[] NOT NULL CHECK (cardinality(scopes) > 0
         AND scopes <@ ARRAY['notas:leitura', 'notas:escrita', 'administracao']::TEXT[]),
-    resource        TEXT NOT NULL,
-    state           TEXT,
-    code_challenge  TEXT NOT NULL,
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
-    expires_at      TIMESTAMPTZ NOT NULL,
-    decided_at      TIMESTAMPTZ,
-    user_id         TEXT REFERENCES users (id) ON DELETE CASCADE,
-    code_hash       TEXT UNIQUE,
-    code_expires_at TIMESTAMPTZ,
-    code_used_at    TIMESTAMPTZ
+    resource         TEXT NOT NULL,
+    state            TEXT,
+    code_challenge   TEXT NOT NULL,
+    created_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
+    expires_at       TIMESTAMPTZ NOT NULL,
+    decided_at       TIMESTAMPTZ,
+    user_id          TEXT REFERENCES users (id) ON DELETE CASCADE,
+    code_hash        TEXT UNIQUE,
+    code_expires_at  TIMESTAMPTZ,
+    code_used_at     TIMESTAMPTZ,
+    authorization_id TEXT NULL REFERENCES oauth_authorizations (id) ON DELETE CASCADE,
+    code_reused_at   TIMESTAMPTZ NULL
 );
 CREATE INDEX oauth_requests_expires_at_idx ON oauth_requests (expires_at);
 CREATE INDEX oauth_requests_client_id_idx ON oauth_requests (client_id);
 CREATE INDEX oauth_requests_user_id_idx ON oauth_requests (user_id);
+CREATE INDEX oauth_requests_authorization_id_idx ON oauth_requests (authorization_id);
 
 CREATE TABLE oauth_tokens (
     token_hash       TEXT PRIMARY KEY,
