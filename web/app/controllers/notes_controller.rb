@@ -4,6 +4,7 @@ class NotesController < ApplicationController
   before_action :require_tenant
   before_action :require_writer, only: :new
   before_action :set_tree, except: :destroy, unless: -> { request.format.json? }
+  before_action :set_typed_path, only: %i[create update]
 
   # A tela padrão é uma nota nova em branco; viewer não cria, então só escolhe na árvore.
   def index
@@ -25,7 +26,7 @@ class NotesController < ApplicationController
   end
 
   def create
-    @note = Note.new(path: note_path_param(note_params[:title]), content: note_content_param)
+    @note = Note.new(path: resolved_path, content: note_content_param)
     if @note.save(credential.api)
       redirect_to note_path(@note), notice: t(".created")
     else
@@ -35,7 +36,7 @@ class NotesController < ApplicationController
 
   def update
     @note = Note.new(id: params[:id], updated_at: params[:last_modified_at])
-    if @note.update(credential.api, { path: note_path_param(note_params[:title]), content: note_content_param }, force: params[:force] == "true")
+    if @note.update(credential.api, { path: resolved_path, content: note_content_param }, force: params[:force] == "true")
       redirect_to note_path(@note), notice: t(".saved")
     else
       render :show, status: path_error_status
@@ -51,12 +52,16 @@ class NotesController < ApplicationController
   end
 
   private
-    def note_params = params.expect(note: [ :folder, :title, :content ])
+    def note_params = params.expect(note: [ :path, :content ])
 
-    # Sem o campo markdown (nota nova) o nome ganha .md; nota existente sem .md continua sem.
-    def note_path_param(title)
-      Note.compose_path(folder: note_params[:folder], title:, markdown: params[:markdown] != "false")
+    # O caminho volta ao campo como foi digitado num erro; a origem (caminho lido, ou a pasta da nota nova) segue a mesma
+    # para o próximo envio resolver o relativo a partir dela.
+    def set_typed_path
+      @typed_path = note_params[:path]
+      @origin_path = params[:origin_path].to_s
     end
+
+    def resolved_path = Note.new(path: @origin_path).resolve(@typed_path)
 
     def note_content_param = Note.restore_line_breaks(note_params[:content], crlf: params[:crlf] == "true")
 

@@ -99,7 +99,7 @@ class NoteTest < ActiveSupport::TestCase
 
   test "save with a blank title flags the title without calling the API" do
     api = FakeMarkuppApi.new(notes: [])
-    note = Note.new(path: Note.compose_path(folder: "work", title: "  "), content: "x")
+    note = Note.new(path: Note.blank("work").resolve("  "), content: "x")
 
     assert_not note.save(api)
     assert note.errors.of_kind?(:title, :blank)
@@ -188,22 +188,6 @@ class NoteTest < ActiveSupport::TestCase
     assert_equal "work/2026", note.folder
     assert note.markdown?
     assert_equal [ "README", "", false ], Note.new(path: "README").then { [ it.title, it.folder, it.markdown? ] }
-  end
-
-  test "compose_path joins folder and title and adds .md back" do
-    assert_equal "work/2026/Plan.md", Note.compose_path(folder: "work/2026", title: "Plan")
-    assert_equal "Plan.md", Note.compose_path(folder: "", title: " Plan ")
-    assert_equal "README", Note.compose_path(folder: nil, title: "README", markdown: false)
-  end
-
-  test "compose_path reads the folder like a unix path, with or without the slashes around it" do
-    assert_equal "work/2026/Plan.md", Note.compose_path(folder: "/work/2026/", title: "Plan")
-    assert_equal "Plan.md", Note.compose_path(folder: "/", title: "Plan")
-  end
-
-  test "compose_path leaves the name empty for a blank title" do
-    assert_equal "work/.md", Note.compose_path(folder: "work", title: "  ")
-    assert_equal "work/", Note.compose_path(folder: "work", title: "", markdown: false)
   end
 
   test "a path ending in a slash has an empty title and keeps the folder" do

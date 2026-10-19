@@ -1,4 +1,4 @@
-<%# Nota nova é New note na aba até salvar, mesmo com título digitado (e devolvido pelo servidor num erro). %>
+<%# Nota nova é New note na aba até salvar, mesmo com caminho digitado (e devolvido pelo servidor num erro). %>
 <% content_for :title, @note.persisted? ? @note.title.presence : t("notes.sidebar.new_note") %>
 <%# Sem cache do Turbo: voltar para a nota busca a versão atual, e o editor não é clonado no snapshot. %>
 <% content_for :head, tag.meta(name: "turbo-cache-control", content: "no-cache") %>
@@ -18,21 +18,23 @@
                               "keydown@window->note-mode#shortcut input->note-mode#render turbo:load@document->note-mode#scrollToHash click->note-mode#followAnchor scroll->note-mode#followScroll:capture " \
                               "input->note-form#track submit->note-form#submit turbo:submit-start@document->note-form#allowLeavingOnDelete " \
                               "beforeunload@window->note-form#warnBeforeUnload turbo:before-visit@document->note-form#confirmVisit " \
-                              "keydown.shift+tab->note-form#focusTitle note-form:heading->editor#replaceStart" } do |form| %>
-  <%# Erro de caminho (API) ou de título em branco: os dois aparecem sob o título. %>
+                              "keydown.shift+tab->note-form#focusPath note-form:heading->editor#replaceStart" } do |form| %>
+  <%# Erro de caminho (API) ou de nome em branco: os dois aparecem sob o campo. %>
   <% path_error = @note.errors.full_messages_for(:path).first || @note.errors.full_messages_for(:title).first %>
   <header class="flex flex-wrap items-center gap-x-3 gap-y-1">
-    <%# Breadcrumb da pasta: pequeno, acima do título, trocável à parte. No celular ganha a linha inteira e os controles
-        descem para a linha de baixo, sem cortar o campo. %>
-    <div class="flex min-w-0 flex-1 items-center gap-1 text-ink-muted max-md:basis-full">
-      <%= icon("folder") %>
-      <%= form.label :folder, class: "sr-only" %>
-      <%# Como no Unix: a raiz é só a barra, e uma pasta lê /work/ideas. %>
-      <span aria-hidden="true">/</span>
-      <%= form.text_field :folder, value: @note.folder, spellcheck: false, autocomplete: "off", readonly: !writer,
-                          data: { note_form_target: "folder" },
-                          class: "field-sizing-content min-w-24 max-w-full rounded-md border border-transparent bg-transparent px-1 py-0.5 " \
-                                 "placeholder:text-ink-muted hover:border-line focus:border-line focus:text-ink focus:outline-none" %>
+    <%# Pasta e nome num campo só: o caminho inteiro sem .md (/work/plano). Editar é renomear e mover, como o :e do Vim,
+        com a pasta da nota como diretório atual (Note#resolve); a origem vai escondida para o servidor resolver. Nota nova
+        abre com a pasta de onde veio e o foco no fim; Tab vai para o fim do conteúdo. Num erro o campo volta como foi
+        digitado. No celular ganha a linha inteira e os controles descem para a linha de baixo, sem cortar o campo. %>
+    <div class="min-w-0 flex-1 max-md:basis-full">
+      <%= form.label :path, class: "sr-only" %>
+      <%= form.text_field :path, value: @typed_path || @note.location, autofocus: writer && !@note.persisted?,
+                          spellcheck: false, autocomplete: "off", readonly: !writer,
+                          aria: { invalid: path_error.present?, describedby: ("note_path_error" if path_error) },
+                          data: { note_form_target: "path", action: "input->note-form#syncHeading input->note-form#clearBlankName keydown.tab->editor#focusEnd" },
+                          class: "w-full rounded-md border border-transparent bg-transparent px-1 py-0.5 text-2xl font-semibold text-ink " \
+                                 "hover:border-line focus:border-accent focus-visible:outline-none aria-invalid:border-danger" %>
+      <%= hidden_field_tag :origin_path, @origin_path || @note.path, id: nil %>
     </div>
     <div role="group" aria-label="<%= t(".mode") %>" class="flex items-center rounded-md border border-line">
       <% NoteModeHelper::NOTE_MODES.each do |name| %>
@@ -60,20 +62,10 @@
     <% end %>
   </header>
 
-  <div>
-    <%# Título = nome do arquivo sem .md, obrigatório. Nota nova abre com ele vazio e focado; Tab vai para o fim do conteúdo. %>
-    <%= form.label :title, class: "sr-only" %>
-    <%= form.text_field :title, value: @note.title, autofocus: writer && !@note.persisted?,
-                        spellcheck: false, autocomplete: "off", readonly: !writer,
-                        aria: { invalid: path_error.present?, describedby: ("note_path_error" if path_error) },
-                        data: { note_form_target: "title", action: "input->note-form#syncHeading input->note-form#clearBlankTitle keydown.tab->editor#focusEnd" },
-                        class: "w-full rounded-md border border-transparent bg-transparent px-1 py-0.5 text-2xl font-semibold text-ink " \
-                               "hover:border-line focus:border-accent focus-visible:outline-none aria-invalid:border-danger" %>
-    <%# Sempre presente: o note-form mostra aqui o título em branco sem ir ao servidor. É alerta porque o Ctrl+S pode vir
-        do próprio título, e aí devolver o foco a ele não anuncia nada. %>
-    <%= tag.p path_error, id: "note_path_error", role: "alert", hidden: path_error.blank?, class: "px-1 text-danger",
-                          data: { note_form_target: [ "titleError", ("pending" if path_error) ].compact.join(" ") } %>
-  </div>
+  <%# Sempre presente: o note-form mostra aqui o nome em branco sem ir ao servidor. É alerta porque o Ctrl+S pode vir
+      do próprio campo, e aí devolver o foco a ele não anuncia nada. %>
+  <%= tag.p path_error, id: "note_path_error", role: "alert", hidden: path_error.blank?, class: "-mt-2 px-1 text-danger",
+                        data: { note_form_target: [ "pathError", ("pending" if path_error) ].compact.join(" ") } %>
 
   <% if @conflict %>
     <div role="alert" data-note-form-target="pending" class="flex flex-wrap items-center gap-3 rounded-md border border-danger p-2">
@@ -86,7 +78,6 @@
 
   <%= hidden_field_tag :last_modified_at, @note.updated_at&.iso8601(3), id: nil %>
   <%= hidden_field_tag :crlf, @note.crlf?, id: nil %>
-  <%= hidden_field_tag :markdown, @note.markdown?, id: nil %>
   <div class="note-panes min-h-0 flex-1 gap-6">
     <%# O editor monta o CodeMirror aqui, ao lado do textarea. Na nota nova o caminho ainda não existe: rótulo Content. %>
     <div class="note-editor-pane flex min-w-0 flex-col">

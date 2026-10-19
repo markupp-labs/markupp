@@ -2,17 +2,19 @@ import { Controller } from "@hotwired/stimulus"
 
 // Salvar explícito: Ctrl+S ou Cmd+S submete, marca alterações não salvas e avisa antes de sair com elas.
 // Com aviso de conflito ou erro de caminho na tela, o que o usuário digitou ainda não está no servidor.
-// Pasta e título contam como alteração: renomear e mover também precisam salvar.
+// O caminho conta como alteração: renomear e mover também precisam salvar.
 // Nota nova sem nada escrito não é alteração: sair dela a descarta sem perguntar.
-// O título é o nome do arquivo e não há nome automático: sem ele o formulário não sai do navegador.
+// Não há nome automático: com o nome vazio (campo em branco ou barra no fim) o formulário não sai do navegador.
+// A resolução do caminho (relativo, absoluto, .md) é só do servidor (Note#resolve); aqui só o nome vazio.
 export default class extends Controller {
-  static targets = [ "source", "title", "folder", "unsaved", "save", "pending", "titleError" ]
+  static targets = [ "source", "path", "unsaved", "save", "pending", "pathError" ]
   static values = { leaveMessage: String, new: Boolean, blankTitle: String }
 
   connect() {
     this.originals = this.fields.map((field) => field.defaultValue)
-    const heading = headingFor(this.titleTarget.value)
+    const heading = headingFor(this.pathTarget.value)
     this.heading = this.newValue && this.sourceTarget.value.startsWith(heading) ? heading : ""
+    if (this.newValue) this.moveCaretToEnd()
     this.track()
   }
 
@@ -28,49 +30,54 @@ export default class extends Controller {
     if (this.hasSaveTarget) this.saveTarget.hidden = !this.changed
   }
 
-  // Só na nota nova: o "# título" no começo do conteúdo acompanha o título, enquanto o usuário não mexer nele.
+  // Só na nota nova: o "# nome" no começo do conteúdo acompanha o caminho, enquanto o usuário não mexer nele.
   // O editor troca o cabeçalho anterior pelo novo e marca applied; se o começo mudou, deixa como está.
   syncHeading() {
     if (!this.newValue) return
 
-    const next = headingFor(this.titleTarget.value)
+    const next = headingFor(this.pathTarget.value)
     const { detail } = this.dispatch("heading", { detail: { from: this.heading, to: next, applied: false } })
     if (detail.applied) this.heading = next
   }
 
-  // Shift+Tab no conteúdo volta ao título, com o cursor no fim dele.
-  focusTitle(event) {
+  // Shift+Tab no conteúdo volta ao caminho, com o cursor no fim dele.
+  focusPath(event) {
     if (!event.target.closest(".cm-editor")) return
 
     event.preventDefault()
-    this.titleTarget.focus()
-    this.titleTarget.setSelectionRange(this.titleTarget.value.length, this.titleTarget.value.length)
+    this.pathTarget.focus()
+    this.moveCaretToEnd()
   }
 
-  // Título em branco: avisa sob o campo e devolve o foco a ele, com pasta e conteúdo como estão.
+  // A nota nova abre com a pasta no campo (/work/): o que se digita entra depois dela.
+  moveCaretToEnd() {
+    this.pathTarget.setSelectionRange(this.pathTarget.value.length, this.pathTarget.value.length)
+  }
+
+  // Nome em branco: avisa sob o campo e devolve o foco a ele, com o caminho digitado e o conteúdo como estão.
   submit(event) {
-    if (this.titleTarget.value.trim()) return this.allowLeaving()
+    if (nameOf(this.pathTarget.value)) return this.allowLeaving()
 
     event.preventDefault()
-    this.refuseBlankTitle()
+    this.refuseBlankName()
   }
 
-  refuseBlankTitle() {
-    this.titleErrorTarget.textContent = this.blankTitleValue
-    this.titleErrorTarget.hidden = false
-    this.titleTarget.setAttribute("aria-invalid", "true")
-    this.titleTarget.setAttribute("aria-describedby", this.titleErrorTarget.id)
-    this.titleTarget.focus()
+  refuseBlankName() {
+    this.pathErrorTarget.textContent = this.blankTitleValue
+    this.pathErrorTarget.hidden = false
+    this.pathTarget.setAttribute("aria-invalid", "true")
+    this.pathTarget.setAttribute("aria-describedby", this.pathErrorTarget.id)
+    this.pathTarget.focus()
   }
 
-  // O aviso de título em branco sai assim que há título; outro erro de caminho fica até o servidor responder.
-  clearBlankTitle() {
-    if (!this.titleTarget.value.trim() || this.titleErrorTarget.textContent != this.blankTitleValue) return
+  // O aviso de nome em branco sai assim que há nome; outro erro de caminho fica até o servidor responder.
+  clearBlankName() {
+    if (!nameOf(this.pathTarget.value) || this.pathErrorTarget.textContent != this.blankTitleValue) return
 
-    this.titleErrorTarget.textContent = ""
-    this.titleErrorTarget.hidden = true
-    this.titleTarget.removeAttribute("aria-invalid")
-    this.titleTarget.removeAttribute("aria-describedby")
+    this.pathErrorTarget.textContent = ""
+    this.pathErrorTarget.hidden = true
+    this.pathTarget.removeAttribute("aria-invalid")
+    this.pathTarget.removeAttribute("aria-describedby")
   }
 
   allowLeaving() {
@@ -91,7 +98,7 @@ export default class extends Controller {
   }
 
   get fields() {
-    return [ this.sourceTarget, this.titleTarget, this.folderTarget ]
+    return [ this.sourceTarget, this.pathTarget ]
   }
 
   get changed() {
@@ -100,9 +107,13 @@ export default class extends Controller {
   }
 }
 
-// Só o editor põe o cabeçalho; o servidor grava o conteúdo como veio. O título é o nome do arquivo: o que vem antes
-// da última barra é pasta e não entra; com barra no fim não há nome, e nem cabeçalho.
-function headingFor(title) {
-  const name = title.trim().split("/").pop().trim()
+// O nome da nota no caminho digitado, como o servidor lê: o último segmento, sem o .md final; vazio com barra no fim.
+function nameOf(path) {
+  return path.trim().replace(/\.md$/, "").split("/").pop()
+}
+
+// Só o editor põe o cabeçalho; o servidor grava o conteúdo como veio. Leva só o nome: pastas e .md não entram.
+function headingFor(path) {
+  const name = nameOf(path).trim()
   return name ? `# ${name}\n\n` : ""
 }

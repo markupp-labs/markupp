@@ -31,11 +31,6 @@ class Note
 
   MARKDOWN_EXTENSION = ".md"
 
-  # O título é o nome do arquivo sem .md, como no Obsidian; título em branco deixa o nome vazio (save e update recusam).
-  def self.compose_path(folder:, title:, markdown: true)
-    [ folder.to_s.gsub(%r{\A/+|/+\z}, "").presence, "#{title.to_s.strip}#{MARKDOWN_EXTENSION if markdown}" ].compact.join("/")
-  end
-
   def persisted? = id.present?
 
   # O navegador troca as quebras de linha da nota; ela volta com a que tinha.
@@ -47,8 +42,8 @@ class Note
 
   def crlf? = content.to_s.include?("\r\n")
 
-  # Nota em branco no editor: sem título, só o conteúdo vazio na pasta.
-  def self.blank(folder) = new(path: compose_path(folder:, title: ""), content: "")
+  # Nota em branco no editor: nome vazio na pasta (folder vem como a barra lateral manda, com ou sem barras em volta).
+  def self.blank(folder) = new(path: [ *folder.to_s.split("/").compact_blank, "" ].join("/"), content: "")
 
   # Não existe nome automático: título em branco recusa sem chamar a API.
   def save(api)
@@ -83,11 +78,19 @@ class Note
 
   def folder_names = path_segments[...-1]
 
-  # Caminho digitado no campo da nota, com a pasta desta nota como diretório atual.
-  def resolve(typed) = Note.compose_path(folder:, title: typed, markdown: markdown?)
+  # Caminho digitado no campo da nota, como o :e do Vim com a pasta desta nota como diretório atual: barra no começo
+  # parte da raiz. O .md final digitado é absorvido e volta uma vez só; outra extensão fica no nome (teste.pdf.md).
+  # Nota sem .md continua sem enquanto o nome não muda. Barra no fim deixa o nome vazio (save e update recusam);
+  # ".", ".." e barras repetidas vão como vieram, a API decide.
+  def resolve(typed)
+    typed = typed.to_s.strip
+    base = (typed.start_with?("/") ? typed.delete_prefix("/") : [ folder.presence, typed ].compact.join("/")).delete_suffix(MARKDOWN_EXTENSION)
+    new_name = base.split("/", -1).last.to_s
+    new_name.empty? || (!markdown? && new_name == name) ? base : "#{base}#{MARKDOWN_EXTENSION}"
+  end
 
-  # O caminho como o campo mostra.
-  def location = path.to_s
+  # O caminho como o campo mostra: absoluto, sem .md.
+  def location = "/#{path.to_s.delete_suffix(MARKDOWN_EXTENSION)}"
 
   private
     # A barra no fim fica como nome vazio ("work/" é título em branco na pasta work).

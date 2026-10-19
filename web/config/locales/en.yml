@@ -9,6 +9,7 @@ en:
           attributes:
             path:
               taken: "already taken"
+              invalid: "can't contain .. or pass 1024 characters"
         session_login:
           attributes:
             base:
