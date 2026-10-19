@@ -214,6 +214,11 @@
   display: none;
 }
 
+/* O texto do título começa depois da borda e do padding do campo (px-1); o markdown renderizado começa ali também. */
+.note-preview {
+  padding-left: calc(0.25rem + 1px);
+}
+
 @media (width >= 48rem) {
   /* No lado a lado a nota ocupa a altura da tela e cada painel rola sozinho, como no VS Code: o editor rola o
      próprio scroller e o preview acompanha (note_mode_controller.js). */
