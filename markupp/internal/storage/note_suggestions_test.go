@@ -74,6 +74,26 @@ func TestNoteGraph_Suggestions_NotaSemLigacaoNemTermoEmComum_Vazio(t *testing.T)
 	assert.Empty(t, sugestoes(t, graph, "longe", 0, 100))
 }
 
+func TestNoteGraph_Suggestions_CandidataLexicaSoPelosDezTermosDeMaiorPeso(t *testing.T) {
+	db := setupNotesDB(t)
+	repo := storage.NewPostgresNotesRepository(db, "simple")
+	repetidas := palavrasDistintas("raro", 10)
+	for _, nota := range []notes.Note{
+		notaComCaminho("x", "x.md", repetidas+" "+repetidas+" fraco"),
+		notaComCaminho("c", "c.md", "fraco"),
+		notaComCaminho("o1", "o1.md", "outro"),
+		notaComCaminho("o2", "o2.md", "outro"),
+		notaComCaminho("o3", "o3.md", "outro"),
+	} {
+		storagetest.SaveNote(ctxDeTeste, t, repo, nota)
+	}
+	indexaTodosOsCofres(t, db, "simple")
+	graph := storage.NewPostgresNoteGraph(db, "simple")
+
+	assert.Empty(t, sugestoes(t, graph, "x", 0, 100), "fraco e o 12o termo de x: c nao e candidata")
+	assert.Equal(t, []string{"x.md"}, caminhosDasSugestoes(sugestoes(t, graph, "c", 0, 100)), "fraco e o termo de maior peso de c")
+}
+
 func TestNoteGraph_Suggestions_ViewerLeEEstranhoNaoVe(t *testing.T) {
 	db := setupNotesDB(t)
 	repo := storage.NewPostgresNotesRepository(db, "simple")

@@ -130,6 +130,7 @@ func TestRLS_PapelDoIndexador_NaoGravaDfNemMarcaOutroCofre(t *testing.T) {
 
 	for _, sql := range []string{
 		"WITH i AS (INSERT INTO vault_term_frequencies (vault_id, term, df) VALUES ('vb', 'x', 1) RETURNING 1) SELECT count(*) FROM i",
+		"WITH i AS (INSERT INTO vault_term_stats (vault_id, note_count) VALUES ('vb', 1) RETURNING 1) SELECT count(*) FROM i",
 		"WITH i AS (INSERT INTO vault_second_stage_queue (vault_id) VALUES ('vb') RETURNING 1) SELECT count(*) FROM i",
 	} {
 		_, err := comoIndexador(t, db, "t1", "va", sql)
