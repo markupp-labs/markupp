@@ -111,6 +111,9 @@ en:
       submitting: "Resetting"
     create:
       changed: "Password changed. Log in with the new one."
+  password_changes:
+    create:
+      sent: "Password reset email sent to %{email}. Use its token to choose the new password."
   email_verifications:
     create:
       sent: "Confirmation email sent. It may take a few minutes."
@@ -157,6 +160,10 @@ en:
         send: "Send confirmation email"
         sending: "Sending"
         have_token: "I have a token"
+        password: "Password"
+        password_hint: "The server emails a token to %{email}; use it to choose the new password."
+        change_password: "Change password"
+        have_reset_token: "I have a reset token"
     appearances:
       show:
         title: "Appearance"
