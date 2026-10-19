@@ -107,7 +107,8 @@ type Repository interface {
 	GetPendingRequest(ctx context.Context, id string, now time.Time) (AuthorizationRequest, error)
 	// ApproveRequest marca o pedido como decidido, grava o hash do código, cria a
 	// Autorização ativa da conta para o cliente ou amplia os escopos dela com os do
-	// pedido, e audita oauth.authorize com sucesso, tudo numa transação. Devolve
+	// pedido, grava no pedido o ID dessa Autorização e audita oauth.authorize com
+	// sucesso, tudo numa transação. Devolve
 	// ErrRequestNotFound se o pedido já não estiver pendente.
 	ApproveRequest(ctx context.Context, approval Approval) (AuthorizationRequest, error)
 	// DenyRequest marca o pedido como decidido e audita oauth.authorize com falha, na

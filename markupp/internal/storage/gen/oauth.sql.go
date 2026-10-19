@@ -487,7 +487,21 @@ func (q *Queries) SaveOAuthToken(ctx context.Context, arg SaveOAuthTokenParams) 
 	return err
 }
 
-const upsertOAuthAuthorization = `-- name: UpsertOAuthAuthorization :exec
+const setOAuthRequestAuthorization = `-- name: SetOAuthRequestAuthorization :exec
+UPDATE oauth_requests SET authorization_id = $1::TEXT WHERE id = $2
+`
+
+type SetOAuthRequestAuthorizationParams struct {
+	AuthorizationID string
+	ID              string
+}
+
+func (q *Queries) SetOAuthRequestAuthorization(ctx context.Context, arg SetOAuthRequestAuthorizationParams) error {
+	_, err := q.db.Exec(ctx, setOAuthRequestAuthorization, arg.AuthorizationID, arg.ID)
+	return err
+}
+
+const upsertOAuthAuthorization = `-- name: UpsertOAuthAuthorization :one
 INSERT INTO oauth_authorizations (id, user_id, client_id, scopes, created_at, updated_at)
 VALUES ($1, $2, $3, $4, $5, $5)
 ON CONFLICT (user_id, client_id) WHERE revoked_at IS NULL DO UPDATE
@@ -496,6 +510,7 @@ SET scopes = ARRAY(
         WHERE s.scope = ANY (oauth_authorizations.scopes) OR s.scope = ANY (EXCLUDED.scopes)
         ORDER BY s.pos),
     updated_at = EXCLUDED.updated_at
+RETURNING id
 `
 
 type UpsertOAuthAuthorizationParams struct {
@@ -509,9 +524,9 @@ type UpsertOAuthAuthorizationParams struct {
 
 // Cria a Autorização ativa ou amplia a existente num único comando, o que serializa as
 // aprovações concorrentes da mesma conta para o mesmo cliente. A união segue a ordem de
-// supported, sem repetir.
-func (q *Queries) UpsertOAuthAuthorization(ctx context.Context, arg UpsertOAuthAuthorizationParams) error {
-	_, err := q.db.Exec(ctx, upsertOAuthAuthorization,
+// supported, sem repetir. Devolve o ID da Autorização criada ou ampliada.
+func (q *Queries) UpsertOAuthAuthorization(ctx context.Context, arg UpsertOAuthAuthorizationParams) (string, error) {
+	row := q.db.QueryRow(ctx, upsertOAuthAuthorization,
 		arg.ID,
 		arg.UserID,
 		arg.ClientID,
@@ -519,5 +534,7 @@ func (q *Queries) UpsertOAuthAuthorization(ctx context.Context, arg UpsertOAuthA
 		arg.At,
 		arg.Supported,
 	)
-	return err
+	var id string
+	err := row.Scan(&id)
+	return id, err
 }

@@ -86,7 +86,8 @@ func (r *PostgresOAuthRepository) ApproveRequest(ctx context.Context, a oauth.Ap
 	return toAuthorizationRequest(row), nil
 }
 
-// approveInTx decide o pedido como aprovado, concede os escopos e audita o sucesso.
+// approveInTx decide o pedido como aprovado, concede os escopos, liga o pedido à
+// Autorização e audita o sucesso.
 func approveInTx(ctx context.Context, qtx *gen.Queries, a oauth.Approval) (gen.OauthRequest, error) {
 	row, err := qtx.ApproveOAuthRequest(ctx, gen.ApproveOAuthRequestParams{
 		ID: a.RequestID, UserID: a.UserID, CodeHash: a.CodeHash,
@@ -95,8 +96,13 @@ func approveInTx(ctx context.Context, qtx *gen.Queries, a oauth.Approval) (gen.O
 	if err != nil {
 		return row, requestErr("aprovar pedido", err)
 	}
-	if err := grantScopes(ctx, qtx, row, a.DecidedAt); err != nil {
+	authorizationID, err := grantScopes(ctx, qtx, row, a.DecidedAt)
+	if err != nil {
 		return row, err
+	}
+	err = qtx.SetOAuthRequestAuthorization(ctx, gen.SetOAuthRequestAuthorizationParams{ID: row.ID, AuthorizationID: authorizationID})
+	if err != nil {
+		return row, fmt.Errorf("ligar o pedido aprovado à autorização %q: %w", authorizationID, err)
 	}
 	return row, auditAuthorize(ctx, qtx, row, "success", a.DecidedAt)
 }
@@ -119,16 +125,16 @@ func (r *PostgresOAuthRepository) DenyRequest(ctx context.Context, d oauth.Denia
 }
 
 // grantScopes cria a Autorização ativa da conta para o cliente com os escopos do pedido,
-// ou amplia a existente com eles, num upsert atômico.
-func grantScopes(ctx context.Context, qtx *gen.Queries, req gen.OauthRequest, at time.Time) error {
-	err := qtx.UpsertOAuthAuthorization(ctx, gen.UpsertOAuthAuthorizationParams{
+// ou amplia a existente com eles, num upsert atômico. Devolve o ID dela.
+func grantScopes(ctx context.Context, qtx *gen.Queries, req gen.OauthRequest, at time.Time) (string, error) {
+	id, err := qtx.UpsertOAuthAuthorization(ctx, gen.UpsertOAuthAuthorizationParams{
 		ID: uuid.NewString(), UserID: req.UserID.String, ClientID: req.ClientID,
 		Scopes: orderedScopes(req.Scopes), At: at, Supported: oauth.SupportedScopes(),
 	})
 	if err != nil {
-		return fmt.Errorf("conceder escopos de %q para %s: %w", req.UserID.String, oauth.ClientValue(req.ClientID), err)
+		return "", fmt.Errorf("conceder escopos de %q para %s: %w", req.UserID.String, oauth.ClientValue(req.ClientID), err)
 	}
-	return nil
+	return id, nil
 }
 
 // orderedScopes devolve os escopos na ordem de oauth.SupportedScopes, sem repetir.

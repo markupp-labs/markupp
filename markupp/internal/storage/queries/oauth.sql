@@ -29,8 +29,8 @@ SELECT * FROM oauth_authorizations WHERE user_id = $1 AND client_id = $2 AND rev
 
 -- Cria a Autorização ativa ou amplia a existente num único comando, o que serializa as
 -- aprovações concorrentes da mesma conta para o mesmo cliente. A união segue a ordem de
--- supported, sem repetir.
--- name: UpsertOAuthAuthorization :exec
+-- supported, sem repetir. Devolve o ID da Autorização criada ou ampliada.
+-- name: UpsertOAuthAuthorization :one
 INSERT INTO oauth_authorizations (id, user_id, client_id, scopes, created_at, updated_at)
 VALUES (sqlc.arg(id), sqlc.arg(user_id), sqlc.arg(client_id), sqlc.arg(scopes), sqlc.arg(at), sqlc.arg(at))
 ON CONFLICT (user_id, client_id) WHERE revoked_at IS NULL DO UPDATE
@@ -38,7 +38,11 @@ SET scopes = ARRAY(
         SELECT s.scope FROM unnest(sqlc.arg(supported)::TEXT[]) WITH ORDINALITY AS s(scope, pos)
         WHERE s.scope = ANY (oauth_authorizations.scopes) OR s.scope = ANY (EXCLUDED.scopes)
         ORDER BY s.pos),
-    updated_at = EXCLUDED.updated_at;
+    updated_at = EXCLUDED.updated_at
+RETURNING id;
+
+-- name: SetOAuthRequestAuthorization :exec
+UPDATE oauth_requests SET authorization_id = sqlc.arg(authorization_id)::TEXT WHERE id = sqlc.arg(id);
 
 -- name: RedeemOAuthCode :one
 UPDATE oauth_requests SET code_used_at = sqlc.arg(now)::TIMESTAMPTZ
