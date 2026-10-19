@@ -33,7 +33,11 @@ export default class extends Controller {
   }
 
   // Tab no título: foco no conteúdo com o cursor no fim, pronto para continuar escrevendo.
-  focusEnd() {
+  // Com o editor escondido (modo leitura) o Tab segue a ordem normal da página.
+  focusEnd(event) {
+    if (!this.view.dom.checkVisibility()) return
+
+    event.preventDefault()
     this.view.focus()
     this.view.dispatch({ selection: { anchor: this.view.state.doc.length }, scrollIntoView: true })
   }
