@@ -132,9 +132,7 @@ class NoteModesTest < ApplicationSystemTestCase
   end
 
   test "side by side scrolls the preview along with the editor" do
-    filler = ->(part, count) { (1..count).map { |n| "#{part} paragraph #{n}." }.join("\n\n") }
-    content = "# Plan\n\n#{filler.('Opening', 12)}\n\n## Middle\n\n#{filler.('Closing', 40)}\n"
-    use_fake_api(notes: [ { id: "1", path: "plan.md", content: } ])
+    use_fake_api(notes: [ { id: "1", path: "plan.md", content: long_note } ])
     sign_in_through_form
 
     visit note_path("1")
@@ -144,7 +142,39 @@ class NoteModesTest < ApplicationSystemTestCase
     assert_selector(".note-preview h2", text: "Middle") { |heading| near_preview_top?(heading) }
   end
 
+  # Mão dupla, como no VS Code: rolar o preview leva o editor, e o painel alinhado não devolve a rolagem a quem rolou.
+  test "side by side scrolls the editor along with the preview, without bouncing back" do
+    use_fake_api(notes: [ { id: "1", path: "plan.md", content: long_note } ])
+    sign_in_through_form
+
+    visit note_path("1")
+    click_on "Side by side"
+    scroll_preview_to(find(".note-preview h2", text: "Middle"))
+
+    assert_selector(".cm-line", text: "## Middle", exact_text: true) { |line| near_pane_top?(line, ".cm-scroller") }
+
+    # Perto do fim o preview bate no fundo antes do editor; sem a trava, o preview no fundo mandaria o editor ao fundo.
+    scrolled_to = scroll_editor_near_end
+    sleep 0.3
+    assert_equal scrolled_to, evaluate_script("document.querySelector('.cm-scroller').scrollTop"), "expected the editor to stay where it was scrolled"
+  end
+
   private
+    # A primeira ida ao fim faz o CodeMirror medir as linhas que só tinha estimado (e corrigir a própria rolagem);
+    # a volta ao topo tira o preview do fundo, e a segunda ida é a que vale.
+    def scroll_editor_near_end
+      [ true, false, true ].map do |near_end|
+        sleep 0.2
+        evaluate_script(<<~JS, near_end)
+          (() => {
+            const scroller = document.querySelector(".cm-scroller")
+            scroller.scrollTop = arguments[0] ? scroller.scrollHeight - scroller.clientHeight - 40 : 0
+            return scroller.scrollTop
+          })()
+        JS
+      end.last
+    end
+
     def pane_boxes
       evaluate_script(<<~JS)
         [".note-editor-pane", ".note-preview"].map((selector) => document.querySelector(selector).getBoundingClientRect().toJSON())
@@ -168,21 +198,36 @@ class NoteModesTest < ApplicationSystemTestCase
       end
     end
 
-    # Rola o próprio scroller do CodeMirror até a linha ficar no topo, como a roda do mouse faria.
+    # Rola o próprio scroller do CodeMirror até a linha ficar no topo, como a roda do mouse faria, e devolve o scrollTop.
     def scroll_editor_to_line(text)
-      line = find(".cm-line", text:, exact_text: true)
-      execute_script(<<~JS, line)
-        const scroller = arguments[0].closest(".cm-scroller")
-        scroller.scrollTop += arguments[0].getBoundingClientRect().top - scroller.getBoundingClientRect().top
+      scroll_to_top_of(find(".cm-line", text:, exact_text: true), ".cm-scroller")
+    end
+
+    def long_note
+      filler = ->(part, count) { (1..count).map { |n| "#{part} paragraph #{n}." }.join("\n\n") }
+      "# Plan\n\n#{filler.('Opening', 12)}\n\n## Middle\n\n#{filler.('Closing', 40)}\n"
+    end
+
+    def scroll_preview_to(element) = scroll_to_top_of(element, ".note-preview")
+
+    def scroll_to_top_of(element, pane)
+      evaluate_script(<<~JS, element, pane)
+        (() => {
+          const scroller = arguments[0].closest(arguments[1])
+          scroller.scrollTop += arguments[0].getBoundingClientRect().top - scroller.getBoundingClientRect().top
+          return scroller.scrollTop
+        })()
       JS
     end
 
     # O bloco tem de estar no topo da área visível do preview, não só em algum ponto da página.
-    def near_preview_top?(element)
-      evaluate_script(<<~JS, element)
+    def near_preview_top?(element) = near_pane_top?(element, ".note-preview")
+
+    def near_pane_top?(element, pane)
+      evaluate_script(<<~JS, element, pane)
         (() => {
-          const preview = arguments[0].closest(".note-preview").getBoundingClientRect()
-          const top = arguments[0].getBoundingClientRect().top - preview.top
+          const box = arguments[0].closest(arguments[1]).getBoundingClientRect()
+          const top = arguments[0].getBoundingClientRect().top - box.top
           return top >= -1 && top < 32
         })()
       JS
