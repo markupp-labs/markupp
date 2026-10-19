@@ -14,6 +14,8 @@ class NoteRolesTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select "nav a", text: "New note", count: 0
+    assert_select "main form", count: 0
+    assert_select "main", text: /Pick a note from the sidebar/
   end
 
   test "a viewer reads the note without save nor delete" do
@@ -23,7 +25,8 @@ class NoteRolesTest < ActionDispatch::IntegrationTest
     get note_path("1")
 
     assert_response :success
-    assert_select "input[name=?][readonly]", "note[path]"
+    assert_select "input[name=?][readonly]", "note[title]"
+    assert_select "input[name=?][readonly]", "note[folder]"
     assert_select "textarea[readonly]", text: /# Plan/
     assert_select "button", text: "Save", count: 0
     assert_select "button", text: "Delete", count: 0
@@ -38,7 +41,7 @@ class NoteRolesTest < ActionDispatch::IntegrationTest
     get note_path("1")
 
     assert_select "textarea[readonly]", count: 0
-    assert_select "button", text: "Save"
+    assert_select "button[hidden]", text: "Save"
     assert_select "main", text: /Read only/, count: 0
   end
 
@@ -58,7 +61,7 @@ class NoteRolesTest < ActionDispatch::IntegrationTest
     sign_in_as
     api.assign_role!("tenant-1", EMAIL, "viewer")
 
-    patch note_path("1"), params: { note: { path: "plan.md", content: "mine" } }, headers: { "HTTP_REFERER" => note_url("1") }
+    patch note_path("1"), params: { note: { folder: "", title: "plan", content: "mine" }, markdown: "true" }, headers: { "HTTP_REFERER" => note_url("1") }
 
     assert_redirected_to note_url("1")
     assert_empty api.put_requests
@@ -72,7 +75,7 @@ class NoteRolesTest < ActionDispatch::IntegrationTest
     sign_in_as
     api.assign_role!("tenant-1", EMAIL, "viewer")
 
-    post notes_path, params: { note: { path: "new.md", content: "" } }
+    post notes_path, params: { note: { folder: "", title: "new", content: "" } }
 
     assert_redirected_to root_path
     assert_equal READ_ONLY_ALERT, flash[:alert]

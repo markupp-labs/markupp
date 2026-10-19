@@ -199,4 +199,38 @@ class NoteTest < ActiveSupport::TestCase
     assert Note.new(content: "a\r\nb").crlf?
     assert_not Note.new(content: "a\nb").crlf?
   end
+
+  test "title is the name without .md, folder the path before it" do
+    note = Note.new(path: "work/2026/Plan.v2.md")
+
+    assert_equal "Plan.v2", note.title
+    assert_equal "work/2026", note.folder
+    assert note.markdown?
+    assert_equal [ "README", "", false ], Note.new(path: "README").then { [ it.title, it.folder, it.markdown? ] }
+  end
+
+  test "compose_path joins folder and title and adds .md back" do
+    assert_equal "work/2026/Plan.md", Note.compose_path(folder: "work/2026", title: "Plan")
+    assert_equal "Plan.md", Note.compose_path(folder: "", title: " Plan ")
+    assert_equal "README", Note.compose_path(folder: nil, title: "README", markdown: false)
+  end
+
+  test "compose_path falls back to the untitled name for a blank title" do
+    assert_equal "work/Untitled.md", Note.compose_path(folder: "work", title: "  ")
+  end
+
+  test "with_title_heading starts the content with the title as a heading and a blank line" do
+    assert_equal "# Plan\n\nShip it.", Note.with_title_heading("Ship it.", " Plan ")
+    assert_equal "# Plan\n\n", Note.with_title_heading("", "Plan")
+  end
+
+  test "with_title_heading keeps content that already starts with the same heading" do
+    assert_equal "# Plan\n\nShip it.", Note.with_title_heading("# Plan\n\nShip it.", "Plan")
+    assert_equal "# Plan", Note.with_title_heading("# Plan", "Plan")
+    assert_equal "# Plan\n\n# Planning", Note.with_title_heading("# Planning", "Plan")
+  end
+
+  test "with_title_heading leaves the content alone without a title" do
+    assert_equal "Ship it.", Note.with_title_heading("Ship it.", " ")
+  end
 end

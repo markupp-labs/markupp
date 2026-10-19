@@ -11,6 +11,6 @@ class InviteAcceptancesTest < ApplicationSystemTestCase
     click_on "Create account"
 
     assert_selector "nav", text: "caio@markupp.dev"
-    assert_selector "nav button[popovertarget=tenant_switcher]", text: /Acme research.*member/m
+    assert_selector "nav #current_tenant", text: /Acme research.*member/m
   end
 end

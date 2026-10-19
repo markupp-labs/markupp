@@ -1,0 +1,4 @@
+<%# Página de erro: o layout põe o mascote ao lado da mensagem (nas telas públicas ele já está lá). %>
+<% content_for :mascot, mascot(:large, class: "hidden md:block") %>
+<h1 class="text-base font-semibold text-danger"><%= title %></h1>
+<p class="mt-2 max-w-[65ch] text-ink-muted"><%= hint %></p>

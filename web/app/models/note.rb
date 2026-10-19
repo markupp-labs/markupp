@@ -34,6 +34,22 @@ class Note
 
   def self.untitled_name = I18n.t("notes.untitled")
 
+  MARKDOWN_EXTENSION = ".md"
+
+  # O título é o nome do arquivo sem .md, como no Obsidian; título em branco vira o nome padrão.
+  def self.compose_path(folder:, title:, markdown: true)
+    name = title.to_s.strip.presence || untitled_name
+    [ folder.presence, "#{name}#{MARKDOWN_EXTENSION if markdown}" ].compact.join("/")
+  end
+
+  # Só na criação: o conteúdo começa com "# título" e uma linha em branco, a menos que já comece com ele.
+  def self.with_title_heading(content, title)
+    heading = "# #{title.to_s.strip}"
+    return content.to_s if heading == "# " || content.to_s.lines.first&.chomp == heading
+
+    "#{heading}\n\n#{content}"
+  end
+
   def persisted? = id.present?
 
   # O navegador troca as quebras de linha da nota; ela volta com a que tinha.
@@ -69,10 +85,18 @@ class Note
 
   def name = path_segments.last
 
+  def title = name.to_s.delete_suffix(MARKDOWN_EXTENSION)
+
+  def folder = folder_names.join("/")
+
+  def markdown? = name.to_s.end_with?(MARKDOWN_EXTENSION)
+
+  def untitled? = name == "#{Note.untitled_name}#{MARKDOWN_EXTENSION}"
+
   def folder_names = path_segments[...-1]
 
   private
-    def path_segments = path.split("/").reject(&:empty?)
+    def path_segments = path.to_s.split("/").reject(&:empty?)
 
     def post(api) = api.post("/notes", path:, content:)
 
@@ -85,8 +109,6 @@ class Note
     rescue MarkuppApi::InvalidPath
       errors.add(:path, :invalid) && false
     end
-
-    def untitled? = name == "#{Note.untitled_name}.md"
 
     def post_numbered(api)
       (0..UNTITLED_LIMIT).each do |number|

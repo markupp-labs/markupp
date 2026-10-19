@@ -4,7 +4,9 @@
     <% ancestor = child.name == open_folders.first %>
     <li>
       <details <%= "open" if ancestor %>>
-        <summary class="tree-row cursor-pointer select-none text-ink-muted"><%= child.name %></summary>
+        <summary class="tree-row flex cursor-pointer select-none list-none items-center gap-2 text-ink-muted [&::-webkit-details-marker]:hidden">
+          <%= icon("folder") %><%= icon("folder-open") %><span class="truncate"><%= child.name %></span>
+        </summary>
         <div class="ml-3 border-l border-line pl-2">
           <%= render "notes/folder", folder: child, current: current, open_folders: ancestor ? open_folders.drop(1) : [] %>
         </div>
@@ -13,8 +15,10 @@
   <% end %>
   <% folder.notes.each do |note| %>
     <li>
-      <%= link_to note.name, note_path(note), title: note.path, class: "tree-row block truncate aria-[current=page]:bg-accent-soft aria-[current=page]:text-accent",
-                  aria: { current: ("page" if note.id == current&.id) } %>
+      <%= link_to note_path(note), title: note.path, class: "tree-row flex items-center gap-2 aria-[current=page]:bg-accent-soft aria-[current=page]:text-ink",
+                  aria: { current: ("page" if note.id == current&.id) } do %>
+        <%= icon("file-text") %><span class="truncate"><%= note.name %></span>
+      <% end %>
     </li>
   <% end %>
 </ul>

@@ -1,33 +1,47 @@
 <!DOCTYPE html>
-<%= tag.html lang: "en", data: { theme: cookies[:theme].presence_in(ThemesController::THEMES) } do %>
+<% html_attributes = sidebar_html_attributes %>
+<%= tag.html lang: "en", style: html_attributes[:style],
+             data: { theme: chosen_theme, **html_attributes[:data] } do %>
   <%= render "layouts/head" %>
 
   <%# Sem tenant ativo (onboarding) não há notas para buscar: sem busca, sem seletor. %>
-  <body class="min-h-dvh bg-surface font-mono text-sm text-ink md:grid md:grid-cols-[17rem_1fr]"
-        <%= tag.attributes(data: { controller: "search", action: "keydown.ctrl+k@window->search#open:prevent keydown.meta+k@window->search#open:prevent" }) if current_tenant %>>
+  <%# Ctrl+B/Cmd+B recolhe a barra lateral como no VS Code; o grid e o fechado vêm do CSS (.app-shell). %>
+  <%# Ctrl+, e Cmd+, abrem as configurações; o Stimulus não tem filtro para a vírgula, o controller confere a tecla. %>
+  <% shortcuts = "keydown.ctrl+b@window->sidebar#toggleFromShortcut keydown.meta+b@window->sidebar#toggleFromShortcut keydown@window->settings-shortcut#open" %>
+  <% shortcuts += " keydown.ctrl+k@window->search#open:prevent keydown.meta+k@window->search#open:prevent" if current_tenant %>
+  <body class="app-shell min-h-dvh bg-surface font-mono text-sm text-ink"
+        <%= tag.attributes(data: { controller: [ "sidebar", "settings-shortcut", ("search" if current_tenant) ].compact.join(" "), action: shortcuts,
+                                  settings_shortcut_url_value: settings_path }) %>>
     <button popovertarget="sidebar" class="btn m-2 text-ink-muted md:hidden">
-      <%= t(".open_notes") %>
+      <%= icon("list") %><%= t(".open_notes") %>
     </button>
 
+    <%# A lista rola dentro de .sidebar-scroll; o rodape com conta, configuracoes, tema e sair fica sempre no fundo. %>
     <nav id="sidebar" popover aria-label="<%= t(".notes") %>"
-         class="sidebar m-0 h-dvh w-72 max-w-[85vw] overflow-y-auto border-0 border-r border-line bg-surface-sunken p-3 text-ink">
-      <% if current_tenant %>
-        <%= render "layouts/tenant_switcher" %>
-        <button type="button" data-action="search#open" title="Ctrl+K" aria-keyshortcuts="Control+K Meta+K"
-                class="tree-row mb-2 w-full border border-line text-left text-ink-muted">
-          <%= t(".search") %>
-        </button>
-      <% end %>
-      <%= yield :sidebar %>
+         data-sidebar-target="panel"
+         class="sidebar m-0 h-dvh w-72 max-w-[85vw] flex-col border-0 border-r border-line bg-surface-sunken p-0 text-ink open:flex md:w-auto md:max-w-none">
+      <div class="sidebar-scroll min-h-0 flex-1 overflow-y-auto p-3">
+        <%= sidebar_toggle_button(t(".hide_sidebar"), classes: "float-right ml-1 hidden md:inline-flex") %>
+        <% if current_tenant %>
+          <%= render "layouts/tenant_switcher" %>
+          <button type="button" data-action="search#open" title="Ctrl+K" aria-keyshortcuts="Control+K Meta+K"
+                  class="tree-row mb-2 flex w-full items-center gap-2 border border-line text-left text-ink-muted">
+            <%= icon("magnifying-glass") %><%= t(".search") %>
+            <kbd aria-hidden="true" class="ml-auto text-xs">Ctrl K</kbd>
+          </button>
+        <% end %>
+        <%= yield :sidebar %>
+      </div>
 
-      <footer class="mt-4 border-t border-line pt-3 first:mt-0 first:border-t-0 first:pt-0">
-        <%= link_to credential.account_email, account_path, aria: { current: ("page" if current_page?(account_path)) },
-                    class: "tree-row block truncate text-ink-muted aria-[current=page]:bg-accent-soft aria-[current=page]:text-accent" %>
-        <div class="mt-1 flex flex-wrap gap-2">
-          <%= button_to t(".log_out"), session_path, method: :delete, class: "btn text-ink-muted" %>
-          <%= render "layouts/theme_buttons" %>
-        </div>
-      </footer>
+      <%= render "layouts/sidebar_footer" %>
+
+      <%# Alça na borda: arrastar com o ponteiro ou setas com o foco. Só no desktop; no celular é gaveta. %>
+      <div role="separator" aria-orientation="vertical" tabindex="0" aria-label="<%= t(".resize_sidebar") %>"
+           aria-valuemin="<%= SidebarHelper::SIDEBAR_WIDTH_RANGE.min %>" aria-valuemax="<%= SidebarHelper::SIDEBAR_WIDTH_RANGE.max %>"
+           aria-valuenow="<%= current_sidebar_width %>"
+           data-sidebar-target="handle"
+           data-action="pointerdown->sidebar#startResize pointermove->sidebar#resize pointerup->sidebar#endResize pointercancel->sidebar#endResize keydown->sidebar#resizeByKey"
+           class="sidebar-handle absolute inset-y-0 right-0 hidden w-1.5 cursor-col-resize touch-none md:block"></div>
     </nav>
 
     <% if current_tenant %>
@@ -45,8 +59,15 @@
     <% end %>
 
     <main class="min-w-0 p-4 md:p-6">
+      <%= sidebar_toggle_button(t(".show_sidebar"), classes: "sidebar-expand mb-2") %>
       <%= render "layouts/flash" %>
-      <%= yield %>
+      <% page = content_for?(:main) ? yield(:main) : yield %>
+      <%# Páginas de erro pedem o mascote ao lado da mensagem (content_for :mascot). %>
+      <% if content_for?(:mascot) %>
+        <div class="flex items-start gap-10"><%= yield :mascot %><div class="min-w-0 flex-1"><%= page %></div></div>
+      <% else %>
+        <%= page %>
+      <% end %>
     </main>
   </body>
 <% end %>

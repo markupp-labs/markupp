@@ -1,39 +1,66 @@
-<% content_for :title, @note.name %>
+<% content_for :title, @note.title.presence || Note.untitled_name %>
 <%# Sem cache do Turbo: voltar para a nota busca a versão atual, e o editor não é clonado no snapshot. %>
 <% content_for :head, tag.meta(name: "turbo-cache-control", content: "no-cache") %>
 <% content_for :sidebar, render("notes/sidebar", tree: @tree, current: @note) %>
 <%# viewer só lê: caminho e texto readonly, sem salvar nem apagar; o editor lê o readonly do textarea. %>
 <% writer = current_tenant.writer? %>
+<% mode = current_note_mode(@note) %>
 
-<%= form_with model: @note, class: "flex h-full flex-col gap-3",
-              data: { controller: "editor note-form", note_form_leave_message_value: t(".leave"),
+<%# data-mode escolhe os painéis visíveis (CSS .note-form); Ctrl+E e Ctrl+\ trocam o modo (note_mode_controller.js). %>
+<%= form_with model: @note, class: "note-form flex h-full flex-col gap-3",
+              data: { controller: "editor note-form note-mode", mode:, note_form_leave_message_value: t(".leave"), note_form_new_value: !@note.persisted?,
                       action: "keydown.ctrl+s@window->note-form#save:prevent keydown.meta+s@window->note-form#save:prevent " \
+                              "keydown@window->note-mode#shortcut input->note-mode#render " \
                               "input->note-form#track submit->note-form#allowLeaving turbo:submit-start@document->note-form#allowLeavingOnDelete " \
-                              "beforeunload@window->note-form#warnBeforeUnload turbo:before-visit@document->note-form#confirmVisit" } do |form| %>
-  <header class="flex items-start gap-3">
-    <div class="min-w-0 flex-1">
-      <% path_error = @note.errors.full_messages_for(:path).first %>
-      <%= form.label :path, class: "sr-only" %>
-      <%= form.text_field :path, data: { note_form_target: "path" }, spellcheck: false, autocomplete: "off", readonly: !writer,
-                          aria: { invalid: path_error.present?, describedby: ("note_path_error" if path_error) },
-                          class: "w-full rounded-md border border-transparent bg-transparent px-1 py-1 text-ink-muted " \
-                                 "hover:border-line focus:border-line focus:text-ink focus:outline-none aria-invalid:border-danger" %>
-      <% if path_error %>
-        <p id="note_path_error" data-note-form-target="pending" class="px-1 text-danger"><%= path_error %></p>
+                              "beforeunload@window->note-form#warnBeforeUnload turbo:before-visit@document->note-form#confirmVisit " \
+                              "keydown.shift+tab->note-form#focusTitle note-form:heading->editor#replaceStart" } do |form| %>
+  <% path_error = @note.errors.full_messages_for(:path).first %>
+  <header class="flex flex-wrap items-center gap-x-3 gap-y-1">
+    <%# Breadcrumb da pasta: pequeno, acima do título, trocável à parte. %>
+    <div class="flex min-w-0 flex-1 items-center gap-1 text-ink-muted">
+      <%= icon("folder") %>
+      <%= form.label :folder, class: "sr-only" %>
+      <%= form.text_field :folder, value: @note.folder, placeholder: t(".top_level"), spellcheck: false, autocomplete: "off", readonly: !writer,
+                          data: { note_form_target: "folder" },
+                          class: "field-sizing-content min-w-24 max-w-full rounded-md border border-transparent bg-transparent px-1 py-0.5 " \
+                                 "placeholder:text-ink-muted hover:border-line focus:border-line focus:text-ink focus:outline-none" %>
+    </div>
+    <div role="group" aria-label="<%= t(".mode") %>" class="flex items-center rounded-md border border-line">
+      <% NoteModeHelper::NOTE_MODES.each do |name| %>
+        <%= note_mode_button(name, current: mode) %>
       <% end %>
     </div>
     <span data-note-form-target="unsaved" hidden class="py-1 text-ink-muted"><%= t(".unsaved") %></span>
     <% if writer %>
-      <%= form.button t(".save"), class: "btn" %>
+      <%# Só aparece com mudança (o note-form mostra); com conflito ou erro de caminho já há o que salvar. %>
+      <%= form.button class: "btn", hidden: !(@conflict || path_error), data: { note_form_target: "save" } do %>
+        <%= icon("floppy-disk") %><%= t(".save") %>
+      <% end %>
     <% else %>
       <p class="py-1 text-ink-muted"><%= t(".read_only") %></p>
     <% end %>
     <% if writer && @note.persisted? %>
       <%# Fora do form de salvar (form não aninha): o botão aponta para o form de excluir pelo atributo form. %>
-      <%= tag.button t(".delete"), form: "delete_note", data: { turbo_confirm: t(".confirm_delete") },
-                     class: "btn border-danger text-danger" %>
+      <%= tag.button form: "delete_note", data: { turbo_confirm: t(".confirm_delete") }, class: "btn border-danger text-danger" do %>
+        <%= icon("trash") %><%= t(".delete") %>
+      <% end %>
     <% end %>
   </header>
+
+  <div>
+    <%# Título = nome do arquivo sem .md. Nota nova abre com ele vazio e focado; Tab vai para o fim do conteúdo. %>
+    <% new_untitled = !@note.persisted? && @note.untitled? %>
+    <%= form.label :title, class: "sr-only" %>
+    <%= form.text_field :title, value: (new_untitled ? "" : @note.title), placeholder: Note.untitled_name, autofocus: writer && !@note.persisted?,
+                        spellcheck: false, autocomplete: "off", readonly: !writer,
+                        aria: { invalid: path_error.present?, describedby: ("note_path_error" if path_error) },
+                        data: { note_form_target: "title", action: "input->note-form#syncHeading keydown.tab->editor#focusEnd" },
+                        class: "w-full rounded-md border border-transparent bg-transparent px-1 py-0.5 text-2xl font-semibold text-ink " \
+                               "placeholder:text-ink-muted hover:border-line focus:border-accent focus-visible:outline-none aria-invalid:border-danger" %>
+    <% if path_error %>
+      <p id="note_path_error" data-note-form-target="pending" class="px-1 text-danger"><%= path_error %></p>
+    <% end %>
+  </div>
 
   <% if @conflict %>
     <div role="alert" data-note-form-target="pending" class="flex flex-wrap items-center gap-3 rounded-md border border-danger p-2">
@@ -46,8 +73,16 @@
 
   <%= hidden_field_tag :last_modified_at, @note.updated_at&.iso8601(3), id: nil %>
   <%= hidden_field_tag :crlf, @note.crlf?, id: nil %>
-  <%= form.text_area :content, data: { editor_target: "source", note_form_target: "source" }, aria: { label: @note.path }, readonly: !writer,
-                     class: "min-h-[60dvh] w-full flex-1 rounded-md border border-line bg-surface p-2" %>
+  <%= hidden_field_tag :markdown, @note.markdown?, id: nil %>
+  <div class="note-panes min-h-0 flex-1 gap-6">
+    <%# O editor monta o CodeMirror aqui, ao lado do textarea. %>
+    <div class="note-editor-pane flex min-w-0 flex-col">
+      <%= form.text_area :content, data: { editor_target: "source", note_form_target: "source", note_mode_target: "source" }, aria: { label: @note.path },
+                         readonly: !writer, class: "min-h-[60dvh] w-full flex-1 rounded-md border border-line bg-surface p-2" %>
+    </div>
+    <%# Markdown renderizado e sanitizado no navegador (editor/render_markdown.js). %>
+    <article data-note-mode-target="preview" aria-label="<%= t(".preview") %>" class="note-preview markdown-body min-w-0"></article>
+  </div>
 <% end %>
 
 <% if writer && @note.persisted? %>

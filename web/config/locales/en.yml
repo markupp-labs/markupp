@@ -34,11 +34,17 @@ en:
       search: "Search"
       search_notes: "Search notes"
       search_placeholder: "Search note content"
-      log_out: "Log out"
+      hide_sidebar: "Hide sidebar"
+      show_sidebar: "Show sidebar"
+      resize_sidebar: "Resize sidebar"
     tenant_switcher:
+      switch: "Switch tenant"
       new_tenant: "New tenant"
-      settings: "Tenant settings"
       loading: "Loading"
+    sidebar_footer:
+      settings: "Settings"
+      settings_shortcut: "Settings (Ctrl+,)"
+      log_out: "Log out"
   markupp_api:
     errors:
       session_expired: "Your session expired. Log in again."
@@ -46,6 +52,8 @@ en:
       read_only: "Your role in this tenant is viewer, it can only read notes."
       tenant_unavailable: "You no longer have access to that tenant."
   sessions:
+    back_to_login:
+      label: "Back to log in"
     new:
       title: "Log in"
       submit: "Log in"
@@ -89,7 +97,6 @@ en:
       submitting: "Sending"
       token_hint: "Got the token already?"
       have_token: "I have a token"
-      log_in: "Back to log in"
     create:
       sent: "If an account uses that email, a reset token is on its way."
       invalid_email: "Enter the email of your account."
@@ -104,18 +111,6 @@ en:
       submitting: "Resetting"
     create:
       changed: "Password changed. Log in with the new one."
-  accounts:
-    already_confirmed: "Your email is already confirmed."
-    sidebar:
-      back: "Back to notes"
-    show:
-      title: "Account"
-      email: "Email"
-      confirmation: "Email confirmation"
-      confirmation_hint: "Confirm your email to see the invites sent to it. The confirmation email brings a token."
-      send: "Send confirmation email"
-      sending: "Sending"
-      have_token: "I have a token"
   email_verifications:
     create:
       sent: "Confirmation email sent. It may take a few minutes."
@@ -144,11 +139,31 @@ en:
       invite_not_found: "That invite is no longer valid."
       already_member: "You are already a member of that tenant."
   settings:
-    tabs:
-      title: "Tenant settings"
-      back: "Back to notes"
+    nav:
+      title: "Settings"
+      close: "Close settings"
+      accounts: "Account"
+      appearances: "Appearance"
+      tenant: "Tenant"
       members: "Members"
       invites: "Invites"
+    accounts:
+      already_confirmed: "Your email is already confirmed."
+      show:
+        title: "Account"
+        email: "Email"
+        confirmation: "Email confirmation"
+        confirmation_hint: "Confirm your email to see the invites sent to it. The confirmation email brings a token."
+        send: "Send confirmation email"
+        sending: "Sending"
+        have_token: "I have a token"
+    appearances:
+      show:
+        title: "Appearance"
+        theme: "Theme"
+        light: "Light"
+        dark: "Dark"
+        follows_system: "Follows your system theme until you pick one."
     members:
       index:
         email: "Email"
@@ -204,6 +219,7 @@ en:
     form:
       save: "Save"
       unsaved: "Unsaved changes"
+      top_level: "Top level"
       leave: "You have unsaved changes. Leave anyway?"
       conflict: "This note changed on the server since you opened it."
       reload: "Reload and discard my changes"
@@ -211,6 +227,12 @@ en:
       delete: "Delete"
       confirm_delete: "Delete this note? This cannot be undone."
       read_only: "Read only: your role here is viewer."
+      mode: "Note view"
+      modes:
+        edit: "Edit"
+        read: "Read"
+        split: "Side by side"
+      preview: "Preview"
     update:
       saved: "Saved"
     create:

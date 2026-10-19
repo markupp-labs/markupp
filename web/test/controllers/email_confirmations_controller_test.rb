@@ -25,7 +25,7 @@ class EmailConfirmationsControllerTest < ActionDispatch::IntegrationTest
       assert_select "input[type=password]", count: 0
       assert_select "button", "Confirm"
     end
-    assert_select "nav a[href=?]", root_path, text: "Back to notes"
+    assert_select "main nav a[href=?][aria-current=page]", settings_account_path, text: "Account"
   end
 
   test "new fills the token from the link" do
@@ -44,7 +44,7 @@ class EmailConfirmationsControllerTest < ActionDispatch::IntegrationTest
 
     confirm_email(api.sent_tokens.last.fetch(:token))
 
-    assert_redirected_to account_path
+    assert_redirected_to settings_account_path
     assert_equal "Email confirmed. Pending invites now show up in your tenant list.", flash[:notice]
     get tenants_path
     assert_select "main li", text: /Join Acme research as member/
@@ -67,7 +67,7 @@ class EmailConfirmationsControllerTest < ActionDispatch::IntegrationTest
 
     confirm_email("tok-1")
 
-    assert_redirected_to account_path
+    assert_redirected_to settings_account_path
     assert_equal "Your email is already confirmed.", flash[:notice]
   end
 

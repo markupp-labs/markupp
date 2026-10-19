@@ -58,9 +58,11 @@ class FakeMarkuppNotes
       matches.first(Integer(params.fetch("limit"))).map { |note| note.slice("id", "path", "updated_at") }
     end
 
-    # Só a regra de caminho vazio do servidor; as outras (.., tamanho) ficam com ele.
+    # Caminho vazio ou com .. como o servidor; o limite de tamanho fica com ele.
     def refuse_path(new_path, note)
-      raise MarkuppApi::InvalidPath, "fake API refuses path #{new_path.inspect}, expected a non blank path" if new_path.to_s.strip.empty?
+      if new_path.to_s.strip.empty? || new_path.include?("..")
+        raise MarkuppApi::InvalidPath, "fake API refuses path #{new_path.inspect}, expected a non blank path without .."
+      end
       return unless @notes.any? { |other| other["path"] == new_path && !other.equal?(note) }
 
       raise MarkuppApi::DuplicatePath, "fake API already has a note at #{new_path.inspect}, expected a free path"

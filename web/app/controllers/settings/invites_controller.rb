@@ -1,6 +1,6 @@
 module Settings
   # Convites do tenant ativo. Sem SMTP a API devolve o token, que aparece só nesta resposta: não vai para flash, log nem cache.
-  class InvitesController < BaseController
+  class InvitesController < TenantAdminController
     # Recusa da emissão: campo do formulário que mostra o motivo e status da resposta.
     FIELD_REFUSALS = { MarkuppApi::InvalidRequest => [ :email, :unprocessable_content ], MarkuppApi::AlreadyMember => [ :email, :conflict ],
                        MarkuppApi::RoleAboveOwn => [ :role, :forbidden ] }.freeze

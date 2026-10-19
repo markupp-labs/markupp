@@ -1,6 +1,6 @@
 module Settings
   # Membros do tenant ativo: troca de papel e remoção. A recusa da API volta como motivo no topo da lista recarregada.
-  class MembersController < BaseController
+  class MembersController < TenantAdminController
     REFUSAL_STATUS = { MarkuppApi::LastOwner => :conflict, MarkuppApi::RoleAboveOwn => :forbidden, MarkuppApi::MemberNotFound => :not_found }.freeze
 
     rescue_from(*REFUSAL_STATUS.keys, with: :render_refusal)

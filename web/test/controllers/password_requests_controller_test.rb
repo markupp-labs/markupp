@@ -19,6 +19,15 @@ class PasswordRequestsControllerTest < ActionDispatch::IntegrationTest
     assert_select "nav#sidebar", count: 0
   end
 
+  test "new leads back to the login before the title" do
+    get new_password_request_path
+
+    assert_select "main a[href=?] ~ h1", new_session_path
+    assert_select "main a[href=?]", new_session_path, text: "Back to log in" do
+      assert_select "svg[data-icon=arrow-left]"
+    end
+  end
+
   test "the login page points to the password reset" do
     get new_session_path
 

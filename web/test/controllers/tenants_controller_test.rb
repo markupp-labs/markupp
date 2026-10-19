@@ -32,13 +32,13 @@ class TenantsControllerTest < ActionDispatch::IntegrationTest
     assert_select "dialog", count: 0
   end
 
-  test "the sidebar footer without a tenant above it has no loose top border" do
+  test "the sidebar footer stays fixed at the bottom even without a tenant above it" do
     use_fake_api(tenants: [])
     sign_in_as
 
     get tenants_path
 
-    assert_select "nav footer.first\\:border-t-0.first\\:mt-0.first\\:pt-0"
+    assert_select "nav > .sidebar-scroll + footer", text: /#{FakeMarkuppAccounts::DEFAULT_EMAIL}/
   end
 
   test "the tenant list also offers a form for a new tenant" do
@@ -62,7 +62,7 @@ class TenantsControllerTest < ActionDispatch::IntegrationTest
     follow_redirect!
     assert_response :success
     assert_select "[role=status]", "Created Acme research."
-    assert_select "nav button[popovertarget=tenant_switcher]", text: /Acme research.*owner/m
+    assert_select "nav #current_tenant", text: /Acme research.*owner/m
     assert_equal "tenant-1", api.received_credentials.reverse.find { it[:call] == "GET /notes" }[:tenant_id]
   end
 

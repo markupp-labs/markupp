@@ -8,11 +8,11 @@ class TenantMembersTest < ApplicationSystemTestCase
     sign_in_through_form
   end
 
-  test "an owner opens the settings from the switcher and changes a role" do
-    click_on "Acme research"
-    within("#tenant_switcher") { click_on "Tenant settings" }
+  test "an owner opens the settings from the sidebar footer and changes a role" do
+    within("nav > footer") { click_on "Settings" }
+    within("main nav") { click_on "Members" }
 
-    assert_selector "h1", text: "Tenant settings"
+    assert_selector "h1", text: "Members"
     select "viewer", from: "Role for caio@markupp.dev"
     within("li", text: "caio@markupp.dev") { click_on "Save" }
 
