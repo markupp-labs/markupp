@@ -171,12 +171,16 @@ func serve(ctx context.Context, logger *slog.Logger, cfg config.Config) error {
 	}
 	defer pool.Close()
 
-	server := newServer(cfg.Port, newHandler(cfg, pool, logger))
+	handler, err := newHandler(cfg, pool, logger)
+	if err != nil {
+		return err
+	}
+	server := newServer(cfg.Port, handler)
 	logger.Info("servidor subindo", "addr", server.Addr)
 	return server.ListenAndServe()
 }
 
-func newHandler(cfg config.Config, pool *pgxpool.Pool, logger *slog.Logger) http.Handler {
+func newHandler(cfg config.Config, pool *pgxpool.Pool, logger *slog.Logger) (http.Handler, error) {
 	repo := storage.NewPostgresNotesRepository(pool)
 	notesSvc := notes.NewService(repo, cfg.MaxNoteSize)
 	authSvc, codec := newAuthService(cfg, pool)
@@ -186,21 +190,25 @@ func newHandler(cfg config.Config, pool *pgxpool.Pool, logger *slog.Logger) http
 	accountEmail := auth.NewAccountEmailService(storage.NewPostgresAccountEmailRepository(pool), auth.NewBcryptHasher(), time.Now, auth.AccountEmailOptions{
 		EmailEnabled: emailEnabled, LocalEnabled: cfg.LocalAuthEnabled, Background: runDetached, Logger: logger,
 	})
+	oauthSvc, err := newOAuthService(cfg, pool, codec)
+	if err != nil {
+		return nil, err
+	}
 	return api.NewRouter(api.RouterDeps{
 		Notes: notesSvc, Auth: authSvc, Admin: adminSvc, AccountEmail: accountEmail,
 		Tokens: codec, Tenants: authSvc, Probe: pool, AllowedOrigins: cfg.AllowedOrigins,
-		OAuthMetadata: oauthMetadataFrom(cfg), OAuth: newOAuthService(cfg, pool, codec),
-	})
+		OAuthMetadata: oauthMetadataFrom(cfg), OAuth: oauthSvc,
+	}), nil
 }
 
 // newOAuthService monta o authorization server só com o OAuth ligado. Devolve nil de
 // interface, e não um *oauth.Service nil, para o roteador não montar as rotas.
-func newOAuthService(cfg config.Config, pool *pgxpool.Pool, scoped oauth.ScopedTokenIssuer) api.OAuthService {
+func newOAuthService(cfg config.Config, pool *pgxpool.Pool, scoped oauth.ScopedTokenIssuer) (api.OAuthService, error) {
 	if !cfg.OAuthEnabled() {
-		return nil
+		return nil, nil
 	}
 	repo := storage.NewPostgresOAuthRepository(pool)
-	return oauth.NewService(repo, oauthServiceConfigFrom(cfg), scoped, nil, time.Now, uuid.NewString, newOAuthToken)
+	return oauth.NewService(repo, oauthServiceConfigFrom(cfg), scoped, nil, time.Now, uuid.NewString, newOAuthToken), nil
 }
 
 // newOAuthToken gera os tokens opacos do OAuth. A leitura de crypto/rand não falha num

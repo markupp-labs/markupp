@@ -210,5 +210,8 @@ func TestOAuthServiceConfigFrom_MapeiaOsSegredosEAValidadeDaTroca(t *testing.T) 
 }
 
 func TestNewOAuthService_SemPublicURL_DevolveNilDeInterface(t *testing.T) {
-	assert.Nil(t, newOAuthService(config.Config{}, nil, nil))
+	svc, err := newOAuthService(config.Config{}, nil, nil)
+
+	require.NoError(t, err)
+	assert.Nil(t, svc)
 }
