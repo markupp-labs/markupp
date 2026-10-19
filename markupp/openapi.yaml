@@ -575,16 +575,16 @@ paths:
       summary: Busca notas por texto no índice léxico
       description: |
         Busca por palavras no título (o nome do arquivo sem extensão, mais os aliases do
-        frontmatter) e no conteúdo das notas, com a sintaxe de busca web do PostgreSQL: termos soltos exigem todos,
-        aspas pedem a frase, OR aceita qualquer um dos lados e -termo exclui. Não é busca
-        por substring, e % e _ não são curinga. A configuração de texto é a do
-        indexador (MARKUPP_SEARCH_CONFIG).
+        frontmatter) e no conteúdo das notas, com a sintaxe de busca web do PostgreSQL:
+        termos soltos exigem todos, aspas pedem a frase, OR aceita qualquer um dos lados
+        e -termo exclui. Não é busca por substring, e % e _ não são curinga. A
+        configuração de texto é a do indexador (MARKUPP_SEARCH_CONFIG).
 
-        O resultado vem do mais relevante para o menos, com o título e os aliases pesando
-        mais que o conteúdo, e desempate pelo id. Só aparecem notas já indexadas: a nota recém
-        escrita entra na busca quando o indexador processa o cofre dela. Consulta sem
-        palavra buscável, como só stopwords, devolve lista vazia. O resultado não
-        carrega o conteúdo da nota, só um trecho dele.
+        O resultado vem do mais relevante para o menos, com o título e os aliases
+        pesando mais que o conteúdo, e desempate pelo id. Só aparecem notas já
+        indexadas: a nota recém escrita entra na busca quando o indexador processa o
+        cofre dela. Consulta sem palavra buscável, como só stopwords, devolve lista
+        vazia. O resultado não carrega o conteúdo da nota, só um trecho dele.
       parameters:
         - $ref: '#/components/parameters/TenantHeader'
         - name: query
