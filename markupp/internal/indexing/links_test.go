@@ -57,3 +57,24 @@ func TestIndex_LinksMarkdown_ResolvemOCaminhoAPartirDaPastaDaNota(t *testing.T) 
 func TestIndex_SemLigacoes_DevolveLinksVazio(t *testing.T) {
 	assert.Empty(t, indexaUma(t, "a.md", "texto `[[codigo]]` sem ligacao").Links)
 }
+
+func TestIndex_FrontmatterComWikilinks_ViraLigacaoTipadaComPredicado(t *testing.T) {
+	conteudo := "---\nautor: \"[[Fulana]]\"\nrevisor: [\"[[FULANA]]\", \"[[pasta/Beltrano.md]]\"]\nautor2: \"[[Fulana]]\"\n" +
+		"aliases: [Apelido]\ntags: [x]\n---\n[[Fulana]]"
+
+	nota := indexaUma(t, "origem.md", conteudo)
+
+	assert.Equal(t, []indexing.Link{
+		{CitedTitle: "Fulana", TitleKey: "fulana", Kind: indexing.ExplicitLink},
+		{CitedTitle: "Fulana", TitleKey: "fulana", Kind: indexing.TypedLink, Predicate: "autor"},
+		{CitedTitle: "FULANA", TitleKey: "fulana", Kind: indexing.TypedLink, Predicate: "revisor"},
+		{CitedTitle: "Beltrano", TitleKey: "beltrano", Kind: indexing.TypedLink, Predicate: "revisor"},
+		{CitedTitle: "Fulana", TitleKey: "fulana", Kind: indexing.TypedLink, Predicate: "autor2"},
+	}, nota.Links, "cada chave da a sua ligacao tipada, alem da ligacao do corpo")
+}
+
+func TestIndex_MesmaChaveRepetindoOTitulo_ContaUmaVez(t *testing.T) {
+	nota := indexaUma(t, "origem.md", "---\nrel: [\"[[Alvo]]\", \"[[alvo]]\"]\n---\n")
+
+	assert.Equal(t, []indexing.Link{{CitedTitle: "Alvo", TitleKey: "alvo", Kind: indexing.TypedLink, Predicate: "rel"}}, nota.Links)
+}

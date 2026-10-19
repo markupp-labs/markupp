@@ -76,3 +76,29 @@ func TestParse_SemFrontmatter_SemAliases(t *testing.T) {
 	assert.Empty(t, doc.Aliases)
 	assert.Equal(t, []markdown.Link{{Target: "Alvo", Form: markdown.Wikilink}}, doc.Links)
 }
+
+func TestParse_FrontmatterComWikilinks_DevolveLigacoesTipadasPelaChave(t *testing.T) {
+	conteudo := "---\nautor: \"[[Fulana]]\"\nprojetos:\n  - \"[[markupp|m]]\"\n  - \"[[Outro#Secao]]\"\n  - literal\n" +
+		"tags: [adr, busca]\ndata: 2026-10-19\ntexto: \"ver [[A]] e [[B]]\"\nancora: \"[[#Secao]]\"\n---\ncorpo"
+
+	doc := markdown.Parse(conteudo)
+
+	assert.Equal(t, []markdown.TypedLink{
+		{Predicate: "autor", Target: "Fulana"},
+		{Predicate: "projetos", Target: "markupp"},
+		{Predicate: "projetos", Target: "Outro"},
+	}, doc.TypedLinks, "valor literal, texto com ligacao no meio e ancora sem nota nao viram ligacao tipada")
+	assert.Empty(t, doc.Links)
+}
+
+func TestParse_AliasesComWikilink_NaoViraLigacaoTipada(t *testing.T) {
+	doc := markdown.Parse("---\naliases: \"[[Apelido]]\"\n---\ncorpo")
+
+	assert.Empty(t, doc.TypedLinks)
+	assert.Equal(t, []string{"[[Apelido]]"}, doc.Aliases)
+}
+
+func TestParse_FrontmatterQueNaoEhMapa_SemLigacoesTipadas(t *testing.T) {
+	assert.Empty(t, markdown.Parse("---\n- \"[[Alvo]]\"\n---\ncorpo").TypedLinks)
+	assert.Empty(t, markdown.Parse("---\nrel: \"[[Alvo]]\n---\ncorpo").TypedLinks, "YAML invalido")
+}

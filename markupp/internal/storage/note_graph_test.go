@@ -50,7 +50,11 @@ func backlinks(ctx context.Context, t *testing.T, graph *storage.PostgresNoteGra
 	t.Helper()
 	lidas, err := graph.Backlinks(ctx, noteID, 0, 100)
 	require.NoError(t, err, "backlinks de %q", noteID)
-	return idsDe(lidas)
+	ids := make([]string, 0, len(lidas))
+	for _, lida := range lidas {
+		ids = append(ids, lida.ID)
+	}
+	return ids
 }
 
 func TestNoteGraph_Backlinks_ResolvemPorTituloAliasECaminho(t *testing.T) {
@@ -68,8 +72,11 @@ func TestNoteGraph_Backlinks_Paginados(t *testing.T) {
 	lidas, err := graph.Backlinks(ctxDeTeste, "b", 1, 1)
 
 	require.NoError(t, err)
-	assert.Equal(t, []string{"c"}, idsDe(lidas))
-	assert.Equal(t, notes.LinkedNote{ID: "c", VaultID: cofreDeTeste, Path: "c.md", UpdatedAt: lidas[0].UpdatedAt}, lidas[0])
+	require.Len(t, lidas, 1)
+	assert.Equal(t, notes.Backlink{
+		LinkedNote: notes.LinkedNote{ID: "c", VaultID: cofreDeTeste, Path: "c.md", UpdatedAt: lidas[0].UpdatedAt},
+		Predicates: []string{},
+	}, lidas[0], "ligacao so do corpo nao tem predicado")
 }
 
 func TestNoteGraph_Neighbors_EntradaESaida(t *testing.T) {
@@ -80,9 +87,9 @@ func TestNoteGraph_Neighbors_EntradaESaida(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, vizinhos, 3)
 	assert.Equal(t, []notes.Neighbor{
-		{LinkedNote: notes.LinkedNote{ID: "a", VaultID: cofreDeTeste, Path: "a.md", UpdatedAt: vizinhos[0].UpdatedAt}, Incoming: true},
-		{LinkedNote: notes.LinkedNote{ID: "c", VaultID: cofreDeTeste, Path: "c.md", UpdatedAt: vizinhos[1].UpdatedAt}, Incoming: true, Outgoing: true},
-		{LinkedNote: notes.LinkedNote{ID: "d", VaultID: cofreDeTeste, Path: "d.md", UpdatedAt: vizinhos[2].UpdatedAt}, Incoming: true},
+		{LinkedNote: notes.LinkedNote{ID: "a", VaultID: cofreDeTeste, Path: "a.md", UpdatedAt: vizinhos[0].UpdatedAt}, Incoming: true, IncomingPredicates: []string{}, OutgoingPredicates: []string{}},
+		{LinkedNote: notes.LinkedNote{ID: "c", VaultID: cofreDeTeste, Path: "c.md", UpdatedAt: vizinhos[1].UpdatedAt}, Incoming: true, Outgoing: true, IncomingPredicates: []string{}, OutgoingPredicates: []string{}},
+		{LinkedNote: notes.LinkedNote{ID: "d", VaultID: cofreDeTeste, Path: "d.md", UpdatedAt: vizinhos[2].UpdatedAt}, Incoming: true, IncomingPredicates: []string{}, OutgoingPredicates: []string{}},
 	}, vizinhos)
 }
 
