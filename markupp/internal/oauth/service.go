@@ -9,6 +9,7 @@ import (
 // Códigos de erro do protocolo usados pelo Service (RFC 6749 e RFC 8707).
 const (
 	errInvalidRequest          = "invalid_request"
+	errInvalidClient           = "invalid_client"
 	errUnsupportedResponseType = "unsupported_response_type"
 	errInvalidScope            = "invalid_scope"
 	errInvalidTarget           = "invalid_target"
