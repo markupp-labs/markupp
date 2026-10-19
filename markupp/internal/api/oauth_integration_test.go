@@ -18,6 +18,7 @@ import (
 
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/api"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/auth"
+	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/notes"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/oauth"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/storage"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/storage/storagetest"
@@ -30,6 +31,8 @@ const (
 	retornoDoAgente      = "http://127.0.0.1:51234/cb"
 	verifierDaRFC        = "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"
 	challengeDaRFC       = "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM"
+	escoposDoAgente      = "notas:leitura notas:escrita"
+	segredoDoResource    = "segredo-do-resource-de-integracao-com-32-bytes" // #nosec G101 -- valor fictício de teste
 )
 
 // semSeguirRedirect devolve o 302 em vez de segui-lo, para o teste ler o Location.
@@ -48,18 +51,24 @@ func setupOAuthIntegrationServer(t *testing.T) (*httptest.Server, *pgxpool.Pool)
 	codec := auth.NewTokenCodec("segredo-para-teste-de-integracao-de-oauth", 15*time.Minute, time.Now)
 	authCfg := auth.ServiceConfig{DefaultTenantID: "default", LocalEnabled: true, RefreshExpirationPeriod: 24 * time.Hour}
 	authSvc := auth.NewService(storage.NewPostgresAuthRepository(pool), codec, auth.NewBcryptHasher(), authCfg, time.Now)
-	oauthSvc := oauth.NewService(storage.NewPostgresOAuthRepository(pool), oauth.ServiceConfig{
-		Issuer: issuerDeIntegracao, PanelURL: painelDeIntegracao, Resources: []string{resourceDeIntegracao},
-		AccessTTL: time.Hour, RefreshTTL: 24 * time.Hour, RequestTTL: 10 * time.Minute, CodeTTL: time.Minute,
-	}, codec, time.Now, uuid.NewString, func() string { return uuid.NewString() + uuid.NewString() })
+	notesSvc := notes.NewService(storage.NewPostgresNotesRepository(pool), integrationMaxNoteSize)
 	router := api.NewRouter(api.RouterDeps{
-		Auth: authSvc, Tokens: codec, Tenants: authSvc, Probe: pool,
-		OAuthMetadata: &api.OAuthMetadata{Issuer: issuerDeIntegracao}, OAuth: oauthSvc,
+		Auth: authSvc, Notes: notesSvc, Tokens: codec, Tenants: authSvc, Probe: pool,
+		OAuthMetadata: &api.OAuthMetadata{Issuer: issuerDeIntegracao}, OAuth: oauthServiceDeIntegracao(pool, codec),
 	})
 
 	server := httptest.NewServer(router)
 	t.Cleanup(server.Close)
 	return server, pool
+}
+
+// oauthServiceDeIntegracao monta o serviço OAuth com um resource e o segredo dele.
+func oauthServiceDeIntegracao(pool *pgxpool.Pool, codec *auth.TokenCodec) *oauth.Service {
+	return oauth.NewService(storage.NewPostgresOAuthRepository(pool), oauth.ServiceConfig{
+		Issuer: issuerDeIntegracao, PanelURL: painelDeIntegracao, Resources: []string{resourceDeIntegracao},
+		AccessTTL: time.Hour, RefreshTTL: 24 * time.Hour, RequestTTL: 10 * time.Minute, CodeTTL: time.Minute, ExchangeTTL: 5 * time.Minute,
+		ResourceSecrets: map[string]string{resourceDeIntegracao: segredoDoResource},
+	}, codec, time.Now, uuid.NewString, func() string { return uuid.NewString() + uuid.NewString() })
 }
 
 func loginDeIntegracao(t *testing.T, server *httptest.Server) string {
@@ -72,11 +81,11 @@ func loginDeIntegracao(t *testing.T, server *httptest.Server) string {
 	return token
 }
 
-func iniciarAutorizacao(t *testing.T, server *httptest.Server) string {
+func iniciarAutorizacao(t *testing.T, server *httptest.Server, scope string) string {
 	t.Helper()
 	query := url.Values{
 		"response_type": {"code"}, "client_id": {"agente"}, "redirect_uri": {retornoDoAgente},
-		"scope": {"notas:leitura notas:escrita"}, "state": {"estado-1"}, "resource": {resourceDeIntegracao},
+		"scope": {scope}, "state": {"estado-1"}, "resource": {resourceDeIntegracao},
 		"code_challenge": {challengeDaRFC}, "code_challenge_method": {"S256"},
 	}
 	resp, err := semSeguirRedirect.Get(server.URL + "/oauth/authorize?" + query.Encode())
@@ -119,7 +128,7 @@ func TestIntegration_OAuth_AuthorizeAprovacaoETroca(t *testing.T) {
 	server, _ := setupOAuthIntegrationServer(t)
 	accountToken := loginDeIntegracao(t, server)
 
-	requestID := iniciarAutorizacao(t, server)
+	requestID := iniciarAutorizacao(t, server, escoposDoAgente)
 	require.NotEmpty(t, requestID)
 	retorno := aprovarPedido(t, server, accountToken, requestID)
 
@@ -135,7 +144,7 @@ func TestIntegration_OAuth_AuthorizeAprovacaoETroca(t *testing.T) {
 
 func TestIntegration_OAuth_CodigoReusado_RecusaERevogaOsTokens(t *testing.T) {
 	server, pool := setupOAuthIntegrationServer(t)
-	retorno := aprovarPedido(t, server, loginDeIntegracao(t, server), iniciarAutorizacao(t, server))
+	retorno := aprovarPedido(t, server, loginDeIntegracao(t, server), iniciarAutorizacao(t, server, escoposDoAgente))
 	status, _ := trocarCodigo(t, server, retorno.Get("code"))
 	require.Equal(t, http.StatusOK, status)
 
@@ -145,11 +154,12 @@ func TestIntegration_OAuth_CodigoReusado_RecusaERevogaOsTokens(t *testing.T) {
 	assert.Zero(t, tokensAtivos(t, pool), "reuso do código revoga os tokens da Autorização")
 }
 
-// autorizarAgente percorre o fluxo inteiro e devolve o token da conta e o par emitido.
-func autorizarAgente(t *testing.T, server *httptest.Server) (string, map[string]any) {
+// autorizarAgente percorre o fluxo inteiro com o escopo dado e devolve o token da conta
+// e o par emitido.
+func autorizarAgente(t *testing.T, server *httptest.Server, scope string) (string, map[string]any) {
 	t.Helper()
 	accountToken := loginDeIntegracao(t, server)
-	retorno := aprovarPedido(t, server, accountToken, iniciarAutorizacao(t, server))
+	retorno := aprovarPedido(t, server, accountToken, iniciarAutorizacao(t, server, scope))
 	status, tokens := trocarCodigo(t, server, retorno.Get("code"))
 	require.Equal(t, http.StatusOK, status)
 	return accountToken, tokens
@@ -195,7 +205,7 @@ func requireInvalidGrant(t *testing.T, status int, body map[string]any) {
 
 func TestIntegration_OAuth_RefreshRotaciona_ReusoDerrubaOsTokens(t *testing.T) {
 	server, pool := setupOAuthIntegrationServer(t)
-	_, primeiro := autorizarAgente(t, server)
+	_, primeiro := autorizarAgente(t, server, escoposDoAgente)
 
 	status, segundo := renovar(t, server, primeiro["refresh_token"])
 	require.Equal(t, http.StatusOK, status)
@@ -213,7 +223,7 @@ func TestIntegration_OAuth_RefreshRotaciona_ReusoDerrubaOsTokens(t *testing.T) {
 
 func TestIntegration_OAuth_RefreshRecusadoPorScopeOuResource_ContinuaValido(t *testing.T) {
 	server, _ := setupOAuthIntegrationServer(t)
-	_, tokens := autorizarAgente(t, server)
+	_, tokens := autorizarAgente(t, server, escoposDoAgente)
 
 	status, body := renovarCom(t, server, tokens["refresh_token"], url.Values{"scope": {"administracao"}})
 	require.Equal(t, http.StatusBadRequest, status)
@@ -228,7 +238,7 @@ func TestIntegration_OAuth_RefreshRecusadoPorScopeOuResource_ContinuaValido(t *t
 
 func TestIntegration_OAuth_Revoke_DerrubaOsTokensEORefreshSeguinte(t *testing.T) {
 	server, pool := setupOAuthIntegrationServer(t)
-	_, tokens := autorizarAgente(t, server)
+	_, tokens := autorizarAgente(t, server, escoposDoAgente)
 	accessToken, _ := tokens["access_token"].(string)
 
 	resp := postarFormOAuth(t, server, "/oauth/revoke", url.Values{"token": {accessToken}, "client_id": {"agente"}})
@@ -263,7 +273,7 @@ func apagarAutorizacao(t *testing.T, server *httptest.Server, accountToken strin
 
 func TestIntegration_OAuth_AutorizacoesDaConta_ListaERevoga(t *testing.T) {
 	server, _ := setupOAuthIntegrationServer(t)
-	accountToken, tokens := autorizarAgente(t, server)
+	accountToken, tokens := autorizarAgente(t, server, escoposDoAgente)
 
 	autorizacoes := listarAutorizacoes(t, server, accountToken)
 	require.Len(t, autorizacoes, 1)
@@ -274,5 +284,79 @@ func TestIntegration_OAuth_AutorizacoesDaConta_ListaERevoga(t *testing.T) {
 	require.Equal(t, http.StatusNoContent, apagarAutorizacao(t, server, accountToken, autorizacoes[0]["id"]))
 	assert.Empty(t, listarAutorizacoes(t, server, accountToken))
 	status, body := renovar(t, server, tokens["refresh_token"])
+	requireInvalidGrant(t, status, body)
+}
+
+// trocarPorTokenDaAPI faz a troca de token como o resource, autenticado por HTTP Basic
+// com o segredo dado.
+func trocarPorTokenDaAPI(t *testing.T, server *httptest.Server, accessToken any, secret string) (int, map[string]any) {
+	t.Helper()
+	subject, _ := accessToken.(string)
+	form := url.Values{"grant_type": {oauth.GrantTypeTokenExchange}, "subject_token": {subject}, "subject_token_type": {oauth.TokenTypeAccessToken}}
+	req, err := http.NewRequest(http.MethodPost, server.URL+"/oauth/token", strings.NewReader(form.Encode()))
+	require.NoError(t, err)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.SetBasicAuth(url.QueryEscape(resourceDeIntegracao), url.QueryEscape(secret))
+	resp, err := http.DefaultClient.Do(req)
+	require.NoError(t, err)
+	defer func() { _ = resp.Body.Close() }()
+	return resp.StatusCode, decodeJSON(t, resp.Body)
+}
+
+// tokenDaAPI autoriza o agente com o escopo dado e troca o access token pelo JWT da API.
+func tokenDaAPI(t *testing.T, server *httptest.Server, scope string) string {
+	t.Helper()
+	_, tokens := autorizarAgente(t, server, scope)
+	status, troca := trocarPorTokenDaAPI(t, server, tokens["access_token"], segredoDoResource)
+	require.Equal(t, http.StatusOK, status, troca)
+	assert.Equal(t, scope, troca["scope"])
+	apiToken, _ := troca["access_token"].(string)
+	require.NotEmpty(t, apiToken)
+	return apiToken
+}
+
+func TestIntegration_OAuth_TrocaComLeitura_LeAsNotasSemEscreverNemAlcancarAConta(t *testing.T) {
+	server, _ := setupOAuthIntegrationServer(t)
+	apiToken := tokenDaAPI(t, server, "notas:leitura")
+
+	status, _ := sendJSON(t, http.MethodGet, server.URL+"/v1/notes", apiToken, "")
+	assert.Equal(t, http.StatusOK, status)
+	status, body := sendJSON(t, http.MethodPost, server.URL+"/v1/notes", apiToken, `{"path":"agente.md","content":"x"}`)
+	assert.Equal(t, http.StatusForbidden, status)
+	assert.Equal(t, "insufficient_scope", body["error"])
+	status, body = sendJSON(t, http.MethodGet, server.URL+"/v1/me/authorizations", apiToken, "")
+	assert.Equal(t, http.StatusForbidden, status)
+	assert.Equal(t, "first_party_only", body["error"])
+}
+
+func TestIntegration_OAuth_TrocaComEscrita_CriaNota(t *testing.T) {
+	server, _ := setupOAuthIntegrationServer(t)
+	apiToken := tokenDaAPI(t, server, "notas:escrita")
+
+	status, body := sendJSON(t, http.MethodPost, server.URL+"/v1/notes", apiToken, `{"path":"agente.md","content":"x"}`)
+
+	assert.Equal(t, http.StatusCreated, status, body)
+	assert.Equal(t, "agente.md", body["path"])
+}
+
+func TestIntegration_OAuth_TrocaComSegredoErrado_Retorna401(t *testing.T) {
+	server, _ := setupOAuthIntegrationServer(t)
+	_, tokens := autorizarAgente(t, server, escoposDoAgente)
+
+	status, body := trocarPorTokenDaAPI(t, server, tokens["access_token"], "segredo-errado-do-resource-com-32-bytes")
+
+	assert.Equal(t, http.StatusUnauthorized, status)
+	assert.Equal(t, "invalid_client", body["error"])
+}
+
+func TestIntegration_OAuth_TrocaDepoisDeRevogarAAutorizacao_InvalidGrant(t *testing.T) {
+	server, _ := setupOAuthIntegrationServer(t)
+	accountToken, tokens := autorizarAgente(t, server, escoposDoAgente)
+	autorizacoes := listarAutorizacoes(t, server, accountToken)
+	require.Len(t, autorizacoes, 1)
+	require.Equal(t, http.StatusNoContent, apagarAutorizacao(t, server, accountToken, autorizacoes[0]["id"]))
+
+	status, body := trocarPorTokenDaAPI(t, server, tokens["access_token"], segredoDoResource)
+
 	requireInvalidGrant(t, status, body)
 }
