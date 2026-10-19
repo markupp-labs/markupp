@@ -224,7 +224,6 @@ en:
         already_member: "%{email} is already a member."
         role_above_own: "You can't give or change a role above your own."
   notes:
-    untitled: "Untitled"
     index:
       pick: "Pick a note from the sidebar."
     form:

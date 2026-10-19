@@ -1,4 +1,4 @@
-<% content_for :title, @note.title.presence || Note.untitled_name %>
+<% content_for :title, @note.title.presence %>
 <%# Sem cache do Turbo: voltar para a nota busca a versão atual, e o editor não é clonado no snapshot. %>
 <% content_for :head, tag.meta(name: "turbo-cache-control", content: "no-cache") %>
 <% content_for :sidebar, render("notes/sidebar", tree: @tree, current: @note) %>
@@ -9,11 +9,12 @@
 <%# data-mode escolhe os painéis visíveis (CSS .note-form); Ctrl+E e Ctrl+\ trocam o modo (note_mode_controller.js). %>
 <%= form_with model: @note, class: "note-form flex h-full flex-col gap-3",
               data: { controller: "editor note-form note-mode", mode:, note_form_leave_message_value: t(".leave"), note_form_new_value: !@note.persisted?,
+                      note_form_blank_title_value: ActiveModel::Error.new(@note, :title, :blank).full_message,
                       note_mode_wikilinks_value: wikilink_targets(@tree), note_mode_folder_value: @note.folder,
                       note_mode_missing_note_value: t(".missing_note"),
                       action: "keydown.ctrl+s@window->note-form#save:prevent keydown.meta+s@window->note-form#save:prevent " \
                               "keydown@window->note-mode#shortcut input->note-mode#render scroll->note-mode#followEditor:capture " \
-                              "input->note-form#track submit->note-form#allowLeaving turbo:submit-start@document->note-form#allowLeavingOnDelete " \
+                              "input->note-form#track submit->note-form#submit turbo:submit-start@document->note-form#allowLeavingOnDelete " \
                               "beforeunload@window->note-form#warnBeforeUnload turbo:before-visit@document->note-form#confirmVisit " \
                               "keydown.shift+tab->note-form#focusTitle note-form:heading->editor#replaceStart" } do |form| %>
   <%# Erro de caminho (API) ou de título em branco: os dois aparecem sob o título. %>
@@ -53,18 +54,17 @@
   </header>
 
   <div>
-    <%# Título = nome do arquivo sem .md. Nota nova abre com ele vazio e focado; Tab vai para o fim do conteúdo. %>
-    <% new_untitled = !@note.persisted? && @note.untitled? %>
+    <%# Título = nome do arquivo sem .md, obrigatório. Nota nova abre com ele vazio e focado; Tab vai para o fim do conteúdo. %>
     <%= form.label :title, class: "sr-only" %>
-    <%= form.text_field :title, value: (new_untitled ? "" : @note.title), placeholder: Note.untitled_name, autofocus: writer && !@note.persisted?,
+    <%= form.text_field :title, value: @note.title, autofocus: writer && !@note.persisted?,
                         spellcheck: false, autocomplete: "off", readonly: !writer,
                         aria: { invalid: path_error.present?, describedby: ("note_path_error" if path_error) },
                         data: { note_form_target: "title", action: "input->note-form#syncHeading keydown.tab->editor#focusEnd" },
                         class: "w-full rounded-md border border-transparent bg-transparent px-1 py-0.5 text-2xl font-semibold text-ink " \
-                               "placeholder:text-ink-muted hover:border-line focus:border-accent focus-visible:outline-none aria-invalid:border-danger" %>
-    <% if path_error %>
-      <p id="note_path_error" data-note-form-target="pending" class="px-1 text-danger"><%= path_error %></p>
-    <% end %>
+                               "hover:border-line focus:border-accent focus-visible:outline-none aria-invalid:border-danger" %>
+    <%# Sempre presente: o note-form mostra aqui o título em branco sem ir ao servidor. %>
+    <%= tag.p path_error, id: "note_path_error", hidden: path_error.blank?, class: "px-1 text-danger",
+                          data: { note_form_target: [ "titleError", ("pending" if path_error) ].compact.join(" ") } %>
   </div>
 
   <% if @conflict %>

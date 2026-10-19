@@ -7,7 +7,7 @@ class NotesController < ApplicationController
 
   # A tela padrão é uma nota nova em branco; viewer não cria, então só escolhe na árvore.
   def index
-    @note = Note.untitled(nil) if current_tenant.writer?
+    @note = Note.blank(nil) if current_tenant.writer?
   end
 
   def show
@@ -15,11 +15,11 @@ class NotesController < ApplicationController
   end
 
   def new
-    @note = Note.untitled(params[:folder])
+    @note = Note.blank(params[:folder])
   end
 
   def create
-    @note = Note.new(path: note_path_param(note_params[:title].presence || Note.untitled_name), content: note_content_param)
+    @note = Note.new(path: note_path_param(note_params[:title]), content: note_content_param)
     if @note.save(credential.api)
       redirect_to note_path(@note), notice: t(".created")
     else

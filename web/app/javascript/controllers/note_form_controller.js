@@ -4,9 +4,10 @@ import { Controller } from "@hotwired/stimulus"
 // Com aviso de conflito ou erro de caminho na tela, o que o usuário digitou ainda não está no servidor.
 // Pasta e título contam como alteração: renomear e mover também precisam salvar.
 // Nota nova sem nada escrito não é alteração: sair dela a descarta sem perguntar.
+// O título é o nome do arquivo e não há nome automático: sem ele o formulário não sai do navegador.
 export default class extends Controller {
-  static targets = [ "source", "title", "folder", "unsaved", "save", "pending" ]
-  static values = { leaveMessage: String, new: Boolean }
+  static targets = [ "source", "title", "folder", "unsaved", "save", "pending", "titleError" ]
+  static values = { leaveMessage: String, new: Boolean, blankTitle: String }
 
   connect() {
     this.originals = this.fields.map((field) => field.defaultValue)
@@ -44,6 +45,22 @@ export default class extends Controller {
     event.preventDefault()
     this.titleTarget.focus()
     this.titleTarget.setSelectionRange(this.titleTarget.value.length, this.titleTarget.value.length)
+  }
+
+  // Título em branco: avisa sob o campo e devolve o foco a ele, com pasta e conteúdo como estão.
+  submit(event) {
+    if (this.titleTarget.value.trim()) return this.allowLeaving()
+
+    event.preventDefault()
+    this.refuseBlankTitle()
+  }
+
+  refuseBlankTitle() {
+    this.titleErrorTarget.textContent = this.blankTitleValue
+    this.titleErrorTarget.hidden = false
+    this.titleTarget.setAttribute("aria-invalid", "true")
+    this.titleTarget.setAttribute("aria-describedby", this.titleErrorTarget.id)
+    this.titleTarget.focus()
   }
 
   allowLeaving() {
