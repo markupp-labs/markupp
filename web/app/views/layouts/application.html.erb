@@ -51,6 +51,9 @@
            class="sidebar-handle absolute inset-y-0 right-0 hidden w-1.5 cursor-col-resize touch-none md:block"></div>
     </nav>
 
+    <%# Lombada: aba colada na borda da barra, ponta dela quando fechada; um botão só nos dois estados. No celular a gaveta tem o seu. %>
+    <%= sidebar_toggle_button(t(sidebar_closed? ? ".show_sidebar" : ".hide_sidebar")) %>
+
     <% if current_tenant %>
       <dialog data-search-target="dialog" aria-label="<%= t(".search_notes") %>"
               class="mx-auto mt-[15vh] w-[min(36rem,calc(100vw-2rem))] rounded-md border border-line bg-surface text-ink backdrop:bg-surface-sunken/70">
@@ -65,10 +68,8 @@
       </dialog>
     <% end %>
 
-    <%# @container: o lado a lado escolhe colunas ou pilha pela largura do main (application.css). %>
-    <main class="@container min-w-0 p-4 md:p-6">
-      <%# Um botão só, fora da barra e no mesmo lugar aberta ou fechada, como no VS Code; no celular a gaveta tem o seu. %>
-      <%= sidebar_toggle_button(t(sidebar_closed? ? ".show_sidebar" : ".hide_sidebar"), classes: "mb-2 hidden md:inline-flex") %>
+    <%# @container: o lado a lado escolhe colunas ou pilha pela largura do main (application.css). md:pl-10 deixa a lombada (21px) fora do conteúdo. %>
+    <main class="@container min-w-0 p-4 md:p-6 md:pl-10">
       <%= render "layouts/flash" %>
       <% page = content_for?(:main) ? yield(:main) : yield %>
       <%# Páginas de erro pedem o mascote ao lado da mensagem (content_for :mascot). %>

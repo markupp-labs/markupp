@@ -25,9 +25,9 @@ module SidebarHelper
     { data: { sidebar: ("closed" if sidebar_closed?) }, style: ("--sidebar-width: #{width}px" if width) }
   end
 
-  # Botão só de ícone que recolhe ou expande; o title mostra o atalho.
-  def sidebar_toggle_button(label, classes:)
-    tag.button(type: "button", title: "#{label} (Ctrl+B)", class: [ "btn-icon", classes ],
+  # Lombada da barra (.sidebar-spine): botão só de ícone que recolhe ou expande; o title mostra o atalho.
+  def sidebar_toggle_button(label)
+    tag.button(type: "button", title: "#{label} (Ctrl+B)", class: "sidebar-spine",
                aria: { label:, controls: "sidebar", expanded: !sidebar_closed?, keyshortcuts: "Control+B Meta+B" },
                data: { action: "sidebar#toggle", sidebar_target: "toggle" }) { icon("sidebar-simple") }
   end
