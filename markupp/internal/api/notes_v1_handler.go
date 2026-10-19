@@ -30,6 +30,42 @@ func mountV1NotesRoutes(r chi.Router, svc NoteService) {
 	r.With(requireWriter).Delete("/v1/notes/{id}", h.delete)
 	r.Get("/v1/vaults/{id}/notes", h.listVault)
 	r.With(requireWriter).Post("/v1/vaults/{id}/notes", h.createInRouteVault)
+	r.Get("/v1/search/notes", h.searchV1)
+}
+
+// searchHitResponse é o resultado da busca em /v1: a nota resumida, o cofre dela, a
+// relevância e o trecho.
+type searchHitResponse struct {
+	Note    notes.NoteSummary `json:"note"`
+	VaultID string            `json:"vault_id"`
+	Rank    float64           `json:"rank"`
+	Snippet string            `json:"snippet"`
+}
+
+func (h *notesHandler) searchV1(w http.ResponseWriter, r *http.Request) {
+	query := r.URL.Query().Get("q")
+	if query == "" {
+		writeError(w, "invalid_request", "query string 'q' é obrigatória", http.StatusBadRequest)
+		return
+	}
+	offset, limit, ok := parsePage(w, r)
+	if !ok {
+		return
+	}
+	results, err := h.svc.SearchNotes(r.Context(), query, r.URL.Query().Get("vault"), offset, limit)
+	if err != nil {
+		writeDomainError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, toSearchHits(results))
+}
+
+func toSearchHits(results []notes.SearchResult) []searchHitResponse {
+	hits := make([]searchHitResponse, 0, len(results))
+	for _, res := range results {
+		hits = append(hits, searchHitResponse{Note: notes.Summarize(res.ID, res.Path), VaultID: res.VaultID, Rank: res.Rank, Snippet: res.Snippet})
+	}
+	return hits
 }
 
 func (h *notesHandler) createInRouteVault(w http.ResponseWriter, r *http.Request) {

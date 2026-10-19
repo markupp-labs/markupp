@@ -38,14 +38,17 @@ DELETE FROM notes WHERE id = $1;
 -- vazia ou só de stopwords, não casa com nada. O id desempata o ranking para a
 -- paginação ser estável. O trecho marca os termos com U+0002 e U+0003, e não com
 -- HTML, para o cliente escapar o texto antes de trocar os marcadores por destaque.
+-- Cofre vazio busca em todos os cofres do ator.
 -- name: SearchNotes :many
 SELECT n.id, n.vault_id, n.path, n.updated_at,
        ts_headline(sqlc.arg(search_config)::text::regconfig, n.content, q.query,
-                   'StartSel=' || chr(2) || ', StopSel=' || chr(3))::text AS snippet
+                   'StartSel=' || chr(2) || ', StopSel=' || chr(3))::text AS snippet,
+       ts_rank(s.document, q.query, 1)::float8 AS rank
 FROM websearch_to_tsquery(sqlc.arg(search_config)::text::regconfig, sqlc.arg(query)::text) AS q (query)
 JOIN note_search_index s ON s.document @@ q.query
 JOIN notes n ON n.id = s.note_id
-ORDER BY ts_rank(s.document, q.query, 1) DESC, n.id
+WHERE sqlc.arg(vault_id)::text = '' OR n.vault_id = sqlc.arg(vault_id)::text
+ORDER BY rank DESC, n.id
 LIMIT sqlc.arg(page_limit) OFFSET sqlc.arg(page_offset);
 
 -- Organização derivada da nota, nula antes do segundo estágio.

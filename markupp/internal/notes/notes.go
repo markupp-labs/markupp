@@ -30,13 +30,15 @@ type Note struct {
 }
 
 // SearchResult é a projeção de uma nota devolvida pela busca: sem o conteúdo, com o
-// trecho cru dele em que os termos da consulta aparecem entre U+0002 e U+0003.
+// trecho cru dele em que os termos da consulta aparecem entre U+0002 e U+0003 e a
+// relevância, que a rota sem prefixo não expõe.
 type SearchResult struct {
 	ID        string    `json:"id"`
 	VaultID   string    `json:"vault_id"`
 	Path      string    `json:"path"`
 	UpdatedAt time.Time `json:"updated_at"`
 	Snippet   string    `json:"snippet"`
+	Rank      float64   `json:"-"`
 }
 
 // Repository é a porta de persistência que o Service consome.
@@ -48,7 +50,7 @@ type Repository interface {
 	GetNoteByID(ctx context.Context, id string) (Note, error)
 	ListNotes(ctx context.Context) ([]Note, error)
 	ListVaultNotes(ctx context.Context, vaultID string, q VaultNotesQuery) ([]Note, error)
-	SearchNotes(ctx context.Context, query string, offset, limit int32) ([]SearchResult, error)
+	SearchNotes(ctx context.Context, query, vaultID string, offset, limit int32) ([]SearchResult, error)
 }
 
 // Erros de domínio devolvidos pelo Service e traduzidos em status HTTP pela
@@ -211,9 +213,9 @@ func (s *Service) validateContent(content string) error {
 	return nil
 }
 
-// SearchNotes busca no índice léxico, normalizando offset negativo para zero e
-// limit não positivo para dez.
-func (s *Service) SearchNotes(ctx context.Context, query string, offset, limit int) ([]SearchResult, error) {
+// SearchNotes busca no índice léxico do cofre vaultID, ou de todos os cofres do ator
+// quando vazio, normalizando offset negativo para zero e limit não positivo para dez.
+func (s *Service) SearchNotes(ctx context.Context, query, vaultID string, offset, limit int) ([]SearchResult, error) {
 	if offset < 0 {
 		offset = 0
 	}
@@ -221,7 +223,7 @@ func (s *Service) SearchNotes(ctx context.Context, query string, offset, limit i
 		limit = 10
 	}
 
-	results, err := s.repo.SearchNotes(ctx, query, int32(offset), int32(limit))
+	results, err := s.repo.SearchNotes(ctx, query, vaultID, int32(offset), int32(limit))
 	if err != nil {
 		return nil, fmt.Errorf("buscar notas: %w", err)
 	}

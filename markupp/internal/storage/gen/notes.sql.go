@@ -250,17 +250,20 @@ func (q *Queries) ListVaultNotes(ctx context.Context, arg ListVaultNotesParams) 
 const searchNotes = `-- name: SearchNotes :many
 SELECT n.id, n.vault_id, n.path, n.updated_at,
        ts_headline($1::text::regconfig, n.content, q.query,
-                   'StartSel=' || chr(2) || ', StopSel=' || chr(3))::text AS snippet
+                   'StartSel=' || chr(2) || ', StopSel=' || chr(3))::text AS snippet,
+       ts_rank(s.document, q.query, 1)::float8 AS rank
 FROM websearch_to_tsquery($1::text::regconfig, $2::text) AS q (query)
 JOIN note_search_index s ON s.document @@ q.query
 JOIN notes n ON n.id = s.note_id
-ORDER BY ts_rank(s.document, q.query, 1) DESC, n.id
-LIMIT $4 OFFSET $3
+WHERE $3::text = '' OR n.vault_id = $3::text
+ORDER BY rank DESC, n.id
+LIMIT $5 OFFSET $4
 `
 
 type SearchNotesParams struct {
 	SearchConfig string
 	Query        string
+	VaultID      string
 	PageOffset   int32
 	PageLimit    int32
 }
@@ -271,16 +274,19 @@ type SearchNotesRow struct {
 	Path      string
 	UpdatedAt time.Time
 	Snippet   string
+	Rank      float64
 }
 
 // Lê só o índice: a nota ainda não indexada fica fora (ADR-0012). Consulta sem lexema,
 // vazia ou só de stopwords, não casa com nada. O id desempata o ranking para a
 // paginação ser estável. O trecho marca os termos com U+0002 e U+0003, e não com
 // HTML, para o cliente escapar o texto antes de trocar os marcadores por destaque.
+// Cofre vazio busca em todos os cofres do ator.
 func (q *Queries) SearchNotes(ctx context.Context, arg SearchNotesParams) ([]SearchNotesRow, error) {
 	rows, err := q.db.Query(ctx, searchNotes,
 		arg.SearchConfig,
 		arg.Query,
+		arg.VaultID,
 		arg.PageOffset,
 		arg.PageLimit,
 	)
@@ -297,6 +303,7 @@ func (q *Queries) SearchNotes(ctx context.Context, arg SearchNotesParams) ([]Sea
 			&i.Path,
 			&i.UpdatedAt,
 			&i.Snippet,
+			&i.Rank,
 		); err != nil {
 			return nil, err
 		}

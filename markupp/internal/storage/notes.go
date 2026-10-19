@@ -140,20 +140,27 @@ func (r *PostgresNotesRepository) GetNoteByID(ctx context.Context, id string) (n
 	return note, err
 }
 
-// SearchNotes devolve as notas indexadas que casam com query, na sintaxe de
-// websearch_to_tsquery, da mais relevante para a menos, paginadas por offset e limit.
-func (r *PostgresNotesRepository) SearchNotes(ctx context.Context, query string, offset, limit int32) ([]notes.SearchResult, error) {
+// SearchNotes devolve as notas indexadas do cofre vaultID, ou de todos os cofres do
+// ator quando vazio, que casam com query, na sintaxe de websearch_to_tsquery, da mais
+// relevante para a menos, paginadas por offset e limit; notes.ErrVaultForbidden
+// quando o ator não enxerga o cofre.
+func (r *PostgresNotesRepository) SearchNotes(ctx context.Context, query, vaultID string, offset, limit int32) ([]notes.SearchResult, error) {
 	var rows []gen.SearchNotesRow
 	err := r.run(ctx, func(q *gen.Queries) error {
+		if vaultID != "" {
+			if err := requireVisibleVault(ctx, q, vaultID); err != nil {
+				return err
+			}
+		}
 		var qErr error
-		rows, qErr = q.SearchNotes(ctx, gen.SearchNotesParams{SearchConfig: r.searchConfig, Query: query, PageLimit: limit, PageOffset: offset})
+		rows, qErr = q.SearchNotes(ctx, gen.SearchNotesParams{SearchConfig: r.searchConfig, Query: query, VaultID: vaultID, PageLimit: limit, PageOffset: offset})
 		return qErr
 	})
-	out := make([]notes.SearchResult, 0, len(rows))
-	for _, row := range rows {
-		out = append(out, notes.SearchResult{ID: row.ID, VaultID: row.VaultID, Path: row.Path, UpdatedAt: row.UpdatedAt, Snippet: row.Snippet})
-	}
-	return out, err
+	return convertRows(rows, toSearchResult), err
+}
+
+func toSearchResult(row gen.SearchNotesRow) notes.SearchResult {
+	return notes.SearchResult{ID: row.ID, VaultID: row.VaultID, Path: row.Path, UpdatedAt: row.UpdatedAt, Snippet: row.Snippet, Rank: row.Rank}
 }
 
 // ListNotes devolve todas as notas dos cofres do ator.

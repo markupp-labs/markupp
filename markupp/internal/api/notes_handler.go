@@ -25,7 +25,7 @@ type NoteService interface {
 	GetNoteByID(ctx context.Context, id string) (notes.Note, error)
 	ListNotes(ctx context.Context) ([]notes.Note, error)
 	ListVaultNotes(ctx context.Context, vaultID string, q notes.VaultNotesQuery) ([]notes.Note, error)
-	SearchNotes(ctx context.Context, query string, offset, limit int) ([]notes.SearchResult, error)
+	SearchNotes(ctx context.Context, query, vaultID string, offset, limit int) ([]notes.SearchResult, error)
 }
 
 // notesHandler serve as notas pelo serviço, e render dá a representação de cada
@@ -158,7 +158,7 @@ func (h *notesHandler) search(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	results, err := h.svc.SearchNotes(r.Context(), query, offset, limit)
+	results, err := h.svc.SearchNotes(r.Context(), query, "", offset, limit)
 	if err != nil {
 		writeDomainError(w, err)
 		return
