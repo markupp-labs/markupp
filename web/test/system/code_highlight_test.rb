@@ -30,6 +30,18 @@ class CodeHighlightTest < ApplicationSystemTestCase
     assert_selector ".note-preview pre code span.hljs-string", text: /Hello/
   end
 
+  # Sem as regras hljs-* no CSS os spans existem, mas herdam a cor do código e o destaque some.
+  test "keywords and strings get a color of their own" do
+    visit note_path("1")
+    click_on "Read"
+
+    code_color = find(".note-preview pre code", match: :first).style("color")["color"]
+    %w[keyword string].each do |token|
+      token_color = find(".note-preview pre code span.hljs-#{token}", match: :first).style("color")["color"]
+      assert_not_equal code_color, token_color, "expected .hljs-#{token} to be colored apart from the code, both are #{code_color}"
+    end
+  end
+
   test "an unknown or missing language shows the code as plain text" do
     visit note_path("1")
     click_on "Read"
