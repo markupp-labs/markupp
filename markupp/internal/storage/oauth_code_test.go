@@ -197,3 +197,15 @@ func TestPostgresOAuthRepo_RedeemCode_ReusoAntigoDepoisDeReconsentir_NaoTocaANov
 	_, err = repo.ActiveAuthorization(ctx, "u1", "c1")
 	require.NoError(t, err, "a Autorização nova segue ativa")
 }
+
+func TestPostgresOAuthRepo_RedeemCode_ReusoAuditaComContaECliente(t *testing.T) {
+	repo, pool := repoComCodigoDeA1(t)
+	trocarCodigo(t, repo)
+
+	_, err := reusarCodigo(repo, instanteOAuth.Add(100*time.Second))
+
+	require.ErrorIs(t, err, oauth.ErrCodeAlreadyUsed)
+	assert.Equal(t, 1, countRows(t, pool, `SELECT count(*) FROM audit_events WHERE action = 'oauth.code_reuse'
+		AND result = 'failure' AND actor_id = 'u1' AND target = 'c1' AND tenant_id IS NULL
+		AND occurred_at = '2026-10-16T12:01:40Z'`))
+}
