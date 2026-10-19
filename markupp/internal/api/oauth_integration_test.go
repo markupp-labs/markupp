@@ -2,6 +2,8 @@ package api_test
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -108,8 +110,7 @@ func trocarCodigo(t *testing.T, server *httptest.Server, code string) (int, map[
 		"grant_type": {"authorization_code"}, "code": {code}, "code_verifier": {verifierDaRFC},
 		"client_id": {"agente"}, "redirect_uri": {retornoDoAgente}, "resource": {resourceDeIntegracao},
 	}
-	resp, err := http.Post(server.URL+"/oauth/token", "application/x-www-form-urlencoded", strings.NewReader(form.Encode()))
-	require.NoError(t, err)
+	resp := postarFormOAuth(t, server, "/oauth/token", form)
 	defer func() { _ = resp.Body.Close() }()
 	return resp.StatusCode, decodeJSON(t, resp.Body)
 }
@@ -140,9 +141,115 @@ func TestIntegration_OAuth_CodigoReusado_RecusaERevogaOsTokens(t *testing.T) {
 
 	status, body := trocarCodigo(t, server, retorno.Get("code"))
 
-	assert.Equal(t, http.StatusBadRequest, status)
-	assert.Equal(t, "invalid_grant", body["error"])
+	requireInvalidGrant(t, status, body)
+	assert.Zero(t, tokensAtivos(t, pool), "reuso do código revoga os tokens da Autorização")
+}
+
+// autorizarAgente percorre o fluxo inteiro e devolve o token da conta e o par emitido.
+func autorizarAgente(t *testing.T, server *httptest.Server) (string, map[string]any) {
+	t.Helper()
+	accountToken := loginDeIntegracao(t, server)
+	retorno := aprovarPedido(t, server, accountToken, iniciarAutorizacao(t, server))
+	status, tokens := trocarCodigo(t, server, retorno.Get("code"))
+	require.Equal(t, http.StatusOK, status)
+	return accountToken, tokens
+}
+
+func postarFormOAuth(t *testing.T, server *httptest.Server, path string, form url.Values) *http.Response {
+	t.Helper()
+	resp, err := http.Post(server.URL+path, "application/x-www-form-urlencoded", strings.NewReader(form.Encode()))
+	require.NoError(t, err)
+	return resp
+}
+
+func renovar(t *testing.T, server *httptest.Server, refresh any) (int, map[string]any) {
+	t.Helper()
+	refreshToken, _ := refresh.(string)
+	resp := postarFormOAuth(t, server, "/oauth/token", url.Values{
+		"grant_type": {"refresh_token"}, "refresh_token": {refreshToken}, "client_id": {"agente"},
+	})
+	defer func() { _ = resp.Body.Close() }()
+	return resp.StatusCode, decodeJSON(t, resp.Body)
+}
+
+func tokensAtivos(t *testing.T, pool *pgxpool.Pool) int {
+	t.Helper()
 	var ativos int
 	require.NoError(t, pool.QueryRow(context.Background(), `SELECT count(*) FROM oauth_tokens WHERE NOT revoked`).Scan(&ativos))
-	assert.Zero(t, ativos, "reuso do código revoga os tokens da Autorização")
+	return ativos
+}
+
+func requireInvalidGrant(t *testing.T, status int, body map[string]any) {
+	t.Helper()
+	require.Equal(t, http.StatusBadRequest, status)
+	assert.Equal(t, "invalid_grant", body["error"])
+}
+
+func TestIntegration_OAuth_RefreshRotaciona_ReusoDerrubaOsTokens(t *testing.T) {
+	server, pool := setupOAuthIntegrationServer(t)
+	_, primeiro := autorizarAgente(t, server)
+
+	status, segundo := renovar(t, server, primeiro["refresh_token"])
+	require.Equal(t, http.StatusOK, status)
+	assert.NotEqual(t, primeiro["refresh_token"], segundo["refresh_token"])
+	status, terceiro := renovar(t, server, segundo["refresh_token"])
+	require.Equal(t, http.StatusOK, status, "o par novo renova")
+	assert.Equal(t, "notas:leitura notas:escrita", terceiro["scope"])
+
+	status, body := renovar(t, server, primeiro["refresh_token"])
+	requireInvalidGrant(t, status, body)
+	assert.Zero(t, tokensAtivos(t, pool), "o reuso derruba os tokens da Autorização")
+	status, body = renovar(t, server, terceiro["refresh_token"])
+	requireInvalidGrant(t, status, body)
+}
+
+func TestIntegration_OAuth_Revoke_DerrubaOsTokensEORefreshSeguinte(t *testing.T) {
+	server, pool := setupOAuthIntegrationServer(t)
+	_, tokens := autorizarAgente(t, server)
+	accessToken, _ := tokens["access_token"].(string)
+
+	resp := postarFormOAuth(t, server, "/oauth/revoke", url.Values{"token": {accessToken}, "client_id": {"agente"}})
+	_ = resp.Body.Close()
+
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Zero(t, tokensAtivos(t, pool))
+	status, body := renovar(t, server, tokens["refresh_token"])
+	requireInvalidGrant(t, status, body)
+}
+
+func listarAutorizacoes(t *testing.T, server *httptest.Server, accountToken string) []map[string]any {
+	t.Helper()
+	resp := getWithAuth(t, server.URL+"/v1/me/authorizations", accountToken)
+	defer func() { _ = resp.Body.Close() }()
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	var autorizacoes []map[string]any
+	require.NoError(t, json.NewDecoder(resp.Body).Decode(&autorizacoes))
+	return autorizacoes
+}
+
+func apagarAutorizacao(t *testing.T, server *httptest.Server, accountToken string, id any) int {
+	t.Helper()
+	req, err := http.NewRequest(http.MethodDelete, fmt.Sprintf("%s/v1/me/authorizations/%v", server.URL, id), nil)
+	require.NoError(t, err)
+	req.Header.Set("Authorization", "Bearer "+accountToken)
+	resp, err := http.DefaultClient.Do(req)
+	require.NoError(t, err)
+	_ = resp.Body.Close()
+	return resp.StatusCode
+}
+
+func TestIntegration_OAuth_AutorizacoesDaConta_ListaERevoga(t *testing.T) {
+	server, _ := setupOAuthIntegrationServer(t)
+	accountToken, tokens := autorizarAgente(t, server)
+
+	autorizacoes := listarAutorizacoes(t, server, accountToken)
+	require.Len(t, autorizacoes, 1)
+	assert.Equal(t, "agente", autorizacoes[0]["client_id"])
+	assert.Equal(t, "Agente de teste", autorizacoes[0]["client_name"])
+	assert.Equal(t, []any{"notas:leitura", "notas:escrita"}, autorizacoes[0]["scopes"])
+
+	require.Equal(t, http.StatusNoContent, apagarAutorizacao(t, server, accountToken, autorizacoes[0]["id"]))
+	assert.Empty(t, listarAutorizacoes(t, server, accountToken))
+	status, body := renovar(t, server, tokens["refresh_token"])
+	requireInvalidGrant(t, status, body)
 }
