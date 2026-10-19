@@ -22,14 +22,27 @@ const minLetters = 3
 // linkMarkup casa wikilink, embed e link markdown inteiros, cujo texto já é ligação.
 var linkMarkup = regexp.MustCompile(`\[\[[^\]]*\]\]|\[[^\]]*\]\([^)]*\)`)
 
-// Fold é a forma usada para casar menções: sem acento, sem caixa e em NFC.
+// Fold é a forma usada para casar menções: sem acento, sem caixa e em NFC. Texto
+// ASCII só troca a caixa, sem montar a cadeia de transformação, que aloca por chamada.
 func Fold(s string) string {
+	if isASCII(s) {
+		return strings.ToLower(s)
+	}
 	unaccent := transform.Chain(norm.NFD, runes.Remove(runes.In(unicode.Mn)), norm.NFC)
 	stripped, _, err := transform.String(unaccent, s)
 	if err != nil {
 		stripped = s
 	}
 	return norm.NFC.String(cases.Fold().String(stripped))
+}
+
+func isASCII(s string) bool {
+	for i := range len(s) {
+		if s[i] >= utf8.RuneSelf {
+			return false
+		}
+	}
+	return true
 }
 
 // Eligible diz se o título tem letras bastantes para valer como menção.
