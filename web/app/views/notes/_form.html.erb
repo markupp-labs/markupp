@@ -9,6 +9,8 @@
 <%# data-mode escolhe os painéis visíveis (CSS .note-form); Ctrl+E e Ctrl+\ trocam o modo (note_mode_controller.js). %>
 <%= form_with model: @note, class: "note-form flex h-full flex-col gap-3",
               data: { controller: "editor note-form note-mode", mode:, note_form_leave_message_value: t(".leave"), note_form_new_value: !@note.persisted?,
+                      note_mode_wikilinks_value: wikilink_targets(@tree), note_mode_folder_value: @note.folder,
+                      note_mode_missing_note_value: t(".missing_note"),
                       action: "keydown.ctrl+s@window->note-form#save:prevent keydown.meta+s@window->note-form#save:prevent " \
                               "keydown@window->note-mode#shortcut input->note-mode#render " \
                               "input->note-form#track submit->note-form#allowLeaving turbo:submit-start@document->note-form#allowLeavingOnDelete " \

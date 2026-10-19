@@ -240,6 +240,7 @@ en:
         read: "Read"
         split: "Side by side"
       preview: "Preview"
+      missing_note: "No note named %{name}"
     update:
       saved: "Saved"
     create:

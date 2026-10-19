@@ -9,6 +9,7 @@ const SHORTCUTS = { e: "read", "\\": "split" }
 
 export default class extends Controller {
   static targets = [ "source", "preview", "button" ]
+  static values = { wikilinks: Object, folder: String, missingNote: String }
 
   connect() {
     this.render()
