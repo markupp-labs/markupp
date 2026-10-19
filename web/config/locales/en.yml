@@ -147,6 +147,8 @@ en:
   settings:
     nav:
       title: "Settings"
+      back: "Back"
+      back_title: "Back (Esc)"
       close: "Close settings"
       accounts: "Account"
       appearances: "Appearance"
