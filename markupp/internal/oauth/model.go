@@ -97,6 +97,7 @@ var (
 	ErrCodeAlreadyUsed       = errors.New("código de autorização já usado")
 	ErrTokenNotFound         = errors.New("token oauth inexistente, expirado ou revogado")
 	ErrRefreshReused         = errors.New("refresh token oauth já rotacionado")
+	ErrClientSourceConflict  = errors.New("client_id já registrado por outra origem")
 )
 
 // Repository é a porta de persistência do authorization server. Todas as tabelas são
@@ -167,7 +168,8 @@ type Repository interface {
 	// ainda vale em relação a now, ou ErrClientNotFound.
 	GetFreshCIMDClient(ctx context.Context, id string, now time.Time) (Client, error)
 	// SaveCIMDClient cria ou atualiza o cliente de origem CIMD com o documento buscado,
-	// válido até expiresAt. Nunca sobrescreve um cliente de outra origem.
+	// válido até expiresAt. Nunca sobrescreve um cliente de outra origem: nesse caso
+	// devolve ErrClientSourceConflict embrulhado.
 	SaveCIMDClient(ctx context.Context, client Client, expiresAt time.Time) error
 	// RecordAuditEvent grava um evento avulso do authorization server.
 	RecordAuditEvent(ctx context.Context, event AuditEvent) error

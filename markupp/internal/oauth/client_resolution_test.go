@@ -3,6 +3,7 @@ package oauth_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -172,4 +173,16 @@ func TestStartAuthorization_CIMDDocumentoForaDoContrato_RecusaSemGravar(t *testi
 			assert.Empty(t, repo.created)
 		})
 	}
+}
+
+func TestStartAuthorization_CIMDConflitoDeOrigem_RecusaComOInvalidRequestGenerico(t *testing.T) {
+	repo := newFakeOAuthRepository()
+	repo.saveCIMDErr = fmt.Errorf("salvar cliente cimd: %w", oauth.ErrClientSourceConflict)
+
+	_, err := newTestServiceWithMetadata(repo, testMetadataFetcher()).StartAuthorization(context.Background(), validAuthorizeParams())
+
+	requireProtocolError(t, err, "invalid_request", "", "")
+	assert.Contains(t, err.Error(), "inacessivel ou invalido", "a mesma recusa genérica da busca falhando")
+	assert.ErrorIs(t, err, oauth.ErrClientSourceConflict, "a causa segue para o log")
+	assert.Empty(t, repo.created)
 }

@@ -49,7 +49,8 @@ func TestPostgresOAuthRepo_SaveCIMDClient_NaoSobrescreveClienteDCR(t *testing.T)
 
 	err := repo.SaveCIMDClient(ctx, intruso, instanteOAuth.Add(time.Hour))
 
-	require.ErrorContains(t, err, `esperado source "cimd"`)
+	require.ErrorIs(t, err, oauth.ErrClientSourceConflict)
+	assert.ErrorContains(t, err, `esperado source "cimd"`)
 	got, err := repo.GetClient(ctx, "c1")
 	require.NoError(t, err)
 	assert.Equal(t, oauth.Client{ID: "c1", Name: "Agente", RedirectURIs: []string{"http://127.0.0.1/cb"}}, got)
