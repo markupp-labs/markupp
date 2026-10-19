@@ -34,3 +34,4 @@ pin "linkify-it" # @6.1.0
 pin "mdurl" # @2.1.0
 pin "punycode.js" # @2.3.1
 pin "uc.micro" # @3.0.0
+pin "highlight.js" # @11.12.0 (bundle com as linguagens comuns, ver o cabecalho do arquivo)
