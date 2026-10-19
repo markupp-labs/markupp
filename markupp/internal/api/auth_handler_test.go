@@ -459,7 +459,7 @@ func TestAuthHandler_MeusTenants_ListaVinculos(t *testing.T) {
 	var resp []map[string]any
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &resp))
 	require.Len(t, resp, 2)
-	assert.Equal(t, map[string]any{"id": "t2", "name": "Globex", "role": "viewer"}, resp[1])
+	assert.Equal(t, map[string]any{"id": "t2", "name": "Globex", "role": "viewer", "notes_count": float64(0), "last_note_at": nil}, resp[1])
 }
 
 func postTenant(svc *fakeAuthService, body string) *httptest.ResponseRecorder {

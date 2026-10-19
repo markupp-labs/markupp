@@ -92,7 +92,7 @@ func TestIntegration_Auth_FluxoCompleto(t *testing.T) {
 	defer func() { _ = tenantsResp.Body.Close() }()
 	var tenants []map[string]any
 	require.NoError(t, json.NewDecoder(tenantsResp.Body).Decode(&tenants))
-	assert.Equal(t, []map[string]any{{"id": "default", "name": "default", "role": "owner"}}, tenants)
+	assert.Equal(t, []map[string]any{{"id": "default", "name": "default", "role": "owner", "notes_count": float64(0), "last_note_at": nil}}, tenants)
 
 	var userCount, vaultCount, auditCount int
 	require.NoError(t, db.QueryRow(context.Background(), "SELECT COUNT(*) FROM users").Scan(&userCount))
