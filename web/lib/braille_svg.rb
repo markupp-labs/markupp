@@ -11,9 +11,11 @@ module BrailleSvg
   DOTS = { 0x01 => [ 0, 0 ], 0x02 => [ 0, 1 ], 0x04 => [ 0, 2 ], 0x40 => [ 0, 3 ],
            0x08 => [ 1, 0 ], 0x10 => [ 1, 1 ], 0x20 => [ 1, 2 ], 0x80 => [ 1, 3 ] }.freeze
 
-  # Kanagawa do painel (application.css): surface e ink do lotus no claro, do wave no escuro.
-  STYLE = ".bg{fill:#f2ecbc}.dot{fill:#545464}" \
-          "@media (prefers-color-scheme: dark){.bg{fill:#1f1f28}.dot{fill:#dcd7ba}}".freeze
+  # Kanagawa do painel (application.css), invertido como o favicon do GitHub para contrastar com a aba: no navegador
+  # claro o ícone é o wave (fundo escuro, pontos claros); no escuro, o lotus (fundo claro, pontos escuros). Os PNGs,
+  # sem tema, saem como no navegador claro.
+  STYLE = ".bg{fill:#1f1f28}.dot{fill:#dcd7ba}" \
+          "@media (prefers-color-scheme: dark){.bg{fill:#f2ecbc}.dot{fill:#545464}}".freeze
 
   def self.from_lines(lines)
     width = lines.map(&:length).max.to_i * 2
