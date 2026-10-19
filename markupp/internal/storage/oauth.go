@@ -87,8 +87,12 @@ func (r *PostgresOAuthRepository) ApproveRequest(ctx context.Context, a oauth.Ap
 }
 
 // approveInTx decide o pedido como aprovado, concede os escopos, liga o pedido à
-// Autorização e audita o sucesso.
+// Autorização e audita o sucesso. O pedido de cliente DCR compartilha antes a trava dos
+// registros, para a limpeza dos pendentes não apagar o cliente no meio da aprovação.
 func approveInTx(ctx context.Context, qtx *gen.Queries, a oauth.Approval) (gen.OauthRequest, error) {
+	if err := qtx.ShareDCRRegistrationLockForRequest(ctx, a.RequestID); err != nil {
+		return gen.OauthRequest{}, fmt.Errorf("compartilhar a trava dos registros dcr na aprovação: %w", err)
+	}
 	row, err := qtx.ApproveOAuthRequest(ctx, gen.ApproveOAuthRequestParams{
 		ID: a.RequestID, UserID: a.UserID, CodeHash: a.CodeHash,
 		CodeExpiresAt: a.CodeExpiresAt, DecidedAt: a.DecidedAt,

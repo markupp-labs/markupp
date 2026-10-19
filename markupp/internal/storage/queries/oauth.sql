@@ -30,6 +30,14 @@ WHERE c.source = 'cimd' AND c.metadata_expires_at <= sqlc.arg(now)::TIMESTAMPTZ
 -- name: LockDCRRegistrations :exec
 SELECT pg_advisory_xact_lock(hashtextextended('markupp.oauth_dcr_registration', 0));
 
+-- Compartilha a trava dos registros DCR até o fim da transação quando o pedido é de
+-- cliente DCR: a aprovação aberta segura a limpeza dos pendentes, que senão apagaria o
+-- cliente e, em cascata, a Autorização ainda não commitada.
+-- name: ShareDCRRegistrationLockForRequest :exec
+SELECT pg_advisory_xact_lock_shared(hashtextextended('markupp.oauth_dcr_registration', 0))
+FROM oauth_requests r JOIN oauth_clients c ON c.id = r.client_id
+WHERE r.id = $1 AND c.source = 'dcr';
+
 -- Pendente é o cliente DCR que nunca ganhou Autorização, revogada ou não. Os pedidos
 -- dele saem junto, pelo ON DELETE CASCADE.
 -- name: DeleteExpiredPendingDCRClients :exec

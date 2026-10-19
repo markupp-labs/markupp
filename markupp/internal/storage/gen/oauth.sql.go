@@ -661,6 +661,20 @@ func (q *Queries) SetOAuthRequestAuthorization(ctx context.Context, arg SetOAuth
 	return err
 }
 
+const shareDCRRegistrationLockForRequest = `-- name: ShareDCRRegistrationLockForRequest :exec
+SELECT pg_advisory_xact_lock_shared(hashtextextended('markupp.oauth_dcr_registration', 0))
+FROM oauth_requests r JOIN oauth_clients c ON c.id = r.client_id
+WHERE r.id = $1 AND c.source = 'dcr'
+`
+
+// Compartilha a trava dos registros DCR até o fim da transação quando o pedido é de
+// cliente DCR: a aprovação aberta segura a limpeza dos pendentes, que senão apagaria o
+// cliente e, em cascata, a Autorização ainda não commitada.
+func (q *Queries) ShareDCRRegistrationLockForRequest(ctx context.Context, id string) error {
+	_, err := q.db.Exec(ctx, shareDCRRegistrationLockForRequest, id)
+	return err
+}
+
 const upsertCIMDClient = `-- name: UpsertCIMDClient :execrows
 INSERT INTO oauth_clients (id, source, name, redirect_uris, metadata_expires_at)
 VALUES ($1, 'cimd', $2, $3, $4::TIMESTAMPTZ)

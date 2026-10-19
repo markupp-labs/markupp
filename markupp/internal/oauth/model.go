@@ -112,8 +112,9 @@ type Repository interface {
 	// ApproveRequest marca o pedido como decidido, grava o hash do código, cria a
 	// Autorização ativa da conta para o cliente ou amplia os escopos dela com os do
 	// pedido, grava no pedido o ID dessa Autorização e audita oauth.authorize com
-	// sucesso, tudo numa transação. Devolve ErrRequestNotFound se o pedido já não
-	// estiver pendente.
+	// sucesso, tudo numa transação. Com cliente DCR, a transação compartilha a trava de
+	// RegisterDCRClient, para a limpeza dos pendentes esperar a aprovação aberta.
+	// Devolve ErrRequestNotFound se o pedido já não estiver pendente.
 	ApproveRequest(ctx context.Context, approval Approval) (AuthorizationRequest, error)
 	// DenyRequest marca o pedido como decidido e audita oauth.authorize com falha, na
 	// mesma transação. Devolve ErrRequestNotFound se o pedido já não estiver pendente.
