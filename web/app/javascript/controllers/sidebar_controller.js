@@ -23,6 +23,8 @@ export default class extends Controller {
     if (!desktop.matches) return this.panelTarget.togglePopover()
 
     const closing = document.documentElement.dataset.sidebar != "closed"
+    // Só o clique desliza a barra (motion.css); carregar ou navegar troca o body e não anima.
+    this.element.dataset.sidebarMoved = ""
     if (closing) document.documentElement.dataset.sidebar = "closed"
     else delete document.documentElement.dataset.sidebar
     writeCookie("sidebar", closing ? "closed" : "open")

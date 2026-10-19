@@ -39,6 +39,8 @@ export default class extends Controller {
   }
 
   apply(mode) {
+    // Só a troca anima o painel que entra (motion.css); abrir a nota já mostra o modo parado.
+    this.element.dataset.modeSwitched = ""
     this.element.dataset.mode = mode
     this.buttonTargets.forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.noteModeModeParam == mode)))
     document.cookie = `note_mode=${mode}; path=/; max-age=${COOKIE_MAX_AGE}; samesite=lax`

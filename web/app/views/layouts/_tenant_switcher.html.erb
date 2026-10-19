@@ -14,7 +14,7 @@
 </div>
 
 <div id="tenant_switcher" popover
-     class="m-0 w-64 rounded-md border border-line bg-surface-sunken p-1 text-ink [inset:auto] [position-anchor:--tenant-switcher] [position-area:bottom_span-right]">
+     class="layer m-0 w-64 origin-top rounded-md border border-line bg-surface-sunken p-1 text-ink [inset:auto] [position-anchor:--tenant-switcher] [position-area:bottom_span-right]">
   <ul class="space-y-px">
     <% current_tenants.each do |tenant| %>
       <li><%= render "tenants/choice", tenant: %></li>

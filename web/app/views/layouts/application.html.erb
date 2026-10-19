@@ -22,7 +22,7 @@
     <%# A lista rola dentro de .sidebar-scroll; o rodape com conta, configuracoes, tema e sair fica sempre no fundo. %>
     <nav id="sidebar" popover aria-label="<%= sidebar_label %>"
          data-sidebar-target="panel"
-         class="sidebar m-0 h-dvh w-72 max-w-[85vw] flex-col border-0 border-r border-line bg-surface-sunken p-0 text-ink open:flex md:w-auto md:max-w-none">
+         class="sidebar layer m-0 h-dvh w-72 max-w-[85vw] flex-col border-0 border-r border-line bg-surface-sunken p-0 text-ink open:flex md:w-auto md:max-w-none">
       <div class="sidebar-scroll min-h-0 flex-1 overflow-y-auto p-3">
         <% if current_tenant %>
           <%= render "layouts/tenant_switcher" %>
@@ -56,7 +56,7 @@
 
     <% if current_tenant %>
       <dialog data-search-target="dialog" aria-label="<%= t(".search_notes") %>"
-              class="mx-auto mt-[15vh] w-[min(36rem,calc(100vw-2rem))] rounded-md border border-line bg-surface text-ink backdrop:bg-surface-sunken/70">
+              class="layer mx-auto mt-[15vh] w-[min(36rem,calc(100vw-2rem))] rounded-md border border-line bg-surface text-ink backdrop:bg-surface-sunken/70">
         <%= form_with url: search_path, method: :get, data: { turbo_frame: "search_results", search_target: "form" } do |form| %>
           <%= form.search_field :q, placeholder: t(".search_placeholder"), autocomplete: "off", role: "combobox",
                                 aria: { label: t(".search_notes"), controls: "search_options", expanded: true },

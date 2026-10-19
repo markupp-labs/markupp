@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "./motion.css";
 
 @font-face {
   font-family: "Fira Code";
@@ -194,8 +195,9 @@
     outline-offset: -2px;
   }
 
+  /* Fechada, a aba vai à borda da tela por transform (não left), para andar junto com a barra (motion.css). */
   :root[data-sidebar="closed"] .sidebar-spine {
-    left: 0;
+    transform: translateX(calc(1px - var(--sidebar-width, 18rem)));
   }
 }
 
