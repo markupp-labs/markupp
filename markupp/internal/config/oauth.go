@@ -50,6 +50,9 @@ func setOAuthDefaults(cfg *Config) {
 	cfg.OAuthCIMDMaxKB = 64
 	cfg.OAuthCIMDCacheMinMinutes = 5
 	cfg.OAuthCIMDCacheMaxHours = 24
+	cfg.OAuthDCREnabled = true
+	cfg.OAuthDCRMaxPending = 1000
+	cfg.OAuthDCRPendingHours = 24
 }
 
 // loadOAuthSettings lê o authorization server (ADR-0039). Sem MARKUPP_PUBLIC_URL ele
@@ -70,7 +73,16 @@ func loadOAuthSettings(lookup LookupFunc, cfg *Config) error {
 	if cfg.OAuthResources, err = readOAuthResources(lookup); err != nil {
 		return err
 	}
-	if err = loadOAuthDurations(lookup, cfg); err != nil {
+	return loadOAuthLimits(lookup, cfg)
+}
+
+// loadOAuthLimits lê as validades, os limites e a chave do registro dinâmico, que só
+// valem com o OAuth ligado.
+func loadOAuthLimits(lookup LookupFunc, cfg *Config) error {
+	if err := loadOAuthDurations(lookup, cfg); err != nil {
+		return err
+	}
+	if err := readBool(lookup, "MARKUPP_OAUTH_DCR_ENABLED", &cfg.OAuthDCREnabled); err != nil {
 		return err
 	}
 	return cfg.checkCIMDCacheBounds()
@@ -95,6 +107,8 @@ func loadOAuthDurations(lookup LookupFunc, cfg *Config) error {
 		{"MARKUPP_OAUTH_CIMD_MAX_KB", 1, 1024, &cfg.OAuthCIMDMaxKB},
 		{"MARKUPP_OAUTH_CIMD_CACHE_MIN_MINUTES", 1, 60, &cfg.OAuthCIMDCacheMinMinutes},
 		{"MARKUPP_OAUTH_CIMD_CACHE_MAX_HOURS", 1, 168, &cfg.OAuthCIMDCacheMaxHours},
+		{"MARKUPP_OAUTH_DCR_MAX_PENDING", 1, 100000, &cfg.OAuthDCRMaxPending},
+		{"MARKUPP_OAUTH_DCR_PENDING_HOURS", 1, 168, &cfg.OAuthDCRPendingHours},
 	}
 	for _, duration := range durations {
 		value := int64(*duration.target)
