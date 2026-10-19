@@ -69,10 +69,11 @@ export default class extends Controller {
   }
 
   // [[nome]] resolvido pelo mapa de notas que veio do servidor (WikilinkHelper), sem chamar a API.
+  // A troca por função deixa o nome literal, sem os padrões $& e $' do replace.
   get wikilinkLookup() {
     return {
       resolve: (name) => resolveWikilink(name, this.wikilinksValue, this.folderValue),
-      missingTitle: (name) => this.missingNoteValue.replace("%{name}", name),
+      missingTitle: (name) => this.missingNoteValue.replace("%{name}", () => name),
     }
   }
 
