@@ -62,7 +62,8 @@ const revokedRefreshDescription = "refresh token invalido, expirado ou revogado;
 const reusedRefreshDescription = "refresh token ja rotacionado; esperado o refresh token mais recente emitido para o cliente"
 
 // revokeReusedRefresh derruba os tokens da Autorização do refresh reapresentado. Expirado
-// também dispara: o que importa é ele seguir sem revogação.
+// também dispara: o que importa é ele seguir sem revogação. Se outro reuso do mesmo
+// refresh já revogou, o repositório não revoga nem audita de novo.
 func (s *Service) revokeReusedRefresh(ctx context.Context, grant TokenGrant, now time.Time) error {
 	authorization := grant.Authorization
 	if authorization.ID == "" {

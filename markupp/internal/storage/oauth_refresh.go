@@ -127,16 +127,44 @@ func lockAuthorization(ctx context.Context, qtx *gen.Queries, id string) (gen.Oa
 	return row, nil
 }
 
-// RevokeAuthorizationTokensAudited trava a Autorização, revoga os tokens dela, que segue
-// ativa, e audita o evento, numa transação.
-func (r *PostgresOAuthRepository) RevokeAuthorizationTokensAudited(ctx context.Context, authorizationID, _ string, _ bool, event oauth.AuditEvent) (bool, error) {
+// RevokeAuthorizationTokensAudited trava a Autorização e, se o token que disparou a
+// revogação ainda vale, revoga os tokens dela, que segue ativa, e audita o evento, numa
+// transação. Conferir o gatilho com a trava faz duas revogações disparadas pelo mesmo
+// token revogarem e auditarem uma vez só.
+func (r *PostgresOAuthRepository) RevokeAuthorizationTokensAudited(ctx context.Context, authorizationID, triggerHash string, requireUnexpired bool, event oauth.AuditEvent) (bool, error) {
+	var revoked bool
 	err := inTx(ctx, r.pool, func(qtx *gen.Queries) error {
+		if _, err := lockAuthorization(ctx, qtx, authorizationID); err != nil {
+			return err
+		}
+		live, err := liveTriggerInTx(ctx, qtx, authorizationID, triggerHash, requireUnexpired, event.OccurredAt)
+		if err != nil || !live {
+			return err
+		}
 		if _, err := revokeTokens(ctx, qtx, authorizationID); err != nil {
 			return err
 		}
+		revoked = true
 		return auditOAuth(ctx, qtx, event)
 	})
-	return err == nil, err
+	return revoked && err == nil, err
+}
+
+// liveTriggerInTx diz se o token que disparou a revogação existe, é da Autorização e não
+// foi revogado e, com requireUnexpired, se ainda não expirou em now.
+func liveTriggerInTx(ctx context.Context, qtx *gen.Queries, authorizationID, triggerHash string, requireUnexpired bool, now time.Time) (bool, error) {
+	row, err := qtx.GetOAuthTokenWithAuthorization(ctx, triggerHash)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("conferir o token que disparou a revogação da autorização %q: %w", authorizationID, err)
+	}
+	token := row.OauthToken
+	if token.AuthorizationID != authorizationID || token.Revoked {
+		return false, nil
+	}
+	return !requireUnexpired || token.ExpiresAt.After(now), nil
 }
 
 // FindToken devolve o token de qualquer tipo, mesmo revogado ou expirado, com a

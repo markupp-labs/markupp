@@ -46,7 +46,9 @@ func liveGrant(grant TokenGrant, now time.Time) bool {
 	return !grant.Token.Revoked && grant.Token.ExpiresAt.After(now) && !grant.Authorization.Revoked
 }
 
-// revokeTokens derruba os tokens da Autorização do token, que precisa seguir vigente.
+// revokeTokens derruba os tokens da Autorização do token lido fora da transação. O
+// repositório confere de novo, já com a trava, que o token segue vigente: se outra
+// revogação entrou no meio, não revoga nem audita de novo.
 func (s *Service) revokeTokens(ctx context.Context, grant TokenGrant, now time.Time) error {
 	authorization := grant.Authorization
 	event := auditEvent(AuditActionRevoke, AuditResultSuccess, authorization, now)
