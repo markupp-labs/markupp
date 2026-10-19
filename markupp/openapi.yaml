@@ -1,7 +1,13 @@
 openapi: 3.0.3
 info:
   title: Markupp Server API
-  description: API REST para gerenciamento de notas do projeto Markupp.
+  description: |
+    API REST para gerenciamento de notas do projeto Markupp, orientada a recursos
+    (ADR-0040): a coleção vive sob o recurso que a contém, o item de id global é
+    endereçado direto, a relação é sub-coleção por sentido e a visão sobre uma
+    coleção é parâmetro de consulta. As notas e o grafo vivem sob /v1; as rotas de
+    notas sem prefixo continuam servidas, marcadas como obsoletas, durante a
+    transição (ADR-0026).
   version: 0.1.0
 servers:
   - url: http://localhost:8080
@@ -503,8 +509,9 @@ paths:
           $ref: '#/components/responses/Unauthorized'
   /notes:
     get:
+      deprecated: true
       summary: Lista todas as notas
-      description: Retorna todas as notas com o conteúdo, ordenadas por caminho. Sem paginação.
+      description: Retorna todas as notas com o conteúdo, ordenadas por caminho. Sem paginação. Obsoleta, substituída por GET e POST /v1/vaults/{id}/notes.
       parameters:
         - $ref: '#/components/parameters/TenantHeader'
       responses:
@@ -525,8 +532,11 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
     post:
+      deprecated: true
       summary: Cria uma nova nota
       description: >
+        Obsoleta, substituída por GET e POST /v1/vaults/{id}/notes.
+
         Cria uma nota com caminho e conteúdo fornecidos, no cofre informado ou no cofre
         mais antigo do usuário. O caminho é único dentro do cofre.
       parameters:
@@ -620,8 +630,9 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
   /notes/{id}:
     get:
+      deprecated: true
       summary: Recupera uma nota por ID
-      description: Retorna a nota correspondente ao identificador fornecido.
+      description: Retorna a nota correspondente ao identificador fornecido. Obsoleta, substituída por /v1/notes/{id}.
       parameters:
         - $ref: '#/components/parameters/TenantHeader'
         - name: id
@@ -658,8 +669,11 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
     put:
+      deprecated: true
       summary: Atualiza uma nota existente
       description: |
+        Obsoleta, substituída por /v1/notes/{id}.
+
         Atualiza o caminho e conteúdo de uma nota existente.
         
         Implementa optimistic locking: o cliente deve enviar o `lastModifiedAt` da última vez que leu a nota.
@@ -718,8 +732,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
     delete:
+      deprecated: true
       summary: Exclui uma nota
-      description: Remove a nota identificada pelo ID.
+      description: Remove a nota identificada pelo ID. Obsoleta, substituída por /v1/notes/{id}.
       parameters:
         - $ref: '#/components/parameters/TenantHeader'
         - name: id
@@ -970,47 +985,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-  /vaults/{id}/orphans:
-    get:
-      summary: Lista as notas órfãs do cofre
-      description: |
-        Notas do cofre sem nenhuma ligação, nem de entrada nem de saída, ordenadas por
-        caminho. Ligação não resolvida não tira a nota da lista. Só aparecem notas já
-        indexadas. A resolução segue as regras de GET /notes/{id}/backlinks. O viewer também lê.
-      parameters:
-        - $ref: '#/components/parameters/TenantHeader'
-        - $ref: '#/components/parameters/VaultID'
-        - $ref: '#/components/parameters/PageOffset'
-        - $ref: '#/components/parameters/PageLimit'
-      responses:
-        '200':
-          description: Lista, vazia quando não há nenhum item
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/LinkedNoteResponse'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '400':
-          description: offset ou limit não inteiros
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '403':
-          description: Cofre inexistente ou de que o usuário não é membro (vault_forbidden)
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: Erro interno do servidor
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
   /vaults/{id}/unresolved-links:
     get:
       summary: Lista as ligações não resolvidas do cofre
@@ -1033,48 +1007,6 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/UnresolvedLinkResponse'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '400':
-          description: offset ou limit não inteiros
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '403':
-          description: Cofre inexistente ou de que o usuário não é membro (vault_forbidden)
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: Erro interno do servidor
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-  /vaults/{id}/hubs:
-    get:
-      summary: Lista as notas do cofre pelo PageRank
-      description: |
-        Notas do cofre ordenadas pelo PageRank (d=0,85) no grafo de ligações, da maior
-        para a menor, com os graus de entrada e de saída em notas distintas. Ligação
-        inferida conta. O indexador recalcula tudo quando ligações ou títulos do cofre
-        mudam, então a lista acompanha as notas com atraso. O viewer também lê.
-      parameters:
-        - $ref: '#/components/parameters/TenantHeader'
-        - $ref: '#/components/parameters/VaultID'
-        - $ref: '#/components/parameters/PageOffset'
-        - $ref: '#/components/parameters/PageLimit'
-      responses:
-        '200':
-          description: Lista, vazia quando não há nenhum item
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/HubResponse'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '400':
@@ -1140,6 +1072,219 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /v1/notes/{id}:
+    get:
+      summary: Lê uma nota
+      description: |
+        A nota com o conteúdo e a organização derivada que o indexador grava no
+        segundo estágio do cofre: grau, PageRank e comunidade. O viewer também lê.
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+        - $ref: '#/components/parameters/NoteID'
+      responses:
+        '200':
+          description: Nota encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NoteV1Response'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '400':
+          description: ID inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Nota inexistente ou fora dos cofres do usuário (not_found)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Erro interno do servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      summary: Atualiza uma nota
+      description: |
+        Mesmo contrato de escrita de PUT /notes/{id}, com optimistic locking por
+        lastModifiedAt e sobrescrita com force. A resposta traz a organização derivada
+        que o último segundo estágio gravou, anterior a esta escrita.
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+        - $ref: '#/components/parameters/NoteID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NoteUpdateRequest'
+      responses:
+        '200':
+          description: Nota atualizada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NoteV1Response'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/ReadOnly'
+        '400':
+          description: Requisição inválida ou dados de nota inválidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Nota inexistente ou fora dos cofres do usuário (not_found)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: A nota mudou desde lastModifiedAt e force não foi pedido (conflict), ou caminho duplicado no cofre (duplicate_path)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Erro interno do servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      summary: Exclui uma nota
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+        - $ref: '#/components/parameters/NoteID'
+      responses:
+        '204':
+          description: Nota excluída
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/ReadOnly'
+        '400':
+          description: ID inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Nota inexistente ou fora dos cofres do usuário (not_found)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Erro interno do servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/vaults/{id}/notes:
+    get:
+      summary: Lista as notas do cofre
+      description: |
+        As notas do cofre com o conteúdo e a organização derivada, paginadas. Sem sort,
+        a ordem é por caminho, crescente. As visões do grafo sobre as notas são
+        parâmetros desta coleção: orphan=true lista as notas órfãs, sort=pagerank as
+        notas centrais, community as notas de uma comunidade.
+
+        A organização derivada é recalculada pelo indexador no segundo estágio do
+        cofre, quando ligações ou títulos mudam, então acompanha as notas com atraso.
+        A nota que o segundo estágio ainda não viu tem degree, pagerank e community
+        null, fica fora dos filtros orphan e community e vai para o fim das ordens por
+        pagerank e por degree. O viewer também lê.
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+        - $ref: '#/components/parameters/VaultID'
+        - $ref: '#/components/parameters/Orphan'
+        - $ref: '#/components/parameters/Community'
+        - $ref: '#/components/parameters/NoteSort'
+        - $ref: '#/components/parameters/SortDirection'
+        - $ref: '#/components/parameters/PageOffset'
+        - $ref: '#/components/parameters/PageLimit'
+      responses:
+        '200':
+          description: Lista, vazia quando não há nenhum item
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/NoteV1Response'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '400':
+          description: Parâmetro de consulta inválido (invalid_request), com o parâmetro e o valor na mensagem
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Cofre inexistente ou de que o usuário não é membro (vault_forbidden)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Erro interno do servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      summary: Cria uma nota no cofre
+      description: Cria a nota no cofre do caminho; vault_id no corpo é ignorado. O caminho é único dentro do cofre.
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+        - $ref: '#/components/parameters/VaultID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NoteV1CreateRequest'
+      responses:
+        '201':
+          description: Nota criada, com a organização derivada null
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NoteV1Response'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '400':
+          description: Requisição inválida ou dados de nota inválidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Cofre inexistente ou de que o usuário não é membro (vault_forbidden), ou papel viewer (read_only)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Caminho de nota duplicado no cofre (duplicate_path)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Erro interno do servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /healthz:
     get:
       security: []
@@ -1194,6 +1339,44 @@ components:
       description: Identificador do cofre
       schema:
         type: string
+    Orphan:
+      name: orphan
+      in: query
+      required: false
+      description: |
+        true lista só as notas órfãs, de grau zero, sem ligação em sentido algum,
+        ligação inferida e tipada incluídas; false, só as de grau positivo. Ligação
+        não resolvida não conta.
+      schema:
+        type: boolean
+    Community:
+      name: community
+      in: query
+      required: false
+      description: Lista só as notas da comunidade, pelo id de GET /v1/vaults/{id}/communities
+      schema:
+        type: integer
+        format: int64
+    NoteSort:
+      name: sort
+      in: query
+      required: false
+      description: |
+        pagerank pelo PageRank, degree pelo grau, updated pela data da última
+        atualização. Sem sort, a ordem é por caminho, crescente. Empate segue por
+        caminho e id.
+      schema:
+        type: string
+        enum: [pagerank, degree, updated]
+    SortDirection:
+      name: direction
+      in: query
+      required: false
+      description: Sentido de sort; não muda a ordem por caminho
+      schema:
+        type: string
+        enum: [asc, desc]
+        default: desc
     TenantHeader:
       name: X-Markupp-Tenant
       in: header
@@ -1494,6 +1677,49 @@ components:
           format: date-time
           description: Data da última atualização da nota
           example: "2026-05-14T12:00:00Z"
+    NoteV1CreateRequest:
+      type: object
+      required:
+        - path
+        - content
+      properties:
+        path:
+          type: string
+          description: >-
+            Caminho da nota no cofre. O último segmento sem a extensão .md é o título
+            da nota e não pode ficar vazio: pasta/.md é recusado com invalid_path, e a
+            mensagem traz o caminho.
+          example: "notas/meeting.md"
+        content:
+          type: string
+          description: Conteúdo da nota
+          example: "# Reunião"
+    NoteV1Response:
+      allOf:
+        - $ref: '#/components/schemas/NoteResponse'
+        - type: object
+          properties:
+            degree:
+              type: integer
+              nullable: true
+              description: |
+                Notas distintas que ligam a esta mais as notas distintas a que esta liga,
+                ligação inferida incluída; null antes do segundo estágio
+              example: 15
+            pagerank:
+              type: number
+              format: double
+              nullable: true
+              description: PageRank (d=0,85) da nota; a soma no cofre é 1; null antes do segundo estágio
+              example: 0.0123
+            community:
+              type: integer
+              format: int64
+              nullable: true
+              description: |
+                Id da comunidade da nota, null antes do segundo estágio e para a nota sem
+                ligação
+              example: 7
     SearchResultResponse:
       type: object
       properties:
@@ -1621,24 +1847,6 @@ components:
               format: double
               description: Cosseno tf-idf com esta nota, zero fora da lista léxica
               example: 0.38
-    HubResponse:
-      allOf:
-        - $ref: '#/components/schemas/LinkedNoteResponse'
-        - type: object
-          properties:
-            pagerank:
-              type: number
-              format: double
-              description: PageRank da nota; a soma no cofre é 1
-              example: 0.0123
-            in_degree:
-              type: integer
-              description: Notas distintas que ligam a esta
-              example: 12
-            out_degree:
-              type: integer
-              description: Notas distintas a que esta liga
-              example: 3
     CommunityMemberResponse:
       allOf:
         - $ref: '#/components/schemas/LinkedNoteResponse'
