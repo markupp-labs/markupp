@@ -102,7 +102,7 @@ func TestRegisterClient_MetadadoInvalido_RecusaSemGravar(t *testing.T) {
 		"response_types code token": func(r *oauth.RegistrationRequest) { r.ResponseTypes = []string{"code", "token"} },
 		"response_types vazio":      func(r *oauth.RegistrationRequest) { r.ResponseTypes = []string{} },
 		"nome ausente":              func(r *oauth.RegistrationRequest) { r.ClientName = "" },
-		"nome em branco":            func(r *oauth.RegistrationRequest) { r.ClientName = " \t\n​ " },
+		"nome em branco":            func(r *oauth.RegistrationRequest) { r.ClientName = " \t\n\u200b " },
 		"nome com 101 caracteres":   func(r *oauth.RegistrationRequest) { r.ClientName = strings.Repeat("a", 101) },
 		"nome com UTF-8 invalido":   func(r *oauth.RegistrationRequest) { r.ClientName = "Agente \xff" },
 	}
@@ -123,7 +123,7 @@ func TestRegisterClient_MetadadoInvalido_RecusaSemGravar(t *testing.T) {
 func TestRegisterClient_NomeComControleEFormatacao_GravaSaneado(t *testing.T) {
 	repo := newFakeOAuthRepository()
 	req := validRegistration()
-	req.ClientName = "  Agente‮ \n\tBom\x00 "
+	req.ClientName = "  Agente\u202e \n\tBom\x00 "
 
 	got, err := register(t, repo, req)
 
