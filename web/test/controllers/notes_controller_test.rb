@@ -69,7 +69,8 @@ class NotesControllerTest < ActionDispatch::IntegrationTest
     get note_path("missing")
 
     assert_response :not_found
-    assert_select "main", text: /Note not found/
+    assert_select "main h1", "404: Note not found"
+    assert_select "main pre[data-mascot=large]"
   end
 
   # ![[nota]] na leitura busca o conteúdo da nota embutida por aqui, com a sessão, o tenant e o papel de quem lê.
@@ -402,7 +403,7 @@ class NotesControllerTest < ActionDispatch::IntegrationTest
     get root_path
 
     assert_response :bad_gateway
-    assert_select "main", text: /Can't reach the markupp server/
+    assert_select "main h1", "502: Can't reach the markupp server"
   end
 
   test "show as json answers bad gateway without the page when the API is unreachable" do

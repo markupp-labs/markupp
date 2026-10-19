@@ -39,6 +39,9 @@ class FakeMarkuppApi
   # Cenário: só a listagem de notas cai; login, tenants e conta seguem respondendo.
   def cut_notes! = @notes_unreachable = true
 
+  # Cenário: um bug no meio da chamada, que não é erro da API e o painel não trata.
+  def break_with_bug! = @bug = true
+
   def get(path) = receive("GET", path)
 
   def put(path, body) = receive("PUT", path, body)
@@ -56,6 +59,7 @@ class FakeMarkuppApi
     def receive(verb, path, *body)
       call = "#{verb} #{path}"
       @slow_calls.pass(call)
+      raise "fake API bug on #{call}" if @bug
       raise MarkuppApi::Error, "fake API unreachable on #{call}" if @unreachable || (@notes_unreachable && path.start_with?("/notes"))
 
       @received_credentials << @credentials.merge(call:) if @credentials
