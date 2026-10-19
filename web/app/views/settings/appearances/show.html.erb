@@ -9,7 +9,7 @@
     <% { "light" => :sun, "dark" => :moon }.each do |theme, glyph| %>
       <%= button_to theme_path, method: :patch, params: { theme: }, form: { data: { turbo: false } },
                     aria: { pressed: theme == chosen_theme },
-                    class: "btn aria-pressed:border-accent aria-pressed:bg-accent-soft aria-pressed:text-accent" do %>
+                    class: "btn aria-pressed:border-accent aria-pressed:bg-accent-soft aria-pressed:text-ink" do %>
         <%= icon(glyph) %><%= t(".#{theme}") %>
       <% end %>
     <% end %>

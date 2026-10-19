@@ -8,6 +8,6 @@ module SettingsHelper
   # Item da navegação das configurações; a seção aberta leva o mesmo realce da nota atual.
   def settings_nav_link(section, path)
     link_to t("settings.nav.#{section}"), path, aria: { current: ("page" if section == settings_section) },
-            class: "tree-row block whitespace-nowrap aria-[current=page]:bg-accent-soft aria-[current=page]:text-accent"
+            class: "tree-row block whitespace-nowrap aria-[current=page]:bg-accent-soft aria-[current=page]:text-ink"
   end
 end

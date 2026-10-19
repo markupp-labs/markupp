@@ -5,7 +5,7 @@
         <li>
           <%= link_to note_path(note), role: "option", aria: { selected: index.zero? },
                       data: { turbo_frame: "_top", search_target: "result" },
-                      class: "tree-row flex items-baseline gap-2 aria-selected:bg-accent-soft aria-selected:text-accent" do %>
+                      class: "tree-row flex items-baseline gap-2 aria-selected:bg-accent-soft aria-selected:text-ink" do %>
             <span class="shrink-0"><%= note.name %></span>
             <span class="truncate text-ink-muted"><%= note.folder_names.join("/") %></span>
           <% end %>

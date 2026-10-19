@@ -1,6 +1,6 @@
 <%# Conta e Settings levam às configurações unificadas; o email marca a seção Conta, o Settings as demais. %>
 <% on_account = current_page?(settings_account_path) %>
-<% current_class = "aria-[current=page]:bg-accent-soft aria-[current=page]:text-accent" %>
+<% current_class = "aria-[current=page]:bg-accent-soft aria-[current=page]:text-ink" %>
 <footer class="shrink-0 border-t border-line p-2">
   <%= link_to settings_account_path, aria: { current: ("page" if on_account) },
               class: "tree-row flex items-center gap-2 text-ink-muted #{current_class}" do %>

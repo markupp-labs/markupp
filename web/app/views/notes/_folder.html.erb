@@ -15,7 +15,7 @@
   <% end %>
   <% folder.notes.each do |note| %>
     <li>
-      <%= link_to note_path(note), title: note.path, class: "tree-row flex items-center gap-2 aria-[current=page]:bg-accent-soft aria-[current=page]:text-accent",
+      <%= link_to note_path(note), title: note.path, class: "tree-row flex items-center gap-2 aria-[current=page]:bg-accent-soft aria-[current=page]:text-ink",
                   aria: { current: ("page" if note.id == current&.id) } do %>
         <%= icon("file-text") %><span class="truncate"><%= note.name %></span>
       <% end %>
