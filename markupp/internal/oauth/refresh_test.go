@@ -167,6 +167,7 @@ func TestRefreshToken_RevogadoAntesDeGravar_InvalidGrant(t *testing.T) {
 func TestRefreshToken_RefreshJaRotacionado_RevogaTokensEAuditaReuso(t *testing.T) {
 	repo := testRepositoryWithRefreshableToken()
 	repo.consumeErr = oauth.ErrRefreshReused
+	repo.consumed.Token.Hash = "hash-vindo-do-repositorio"
 
 	_, err := newTestService(repo).RefreshToken(context.Background(), validRefreshGrant())
 

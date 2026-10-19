@@ -34,10 +34,11 @@ func TestRevokeToken_TokenDoCliente_DerrubaOsTokensDaAutorizacaoEAudita(t *testi
 	require.NoError(t, err)
 	assert.Equal(t, []string{auth.HashOpaqueToken(testAccessToken)}, repo.findCalls)
 	assert.Equal(t, []auditedRevoke{{
-		AuthorizationID: "aut-1", TriggerHash: repo.found.Token.Hash, RequireUnexpired: true,
+		AuthorizationID: "aut-1", TriggerHash: auth.HashOpaqueToken(testAccessToken), RequireUnexpired: true,
 		Event: testAuditEvent(oauth.AuditActionRevoke, oauth.AuditResultSuccess),
 	}}, repo.auditedRevokes)
 	assert.Empty(t, repo.revokedAuths, "o /oauth/revoke mantém o consentimento")
+	assert.NotEqual(t, repo.found.Token.Hash, repo.auditedRevokes[0].TriggerHash, "o gatilho é o hash do token recebido, não o do grant")
 }
 
 func TestRevokeToken_ParametroAusente_InvalidRequestSemBuscar(t *testing.T) {
