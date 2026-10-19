@@ -90,6 +90,20 @@
     @apply rounded-md px-2 py-1 hover:bg-accent-soft;
   }
 
+  /* Mascote em braille (script/mascot.rb): linha de altura 1 para os pontos encostarem. O tamanho da fonte
+     é o tamanho do desenho: o grande cabe ao lado do formulário, o pequeno na altura da marca. */
+  .mascot {
+    @apply m-0 shrink-0 font-mono leading-none whitespace-pre text-ink-muted select-none;
+  }
+
+  .mascot-large {
+    font-size: 8px;
+  }
+
+  .mascot-small {
+    font-size: 4px;
+  }
+
   /* Pasta da árvore: o ícone aberto ou fechado mostra o estado no lugar do triângulo do details. */
   details[open] > summary > [data-icon="folder"],
   details:not([open]) > summary > [data-icon="folder-open"] {

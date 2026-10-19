@@ -61,7 +61,13 @@
     <main class="min-w-0 p-4 md:p-6">
       <%= sidebar_toggle_button(t(".show_sidebar"), classes: "sidebar-expand mb-2") %>
       <%= render "layouts/flash" %>
-      <%= content_for?(:main) ? yield(:main) : yield %>
+      <% page = content_for?(:main) ? yield(:main) : yield %>
+      <%# Páginas de erro pedem o mascote ao lado da mensagem (content_for :mascot). %>
+      <% if content_for?(:mascot) %>
+        <div class="flex items-start gap-10"><%= yield :mascot %><div class="min-w-0 flex-1"><%= page %></div></div>
+      <% else %>
+        <%= page %>
+      <% end %>
     </main>
   </body>
 <% end %>

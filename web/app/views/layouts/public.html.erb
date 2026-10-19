@@ -2,16 +2,20 @@
 <%= tag.html lang: "en", data: { theme: cookies[:theme].presence_in(ThemesController::THEMES) } do %>
   <%= render "layouts/head" %>
 
-  <%# Telas sem sessão: uma coluna estreita, sem barra lateral. %>
+  <%# Telas sem sessão: o mascote à esquerda e o formulário numa coluna estreita, como o banner de um terminal. %>
+  <%# No celular o mascote some e fica só a coluna. %>
   <body class="min-h-dvh bg-surface font-mono text-sm text-ink">
-    <main class="max-w-sm p-4 md:mx-auto md:mt-[12vh] md:p-6">
-      <p class="mb-4 text-ink-muted">markupp</p>
-      <%= render "layouts/flash" %>
-      <%= yield %>
+    <main class="p-4 md:mx-auto md:mt-[12vh] md:flex md:max-w-3xl md:items-center md:justify-center md:gap-10 md:p-6">
+      <%= mascot(:large, class: "hidden md:block") %>
+      <div class="w-full max-w-sm">
+        <p class="mb-4 text-ink-muted">markupp</p>
+        <%= render "layouts/flash" %>
+        <%= yield %>
 
-      <footer class="mt-6 border-t border-line pt-3">
-        <%= render "layouts/theme_buttons" %>
-      </footer>
+        <footer class="mt-6 border-t border-line pt-3">
+          <%= render "layouts/theme_buttons" %>
+        </footer>
+      </div>
     </main>
   </body>
 <% end %>
