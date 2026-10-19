@@ -780,6 +780,12 @@ paths:
         wikilink do corpo. Valor literal (texto, número, data, tag) e a chave aliases
         não viram ligação. Cada nota aparece uma vez, com os predicados das ligações
         tipadas que faz para esta em predicates.
+
+        Também conta a ligação inferida: para cada ligação não resolvida, o indexador
+        escolhe a nota cujo título está a no máximo 0,2 de distância de edição do
+        título citado, sem caixa e sem acento, desempatando por probabilidade a priori
+        e parentesco no grafo. Ela nunca é escrita na nota e vem marcada em inferred
+        quando é a única ligação da nota para esta.
       parameters:
         - $ref: '#/components/parameters/TenantHeader'
         - $ref: '#/components/parameters/NoteID'
@@ -821,7 +827,7 @@ paths:
         Vizinhança de raio 1: as notas que ligam a esta e as notas a que esta liga, uma
         vez cada, ordenadas por caminho, com o sentido da ligação e os predicados das
         ligações tipadas em cada sentido. A resolução segue as regras de GET
-        /notes/{id}/backlinks. O viewer também lê.
+        /notes/{id}/backlinks, ligação inferida incluída e marcada. O viewer também lê.
       parameters:
         - $ref: '#/components/parameters/TenantHeader'
         - $ref: '#/components/parameters/NoteID'
@@ -1011,7 +1017,8 @@ paths:
       description: |
         Ligações para títulos que nenhuma nota do cofre tem, ordenadas pelo caminho da
         nota que liga, com o título como escrito. Embed de anexo sem nota com aquele
-        título entra aqui. A resolução segue as regras de GET /notes/{id}/backlinks. O viewer também lê.
+        título entra aqui, como escrita, mesmo quando o indexador inferiu uma nota para
+        ela. A resolução segue as regras de GET /notes/{id}/backlinks. O viewer também lê.
       parameters:
         - $ref: '#/components/parameters/TenantHeader'
         - $ref: '#/components/parameters/VaultID'
@@ -1026,6 +1033,93 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/UnresolvedLinkResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '400':
+          description: offset ou limit não inteiros
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Cofre inexistente ou de que o usuário não é membro (vault_forbidden)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Erro interno do servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /vaults/{id}/hubs:
+    get:
+      summary: Lista as notas do cofre pelo PageRank
+      description: |
+        Notas do cofre ordenadas pelo PageRank (d=0,85) no grafo de ligações, da maior
+        para a menor, com os graus de entrada e de saída em notas distintas. Ligação
+        inferida conta. O indexador recalcula tudo quando ligações ou títulos do cofre
+        mudam, então a lista acompanha as notas com atraso. O viewer também lê.
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+        - $ref: '#/components/parameters/VaultID'
+        - $ref: '#/components/parameters/PageOffset'
+        - $ref: '#/components/parameters/PageLimit'
+      responses:
+        '200':
+          description: Lista, vazia quando não há nenhum item
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/HubResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '400':
+          description: offset ou limit não inteiros
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Cofre inexistente ou de que o usuário não é membro (vault_forbidden)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Erro interno do servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /vaults/{id}/clusters:
+    get:
+      summary: Lista as comunidades do cofre
+      description: |
+        Comunidades do cofre pelo Louvain (resolução 1, semente fixa) na projeção não
+        dirigida do grafo de ligações, ligação inferida incluída. Uma linha por nota,
+        das maiores comunidades para as menores e, dentro de cada uma, por PageRank.
+        Nota sem ligação não tem comunidade. A comunidade mantém o id da anterior com
+        mais notas em comum quando o Jaccard entre as duas é de pelo menos 0,5. O
+        indexador recalcula tudo quando ligações ou títulos do cofre mudam. O viewer
+        também lê.
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+        - $ref: '#/components/parameters/VaultID'
+        - $ref: '#/components/parameters/PageOffset'
+        - $ref: '#/components/parameters/PageLimit'
+      responses:
+        '200':
+          description: Lista, vazia quando não há nenhum item
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CommunityMemberResponse'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '400':
@@ -1458,6 +1552,9 @@ components:
                 Chaves do frontmatter pelas quais a nota liga a esta, sem repetir e em
                 ordem alfabética; vazio quando ela liga só pelo corpo.
               example: ["autor", "revisor"]
+            inferred:
+              type: boolean
+              description: A nota liga a esta só por ligação inferida
     NeighborResponse:
       allOf:
         - $ref: '#/components/schemas/LinkedNoteResponse'
@@ -1481,6 +1578,9 @@ components:
                 type: string
               description: Chaves do frontmatter pelas quais esta nota liga à vizinha, sem repetir
               example: []
+            inferred:
+              type: boolean
+              description: As duas notas se ligam só por ligação inferida, em qualquer sentido
     UnlinkedMentionResponse:
       allOf:
         - $ref: '#/components/schemas/LinkedNoteResponse'
@@ -1521,6 +1621,38 @@ components:
               format: double
               description: Cosseno tf-idf com esta nota, zero fora da lista léxica
               example: 0.38
+    HubResponse:
+      allOf:
+        - $ref: '#/components/schemas/LinkedNoteResponse'
+        - type: object
+          properties:
+            pagerank:
+              type: number
+              format: double
+              description: PageRank da nota; a soma no cofre é 1
+              example: 0.0123
+            in_degree:
+              type: integer
+              description: Notas distintas que ligam a esta
+              example: 12
+            out_degree:
+              type: integer
+              description: Notas distintas a que esta liga
+              example: 3
+    CommunityMemberResponse:
+      allOf:
+        - $ref: '#/components/schemas/LinkedNoteResponse'
+        - type: object
+          properties:
+            community_id:
+              type: integer
+              format: int64
+              description: Id da comunidade, estável enquanto ela mantém a maior parte das notas
+              example: 7
+            community_size:
+              type: integer
+              description: Número de notas da comunidade
+              example: 42
     UnresolvedLinkResponse:
       type: object
       properties:
