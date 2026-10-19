@@ -32,18 +32,22 @@ class SidebarTest < ApplicationSystemTestCase
     assert name.evaluate_script("this.scrollWidth <= this.clientWidth"), "expected Acme research not to be cut at 288px"
   end
 
-  test "the sidebar hides and shows from its buttons and keeps that state after a reload" do
+  test "one button in the content corner hides and shows the sidebar and the state survives a reload" do
     use_fake_api(notes: [])
     sign_in_through_form
 
     visit root_path
     assert_no_button "Show sidebar"
-    click_on "Hide sidebar"
+    within("main") { click_on "Hide sidebar" }
     assert_no_selector "nav#sidebar"
+    assert_equal "Show sidebar (Ctrl+B)", find("main button[aria-controls=sidebar][aria-expanded=false]")["title"]
+    within("main") { click_on "Show sidebar" }
+    assert_selector "nav#sidebar"
+    within("main") { click_on "Hide sidebar" }
 
     refresh
     assert_no_selector "nav#sidebar"
-    click_on "Show sidebar"
+    within("main") { click_on "Show sidebar" }
     assert_selector "nav#sidebar"
   end
 
