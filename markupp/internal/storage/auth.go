@@ -297,6 +297,20 @@ func (r *PostgresAuthRepository) ListMemberships(ctx context.Context, userID str
 	return out, nil
 }
 
+// ListTenantSummaries devolve os tenants de userID, por nome, com o resumo das notas
+// que a conta lê em cada um.
+func (r *PostgresAuthRepository) ListTenantSummaries(ctx context.Context, userID string) ([]auth.TenantSummary, error) {
+	memberships, err := r.ListMemberships(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]auth.TenantSummary, 0, len(memberships))
+	for _, m := range memberships {
+		out = append(out, auth.TenantSummary{Membership: m})
+	}
+	return out, nil
+}
+
 // GetUserByID busca a conta por ID, retornando ErrUserNotFound se inexistente.
 func (r *PostgresAuthRepository) GetUserByID(ctx context.Context, id string) (auth.User, error) {
 	row, err := r.q.GetUserByID(ctx, id)

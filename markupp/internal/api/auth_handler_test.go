@@ -34,7 +34,7 @@ type fakeAuthService struct {
 	acceptPair   auth.TokenPair
 	acceptErr    error
 	acceptToken  string
-	tenants      []auth.Membership
+	tenants      []auth.TenantSummary
 
 	pending            []auth.PendingInvite
 	acceptedMembership auth.Membership
@@ -86,7 +86,7 @@ func (f *fakeAuthService) RevokeSession(ctx context.Context, rawRefreshToken str
 	return f.revokeErr
 }
 
-func (f *fakeAuthService) ListTenants(ctx context.Context, userID string) ([]auth.Membership, error) {
+func (f *fakeAuthService) ListTenants(ctx context.Context, userID string) ([]auth.TenantSummary, error) {
 	return f.tenants, nil
 }
 
@@ -444,9 +444,9 @@ func TestAuthHandler_AcceptInvite_EmailJaTemConta_Retorna409(t *testing.T) {
 }
 
 func TestAuthHandler_MeusTenants_ListaVinculos(t *testing.T) {
-	svc := &fakeAuthService{tenants: []auth.Membership{
-		{TenantID: "t1", TenantName: "Acme", Role: "owner"},
-		{TenantID: "t2", TenantName: "Globex", Role: "viewer"},
+	svc := &fakeAuthService{tenants: []auth.TenantSummary{
+		{Membership: auth.Membership{TenantID: "t1", TenantName: "Acme", Role: "owner"}},
+		{Membership: auth.Membership{TenantID: "t2", TenantName: "Globex", Role: "viewer"}},
 	}}
 	router := setupAuthRouter(svc, &fakeTokenValidator{claims: auth.Claims{Subject: "u1"}})
 	req := httptest.NewRequest(http.MethodGet, "/me/tenants", nil)

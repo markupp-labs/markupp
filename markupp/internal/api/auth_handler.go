@@ -19,7 +19,7 @@ type AuthService interface {
 	RefreshToken(ctx context.Context, rawRefreshToken string) (auth.TokenPair, error)
 	RevokeSession(ctx context.Context, rawRefreshToken string) error
 	GetAccount(ctx context.Context, userID string) (auth.User, error)
-	ListTenants(ctx context.Context, userID string) ([]auth.Membership, error)
+	ListTenants(ctx context.Context, userID string) ([]auth.TenantSummary, error)
 	CreateTenant(ctx context.Context, userID, name string) (auth.Membership, error)
 	ListMyInvites(ctx context.Context, userID string) ([]auth.PendingInvite, error)
 	AcceptMyInvite(ctx context.Context, userID, inviteID string) (auth.Membership, error)
@@ -169,14 +169,14 @@ func (h *authHandler) createTenant(w http.ResponseWriter, r *http.Request) {
 
 func (h *authHandler) myTenants(w http.ResponseWriter, r *http.Request) {
 	actor, _ := identity.ActorFrom(r.Context())
-	memberships, err := h.svc.ListTenants(r.Context(), actor.UserID)
+	summaries, err := h.svc.ListTenants(r.Context(), actor.UserID)
 	if err != nil {
 		h.logError("falha ao listar tenants", err)
 		writeError(w, "internal", "erro interno", http.StatusInternalServerError)
 		return
 	}
-	out := make([]tenantResponse, 0, len(memberships))
-	for _, m := range memberships {
+	out := make([]tenantResponse, 0, len(summaries))
+	for _, m := range summaries {
 		out = append(out, tenantResponse{ID: m.TenantID, Name: m.TenantName, Role: m.Role})
 	}
 	writeJSON(w, http.StatusOK, out)

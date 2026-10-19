@@ -300,9 +300,9 @@ func (s *Service) ResolveTenant(ctx context.Context, userID, requested string) (
 	return Membership{}, fmt.Errorf("%w: usuario %q esta em %d tenants", ErrTenantRequired, userID, len(memberships))
 }
 
-// ListTenants devolve os tenants de userID, com o papel em cada um.
-func (s *Service) ListTenants(ctx context.Context, userID string) ([]Membership, error) {
-	return s.repo.ListMemberships(ctx, userID)
+// ListTenants devolve os tenants de userID, com o papel e o resumo das notas em cada um.
+func (s *Service) ListTenants(ctx context.Context, userID string) ([]TenantSummary, error) {
+	return s.repo.ListTenantSummaries(ctx, userID)
 }
 
 // maxTenantNameLength limita o nome que aparece no seletor de tenant dos clientes.

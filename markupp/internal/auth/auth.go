@@ -56,6 +56,14 @@ type Membership struct {
 	Role       string
 }
 
+// TenantSummary é o vínculo com o resumo das notas que a conta lê no tenant:
+// quantas são e quando a mais recente mudou, nil sem nota.
+type TenantSummary struct {
+	Membership
+	NotesCount int
+	LastNoteAt *time.Time
+}
+
 // UserIdentity isola o vínculo de autenticação externa ou credencial local.
 type UserIdentity struct {
 	ID             string
@@ -166,6 +174,7 @@ type Repository interface {
 	CreateAccountTx(ctx context.Context, params CreateAccountParams) (User, error)
 	GetMembership(ctx context.Context, userID, tenantID string) (Membership, error)
 	ListMemberships(ctx context.Context, userID string) ([]Membership, error)
+	ListTenantSummaries(ctx context.Context, userID string) ([]TenantSummary, error)
 	CreateTenantTx(ctx context.Context, params CreateTenantParams) error
 	ListPendingInvites(ctx context.Context, userID string, now time.Time) ([]PendingInvite, error)
 	AcceptInviteByIDTx(ctx context.Context, params AcceptInviteByIDParams) (Membership, error)
