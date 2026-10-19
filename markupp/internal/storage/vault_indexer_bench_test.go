@@ -32,6 +32,25 @@ func BenchmarkIndexNextVault_LoteIncremental(b *testing.B) {
 	benchIndexacao(b, loteIncremental)
 }
 
+// marcaCofre marca o cofre para o segundo estágio, como a exclusão de nota faria.
+const marcaCofre = `INSERT INTO vault_second_stage_queue (vault_id) VALUES ('cofre-bench')
+ON CONFLICT (vault_id) DO UPDATE SET revision = nextval('vault_second_stage_revision_seq')`
+
+// BenchmarkSegundoEstagio_CofreInteiro mede o segundo estágio sobre o cofre de 10 mil
+// notas já indexado, num Job sem nota pendente: hoje, o recálculo do df.
+func BenchmarkSegundoEstagio_CofreInteiro(b *testing.B) {
+	pool, idx := cofreIndexado(b)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for range b.N {
+		b.StopTimer()
+		_, err := pool.Exec(context.Background(), marcaCofre)
+		require.NoError(b, err)
+		b.StartTimer()
+		indexaLote(b, idx)
+	}
+}
+
 // benchIndexacao mede IndexNextVault sobre lotes de porLote notas do cofre de 10
 // mil notas já indexado, e reporta o custo por nota do lote.
 func benchIndexacao(b *testing.B, porLote int) {

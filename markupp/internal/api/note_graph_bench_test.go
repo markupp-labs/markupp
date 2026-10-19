@@ -16,6 +16,7 @@ func BenchmarkNoteGraph(b *testing.B) {
 		"backlinks":        "/notes/cofre-bench-00042/backlinks",
 		"neighbors":        "/notes/cofre-bench-00042/neighbors",
 		"mentions":         "/notes/cofre-bench-00042/mentions",
+		"suggestions":      "/notes/cofre-bench-00042/suggestions",
 		"orphans":          "/vaults/cofre-bench/orphans",
 		"unresolved_links": "/vaults/cofre-bench/unresolved-links",
 	}

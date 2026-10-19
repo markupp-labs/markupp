@@ -70,7 +70,10 @@ func roteadorDoCofreSintetico(b *testing.B) http.Handler {
 	ator := identity.Actor{UserID: "u-bench", TenantID: "t-bench", Role: "member"}
 	storagetest.SeedVault(b, pool, ator, "cofre-bench", benchfixture.GenerateVault(benchfixture.VaultSeed, benchfixture.VaultSize))
 	indexaCofreSintetico(b, pool)
-	_, err := pool.Exec(context.Background(), "ANALYZE")
+	_, err := storage.RequeueNotes(context.Background(), pool, "cofre-bench")
+	require.NoError(b, err, "a primeira passada escolhe os termos sem df; a segunda, com o df do segundo estagio")
+	indexaCofreSintetico(b, pool)
+	_, err = pool.Exec(context.Background(), "ANALYZE")
 	require.NoError(b, err, "estatisticas da carga, como o autovacuum deixaria")
 	svc := notes.NewService(storage.NewPostgresNotesRepository(pool, "simple"), integrationMaxNoteSize)
 	return api.NewRouter(api.RouterDeps{
