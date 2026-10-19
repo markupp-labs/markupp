@@ -3,10 +3,11 @@ require "application_system_test_case"
 # Ferramentas dos blocos de código na leitura: copiar, número de linha e rolagem horizontal.
 class CodeBlocksTest < ApplicationSystemTestCase
   RUBY = "def greet(name)\n  \"Hello, \#{name}\"\nend\n".freeze
+  PLAIN = "just words\n".freeze
   LONG = "const line = \"#{'x' * 300}\"\n".freeze
 
   setup do
-    use_fake_api(notes: [ { id: "1", path: "plan.md", content: "```ruby\n#{RUBY}```\n\n```js\n#{LONG}```\n" } ])
+    use_fake_api(notes: [ { id: "1", path: "plan.md", content: "```ruby\n#{RUBY}```\n\n```\n#{PLAIN}```\n\n```js\n#{LONG}```\n" } ])
     sign_in_through_form
     visit note_path("1")
     click_on "Read"
@@ -14,7 +15,7 @@ class CodeBlocksTest < ApplicationSystemTestCase
 
   test "the copy button copies the code and says so" do
     grant_clipboard
-    assert_selector ".note-preview pre button[aria-label='Copy code'][title='Copy code']", count: 2
+    assert_selector ".note-preview pre button[aria-label='Copy code'][title='Copy code']", count: 3
     first(".note-preview pre button[aria-label='Copy code']").click
 
     assert_selector ".note-preview pre [role=status][aria-live=polite]", text: "Copied", count: 1
@@ -22,7 +23,7 @@ class CodeBlocksTest < ApplicationSystemTestCase
   end
 
   test "line numbers sit beside the code and stay out of the selection" do
-    assert_selector ".note-preview pre .code-lines[aria-hidden=true]", count: 2
+    assert_selector ".note-preview pre .code-lines[aria-hidden=true]", count: 3
     assert_equal "1\n2\n3", first(".note-preview pre .code-lines").evaluate_script("this.textContent")
 
     selected = evaluate_script(<<~JS)
@@ -33,7 +34,7 @@ class CodeBlocksTest < ApplicationSystemTestCase
 
   # A barra fica no código, não no pre: os números não saem de vista ao rolar.
   test "a long line scrolls inside the code with the theme scrollbar" do
-    assert_selector ".note-preview pre code", count: 2
+    assert_selector ".note-preview pre code", count: 3
     code = all(".note-preview pre code").last
     scroll = code.evaluate_script(<<~JS)
       (() => { const pre = this.closest("pre"), probe = document.createElement("span")
