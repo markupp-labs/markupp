@@ -4,10 +4,16 @@ package inference
 // de cadeias (Damerau, 1964): inserção, remoção, troca e transposição de duas runas
 // vizinhas custam 1. Passou de limit, para de calcular e devolve limit+1.
 func Distance(a, b []rune, limit int) int {
+	return distance(a, b, limit, nil)
+}
+
+// distance é Distance com as três linhas da tabela tiradas de scratch, que cresce
+// quando falta espaço, para comparar muitos títulos sem alocar a cada par.
+func distance(a, b []rune, limit int, scratch *[]int) int {
 	if abs(len(a)-len(b)) > limit {
 		return limit + 1
 	}
-	prev2, prev, cur := make([]int, len(b)+1), make([]int, len(b)+1), make([]int, len(b)+1)
+	prev2, prev, cur := rows(len(b)+1, scratch)
 	for j := range prev {
 		prev[j] = j
 	}
@@ -37,6 +43,20 @@ func fillRow(a, b []rune, i int, prev2, prev, cur []int) int {
 		lowest = min(lowest, cur[j])
 	}
 	return lowest
+}
+
+// rows devolve três linhas de tamanho n, de scratch quando ele existe.
+func rows(n int, scratch *[]int) (prev2, prev, cur []int) {
+	var buf []int
+	if scratch != nil && cap(*scratch) >= 3*n {
+		buf = (*scratch)[:3*n]
+	} else {
+		buf = make([]int, 3*n)
+	}
+	if scratch != nil {
+		*scratch = buf
+	}
+	return buf[:n], buf[n : 2*n], buf[2*n:]
 }
 
 func abs(n int) int {

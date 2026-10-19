@@ -34,9 +34,11 @@ type Candidate struct {
 }
 
 // TitleIndex guarda os títulos do cofre já sem caixa e sem acento, agrupados pelo
-// número de runas, para comparar só os de tamanho compatível.
+// número de runas, para comparar só os de tamanho compatível. Reaproveita a tabela
+// da distância entre chamadas, então não serve a duas goroutines ao mesmo tempo.
 type TitleIndex struct {
 	byLength map[int][]foldedTitle
+	scratch  []int
 }
 
 type foldedTitle struct {
@@ -67,7 +69,7 @@ func (idx *TitleIndex) Candidates(sourceID, citedKey string) []Candidate {
 			continue
 		}
 		for _, t := range titles {
-			keepCloser(best, sourceID, t, cited, longest)
+			idx.keepCloser(best, sourceID, t, cited, longest)
 		}
 	}
 	return sortedCandidates(best)
@@ -75,11 +77,11 @@ func (idx *TitleIndex) Candidates(sourceID, citedKey string) []Candidate {
 
 // keepCloser guarda t em best se ele estiver no limiar e for o título mais perto da
 // nota dele até aqui.
-func keepCloser(best map[string]Candidate, sourceID string, t foldedTitle, cited []rune, longest int) {
+func (idx *TitleIndex) keepCloser(best map[string]Candidate, sourceID string, t foldedTitle, cited []rune, longest int) {
 	if t.NoteID == sourceID || longest == 0 {
 		return
 	}
-	d := Distance(cited, t.runes, longest/editRatioDenominator)
+	d := distance(cited, t.runes, longest/editRatioDenominator, &idx.scratch)
 	if d*editRatioDenominator > longest {
 		return
 	}
