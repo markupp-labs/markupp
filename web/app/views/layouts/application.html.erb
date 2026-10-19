@@ -23,7 +23,7 @@
     <%# A lista rola dentro de .sidebar-scroll; o rodape com conta, configuracoes, tema e sair fica sempre no fundo. %>
     <nav id="sidebar" popover aria-label="<%= sidebar_label %>"
          data-sidebar-target="panel"
-         class="sidebar layer m-0 h-dvh w-72 max-w-[85vw] flex-col border-0 border-r border-line bg-surface-sunken p-0 text-ink open:flex md:w-auto md:max-w-none">
+         class="sidebar layer m-0 h-dvh w-72 max-w-[85vw] flex-col border-0 border-r border-line bg-surface-sunken p-0 text-ink open:flex md:max-w-none">
       <div class="sidebar-scroll min-h-0 flex-1 overflow-y-auto p-3">
         <% if current_tenant %>
           <%= render "layouts/tenant_switcher" %>

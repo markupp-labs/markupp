@@ -84,17 +84,15 @@
   }
 }
 
-/* Barra lateral no desktop: recolher e expandir deslizam como a troca de workspace do Hyprland, só com transform. A
-   barra sai ou entra pela esquerda e o main, que já ocupa a coluna nova, parte de onde estava e anda a mesma distância
-   no mesmo tempo, colado nela. Animar o grid-template-columns refaria o layout do main (e do CodeMirror) a cada quadro.
-   Fechando, a barra fica fixa por cima durante a saída (fora do grid de uma coluna) e só depois some (allow-discrete).
-   O data-sidebar-moved no body (sidebar_controller.js) limita o movimento ao clique: carregar ou navegar não anima. */
+/* Barra lateral no desktop: recolher e expandir deslizam como a troca de workspace do Hyprland. A barra sai ou entra
+   pela esquerda (transform) e a coluna dela no grid do body encolhe ou cresce no mesmo tempo e curva, colada na borda
+   da barra: o main acompanha só pela borda esquerda. Assim nada salta: o que encosta à direita (o seletor de modo da
+   nota) fica parado e o que encosta à esquerda anda junto com a barra. Um transform no main deslocaria também o lado
+   direito, que já nasce na largura nova (o seletor saía da tela e voltava). O preço é refazer o layout do main a cada
+   quadro durante o deslize, como no Obsidian. Fechando, a barra fica fixa por cima durante a saída e só depois some
+   (allow-discrete). O data-sidebar-moved no body (sidebar_controller.js) limita o movimento ao clique: carregar, navegar
+   ou arrastar a alça não anima. */
 @media (width >= 48rem) {
-  /* O main deslocado durante o deslize não abre rolagem horizontal na página (clip não cria scroller: o sticky fica). */
-  .app-shell {
-    overflow-x: clip;
-  }
-
   .sidebar.layer {
     opacity: 1;
     transform: none;
@@ -104,7 +102,6 @@
   :root[data-sidebar="closed"] .sidebar.layer {
     position: fixed;
     left: 0;
-    width: var(--sidebar-width, 18rem);
     transform: translateX(-100%);
     transition: transform var(--motion-window-out) linear, display var(--motion-window-out) linear allow-discrete;
   }
@@ -115,12 +112,12 @@
     }
   }
 
-  body[data-sidebar-moved] > main {
-    animation: workspace-slide-right var(--motion-window) var(--ease-out-quint);
+  body[data-sidebar-moved].app-shell {
+    transition: grid-template-columns var(--motion-window) var(--ease-out-quint);
   }
 
-  :root[data-sidebar="closed"] body[data-sidebar-moved] > main {
-    animation: workspace-slide-left var(--motion-window-out) linear;
+  :root[data-sidebar="closed"] body[data-sidebar-moved].app-shell {
+    transition: grid-template-columns var(--motion-window-out) linear;
   }
 
   /* A lombada anda junto: a aba fechada vai à borda da tela por transform (application.css). */
@@ -131,14 +128,6 @@
   :root[data-sidebar="closed"] .sidebar-spine {
     transition: transform var(--motion-window-out) linear;
   }
-}
-
-@keyframes workspace-slide-right {
-  from { transform: translateX(calc(-1 * var(--sidebar-width, 18rem))); }
-}
-
-@keyframes workspace-slide-left {
-  from { transform: translateX(var(--sidebar-width, 18rem)); }
 }
 
 /* Troca de modo da nota (data-mode-switched, note_mode_controller.js; abrir a nota não anima): o painel que entra

@@ -184,15 +184,26 @@
 }
 
 /* Barra lateral no desktop, estilo VS Code: coluna na largura escolhida (cookie, --sidebar-width no <html>);
-   fechada some. Fora de @layer para vencer os utilitários. */
+   fechada, a coluna vai a zero e a barra some. As duas colunas existem sempre (o main fica na segunda) para a troca
+   poder deslizar a coluna (motion.css). A barra tem a largura dela, não a da coluna: no deslize não se espreme.
+   Fora de @layer para vencer os utilitários. */
 @media (width >= 48rem) {
   .app-shell {
     display: grid;
     grid-template-columns: var(--sidebar-width, 18rem) minmax(0, 1fr);
   }
 
+  .app-shell > .sidebar {
+    grid-column: 1;
+    width: var(--sidebar-width, 18rem);
+  }
+
+  .app-shell > main {
+    grid-column: 2;
+  }
+
   :root[data-sidebar="closed"] .app-shell {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: 0px minmax(0, 1fr);
   }
 
   :root[data-sidebar="closed"] .sidebar {
