@@ -12,13 +12,14 @@ import (
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/oauth"
 )
 
-// esperarBloqueio espera alguma conexão do banco ficar parada esperando uma trava.
-func esperarBloqueio(t *testing.T, pool *pgxpool.Pool) {
+// esperarBloqueio espera alguma conexão do banco ficar parada esperando uma trava e
+// falha com o motivo se nenhuma ficar.
+func esperarBloqueio(t *testing.T, pool *pgxpool.Pool, motivo string) {
 	t.Helper()
 	require.Eventually(t, func() bool {
 		return countRows(t, pool, `SELECT count(*) FROM pg_stat_activity
 			WHERE datname = current_database() AND wait_event_type = 'Lock'`) > 0
-	}, 5*time.Second, 10*time.Millisecond, "a aprovação deveria esperar a Autorização da outra transação")
+	}, 5*time.Second, 10*time.Millisecond, motivo)
 }
 
 func TestPostgresOAuthRepo_ApproveRequest_ConcorrenteComOutraCriacaoAmplia(t *testing.T) {
@@ -36,7 +37,7 @@ func TestPostgresOAuthRepo_ApproveRequest_ConcorrenteComOutraCriacaoAmplia(t *te
 		_, err := repo.ApproveRequest(ctx, aprovacao("r1", "h1", instanteOAuth.Add(time.Minute)))
 		aprovou <- err
 	}()
-	esperarBloqueio(t, pool)
+	esperarBloqueio(t, pool, "a aprovação deveria esperar a Autorização da outra transação")
 
 	require.NoError(t, outra.Commit(ctx))
 
