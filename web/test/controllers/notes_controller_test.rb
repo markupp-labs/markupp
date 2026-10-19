@@ -44,6 +44,8 @@ class NotesControllerTest < ActionDispatch::IntegrationTest
     assert_equal content, css_select("main textarea").sole.text
     assert_select "main input[name=?][value=?]", "note[title]", "plan"
     assert_select "main input[name=?][value=?]", "note[folder]", "work"
+    assert_select "main input[name=?]:not([placeholder])", "note[folder]"
+    assert_select "main label[for=note_folder] + [aria-hidden=true]", "/"
   end
 
   test "show marks the current note and opens only its ancestors" do

@@ -215,6 +215,11 @@ class NoteTest < ActiveSupport::TestCase
     assert_equal "README", Note.compose_path(folder: nil, title: "README", markdown: false)
   end
 
+  test "compose_path reads the folder like a unix path, with or without the slashes around it" do
+    assert_equal "work/2026/Plan.md", Note.compose_path(folder: "/work/2026/", title: "Plan")
+    assert_equal "Plan.md", Note.compose_path(folder: "/", title: "Plan")
+  end
+
   test "compose_path leaves the name empty for a blank title" do
     assert_equal "work/.md", Note.compose_path(folder: "work", title: "  ")
     assert_equal "work/", Note.compose_path(folder: "work", title: "", markdown: false)
