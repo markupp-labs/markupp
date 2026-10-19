@@ -86,11 +86,11 @@ func newVersionRoutes(d RouterDeps) chi.Router {
 // falhar cedo, como em /users.
 func mountProtectedNotesRoutes(r chi.Router, svc NoteService, tokenValidator TokenValidator, tenants TenantResolver) {
 	h := &notesHandler{svc: svc}
-	read := r.With(RequireAuth(tokenValidator), requireOAuthScope(oauth.ScopeNotesRead), RequireTenant(tenants))
+	read := r.With(acceptOAuthScope(oauth.ScopeNotesRead), RequireAuth(tokenValidator), RequireTenant(tenants))
 	read.Get("/notes", h.list)
 	read.Get("/notes/search", h.search)
 	read.Get("/notes/{id}", h.get)
-	write := r.With(RequireAuth(tokenValidator), requireOAuthScope(oauth.ScopeNotesWrite), RequireTenant(tenants), requireWriter)
+	write := r.With(acceptOAuthScope(oauth.ScopeNotesWrite), RequireAuth(tokenValidator), RequireTenant(tenants), requireWriter)
 	write.Post("/notes", h.create)
 	write.Put("/notes/{id}", h.update)
 	write.Delete("/notes/{id}", h.delete)
@@ -102,14 +102,12 @@ func mountAuthRoutes(r chi.Router, authSvc AuthService, tokenValidator TokenVali
 	r.Post("/auth/refresh", h.refresh)
 	r.Post("/auth/logout", h.logout)
 	r.Post("/auth/invites/accept", h.acceptInvite)
-	r.Group(func(g chi.Router) {
-		g.Use(RequireAuth(tokenValidator))
-		g.Get("/auth/me", h.me)
-		g.Get("/me/tenants", h.myTenants)
-		admin := g.With(requireOAuthScope(oauth.ScopeAdmin))
-		admin.Post("/tenants", h.createTenant)
-		admin.Get("/me/invites", h.myInvites)
-		admin.Post("/me/invites/{id}/accept", h.acceptMyInvite)
-		admin.Post("/me/invites/{id}/decline", h.declineMyInvite)
-	})
+	account := r.With(acceptOAuthScope(anyOAuthScope), RequireAuth(tokenValidator))
+	account.Get("/auth/me", h.me)
+	account.Get("/me/tenants", h.myTenants)
+	admin := r.With(acceptOAuthScope(oauth.ScopeAdmin), RequireAuth(tokenValidator))
+	admin.Post("/tenants", h.createTenant)
+	admin.Get("/me/invites", h.myInvites)
+	admin.Post("/me/invites/{id}/accept", h.acceptMyInvite)
+	admin.Post("/me/invites/{id}/decline", h.declineMyInvite)
 }

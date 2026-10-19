@@ -14,6 +14,7 @@ type TokenValidator interface {
 }
 
 // RequireAuth intercepta requisições exigindo um cabeçalho Authorization: Bearer <token>.
+// Token OAuth só passa na rota que declarou antes, com acceptOAuthScope, o que aceita.
 func RequireAuth(validator TokenValidator) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -33,8 +34,11 @@ func serveAuthenticated(w http.ResponseWriter, r *http.Request, next http.Handle
 		writeError(w, "unauthorized", "token ausente ou invalido", http.StatusUnauthorized)
 		return
 	}
-	ctx := identity.WithActor(r.Context(), actorFromClaims(claims))
-	next.ServeHTTP(w, r.WithContext(ctx))
+	actor := actorFromClaims(claims)
+	if !allowOAuthActor(w, r, actor) {
+		return
+	}
+	next.ServeHTTP(w, r.WithContext(identity.WithActor(r.Context(), actor)))
 }
 
 // actorFromClaims monta o ator do token. Scope vazio é token de login, de acesso inteiro.

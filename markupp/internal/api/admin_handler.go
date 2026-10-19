@@ -49,7 +49,7 @@ type issuedInviteResponse struct {
 func mountAdminRoutes(r chi.Router, svc AdminService, validator TokenValidator, tenants TenantResolver) {
 	h := &adminHandler{svc: svc}
 	r.Group(func(g chi.Router) {
-		g.Use(RequireAuth(validator), requireOAuthScope(oauth.ScopeAdmin), RequireTenant(tenants), requireAdmin)
+		g.Use(acceptOAuthScope(oauth.ScopeAdmin), RequireAuth(validator), RequireTenant(tenants), requireAdmin)
 		g.Get("/users", h.listMembers)
 		g.Get("/users/invites", h.listInvites)
 		g.Post("/users/invites", h.issueInvite)
