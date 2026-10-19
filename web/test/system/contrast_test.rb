@@ -56,6 +56,8 @@ class ContrastTest < ApplicationSystemTestCase
     %w[Light Dark].each do |theme|
       visit settings_appearance_path
       within("main") { click_on theme }
+      # O tema troca por um PATCH que volta para Aparência; abrir a nota antes disso perde a corrida para o redirect.
+      assert_selector "main button[aria-pressed=true]", text: theme
       visit note_path("2")
       click_on "Read"
       assert_code_tokens_readable
