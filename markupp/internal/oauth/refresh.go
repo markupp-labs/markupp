@@ -43,12 +43,13 @@ func checkRefreshParams(g RefreshGrant) error {
 // consumeRefresh marca o refresh como rotacionado. Reapresentar um já rotacionado é reuso
 // e derruba os tokens da Autorização (RFC 9700, seção 4.14.2).
 func (s *Service) consumeRefresh(ctx context.Context, refresh string, now time.Time) (TokenGrant, error) {
-	grant, err := s.repo.ConsumeRefreshToken(ctx, auth.HashOpaqueToken(refresh), now)
+	refreshHash := auth.HashOpaqueToken(refresh)
+	grant, err := s.repo.ConsumeRefreshToken(ctx, refreshHash, now)
 	switch {
 	case err == nil:
 		return grant, nil
 	case errors.Is(err, ErrRefreshReused):
-		return TokenGrant{}, s.revokeReusedRefresh(ctx, grant, now)
+		return TokenGrant{}, s.revokeReusedRefresh(ctx, grant.Authorization, refreshHash, now)
 	case errors.Is(err, ErrTokenNotFound), errors.Is(err, ErrAuthorizationNotFound):
 		return TokenGrant{}, grantError(revokedRefreshDescription)
 	}
@@ -61,16 +62,16 @@ const revokedRefreshDescription = "refresh token invalido, expirado ou revogado;
 // reusedRefreshDescription é a descrição do refresh já rotacionado reapresentado.
 const reusedRefreshDescription = "refresh token ja rotacionado; esperado o refresh token mais recente emitido para o cliente"
 
-// revokeReusedRefresh derruba os tokens da Autorização do refresh reapresentado. Expirado
-// também dispara: o que importa é ele seguir sem revogação. Se outro reuso do mesmo
-// refresh já revogou, o repositório não revoga nem audita de novo.
-func (s *Service) revokeReusedRefresh(ctx context.Context, grant TokenGrant, now time.Time) error {
-	authorization := grant.Authorization
+// revokeReusedRefresh derruba os tokens da Autorização do refresh reapresentado, com o
+// hash dele como gatilho. Expirado também dispara: o que importa é ele seguir sem
+// revogação. Se outro reuso do mesmo refresh já revogou, o repositório não revoga nem
+// audita de novo.
+func (s *Service) revokeReusedRefresh(ctx context.Context, authorization Authorization, refreshHash string, now time.Time) error {
 	if authorization.ID == "" {
 		return grantError(reusedRefreshDescription)
 	}
 	event := auditEvent(AuditActionRefreshReuse, AuditResultFailure, authorization, now)
-	if _, err := s.repo.RevokeAuthorizationTokensAudited(ctx, authorization.ID, grant.Token.Hash, false, event); err != nil {
+	if _, err := s.repo.RevokeAuthorizationTokensAudited(ctx, authorization.ID, refreshHash, false, event); err != nil {
 		return fmt.Errorf("oauth: revogando os tokens da autorização %q após reuso de refresh token: %w", authorization.ID, err)
 	}
 	return grantError(reusedRefreshDescription)

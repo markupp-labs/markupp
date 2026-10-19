@@ -17,7 +17,8 @@ func (s *Service) RevokeToken(ctx context.Context, r RevokeRequest) error {
 	if err := checkRevokeParams(r); err != nil {
 		return err
 	}
-	grant, err := s.repo.FindToken(ctx, auth.HashOpaqueToken(r.Token))
+	tokenHash := auth.HashOpaqueToken(r.Token)
+	grant, err := s.repo.FindToken(ctx, tokenHash)
 	if errors.Is(err, ErrTokenNotFound) {
 		return nil
 	}
@@ -28,7 +29,7 @@ func (s *Service) RevokeToken(ctx context.Context, r RevokeRequest) error {
 	if r.ClientID != grant.Authorization.ClientID || !liveGrant(grant, now) {
 		return nil
 	}
-	return s.revokeTokens(ctx, grant, now)
+	return s.revokeTokens(ctx, grant.Authorization, tokenHash, now)
 }
 
 func checkRevokeParams(r RevokeRequest) error {
@@ -46,13 +47,12 @@ func liveGrant(grant TokenGrant, now time.Time) bool {
 	return !grant.Token.Revoked && grant.Token.ExpiresAt.After(now) && !grant.Authorization.Revoked
 }
 
-// revokeTokens derruba os tokens da Autorização do token lido fora da transação. O
-// repositório confere de novo, já com a trava, que o token segue vigente: se outra
-// revogação entrou no meio, não revoga nem audita de novo.
-func (s *Service) revokeTokens(ctx context.Context, grant TokenGrant, now time.Time) error {
-	authorization := grant.Authorization
+// revokeTokens derruba os tokens da Autorização do token lido fora da transação, com o
+// hash dele como gatilho. O repositório confere de novo, já com a trava, que o token
+// segue vigente: se outra revogação entrou no meio, não revoga nem audita de novo.
+func (s *Service) revokeTokens(ctx context.Context, authorization Authorization, tokenHash string, now time.Time) error {
 	event := auditEvent(AuditActionRevoke, AuditResultSuccess, authorization, now)
-	if _, err := s.repo.RevokeAuthorizationTokensAudited(ctx, authorization.ID, grant.Token.Hash, true, event); err != nil {
+	if _, err := s.repo.RevokeAuthorizationTokensAudited(ctx, authorization.ID, tokenHash, true, event); err != nil {
 		return fmt.Errorf("oauth: revogando os tokens da autorização %q: %w", authorization.ID, err)
 	}
 	return nil
