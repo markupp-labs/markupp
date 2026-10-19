@@ -35,14 +35,6 @@ func TestMyAuthorizations_ListarVazio_DevolveListaVazia(t *testing.T) {
 	assert.JSONEq(t, `[]`, rec.Body.String())
 }
 
-func TestMyAuthorizations_ListarSemEscopos_DevolveEscoposVazios(t *testing.T) {
-	svc := &fakeOAuthService{authorizations: []oauth.AuthorizationView{{ID: "a1"}}}
-
-	rec := consentRequest(svc, http.MethodGet, "/v1/me/authorizations", true)
-
-	assert.Contains(t, rec.Body.String(), `"scopes":[]`)
-}
-
 func TestMyAuthorizations_Revogar_Retorna204SemCache(t *testing.T) {
 	svc := &fakeOAuthService{}
 

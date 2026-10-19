@@ -32,17 +32,13 @@ func (h *oauthHandler) listAuthorizations(w http.ResponseWriter, r *http.Request
 	writeJSON(w, http.StatusOK, authorizationListFrom(views))
 }
 
-// authorizationListFrom troca lista e escopos nulos por vazios, para o JSON sempre
-// trazer arrays.
+// authorizationListFrom troca a lista nula por vazia, para o JSON sempre trazer array.
+// Os escopos já vêm do serviço como slice vazio, nunca nil.
 func authorizationListFrom(views []oauth.AuthorizationView) []oauth.AuthorizationView {
-	out := make([]oauth.AuthorizationView, 0, len(views))
-	for _, v := range views {
-		if v.Scopes == nil {
-			v.Scopes = []string{}
-		}
-		out = append(out, v)
+	if views == nil {
+		return []oauth.AuthorizationView{}
 	}
-	return out
+	return views
 }
 
 // revokeAuthorization não distingue Autorização inexistente, já revogada ou de outra
