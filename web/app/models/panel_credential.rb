@@ -16,6 +16,7 @@ class PanelCredential
   def account=(account)
     @session[:account_id] = account.fetch("id")
     @session[:account_email] = account.fetch("email")
+    @session[:password_login] = account["password_login"]
   end
 
   def sign_out = @session.destroy
@@ -34,7 +35,8 @@ class PanelCredential
 
   def account_email = @session[:account_email]
 
-  def password_login? = true
+  # Só false esconde a troca de senha: servidor que ainda não manda o campo mantém o botão.
+  def password_login? = @session[:password_login] != false
 
   def access_expired? = Time.current.to_i >= @session[:access_expires_at].to_i
 
