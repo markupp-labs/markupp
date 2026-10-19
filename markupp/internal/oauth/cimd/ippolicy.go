@@ -15,23 +15,27 @@ var ErrBlockedAddress = errors.New("endereco bloqueado")
 type IPPolicy func(ip netip.Addr) error
 
 // blockedPrefixes cobre o que o netip não classifica: CGNAT e os prefixos de tradução
-// NAT64 e 6to4, que embutem um IPv4 qualquer (inclusive interno) no endereço IPv6.
+// NAT64 (o bem conhecido e o local), IPv4-compatível, 6to4 e Teredo, que embutem um
+// IPv4 qualquer (inclusive interno) no endereço IPv6.
 var blockedPrefixes = []netip.Prefix{
 	netip.MustParsePrefix("100.64.0.0/10"),
 	netip.MustParsePrefix("64:ff9b::/96"),
+	netip.MustParsePrefix("64:ff9b:1::/48"),
+	netip.MustParsePrefix("::/96"),
 	netip.MustParsePrefix("2002::/16"),
+	netip.MustParsePrefix("2001::/32"),
 }
 
 // PublicOnly é a política padrão: recusa loopback, privados (RFC 1918 e fc00::/7),
-// link-local, unspecified, multicast, CGNAT (100.64.0.0/10), NAT64 (64:ff9b::/96) e
-// 6to4 (2002::/16).
+// link-local, unspecified, multicast, CGNAT (100.64.0.0/10), NAT64 (64:ff9b::/96 e
+// 64:ff9b:1::/48), IPv4-compatível (::/96), 6to4 (2002::/16) e Teredo (2001::/32).
 func PublicOnly(ip netip.Addr) error {
 	ip = ip.Unmap()
 	if isPublicIP(ip) {
 		return nil
 	}
 	return fmt.Errorf("%w: %s; esperado IP publico (fora de loopback, privado, link-local, unspecified, "+
-		"multicast, CGNAT, NAT64 e 6to4)", ErrBlockedAddress, ip)
+		"multicast, CGNAT, NAT64, IPv4-compativel, 6to4 e Teredo)", ErrBlockedAddress, ip)
 }
 
 func isPublicIP(ip netip.Addr) bool {
