@@ -70,12 +70,8 @@ func TestLigacaoInferida_ParentescoDecideEntreDistanciaEProbabilidade(t *testing
 	assert.Empty(t, backlinks(ctxDeTeste, t, graph, "p"))
 }
 
-func TestLigacaoInferida_ContaParaNotaOrfaENaoViraNaoResolvida(t *testing.T) {
+func TestLigacaoInferida_NaoViraNaoResolvida(t *testing.T) {
 	_, _, graph := cofreComErroDeDigitacao(t)
-
-	orfas, err := graph.Orphans(ctxDeTeste, cofreDeTeste, 0, 100)
-	require.NoError(t, err)
-	assert.Equal(t, []string{"m", "p"}, idsDe(orfas))
 
 	soltas, err := graph.UnresolvedLinks(ctxDeTeste, cofreDeTeste, 0, 100)
 	require.NoError(t, err)

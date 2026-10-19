@@ -17,9 +17,10 @@ func BenchmarkNoteGraph(b *testing.B) {
 		"neighbors":        "/notes/cofre-bench-00042/neighbors",
 		"mentions":         "/notes/cofre-bench-00042/mentions",
 		"suggestions":      "/notes/cofre-bench-00042/suggestions",
-		"orphans":          "/vaults/cofre-bench/orphans",
+		"note":             "/v1/notes/cofre-bench-00042",
+		"orphans":          "/v1/vaults/cofre-bench/notes?orphan=true",
+		"by_pagerank":      "/v1/vaults/cofre-bench/notes?sort=pagerank",
 		"unresolved_links": "/vaults/cofre-bench/unresolved-links",
-		"hubs":             "/vaults/cofre-bench/hubs",
 		"clusters":         "/vaults/cofre-bench/clusters",
 	}
 	for nome, rota := range rotas {

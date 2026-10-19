@@ -61,6 +61,10 @@ func (f *fakeBuscaService) ListNotes(ctx context.Context) ([]notes.Note, error) 
 	return nil, nil
 }
 
+func (f *fakeBuscaService) ListVaultNotes(ctx context.Context, vaultID string, q notes.VaultNotesQuery) ([]notes.Note, error) {
+	return nil, nil
+}
+
 func (f *fakeBuscaService) SearchNotes(ctx context.Context, query string, offset, limit int) ([]notes.SearchResult, error) {
 	f.chamado = true
 	f.offset = offset

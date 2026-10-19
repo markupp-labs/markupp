@@ -45,6 +45,11 @@ type fakeService struct {
 
 	createdVaultID string
 
+	vaultListArgs struct {
+		vaultID string
+		query   notes.VaultNotesQuery
+	}
+
 	searchResult []notes.SearchResult
 	searchErr    error
 	searchArgs   struct {
@@ -82,6 +87,11 @@ func (f *fakeService) GetNoteByID(ctx context.Context, id string) (notes.Note, e
 
 func (f *fakeService) ListNotes(ctx context.Context) ([]notes.Note, error) {
 	f.listCalled = true
+	return f.listResult, f.listErr
+}
+
+func (f *fakeService) ListVaultNotes(ctx context.Context, vaultID string, q notes.VaultNotesQuery) ([]notes.Note, error) {
+	f.vaultListArgs.vaultID, f.vaultListArgs.query = vaultID, q
 	return f.listResult, f.listErr
 }
 

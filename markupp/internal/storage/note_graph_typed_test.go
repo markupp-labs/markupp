@@ -16,7 +16,7 @@ import (
 // cofreTipado monta um cofre indexado com ligações tipadas: duas chaves para a mesma
 // nota, chave junto de ligação do corpo, ligação tipada de volta, ligação tipada
 // sem nota e frontmatter só com valores literais.
-func cofreTipado(t *testing.T) *storage.PostgresNoteGraph {
+func cofreTipado(t *testing.T) (*storage.PostgresNotesRepository, *storage.PostgresNoteGraph) {
 	t.Helper()
 	db := setupNotesDB(t)
 	repo := storage.NewPostgresNotesRepository(db, "simple")
@@ -30,11 +30,11 @@ func cofreTipado(t *testing.T) *storage.PostgresNoteGraph {
 		storagetest.SaveNote(ctxDeTeste, t, repo, nota)
 	}
 	indexaTodosOsCofres(t, db, "simple")
-	return storage.NewPostgresNoteGraph(db, "simple")
+	return repo, storage.NewPostgresNoteGraph(db, "simple")
 }
 
 func TestNoteGraph_Backlinks_TrazemOsPredicadosDasLigacoesTipadas(t *testing.T) {
-	graph := cofreTipado(t)
+	_, graph := cofreTipado(t)
 
 	lidas, err := graph.Backlinks(ctxDeTeste, "f", 0, 100)
 
@@ -47,7 +47,7 @@ func TestNoteGraph_Backlinks_TrazemOsPredicadosDasLigacoesTipadas(t *testing.T) 
 }
 
 func TestNoteGraph_Neighbors_SeparamOsPredicadosPorSentido(t *testing.T) {
-	graph := cofreTipado(t)
+	_, graph := cofreTipado(t)
 
 	vizinhos, err := graph.Neighbors(ctxDeTeste, "f", 0, 100)
 
@@ -62,17 +62,16 @@ func TestNoteGraph_Neighbors_SeparamOsPredicadosPorSentido(t *testing.T) {
 	assert.Equal(t, []string{}, vizinhos[1].OutgoingPredicates)
 }
 
-func TestNoteGraph_Orphans_LigacaoTipadaContaEValorLiteralNao(t *testing.T) {
-	graph := cofreTipado(t)
+func TestListVaultNotes_Orfas_LigacaoTipadaContaEValorLiteralNao(t *testing.T) {
+	repo, _ := cofreTipado(t)
 
-	orfas, err := graph.Orphans(ctxDeTeste, cofreDeTeste, 0, 100)
+	orfas := notasDoCofre(ctxDeTeste, t, repo, notes.VaultNotesQuery{Orphan: ptr(true), Limit: 100})
 
-	require.NoError(t, err)
-	assert.Equal(t, []string{"o", "r"}, idsDe(orfas), "p so tem ligacao tipada e nao e orfa")
+	assert.Equal(t, []string{"o", "r"}, idsDasNotas(orfas), "p so tem ligacao tipada e nao e orfa")
 }
 
 func TestNoteGraph_UnresolvedLinks_IncluiLigacaoTipadaSemNota(t *testing.T) {
-	graph := cofreTipado(t)
+	_, graph := cofreTipado(t)
 
 	soltas, err := graph.UnresolvedLinks(ctxDeTeste, cofreDeTeste, 0, 100)
 

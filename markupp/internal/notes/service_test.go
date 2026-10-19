@@ -48,6 +48,9 @@ type fakeRepo struct {
 	listErr    error
 	listCalled bool
 
+	vaultListVaultID string
+	vaultListQuery   notes.VaultNotesQuery
+
 	searchResult []notes.SearchResult
 	searchErr    error
 	searchArgs   struct {
@@ -93,6 +96,11 @@ func (f *fakeRepo) GetNoteByID(ctx context.Context, id string) (notes.Note, erro
 
 func (f *fakeRepo) ListNotes(ctx context.Context) ([]notes.Note, error) {
 	f.listCalled = true
+	return f.listResult, f.listErr
+}
+
+func (f *fakeRepo) ListVaultNotes(ctx context.Context, vaultID string, q notes.VaultNotesQuery) ([]notes.Note, error) {
+	f.vaultListVaultID, f.vaultListQuery = vaultID, q
 	return f.listResult, f.listErr
 }
 
@@ -470,6 +478,28 @@ func TestListNotes_DBVazio_RetornaSliceVazio(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Empty(t, got)
+}
+
+func TestListVaultNotes_RepassaCofreEConsultaAoRepo(t *testing.T) {
+	esperadas := []notes.Note{{ID: "id-1", Path: "a.md"}}
+	repo := &fakeRepo{listResult: esperadas}
+	consulta := notes.VaultNotesQuery{Sort: notes.SortByPageRank, Descending: true, Offset: 2, Limit: 5}
+
+	got, err := newServiceForTest(repo).ListVaultNotes(context.Background(), "cofre-a", consulta)
+
+	require.NoError(t, err)
+	assert.Equal(t, esperadas, got)
+	assert.Equal(t, "cofre-a", repo.vaultListVaultID)
+	assert.Equal(t, consulta, repo.vaultListQuery)
+}
+
+func TestListVaultNotes_ErroDoRepo_DizOCofreEMantemOErroDeDominio(t *testing.T) {
+	repo := &fakeRepo{listErr: notes.ErrVaultForbidden}
+
+	_, err := newServiceForTest(repo).ListVaultNotes(context.Background(), "cofre-a", notes.VaultNotesQuery{Limit: 10})
+
+	require.ErrorIs(t, err, notes.ErrVaultForbidden)
+	assert.Contains(t, err.Error(), "cofre-a")
 }
 
 func TestSearch_RepoRetornaErro_Propagado(t *testing.T) {

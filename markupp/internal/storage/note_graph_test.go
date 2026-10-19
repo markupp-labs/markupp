@@ -38,14 +38,6 @@ func cofreLigado(t *testing.T) (*pgxpool.Pool, *storage.PostgresNotesRepository,
 	return db, repo, storage.NewPostgresNoteGraph(db, "simple")
 }
 
-func idsDe(lidas []notes.LinkedNote) []string {
-	ids := make([]string, 0, len(lidas))
-	for _, lida := range lidas {
-		ids = append(ids, lida.ID)
-	}
-	return ids
-}
-
 func backlinks(ctx context.Context, t *testing.T, graph *storage.PostgresNoteGraph, noteID string) []string {
 	t.Helper()
 	lidas, err := graph.Backlinks(ctx, noteID, 0, 100)
@@ -91,25 +83,6 @@ func TestNoteGraph_Neighbors_EntradaESaida(t *testing.T) {
 		{LinkedNote: notes.LinkedNote{ID: "c", VaultID: cofreDeTeste, Path: "c.md", UpdatedAt: vizinhos[1].UpdatedAt}, Incoming: true, Outgoing: true, IncomingPredicates: []string{}, OutgoingPredicates: []string{}},
 		{LinkedNote: notes.LinkedNote{ID: "d", VaultID: cofreDeTeste, Path: "d.md", UpdatedAt: vizinhos[2].UpdatedAt}, Incoming: true, IncomingPredicates: []string{}, OutgoingPredicates: []string{}},
 	}, vizinhos)
-}
-
-func TestNoteGraph_Orphans_SemLigacaoEmSentidoAlgum(t *testing.T) {
-	_, _, graph := cofreLigado(t)
-
-	orfas, err := graph.Orphans(ctxDeTeste, cofreDeTeste, 0, 100)
-
-	require.NoError(t, err)
-	assert.Equal(t, []string{"e", "g"}, idsDe(orfas))
-}
-
-func TestNoteGraph_Orphans_NotaAindaNaoIndexadaFicaDeFora(t *testing.T) {
-	_, repo, graph := cofreLigado(t)
-	storagetest.SaveNote(ctxDeTeste, t, repo, notaComCaminho("nova", "nova.md", "sem indexar"))
-
-	orfas, err := graph.Orphans(ctxDeTeste, cofreDeTeste, 0, 100)
-
-	require.NoError(t, err)
-	assert.Equal(t, []string{"e", "g"}, idsDe(orfas), "o grafo le so o plano de recuperacao")
 }
 
 func TestNoteGraph_UnresolvedLinks_TitulosSemNota(t *testing.T) {
@@ -161,9 +134,7 @@ func TestNoteGraph_CofreInvisivel_ErrVaultForbidden(t *testing.T) {
 	estranho := identity.Actor{UserID: "u-fora", TenantID: "outro", Role: "admin"}
 	ctxFora := storagetest.SeedMember(t, db, estranho, "cofre-fora")
 
-	_, err := graph.Orphans(ctxFora, cofreDeTeste, 0, 10)
-	require.ErrorIs(t, err, notes.ErrVaultForbidden)
-	_, err = graph.UnresolvedLinks(ctxFora, cofreDeTeste, 0, 10)
+	_, err := graph.UnresolvedLinks(ctxFora, cofreDeTeste, 0, 10)
 	require.ErrorIs(t, err, notes.ErrVaultForbidden)
 }
 
@@ -173,7 +144,4 @@ func TestNoteGraph_ViewerLe(t *testing.T) {
 	ctxViewer := storagetest.SeedMember(t, db, viewer, cofreDeTeste)
 
 	assert.Equal(t, []string{"a", "c", "d"}, backlinks(ctxViewer, t, graph, "b"))
-	orfas, err := graph.Orphans(ctxViewer, cofreDeTeste, 0, 10)
-	require.NoError(t, err)
-	assert.Equal(t, []string{"e", "g"}, idsDe(orfas))
 }

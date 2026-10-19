@@ -1,7 +1,6 @@
 package storage_test
 
 import (
-	"cmp"
 	"maps"
 	"slices"
 	"testing"
@@ -38,33 +37,6 @@ func cofreComDoisGrupos(t *testing.T) (*pgxpool.Pool, *storage.PostgresNotesRepo
 	}
 	indexaTodosOsCofres(t, db, "simple")
 	return db, repo, storage.NewPostgresNoteGraph(db, "simple")
-}
-
-func TestHubs_OrdenaPorPageRankContandoALigacaoInferida(t *testing.T) {
-	_, _, graph := cofreComDoisGrupos(t)
-
-	hubs, err := graph.Hubs(ctxDeTeste, cofreDeTeste, 0, 100)
-
-	require.NoError(t, err)
-	require.Len(t, hubs, 8, "toda nota do cofre tem centralidade")
-	assert.Equal(t, "indice", hubs[0].ID)
-	assert.Equal(t, []int{4, 0}, []int{hubs[0].InDegree, hubs[0].OutDegree}, "d cita indice por inferencia")
-	assert.True(t, slices.IsSortedFunc(hubs, func(x, y notes.Hub) int { return cmp.Compare(y.PageRank, x.PageRank) }))
-	total := 0.0
-	for _, h := range hubs {
-		total += h.PageRank
-	}
-	assert.InDelta(t, 1, total, 1e-6)
-}
-
-func TestHubs_Paginados(t *testing.T) {
-	_, _, graph := cofreComDoisGrupos(t)
-
-	hubs, err := graph.Hubs(ctxDeTeste, cofreDeTeste, 1, 2)
-
-	require.NoError(t, err)
-	require.Len(t, hubs, 2)
-	assert.NotEqual(t, "indice", hubs[0].ID)
 }
 
 // comunidadesLidas agrupa os membros lidos por id de comunidade.
@@ -119,9 +91,7 @@ func TestCentralidadeEComunidades_CofreInvisivel_ErrVaultForbidden(t *testing.T)
 	estranho := identity.Actor{UserID: "u-fora", TenantID: "outro", Role: "admin"}
 	ctxFora := storagetest.SeedMember(t, db, estranho, "cofre-fora")
 
-	_, err := graph.Hubs(ctxFora, cofreDeTeste, 0, 10)
-	require.ErrorIs(t, err, notes.ErrVaultForbidden)
-	_, err = graph.Communities(ctxFora, cofreDeTeste, 0, 10)
+	_, err := graph.Communities(ctxFora, cofreDeTeste, 0, 10)
 	require.ErrorIs(t, err, notes.ErrVaultForbidden)
 }
 
@@ -130,9 +100,6 @@ func TestCentralidadeEComunidades_ViewerLe(t *testing.T) {
 	viewer := identity.Actor{UserID: "u-viewer", TenantID: membroDeTeste.TenantID, Role: "viewer"}
 	ctxViewer := storagetest.SeedMember(t, db, viewer, cofreDeTeste)
 
-	hubs, err := graph.Hubs(ctxViewer, cofreDeTeste, 0, 1)
-	require.NoError(t, err)
-	assert.Equal(t, "indice", hubs[0].ID)
 	membros, err := graph.Communities(ctxViewer, cofreDeTeste, 0, 100)
 	require.NoError(t, err)
 	assert.Len(t, membros, 7)
