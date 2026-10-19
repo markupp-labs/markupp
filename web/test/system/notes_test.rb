@@ -9,7 +9,7 @@ class NotesTest < ApplicationSystemTestCase
     find("summary", text: "work").click
     click_on "plan.md"
 
-    assert_selector ".cm-editor .cm-content", text: "Ship it with [[ideas]]."
+    assert_selector ".cm-editor .cm-content", text: "Ship *it* with [[ideas]]."
     assert_selector ".cm-wikilink", text: "[[ideas]]"
     assert_no_selector "textarea"
   end
