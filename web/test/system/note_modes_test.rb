@@ -74,6 +74,20 @@ class NoteModesTest < ApplicationSystemTestCase
     assert_nil evaluate_script("window.pwned")
   end
 
+  test "tab in the path jumps to the content and shift+tab comes back, in edit and side by side" do
+    use_fake_api(notes: [ { id: "1", path: "plan.md", content: "# Plan\n" } ])
+    sign_in_through_form
+
+    visit note_path("1")
+    [ "Edit", "Side by side" ].each do |mode|
+      click_on mode
+      find_field("Path").send_keys(:tab)
+      assert_selector ".cm-content:focus"
+      send_keys [ :shift, :tab ]
+      assert_field "Path", focused: true
+    end
+  end
+
   test "tab in the path moves on when the editor is hidden in read mode" do
     use_fake_api(notes: [ { id: "1", path: "plan.md", content: "# Plan\n" } ])
     sign_in_through_form
