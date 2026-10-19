@@ -14,8 +14,10 @@ const oauthMetadataPath = "/.well-known/oauth-authorization-server"
 
 // OAuthMetadata configura o documento de metadados do authorization server. Issuer é
 // a URL pública do servidor, sem caminho, base dos endpoints anunciados.
+// DynamicRegistration liga o POST /oauth/register (RFC 7591) e o anuncia na metadata.
 type OAuthMetadata struct {
-	Issuer string
+	Issuer              string
+	DynamicRegistration bool
 }
 
 // Caminhos dos endpoints do protocolo, anunciados na metadata sobre o Issuer.

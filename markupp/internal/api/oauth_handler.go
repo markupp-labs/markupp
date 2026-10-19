@@ -28,6 +28,7 @@ type OAuthService interface {
 	RevokeToken(ctx context.Context, r oauth.RevokeRequest) error
 	ListAuthorizations(ctx context.Context, userID string) ([]oauth.AuthorizationView, error)
 	RevokeAuthorization(ctx context.Context, userID, authorizationID string) error
+	RegisterClient(ctx context.Context, r oauth.RegistrationRequest) (oauth.RegistrationResponse, error)
 }
 
 const (

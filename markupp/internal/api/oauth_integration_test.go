@@ -46,10 +46,11 @@ func setupOAuthIntegrationServer(t *testing.T) (*httptest.Server, *pgxpool.Pool)
 }
 
 // opcoesDeIntegracaoOAuth ajustam o servidor de integração: o fetcher de documentos
-// CIMD e o tempo do cache negativo.
+// CIMD, o tempo do cache negativo e se o registro dinâmico fica ligado.
 type opcoesDeIntegracaoOAuth struct {
 	metadata   oauth.ClientMetadataFetcher
 	failureTTL time.Duration
+	dcr        bool
 }
 
 // setupOAuthIntegrationServerWith monta o servidor de integração com as opções dadas.
@@ -67,7 +68,7 @@ func setupOAuthIntegrationServerWith(t *testing.T, opcoes opcoesDeIntegracaoOAut
 	notesSvc := notes.NewService(storage.NewPostgresNotesRepository(pool), integrationMaxNoteSize)
 	router := api.NewRouter(api.RouterDeps{
 		Auth: authSvc, Notes: notesSvc, Tokens: codec, Tenants: authSvc, Probe: pool,
-		OAuthMetadata: &api.OAuthMetadata{Issuer: issuerDeIntegracao}, OAuth: oauthServiceDeIntegracao(pool, codec, opcoes),
+		OAuthMetadata: &api.OAuthMetadata{Issuer: issuerDeIntegracao, DynamicRegistration: opcoes.dcr}, OAuth: oauthServiceDeIntegracao(pool, codec, opcoes),
 	})
 
 	server := httptest.NewServer(router)
@@ -81,6 +82,7 @@ func oauthServiceDeIntegracao(pool *pgxpool.Pool, codec *auth.TokenCodec, opcoes
 		Issuer: issuerDeIntegracao, PanelURL: painelDeIntegracao, Resources: []string{resourceDeIntegracao},
 		AccessTTL: time.Hour, RefreshTTL: 24 * time.Hour, RequestTTL: 10 * time.Minute, CodeTTL: time.Minute, ExchangeTTL: 5 * time.Minute,
 		ResourceSecrets: map[string]string{resourceDeIntegracao: segredoDoResource}, CIMDFailureTTL: opcoes.failureTTL,
+		DCRMaxPending: 1000, DCRPendingTTL: 24 * time.Hour,
 	}, codec, opcoes.metadata, time.Now, uuid.NewString, func() string { return uuid.NewString() + uuid.NewString() })
 }
 
