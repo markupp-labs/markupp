@@ -5,6 +5,9 @@ import DOMPurify from "dompurify"
 // mas tudo passa pelo DOMPurify antes de entrar na página: sem script, sem on*, sem javascript:.
 const markdownIt = new MarkdownIt({ html: true, linkify: true })
 const purifier = DOMPurify()
+// O preview mora dentro do form da nota: um input ou botão vindo do markdown seria enviado (ou submeteria) junto
+// com ela, como um _method=delete. Controles de formulário não passam.
+const FORM_CONTROLS = [ "form", "input", "button", "select", "textarea", "option", "optgroup", "datalist" ]
 
 // Link para fora abre em outra aba, sem dar ao destino acesso a esta (rel noopener).
 purifier.addHook("afterSanitizeAttributes", (node) => {
@@ -15,5 +18,5 @@ purifier.addHook("afterSanitizeAttributes", (node) => {
 })
 
 export function renderMarkdown(source) {
-  return purifier.sanitize(markdownIt.render(source))
+  return purifier.sanitize(markdownIt.render(source), { FORBID_TAGS: FORM_CONTROLS })
 }
