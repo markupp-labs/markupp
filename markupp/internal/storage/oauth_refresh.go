@@ -202,19 +202,25 @@ func (r *PostgresOAuthRepository) ListActiveAuthorizations(ctx context.Context, 
 	return summaries, nil
 }
 
-// RevokeAuthorization trava a Autorização e revoga a ativa da conta em
-// event.OccurredAt, os tokens dela, e audita o evento com o cliente dela como alvo,
-// numa transação.
+// RevokeAuthorization trava a Autorização e, só depois de conferir que ela é da conta e
+// segue ativa, a revoga em event.OccurredAt, revoga os tokens dela e audita o evento com
+// o cliente dela como alvo, numa transação.
 func (r *PostgresOAuthRepository) RevokeAuthorization(ctx context.Context, userID, authorizationID string, event oauth.AuditEvent) error {
 	return inTx(ctx, r.pool, func(qtx *gen.Queries) error {
-		row, err := revokeTokens(ctx, qtx, authorizationID)
+		row, err := lockAuthorization(ctx, qtx, authorizationID)
 		if err != nil {
 			return err
 		}
-		event.ClientID = row.ClientID
+		if row.UserID != userID || row.RevokedAt.Valid {
+			return accountAuthorizationNotFound(userID, authorizationID)
+		}
 		if err := revokeAuthorizationInTx(ctx, qtx, userID, authorizationID, event.OccurredAt); err != nil {
 			return err
 		}
+		if err := revokeLockedTokens(ctx, qtx, authorizationID); err != nil {
+			return err
+		}
+		event.ClientID = row.ClientID
 		return auditOAuth(ctx, qtx, event)
 	})
 }
@@ -227,9 +233,14 @@ func revokeAuthorizationInTx(ctx context.Context, qtx *gen.Queries, userID, auth
 		return fmt.Errorf("revogar autorização %s de %q: %w", oauth.ClientValue(authorizationID), userID, err)
 	}
 	if n == 0 {
-		return fmt.Errorf("%w: autorização %s da conta %q", oauth.ErrAuthorizationNotFound, oauth.ClientValue(authorizationID), userID)
+		return accountAuthorizationNotFound(userID, authorizationID)
 	}
 	return nil
+}
+
+// accountAuthorizationNotFound é a Autorização que a conta não pode revogar.
+func accountAuthorizationNotFound(userID, authorizationID string) error {
+	return fmt.Errorf("%w: autorização %s da conta %q", oauth.ErrAuthorizationNotFound, oauth.ClientValue(authorizationID), userID)
 }
 
 func toIssuedToken(row gen.OauthToken) oauth.IssuedToken {

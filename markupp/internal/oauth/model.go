@@ -160,10 +160,10 @@ type Repository interface {
 	// ListActiveAuthorizations devolve as Autorizações ativas da conta com o nome do
 	// cliente, da mais recente para a mais antiga.
 	ListActiveAuthorizations(ctx context.Context, userID string) ([]AuthorizationSummary, error)
-	// RevokeAuthorization trava a Autorização, marca a da conta como revogada, revoga os
-	// tokens dela e audita o evento com event.ClientID preenchido pela Autorização, numa
-	// transação. Devolve ErrAuthorizationNotFound se ela não existe, já foi revogada ou é
-	// de outra conta.
+	// RevokeAuthorization trava a Autorização, confere que ela é da conta e segue ativa
+	// antes de escrever, marca-a como revogada, revoga os tokens dela e audita o evento
+	// com event.ClientID preenchido pela Autorização, numa transação. Devolve
+	// ErrAuthorizationNotFound se ela não existe, já foi revogada ou é de outra conta.
 	RevokeAuthorization(ctx context.Context, userID, authorizationID string, event AuditEvent) error
 }
 

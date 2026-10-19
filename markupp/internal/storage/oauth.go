@@ -197,20 +197,10 @@ func saveTokensInTx(ctx context.Context, qtx *gen.Queries, tokens []oauth.Issued
 	return nil
 }
 
-// revokeTokens trava a Autorização e revoga os tokens dela por qtx, que precisa ser de
-// uma transação para a trava valer até o commit. A trava serializa a revogação com a
-// gravação do par rotacionado, que trava a mesma linha: sem ela, um par gravado em
-// paralelo escaparia do UPDATE. Devolve a linha travada.
-func revokeTokens(ctx context.Context, qtx *gen.Queries, authorizationID string) (gen.OauthAuthorization, error) {
-	row, err := lockAuthorization(ctx, qtx, authorizationID)
-	if err != nil {
-		return row, err
-	}
-	return row, revokeLockedTokens(ctx, qtx, authorizationID)
-}
-
 // revokeLockedTokens revoga os tokens da Autorização que a transação de qtx já travou com
-// lockAuthorization. É o único caminho do UPDATE que revoga tokens.
+// lockAuthorization. É o único caminho do UPDATE que revoga tokens. A trava serializa a
+// revogação com a gravação de um par, que trava a mesma linha: sem ela, um par gravado
+// em paralelo escaparia do UPDATE.
 func revokeLockedTokens(ctx context.Context, qtx *gen.Queries, authorizationID string) error {
 	if err := qtx.RevokeOAuthAuthorizationTokens(ctx, authorizationID); err != nil {
 		return fmt.Errorf("revogar tokens da autorização %q: %w", authorizationID, err)
