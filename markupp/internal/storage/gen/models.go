@@ -41,6 +41,20 @@ type Note struct {
 	ContentSha256 []byte
 }
 
+type NoteCentrality struct {
+	NoteID    string
+	VaultID   string
+	Pagerank  float64
+	InDegree  int32
+	OutDegree int32
+}
+
+type NoteCommunity struct {
+	NoteID      string
+	VaultID     string
+	CommunityID int64
+}
+
 type NoteEdge struct {
 	SourceID  string
 	TargetID  string

@@ -17,6 +17,8 @@ type NoteGraph interface {
 	UnresolvedLinks(ctx context.Context, vaultID string, offset, limit int) ([]notes.UnresolvedLink, error)
 	Mentions(ctx context.Context, noteID string, offset, limit int) ([]notes.UnlinkedMention, error)
 	Suggestions(ctx context.Context, noteID string, offset, limit int) ([]notes.LinkSuggestion, error)
+	Hubs(ctx context.Context, vaultID string, offset, limit int) ([]notes.Hub, error)
+	Communities(ctx context.Context, vaultID string, offset, limit int) ([]notes.CommunityMember, error)
 }
 
 func mountNoteGraphRoutes(r chi.Router, graph NoteGraph) {
@@ -26,6 +28,8 @@ func mountNoteGraphRoutes(r chi.Router, graph NoteGraph) {
 	r.Get("/notes/{id}/suggestions", servePage(graph.Suggestions))
 	r.Get("/vaults/{id}/orphans", servePage(graph.Orphans))
 	r.Get("/vaults/{id}/unresolved-links", servePage(graph.UnresolvedLinks))
+	r.Get("/vaults/{id}/hubs", servePage(graph.Hubs))
+	r.Get("/vaults/{id}/clusters", servePage(graph.Communities))
 }
 
 // servePage responde com a página que list devolve para o id da rota, sempre como

@@ -73,6 +73,31 @@ func (g *PostgresNoteGraph) UnresolvedLinks(ctx context.Context, vaultID string,
 	return out, err
 }
 
+// Hubs devolve as notas do cofre vaultID pelo PageRank, da maior para a menor, ou
+// notes.ErrVaultForbidden quando o ator não enxerga o cofre.
+func (g *PostgresNoteGraph) Hubs(ctx context.Context, vaultID string, offset, limit int) ([]notes.Hub, error) {
+	var out []notes.Hub
+	err := g.inVault(ctx, vaultID, func(q *gen.Queries) error {
+		rows, err := q.ListHubs(ctx, gen.ListHubsParams{VaultID: vaultID, PageOffset: toInt32(offset), PageLimit: toInt32(limit)})
+		out = convertRows(rows, toHub)
+		return err
+	})
+	return out, err
+}
+
+// Communities devolve as notas do cofre vaultID que pertencem a alguma comunidade,
+// das maiores comunidades para as menores, ou notes.ErrVaultForbidden quando o ator
+// não enxerga o cofre.
+func (g *PostgresNoteGraph) Communities(ctx context.Context, vaultID string, offset, limit int) ([]notes.CommunityMember, error) {
+	var out []notes.CommunityMember
+	err := g.inVault(ctx, vaultID, func(q *gen.Queries) error {
+		rows, err := q.ListCommunityMembers(ctx, gen.ListCommunityMembersParams{VaultID: vaultID, PageOffset: toInt32(offset), PageLimit: toInt32(limit)})
+		out = convertRows(rows, toCommunityMember)
+		return err
+	})
+	return out, err
+}
+
 // inNote roda read depois de conferir que o ator enxerga a nota noteID.
 func (g *PostgresNoteGraph) inNote(ctx context.Context, noteID string, read func(q *gen.Queries) error) error {
 	return inActorTx(ctx, g.pool, func(q *gen.Queries) error {
@@ -118,6 +143,20 @@ func toNeighbor(r gen.ListNeighborsRow) notes.Neighbor {
 
 func toUnresolvedLink(r gen.ListUnresolvedLinksRow) notes.UnresolvedLink {
 	return notes.UnresolvedLink{NoteID: r.NoteID, Path: r.Path, Title: r.CitedTitle, Kind: r.Kind}
+}
+
+func toHub(r gen.ListHubsRow) notes.Hub {
+	return notes.Hub{
+		LinkedNote: notes.LinkedNote{ID: r.ID, VaultID: r.VaultID, Path: r.Path, UpdatedAt: r.UpdatedAt},
+		PageRank:   r.Pagerank, InDegree: int(r.InDegree), OutDegree: int(r.OutDegree),
+	}
+}
+
+func toCommunityMember(r gen.ListCommunityMembersRow) notes.CommunityMember {
+	return notes.CommunityMember{
+		LinkedNote:  notes.LinkedNote{ID: r.ID, VaultID: r.VaultID, Path: r.Path, UpdatedAt: r.UpdatedAt},
+		CommunityID: r.CommunityID, CommunitySize: int(r.CommunitySize),
+	}
 }
 
 // convertRows converte as linhas do sqlc no tipo de domínio.

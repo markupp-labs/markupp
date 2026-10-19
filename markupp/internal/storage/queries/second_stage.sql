@@ -31,3 +31,29 @@ FROM (SELECT unnest(sqlc.arg(note_ids)::text[]) AS note_id, unnest(sqlc.arg(cite
              unnest(sqlc.arg(title_keys)::text[]) AS title_key, unnest(sqlc.arg(target_ids)::text[]) AS target_id) d
 JOIN notes s ON s.id = d.note_id
 JOIN notes t ON t.id = d.target_id;
+
+-- name: DeleteNoteCentrality :exec
+DELETE FROM note_centrality WHERE vault_id = sqlc.arg(vault_id);
+
+-- O cofre vem da nota. Nota apagada depois da leitura some no JOIN.
+-- name: SaveNoteCentrality :exec
+INSERT INTO note_centrality (note_id, vault_id, pagerank, in_degree, out_degree)
+SELECT n.id, n.vault_id, d.pagerank, d.in_degree, d.out_degree
+FROM (SELECT unnest(sqlc.arg(note_ids)::text[]) AS note_id, unnest(sqlc.arg(pageranks)::float8[]) AS pagerank,
+             unnest(sqlc.arg(in_degrees)::int[]) AS in_degree, unnest(sqlc.arg(out_degrees)::int[]) AS out_degree) d
+JOIN notes n ON n.id = d.note_id;
+
+-- name: ListNoteCommunities :many
+SELECT note_id, community_id FROM note_communities WHERE vault_id = sqlc.arg(vault_id) ORDER BY note_id;
+
+-- name: DeleteNoteCommunities :exec
+DELETE FROM note_communities WHERE vault_id = sqlc.arg(vault_id);
+
+-- name: NextCommunityIDs :many
+SELECT nextval('note_community_id_seq')::bigint AS community_id FROM generate_series(1, sqlc.arg(count)::int);
+
+-- name: SaveNoteCommunities :exec
+INSERT INTO note_communities (note_id, vault_id, community_id)
+SELECT n.id, n.vault_id, d.community_id
+FROM (SELECT unnest(sqlc.arg(note_ids)::text[]) AS note_id, unnest(sqlc.arg(community_ids)::bigint[]) AS community_id) d
+JOIN notes n ON n.id = d.note_id;

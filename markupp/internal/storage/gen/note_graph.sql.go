@@ -65,6 +65,114 @@ func (q *Queries) ListBacklinks(ctx context.Context, arg ListBacklinksParams) ([
 	return items, nil
 }
 
+const listCommunityMembers = `-- name: ListCommunityMembers :many
+SELECT n.id, n.vault_id, n.path, n.updated_at, m.community_id,
+       (count(*) OVER (PARTITION BY m.community_id))::int AS community_size
+FROM note_communities m
+JOIN notes n ON n.id = m.note_id
+LEFT JOIN note_centrality c ON c.note_id = m.note_id
+WHERE m.vault_id = $1
+ORDER BY community_size DESC, m.community_id, c.pagerank DESC NULLS LAST, n.path, n.id
+LIMIT $3 OFFSET $2
+`
+
+type ListCommunityMembersParams struct {
+	VaultID    string
+	PageOffset int32
+	PageLimit  int32
+}
+
+type ListCommunityMembersRow struct {
+	ID            string
+	VaultID       string
+	Path          string
+	UpdatedAt     time.Time
+	CommunityID   int64
+	CommunitySize int32
+}
+
+// Uma linha por nota com comunidade: as maiores comunidades primeiro e, dentro de
+// cada uma, as notas de maior PageRank.
+func (q *Queries) ListCommunityMembers(ctx context.Context, arg ListCommunityMembersParams) ([]ListCommunityMembersRow, error) {
+	rows, err := q.db.Query(ctx, listCommunityMembers, arg.VaultID, arg.PageOffset, arg.PageLimit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListCommunityMembersRow
+	for rows.Next() {
+		var i ListCommunityMembersRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.VaultID,
+			&i.Path,
+			&i.UpdatedAt,
+			&i.CommunityID,
+			&i.CommunitySize,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listHubs = `-- name: ListHubs :many
+SELECT n.id, n.vault_id, n.path, n.updated_at, c.pagerank, c.in_degree, c.out_degree
+FROM note_centrality c
+JOIN notes n ON n.id = c.note_id
+WHERE c.vault_id = $1
+ORDER BY c.pagerank DESC, n.path, n.id
+LIMIT $3 OFFSET $2
+`
+
+type ListHubsParams struct {
+	VaultID    string
+	PageOffset int32
+	PageLimit  int32
+}
+
+type ListHubsRow struct {
+	ID        string
+	VaultID   string
+	Path      string
+	UpdatedAt time.Time
+	Pagerank  float64
+	InDegree  int32
+	OutDegree int32
+}
+
+func (q *Queries) ListHubs(ctx context.Context, arg ListHubsParams) ([]ListHubsRow, error) {
+	rows, err := q.db.Query(ctx, listHubs, arg.VaultID, arg.PageOffset, arg.PageLimit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListHubsRow
+	for rows.Next() {
+		var i ListHubsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.VaultID,
+			&i.Path,
+			&i.UpdatedAt,
+			&i.Pagerank,
+			&i.InDegree,
+			&i.OutDegree,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listLexicalSuggestions = `-- name: ListLexicalSuggestions :many
 SELECT n.id, n.vault_id, n.path, n.updated_at, c.score::float8 AS score
 FROM markupp_lexical_similarity($1, $2) AS c (note_id, score)

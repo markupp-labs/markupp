@@ -9,7 +9,7 @@ import (
 )
 
 // refreshVaultGraph refaz o que depende do grafo inteiro do cofre. As ligações
-// inferidas vêm primeiro, porque entram no grafo das medidas seguintes.
+// inferidas vêm primeiro, porque entram no grafo da centralidade e das comunidades.
 func refreshVaultGraph(ctx context.Context, q *gen.Queries, vaultID, searchConfig string) error {
 	if err := q.DeleteInferredLinks(ctx, vaultID); err != nil {
 		return fmt.Errorf("apagar as ligacoes inferidas do cofre %q: %w", vaultID, err)
@@ -18,8 +18,15 @@ func refreshVaultGraph(ctx context.Context, q *gen.Queries, vaultID, searchConfi
 	if err != nil {
 		return err
 	}
-	_, err = inferLinks(ctx, q, vaultID, searchConfig, vaultgraph.New(noteIDs, edges))
-	return err
+	inferred, err := inferLinks(ctx, q, vaultID, searchConfig, vaultgraph.New(noteIDs, edges))
+	if err != nil {
+		return err
+	}
+	g := vaultgraph.New(noteIDs, append(edges, inferred...))
+	if err := saveCentrality(ctx, q, vaultID, noteIDs, g); err != nil {
+		return err
+	}
+	return saveCommunities(ctx, q, vaultID, g)
 }
 
 // loadVaultEdges lê as notas e as ligações resolvidas do cofre.

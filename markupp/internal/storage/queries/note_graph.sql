@@ -116,3 +116,23 @@ SELECT n.id, n.vault_id, n.path, n.updated_at, c.score::float8 AS score
 FROM markupp_lexical_similarity(sqlc.arg(vault_id), sqlc.arg(note_id)) AS c (note_id, score)
 JOIN notes n ON n.id = c.note_id
 ORDER BY c.score DESC, n.path, n.id;
+
+-- name: ListHubs :many
+SELECT n.id, n.vault_id, n.path, n.updated_at, c.pagerank, c.in_degree, c.out_degree
+FROM note_centrality c
+JOIN notes n ON n.id = c.note_id
+WHERE c.vault_id = sqlc.arg(vault_id)
+ORDER BY c.pagerank DESC, n.path, n.id
+LIMIT sqlc.arg(page_limit) OFFSET sqlc.arg(page_offset);
+
+-- Uma linha por nota com comunidade: as maiores comunidades primeiro e, dentro de
+-- cada uma, as notas de maior PageRank.
+-- name: ListCommunityMembers :many
+SELECT n.id, n.vault_id, n.path, n.updated_at, m.community_id,
+       (count(*) OVER (PARTITION BY m.community_id))::int AS community_size
+FROM note_communities m
+JOIN notes n ON n.id = m.note_id
+LEFT JOIN note_centrality c ON c.note_id = m.note_id
+WHERE m.vault_id = sqlc.arg(vault_id)
+ORDER BY community_size DESC, m.community_id, c.pagerank DESC NULLS LAST, n.path, n.id
+LIMIT sqlc.arg(page_limit) OFFSET sqlc.arg(page_offset);

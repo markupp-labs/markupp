@@ -21,6 +21,53 @@ func (q *Queries) DeleteInferredLinks(ctx context.Context, vaultID string) error
 	return err
 }
 
+const deleteNoteCentrality = `-- name: DeleteNoteCentrality :exec
+DELETE FROM note_centrality WHERE vault_id = $1
+`
+
+func (q *Queries) DeleteNoteCentrality(ctx context.Context, vaultID string) error {
+	_, err := q.db.Exec(ctx, deleteNoteCentrality, vaultID)
+	return err
+}
+
+const deleteNoteCommunities = `-- name: DeleteNoteCommunities :exec
+DELETE FROM note_communities WHERE vault_id = $1
+`
+
+func (q *Queries) DeleteNoteCommunities(ctx context.Context, vaultID string) error {
+	_, err := q.db.Exec(ctx, deleteNoteCommunities, vaultID)
+	return err
+}
+
+const listNoteCommunities = `-- name: ListNoteCommunities :many
+SELECT note_id, community_id FROM note_communities WHERE vault_id = $1 ORDER BY note_id
+`
+
+type ListNoteCommunitiesRow struct {
+	NoteID      string
+	CommunityID int64
+}
+
+func (q *Queries) ListNoteCommunities(ctx context.Context, vaultID string) ([]ListNoteCommunitiesRow, error) {
+	rows, err := q.db.Query(ctx, listNoteCommunities, vaultID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListNoteCommunitiesRow
+	for rows.Next() {
+		var i ListNoteCommunitiesRow
+		if err := rows.Scan(&i.NoteID, &i.CommunityID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listUnresolvedCitations = `-- name: ListUnresolvedCitations :many
 SELECT DISTINCT ON (l.note_id, l.title_key) l.note_id, l.cited_title, l.title_key
 FROM note_links l
@@ -139,6 +186,30 @@ func (q *Queries) ListVaultTitleKeys(ctx context.Context, vaultID string) ([]Lis
 	return items, nil
 }
 
+const nextCommunityIDs = `-- name: NextCommunityIDs :many
+SELECT nextval('note_community_id_seq')::bigint AS community_id FROM generate_series(1, $1::int)
+`
+
+func (q *Queries) NextCommunityIDs(ctx context.Context, count int32) ([]int64, error) {
+	rows, err := q.db.Query(ctx, nextCommunityIDs, count)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []int64
+	for rows.Next() {
+		var community_id int64
+		if err := rows.Scan(&community_id); err != nil {
+			return nil, err
+		}
+		items = append(items, community_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const saveInferredLinks = `-- name: SaveInferredLinks :exec
 INSERT INTO note_links (note_id, vault_id, cited_title, title_key, target_path, kind)
 SELECT s.id, s.vault_id, d.cited_title, d.title_key, t.path, 'inferred'
@@ -164,5 +235,48 @@ func (q *Queries) SaveInferredLinks(ctx context.Context, arg SaveInferredLinksPa
 		arg.TitleKeys,
 		arg.TargetIds,
 	)
+	return err
+}
+
+const saveNoteCentrality = `-- name: SaveNoteCentrality :exec
+INSERT INTO note_centrality (note_id, vault_id, pagerank, in_degree, out_degree)
+SELECT n.id, n.vault_id, d.pagerank, d.in_degree, d.out_degree
+FROM (SELECT unnest($1::text[]) AS note_id, unnest($2::float8[]) AS pagerank,
+             unnest($3::int[]) AS in_degree, unnest($4::int[]) AS out_degree) d
+JOIN notes n ON n.id = d.note_id
+`
+
+type SaveNoteCentralityParams struct {
+	NoteIds    []string
+	Pageranks  []float64
+	InDegrees  []int32
+	OutDegrees []int32
+}
+
+// O cofre vem da nota. Nota apagada depois da leitura some no JOIN.
+func (q *Queries) SaveNoteCentrality(ctx context.Context, arg SaveNoteCentralityParams) error {
+	_, err := q.db.Exec(ctx, saveNoteCentrality,
+		arg.NoteIds,
+		arg.Pageranks,
+		arg.InDegrees,
+		arg.OutDegrees,
+	)
+	return err
+}
+
+const saveNoteCommunities = `-- name: SaveNoteCommunities :exec
+INSERT INTO note_communities (note_id, vault_id, community_id)
+SELECT n.id, n.vault_id, d.community_id
+FROM (SELECT unnest($1::text[]) AS note_id, unnest($2::bigint[]) AS community_id) d
+JOIN notes n ON n.id = d.note_id
+`
+
+type SaveNoteCommunitiesParams struct {
+	NoteIds      []string
+	CommunityIds []int64
+}
+
+func (q *Queries) SaveNoteCommunities(ctx context.Context, arg SaveNoteCommunitiesParams) error {
+	_, err := q.db.Exec(ctx, saveNoteCommunities, arg.NoteIds, arg.CommunityIds)
 	return err
 }

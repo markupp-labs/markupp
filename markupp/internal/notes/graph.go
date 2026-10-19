@@ -68,3 +68,20 @@ type LinkSuggestion struct {
 	ResourceAllocation float64 `json:"resource_allocation"`
 	Cosine             float64 `json:"cosine"`
 }
+
+// Hub é a nota do cofre com a centralidade dela no grafo de ligações, ligações
+// inferidas incluídas: o PageRank e quantas notas distintas ligam a ela e ela liga.
+type Hub struct {
+	LinkedNote
+	PageRank  float64 `json:"pagerank"`
+	InDegree  int     `json:"in_degree"`
+	OutDegree int     `json:"out_degree"`
+}
+
+// CommunityMember é a nota que pertence a uma comunidade do cofre, com o id e o
+// número de notas da comunidade.
+type CommunityMember struct {
+	LinkedNote
+	CommunityID   int64 `json:"community_id"`
+	CommunitySize int   `json:"community_size"`
+}
