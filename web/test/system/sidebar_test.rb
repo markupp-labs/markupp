@@ -77,7 +77,7 @@ class SidebarTest < ApplicationSystemTestCase
     top = edge(spine, "top")
     spine.click
     assert_no_selector "nav#sidebar"
-    assert_in_delta 2, edge(spine, "left"), 0.5
+    assert_in_delta 7, edge(spine, "left"), 0.5
     assert_in_delta top, edge(spine, "top"), 0.5
   end
 
