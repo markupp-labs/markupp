@@ -25,7 +25,7 @@ class NoteTreeKeyboardTest < ApplicationSystemTestCase
     send_keys :down
     assert_focused "│   └── plan"
     send_keys "j"
-    assert_focused "├── ideas"
+    assert_focused "└── ideas"
     send_keys "k", :up
     assert_focused "│   │   └── goals"
     send_keys :up, :up, :up
