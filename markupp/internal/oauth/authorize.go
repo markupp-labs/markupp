@@ -2,7 +2,6 @@ package oauth
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/url"
 	"slices"
@@ -29,17 +28,14 @@ func (s *Service) StartAuthorization(ctx context.Context, p AuthorizeParams) (st
 // registeredClientShape descreve o client_id aceito, para as mensagens de erro.
 const registeredClientShape = "um cliente registrado por CIMD ou DCR"
 
-// checkClientRedirect confirma que o cliente existe e registrou a redirect_uri pedida.
+// checkClientRedirect resolve o cliente e confirma que ele registrou a redirect_uri pedida.
 func (s *Service) checkClientRedirect(ctx context.Context, p AuthorizeParams) error {
 	if p.ClientID == "" {
 		return &ProtocolError{Code: errInvalidRequest, Description: "client_id ausente; esperado " + registeredClientShape}
 	}
-	client, err := s.repo.GetClient(ctx, p.ClientID)
-	if errors.Is(err, ErrClientNotFound) {
-		return &ProtocolError{Code: errInvalidRequest, Description: "client_id " + ClientValue(p.ClientID) + " nao registrado; esperado " + registeredClientShape}
-	}
+	client, err := s.resolveClient(ctx, p.ClientID)
 	if err != nil {
-		return fmt.Errorf("oauth: buscando o cliente %s: %w", ClientValue(p.ClientID), err)
+		return err
 	}
 	if !MatchRedirectURI(client.RedirectURIs, p.RedirectURI) {
 		return &ProtocolError{Code: errInvalidRequest, Description: "redirect_uri " + ClientValue(p.RedirectURI) + " nao registrada para o cliente; esperada uma das redirect_uris registradas por ele"}
