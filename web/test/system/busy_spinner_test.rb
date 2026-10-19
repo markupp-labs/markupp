@@ -47,7 +47,7 @@ class BusySpinnerTest < ApplicationSystemTestCase
     @api.hold_calls!("GET /notes/search")
     find("body").send_keys([ :control, "k" ])
 
-    assert_spinner_after_threshold("dialog .busy-spinner") { fill_in "Search notes", with: "idea" }
+    assert_spinner_after_threshold("dialog .busy-spinner") { fill_in "Search notes", with: "Big" }
     assert_no_selector ".busy-spinner-page .busy-spinner-glyph"
 
     @api.release_calls!
