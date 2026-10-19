@@ -88,6 +88,8 @@ var (
 	ErrAuthorizationNotFound = errors.New("autorização ativa não encontrada")
 	ErrCodeNotFound          = errors.New("código de autorização inexistente ou expirado")
 	ErrCodeAlreadyUsed       = errors.New("código de autorização já usado")
+	ErrTokenNotFound         = errors.New("token oauth inexistente, expirado ou revogado")
+	ErrRefreshReused         = errors.New("refresh token oauth já rotacionado")
 )
 
 // Repository é a porta de persistência do authorization server. Todas as tabelas são
@@ -116,4 +118,60 @@ type Repository interface {
 	SaveTokens(ctx context.Context, tokens []IssuedToken) error
 	// RevokeAuthorizationTokens revoga todos os tokens da Autorização.
 	RevokeAuthorizationTokens(ctx context.Context, authorizationID string) error
+	// ConsumeRefreshToken marca o refresh token como rotacionado e lê a Autorização
+	// ativa na mesma transação. Devolve ErrTokenNotFound se o hash não é de um refresh
+	// válido (inexistente, expirado em relação a now ou revogado), ErrRefreshReused junto
+	// com o TokenGrant quando ele já tinha sido rotacionado, e ErrAuthorizationNotFound se
+	// a Autorização foi revogada.
+	ConsumeRefreshToken(ctx context.Context, tokenHash string, now time.Time) (TokenGrant, error)
+	// SaveRefreshedTokens grava o novo par e audita o evento, numa transação.
+	SaveRefreshedTokens(ctx context.Context, tokens []IssuedToken, event AuditEvent) error
+	// RevokeAuthorizationTokensAudited revoga os tokens da Autorização e audita o evento,
+	// numa transação.
+	RevokeAuthorizationTokensAudited(ctx context.Context, authorizationID string, event AuditEvent) error
+	// FindToken devolve o dono de um token de qualquer tipo, mesmo revogado ou expirado,
+	// ou ErrTokenNotFound.
+	FindToken(ctx context.Context, tokenHash string) (TokenGrant, error)
+	// ListActiveAuthorizations devolve as Autorizações ativas da conta com o nome do
+	// cliente, da mais recente para a mais antiga.
+	ListActiveAuthorizations(ctx context.Context, userID string) ([]AuthorizationSummary, error)
+	// RevokeAuthorization marca a Autorização da conta como revogada, revoga os tokens
+	// dela e audita o evento, numa transação. Devolve ErrAuthorizationNotFound se ela
+	// não existe, já foi revogada ou é de outra conta.
+	RevokeAuthorization(ctx context.Context, userID, authorizationID string, event AuditEvent) error
+}
+
+// TokenGrant liga um token emitido à Autorização que o originou.
+type TokenGrant struct {
+	Token         IssuedToken
+	Authorization Authorization
+}
+
+// AuthorizationSummary é a Autorização ativa com o nome do cliente, para a conta listar.
+type AuthorizationSummary struct {
+	Authorization
+	ClientName string
+}
+
+// Ações auditadas pelo authorization server além da decisão do pedido.
+const (
+	AuditActionRefresh      = "oauth.refresh"
+	AuditActionRefreshReuse = "oauth.refresh_reuse"
+	AuditActionRevoke       = "oauth.revoke"
+)
+
+// Resultados de um evento auditado.
+const (
+	AuditResultSuccess = "success"
+	AuditResultFailure = "failure"
+)
+
+// AuditEvent é um evento do authorization server para o registro de operações críticas
+// (ADR-0022), sempre sem tenant.
+type AuditEvent struct {
+	Action     string
+	Result     string
+	UserID     string
+	ClientID   string
+	OccurredAt time.Time
 }

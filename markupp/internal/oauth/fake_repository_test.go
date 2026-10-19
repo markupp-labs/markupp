@@ -111,3 +111,29 @@ func (f *fakeOAuthRepository) RevokeAuthorizationTokens(_ context.Context, autho
 	f.revoked = append(f.revoked, authorizationID)
 	return f.revokeErr
 }
+
+// Métodos do refresh e da revogação: o fake ainda não os exercita.
+
+func (f *fakeOAuthRepository) ConsumeRefreshToken(context.Context, string, time.Time) (oauth.TokenGrant, error) {
+	return oauth.TokenGrant{}, oauth.ErrTokenNotFound
+}
+
+func (f *fakeOAuthRepository) SaveRefreshedTokens(context.Context, []oauth.IssuedToken, oauth.AuditEvent) error {
+	return nil
+}
+
+func (f *fakeOAuthRepository) RevokeAuthorizationTokensAudited(context.Context, string, oauth.AuditEvent) error {
+	return nil
+}
+
+func (f *fakeOAuthRepository) FindToken(context.Context, string) (oauth.TokenGrant, error) {
+	return oauth.TokenGrant{}, oauth.ErrTokenNotFound
+}
+
+func (f *fakeOAuthRepository) ListActiveAuthorizations(context.Context, string) ([]oauth.AuthorizationSummary, error) {
+	return nil, nil
+}
+
+func (f *fakeOAuthRepository) RevokeAuthorization(context.Context, string, string, oauth.AuditEvent) error {
+	return nil
+}

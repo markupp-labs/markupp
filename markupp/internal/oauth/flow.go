@@ -37,6 +37,30 @@ type CodeGrant struct {
 	Resource     string
 }
 
+// RefreshGrant são os parâmetros de POST /oauth/token com grant_type=refresh_token.
+type RefreshGrant struct {
+	RefreshToken string
+	ClientID     string
+	Scope        string
+	Resource     string
+}
+
+// RevokeRequest são os parâmetros de POST /oauth/revoke (RFC 7009).
+type RevokeRequest struct {
+	Token    string
+	ClientID string
+}
+
+// AuthorizationView é a Autorização ativa como a conta a vê, com datas em RFC 3339 UTC.
+type AuthorizationView struct {
+	ID         string   `json:"id"`
+	ClientID   string   `json:"client_id"`
+	ClientName string   `json:"client_name"`
+	Scopes     []string `json:"scopes"`
+	CreatedAt  string   `json:"created_at"`
+	UpdatedAt  string   `json:"updated_at"`
+}
+
 // TokenResponse é a resposta de sucesso do endpoint de token (RFC 6749, seção 5.1).
 type TokenResponse struct {
 	AccessToken  string `json:"access_token"`
