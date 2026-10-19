@@ -35,6 +35,8 @@ type User struct {
 	Email string
 	// EmailVerified diz se a pessoa já provou o email; na criação da conta quem decide é o caminho de cadastro, não este campo.
 	EmailVerified bool
+	// PasswordLogin diz se a conta pode entrar por email e senha neste servidor; só GetAccount preenche.
+	PasswordLogin bool
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
 }
