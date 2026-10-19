@@ -20,6 +20,19 @@ export default class extends Controller {
     this.toggle()
   }
 
+  // Ctrl+Shift+E (Cmd+Shift+E no Mac) leva o foco à árvore de notas, como o explorador do VS Code, abrindo a barra
+  // fechada. A tecla vem pelo code: com o Shift o key é "E", e em outro layout pode ser outra letra.
+  focusTree(event) {
+    if (event.code != "KeyE" || !(event.ctrlKey || event.metaKey) || !event.shiftKey || event.altKey || event.defaultPrevented) return
+
+    const row = this.panelTarget.querySelector("[role=tree] [role=treeitem][tabindex='0']")
+    if (!row) return
+
+    event.preventDefault()
+    if (desktop.matches ? document.documentElement.dataset.sidebar == "closed" : !this.panelTarget.matches(":popover-open")) this.toggle()
+    row.focus()
+  }
+
   toggle() {
     if (!desktop.matches) return this.panelTarget.togglePopover()
 

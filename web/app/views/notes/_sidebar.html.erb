@@ -12,7 +12,9 @@
 <% elsif tree.folders.empty? && tree.notes.empty? %>
   <p class="px-2 py-1 text-ink-muted"><%= t(".empty") %></p>
 <% else %>
-  <ul role="tree" aria-label="<%= t(".tree") %>" data-controller="note-tree" class="note-tree">
+  <%# Ctrl+Shift+E (Cmd+Shift+E) traz o foco para cá de qualquer lugar, como o explorador do VS Code (sidebar_controller.js). %>
+  <ul role="tree" aria-label="<%= t(".tree") %>" aria-keyshortcuts="Control+Shift+E Meta+Shift+E" class="note-tree"
+      data-controller="note-tree" data-action="keydown->note-tree#navigate focusin->note-tree#roveToFocused">
     <%= render "notes/folder", folder: tree, path: "", guide: "", current:, open_folders: current&.folder_names || [] %>
   </ul>
 <% end %>
