@@ -73,6 +73,27 @@ class NotesControllerTest < ActionDispatch::IntegrationTest
     assert_select "main", text: /Note not found/
   end
 
+  # ![[nota]] na leitura busca o conteúdo da nota embutida por aqui, com a sessão, o tenant e o papel de quem lê.
+  test "show as json gives the path and the content of the note" do
+    use_fake_api(notes: [ { id: "1", path: "work/plan.md", content: "# Plan\n\nShip it.\n" } ])
+    sign_in_as
+
+    get note_path("1", format: :json)
+
+    assert_response :success
+    assert_equal({ "path" => "work/plan.md", "content" => "# Plan\n\nShip it.\n" }, response.parsed_body)
+  end
+
+  test "show as json answers not found for an unknown note without the page" do
+    use_fake_api(notes: [])
+    sign_in_as
+
+    get note_path("missing", format: :json)
+
+    assert_response :not_found
+    assert response.body.empty?, "expected an empty json 404, got a #{response.media_type} body"
+  end
+
   test "show puts the note in a save form with the version read" do
     use_fake_api(notes: [ { id: "1", path: "a.md", content: "x", updated_at: "2026-09-30T12:00:00.123Z" } ])
     sign_in_as
