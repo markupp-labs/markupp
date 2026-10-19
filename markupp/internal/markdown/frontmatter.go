@@ -70,13 +70,51 @@ func parseTypedLinks(fields []*yaml.Node) []TypedLink {
 		if key == aliasesKey || strings.TrimSpace(key) == "" {
 			continue
 		}
-		for _, item := range scalarItems(fields[i+1]) {
-			if target, ok := wholeWikilink(item.Value); ok {
+		for _, item := range wikilinkItems(fields[i+1]) {
+			if target, ok := wholeWikilink(item); ok {
 				links = append(links, TypedLink{Predicate: key, Target: target})
 			}
 		}
 	}
 	return links
+}
+
+// wikilinkItems devolve o texto de cada wikilink candidato do valor: o próprio valor
+// ou cada item da lista, escritos entre aspas ou sem elas.
+func wikilinkItems(value *yaml.Node) []string {
+	if text, ok := unquotedWikilink(value); ok {
+		return []string{text}
+	}
+	var items []string
+	for _, item := range listItems(value) {
+		if text, ok := unquotedWikilink(item); ok {
+			items = append(items, text)
+		} else if item.Kind == yaml.ScalarNode {
+			items = append(items, item.Value)
+		}
+	}
+	return items
+}
+
+// unquotedWikilink reconhece [[X]] escrito sem aspas, que o YAML lê como uma lista
+// com uma lista de um texto só, e devolve o wikilink reescrito.
+func unquotedWikilink(value *yaml.Node) (string, bool) {
+	if value.Kind != yaml.SequenceNode || len(value.Content) != 1 {
+		return "", false
+	}
+	inner := value.Content[0]
+	if inner.Kind != yaml.SequenceNode || len(inner.Content) != 1 || inner.Content[0].Kind != yaml.ScalarNode {
+		return "", false
+	}
+	return "[[" + inner.Content[0].Value + "]]", true
+}
+
+// listItems devolve o próprio valor quando ele não é lista, ou os itens da lista.
+func listItems(value *yaml.Node) []*yaml.Node {
+	if value.Kind == yaml.SequenceNode {
+		return value.Content
+	}
+	return []*yaml.Node{value}
 }
 
 // scalarItems devolve o próprio valor quando ele é escalar, ou os itens de uma lista;
