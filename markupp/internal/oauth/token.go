@@ -62,42 +62,56 @@ func checkGrant(g CodeGrant, req AuthorizationRequest) error {
 	if !VerifyPKCE(g.CodeVerifier, req.CodeChallenge) {
 		return grantError("code_verifier nao confere com o code_challenge do pedido; esperado o verifier que gerou o challenge S256")
 	}
-	return checkGrantResource(g.Resource, req.Resource)
+	return checkResource(g.Resource, req.Resource)
 }
 
-// checkGrantResource confere o resource opcional do grant contra o do pedido. Divergente
-// ou ilegível é invalid_target (RFC 8707, seção 2.2), não invalid_grant.
-func checkGrantResource(raw, requested string) error {
+// checkResource confere o resource opcional do grant contra o concedido. Divergente ou
+// ilegível é invalid_target (RFC 8707, seção 2.2), não invalid_grant.
+func checkResource(raw, granted string) error {
 	if raw == "" {
 		return nil
 	}
-	if resource, ok := canonicalize(raw); !ok || resource != requested {
-		return &ProtocolError{Code: errInvalidTarget, Description: "resource " + ClientValue(raw) + " diferente do pedido; esperado " + ClientValue(requested)}
+	if resource, ok := canonicalize(raw); !ok || resource != granted {
+		return &ProtocolError{Code: errInvalidTarget, Description: "resource " + ClientValue(raw) + " diferente do concedido; esperado " + ClientValue(granted)}
 	}
 	return nil
 }
 
 // issueTokens emite e grava o par de tokens com os escopos e o resource do pedido.
 func (s *Service) issueTokens(ctx context.Context, redeemed RedeemedCode, now time.Time) (TokenResponse, error) {
-	access, refresh := s.newToken(), s.newToken()
-	tokens := []IssuedToken{
-		issuedToken(access, TokenKindAccess, redeemed, now.Add(s.cfg.AccessTTL)),
-		issuedToken(refresh, TokenKindRefresh, redeemed, now.Add(s.cfg.RefreshTTL)),
-	}
-	if err := s.repo.SaveTokens(ctx, tokens); err != nil {
+	base := IssuedToken{AuthorizationID: redeemed.Authorization.ID, Resource: redeemed.Request.Resource, Scopes: redeemed.Request.Scopes}
+	pair := s.newTokenPair(base, now)
+	if err := s.repo.SaveTokens(ctx, pair.tokens); err != nil {
 		return TokenResponse{}, fmt.Errorf("oauth: gravando os tokens da autorização %q: %w", redeemed.Authorization.ID, err)
 	}
-	return TokenResponse{
-		AccessToken: access, TokenType: "Bearer", ExpiresIn: int64(s.cfg.AccessTTL / time.Second),
-		RefreshToken: refresh, Scope: strings.Join(redeemed.Request.Scopes, " "),
-	}, nil
+	return pair.response, nil
 }
 
-func issuedToken(token, kind string, redeemed RedeemedCode, expiresAt time.Time) IssuedToken {
-	return IssuedToken{
-		Hash: auth.HashOpaqueToken(token), AuthorizationID: redeemed.Authorization.ID, Kind: kind,
-		Resource: redeemed.Request.Resource, Scopes: redeemed.Request.Scopes, ExpiresAt: expiresAt,
+// tokenPair é o par access e refresh recém-gerado: os registros com o hash, para o
+// repositório, e a resposta com os tokens em claro, só para o cliente.
+type tokenPair struct {
+	tokens   []IssuedToken
+	response TokenResponse
+}
+
+// newTokenPair gera access e refresh com a Autorização, o resource e os escopos de base.
+func (s *Service) newTokenPair(base IssuedToken, now time.Time) tokenPair {
+	access, refresh := s.newToken(), s.newToken()
+	return tokenPair{
+		tokens: []IssuedToken{
+			withSecret(base, access, TokenKindAccess, now.Add(s.cfg.AccessTTL)),
+			withSecret(base, refresh, TokenKindRefresh, now.Add(s.cfg.RefreshTTL)),
+		},
+		response: TokenResponse{
+			AccessToken: access, TokenType: "Bearer", ExpiresIn: int64(s.cfg.AccessTTL / time.Second),
+			RefreshToken: refresh, Scope: strings.Join(base.Scopes, " "),
+		},
 	}
+}
+
+func withSecret(base IssuedToken, token, kind string, expiresAt time.Time) IssuedToken {
+	base.Hash, base.Kind, base.ExpiresAt = auth.HashOpaqueToken(token), kind, expiresAt
+	return base
 }
 
 func grantError(description string) error {
