@@ -3,6 +3,7 @@ package oauth_test
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -90,4 +91,28 @@ func TestStartAuthorization_CIMDFalhaDeOutroCliente_NaoAfeta(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Equal(t, []string{outro.ClientID, testClientID}, fetcher.calls)
+}
+
+func TestStartAuthorization_CIMDPedidoCancelado_BuscaSemOCancelamento(t *testing.T) {
+	repo, fetcher, clock := newFakeOAuthRepository(), testMetadataFetcher(), &manualClock{now: testNow}
+	svc := newFailureCacheService(repo, fetcher, clock)
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	_, err := svc.StartAuthorization(ctx, validAuthorizeParams())
+
+	require.NoError(t, err)
+	assert.Equal(t, []error{nil}, fetcher.ctxErrs, "quem derruba a conexão não envenena o cache negativo")
+}
+
+func TestStartAuthorization_CIMDClientIDLongoDemais_RecusaSemBuscar(t *testing.T) {
+	repo, fetcher, clock := newFakeOAuthRepository(), testMetadataFetcher(), &manualClock{now: testNow}
+	svc := newFailureCacheService(repo, fetcher, clock)
+	params := validAuthorizeParams()
+	params.ClientID = "https://cliente.exemplo.dev/" + strings.Repeat("a", 2048)
+
+	_, err := svc.StartAuthorization(context.Background(), params)
+
+	requireProtocolError(t, err, "invalid_request", "", "")
+	assert.Empty(t, fetcher.calls)
 }

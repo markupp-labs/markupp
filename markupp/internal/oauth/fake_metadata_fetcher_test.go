@@ -12,10 +12,12 @@ type fakeClientMetadataFetcher struct {
 	metadata oauth.ClientMetadata
 	err      error
 	calls    []string
+	ctxErrs  []error
 }
 
-func (f *fakeClientMetadataFetcher) FetchClientMetadata(_ context.Context, clientID string) (oauth.ClientMetadata, error) {
+func (f *fakeClientMetadataFetcher) FetchClientMetadata(ctx context.Context, clientID string) (oauth.ClientMetadata, error) {
 	f.calls = append(f.calls, clientID)
+	f.ctxErrs = append(f.ctxErrs, ctx.Err())
 	if f.err != nil {
 		return oauth.ClientMetadata{}, f.err
 	}

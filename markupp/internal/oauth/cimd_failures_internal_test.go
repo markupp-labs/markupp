@@ -1,6 +1,7 @@
 package oauth
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -31,4 +32,31 @@ func TestCIMDFailureMemory_NovaFalha_DescartaAsVencidas(t *testing.T) {
 	memory.remember("https://b.exemplo.dev/c.json", depois.Add(time.Minute), depois)
 
 	assert.Equal(t, map[string]time.Time{"https://b.exemplo.dev/c.json": depois.Add(time.Minute)}, memory.until)
+}
+
+func encherMemoria(memory *cimdFailureMemory, fim time.Time) {
+	for i := range 1000 {
+		memory.remember(fmt.Sprintf("https://a.exemplo.dev/%d.json", i), fim, instanteDaFalha)
+	}
+}
+
+func TestCIMDFailureMemory_Cheia_NaoLembraANova(t *testing.T) {
+	memory := newCIMDFailureMemory()
+	encherMemoria(memory, instanteDaFalha.Add(5*time.Minute))
+
+	memory.remember("https://b.exemplo.dev/c.json", instanteDaFalha.Add(5*time.Minute), instanteDaFalha)
+
+	assert.Len(t, memory.until, 1000)
+	_, ok := memory.failedUntil("https://b.exemplo.dev/c.json", instanteDaFalha)
+	assert.False(t, ok, "cheia e sem vencidas, a nova falha não é lembrada")
+}
+
+func TestCIMDFailureMemory_CheiaComVencidas_DescartaEGuardaANova(t *testing.T) {
+	memory := newCIMDFailureMemory()
+	encherMemoria(memory, instanteDaFalha.Add(time.Minute))
+	depois := instanteDaFalha.Add(2 * time.Minute)
+
+	memory.remember("https://b.exemplo.dev/c.json", depois.Add(5*time.Minute), depois)
+
+	assert.Len(t, memory.until, 1)
 }
