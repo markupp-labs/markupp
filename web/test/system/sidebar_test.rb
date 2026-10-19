@@ -61,7 +61,7 @@ class SidebarTest < ApplicationSystemTestCase
     assert_selector "nav#sidebar"
   end
 
-  test "the spine sticks out of the sidebar edge near the top in its colors and stays at the screen edge when closed" do
+  test "the spine sticks out of the sidebar edge near the top in its colors and stays on the strip when closed" do
     use_fake_api(notes: [])
     sign_in_through_form
 
@@ -77,7 +77,7 @@ class SidebarTest < ApplicationSystemTestCase
     top = edge(spine, "top")
     spine.click
     assert_no_selector "nav#sidebar"
-    assert_in_delta 0, edge(spine, "left"), 0.5
+    assert_in_delta 2, edge(spine, "left"), 0.5
     assert_in_delta top, edge(spine, "top"), 0.5
   end
 
