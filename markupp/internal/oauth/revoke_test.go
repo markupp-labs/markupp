@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -21,34 +22,59 @@ func testRepositoryWithFoundToken() *fakeOAuthRepository {
 	return repo
 }
 
+func validRevokeRequest() oauth.RevokeRequest {
+	return oauth.RevokeRequest{Token: testAccessToken, ClientID: testClientID}
+}
+
 func TestRevokeToken_TokenDoCliente_DerrubaOsTokensDaAutorizacaoEAudita(t *testing.T) {
-	casos := map[string]string{
-		"com client_id do dono": testClientID,
-		"sem client_id":         "",
+	repo := testRepositoryWithFoundToken()
+
+	err := newTestService(repo).RevokeToken(context.Background(), validRevokeRequest())
+
+	require.NoError(t, err)
+	assert.Equal(t, []string{auth.HashOpaqueToken(testAccessToken)}, repo.findCalls)
+	assert.Equal(t, []auditedRevoke{{
+		AuthorizationID: "aut-1", Event: testAuditEvent(oauth.AuditActionRevoke, oauth.AuditResultSuccess),
+	}}, repo.auditedRevokes)
+	assert.Empty(t, repo.revokedAuths, "o /oauth/revoke mantém o consentimento")
+}
+
+func TestRevokeToken_ParametroAusente_InvalidRequestSemBuscar(t *testing.T) {
+	casos := map[string]oauth.RevokeRequest{
+		"token vazio":     {ClientID: testClientID},
+		"client_id vazio": {Token: testAccessToken},
 	}
-	for nome, clientID := range casos {
+	for nome, req := range casos {
 		t.Run(nome, func(t *testing.T) {
 			repo := testRepositoryWithFoundToken()
 
-			err := newTestService(repo).RevokeToken(context.Background(), oauth.RevokeRequest{Token: testAccessToken, ClientID: clientID})
+			err := newTestService(repo).RevokeToken(context.Background(), req)
 
-			require.NoError(t, err)
-			assert.Equal(t, []string{auth.HashOpaqueToken(testAccessToken)}, repo.findCalls)
-			assert.Equal(t, []auditedRevoke{{
-				AuthorizationID: "aut-1", Event: testAuditEvent(oauth.AuditActionRevoke, oauth.AuditResultSuccess),
-			}}, repo.auditedRevokes)
-			assert.Empty(t, repo.revokedAuths, "o /oauth/revoke mantém o consentimento")
+			requireProtocolError(t, err, "invalid_request", "", "")
+			assert.Empty(t, repo.findCalls)
 		})
 	}
 }
 
-func TestRevokeToken_TokenVazio_InvalidRequestSemBuscar(t *testing.T) {
-	repo := testRepositoryWithFoundToken()
+func TestRevokeToken_TokenQueJaNaoVale_SucessoSemRevogarNemAuditar(t *testing.T) {
+	casos := map[string]func(*oauth.TokenGrant){
+		"token revogado":       func(g *oauth.TokenGrant) { g.Token.Revoked = true },
+		"token expirado agora": func(g *oauth.TokenGrant) { g.Token.ExpiresAt = testNow },
+		"token expirado antes": func(g *oauth.TokenGrant) { g.Token.ExpiresAt = testNow.Add(-time.Hour) },
+		"autorizacao revogada": func(g *oauth.TokenGrant) { g.Authorization.Revoked = true },
+	}
+	for nome, altera := range casos {
+		t.Run(nome, func(t *testing.T) {
+			repo := testRepositoryWithFoundToken()
+			altera(&repo.found)
 
-	err := newTestService(repo).RevokeToken(context.Background(), oauth.RevokeRequest{ClientID: testClientID})
+			err := newTestService(repo).RevokeToken(context.Background(), validRevokeRequest())
 
-	requireProtocolError(t, err, "invalid_request", "", "")
-	assert.Empty(t, repo.findCalls)
+			require.NoError(t, err)
+			assert.Len(t, repo.findCalls, 1)
+			assert.Empty(t, repo.auditedRevokes)
+		})
+	}
 }
 
 func TestRevokeToken_TokenDesconhecidoOuDeOutroCliente_SucessoSemRevogar(t *testing.T) {
@@ -64,7 +90,7 @@ func TestRevokeToken_TokenDesconhecidoOuDeOutroCliente_SucessoSemRevogar(t *test
 		t.Run(nome, func(t *testing.T) {
 			repo := repoDoCaso()
 
-			err := newTestService(repo).RevokeToken(context.Background(), oauth.RevokeRequest{Token: testAccessToken, ClientID: testClientID})
+			err := newTestService(repo).RevokeToken(context.Background(), validRevokeRequest())
 
 			require.NoError(t, err)
 			assert.Len(t, repo.findCalls, 1)
@@ -86,7 +112,7 @@ func TestRevokeToken_FalhaDoRepositorio_DevolveErroEmbrulhadoSemVazarToken(t *te
 			repo := testRepositoryWithFoundToken()
 			causa := falha(repo)
 
-			err := newTestService(repo).RevokeToken(context.Background(), oauth.RevokeRequest{Token: testAccessToken})
+			err := newTestService(repo).RevokeToken(context.Background(), validRevokeRequest())
 
 			requireNotProtocolError(t, err, causa)
 			assertSecretsAbsent(t, err, testAccessToken, auth.HashOpaqueToken(testAccessToken))
@@ -97,7 +123,7 @@ func TestRevokeToken_FalhaDoRepositorio_DevolveErroEmbrulhadoSemVazarToken(t *te
 func TestRevokeToken_RepositorioSoRecebeOHash(t *testing.T) {
 	repo := testRepositoryWithFoundToken()
 
-	err := newTestService(repo).RevokeToken(context.Background(), oauth.RevokeRequest{Token: testAccessToken})
+	err := newTestService(repo).RevokeToken(context.Background(), validRevokeRequest())
 
 	require.NoError(t, err)
 	assert.NotContains(t, fmt.Sprintf("%+v %+v", repo.findCalls, repo.auditedRevokes), testAccessToken)

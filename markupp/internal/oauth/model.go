@@ -38,6 +38,8 @@ type Authorization struct {
 	Scopes    []string
 	CreatedAt time.Time
 	UpdatedAt time.Time
+	// Revoked só é lido em FindToken, que devolve a Autorização mesmo revogada.
+	Revoked bool
 }
 
 // Tipos de token guardados em oauth_tokens.
@@ -55,6 +57,8 @@ type IssuedToken struct {
 	Resource        string
 	Scopes          []string
 	ExpiresAt       time.Time
+	// Revoked só é lido em FindToken, que devolve o token mesmo revogado.
+	Revoked bool
 }
 
 // Approval registra a aprovação de um pedido: o código emitido e a conta que aprovou.

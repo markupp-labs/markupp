@@ -261,6 +261,18 @@ func TestPostgresOAuthRepo_FindToken_DevolveDonoMesmoRevogado(t *testing.T) {
 	assert.Equal(t, "a1", got.Authorization.ID)
 	assert.Equal(t, "u1", got.Authorization.UserID)
 	assert.Equal(t, "c1", got.Authorization.ClientID)
+	assert.True(t, got.Token.Revoked)
+	assert.True(t, got.Authorization.Revoked)
+}
+
+func TestPostgresOAuthRepo_FindToken_TokenVigente(t *testing.T) {
+	repo, _ := repoComTokens(t)
+
+	got, err := repo.FindToken(context.Background(), "t-acesso")
+
+	require.NoError(t, err)
+	assert.False(t, got.Token.Revoked)
+	assert.False(t, got.Authorization.Revoked)
 }
 
 func TestPostgresOAuthRepo_FindToken_RefreshExpirado(t *testing.T) {
