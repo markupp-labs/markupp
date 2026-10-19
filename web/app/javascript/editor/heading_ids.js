@@ -22,11 +22,20 @@ export function headingIds({ tokens, env }) {
 
 // Rola até o título do hash (#slug, já com o encode da url) dentro de root; sem animação para quem pede menos movimento.
 export function scrollToHeading(root, hash) {
-  const slug = hash && decodeURIComponent(hash.replace(/^#/, ""))
+  const slug = hash && decodedSlug(hash.replace(/^#/, ""))
   const heading = slug && root.querySelector(`[id="${CSS.escape(HEADING_ID_PREFIX + slug)}"]`)
   if (!heading) return false
 
   const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches
   heading.scrollIntoView({ behavior: reduced ? "instant" : "smooth", block: "start" })
   return true
+}
+
+// Hash malformado (#%, #%E0) não decodifica: não aponta para título nenhum.
+function decodedSlug(encoded) {
+  try {
+    return decodeURIComponent(encoded)
+  } catch {
+    return ""
+  }
 }
