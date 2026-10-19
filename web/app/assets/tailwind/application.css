@@ -146,11 +146,7 @@
 }
 
 /* Barra lateral no desktop, estilo VS Code: coluna na largura escolhida (cookie, --sidebar-width no <html>);
-   fechada some e o botão de expandir aparece no conteúdo. Fora de @layer para vencer os utilitários. */
-.sidebar-expand {
-  display: none;
-}
-
+   fechada some. Fora de @layer para vencer os utilitários. */
 @media (width >= 48rem) {
   .app-shell {
     display: grid;
@@ -163,10 +159,6 @@
 
   :root[data-sidebar="closed"] .sidebar {
     display: none;
-  }
-
-  :root[data-sidebar="closed"] .sidebar-expand {
-    display: inline-flex;
   }
 }
 

@@ -8,6 +8,7 @@ const desktop = window.matchMedia("(width >= 48rem)")
 
 export default class extends Controller {
   static targets = [ "panel", "handle", "toggle" ]
+  static values = { hideLabel: String, showLabel: String }
 
   // Atalho vale também com o foco no CodeMirror. Se o editor já tratou a tecla (no Mac, Ctrl+B é o
   // cursor para a esquerda, à moda do Emacs), ele vence e a barra fica como está.
@@ -22,17 +23,20 @@ export default class extends Controller {
     if (!desktop.matches) return this.panelTarget.togglePopover()
 
     const closing = document.documentElement.dataset.sidebar != "closed"
-    const focusWillHide = this.panelTarget.contains(document.activeElement) || this.toggleTargets.includes(document.activeElement)
     if (closing) document.documentElement.dataset.sidebar = "closed"
     else delete document.documentElement.dataset.sidebar
     writeCookie("sidebar", closing ? "closed" : "open")
-    this.toggleTargets.forEach((button) => button.setAttribute("aria-expanded", String(!closing)))
-    if (focusWillHide) this.visibleToggle(closing).focus()
+    this.labelToggle(closing)
+    // Quem tinha o foco some junto com a barra: o foco passa ao botão, que fica.
+    if (closing && this.panelTarget.contains(document.activeElement)) this.toggleTarget.focus()
   }
 
-  // Quem tinha o foco some junto com a barra (ou com o botão de expandir): o foco passa ao botão que ficou.
-  visibleToggle(closed) {
-    return this.toggleTargets.find((button) => this.panelTarget.contains(button) != closed)
+  // O botão diz o que vai fazer: esconder a barra aberta ou mostrar a fechada.
+  labelToggle(closed) {
+    const label = closed ? this.showLabelValue : this.hideLabelValue
+    this.toggleTarget.setAttribute("aria-expanded", String(!closed))
+    this.toggleTarget.setAttribute("aria-label", label)
+    this.toggleTarget.title = `${label} (Ctrl+B)`
   }
 
   startResize(event) {
