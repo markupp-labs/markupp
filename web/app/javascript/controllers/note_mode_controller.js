@@ -1,7 +1,7 @@
 import { Controller } from "@hotwired/stimulus"
 import { renderMarkdown } from "editor/render_markdown"
 import { resolveWikilink } from "editor/wikilinks"
-import { previewScrollTopFor } from "editor/scroll_sync"
+import { editorScrollTopFor, previewScrollTopFor } from "editor/scroll_sync"
 import { EditorView } from "@codemirror/view"
 
 // Modos da nota: edição (CodeMirror), leitura (markdown renderizado) e lado a lado (preview a cada tecla).
@@ -51,21 +51,44 @@ export default class extends Controller {
     if (this.mode == "split") this.alignPreview()
   }
 
-  // Lado a lado: o scroll do próprio scroller do CodeMirror (pego na captura, scroll não sobe) leva o preview junto.
-  // Mão única, editor para preview; no máximo um alinhamento por quadro.
-  followEditor({ target }) {
-    if (this.mode != "split" || !target.classList?.contains("cm-scroller") || this.alignFrame) return
+  // Lado a lado, mão dupla como no VS Code: o scroll de um painel (o scroller do CodeMirror ou o preview, pego na
+  // captura, scroll não sobe) leva o outro junto, no máximo um alinhamento por quadro.
+  followScroll({ target }) {
+    if (this.mode != "split" || !this.scrollPanes.includes(target)) return
+    // Trava de origem: o scroll que o próprio alinhamento causou no outro painel não volta, senão um rola o outro em laço.
+    if (target == this.alignedPane) return (this.alignedPane = null)
 
+    cancelAnimationFrame(this.alignFrame)
     this.alignFrame = requestAnimationFrame(() => {
       this.alignFrame = null
-      this.alignPreview()
+      target == this.previewTarget ? this.alignEditor() : this.alignPreview()
     })
   }
 
-  // Salto direto, sem rolagem suave: acompanha o editor quadro a quadro e não anima nada (prefers-reduced-motion).
   alignPreview() {
-    const view = EditorView.findFromDOM(this.element.querySelector(".cm-editor"))
-    if (view) this.previewTarget.scrollTo({ top: previewScrollTopFor(view, this.previewTarget), behavior: "instant" })
+    const view = this.editorView
+    if (view) this.scrollPane(this.previewTarget, previewScrollTopFor(view, this.previewTarget))
+  }
+
+  alignEditor() {
+    const view = this.editorView
+    if (view) this.scrollPane(view.scrollDOM, editorScrollTopFor(view, this.previewTarget))
+  }
+
+  // Salto direto, sem rolagem suave: acompanha o outro painel quadro a quadro e não anima nada (prefers-reduced-motion).
+  // Só uma rolagem que de fato mexeu dispara scroll; é ela que a trava espera.
+  scrollPane(pane, top) {
+    const before = pane.scrollTop
+    pane.scrollTo({ top, behavior: "instant" })
+    this.alignedPane = pane.scrollTop == before ? null : pane
+  }
+
+  get scrollPanes() {
+    return [ this.previewTarget, this.editorView?.scrollDOM ]
+  }
+
+  get editorView() {
+    return EditorView.findFromDOM(this.element.querySelector(".cm-editor"))
   }
 
   // [[nome]] resolvido pelo mapa de notas que veio do servidor (WikilinkHelper), sem chamar a API.
