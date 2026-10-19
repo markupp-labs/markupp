@@ -73,7 +73,8 @@ type Approval struct {
 	CodeHash      string
 	CodeExpiresAt time.Time
 	DecidedAt     time.Time
-	// DCRPendingCutoff é o limite de criação do cliente DCR pendente.
+	// DCRPendingCutoff é o limite de criação do cliente DCR pendente: criado nele ou
+	// antes, o cliente conta como inexistente e o pedido não é aprovado.
 	DCRPendingCutoff time.Time
 }
 
@@ -106,6 +107,8 @@ var (
 // Repository é a porta de persistência do authorization server. Todas as tabelas são
 // globais (ADR-0034): a implementação não usa ator nem RLS.
 type Repository interface {
+	// GetClient devolve ErrClientNotFound se o cliente não existe ou é DCR pendente
+	// criado em dcrPendingCutoff ou antes, mesmo que ainda não tenha sido apagado.
 	GetClient(ctx context.Context, id string, dcrPendingCutoff time.Time) (Client, error)
 	CreateRequest(ctx context.Context, req AuthorizationRequest) error
 	// GetPendingRequest devolve ErrRequestNotFound se o pedido não existe, expirou em
@@ -116,7 +119,8 @@ type Repository interface {
 	// pedido, grava no pedido o ID dessa Autorização e audita oauth.authorize com
 	// sucesso, tudo numa transação. Com cliente DCR, a transação compartilha a trava de
 	// RegisterDCRClient, para a limpeza dos pendentes esperar a aprovação aberta.
-	// Devolve ErrRequestNotFound se o pedido já não estiver pendente.
+	// Devolve ErrRequestNotFound se o pedido já não estiver pendente ou se o cliente for
+	// DCR pendente criado em approval.DCRPendingCutoff ou antes.
 	ApproveRequest(ctx context.Context, approval Approval) (AuthorizationRequest, error)
 	// DenyRequest marca o pedido como decidido e audita oauth.authorize com falha, na
 	// mesma transação. Devolve ErrRequestNotFound se o pedido já não estiver pendente.

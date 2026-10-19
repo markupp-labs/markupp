@@ -16,18 +16,24 @@ const approveOAuthRequest = `-- name: ApproveOAuthRequest :one
 UPDATE oauth_requests
 SET decided_at = $1::TIMESTAMPTZ, user_id = $2::TEXT,
     code_hash = $3::TEXT, code_expires_at = $4::TIMESTAMPTZ
-WHERE id = $5 AND decided_at IS NULL AND expires_at > $1::TIMESTAMPTZ
+WHERE oauth_requests.id = $5 AND decided_at IS NULL AND expires_at > $1::TIMESTAMPTZ
+  AND NOT EXISTS (
+    SELECT 1 FROM oauth_pending_dcr_clients p
+    WHERE p.id = oauth_requests.client_id AND p.created_at <= $6::TIMESTAMPTZ)
 RETURNING id, client_id, redirect_uri, scopes, resource, state, code_challenge, created_at, expires_at, decided_at, user_id, code_hash, code_expires_at, code_used_at, authorization_id, code_reused_at
 `
 
 type ApproveOAuthRequestParams struct {
-	DecidedAt     time.Time
-	UserID        string
-	CodeHash      string
-	CodeExpiresAt time.Time
-	ID            string
+	DecidedAt        time.Time
+	UserID           string
+	CodeHash         string
+	CodeExpiresAt    time.Time
+	ID               string
+	DcrPendingCutoff time.Time
 }
 
+// Não aprova o pedido de cliente DCR pendente criado no limite ou antes, como se o
+// cliente não existisse mais.
 func (q *Queries) ApproveOAuthRequest(ctx context.Context, arg ApproveOAuthRequestParams) (OauthRequest, error) {
 	row := q.db.QueryRow(ctx, approveOAuthRequest,
 		arg.DecidedAt,
@@ -35,6 +41,7 @@ func (q *Queries) ApproveOAuthRequest(ctx context.Context, arg ApproveOAuthReque
 		arg.CodeHash,
 		arg.CodeExpiresAt,
 		arg.ID,
+		arg.DcrPendingCutoff,
 	)
 	var i OauthRequest
 	err := row.Scan(
@@ -289,13 +296,23 @@ func (q *Queries) GetFreshCIMDClient(ctx context.Context, arg GetFreshCIMDClient
 
 const getOAuthClient = `-- name: GetOAuthClient :one
 
-SELECT id, source, name, redirect_uris, metadata_expires_at, created_at FROM oauth_clients WHERE id = $1
+SELECT id, source, name, redirect_uris, metadata_expires_at, created_at FROM oauth_clients c
+WHERE c.id = $1 AND NOT EXISTS (
+    SELECT 1 FROM oauth_pending_dcr_clients p
+    WHERE p.id = c.id AND p.created_at <= $2::TIMESTAMPTZ)
 `
+
+type GetOAuthClientParams struct {
+	ID               string
+	DcrPendingCutoff time.Time
+}
 
 // Authorization server OAuth 2.1 (ADR-0039). As tabelas são da instância, sem tenant nem
 // RLS: as queries rodam no papel da conexão. Códigos e tokens só passam como hash.
-func (q *Queries) GetOAuthClient(ctx context.Context, id string) (OauthClient, error) {
-	row := q.db.QueryRow(ctx, getOAuthClient, id)
+// O cliente DCR pendente criado no limite ou antes conta como inexistente, mesmo antes
+// de a limpeza dos registros apagá-lo.
+func (q *Queries) GetOAuthClient(ctx context.Context, arg GetOAuthClientParams) (OauthClient, error) {
+	row := q.db.QueryRow(ctx, getOAuthClient, arg.ID, arg.DcrPendingCutoff)
 	var i OauthClient
 	err := row.Scan(
 		&i.ID,

@@ -34,9 +34,10 @@ func NewPostgresOAuthRepository(pool *pgxpool.Pool) *PostgresOAuthRepository {
 	return &PostgresOAuthRepository{pool: pool, q: gen.New(pool)}
 }
 
-// GetClient devolve o cliente registrado, ou oauth.ErrClientNotFound.
-func (r *PostgresOAuthRepository) GetClient(ctx context.Context, id string, _ time.Time) (oauth.Client, error) {
-	row, err := r.q.GetOAuthClient(ctx, id)
+// GetClient devolve o cliente registrado, ou oauth.ErrClientNotFound se ele não existe
+// ou é DCR pendente criado em dcrPendingCutoff ou antes.
+func (r *PostgresOAuthRepository) GetClient(ctx context.Context, id string, dcrPendingCutoff time.Time) (oauth.Client, error) {
+	row, err := r.q.GetOAuthClient(ctx, gen.GetOAuthClientParams{ID: id, DcrPendingCutoff: dcrPendingCutoff})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return oauth.Client{}, fmt.Errorf("%w: client_id %s", oauth.ErrClientNotFound, oauth.ClientValue(id))
 	}
@@ -95,7 +96,7 @@ func approveInTx(ctx context.Context, qtx *gen.Queries, a oauth.Approval) (gen.O
 	}
 	row, err := qtx.ApproveOAuthRequest(ctx, gen.ApproveOAuthRequestParams{
 		ID: a.RequestID, UserID: a.UserID, CodeHash: a.CodeHash,
-		CodeExpiresAt: a.CodeExpiresAt, DecidedAt: a.DecidedAt,
+		CodeExpiresAt: a.CodeExpiresAt, DecidedAt: a.DecidedAt, DcrPendingCutoff: a.DCRPendingCutoff,
 	})
 	if err != nil {
 		return row, requestErr("aprovar pedido", err)

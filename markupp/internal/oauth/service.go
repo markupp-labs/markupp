@@ -68,6 +68,12 @@ func NewService(repo Repository, cfg ServiceConfig, scoped ScopedTokenIssuer, me
 	}
 }
 
+// dcrPendingCutoff é o limite de criação do cliente DCR pendente em now: criado nele ou
+// antes, o cliente conta como inexistente, mesmo antes de ser apagado.
+func (s *Service) dcrPendingCutoff(now time.Time) time.Time {
+	return now.Add(-s.cfg.DCRPendingTTL)
+}
+
 // canonicalize devolve a forma canônica de uma URL recebida; ok falso se ela não parseia.
 func canonicalize(raw string) (string, bool) {
 	parsed, err := url.Parse(raw)

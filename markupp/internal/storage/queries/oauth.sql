@@ -1,8 +1,13 @@
 -- Authorization server OAuth 2.1 (ADR-0039). As tabelas são da instância, sem tenant nem
 -- RLS: as queries rodam no papel da conexão. Códigos e tokens só passam como hash.
 
+-- O cliente DCR pendente criado no limite ou antes conta como inexistente, mesmo antes
+-- de a limpeza dos registros apagá-lo.
 -- name: GetOAuthClient :one
-SELECT * FROM oauth_clients WHERE id = $1;
+SELECT * FROM oauth_clients c
+WHERE c.id = sqlc.arg(id) AND NOT EXISTS (
+    SELECT 1 FROM oauth_pending_dcr_clients p
+    WHERE p.id = c.id AND p.created_at <= sqlc.arg(dcr_pending_cutoff)::TIMESTAMPTZ);
 
 -- name: GetFreshCIMDClient :one
 SELECT * FROM oauth_clients
@@ -60,11 +65,16 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9);
 SELECT * FROM oauth_requests
 WHERE id = sqlc.arg(id) AND decided_at IS NULL AND expires_at > sqlc.arg(now)::TIMESTAMPTZ;
 
+-- Não aprova o pedido de cliente DCR pendente criado no limite ou antes, como se o
+-- cliente não existisse mais.
 -- name: ApproveOAuthRequest :one
 UPDATE oauth_requests
 SET decided_at = sqlc.arg(decided_at)::TIMESTAMPTZ, user_id = sqlc.arg(user_id)::TEXT,
     code_hash = sqlc.arg(code_hash)::TEXT, code_expires_at = sqlc.arg(code_expires_at)::TIMESTAMPTZ
-WHERE id = sqlc.arg(id) AND decided_at IS NULL AND expires_at > sqlc.arg(decided_at)::TIMESTAMPTZ
+WHERE oauth_requests.id = sqlc.arg(id) AND decided_at IS NULL AND expires_at > sqlc.arg(decided_at)::TIMESTAMPTZ
+  AND NOT EXISTS (
+    SELECT 1 FROM oauth_pending_dcr_clients p
+    WHERE p.id = oauth_requests.client_id AND p.created_at <= sqlc.arg(dcr_pending_cutoff)::TIMESTAMPTZ)
 RETURNING *;
 
 -- name: DenyOAuthRequest :one
