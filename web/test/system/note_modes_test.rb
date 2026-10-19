@@ -116,11 +116,44 @@ class NoteModesTest < ApplicationSystemTestCase
     page.current_window.resize_to(1400, 900)
   end
 
+  test "side by side scrolls the preview along with the editor" do
+    filler = ->(part, count) { (1..count).map { |n| "#{part} paragraph #{n}." }.join("\n\n") }
+    content = "# Plan\n\n#{filler.('Opening', 12)}\n\n## Middle\n\n#{filler.('Closing', 40)}\n"
+    use_fake_api(notes: [ { id: "1", path: "plan.md", content: } ])
+    sign_in_through_form
+
+    visit note_path("1")
+    click_on "Side by side"
+    scroll_editor_to_line "## Middle"
+
+    assert_selector(".note-preview h2", text: "Middle") { |heading| near_preview_top?(heading) }
+  end
+
   private
     # O chromedriver manda Ctrl+\ com key vazia; pelo CDP a tecla chega como no navegador de verdade.
     def press_ctrl_backslash
       %w[keyDown keyUp].each do |type|
         page.driver.browser.execute_cdp("Input.dispatchKeyEvent", type:, modifiers: 2, key: "\\", code: "Backslash", windowsVirtualKeyCode: 220)
       end
+    end
+
+    # Rola o próprio scroller do CodeMirror até a linha ficar no topo, como a roda do mouse faria.
+    def scroll_editor_to_line(text)
+      line = find(".cm-line", text:, exact_text: true)
+      execute_script(<<~JS, line)
+        const scroller = arguments[0].closest(".cm-scroller")
+        scroller.scrollTop += arguments[0].getBoundingClientRect().top - scroller.getBoundingClientRect().top
+      JS
+    end
+
+    # O bloco tem de estar no topo da área visível do preview, não só em algum ponto da página.
+    def near_preview_top?(element)
+      evaluate_script(<<~JS, element)
+        (() => {
+          const preview = arguments[0].closest(".note-preview").getBoundingClientRect()
+          const top = arguments[0].getBoundingClientRect().top - preview.top
+          return top >= -1 && top < 32
+        })()
+      JS
     end
 end
