@@ -30,6 +30,7 @@ type OAuthService interface {
 
 const (
 	grantTypeAuthorizationCode = "authorization_code"
+	grantTypeRefreshToken      = "refresh_token"
 	formURLEncoded             = "application/x-www-form-urlencoded"
 )
 
@@ -136,22 +137,36 @@ func (h *oauthHandler) writeAuthorizeError(w http.ResponseWriter, r *http.Reques
 func (h *oauthHandler) token(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("Pragma", "no-cache")
-	form, protoErr := readTokenForm(w, r)
+	form, protoErr := readOAuthForm(w, r)
 	if protoErr != nil {
 		writeOAuthError(w, protoErr)
 		return
 	}
-	tokens, err := h.svc.ExchangeCode(r.Context(), codeGrantFrom(form))
+	tokens, err := h.grantTokens(r.Context(), form)
 	if err != nil {
-		writeTokenError(w, err)
+		writeOAuthServiceError(w, "emitir tokens oauth", err)
 		return
 	}
 	writeJSON(w, http.StatusOK, tokens)
 }
 
-// readTokenForm lê só o corpo do formulário, sem a query, e recusa com o erro do
-// protocolo o que não for formulário, parâmetro repetido e grant_type não suportado.
-func readTokenForm(w http.ResponseWriter, r *http.Request) (url.Values, *oauth.ProtocolError) {
+// grantTokens despacha pelo grant_type e recusa com unsupported_grant_type o que não
+// for authorization_code nem refresh_token.
+func (h *oauthHandler) grantTokens(ctx context.Context, form url.Values) (oauth.TokenResponse, error) {
+	switch grantType := form.Get("grant_type"); grantType {
+	case grantTypeAuthorizationCode:
+		return h.svc.ExchangeCode(ctx, codeGrantFrom(form))
+	case grantTypeRefreshToken:
+		return h.svc.RefreshToken(ctx, refreshGrantFrom(form))
+	default:
+		return oauth.TokenResponse{}, &oauth.ProtocolError{Code: "unsupported_grant_type", Description: fmt.Sprintf(
+			"grant_type deve ser %s ou %s, recebido %s", grantTypeAuthorizationCode, grantTypeRefreshToken, oauth.ClientValue(grantType))}
+	}
+}
+
+// readOAuthForm lê só o corpo do formulário, sem a query, e recusa com o erro do
+// protocolo o que não for formulário e parâmetro repetido.
+func readOAuthForm(w http.ResponseWriter, r *http.Request) (url.Values, *oauth.ProtocolError) {
 	contentType := r.Header.Get("Content-Type")
 	if mediaType, _, _ := mime.ParseMediaType(contentType); mediaType != formURLEncoded {
 		return nil, invalidRequest(fmt.Sprintf("corpo deve ser %s, recebido Content-Type %s", formURLEncoded, oauth.ClientValue(contentType)))
@@ -162,9 +177,6 @@ func readTokenForm(w http.ResponseWriter, r *http.Request) (url.Values, *oauth.P
 	}
 	if protoErr := rejectRepeatedParam(r.PostForm); protoErr != nil {
 		return nil, protoErr
-	}
-	if grantType := r.PostForm.Get("grant_type"); grantType != grantTypeAuthorizationCode {
-		return nil, &oauth.ProtocolError{Code: "unsupported_grant_type", Description: fmt.Sprintf("grant_type deve ser %s, recebido %s", grantTypeAuthorizationCode, oauth.ClientValue(grantType))}
 	}
 	return r.PostForm, nil
 }
@@ -179,13 +191,23 @@ func codeGrantFrom(form url.Values) oauth.CodeGrant {
 	}
 }
 
-func writeTokenError(w http.ResponseWriter, err error) {
+func refreshGrantFrom(form url.Values) oauth.RefreshGrant {
+	return oauth.RefreshGrant{
+		RefreshToken: form.Get("refresh_token"),
+		ClientID:     form.Get("client_id"),
+		Scope:        form.Get("scope"),
+		Resource:     form.Get("resource"),
+	}
+}
+
+// writeOAuthServiceError responde 400 com o erro do protocolo e 500 com o resto.
+func writeOAuthServiceError(w http.ResponseWriter, operation string, err error) {
 	var protoErr *oauth.ProtocolError
 	if errors.As(err, &protoErr) {
 		writeOAuthError(w, protoErr)
 		return
 	}
-	writeOAuthInternal(w, "trocar codigo oauth", err)
+	writeOAuthInternal(w, operation, err)
 }
 
 // rejectRepeatedParam recusa parâmetro enviado mais de uma vez (RFC 6749, seção 3.1),
