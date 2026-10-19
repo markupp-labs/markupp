@@ -60,7 +60,7 @@ class NotesController < ApplicationController
     end
 
     def set_tree
-      @tree = Note::Tree.build(Note.all(credential.api))
+      @tree = load_note_tree
     end
 
     def path_error_status = @note.errors.of_kind?(:path, :taken) ? :conflict : :unprocessable_content

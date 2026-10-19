@@ -66,6 +66,9 @@ class ApplicationController < ActionController::Base
 
     def current_tenants = @current_tenants ||= Tenant.mine(credential.api)
 
+    # Árvore da barra lateral, das notas do tenant ativo: as páginas de notas e as configurações desenham a mesma.
+    def load_note_tree = Note::Tree.build(Note.all(credential.api))
+
     # O tenant some entre a lista e a chamada de notas (vínculo removido no meio): esquece e manda escolher outro.
     def forget_tenant(error)
       log_api_event("markupp_tenant_unavailable", error, tenant_id: credential.tenant_id)
