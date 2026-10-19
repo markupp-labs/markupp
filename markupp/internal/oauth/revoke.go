@@ -54,7 +54,7 @@ func (s *Service) revokeTokens(ctx context.Context, authorization Authorization,
 	return nil
 }
 
-// ListAuthorizations devolve as Autorizações ativas da conta, nunca nil.
+// ListAuthorizations devolve as Autorizações ativas da conta, nunca nil, nem nos escopos.
 func (s *Service) ListAuthorizations(ctx context.Context, userID string) ([]AuthorizationView, error) {
 	summaries, err := s.repo.ListActiveAuthorizations(ctx, userID)
 	if err != nil {
@@ -63,7 +63,7 @@ func (s *Service) ListAuthorizations(ctx context.Context, userID string) ([]Auth
 	views := make([]AuthorizationView, 0, len(summaries))
 	for _, summary := range summaries {
 		views = append(views, AuthorizationView{
-			ID: summary.ID, ClientID: summary.ClientID, ClientName: summary.ClientName, Scopes: summary.Scopes,
+			ID: summary.ID, ClientID: summary.ClientID, ClientName: summary.ClientName, Scopes: append([]string{}, summary.Scopes...),
 			CreatedAt: summary.CreatedAt.UTC().Format(time.RFC3339), UpdatedAt: summary.UpdatedAt.UTC().Format(time.RFC3339),
 		})
 	}
