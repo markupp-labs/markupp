@@ -202,8 +202,20 @@
     grid-column: 2;
   }
 
+  /* Fechada, sobra da barra uma faixa na borda esquerda (2px do fundo dela e a linha dela, como uma lombada de livro): a
+     barra não some do nada e a aba de abrir sai dali. A coluna fica com a largura da faixa. */
   :root[data-sidebar="closed"] .app-shell {
-    grid-template-columns: 0px minmax(0, 1fr);
+    grid-template-columns: 3px minmax(0, 1fr);
+  }
+
+  :root[data-sidebar="closed"] .app-shell::before {
+    content: "";
+    position: fixed;
+    inset: 0 auto 0 0;
+    box-sizing: content-box;
+    width: 2px;
+    border-right: 1px solid var(--line);
+    background: var(--surface-sunken);
   }
 
   :root[data-sidebar="closed"] .sidebar {
@@ -243,9 +255,10 @@
     outline-offset: -2px;
   }
 
-  /* Fechada, a aba vai à borda da tela por transform (não left), para andar junto com a barra (motion.css). */
+  /* Fechada, a aba vai à faixa da barra por transform (não left), para andar junto com a barra (motion.css); cobre a
+     linha da faixa como cobre a da barra aberta. */
   :root[data-sidebar="closed"] .sidebar-spine {
-    transform: translateX(calc(1px - var(--sidebar-width, 18rem)));
+    transform: translateX(calc(3px - var(--sidebar-width, 18rem)));
   }
 }
 

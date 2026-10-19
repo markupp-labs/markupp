@@ -89,7 +89,8 @@
    da barra: o main acompanha só pela borda esquerda. Assim nada salta: o que encosta à direita (o seletor de modo da
    nota) fica parado e o que encosta à esquerda anda junto com a barra. Um transform no main deslocaria também o lado
    direito, que já nasce na largura nova (o seletor saía da tela e voltava). O preço é refazer o layout do main a cada
-   quadro durante o deslize, como no Obsidian. Fechando, a barra fica fixa por cima durante a saída e só depois some
+   quadro durante o deslize, como no Obsidian. A barra para e parte a 3px da borda: a faixa da barra fechada
+   (application.css), que ela cobre sem emenda. Fechando, a barra fica fixa por cima durante a saída e só depois some
    (allow-discrete). O data-sidebar-moved no body (sidebar_controller.js) limita o movimento ao clique: carregar, navegar
    ou arrastar a alça não anima. */
 @media (width >= 48rem) {
@@ -102,13 +103,13 @@
   :root[data-sidebar="closed"] .sidebar.layer {
     position: fixed;
     left: 0;
-    transform: translateX(-100%);
+    transform: translateX(calc(3px - 100%));
     transition: transform var(--motion-window-out) linear, display var(--motion-window-out) linear allow-discrete;
   }
 
   @starting-style {
     body[data-sidebar-moved] .sidebar.layer {
-      transform: translateX(-100%);
+      transform: translateX(calc(3px - 100%));
     }
   }
 
