@@ -43,6 +43,7 @@ func mountAPIRoutes(r chi.Router, d RouterDeps) {
 	routes := newVersionRoutes(d)
 	if d.OAuth != nil {
 		mountOAuthRequestRoutes(r, d.OAuth, d.Tokens)
+		mountOAuthAuthorizationRoutes(r, d.OAuth, d.Tokens)
 	}
 	r.Mount(currentVersionPrefix, routes)
 	r.Mount("/", markDeprecated(routes))
