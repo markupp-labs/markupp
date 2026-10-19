@@ -22,6 +22,16 @@ class SettingsTest < ApplicationSystemTestCase
     assert_current_path settings_account_path
   end
 
+  test "escape goes back to the note the settings were opened from" do
+    visit note_path("1")
+    find(".cm-content").send_keys([ :control, "," ])
+    assert_current_path settings_account_path
+
+    find("body").send_keys(:escape)
+
+    assert_current_path note_path("1")
+  end
+
   test "the close button goes back to the notes" do
     visit settings_account_path
     click_on "Close settings"
