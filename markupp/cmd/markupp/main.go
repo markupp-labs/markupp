@@ -216,15 +216,18 @@ func newOAuthToken() string {
 // oauthServiceConfigFrom traduz a config do processo para o serviço OAuth.
 func oauthServiceConfigFrom(cfg config.Config) oauth.ServiceConfig {
 	resources := make([]string, 0, len(cfg.OAuthResources))
+	secrets := make(map[string]string, len(cfg.OAuthResources))
 	for _, resource := range cfg.OAuthResources {
 		resources = append(resources, resource.URL)
+		secrets[resource.URL] = resource.Secret
 	}
 	return oauth.ServiceConfig{
-		Issuer: cfg.PublicURL, PanelURL: cfg.PanelURL, Resources: resources,
-		AccessTTL:  time.Duration(cfg.OAuthAccessMinutes) * time.Minute,
-		RefreshTTL: time.Duration(cfg.OAuthRefreshDays) * 24 * time.Hour,
-		RequestTTL: time.Duration(cfg.OAuthRequestMinutes) * time.Minute,
-		CodeTTL:    time.Duration(cfg.OAuthCodeSeconds) * time.Second,
+		Issuer: cfg.PublicURL, PanelURL: cfg.PanelURL, Resources: resources, ResourceSecrets: secrets,
+		AccessTTL:   time.Duration(cfg.OAuthAccessMinutes) * time.Minute,
+		RefreshTTL:  time.Duration(cfg.OAuthRefreshDays) * 24 * time.Hour,
+		RequestTTL:  time.Duration(cfg.OAuthRequestMinutes) * time.Minute,
+		CodeTTL:     time.Duration(cfg.OAuthCodeSeconds) * time.Second,
+		ExchangeTTL: time.Duration(cfg.OAuthExchangeMinutes) * time.Minute,
 	}
 }
 
