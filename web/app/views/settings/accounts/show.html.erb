@@ -17,7 +17,9 @@
   <h2 class="mt-6 text-base font-semibold"><%= t(".password") %></h2>
   <p class="mt-2 text-ink-muted"><%= t(".password_hint", email: credential.account_email) %></p>
   <div class="mt-3 flex flex-wrap items-center gap-3">
-    <%= button_to t(".change_password"), password_change_path, class: "btn", data: { turbo_submits_with: t(".sending") } %>
+    <% if credential.password_login? %>
+      <%= button_to t(".change_password"), password_change_path, class: "btn", data: { turbo_submits_with: t(".sending") } %>
+    <% end %>
     <%= link_to t(".have_reset_token"), new_password_reset_path, class: "text-accent underline" %>
   </div>
 </div>

@@ -34,6 +34,8 @@ class PanelCredential
 
   def account_email = @session[:account_email]
 
+  def password_login? = true
+
   def access_expired? = Time.current.to_i >= @session[:access_expires_at].to_i
 
   # Cliente das páginas logadas: renova o token sozinho.
