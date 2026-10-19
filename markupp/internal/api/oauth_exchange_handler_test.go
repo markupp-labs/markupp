@@ -1,6 +1,7 @@
 package api_test
 
 import (
+	"encoding/base64"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -40,6 +41,7 @@ func assertInvalidClient(t *testing.T, rec *httptest.ResponseRecorder) {
 	assert.Contains(t, rec.Body.String(), `"error":"invalid_client"`)
 	assert.Equal(t, `Basic realm="markupp"`, rec.Header().Get("WWW-Authenticate"))
 	assert.Equal(t, "no-store", rec.Header().Get("Cache-Control"))
+	assert.Equal(t, "no-cache", rec.Header().Get("Pragma"))
 }
 
 func TestTokenExchange_LeBasicEFormularioParaOGrant(t *testing.T) {
@@ -79,15 +81,34 @@ func TestTokenExchange_SemBasic_Retorna401SemChamarServico(t *testing.T) {
 }
 
 func TestTokenExchange_BasicMalCodificado_Retorna401SemEcoarNemChamarServico(t *testing.T) {
-	for _, cred := range []struct{ user, password string }{{"https%zz", "segredo"}, {recursoDeTeste, "seg%zz"}} {
+	for _, cred := range []struct{ user, password string }{{"https%zz", "senha-correta-1"}, {recursoDeTeste, "seg%zz"}} {
 		svc := &fakeOAuthService{}
 
 		rec := exchangeRequest(svc, exchangeForm(), cred.user, cred.password)
 
 		assertInvalidClient(t, rec)
 		assert.Empty(t, svc.gotExchange.SubjectToken, cred.user)
-		assert.NotContains(t, rec.Body.String(), "seg%zz")
+		assert.NotContains(t, rec.Body.String(), cred.user)
+		assert.NotContains(t, rec.Body.String(), cred.password)
 	}
+}
+
+func TestTokenExchange_BasicComUsuarioOuSenhaVazios_Retorna401SemChamarServico(t *testing.T) {
+	for _, header := range []string{"Basic Og==", "Basic " + basicCredentials("", "segredo"), "Basic " + basicCredentials(url.QueryEscape(recursoDeTeste), "")} {
+		svc := &fakeOAuthService{}
+		req := httptest.NewRequest(http.MethodPost, "/oauth/token", strings.NewReader(exchangeForm().Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		req.Header.Set("Authorization", header)
+
+		rec := serveOAuth(svc, req)
+
+		assertInvalidClient(t, rec)
+		assert.Equal(t, oauth.ExchangeGrant{}, svc.gotExchange, header)
+	}
+}
+
+func basicCredentials(user, password string) string {
+	return base64.StdEncoding.EncodeToString([]byte(user + ":" + password))
 }
 
 func TestTokenExchange_ServicoRecusaOResource_Retorna401ComDesafio(t *testing.T) {
