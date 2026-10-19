@@ -1,6 +1,7 @@
 // Package markdown lê o que o indexador precisa de uma nota: as ligações escritas no
-// corpo e os aliases do frontmatter. É a fronteira fina do projeto sobre goldmark, a
-// extensão de wikilink e yaml.v3; nenhum tipo dessas bibliotecas sai daqui.
+// corpo e os aliases e as ligações tipadas do frontmatter. É a fronteira fina do
+// projeto sobre goldmark, a extensão de wikilink e yaml.v3; nenhum tipo dessas
+// bibliotecas sai daqui.
 package markdown
 
 import (
@@ -29,11 +30,12 @@ type Link struct {
 	Form   LinkForm
 }
 
-// Document é o que a nota declara: os aliases do frontmatter e as ligações do corpo,
-// na ordem em que aparecem, fora de bloco e de trecho de código.
+// Document é o que a nota declara: os aliases e as ligações tipadas do frontmatter e
+// as ligações do corpo, na ordem em que aparecem, fora de bloco e de trecho de código.
 type Document struct {
-	Aliases []string
-	Links   []Link
+	Aliases    []string
+	TypedLinks []TypedLink
+	Links      []Link
 }
 
 var parser = goldmark.New(goldmark.WithExtensions(&wikilink.Extender{})).Parser()
@@ -41,7 +43,12 @@ var parser = goldmark.New(goldmark.WithExtensions(&wikilink.Extender{})).Parser(
 // Parse lê content. Frontmatter inválido não impede a leitura do corpo.
 func Parse(content string) Document {
 	meta, body := splitFrontmatter(content)
-	return Document{Aliases: parseAliases(meta), Links: collectLinks(parser.Parse(text.NewReader([]byte(body))))}
+	fields := frontmatterFields(meta)
+	return Document{
+		Aliases:    parseAliases(fields),
+		TypedLinks: parseTypedLinks(fields),
+		Links:      collectLinks(parser.Parse(text.NewReader([]byte(body)))),
+	}
 }
 
 // collectLinks percorre a árvore; código vira nó próprio, então nunca chega aqui.

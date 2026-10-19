@@ -3,10 +3,21 @@ package markdown
 import (
 	"strings"
 
+	"github.com/yuin/goldmark/text"
 	"gopkg.in/yaml.v3"
 )
 
-const frontmatterFence = "---"
+const (
+	frontmatterFence = "---"
+	aliasesKey       = "aliases"
+)
+
+// TypedLink é a ligação tipada escrita no frontmatter: a chave é o predicado e Target
+// é o alvo do wikilink, sem apelido nem âncora.
+type TypedLink struct {
+	Predicate string
+	Target    string
+}
 
 // splitFrontmatter separa o bloco YAML entre a cerca da primeira linha e a próxima
 // linha só com a cerca. Sem a cerca de fechamento, não há frontmatter.
@@ -26,19 +37,68 @@ func splitFrontmatter(content string) (meta, body string) {
 	return "", content
 }
 
-// parseAliases aceita aliases como texto único ou lista; item que não é texto,
-// como número, vale pela forma escrita. YAML inválido não tem aliases.
-func parseAliases(meta string) []string {
-	var fields struct {
-		Aliases yaml.Node `yaml:"aliases"`
-	}
-	if meta == "" || yaml.Unmarshal([]byte(meta), &fields) != nil {
+// frontmatterFields devolve chaves e valores do mapa YAML intercalados, na ordem
+// escrita. YAML inválido ou que não é mapa não tem campos.
+func frontmatterFields(meta string) []*yaml.Node {
+	var doc yaml.Node
+	if meta == "" || yaml.Unmarshal([]byte(meta), &doc) != nil || len(doc.Content) == 0 {
 		return nil
 	}
-	if fields.Aliases.Kind == yaml.ScalarNode {
-		return nonEmpty([]*yaml.Node{&fields.Aliases})
+	if doc.Content[0].Kind != yaml.MappingNode {
+		return nil
 	}
-	return nonEmpty(fields.Aliases.Content)
+	return doc.Content[0].Content
+}
+
+// parseAliases aceita aliases como texto único ou lista; item que não é texto,
+// como número, vale pela forma escrita.
+func parseAliases(fields []*yaml.Node) []string {
+	for i := 0; i+1 < len(fields); i += 2 {
+		if fields[i].Value == aliasesKey {
+			return nonEmpty(scalarItems(fields[i+1]))
+		}
+	}
+	return nil
+}
+
+// parseTypedLinks lê as chaves, salvo aliases, cujo valor é wikilink ou lista com
+// wikilinks; valor literal não é ligação.
+func parseTypedLinks(fields []*yaml.Node) []TypedLink {
+	var links []TypedLink
+	for i := 0; i+1 < len(fields); i += 2 {
+		key := fields[i].Value
+		if key == aliasesKey || strings.TrimSpace(key) == "" {
+			continue
+		}
+		for _, item := range scalarItems(fields[i+1]) {
+			if target, ok := wholeWikilink(item.Value); ok {
+				links = append(links, TypedLink{Predicate: key, Target: target})
+			}
+		}
+	}
+	return links
+}
+
+// scalarItems devolve o próprio valor quando ele é escalar, ou os itens de uma lista.
+func scalarItems(value *yaml.Node) []*yaml.Node {
+	if value.Kind == yaml.ScalarNode {
+		return []*yaml.Node{value}
+	}
+	return value.Content
+}
+
+// wholeWikilink devolve o alvo quando value inteiro é um único wikilink, como o
+// Obsidian grava entre aspas; texto com ligação no meio não conta.
+func wholeWikilink(value string) (string, bool) {
+	value = strings.TrimSpace(value)
+	if !strings.HasPrefix(value, "[[") || !strings.HasSuffix(value, "]]") {
+		return "", false
+	}
+	links := collectLinks(parser.Parse(text.NewReader([]byte(value))))
+	if len(links) != 1 || links[0].Form != Wikilink {
+		return "", false
+	}
+	return links[0].Target, true
 }
 
 func nonEmpty(nodes []*yaml.Node) []string {

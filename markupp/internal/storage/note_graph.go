@@ -22,13 +22,13 @@ func NewPostgresNoteGraph(pool *pgxpool.Pool) *PostgresNoteGraph {
 	return &PostgresNoteGraph{pool: pool}
 }
 
-// Backlinks devolve as notas que ligam à nota noteID, por caminho, ou
-// notes.ErrNotFound quando o ator não enxerga a nota.
-func (g *PostgresNoteGraph) Backlinks(ctx context.Context, noteID string, offset, limit int) ([]notes.LinkedNote, error) {
-	var out []notes.LinkedNote
+// Backlinks devolve as notas que ligam à nota noteID, por caminho, com os predicados
+// das ligações tipadas, ou notes.ErrNotFound quando o ator não enxerga a nota.
+func (g *PostgresNoteGraph) Backlinks(ctx context.Context, noteID string, offset, limit int) ([]notes.Backlink, error) {
+	var out []notes.Backlink
 	err := g.inNote(ctx, noteID, func(q *gen.Queries) error {
 		rows, err := q.ListBacklinks(ctx, gen.ListBacklinksParams{NoteID: noteID, PageOffset: toInt32(offset), PageLimit: toInt32(limit)})
-		out = convertRows(rows, func(r gen.ListBacklinksRow) notes.LinkedNote { return notes.LinkedNote(r) })
+		out = convertRows(rows, toBacklink)
 		return err
 	})
 	return out, err
@@ -95,11 +95,20 @@ func (g *PostgresNoteGraph) inVault(ctx context.Context, vaultID string, read fu
 	})
 }
 
+func toBacklink(r gen.ListBacklinksRow) notes.Backlink {
+	return notes.Backlink{
+		LinkedNote: notes.LinkedNote{ID: r.ID, VaultID: r.VaultID, Path: r.Path, UpdatedAt: r.UpdatedAt},
+		Predicates: r.Predicates,
+	}
+}
+
 func toNeighbor(r gen.ListNeighborsRow) notes.Neighbor {
 	return notes.Neighbor{
-		LinkedNote: notes.LinkedNote{ID: r.ID, VaultID: r.VaultID, Path: r.Path, UpdatedAt: r.UpdatedAt},
-		Incoming:   r.Incoming,
-		Outgoing:   r.Outgoing,
+		LinkedNote:         notes.LinkedNote{ID: r.ID, VaultID: r.VaultID, Path: r.Path, UpdatedAt: r.UpdatedAt},
+		Incoming:           r.Incoming,
+		Outgoing:           r.Outgoing,
+		IncomingPredicates: r.IncomingPredicates,
+		OutgoingPredicates: r.OutgoingPredicates,
 	}
 }
 

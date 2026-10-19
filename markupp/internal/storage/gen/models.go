@@ -42,10 +42,11 @@ type Note struct {
 }
 
 type NoteEdge struct {
-	SourceID string
-	TargetID string
-	VaultID  string
-	Kind     string
+	SourceID  string
+	TargetID  string
+	VaultID   string
+	Kind      string
+	Predicate pgtype.Text
 }
 
 type NoteIndexQueue struct {
@@ -60,6 +61,7 @@ type NoteLink struct {
 	TitleKey   string
 	TargetPath pgtype.Text
 	Kind       string
+	Predicate  pgtype.Text
 }
 
 type NoteSearchIndex struct {

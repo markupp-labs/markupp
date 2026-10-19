@@ -11,7 +11,7 @@ import (
 
 // NoteGraph é a leitura do grafo de ligações que os handlers HTTP consomem.
 type NoteGraph interface {
-	Backlinks(ctx context.Context, noteID string, offset, limit int) ([]notes.LinkedNote, error)
+	Backlinks(ctx context.Context, noteID string, offset, limit int) ([]notes.Backlink, error)
 	Neighbors(ctx context.Context, noteID string, offset, limit int) ([]notes.Neighbor, error)
 	Orphans(ctx context.Context, vaultID string, offset, limit int) ([]notes.LinkedNote, error)
 	UnresolvedLinks(ctx context.Context, vaultID string, offset, limit int) ([]notes.UnresolvedLink, error)

@@ -47,6 +47,7 @@ func linkRows(indexed []indexing.IndexedNote) gen.SaveNoteLinksParams {
 			p.TitleKeys = append(p.TitleKeys, link.TitleKey)
 			p.TargetPaths = append(p.TargetPaths, link.TargetPath)
 			p.Kinds = append(p.Kinds, string(link.Kind))
+			p.Predicates = append(p.Predicates, link.Predicate)
 		}
 	}
 	return p

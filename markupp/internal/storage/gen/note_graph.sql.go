@@ -11,9 +11,11 @@ import (
 )
 
 const listBacklinks = `-- name: ListBacklinks :many
-SELECT n.id, n.vault_id, n.path, n.updated_at
-FROM notes n
-WHERE n.id IN (SELECT e.source_id FROM note_edges e WHERE e.target_id = $1)
+SELECT n.id, n.vault_id, n.path, n.updated_at,
+       coalesce(array_agg(DISTINCT e.predicate) FILTER (WHERE e.predicate IS NOT NULL), '{}')::text[] AS predicates
+FROM note_edges e JOIN notes n ON n.id = e.source_id
+WHERE e.target_id = $1
+GROUP BY n.id
 ORDER BY n.path, n.id
 LIMIT $3 OFFSET $2
 `
@@ -25,12 +27,14 @@ type ListBacklinksParams struct {
 }
 
 type ListBacklinksRow struct {
-	ID        string
-	VaultID   string
-	Path      string
-	UpdatedAt time.Time
+	ID         string
+	VaultID    string
+	Path       string
+	UpdatedAt  time.Time
+	Predicates []string
 }
 
+// Uma linha por nota que liga, com as chaves das ligações tipadas dela, sem repetir.
 func (q *Queries) ListBacklinks(ctx context.Context, arg ListBacklinksParams) ([]ListBacklinksRow, error) {
 	rows, err := q.db.Query(ctx, listBacklinks, arg.NoteID, arg.PageOffset, arg.PageLimit)
 	if err != nil {
@@ -45,6 +49,7 @@ func (q *Queries) ListBacklinks(ctx context.Context, arg ListBacklinksParams) ([
 			&i.VaultID,
 			&i.Path,
 			&i.UpdatedAt,
+			&i.Predicates,
 		); err != nil {
 			return nil, err
 		}
@@ -58,11 +63,13 @@ func (q *Queries) ListBacklinks(ctx context.Context, arg ListBacklinksParams) ([
 
 const listNeighbors = `-- name: ListNeighbors :many
 WITH v AS (
-    SELECT e.target_id AS id, false AS incoming, true AS outgoing FROM note_edges e WHERE e.source_id = $3
+    SELECT e.target_id AS id, false AS incoming, true AS outgoing, e.predicate FROM note_edges e WHERE e.source_id = $3
     UNION ALL
-    SELECT e.source_id, true, false FROM note_edges e WHERE e.target_id = $3
+    SELECT e.source_id, true, false, e.predicate FROM note_edges e WHERE e.target_id = $3
 )
-SELECT n.id, n.vault_id, n.path, n.updated_at, bool_or(v.incoming)::bool AS incoming, bool_or(v.outgoing)::bool AS outgoing
+SELECT n.id, n.vault_id, n.path, n.updated_at, bool_or(v.incoming)::bool AS incoming, bool_or(v.outgoing)::bool AS outgoing,
+       coalesce(array_agg(DISTINCT v.predicate) FILTER (WHERE v.incoming AND v.predicate IS NOT NULL), '{}')::text[] AS incoming_predicates,
+       coalesce(array_agg(DISTINCT v.predicate) FILTER (WHERE v.outgoing AND v.predicate IS NOT NULL), '{}')::text[] AS outgoing_predicates
 FROM v JOIN notes n ON n.id = v.id
 GROUP BY n.id
 ORDER BY n.path, n.id
@@ -76,12 +83,14 @@ type ListNeighborsParams struct {
 }
 
 type ListNeighborsRow struct {
-	ID        string
-	VaultID   string
-	Path      string
-	UpdatedAt time.Time
-	Incoming  bool
-	Outgoing  bool
+	ID                 string
+	VaultID            string
+	Path               string
+	UpdatedAt          time.Time
+	Incoming           bool
+	Outgoing           bool
+	IncomingPredicates []string
+	OutgoingPredicates []string
 }
 
 func (q *Queries) ListNeighbors(ctx context.Context, arg ListNeighborsParams) ([]ListNeighborsRow, error) {
@@ -100,6 +109,8 @@ func (q *Queries) ListNeighbors(ctx context.Context, arg ListNeighborsParams) ([
 			&i.UpdatedAt,
 			&i.Incoming,
 			&i.Outgoing,
+			&i.IncomingPredicates,
+			&i.OutgoingPredicates,
 		); err != nil {
 			return nil, err
 		}

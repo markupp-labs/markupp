@@ -63,11 +63,12 @@ SELECT n.id, n.vault_id, d.title_key
 FROM (SELECT unnest(sqlc.arg(note_ids)::text[]) AS note_id, unnest(sqlc.arg(title_keys)::text[]) AS title_key) d
 JOIN notes n ON n.id = d.note_id;
 
--- Caminho vazio é ligação sem caminho, isto é, que não veio de link markdown.
+-- Caminho vazio é ligação sem caminho, isto é, que não veio de link markdown, e
+-- predicado vazio é ligação que não é tipada.
 -- name: SaveNoteLinks :exec
-INSERT INTO note_links (note_id, vault_id, cited_title, title_key, target_path, kind)
-SELECT n.id, n.vault_id, d.cited_title, d.title_key, NULLIF(d.target_path, ''), d.kind
+INSERT INTO note_links (note_id, vault_id, cited_title, title_key, target_path, kind, predicate)
+SELECT n.id, n.vault_id, d.cited_title, d.title_key, NULLIF(d.target_path, ''), d.kind, NULLIF(d.predicate, '')
 FROM (SELECT unnest(sqlc.arg(note_ids)::text[]) AS note_id, unnest(sqlc.arg(cited_titles)::text[]) AS cited_title,
              unnest(sqlc.arg(title_keys)::text[]) AS title_key, unnest(sqlc.arg(target_paths)::text[]) AS target_path,
-             unnest(sqlc.arg(kinds)::text[]) AS kind) d
+             unnest(sqlc.arg(kinds)::text[]) AS kind, unnest(sqlc.arg(predicates)::text[]) AS predicate) d
 JOIN notes n ON n.id = d.note_id;

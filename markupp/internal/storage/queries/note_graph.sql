@@ -4,20 +4,25 @@
 -- name: VaultVisible :one
 SELECT EXISTS (SELECT 1 FROM vaults WHERE id = sqlc.arg(vault_id)) AS visible;
 
+-- Uma linha por nota que liga, com as chaves das ligações tipadas dela, sem repetir.
 -- name: ListBacklinks :many
-SELECT n.id, n.vault_id, n.path, n.updated_at
-FROM notes n
-WHERE n.id IN (SELECT e.source_id FROM note_edges e WHERE e.target_id = sqlc.arg(note_id))
+SELECT n.id, n.vault_id, n.path, n.updated_at,
+       coalesce(array_agg(DISTINCT e.predicate) FILTER (WHERE e.predicate IS NOT NULL), '{}')::text[] AS predicates
+FROM note_edges e JOIN notes n ON n.id = e.source_id
+WHERE e.target_id = sqlc.arg(note_id)
+GROUP BY n.id
 ORDER BY n.path, n.id
 LIMIT sqlc.arg(page_limit) OFFSET sqlc.arg(page_offset);
 
 -- name: ListNeighbors :many
 WITH v AS (
-    SELECT e.target_id AS id, false AS incoming, true AS outgoing FROM note_edges e WHERE e.source_id = sqlc.arg(note_id)
+    SELECT e.target_id AS id, false AS incoming, true AS outgoing, e.predicate FROM note_edges e WHERE e.source_id = sqlc.arg(note_id)
     UNION ALL
-    SELECT e.source_id, true, false FROM note_edges e WHERE e.target_id = sqlc.arg(note_id)
+    SELECT e.source_id, true, false, e.predicate FROM note_edges e WHERE e.target_id = sqlc.arg(note_id)
 )
-SELECT n.id, n.vault_id, n.path, n.updated_at, bool_or(v.incoming)::bool AS incoming, bool_or(v.outgoing)::bool AS outgoing
+SELECT n.id, n.vault_id, n.path, n.updated_at, bool_or(v.incoming)::bool AS incoming, bool_or(v.outgoing)::bool AS outgoing,
+       coalesce(array_agg(DISTINCT v.predicate) FILTER (WHERE v.incoming AND v.predicate IS NOT NULL), '{}')::text[] AS incoming_predicates,
+       coalesce(array_agg(DISTINCT v.predicate) FILTER (WHERE v.outgoing AND v.predicate IS NOT NULL), '{}')::text[] AS outgoing_predicates
 FROM v JOIN notes n ON n.id = v.id
 GROUP BY n.id
 ORDER BY n.path, n.id

@@ -69,7 +69,7 @@ func indexNote(note NoteChange) IndexedNote {
 	return IndexedNote{
 		Search:    SearchDocument{NoteID: note.NoteID, Title: title, Aliases: doc.Aliases, Text: note.Content},
 		TitleKeys: titleKeys(title, doc.Aliases),
-		Links:     extractLinks(note.Path, doc.Links),
+		Links:     extractLinks(note.Path, doc),
 	}
 }
 

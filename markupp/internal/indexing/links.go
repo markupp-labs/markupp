@@ -11,24 +11,27 @@ import (
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/markdown"
 )
 
-// LinkKind é o tipo da ligação; o banco já aceita os tipos typed e inferred, que
-// vêm do frontmatter e do segundo estágio.
+// LinkKind é o tipo da ligação; o banco já aceita o tipo inferred, que vem do
+// segundo estágio.
 type LinkKind string
 
 // Tipos de ligação que o lote produz.
 const (
 	ExplicitLink LinkKind = "explicit"
 	EmbedLink    LinkKind = "embed"
+	TypedLink    LinkKind = "typed"
 )
 
 // Link é uma ligação que a nota faz, ainda sem destino: ela liga a todas as notas
 // do cofre cujo título tem a chave TitleKey. TargetPath é o caminho que o link
 // markdown aponta; quando há nota nesse caminho, a ligação vai só para ela.
+// Predicate é a chave do frontmatter da ligação tipada, vazio nas outras.
 type Link struct {
 	CitedTitle string
 	TitleKey   string
 	TargetPath string
 	Kind       LinkKind
+	Predicate  string
 }
 
 // TitleKey é a forma do título usada para casar: sem diferença de caixa (case fold
@@ -50,15 +53,32 @@ func titleKeys(title string, aliases []string) []string {
 	return keys
 }
 
-// extractLinks converte as ligações escritas na nota de notePath. A mesma ligação
-// escrita de novo, ainda que em outra caixa, conta uma vez, com a primeira grafia.
-func extractLinks(notePath string, written []markdown.Link) []Link {
+// extractLinks converte as ligações do corpo e as tipadas da nota de notePath. A
+// mesma ligação escrita de novo, ainda que em outra caixa, conta uma vez, com a
+// primeira grafia.
+func extractLinks(notePath string, doc markdown.Document) []Link {
+	candidates := make([]Link, 0, len(doc.Links)+len(doc.TypedLinks))
+	for _, w := range doc.Links {
+		if link, ok := toLink(notePath, w); ok {
+			candidates = append(candidates, link)
+		}
+	}
+	for _, w := range doc.TypedLinks {
+		if link, ok := citedLink(w.Target, "", TypedLink); ok {
+			link.Predicate = w.Predicate
+			candidates = append(candidates, link)
+		}
+	}
+	return uniqueLinks(candidates)
+}
+
+func uniqueLinks(candidates []Link) []Link {
 	var links []Link
-	seen := make(map[Link]bool, len(written))
-	for _, w := range written {
-		link, ok := toLink(notePath, w)
-		key := Link{TitleKey: link.TitleKey, TargetPath: link.TargetPath, Kind: link.Kind}
-		if ok && !seen[key] {
+	seen := make(map[Link]bool, len(candidates))
+	for _, link := range candidates {
+		key := link
+		key.CitedTitle = ""
+		if !seen[key] {
 			seen[key] = true
 			links = append(links, link)
 		}

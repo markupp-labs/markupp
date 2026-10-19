@@ -148,11 +148,11 @@ func (q *Queries) ResolveSearchConfig(ctx context.Context, name string) (int64, 
 }
 
 const saveNoteLinks = `-- name: SaveNoteLinks :exec
-INSERT INTO note_links (note_id, vault_id, cited_title, title_key, target_path, kind)
-SELECT n.id, n.vault_id, d.cited_title, d.title_key, NULLIF(d.target_path, ''), d.kind
+INSERT INTO note_links (note_id, vault_id, cited_title, title_key, target_path, kind, predicate)
+SELECT n.id, n.vault_id, d.cited_title, d.title_key, NULLIF(d.target_path, ''), d.kind, NULLIF(d.predicate, '')
 FROM (SELECT unnest($1::text[]) AS note_id, unnest($2::text[]) AS cited_title,
              unnest($3::text[]) AS title_key, unnest($4::text[]) AS target_path,
-             unnest($5::text[]) AS kind) d
+             unnest($5::text[]) AS kind, unnest($6::text[]) AS predicate) d
 JOIN notes n ON n.id = d.note_id
 `
 
@@ -162,9 +162,11 @@ type SaveNoteLinksParams struct {
 	TitleKeys   []string
 	TargetPaths []string
 	Kinds       []string
+	Predicates  []string
 }
 
-// Caminho vazio é ligação sem caminho, isto é, que não veio de link markdown.
+// Caminho vazio é ligação sem caminho, isto é, que não veio de link markdown, e
+// predicado vazio é ligação que não é tipada.
 func (q *Queries) SaveNoteLinks(ctx context.Context, arg SaveNoteLinksParams) error {
 	_, err := q.db.Exec(ctx, saveNoteLinks,
 		arg.NoteIds,
@@ -172,6 +174,7 @@ func (q *Queries) SaveNoteLinks(ctx context.Context, arg SaveNoteLinksParams) er
 		arg.TitleKeys,
 		arg.TargetPaths,
 		arg.Kinds,
+		arg.Predicates,
 	)
 	return err
 }
