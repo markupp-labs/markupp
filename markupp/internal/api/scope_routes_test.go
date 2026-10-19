@@ -6,6 +6,7 @@ import (
 	"slices"
 	"testing"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/api"
@@ -43,18 +44,22 @@ func serveScoped(route scopedRoute, scope string) *httptest.ResponseRecorder {
 }
 
 func serveScopedWith(route scopedRoute, scope string, tenants api.TenantResolver) *httptest.ResponseRecorder {
-	router := api.NewRouter(api.RouterDeps{
-		Notes: &fakeService{}, Auth: &fakeAuthService{}, Admin: &fakeAdminService{},
-		AccountEmail: &fakeAccountEmailService{}, OAuth: &fakeOAuthService{},
-		OAuthMetadata: &api.OAuthMetadata{Issuer: issuerDeTeste}, Probe: &fakeProbe{},
-		Tokens:  &fakeTokenValidator{claims: auth.Claims{Subject: "u1", Scope: scope}},
-		Tenants: tenants,
-	})
+	router := routerWithAllServices(&fakeTokenValidator{claims: auth.Claims{Subject: "u1", Scope: scope}}, tenants)
 	req := httptest.NewRequest(route.method, route.path, nil)
 	req.Header.Set("Authorization", "Bearer token-valido")
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
 	return rec
+}
+
+// routerWithAllServices monta o roteador com todos os serviços falsos ligados.
+func routerWithAllServices(tokens api.TokenValidator, tenants api.TenantResolver) chi.Router {
+	return api.NewRouter(api.RouterDeps{
+		Notes: &fakeService{}, Auth: &fakeAuthService{}, Admin: &fakeAdminService{},
+		AccountEmail: &fakeAccountEmailService{}, OAuth: &fakeOAuthService{},
+		OAuthMetadata: &api.OAuthMetadata{Issuer: issuerDeTeste}, Probe: &fakeProbe{},
+		Tokens: tokens, Tenants: tenants,
+	})
 }
 
 func assertRoutesPass(t *testing.T, routes []scopedRoute, scope string) {
@@ -109,13 +114,18 @@ func TestScopeRoutes_ContaETenants_ValemComQualquerEscopo(t *testing.T) {
 
 func TestScopeRoutes_RotasSoDeLogin_RecusamTokenOAuth(t *testing.T) {
 	for _, scope := range []string{"notas:leitura", "notas:leitura notas:escrita administracao"} {
-		for _, route := range loginOnlyRoutes {
-			rec := serveScoped(route, scope)
+		assertFirstPartyOnly(t, loginOnlyRoutes, scope)
+	}
+}
 
-			assert.Equal(t, http.StatusForbidden, rec.Code, "%s %s com scope %q", route.method, route.path, scope)
-			assert.Contains(t, rec.Body.String(), `"error":"first_party_only"`, route.path)
-			assert.Empty(t, rec.Header().Get("WWW-Authenticate"), route.path)
-		}
+func assertFirstPartyOnly(t *testing.T, routes []scopedRoute, scope string) {
+	t.Helper()
+	for _, route := range routes {
+		rec := serveScoped(route, scope)
+
+		assert.Equal(t, http.StatusForbidden, rec.Code, "%s %s com scope %q", route.method, route.path, scope)
+		assert.JSONEq(t, `{"error":"first_party_only","message":"rota so aceita o token de login"}`, rec.Body.String(), route.path)
+		assert.Empty(t, rec.Header().Get("WWW-Authenticate"), route.path)
 	}
 }
 

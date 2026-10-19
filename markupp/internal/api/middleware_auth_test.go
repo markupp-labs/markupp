@@ -73,6 +73,21 @@ func TestRequireAuth_TokenComScope_MarcaOAtorComoOAuth(t *testing.T) {
 	assert.Equal(t, identity.Actor{UserID: "user-123", FromOAuth: true, OAuthScopes: []string{"notas:leitura", "administracao"}}, ator)
 }
 
+func TestRequireAuth_TokenOAuthSemARotaDeclarar_Retorna403FirstPartyOnly(t *testing.T) {
+	validator := &fakeTokenValidator{claims: auth.Claims{Subject: "user-123", Scope: "notas:leitura notas:escrita administracao"}}
+	var reached bool
+	handler := api.RequireAuth(validator)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { reached = true }))
+	req := httptest.NewRequest(http.MethodGet, "/protegido", nil)
+	req.Header.Set("Authorization", "Bearer token-oauth")
+	rec := httptest.NewRecorder()
+
+	handler.ServeHTTP(rec, req)
+
+	assert.False(t, reached)
+	assert.Equal(t, http.StatusForbidden, rec.Code)
+	assert.JSONEq(t, `{"error":"first_party_only","message":"rota so aceita o token de login"}`, rec.Body.String())
+}
+
 func TestRequireAuth_SemHeaderAuthorization_Retorna401(t *testing.T) {
 	validator := &fakeTokenValidator{}
 	handler := api.RequireAuth(validator)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
