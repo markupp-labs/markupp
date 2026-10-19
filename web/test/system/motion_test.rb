@@ -34,6 +34,22 @@ class MotionTest < ApplicationSystemTestCase
   end
 
   # O que sai não cruza por cima do que entra: some no ato, sem animação.
+  # O deslize leva a borda esquerda do main junto com a barra: o que encosta à direita no cabeçalho (o seletor de modo)
+  # fica parado e o que encosta à esquerda (o caminho) anda sem saltos, quadro a quadro, do lugar onde estava.
+  test "the note header holds still while the sidebar slides, only its left edge follows the sidebar" do
+    visit note_path("1")
+
+    [ :closing, :opening ].each do |way|
+      start, frames = header_frames_while_sliding
+      assert_operator frames.size, :>=, 2, way
+      assert frames.all? { |switcher, _| (switcher - start.first).abs <= 1 }, "#{way}: the mode switcher moved: #{start} #{frames}"
+      paths = [ start.last, *frames.map(&:last) ]
+      steps = paths.each_cons(2).map { |before, after| after - before }
+      assert(steps.all? { |step| way == :closing ? step <= 0.5 : step >= -0.5 }, "#{way}: the path went back: #{paths}")
+      assert_operator steps.map(&:abs).max, :<, 200, "#{way}: the path jumped: #{paths}"
+    end
+  end
+
   test "the pane that comes in pops in and the one that leaves is gone at once" do
     visit note_path("1")
 
@@ -99,6 +115,22 @@ class MotionTest < ApplicationSystemTestCase
     # A saída que interrompe uma entrada encurta (a transição revertida); a ação seguinte espera a anterior acabar.
     def wait_until_still(selector)
       assert_selector(selector, visible: :all) { |element| element.evaluate_script("this.getAnimations().length == 0") }
+    end
+
+    # Clica na lombada e mede, a cada quadro até o movimento acabar, o x do seletor de modo e do campo do caminho.
+    def header_frames_while_sliding
+      evaluate_async_script(<<~JS)
+        const done = arguments[0]
+        const header = [ document.querySelector(".note-form [role=group]"), document.querySelector("#note_path") ]
+        const read = () => header.map((element) => element.getBoundingClientRect().left)
+        const start = read(), frames = []
+        document.querySelector(".sidebar-spine").click()
+        const tick = () => {
+          frames.push(read())
+          document.getAnimations().length ? requestAnimationFrame(tick) : done([ start, frames ])
+        }
+        requestAnimationFrame(tick)
+      JS
     end
 
     # Roda a ação e devolve, por seletor, as transições e animações que começaram: nome => "duração curva".
