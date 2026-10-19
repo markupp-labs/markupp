@@ -24,6 +24,8 @@ type fakeNoteGraph struct {
 	unresolved []notes.UnresolvedLink
 	mentions   []notes.UnlinkedMention
 	suggested  []notes.LinkSuggestion
+	hubs       []notes.Hub
+	members    []notes.CommunityMember
 	err        error
 
 	method string
@@ -64,6 +66,16 @@ func (f *fakeNoteGraph) Mentions(_ context.Context, noteID string, offset, limit
 func (f *fakeNoteGraph) Suggestions(_ context.Context, noteID string, offset, limit int) ([]notes.LinkSuggestion, error) {
 	f.record("suggestions", noteID, offset, limit)
 	return f.suggested, f.err
+}
+
+func (f *fakeNoteGraph) Hubs(_ context.Context, vaultID string, offset, limit int) ([]notes.Hub, error) {
+	f.record("hubs", vaultID, offset, limit)
+	return f.hubs, f.err
+}
+
+func (f *fakeNoteGraph) Communities(_ context.Context, vaultID string, offset, limit int) ([]notes.CommunityMember, error) {
+	f.record("communities", vaultID, offset, limit)
+	return f.members, f.err
 }
 
 func getGrafo(t *testing.T, graph api.NoteGraph, role, target string) *httptest.ResponseRecorder {
@@ -152,18 +164,42 @@ func TestGetSuggestions_DevolveAPontuacaoFundidaEOsDoisSinais(t *testing.T) {
 	assert.Equal(t, []any{"suggestions", "n1", 0, 10}, []any{graph.method, graph.id, graph.offset, graph.limit}, "limite padrao do repo")
 }
 
+func TestGetHubs_DevolveOPageRankEOsGraus(t *testing.T) {
+	graph := &fakeNoteGraph{hubs: []notes.Hub{{LinkedNote: notaLigada, PageRank: 0.4, InDegree: 3, OutDegree: 1}}}
+
+	rec := getGrafo(t, graph, "viewer", "/vaults/va/hubs?limit=5")
+
+	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+	assert.JSONEq(t, `[{"id":"n2","vault_id":"va","path":"b.md","updated_at":"2026-10-16T12:00:00Z",
+		"pagerank":0.4,"in_degree":3,"out_degree":1}]`, rec.Body.String())
+	assert.Equal(t, []any{"hubs", "va", 0, 5}, []any{graph.method, graph.id, graph.offset, graph.limit})
+}
+
+func TestGetClusters_DevolveAComunidadeDeCadaNota(t *testing.T) {
+	graph := &fakeNoteGraph{members: []notes.CommunityMember{{LinkedNote: notaLigada, CommunityID: 7, CommunitySize: 12}}}
+
+	rec := getGrafo(t, graph, "member", "/vaults/va/clusters?offset=2")
+
+	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+	assert.JSONEq(t, `[{"id":"n2","vault_id":"va","path":"b.md","updated_at":"2026-10-16T12:00:00Z",
+		"community_id":7,"community_size":12}]`, rec.Body.String())
+	assert.Equal(t, []any{"communities", "va", 2, 10}, []any{graph.method, graph.id, graph.offset, graph.limit})
+}
+
 func TestGrafo_ErrosDeDominio_ViramStatus(t *testing.T) {
 	casos := map[string]struct {
 		err    error
 		target string
 		status int
 	}{
-		"nota inexistente":   {notes.ErrNotFound, "/notes/x/backlinks", http.StatusNotFound},
-		"mencao sem nota":    {notes.ErrNotFound, "/notes/x/mentions", http.StatusNotFound},
-		"sugestao sem nota":  {notes.ErrNotFound, "/notes/x/suggestions", http.StatusNotFound},
-		"cofre sem acesso":   {notes.ErrVaultForbidden, "/vaults/x/orphans", http.StatusForbidden},
-		"limit nao inteiro":  {nil, "/vaults/x/unresolved-links?limit=abc", http.StatusBadRequest},
-		"offset nao inteiro": {nil, "/notes/x/neighbors?offset=abc", http.StatusBadRequest},
+		"nota inexistente":      {notes.ErrNotFound, "/notes/x/backlinks", http.StatusNotFound},
+		"mencao sem nota":       {notes.ErrNotFound, "/notes/x/mentions", http.StatusNotFound},
+		"sugestao sem nota":     {notes.ErrNotFound, "/notes/x/suggestions", http.StatusNotFound},
+		"cofre sem acesso":      {notes.ErrVaultForbidden, "/vaults/x/orphans", http.StatusForbidden},
+		"hubs sem acesso":       {notes.ErrVaultForbidden, "/vaults/x/hubs", http.StatusForbidden},
+		"comunidade sem acesso": {notes.ErrVaultForbidden, "/vaults/x/clusters", http.StatusForbidden},
+		"limit nao inteiro":     {nil, "/vaults/x/unresolved-links?limit=abc", http.StatusBadRequest},
+		"offset nao inteiro":    {nil, "/notes/x/neighbors?offset=abc", http.StatusBadRequest},
 	}
 	for nome, caso := range casos {
 		rec := getGrafo(t, &fakeNoteGraph{err: caso.err}, "member", caso.target)
