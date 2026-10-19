@@ -24,9 +24,9 @@ class NoteRolesTest < ActionDispatch::IntegrationTest
 
     get root_path
 
-    assert_select "nav [role=menu] [role=menuitem]", count: 2
-    assert_select "nav [role=menu] [role=menuitem]", text: /Copy path/
-    assert_select "nav [role=menu] [role=menuitem]", text: /Copy wikilink/
+    assert_select "nav #tree_menu [role=menuitem]", count: 2
+    assert_select "nav #tree_menu [role=menuitem]", text: /Copy path/
+    assert_select "nav #tree_menu [role=menuitem]", text: /Copy wikilink/
   end
 
   test "a viewer reads the note without save nor delete" do
