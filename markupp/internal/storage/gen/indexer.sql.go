@@ -198,6 +198,31 @@ func (q *Queries) ResolveSearchConfig(ctx context.Context, name string) (int64, 
 	return config_oid, err
 }
 
+const reweightVaultNoteTerms = `-- name: ReweightVaultNoteTerms :exec
+UPDATE note_terms t
+SET weights = r.weights, norm = r.norm
+FROM (
+    SELECT o.note_id, array_agg(w.weight ORDER BY w.ord)::float8[] AS weights, sqrt(sum(w.weight ^ 2))::float8 AS norm
+    FROM (SELECT l.note_id, l.vault_id, l.terms, l.tfs FROM note_terms l WHERE l.vault_id = $1 FOR UPDATE SKIP LOCKED) o
+    CROSS JOIN (SELECT k.note_count FROM vault_term_stats k WHERE k.vault_id = $1) st
+    CROSS JOIN LATERAL (
+        SELECT i.ord, o.tfs[i.ord] * markupp_term_idf(st.note_count, f.df, st.note_count > 0) AS weight
+        FROM generate_subscripts(o.terms, 1) AS i (ord)
+        LEFT JOIN vault_term_frequencies f ON f.vault_id = o.vault_id AND f.term = o.terms[i.ord]
+    ) w
+    GROUP BY o.note_id
+) r
+WHERE t.note_id = r.note_id
+`
+
+// Repesa as postagens do cofre com o df e o N recém-gravados, na ordem dos termos. A
+// linha que um lote concorrente está regravando fica de fora: o lote a grava com o df
+// anterior, e o segundo estágio não espera por ele nem o faz esperar além do commit.
+func (q *Queries) ReweightVaultNoteTerms(ctx context.Context, vaultID string) error {
+	_, err := q.db.Exec(ctx, reweightVaultNoteTerms, vaultID)
+	return err
+}
+
 const saveNoteLinks = `-- name: SaveNoteLinks :exec
 INSERT INTO note_links (note_id, vault_id, cited_title, title_key, target_path, kind, predicate)
 SELECT n.id, n.vault_id, d.cited_title, d.title_key, NULLIF(d.target_path, ''), d.kind, NULLIF(d.predicate, '')
@@ -232,23 +257,24 @@ func (q *Queries) SaveNoteLinks(ctx context.Context, arg SaveNoteLinksParams) er
 
 const saveNoteTerms = `-- name: SaveNoteTerms :exec
 WITH stats AS (
-    SELECT (SELECT count(*) FROM notes c WHERE c.vault_id = $1) AS note_count,
-           EXISTS (SELECT 1 FROM vault_term_frequencies k WHERE k.vault_id = $1) AS df_known
+    SELECT coalesce((SELECT k.note_count FROM vault_term_stats k WHERE k.vault_id = $1), 0) AS note_count
 )
-INSERT INTO note_terms (note_id, vault_id, terms, tfs)
-SELECT n.id, n.vault_id, top.terms, top.tfs
+INSERT INTO note_terms (note_id, vault_id, terms, tfs, weights, norm)
+SELECT n.id, n.vault_id, top.terms, top.tfs, top.weights, top.norm
 FROM note_search_index s
 JOIN notes n ON n.id = s.note_id
 CROSS JOIN stats
 CROSS JOIN LATERAL (
     SELECT array_agg(w.term ORDER BY w.weight DESC, w.term)::text[] AS terms,
-           array_agg(w.tf ORDER BY w.weight DESC, w.term)::float8[] AS tfs
+           array_agg(w.tf ORDER BY w.weight DESC, w.term)::float8[] AS tfs,
+           array_agg(w.weight ORDER BY w.weight DESC, w.term)::float8[] AS weights,
+           sqrt(sum(w.weight ^ 2))::float8 AS norm
     FROM (
         SELECT u.lexeme AS term, 1 + log(cardinality(u.positions)::float8) AS tf,
                (1 + log(cardinality(u.positions)::float8))
                * markupp_term_idf(stats.note_count,
                     (SELECT f.df FROM vault_term_frequencies f WHERE f.vault_id = $1 AND f.term = u.lexeme),
-                    stats.df_known) AS weight
+                    stats.note_count > 0) AS weight
         FROM unnest(s.document) AS u (lexeme, positions, weights)
         ORDER BY weight DESC, term
         LIMIT $2::int
@@ -264,9 +290,9 @@ type SaveNoteTermsParams struct {
 }
 
 // Os termos de maior tf-idf de cada nota do lote, tirados do documento que o lote
-// acabou de gravar, com o df vigente. tf = 1 + log10 das posições do lexema. A ordem
-// por nota, no LATERAL, ordena poucos lexemas de cada vez em memória. Documento sem
-// lexema não grava linha.
+// acabou de gravar, com o df e o N vigentes, gravados com o tf, o peso e a norma do
+// vetor. tf = 1 + log10 das posições do lexema. A ordem por nota, no LATERAL, ordena
+// poucos lexemas de cada vez em memória. Documento sem lexema não grava linha.
 func (q *Queries) SaveNoteTerms(ctx context.Context, arg SaveNoteTermsParams) error {
 	_, err := q.db.Exec(ctx, saveNoteTerms, arg.VaultID, arg.TermsPerNote, arg.NoteIds)
 	return err
@@ -333,6 +359,20 @@ GROUP BY n.vault_id, u.lexeme
 // df de cada lexema do índice léxico das notas do cofre.
 func (q *Queries) SaveVaultTermFrequencies(ctx context.Context, vaultID string) error {
 	_, err := q.db.Exec(ctx, saveVaultTermFrequencies, vaultID)
+	return err
+}
+
+const saveVaultTermStats = `-- name: SaveVaultTermStats :exec
+INSERT INTO vault_term_stats (vault_id, note_count)
+SELECT $1, count(*)
+FROM notes n JOIN note_search_index s ON s.note_id = n.id
+WHERE n.vault_id = $1
+ON CONFLICT (vault_id) DO UPDATE SET note_count = EXCLUDED.note_count
+`
+
+// N do idf: as notas do cofre com documento, as mesmas que o df conta.
+func (q *Queries) SaveVaultTermStats(ctx context.Context, vaultID string) error {
+	_, err := q.db.Exec(ctx, saveVaultTermStats, vaultID)
 	return err
 }
 

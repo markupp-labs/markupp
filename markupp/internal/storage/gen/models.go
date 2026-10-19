@@ -104,6 +104,8 @@ type NoteTerm struct {
 	VaultID string
 	Terms   []string
 	Tfs     []float64
+	Weights []float64
+	Norm    float64
 }
 
 type NoteTitle struct {
@@ -213,4 +215,9 @@ type VaultTermFrequency struct {
 	VaultID string
 	Term    string
 	Df      int32
+}
+
+type VaultTermStat struct {
+	VaultID   string
+	NoteCount int32
 }

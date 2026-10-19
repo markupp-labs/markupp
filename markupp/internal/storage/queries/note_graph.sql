@@ -103,7 +103,7 @@ ORDER BY r.score DESC, n.path, n.id;
 
 -- name: ListLexicalSuggestions :many
 SELECT n.id, n.vault_id, n.path, n.updated_at, c.score::float8 AS score
-FROM markupp_lexical_similarity(sqlc.arg(vault_id), sqlc.arg(note_id)) AS c (note_id, score)
+FROM markupp_lexical_similarity(sqlc.arg(vault_id), sqlc.arg(note_id), sqlc.arg(query_terms)::int) AS c (note_id, score)
 JOIN notes n ON n.id = c.note_id
 ORDER BY c.score DESC, n.path, n.id;
 

@@ -55,13 +55,20 @@ func runSecondStage(ctx context.Context, q *gen.Queries, vaultID, searchConfig s
 	return nil
 }
 
-// refreshTermFrequencies troca o df do cofre pelo do índice léxico atual.
+// refreshTermFrequencies troca o df e o N do cofre pelos do índice léxico atual e
+// repesa as postagens das notas com eles.
 func refreshTermFrequencies(ctx context.Context, q *gen.Queries, vaultID string) error {
 	if err := q.DeleteVaultTermFrequencies(ctx, vaultID); err != nil {
 		return fmt.Errorf("apagar o df do cofre %q: %w", vaultID, err)
 	}
 	if err := q.SaveVaultTermFrequencies(ctx, vaultID); err != nil {
 		return fmt.Errorf("gravar o df do cofre %q: %w", vaultID, err)
+	}
+	if err := q.SaveVaultTermStats(ctx, vaultID); err != nil {
+		return fmt.Errorf("gravar o N do df do cofre %q: %w", vaultID, err)
+	}
+	if err := q.ReweightVaultNoteTerms(ctx, vaultID); err != nil {
+		return fmt.Errorf("repesar as postagens do cofre %q: %w", vaultID, err)
 	}
 	return nil
 }

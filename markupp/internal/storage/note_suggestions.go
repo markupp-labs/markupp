@@ -11,6 +11,10 @@ import (
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/suggestion"
 )
 
+// queryTermsPerNote é quantos termos de maior peso da nota buscam as candidatas da
+// similaridade léxica.
+const queryTermsPerNote = 10
+
 // suggestedNote é uma linha de uma das listas de sugestão: a nota e o sinal dela.
 type suggestedNote struct {
 	note  notes.NoteSummary
@@ -40,7 +44,7 @@ func suggestionLists(ctx context.Context, q *gen.Queries, noteID string) (struct
 	if err != nil {
 		return nil, nil, err
 	}
-	cos, err := q.ListLexicalSuggestions(ctx, gen.ListLexicalSuggestionsParams{VaultID: note.VaultID, NoteID: noteID})
+	cos, err := q.ListLexicalSuggestions(ctx, gen.ListLexicalSuggestionsParams{VaultID: note.VaultID, NoteID: noteID, QueryTerms: queryTermsPerNote})
 	return convertRows(ra, toSuggestedNote), convertRows(cos, func(r gen.ListLexicalSuggestionsRow) suggestedNote {
 		return toSuggestedNote(gen.ListStructuralSuggestionsRow(r))
 	}), err

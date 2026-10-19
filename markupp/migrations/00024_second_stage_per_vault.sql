@@ -22,6 +22,13 @@ CREATE TABLE vault_term_frequencies (
     PRIMARY KEY (vault_id, term)
 );
 
+-- N do idf: as notas do cofre com documento no índice léxico quando o df foi
+-- calculado. Cofre sem linha ainda não tem df.
+CREATE TABLE vault_term_stats (
+    vault_id   TEXT PRIMARY KEY,
+    note_count INTEGER NOT NULL
+);
+
 -- Apagar nota muda títulos e ligações do cofre sem passar pelo indexador. SECURITY
 -- DEFINER porque a nota é apagada no papel markupp_app, que não enxerga a marcação.
 -- +goose StatementBegin
@@ -79,7 +86,7 @@ $$;
 GRANT SELECT, INSERT, UPDATE, DELETE ON vault_second_stage_queue TO markupp_indexer;
 GRANT USAGE ON SEQUENCE vault_second_stage_revision_seq TO markupp_indexer;
 GRANT SELECT, INSERT, DELETE ON vault_term_frequencies TO markupp_indexer;
-GRANT SELECT ON vault_term_frequencies TO markupp_app;
+GRANT SELECT, INSERT, UPDATE ON vault_term_stats TO markupp_indexer;
 
 ALTER TABLE vault_second_stage_queue ENABLE ROW LEVEL SECURITY;
 CREATE POLICY vault_second_stage_queue_indexer ON vault_second_stage_queue TO markupp_indexer
@@ -88,8 +95,10 @@ CREATE POLICY vault_second_stage_queue_indexer ON vault_second_stage_queue TO ma
 ALTER TABLE vault_term_frequencies ENABLE ROW LEVEL SECURITY;
 CREATE POLICY vault_term_frequencies_indexer ON vault_term_frequencies TO markupp_indexer
     USING (vault_id = current_setting('markupp.vault_id', true));
-CREATE POLICY vault_term_frequencies_read ON vault_term_frequencies FOR SELECT TO markupp_app
-    USING (vault_id IN (SELECT markupp_member_vaults()));
+
+ALTER TABLE vault_term_stats ENABLE ROW LEVEL SECURITY;
+CREATE POLICY vault_term_stats_indexer ON vault_term_stats TO markupp_indexer
+    USING (vault_id = current_setting('markupp.vault_id', true));
 
 -- Nenhum cofre tem df ainda.
 INSERT INTO vault_second_stage_queue (vault_id) SELECT id FROM vaults;
@@ -120,5 +129,6 @@ $$;
 -- +goose StatementEnd
 DROP TRIGGER IF EXISTS notes_mark_vault_on_delete ON notes;
 DROP FUNCTION IF EXISTS markupp_mark_deleted_notes_vaults();
+DROP TABLE IF EXISTS vault_term_stats;
 DROP TABLE IF EXISTS vault_term_frequencies;
 DROP TABLE IF EXISTS vault_second_stage_queue;

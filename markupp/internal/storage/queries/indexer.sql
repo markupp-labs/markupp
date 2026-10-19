@@ -116,31 +116,59 @@ GROUP BY n.vault_id, u.lexeme;
 DELETE FROM note_terms WHERE note_id = ANY (sqlc.arg(note_ids)::text[]);
 
 -- Os termos de maior tf-idf de cada nota do lote, tirados do documento que o lote
--- acabou de gravar, com o df vigente. tf = 1 + log10 das posições do lexema. A ordem
--- por nota, no LATERAL, ordena poucos lexemas de cada vez em memória. Documento sem
--- lexema não grava linha.
+-- acabou de gravar, com o df e o N vigentes, gravados com o tf, o peso e a norma do
+-- vetor. tf = 1 + log10 das posições do lexema. A ordem por nota, no LATERAL, ordena
+-- poucos lexemas de cada vez em memória. Documento sem lexema não grava linha.
 -- name: SaveNoteTerms :exec
 WITH stats AS (
-    SELECT (SELECT count(*) FROM notes c WHERE c.vault_id = sqlc.arg(vault_id)) AS note_count,
-           EXISTS (SELECT 1 FROM vault_term_frequencies k WHERE k.vault_id = sqlc.arg(vault_id)) AS df_known
+    SELECT coalesce((SELECT k.note_count FROM vault_term_stats k WHERE k.vault_id = sqlc.arg(vault_id)), 0) AS note_count
 )
-INSERT INTO note_terms (note_id, vault_id, terms, tfs)
-SELECT n.id, n.vault_id, top.terms, top.tfs
+INSERT INTO note_terms (note_id, vault_id, terms, tfs, weights, norm)
+SELECT n.id, n.vault_id, top.terms, top.tfs, top.weights, top.norm
 FROM note_search_index s
 JOIN notes n ON n.id = s.note_id
 CROSS JOIN stats
 CROSS JOIN LATERAL (
     SELECT array_agg(w.term ORDER BY w.weight DESC, w.term)::text[] AS terms,
-           array_agg(w.tf ORDER BY w.weight DESC, w.term)::float8[] AS tfs
+           array_agg(w.tf ORDER BY w.weight DESC, w.term)::float8[] AS tfs,
+           array_agg(w.weight ORDER BY w.weight DESC, w.term)::float8[] AS weights,
+           sqrt(sum(w.weight ^ 2))::float8 AS norm
     FROM (
         SELECT u.lexeme AS term, 1 + log(cardinality(u.positions)::float8) AS tf,
                (1 + log(cardinality(u.positions)::float8))
                * markupp_term_idf(stats.note_count,
                     (SELECT f.df FROM vault_term_frequencies f WHERE f.vault_id = sqlc.arg(vault_id) AND f.term = u.lexeme),
-                    stats.df_known) AS weight
+                    stats.note_count > 0) AS weight
         FROM unnest(s.document) AS u (lexeme, positions, weights)
         ORDER BY weight DESC, term
         LIMIT sqlc.arg(terms_per_note)::int
     ) w
 ) top
 WHERE s.note_id = ANY (sqlc.arg(note_ids)::text[]) AND top.terms IS NOT NULL;
+
+-- N do idf: as notas do cofre com documento, as mesmas que o df conta.
+-- name: SaveVaultTermStats :exec
+INSERT INTO vault_term_stats (vault_id, note_count)
+SELECT sqlc.arg(vault_id), count(*)
+FROM notes n JOIN note_search_index s ON s.note_id = n.id
+WHERE n.vault_id = sqlc.arg(vault_id)
+ON CONFLICT (vault_id) DO UPDATE SET note_count = EXCLUDED.note_count;
+
+-- Repesa as postagens do cofre com o df e o N recém-gravados, na ordem dos termos. A
+-- linha que um lote concorrente está regravando fica de fora: o lote a grava com o df
+-- anterior, e o segundo estágio não espera por ele nem o faz esperar além do commit.
+-- name: ReweightVaultNoteTerms :exec
+UPDATE note_terms t
+SET weights = r.weights, norm = r.norm
+FROM (
+    SELECT o.note_id, array_agg(w.weight ORDER BY w.ord)::float8[] AS weights, sqrt(sum(w.weight ^ 2))::float8 AS norm
+    FROM (SELECT l.note_id, l.vault_id, l.terms, l.tfs FROM note_terms l WHERE l.vault_id = sqlc.arg(vault_id) FOR UPDATE SKIP LOCKED) o
+    CROSS JOIN (SELECT k.note_count FROM vault_term_stats k WHERE k.vault_id = sqlc.arg(vault_id)) st
+    CROSS JOIN LATERAL (
+        SELECT i.ord, o.tfs[i.ord] * markupp_term_idf(st.note_count, f.df, st.note_count > 0) AS weight
+        FROM generate_subscripts(o.terms, 1) AS i (ord)
+        LEFT JOIN vault_term_frequencies f ON f.vault_id = o.vault_id AND f.term = o.terms[i.ord]
+    ) w
+    GROUP BY o.note_id
+) r
+WHERE t.note_id = r.note_id;
