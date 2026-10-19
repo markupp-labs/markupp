@@ -234,8 +234,9 @@ func (r *PostgresOAuthRepository) usedCode(ctx context.Context, codeHash string)
 	return oauth.RedeemedCode{Request: req, Authorization: authz}, oauth.ErrCodeAlreadyUsed
 }
 
-// SaveTokens grava os tokens emitidos, só pelo hash, todos ou nenhum.
-func (r *PostgresOAuthRepository) SaveTokens(ctx context.Context, tokens []oauth.IssuedToken) error {
+// SaveCodeTokens grava os tokens emitidos pela troca do código, só pelo hash, todos ou
+// nenhum.
+func (r *PostgresOAuthRepository) SaveCodeTokens(ctx context.Context, _ string, tokens []oauth.IssuedToken) error {
 	return inTx(ctx, r.pool, func(qtx *gen.Queries) error {
 		return saveTokensInTx(ctx, qtx, tokens)
 	})

@@ -121,7 +121,8 @@ type Repository interface {
 	// existe ou expirou em relação a now, e ErrCodeAlreadyUsed junto com o RedeemedCode
 	// do pedido original quando o código já foi consumido.
 	RedeemCode(ctx context.Context, codeHash string, now time.Time) (RedeemedCode, error)
-	SaveTokens(ctx context.Context, tokens []IssuedToken) error
+	// SaveCodeTokens grava o par emitido pela troca do código do pedido requestID.
+	SaveCodeTokens(ctx context.Context, requestID string, tokens []IssuedToken) error
 	// RevokeAuthorizationTokens trava a Autorização e revoga todos os tokens dela, numa
 	// transação. Devolve ErrAuthorizationNotFound se ela não existe.
 	RevokeAuthorizationTokens(ctx context.Context, authorizationID string) error

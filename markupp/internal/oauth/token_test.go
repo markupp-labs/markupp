@@ -47,6 +47,7 @@ func TestExchangeCode_CodigoValido_EmiteTokensDosEscoposDoPedido(t *testing.T) {
 	assert.Equal(t, []string{auth.HashOpaqueToken("codigo-1")}, repo.redeemCalls)
 	assert.Equal(t, []time.Time{testNow}, repo.redeemNow)
 	assert.Equal(t, [][]oauth.IssuedToken{expectedIssuedTokens()}, repo.saved)
+	assert.Equal(t, []string{pendingTestRequest().ID}, repo.savedRequests, "o par fica preso ao pedido do código")
 }
 
 func expectedIssuedTokens() []oauth.IssuedToken {

@@ -19,8 +19,18 @@ func repoComTokens(t *testing.T) (*storage.PostgresOAuthRepository, *pgxpool.Poo
 	t.Helper()
 	repo, pool := repoOAuth(t)
 	require.NoError(t, autorizar(pool, "a1", "{notas:leitura}", false))
-	require.NoError(t, repo.SaveTokens(context.Background(), tokensOAuth("a1")))
+	gravarTokens(t, pool, tokensOAuth("a1"))
 	return repo, pool
+}
+
+// gravarTokens grava os tokens direto no banco, sem passar pelo repositório.
+func gravarTokens(t *testing.T, pool *pgxpool.Pool, tokens []oauth.IssuedToken) {
+	t.Helper()
+	for _, tk := range tokens {
+		_, err := pool.Exec(context.Background(), `INSERT INTO oauth_tokens (token_hash, authorization_id, kind, resource, scopes, expires_at)
+			VALUES ($1, $2, $3, $4, $5, $6)`, tk.Hash, tk.AuthorizationID, tk.Kind, tk.Resource, tk.Scopes, tk.ExpiresAt)
+		require.NoError(t, err)
+	}
 }
 
 func eventoOAuth(action, result string) oauth.AuditEvent {

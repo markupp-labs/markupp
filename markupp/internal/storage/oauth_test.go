@@ -410,23 +410,30 @@ func tokensOAuth(authorizationID string) []oauth.IssuedToken {
 	}
 }
 
-func TestPostgresOAuthRepo_SaveTokens_GravaTodosComEscopos(t *testing.T) {
+// repoComPedidoDeA1 sobe o banco com a Autorização ativa a1 e o pedido r1 ligado a ela.
+func repoComPedidoDeA1(t *testing.T) (*storage.PostgresOAuthRepository, *pgxpool.Pool) {
+	t.Helper()
 	repo, pool := repoOAuth(t)
 	require.NoError(t, autorizar(pool, "a1", "{notas:leitura}", false))
+	require.NoError(t, pedidoDaAutorizacao(pool, "a1"))
+	return repo, pool
+}
 
-	require.NoError(t, repo.SaveTokens(context.Background(), tokensOAuth("a1")))
+func TestPostgresOAuthRepo_SaveCodeTokens_GravaTodosComEscopos(t *testing.T) {
+	repo, pool := repoComPedidoDeA1(t)
+
+	require.NoError(t, repo.SaveCodeTokens(context.Background(), "r1", tokensOAuth("a1")))
 
 	assert.Equal(t, 2, countRows(t, pool, `SELECT count(*) FROM oauth_tokens
 		WHERE authorization_id = 'a1' AND scopes = '{notas:leitura}' AND NOT revoked`))
 }
 
-func TestPostgresOAuthRepo_SaveTokens_FalhaNaoGravaNenhum(t *testing.T) {
-	repo, pool := repoOAuth(t)
-	require.NoError(t, autorizar(pool, "a1", "{notas:leitura}", false))
+func TestPostgresOAuthRepo_SaveCodeTokens_FalhaNaoGravaNenhum(t *testing.T) {
+	repo, pool := repoComPedidoDeA1(t)
 	tokens := tokensOAuth("a1")
 	tokens[1].Scopes = []string{"notas:tudo"}
 
-	require.Error(t, repo.SaveTokens(context.Background(), tokens))
+	require.Error(t, repo.SaveCodeTokens(context.Background(), "r1", tokens))
 
 	assert.Equal(t, 0, countRows(t, pool, "SELECT count(*) FROM oauth_tokens"))
 }
@@ -435,7 +442,7 @@ func TestPostgresOAuthRepo_RevokeAuthorizationTokens_RevogaSoOsDaAutorizacao(t *
 	repo, pool := repoOAuth(t)
 	ctx := context.Background()
 	require.NoError(t, autorizar(pool, "a1", "{notas:leitura}", false))
-	require.NoError(t, repo.SaveTokens(ctx, tokensOAuth("a1")))
+	gravarTokens(t, pool, tokensOAuth("a1"))
 	require.NoError(t, emitirTokenDe(pool, "a0", "t-outro"))
 
 	require.NoError(t, repo.RevokeAuthorizationTokens(ctx, "a1"))

@@ -81,7 +81,7 @@ func checkResource(raw, granted string) error {
 func (s *Service) issueTokens(ctx context.Context, redeemed RedeemedCode, now time.Time) (TokenResponse, error) {
 	base := IssuedToken{AuthorizationID: redeemed.Authorization.ID, Resource: redeemed.Request.Resource, Scopes: redeemed.Request.Scopes}
 	pair := s.newTokenPair(base, now)
-	if err := s.repo.SaveTokens(ctx, pair.tokens); err != nil {
+	if err := s.repo.SaveCodeTokens(ctx, redeemed.Request.ID, pair.tokens); err != nil {
 		return TokenResponse{}, fmt.Errorf("oauth: gravando os tokens da autorização %q: %w", redeemed.Authorization.ID, err)
 	}
 	return pair.response, nil

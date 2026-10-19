@@ -62,7 +62,7 @@ func TestRefreshToken_RefreshValido_RotacionaOParEAudita(t *testing.T) {
 	assert.Equal(t, []string{auth.HashOpaqueToken(testRefreshToken)}, repo.refreshParents, "a gravação confere o refresh pai")
 	assert.Equal(t, [][]oauth.IssuedToken{expectedIssuedTokens()}, repo.refreshed)
 	assert.Equal(t, []oauth.AuditEvent{testAuditEvent(oauth.AuditActionRefresh, oauth.AuditResultSuccess)}, repo.refreshEvents)
-	assert.Empty(t, repo.saved, "o refresh grava pelo SaveRefreshedTokens, que audita")
+	assert.Empty(t, repo.saved, "o refresh grava pelo SaveRefreshedTokens, que audita, não pelo SaveCodeTokens")
 }
 
 func TestRefreshToken_Escopo_MantemOuEstreita(t *testing.T) {

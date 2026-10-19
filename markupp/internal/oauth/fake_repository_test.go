@@ -30,7 +30,9 @@ type fakeOAuthRepository struct {
 	redeemCalls []string
 	redeemNow   []time.Time
 	saved       [][]oauth.IssuedToken
-	revoked     []string
+	// savedRequests guarda o pedido de cada chamada a SaveCodeTokens.
+	savedRequests []string
+	revoked       []string
 
 	consumeCalls   []string
 	consumeNow     []time.Time
@@ -133,7 +135,8 @@ func (f *fakeOAuthRepository) RedeemCode(_ context.Context, codeHash string, now
 	return f.redeemed, f.redeemErr
 }
 
-func (f *fakeOAuthRepository) SaveTokens(_ context.Context, tokens []oauth.IssuedToken) error {
+func (f *fakeOAuthRepository) SaveCodeTokens(_ context.Context, requestID string, tokens []oauth.IssuedToken) error {
+	f.savedRequests = append(f.savedRequests, requestID)
 	f.saved = append(f.saved, tokens)
 	return f.saveErr
 }
