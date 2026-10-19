@@ -4,6 +4,8 @@ import { Controller } from "@hotwired/stimulus"
 // volta, Home e End vão às pontas, Esc, Tab e clicar fora fecham. Fechado, o foco volta a quem abriu se ainda estava no
 // menu; quem foi para outro lugar (o campo do caminho no Rename) fica onde está. O popover é manual: no auto, o
 // pointerup do próprio botão direito (o contextmenu vem no pointerdown no Linux e no Mac) fechava o menu recém-aberto.
+// Também abre por um botão com popovertarget (menu da conta no rodapé): o toggle leva o foco ao primeiro item, e o botão
+// passa a ser quem abriu; clicar nele de novo fecha.
 const STEPS = { ArrowDown: 1, j: 1, ArrowUp: -1, k: -1 }
 const EDGE_GAP = 4
 
@@ -21,7 +23,15 @@ export default class extends Controller {
   }
 
   closeOutside({ target }) {
-    if (!this.element.contains(target)) this.close()
+    if (!this.element.contains(target) && !this.invoker?.contains(target)) this.close()
+  }
+
+  // Aberto pelo popovertarget, sem passar pelo open(): o foco ainda está fora do menu.
+  focusFirst({ newState }) {
+    if (newState != "open" || this.element.contains(document.activeElement)) return
+
+    this.opener = this.invoker
+    this.items[0]?.focus()
   }
 
   navigate(event) {
@@ -50,6 +60,10 @@ export default class extends Controller {
     const { width, height } = this.element.getBoundingClientRect()
     this.element.style.left = `${Math.max(EDGE_GAP, Math.min(x, innerWidth - width - EDGE_GAP))}px`
     this.element.style.top = `${Math.max(EDGE_GAP, Math.min(y, innerHeight - height - EDGE_GAP))}px`
+  }
+
+  get invoker() {
+    return document.querySelector(`[popovertarget="${this.element.id}"]`)
   }
 
   get items() {

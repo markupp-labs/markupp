@@ -1,22 +1,30 @@
-<%# Conta e Settings levam às configurações unificadas; o email marca a seção Conta, o Settings as demais. %>
+<%# Uma linha só, como a barra de status do VS Code: o email abre o menu da conta (Account, Settings, Log out) e à direita
+    ficam só os ícones de tema e configurações. O menu anda pelo teclado como o da árvore (context_menu_controller.js) e
+    abre acima do email, ancorado no rodapé (sem suporte a âncora, fica no canto). %>
 <% on_account = current_page?(settings_account_path) %>
+<% on_settings = request.path.start_with?("/settings/") && !on_account %>
 <% current_class = "aria-[current=page]:bg-accent-soft aria-[current=page]:text-ink" %>
-<footer class="shrink-0 border-t border-line p-2">
-  <%= link_to settings_account_path, aria: { current: ("page" if on_account) },
-              class: "tree-row flex items-center gap-2 text-ink-muted #{current_class}" do %>
-    <%= icon("user-circle") %>
-    <span class="truncate" title="<%= credential.account_email %>"><%= credential.account_email %></span>
+<% settings_label = t(".settings") %>
+<footer class="flex shrink-0 items-center gap-1 border-t border-line p-2 [anchor-name:--account-menu]">
+  <button type="button" popovertarget="account_menu" aria-haspopup="menu" title="<%= credential.account_email %>"
+          class="tree-row flex min-w-0 flex-1 items-center gap-2 text-left text-ink-muted">
+    <%= icon("user-circle") %><span class="truncate"><%= credential.account_email %></span>
+  </button>
+  <%= render "layouts/theme_buttons" %>
+  <%= link_to settings_path, title: t(".settings_shortcut"), aria: { label: settings_label, keyshortcuts: "Control+, Meta+,", current: ("page" if on_settings) },
+              class: "btn-icon #{current_class}" do %>
+    <%= icon("gear-six") %>
   <% end %>
-  <div class="mt-1 flex flex-wrap items-center gap-1">
-    <%= link_to settings_path, title: t(".settings_shortcut"), aria: { keyshortcuts: "Control+, Meta+,", current: ("page" if request.path.start_with?("/settings/") && !on_account) },
-                class: "tree-row flex items-center gap-2 whitespace-nowrap text-ink-muted #{current_class}" do %>
-      <%= icon("gear-six") %><%= t(".settings") %>
+
+  <div id="account_menu" popover="manual" role="menu" aria-label="<%= t(".account_menu") %>" data-controller="context-menu"
+       data-action="keydown->context-menu#navigate toggle->context-menu#returnFocus toggle->context-menu#focusFirst pointerdown@document->context-menu#closeOutside"
+       class="layer m-0 mb-1 ml-2 w-64 origin-bottom-left rounded-md border border-line bg-surface-sunken p-1 text-[13px] text-ink [inset:auto] [position-anchor:--account-menu] [position-area:top_span-right]">
+    <%= link_to t(".account"), settings_account_path, role: "menuitem", tabindex: -1, aria: { current: ("page" if on_account) },
+                class: "tree-row context-menu-item #{current_class}" %>
+    <%= link_to settings_path, role: "menuitem", tabindex: -1, aria: { keyshortcuts: "Control+, Meta+,", current: ("page" if on_settings) },
+                class: "tree-row context-menu-item #{current_class}" do %>
+      <%= settings_label %><kbd aria-hidden="true"><%= shortcut_label("Ctrl+,") %></kbd>
     <% end %>
-    <span class="ml-auto flex items-center gap-1">
-      <%= render "layouts/theme_buttons" %>
-      <%= button_to session_path, method: :delete, class: "tree-row flex items-center gap-2 whitespace-nowrap text-ink-muted" do %>
-        <%= icon("sign-out") %><%= t(".log_out") %>
-      <% end %>
-    </span>
+    <%= button_to t(".log_out"), session_path, method: :delete, role: "menuitem", tabindex: -1, class: "tree-row context-menu-item" %>
   </div>
 </footer>

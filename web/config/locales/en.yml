@@ -43,6 +43,8 @@ en:
       switch: "Switch tenant"
       new_tenant: "New tenant"
     sidebar_footer:
+      account: "Account"
+      account_menu: "Account menu"
       settings: "Settings"
       settings_shortcut: "Settings (Ctrl+,)"
       log_out: "Log out"
