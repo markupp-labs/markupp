@@ -123,7 +123,22 @@ func TestPostgresOAuthRepo_ConsumeRefreshToken_AutorizacaoRevogadaConsomeMesmoAs
 	got, err := repo.ConsumeRefreshToken(ctx, "t-refresh", instanteOAuth.Add(time.Second))
 	require.ErrorIs(t, err, oauth.ErrRefreshReused, "o consumo fica gravado mesmo sem Autorização ativa")
 	assert.Equal(t, "a1", got.Token.AuthorizationID)
-	assert.Empty(t, got.Authorization.ID)
+	assert.Equal(t, "a1", got.Authorization.ID, "a Autorização revogada volta para a auditoria ter ator e alvo")
+	assert.Equal(t, "u1", got.Authorization.UserID)
+	assert.Equal(t, "c1", got.Authorization.ClientID)
+}
+
+func TestPostgresOAuthRepo_ConsumeRefreshToken_RotacionadoERevogadoNaoEReuso(t *testing.T) {
+	repo, _ := repoComTokens(t)
+	ctx := context.Background()
+	_, err := repo.ConsumeRefreshToken(ctx, "t-refresh", instanteOAuth)
+	require.NoError(t, err)
+	require.NoError(t, repo.RevokeAuthorizationTokens(ctx, "a1"))
+
+	_, err = repo.ConsumeRefreshToken(ctx, "t-refresh", instanteOAuth.Add(time.Second))
+
+	require.ErrorIs(t, err, oauth.ErrTokenNotFound)
+	assert.NotErrorIs(t, err, oauth.ErrRefreshReused, "o reuso já derrubou os tokens; reapresentar não audita de novo")
 }
 
 // parNovo é o par emitido na rotação de t-refresh, com hashes diferentes do original.
