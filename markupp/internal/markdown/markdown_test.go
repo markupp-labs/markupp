@@ -102,3 +102,9 @@ func TestParse_FrontmatterQueNaoEhMapa_SemLigacoesTipadas(t *testing.T) {
 	assert.Empty(t, markdown.Parse("---\n- \"[[Alvo]]\"\n---\ncorpo").TypedLinks)
 	assert.Empty(t, markdown.Parse("---\nrel: \"[[Alvo]]\n---\ncorpo").TypedLinks, "YAML invalido")
 }
+
+func TestParse_ValorQueEhMapa_NaoViraLigacaoTipada(t *testing.T) {
+	doc := markdown.Parse("---\nrel:\n  \"[[Chave]]\": \"[[Valor]]\"\n---\ncorpo")
+
+	assert.Empty(t, doc.TypedLinks, "mapa aninhado nao e wikilink nem lista de wikilinks")
+}
