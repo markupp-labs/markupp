@@ -159,6 +159,17 @@ class NotesTest < ApplicationSystemTestCase
     assert_selector "#note_title:not([aria-invalid=true]):not([aria-describedby])"
   end
 
+  # Com o foco já no título, devolver o foco não anuncia nada: o aviso precisa ser um alerta.
+  test "ctrl+s typed in the blank title announces the refusal" do
+    use_fake_api(notes: [])
+    sign_in_through_form
+
+    visit new_note_path
+    send_keys :tab, "Fresh idea.", [ :shift, :tab ], [ :control, "s" ]
+
+    assert_selector "#note_path_error[role=alert]", text: "Title can't be blank"
+  end
+
   test "saving a note with its title cleared asks for one in place" do
     api = use_fake_api(notes: [ { id: "1", path: "plan.md", content: "# Plan\n" } ])
     sign_in_through_form
