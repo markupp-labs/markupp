@@ -2,7 +2,7 @@
 # cookie note_mode, gravado pelo note_mode_controller.js e lido aqui para o servidor já desenhar o modo certo.
 module NoteModeHelper
   # Ícone e tecla de cada modo. Ctrl+E alterna edição e leitura (Obsidian); Ctrl+\ alterna o lado a lado (split do VS Code).
-  NOTE_MODE_BUTTONS = { "edit" => [ "pencil-simple", "E" ], "read" => [ "book-open", "E" ], "split" => [ "columns", "\\" ] }.freeze
+  NOTE_MODE_BUTTONS = { "edit" => [ "pencil-simple", "E" ], "read" => [ "book-open", "E" ], "split" => [ "square-split-horizontal", "\\" ] }.freeze
   NOTE_MODES = NOTE_MODE_BUTTONS.keys.freeze
 
   # Nota nova sempre abre em edição; mode desconhecido volta para edição.
