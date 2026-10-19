@@ -1,6 +1,7 @@
 import { Controller } from "@hotwired/stimulus"
 import { renderMarkdown } from "editor/render_markdown"
 import { resolveWikilink } from "editor/wikilinks"
+import { scrollToHeading } from "editor/heading_ids"
 import { editorScrollTopFor, previewScrollTopFor } from "editor/scroll_sync"
 import { EditorView } from "@codemirror/view"
 
@@ -49,6 +50,22 @@ export default class extends Controller {
 
     this.previewTarget.innerHTML = renderMarkdown(this.sourceTarget.value, { wikilinks: this.wikilinkLookup })
     if (this.mode == "split") this.alignPreview()
+  }
+
+  // [[nota#Título]] abre a nota com #slug na url. O título só existe depois do render, e a rolagem do Turbo procura o
+  // id sem o prefixo user-content- (vai ao topo); por isso a rolagem vem no turbo:load, que chega depois da dele.
+  scrollToHash() {
+    if (this.mode != "edit") scrollToHeading(this.previewTarget, location.hash)
+  }
+
+  // Link só de âncora no preview ([[#Título]] ou um <a href="#x"> do markdown): rola aqui, sem visita do Turbo,
+  // e deixa o hash na url para quem copiar o endereço.
+  followAnchor(event) {
+    const hash = event.target.closest?.(".note-preview a[href^='#']")?.getAttribute("href")
+    if (!hash || !scrollToHeading(this.previewTarget, hash)) return
+
+    event.preventDefault()
+    history.replaceState(history.state, "", hash)
   }
 
   // Lado a lado, mão dupla como no VS Code: o scroll de um painel (o scroller do CodeMirror ou o preview, pego na
