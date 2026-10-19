@@ -2,8 +2,12 @@ package main
 
 import (
 	"context"
+	"crypto/x509"
+	"encoding/json"
 	"log/slog"
 	"net/http"
+	"net/http/httptest"
+	"net/netip"
 	"net/url"
 	"testing"
 	"time"
@@ -11,6 +15,8 @@ import (
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/config"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/identity"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/notes"
+	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/oauth"
+	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/oauth/cimd"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/storage"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/storage/storagetest"
 	"github.com/jackc/pgx/v5"
@@ -214,4 +220,97 @@ func TestNewOAuthService_SemPublicURL_DevolveNilDeInterface(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Nil(t, svc)
+}
+
+func TestCIMDLimitsFrom_ConverteAConfigEmDuracoesEBytes(t *testing.T) {
+	cfg := config.Config{
+		OAuthCIMDTimeoutSeconds: 5, OAuthCIMDMaxKB: 64, OAuthCIMDCacheMinMinutes: 5, OAuthCIMDCacheMaxHours: 24,
+	}
+
+	assert.Equal(t, cimdLimits{
+		Timeout: 5 * time.Second, MaxBodyBytes: 64 << 10, MinTTL: 5 * time.Minute, MaxTTL: 24 * time.Hour,
+	}, cimdLimitsFrom(cfg))
+}
+
+// fakeCIMDServer publica um Client ID Metadata Document em https no loopback.
+type fakeCIMDServer struct {
+	*httptest.Server
+	status int
+}
+
+func newFakeCIMDServer(t *testing.T, status int) *fakeCIMDServer {
+	srv := &fakeCIMDServer{status: status}
+	srv.Server = httptest.NewTLSServer(http.HandlerFunc(srv.serveDocument))
+	t.Cleanup(srv.Close)
+	return srv
+}
+
+func (s *fakeCIMDServer) clientID() string { return s.URL + "/cliente.json" }
+
+func (s *fakeCIMDServer) roots() *x509.CertPool {
+	pool := x509.NewCertPool()
+	pool.AddCert(s.Certificate())
+	return pool
+}
+
+func (s *fakeCIMDServer) serveDocument(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "max-age=60")
+	w.WriteHeader(s.status)
+	_ = json.NewEncoder(w).Encode(struct {
+		ClientID     string   `json:"client_id"`
+		ClientName   string   `json:"client_name"`
+		RedirectURIs []string `json:"redirect_uris"`
+	}{s.clientID(), "Cliente de Teste", []string{"https://cliente.markupp.dev/cb"}})
+}
+
+// allowLoopback libera o servidor de teste e mantém o resto da política padrão.
+func allowLoopback(ip netip.Addr) error {
+	if ip.IsLoopback() {
+		return nil
+	}
+	return cimd.PublicOnly(ip)
+}
+
+var testCIMDLimits = cimdLimits{Timeout: 5 * time.Second, MaxBodyBytes: 64 << 10, MinTTL: 5 * time.Minute, MaxTTL: time.Hour}
+
+func TestCIMDClientMetadataFetcher_DocumentoValido_ConverteOsMetadadosComOsLimites(t *testing.T) {
+	srv := newFakeCIMDServer(t, http.StatusOK)
+	fetcher, err := newCIMDClientMetadataFetcher(testCIMDLimits, cimd.WithRootCAs(srv.roots()), cimd.WithIPPolicy(allowLoopback))
+	require.NoError(t, err)
+
+	meta, err := fetcher.FetchClientMetadata(context.Background(), srv.clientID())
+
+	require.NoError(t, err)
+	assert.Equal(t, oauth.ClientMetadata{
+		ClientID: srv.clientID(), Name: "Cliente de Teste",
+		RedirectURIs: []string{"https://cliente.markupp.dev/cb"}, TTL: 5 * time.Minute,
+	}, meta, "o max-age de 60 s sobe ao minimo de 5 min dos limites")
+}
+
+func TestCIMDClientMetadataFetcher_BuscaFalha_EmbrulhaOErroComOClientID(t *testing.T) {
+	srv := newFakeCIMDServer(t, http.StatusNotFound)
+	fetcher, err := newCIMDClientMetadataFetcher(testCIMDLimits, cimd.WithRootCAs(srv.roots()), cimd.WithIPPolicy(allowLoopback))
+	require.NoError(t, err)
+
+	_, err = fetcher.FetchClientMetadata(context.Background(), srv.clientID())
+
+	require.ErrorIs(t, err, cimd.ErrFetchFailed)
+	assert.Contains(t, err.Error(), oauth.ClientValue(srv.clientID()))
+}
+
+func TestNewCIMDClientMetadataFetcher_SemTrocarAPolitica_RecusaLoopback(t *testing.T) {
+	srv := newFakeCIMDServer(t, http.StatusOK)
+	fetcher, err := newCIMDClientMetadataFetcher(testCIMDLimits, cimd.WithRootCAs(srv.roots()))
+	require.NoError(t, err)
+
+	_, err = fetcher.FetchClientMetadata(context.Background(), srv.clientID())
+
+	require.ErrorIs(t, err, cimd.ErrBlockedAddress, "esperada a politica PublicOnly")
+}
+
+func TestNewCIMDClientMetadataFetcher_LimitesInvalidos_RetornaErro(t *testing.T) {
+	_, err := newCIMDClientMetadataFetcher(cimdLimits{Timeout: time.Second, MaxBodyBytes: 1, MinTTL: time.Hour, MaxTTL: time.Minute})
+
+	require.ErrorIs(t, err, cimd.ErrInvalidOption)
 }
