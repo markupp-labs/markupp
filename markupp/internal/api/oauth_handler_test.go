@@ -275,7 +275,7 @@ func TestToken_ErroDoProtocoloComRedirect_Retorna400SemRedirecionar(t *testing.T
 }
 
 func TestToken_GrantTypeAusenteOuOutro_Retorna400UnsupportedGrantType(t *testing.T) {
-	for _, grant := range []string{"", "password", "refresh_token"} {
+	for _, grant := range []string{"", "password", "client_credentials"} {
 		form := codeForm()
 		form.Set("grant_type", grant)
 		svc := &fakeOAuthService{}
