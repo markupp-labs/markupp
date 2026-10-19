@@ -1337,9 +1337,9 @@ paths:
         saltos, ignorando o sentido das ligações e contando todas: a soma de 1/grau de
         cada nota ligada às duas. A lista léxica ordena pelo cosseno tf-idf entre os 50
         termos de maior peso de cada nota, no analisador da busca, e só considera notas
-        que dividem algum desses termos com esta. O idf usa a frequência de documento
-        do cofre, recalculada quando ligações ou títulos do cofre mudam, então fica
-        levemente defasado entre uma mudança e outra.
+        que têm algum dos 10 termos de maior peso desta. O idf usa a frequência de
+        documento do cofre, recalculada quando ligações ou títulos do cofre mudam, então
+        fica levemente defasado entre uma mudança e outra.
 
         Ficam de fora a própria nota e as notas já ligadas a ela em qualquer sentido.
         A lista vem da maior score para a menor, depois por caminho. O viewer também

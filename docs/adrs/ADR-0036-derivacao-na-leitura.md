@@ -13,7 +13,9 @@ leve (ADR-0033), com custo proporcional ao que mudou
 ## Decisão
 
 Sugestão e menção são calculadas por nota, na leitura, sobre o que o indexador já grava: o
-índice léxico, os títulos e as ligações. O indexador não ganha tabela nem passo para elas
+índice léxico, os títulos, as ligações e, para a sugestão, as postagens tf-idf de cada nota
+(termos, pesos e norma do vetor). O cosseno da leitura lê só essas postagens. Nenhuma
+sugestão nem menção é gravada
 
 ## Alternativas consideradas
 
@@ -22,6 +24,6 @@ Sugestão e menção são calculadas por nota, na leitura, sobre o que o indexad
 
 ## Consequências
 
-- O lote do indexador não muda de custo
+- O lote do indexador paga só as postagens das notas dele, com o df vigente
 - A resposta reflete os títulos e as ligações do momento, sem esperar reindexação
 - O custo vai para a leitura, medido no benchmark do cofre sintético
