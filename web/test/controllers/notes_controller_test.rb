@@ -169,23 +169,32 @@ class NotesControllerTest < ActionDispatch::IntegrationTest
     assert_select "nav a[aria-current]", count: 0
   end
 
-  test "create posts the note with the title as heading and redirects to it" do
+  test "create posts the content as typed, the heading is the editor's job" do
     api = use_fake_api(notes: [])
     sign_in_as
 
     post notes_path, params: { note: { folder: "work", title: "Plan", content: "Ship it." } }
 
     assert_redirected_to note_path("created-1")
-    assert_equal({ path: "work/Plan.md", content: "# Plan\n\nShip it." }, api.post_requests.sole)
+    assert_equal({ path: "work/Plan.md", content: "Ship it." }, api.post_requests.sole)
   end
 
-  test "create keeps content that already starts with the title heading" do
+  test "create keeps a heading the user edited without adding the title one" do
     api = use_fake_api(notes: [])
     sign_in_as
 
-    post notes_path, params: { note: { folder: "", title: "Plan", content: "# Plan\n\nShip it." } }
+    post notes_path, params: { note: { folder: "", title: "Baz", content: "# Foo bar\n\nbody" } }
 
-    assert_equal({ path: "Plan.md", content: "# Plan\n\nShip it." }, api.post_requests.sole)
+    assert_equal({ path: "Baz.md", content: "# Foo bar\n\nbody" }, api.post_requests.sole)
+  end
+
+  test "create with a slash in the title files the note in a subfolder" do
+    api = use_fake_api(notes: [])
+    sign_in_as
+
+    post notes_path, params: { note: { folder: "work", title: "2026/Plan", content: "x" } }
+
+    assert_equal "work/2026/Plan.md", api.post_requests.sole[:path]
   end
 
   test "create without a title adds no heading" do
@@ -242,6 +251,21 @@ class NotesControllerTest < ActionDispatch::IntegrationTest
 
     assert_select "nav details[open] details[open] a[aria-current=page]", text: "a.md"
     assert_select "input[name=?][value=?]", "note[folder]", "work/2026"
+  end
+
+  test "update with a blank title keeps the name and asks for a title under the field" do
+    api = use_fake_api(notes: [ { id: "1", path: "work/a.md", content: "x" } ])
+    sign_in_as
+
+    patch note_path("1"), params: { note: { folder: "work", title: "  ", content: "mine" }, markdown: "true" }
+
+    assert_response :unprocessable_content
+    assert_empty api.put_requests
+    assert_select "input[name=?][value=''][aria-invalid=true][aria-describedby=note_path_error]", "note[title]"
+    assert_select "input[name=?][value=?]", "note[folder]", "work"
+    assert_select "#note_path_error", text: "Title can't be blank"
+    assert_equal "mine", css_select("main textarea").sole.text
+    assert_select "button:not([hidden])", text: "Save"
   end
 
   test "update on a taken path keeps what was typed and shows the error under the field" do

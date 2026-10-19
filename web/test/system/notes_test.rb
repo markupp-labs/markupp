@@ -97,6 +97,18 @@ class NotesTest < ApplicationSystemTestCase
     assert_equal "# Plan\n\nBody", find("textarea", visible: :hidden).value
   end
 
+  test "a heading edited by hand is saved as typed, without the title one" do
+    api = use_fake_api(notes: [])
+    sign_in_through_form
+
+    visit root_path
+    send_keys "Baz", :tab, [ :control, :home ], :end, :backspace, :backspace, :backspace, "Foo", [ :control, :end ], "body"
+    send_keys [ :control, "s" ]
+
+    assert_text "Created"
+    assert_equal({ path: "Baz.md", content: "# Foo\n\nbody" }, api.post_requests.sole)
+  end
+
   test "after creation the title no longer touches the heading" do
     api = use_fake_api(notes: [ { id: "1", path: "Plan.md", content: "# Plan\n" } ])
     sign_in_through_form

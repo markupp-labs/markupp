@@ -215,8 +215,24 @@ class NoteTest < ActiveSupport::TestCase
     assert_equal "README", Note.compose_path(folder: nil, title: "README", markdown: false)
   end
 
-  test "compose_path falls back to the untitled name for a blank title" do
-    assert_equal "work/Untitled.md", Note.compose_path(folder: "work", title: "  ")
+  test "compose_path leaves the name empty for a blank title" do
+    assert_equal "work/.md", Note.compose_path(folder: "work", title: "  ")
+    assert_equal "work/", Note.compose_path(folder: "work", title: "", markdown: false)
+  end
+
+  test "a path ending in a slash has an empty title and keeps the folder" do
+    assert_equal [ "", "work", false ], Note.new(path: "work/").then { [ it.title, it.folder, it.markdown? ] }
+  end
+
+  test "update refuses a blank title without calling the API" do
+    api = FakeMarkuppApi.new(notes: [ { id: "1", path: "work/a.md", content: "x" } ])
+    note = Note.new(id: "1")
+
+    assert_not note.update(api, { path: "work/.md", content: "mine" })
+    assert_not note.update(api, { path: "work/", content: "mine" })
+    assert note.errors.of_kind?(:title, :blank)
+    assert_empty api.put_requests
+    assert_equal "work/a.md", Note.find(api, "1").path
   end
 
   test "with_title_heading starts the content with the title as a heading and a blank line" do
