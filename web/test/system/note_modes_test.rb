@@ -131,6 +131,22 @@ class NoteModesTest < ApplicationSystemTestCase
     page.current_window.resize_to(1400, 900)
   end
 
+  test "the title lines up with the rendered note in read mode and in the stacked side by side" do
+    use_fake_api(notes: [ { id: "1", path: "plan.md", content: "# Plan\n" } ])
+    sign_in_through_form
+
+    visit note_path("1")
+    click_on "Read"
+    assert_title_aligned_with_preview
+
+    click_on "Side by side"
+    page.current_window.resize_to(1024, 768)
+    assert_preview_below_editor
+    assert_title_aligned_with_preview
+  ensure
+    page.current_window.resize_to(1400, 900)
+  end
+
   test "side by side scrolls the preview along with the editor" do
     use_fake_api(notes: [ { id: "1", path: "plan.md", content: long_note } ])
     sign_in_through_form
@@ -179,6 +195,20 @@ class NoteModesTest < ApplicationSystemTestCase
       evaluate_script(<<~JS)
         [".note-editor-pane", ".note-preview"].map((selector) => document.querySelector(selector).getBoundingClientRect().toJSON())
       JS
+    end
+
+    # Onde começa o texto do título (dentro da borda e do padding do campo) e onde começa o markdown renderizado.
+    def assert_title_aligned_with_preview
+      assert_selector ".note-preview h1", text: "Plan"
+      title, preview = evaluate_script(<<~JS)
+        (() => {
+          const title = document.querySelector("#note_title")
+          const style = getComputedStyle(title)
+          const text = title.getBoundingClientRect().left + parseFloat(style.borderLeftWidth) + parseFloat(style.paddingLeft)
+          return [text, document.querySelector(".note-preview h1").getBoundingClientRect().left]
+        })()
+      JS
+      assert_in_delta title, preview, 1, "expected the title text at the left of the preview, got title #{title} and preview #{preview}"
     end
 
     def assert_preview_below_editor
