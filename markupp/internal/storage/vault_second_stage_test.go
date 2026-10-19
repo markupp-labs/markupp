@@ -140,3 +140,28 @@ func TestRLS_PapelDoIndexador_NaoGravaDfNemMarcaOutroCofre(t *testing.T) {
 		assert.Equal(t, "42501", pgErr.Code, "recebido %v", err)
 	}
 }
+
+// grauDeEntrada lê, com o papel dono do banco, o grau de entrada que o segundo
+// estágio gravou para a nota noteID.
+func grauDeEntrada(t *testing.T, db *pgxpool.Pool, noteID string) int {
+	t.Helper()
+	var n int
+	require.NoError(t, db.QueryRow(context.Background(), "SELECT in_degree FROM note_centrality WHERE note_id = $1", noteID).Scan(&n), "grau da nota %q", noteID)
+	return n
+}
+
+func TestSegundoEstagio_NotaMovidaDePasta_Recalcula(t *testing.T) {
+	db := setupNotesDB(t)
+	repo := storage.NewPostgresNotesRepository(db, "simple")
+	storagetest.SaveNote(ctxDeTeste, t, repo, notaComCaminho("x1", "a/alvo.md", "x"))
+	storagetest.SaveNote(ctxDeTeste, t, repo, notaComCaminho("x2", "b/alvo.md", "x"))
+	storagetest.SaveNote(ctxDeTeste, t, repo, notaComCaminho("o", "o.md", "[l](a/alvo.md)"))
+	indexaTodosOsCofres(t, db, "simple")
+	require.Zero(t, grauDeEntrada(t, db, "x2"), "o caminho citado existe e liga so a x1")
+
+	_, err := repo.Update(ctxDeTeste, "x1", "c/alvo.md", "x", time.Now(), time.Time{}, true)
+	require.NoError(t, err)
+	indexaTodosOsCofres(t, db, "simple")
+
+	assert.Equal(t, 1, grauDeEntrada(t, db, "x2"), "o titulo nao mudou, mas o caminho citado sumiu e a ligacao cai para o titulo")
+}
