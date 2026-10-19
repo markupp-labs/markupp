@@ -45,6 +45,7 @@ class NotesControllerTest < ActionDispatch::IntegrationTest
     assert_select "main input[name=?][value=?]", "note[title]", "plan"
     assert_select "main input[name=?][value=?]", "note[folder]", "work"
     assert_select "main input[name=?]:not([placeholder])", "note[folder]"
+    assert_select "main input[name=?]:not([placeholder])", "note[title]"
     assert_select "main label[for=note_folder] + [aria-hidden=true]", "/"
   end
 
@@ -149,7 +150,7 @@ class NotesControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select "form[action=?][method=post]", notes_path do
       assert_select "input[type=text][name=?][value=?]", "note[folder]", "work"
-      assert_select "input[type=text][name=?][value=''][placeholder=Untitled][autofocus]", "note[title]"
+      assert_select "input[type=text][name=?][value=''][autofocus]:not([placeholder])", "note[title]"
       assert_select "button[hidden]", text: "Save"
     end
     assert_select "button", text: "Delete", count: 0
