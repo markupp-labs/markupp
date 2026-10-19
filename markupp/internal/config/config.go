@@ -67,6 +67,13 @@ type Config struct {
 	OAuthCIMDCacheMinMinutes int
 	// OAuthCIMDCacheMaxHours é o maior tempo que um documento fica em cache.
 	OAuthCIMDCacheMaxHours int
+	// OAuthDCREnabled liga o registro dinâmico de clientes (RFC 7591) em /oauth/register.
+	OAuthDCREnabled bool
+	// OAuthDCRMaxPending é o teto de clientes registrados por DCR que ainda não ganharam
+	// Autorização.
+	OAuthDCRMaxPending int
+	// OAuthDCRPendingHours é quanto um cliente DCR sem Autorização dura até ser apagado.
+	OAuthDCRPendingHours int
 }
 
 // Default devolve a configuração usada nas variáveis não definidas.
