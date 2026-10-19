@@ -15,7 +15,7 @@ func eventoDeRevogacao() oauth.AuditEvent {
 	return eventoOAuth(oauth.AuditActionRevoke, oauth.AuditResultSuccess)
 }
 
-const tokensRevogadosDeA1 = "SELECT count(*) FROM oauth_tokens WHERE authorization_id = 'a1' AND revoked"
+const revogadosDeA1 = "SELECT count(*) FROM oauth_tokens WHERE authorization_id = 'a1' AND revoked"
 
 // prepararGatilho emite t-outro para a0 e roda o comando do caso, se houver.
 func prepararGatilho(t *testing.T, pool *pgxpool.Pool, comando string) {
@@ -46,13 +46,13 @@ func TestPostgresOAuthRepo_RevokeAuthorizationTokensAudited_GatilhoQueNaoValeNao
 		t.Run(nome, func(t *testing.T) {
 			repo, pool := repoComTokens(t)
 			prepararGatilho(t, pool, caso.preparar)
-			antes := countRows(t, pool, tokensRevogadosDeA1)
+			antes := countRows(t, pool, revogadosDeA1)
 
 			revogou, err := repo.RevokeAuthorizationTokensAudited(context.Background(), "a1", caso.gatilho, caso.requireUnexpired, eventoDeRevogacao())
 
 			require.NoError(t, err)
 			assert.False(t, revogou)
-			assert.Equal(t, antes, countRows(t, pool, tokensRevogadosDeA1))
+			assert.Equal(t, antes, countRows(t, pool, revogadosDeA1))
 			assert.Equal(t, 0, countRows(t, pool, "SELECT count(*) FROM audit_events"))
 		})
 	}
