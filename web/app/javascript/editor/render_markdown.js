@@ -6,6 +6,10 @@ import { wikilinkRule } from "editor/wikilinks"
 // mas tudo passa pelo DOMPurify antes de entrar na página: sem script, sem on*, sem javascript:.
 const markdownIt = new MarkdownIt({ html: true, linkify: true })
 markdownIt.inline.ruler.before("link", "wikilink", wikilinkRule)
+// Cada bloco leva a linha do markdown onde começa, para o lado a lado alinhar o preview ao editor (scroll_sync.js).
+markdownIt.core.ruler.push("source_line", ({ tokens }) => {
+  tokens.filter((token) => token.map && token.nesting >= 0).forEach((token) => token.attrSet("data-source-line", String(token.map[0])))
+})
 const purifier = DOMPurify()
 // O preview mora dentro do form da nota: um input ou botão vindo do markdown seria enviado (ou submeteria) junto
 // com ela, como um _method=delete. Controles de formulário não passam.

@@ -1,6 +1,8 @@
 import { Controller } from "@hotwired/stimulus"
 import { renderMarkdown } from "editor/render_markdown"
 import { resolveWikilink } from "editor/wikilinks"
+import { previewScrollTopFor } from "editor/scroll_sync"
+import { EditorView } from "@codemirror/view"
 
 // Modos da nota: edição (CodeMirror), leitura (markdown renderizado) e lado a lado (preview a cada tecla).
 // O modo vai no data-mode do form (o CSS mostra e esconde os painéis) e no cookie note_mode (NoteModeHelper).
@@ -14,6 +16,10 @@ export default class extends Controller {
 
   connect() {
     this.render()
+  }
+
+  disconnect() {
+    cancelAnimationFrame(this.alignFrame)
   }
 
   choose({ params }) {
@@ -42,6 +48,24 @@ export default class extends Controller {
     if (this.mode == "edit") return
 
     this.previewTarget.innerHTML = renderMarkdown(this.sourceTarget.value, { wikilinks: this.wikilinkLookup })
+    if (this.mode == "split") this.alignPreview()
+  }
+
+  // Lado a lado: o scroll do próprio scroller do CodeMirror (pego na captura, scroll não sobe) leva o preview junto.
+  // Mão única, editor para preview; no máximo um alinhamento por quadro.
+  followEditor({ target }) {
+    if (this.mode != "split" || !target.classList?.contains("cm-scroller") || this.alignFrame) return
+
+    this.alignFrame = requestAnimationFrame(() => {
+      this.alignFrame = null
+      this.alignPreview()
+    })
+  }
+
+  // Salto direto, sem rolagem suave: acompanha o editor quadro a quadro e não anima nada (prefers-reduced-motion).
+  alignPreview() {
+    const view = EditorView.findFromDOM(this.element.querySelector(".cm-editor"))
+    if (view) this.previewTarget.scrollTo({ top: previewScrollTopFor(view, this.previewTarget), behavior: "instant" })
   }
 
   // [[nome]] resolvido pelo mapa de notas que veio do servidor (WikilinkHelper), sem chamar a API.

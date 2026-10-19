@@ -184,6 +184,33 @@
     border-left: 1px solid var(--line);
     padding-left: 1.5rem;
   }
+
+  /* No lado a lado a nota ocupa a altura da tela e cada painel rola sozinho, como no VS Code: o editor rola o
+     próprio scroller e o preview acompanha (note_mode_controller.js). */
+  main:has(.note-form[data-mode="split"]) {
+    display: flex;
+    flex-direction: column;
+    height: 100dvh;
+  }
+
+  .note-form[data-mode="split"] {
+    flex: 1 1 0;
+    min-height: 0;
+  }
+
+  .note-form[data-mode="split"] .note-panes {
+    grid-template-rows: minmax(0, 1fr);
+  }
+
+  .note-form[data-mode="split"] .cm-editor {
+    min-height: 0;
+  }
+
+  /* Barra de rolagem fina nos tokens do tema, sem o trilho branco padrão no claro. */
+  .note-form[data-mode="split"] :is(.cm-scroller, .note-preview) {
+    overflow-y: auto;
+    scrollbar-color: var(--line) transparent;
+  }
 }
 
 @media (width < 48rem) {
