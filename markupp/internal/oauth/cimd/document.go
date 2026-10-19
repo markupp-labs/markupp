@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"strings"
 	"time"
 )
 
@@ -34,15 +33,16 @@ func parseDocument(body []byte, clientID string) (ClientMetadata, error) {
 	if err := doc.validate(clientID); err != nil {
 		return ClientMetadata{}, err
 	}
-	return ClientMetadata{ClientID: doc.ClientID, Name: doc.ClientName, RedirectURIs: doc.RedirectURIs}, nil
+	name, err := SanitizeClientName(doc.ClientName)
+	if err != nil {
+		return ClientMetadata{}, fmt.Errorf("%w: %w", ErrInvalidDocument, err)
+	}
+	return ClientMetadata{ClientID: doc.ClientID, Name: name, RedirectURIs: doc.RedirectURIs}, nil
 }
 
 func (d metadataDocument) validate(clientID string) error {
 	if d.ClientID != clientID {
 		return fmt.Errorf("%w: client_id %q; esperado igual a URL buscada %q", ErrInvalidDocument, d.ClientID, clientID)
-	}
-	if strings.TrimSpace(d.ClientName) == "" {
-		return fmt.Errorf("%w: client_name %q; esperado texto nao vazio", ErrInvalidDocument, d.ClientName)
 	}
 	if d.TokenEndpointAuthMethod != nil && *d.TokenEndpointAuthMethod != "none" {
 		return fmt.Errorf("%w: token_endpoint_auth_method %q; esperado ausente ou \"none\"",
