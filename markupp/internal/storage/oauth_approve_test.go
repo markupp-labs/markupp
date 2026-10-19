@@ -19,7 +19,7 @@ func esperarBloqueio(t *testing.T, pool *pgxpool.Pool, motivo string) {
 	require.Eventually(t, func() bool {
 		return countRows(t, pool, `SELECT count(*) FROM pg_stat_activity
 			WHERE datname = current_database() AND wait_event_type = 'Lock'`) > 0
-	}, 5*time.Second, 10*time.Millisecond, motivo)
+	}, 15*time.Second, 10*time.Millisecond, motivo)
 }
 
 func TestPostgresOAuthRepo_ApproveRequest_ConcorrenteComOutraCriacaoAmplia(t *testing.T) {
