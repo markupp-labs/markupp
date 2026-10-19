@@ -178,6 +178,8 @@ func TestExchangeToken_SubjectTokenQueNaoVale_InvalidGrantSemEmitir(t *testing.T
 		"expirado agora":       func(r *fakeOAuthRepository) { r.found.Token.ExpiresAt = testNow },
 		"autorizacao revogada": func(r *fakeOAuthRepository) { r.found.Authorization.Revoked = true },
 		"de outro resource":    func(r *fakeOAuthRepository) { r.found.Token.Resource = "https://outro.exemplo.dev/mcp" },
+		"sem escopos":          func(r *fakeOAuthRepository) { r.found.Token.Scopes = nil },
+		"escopos em branco":    func(r *fakeOAuthRepository) { r.found.Token.Scopes = []string{"", " "} },
 	}
 	for nome, altera := range casos {
 		t.Run(nome, func(t *testing.T) {
