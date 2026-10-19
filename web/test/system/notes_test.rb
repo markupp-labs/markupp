@@ -96,6 +96,31 @@ class NotesTest < ApplicationSystemTestCase
     assert_equal "# Plan\n\nBody", find("textarea", visible: :hidden).value
   end
 
+  test "the heading takes only the file name when the title carries a folder" do
+    use_fake_api(notes: [])
+    sign_in_through_form
+
+    visit root_path
+    send_keys "2026/Plan", :tab, "Body"
+    assert_equal "# Plan\n\nBody", find("textarea", visible: :hidden).value
+
+    find_field("Title").send_keys([ :control, "a" ], "/abs/plan")
+    assert_equal "# plan\n\nBody", find("textarea", visible: :hidden).value
+  end
+
+  test "a title refused for its trailing slash leaves a single heading once the title is typed again" do
+    use_fake_api(notes: [])
+    sign_in_through_form
+
+    visit root_path
+    send_keys "trail/", :tab, "Body."
+    send_keys [ :control, "s" ]
+    assert_text "Title can't be blank"
+    find_field("Title").send_keys("Plan")
+
+    assert_equal "# Plan\n\nBody.", find("textarea", visible: :hidden).value
+  end
+
   test "a heading edited by hand is saved as typed, without the title one" do
     api = use_fake_api(notes: [])
     sign_in_through_form
