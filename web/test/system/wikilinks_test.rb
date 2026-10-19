@@ -47,6 +47,8 @@ class WikilinksTest < ApplicationSystemTestCase
     %w[Light Dark].each do |theme|
       visit settings_appearance_path
       within("main") { click_on theme }
+      # O tema troca por um PATCH que volta para Aparência; abrir a nota antes disso perde a corrida para o redirect.
+      assert_selector "main button[aria-pressed=true]", text: theme
       visit note_path("1")
       click_on "Read"
       assert_broken_link_style find(".note-preview .wikilink-missing", text: "nobody"), theme
