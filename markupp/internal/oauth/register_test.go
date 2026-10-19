@@ -72,7 +72,6 @@ func TestRegisterClient_MetadadosDeClientePublicoAceitos(t *testing.T) {
 		"auth method none":        func(r *oauth.RegistrationRequest) { r.TokenEndpointAuthMethod = new("none") },
 		"grant authorization":     func(r *oauth.RegistrationRequest) { r.GrantTypes = []string{"authorization_code"} },
 		"grants suportados":       func(r *oauth.RegistrationRequest) { r.GrantTypes = []string{"refresh_token", "authorization_code"} },
-		"grant_types vazio":       func(r *oauth.RegistrationRequest) { r.GrantTypes = []string{} },
 		"response_types code":     func(r *oauth.RegistrationRequest) { r.ResponseTypes = []string{"code"} },
 		"nome com 100 caracteres": func(r *oauth.RegistrationRequest) { r.ClientName = strings.Repeat("á", 100) },
 	}
@@ -101,6 +100,7 @@ func TestRegisterClient_MetadadoInvalido_RecusaSemGravar(t *testing.T) {
 		"response_types token":      func(r *oauth.RegistrationRequest) { r.ResponseTypes = []string{"token"} },
 		"response_types code token": func(r *oauth.RegistrationRequest) { r.ResponseTypes = []string{"code", "token"} },
 		"response_types vazio":      func(r *oauth.RegistrationRequest) { r.ResponseTypes = []string{} },
+		"grant_types vazio":         func(r *oauth.RegistrationRequest) { r.GrantTypes = []string{} },
 		"nome ausente":              func(r *oauth.RegistrationRequest) { r.ClientName = "" },
 		"nome em branco":            func(r *oauth.RegistrationRequest) { r.ClientName = " \t\n\u200b " },
 		"nome com 101 caracteres":   func(r *oauth.RegistrationRequest) { r.ClientName = strings.Repeat("a", 101) },
