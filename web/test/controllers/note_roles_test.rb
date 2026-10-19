@@ -6,16 +6,27 @@ class NoteRolesTest < ActionDispatch::IntegrationTest
   NOTES = [ { id: "1", path: "plan.md", content: "# Plan\n" } ].freeze
   READ_ONLY_ALERT = "Your role in this tenant is viewer, it can only read notes."
 
-  test "a viewer gets no new note link in the sidebar" do
+  test "a viewer gets no new note shortcut in the sidebar" do
     use_fake_api(notes: NOTES, tenants: viewer_tenant)
     sign_in_as
 
     get root_path
 
     assert_response :success
-    assert_select "nav a", text: "New note", count: 0
+    assert_select "nav [data-note-tree-new-note-url-value]", count: 0
     assert_select "main form", count: 0
     assert_select "main", text: /Pick a note from the sidebar/
+  end
+
+  test "the tree menu of a viewer only copies the path and the wikilink" do
+    use_fake_api(notes: NOTES, tenants: viewer_tenant)
+    sign_in_as
+
+    get root_path
+
+    assert_select "nav [role=menu] [role=menuitem]", count: 2
+    assert_select "nav [role=menu] [role=menuitem]", text: /Copy path/
+    assert_select "nav [role=menu] [role=menuitem]", text: /Copy wikilink/
   end
 
   test "a viewer reads the note without save nor delete" do
