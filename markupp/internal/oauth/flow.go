@@ -49,9 +49,14 @@ type AuthorizeParams struct {
 
 // RequestView é o que o painel mostra na tela de consentimento.
 type RequestView struct {
-	ID                string
-	ClientID          string
-	ClientName        string
+	ID         string
+	ClientID   string
+	ClientName string
+	// ClientSource é a origem do cliente, para o painel marcar o nome do cliente DCR
+	// como não verificado.
+	ClientSource string
+	// RedirectHost é o host da redirect_uri ou, no esquema privado sem host, o esquema
+	// com dois-pontos (como "cursor:").
 	RedirectHost      string
 	Scopes            []string
 	AlreadyAuthorized bool

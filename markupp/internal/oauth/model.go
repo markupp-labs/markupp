@@ -12,7 +12,16 @@ type Client struct {
 	ID           string
 	Name         string
 	RedirectURIs []string
+	// Source é a origem do registro, ClientSourceCIMD ou ClientSourceDCR.
+	Source string
 }
+
+// Origens de um cliente registrado. Só o nome do cliente CIMD é verificado pelo domínio
+// do documento; o do DCR é o que o próprio cliente declarou.
+const (
+	ClientSourceCIMD = "cimd"
+	ClientSourceDCR  = "dcr"
+)
 
 // AuthorizationRequest é o Pedido de autorização: a solicitação de um cliente para agir
 // em nome de uma conta. O ID funciona como portador (ADR-0040): qualquer conta logada que
