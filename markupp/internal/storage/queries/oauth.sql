@@ -4,6 +4,20 @@
 -- name: GetOAuthClient :one
 SELECT * FROM oauth_clients WHERE id = $1;
 
+-- name: GetFreshCIMDClient :one
+SELECT * FROM oauth_clients
+WHERE id = sqlc.arg(id) AND source = 'cimd' AND metadata_expires_at > sqlc.arg(now)::TIMESTAMPTZ;
+
+-- Cria ou atualiza o cliente CIMD. O WHERE do conflito impede sobrescrever um cliente de
+-- outra origem: nesse caso nenhuma linha é afetada.
+-- name: UpsertCIMDClient :execrows
+INSERT INTO oauth_clients (id, source, name, redirect_uris, metadata_expires_at)
+VALUES (sqlc.arg(id), 'cimd', sqlc.arg(name), sqlc.arg(redirect_uris), sqlc.arg(expires_at)::TIMESTAMPTZ)
+ON CONFLICT (id) DO UPDATE
+SET name = EXCLUDED.name, redirect_uris = EXCLUDED.redirect_uris,
+    metadata_expires_at = EXCLUDED.metadata_expires_at
+WHERE oauth_clients.source = 'cimd';
+
 -- name: CreateOAuthRequest :exec
 INSERT INTO oauth_requests (id, client_id, redirect_uri, scopes, resource, state, code_challenge, created_at, expires_at)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9);

@@ -199,6 +199,30 @@ func (q *Queries) GetActiveOAuthAuthorizationByID(ctx context.Context, id string
 	return i, err
 }
 
+const getFreshCIMDClient = `-- name: GetFreshCIMDClient :one
+SELECT id, source, name, redirect_uris, metadata_expires_at, created_at FROM oauth_clients
+WHERE id = $1 AND source = 'cimd' AND metadata_expires_at > $2::TIMESTAMPTZ
+`
+
+type GetFreshCIMDClientParams struct {
+	ID  string
+	Now time.Time
+}
+
+func (q *Queries) GetFreshCIMDClient(ctx context.Context, arg GetFreshCIMDClientParams) (OauthClient, error) {
+	row := q.db.QueryRow(ctx, getFreshCIMDClient, arg.ID, arg.Now)
+	var i OauthClient
+	err := row.Scan(
+		&i.ID,
+		&i.Source,
+		&i.Name,
+		&i.RedirectUris,
+		&i.MetadataExpiresAt,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const getOAuthClient = `-- name: GetOAuthClient :one
 
 SELECT id, source, name, redirect_uris, metadata_expires_at, created_at FROM oauth_clients WHERE id = $1
@@ -557,6 +581,37 @@ type SetOAuthRequestAuthorizationParams struct {
 func (q *Queries) SetOAuthRequestAuthorization(ctx context.Context, arg SetOAuthRequestAuthorizationParams) error {
 	_, err := q.db.Exec(ctx, setOAuthRequestAuthorization, arg.AuthorizationID, arg.ID)
 	return err
+}
+
+const upsertCIMDClient = `-- name: UpsertCIMDClient :execrows
+INSERT INTO oauth_clients (id, source, name, redirect_uris, metadata_expires_at)
+VALUES ($1, 'cimd', $2, $3, $4::TIMESTAMPTZ)
+ON CONFLICT (id) DO UPDATE
+SET name = EXCLUDED.name, redirect_uris = EXCLUDED.redirect_uris,
+    metadata_expires_at = EXCLUDED.metadata_expires_at
+WHERE oauth_clients.source = 'cimd'
+`
+
+type UpsertCIMDClientParams struct {
+	ID           string
+	Name         string
+	RedirectUris []string
+	ExpiresAt    time.Time
+}
+
+// Cria ou atualiza o cliente CIMD. O WHERE do conflito impede sobrescrever um cliente de
+// outra origem: nesse caso nenhuma linha é afetada.
+func (q *Queries) UpsertCIMDClient(ctx context.Context, arg UpsertCIMDClientParams) (int64, error) {
+	result, err := q.db.Exec(ctx, upsertCIMDClient,
+		arg.ID,
+		arg.Name,
+		arg.RedirectUris,
+		arg.ExpiresAt,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const upsertOAuthAuthorization = `-- name: UpsertOAuthAuthorization :one
