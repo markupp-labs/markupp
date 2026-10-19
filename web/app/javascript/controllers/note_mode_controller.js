@@ -6,6 +6,7 @@ import { embedContentLoader, fillEmbeds } from "editor/note_embeds"
 import { addCodeTools, copyCode } from "editor/code_blocks"
 import { editorScrollTopFor, previewScrollTopFor } from "editor/scroll_sync"
 import { EditorView } from "@codemirror/view"
+import { playOnce } from "motion/play_once"
 
 // Modos da nota: edição (CodeMirror), leitura (markdown renderizado) e lado a lado (preview a cada tecla).
 // O modo vai no data-mode do form (o CSS mostra e esconde os painéis) e no cookie note_mode (NoteModeHelper).
@@ -39,9 +40,8 @@ export default class extends Controller {
   }
 
   apply(mode) {
-    // Só a troca anima o painel que entra (motion.css); abrir a nota já mostra o modo parado.
-    this.element.dataset.modeSwitched = ""
-    this.element.dataset.mode = mode
+    // Só a troca anima o painel que entra (motion.css), uma vez; abrir a nota já mostra o modo parado.
+    playOnce(this.element, "data-mode-switched", () => (this.element.dataset.mode = mode))
     this.buttonTargets.forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.noteModeModeParam == mode)))
     document.cookie = `note_mode=${mode}; path=/; max-age=${COOKIE_MAX_AGE}; samesite=lax`
     this.render()

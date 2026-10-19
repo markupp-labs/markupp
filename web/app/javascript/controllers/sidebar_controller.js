@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { playOnce } from "motion/play_once"
 
 // Barra lateral estilo VS Code. No desktop recolhe/expande (Ctrl+B ou Cmd+B) e redimensiona pela alça na borda;
 // estado e largura vão para cookies que o servidor lê no próximo render (SidebarHelper). No celular é a gaveta popover.
@@ -23,10 +24,11 @@ export default class extends Controller {
     if (!desktop.matches) return this.panelTarget.togglePopover()
 
     const closing = document.documentElement.dataset.sidebar != "closed"
-    // Só o clique desliza a barra (motion.css); carregar ou navegar troca o body e não anima.
-    this.element.dataset.sidebarMoved = ""
-    if (closing) document.documentElement.dataset.sidebar = "closed"
-    else delete document.documentElement.dataset.sidebar
+    // Só o clique desliza a barra (motion.css), uma vez; carregar, navegar ou arrastar a alça não anima.
+    playOnce(this.element, "data-sidebar-moved", () => {
+      if (closing) document.documentElement.dataset.sidebar = "closed"
+      else delete document.documentElement.dataset.sidebar
+    })
     writeCookie("sidebar", closing ? "closed" : "open")
     this.labelToggle(closing)
     // Quem tinha o foco some junto com a barra: o foco passa ao botão, que fica.

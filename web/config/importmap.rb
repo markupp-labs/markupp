@@ -6,6 +6,7 @@ pin "@hotwired/stimulus", to: "stimulus.min.js"
 pin "@hotwired/stimulus-loading", to: "stimulus-loading.js"
 pin_all_from "app/javascript/controllers", under: "controllers"
 pin_all_from "app/javascript/editor", under: "editor"
+pin_all_from "app/javascript/motion", under: "motion"
 pin "@codemirror/commands", to: "@codemirror--commands.js" # @6.11.1
 pin "@codemirror/lang-markdown", to: "@codemirror--lang-markdown.js" # @6.5.2
 pin "@codemirror/language", to: "@codemirror--language.js" # @6.12.4
