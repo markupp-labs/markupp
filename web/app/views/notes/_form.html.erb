@@ -98,6 +98,8 @@
         </span>
       </div>
     </template>
+    <%# Indicador de carregamento de cada ![[nota]] enquanto o conteúdo não chega, clonado pelo editor/note_embeds.js. %>
+    <template data-note-mode-target="embedSpinner"><%= busy_spinner %></template>
     <article data-note-mode-target="preview" aria-label="<%= t(".preview") %>" class="note-preview markdown-body min-w-0"></article>
   </div>
 <% end %>

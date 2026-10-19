@@ -14,7 +14,7 @@ const COOKIE_MAX_AGE = 60 * 60 * 24 * 365
 const SHORTCUTS = { e: "read", "\\": "split" }
 
 export default class extends Controller {
-  static targets = [ "source", "preview", "button", "codeTools" ]
+  static targets = [ "source", "preview", "button", "codeTools", "embedSpinner" ]
   static values = { wikilinks: Object, folder: String, missingNote: String, copied: String, copyFailed: String }
 
   connect() {
@@ -56,7 +56,7 @@ export default class extends Controller {
     const addTools = (root) => addCodeTools(root, this.codeToolsTarget)
     this.previewTarget.innerHTML = renderMarkdown(this.sourceTarget.value, env)
     addTools(this.previewTarget)
-    fillEmbeds(this.previewTarget, this.embedContent, env, addTools)
+    fillEmbeds(this.previewTarget, this.embedContent, env, { spinner: this.embedSpinnerTarget, afterFill: addTools })
     if (this.mode == "split") this.alignPreview()
   }
 

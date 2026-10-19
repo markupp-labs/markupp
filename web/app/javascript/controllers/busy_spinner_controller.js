@@ -6,7 +6,7 @@ const SHOW_AFTER_MS = 300
 // glifo braille, que gira pelo CSS (motion.css), e o rótulo, que o role=status anuncia. busyWhen é um seletor: há espera
 // enquanto ele achar algo (o Turbo põe e tira o aria-busy). Sem busyWhen, o indicador existir já é a espera.
 export default class extends Controller {
-  static values = { busyWhen: String, label: { type: String, default: "Loading" } }
+  static values = { busyWhen: String, label: String }
 
   connect() {
     this.observer = new MutationObserver(() => this.sync())
