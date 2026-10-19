@@ -34,10 +34,20 @@ func (s *Service) ExchangeToken(ctx context.Context, g ExchangeGrant) (ExchangeR
 func (s *Service) authenticateResource(g ExchangeGrant) (string, error) {
 	resource, ok := canonicalize(g.ResourceID)
 	secret, known := s.cfg.ResourceSecrets[resource]
-	if !ok || !known || subtle.ConstantTimeCompare([]byte(g.ResourceSecret), []byte(secret)) != 1 {
-		return "", &ProtocolError{Code: errInvalidClient, Description: "resource nao autenticado; esperado HTTP Basic com a url de um resource configurado e o segredo dele"}
+	if !ok || !known {
+		// Compara com um segredo fictício do tamanho do recebido, para o tempo da recusa
+		// não revelar quais URLs de resource estão configuradas.
+		_ = subtle.ConstantTimeCompare([]byte(g.ResourceSecret), make([]byte, len(g.ResourceSecret)))
+		return "", errResourceUnauthenticated()
+	}
+	if subtle.ConstantTimeCompare([]byte(g.ResourceSecret), []byte(secret)) != 1 {
+		return "", errResourceUnauthenticated()
 	}
 	return resource, nil
+}
+
+func errResourceUnauthenticated() error {
+	return &ProtocolError{Code: errInvalidClient, Description: "resource nao autenticado; esperado HTTP Basic com a url de um resource configurado e o segredo dele"}
 }
 
 // checkExchangeParams confere os tipos de token e o alvo da troca, que é a API deste issuer.
