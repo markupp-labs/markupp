@@ -59,6 +59,7 @@ func mountProtectedNotesRoutes(r chi.Router, svc NoteService, tokenValidator Tok
 	r.Group(func(g chi.Router) {
 		g.Use(RequireAuth(tokenValidator), RequireTenant(tenants))
 		mountNotesRoutes(g, svc)
+		mountV1NotesRoutes(g, svc)
 	})
 }
 

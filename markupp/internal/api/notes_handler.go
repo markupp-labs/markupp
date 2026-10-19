@@ -6,7 +6,9 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
+	"net/url"
 	"strconv"
 	"time"
 
@@ -22,6 +24,7 @@ type NoteService interface {
 	Delete(ctx context.Context, id string) error
 	GetNoteByID(ctx context.Context, id string) (notes.Note, error)
 	ListNotes(ctx context.Context) ([]notes.Note, error)
+	ListVaultNotes(ctx context.Context, vaultID string, q notes.VaultNotesQuery) ([]notes.Note, error)
 	SearchNotes(ctx context.Context, query string, offset, limit int) ([]notes.SearchResult, error)
 }
 
@@ -132,6 +135,11 @@ func (h *notesHandler) list(w http.ResponseWriter, r *http.Request) {
 		writeDomainError(w, err)
 		return
 	}
+	h.writeNotes(w, list)
+}
+
+// writeNotes responde com as notas na representação do handler, sempre como array.
+func (h *notesHandler) writeNotes(w http.ResponseWriter, list []notes.Note) {
 	out := make([]any, 0, len(list))
 	for _, n := range list {
 		out = append(out, h.render(n))
@@ -161,17 +169,25 @@ func (h *notesHandler) search(w http.ResponseWriter, r *http.Request) {
 // parsePage lê offset e limit da query string, limitados ao intervalo aceito, ou
 // responde 400 e devolve ok falso quando um deles não é inteiro.
 func parsePage(w http.ResponseWriter, r *http.Request) (offset, limit int, ok bool) {
-	offset, err := parseQueryInt(r.URL.Query().Get("offset"), 0)
+	offset, limit, err := pageParams(r.URL.Query())
 	if err != nil {
-		writeError(w, "invalid_request", "offset deve ser um inteiro", http.StatusBadRequest)
+		writeError(w, "invalid_request", err.Error(), http.StatusBadRequest)
 		return 0, 0, false
 	}
-	limit, err = parseQueryInt(r.URL.Query().Get("limit"), 10)
+	return offset, limit, true
+}
+
+// pageParams lê offset e limit, limitados ao intervalo aceito.
+func pageParams(values url.Values) (offset, limit int, err error) {
+	offset, err = parseQueryInt(values.Get("offset"), 0)
 	if err != nil {
-		writeError(w, "invalid_request", "limit deve ser um inteiro", http.StatusBadRequest)
-		return 0, 0, false
+		return 0, 0, fmt.Errorf("offset deve ser um inteiro, recebido %q", values.Get("offset"))
 	}
-	return clamp(offset, 0, maxOffset), clamp(limit, minLimit, maxLimit), true
+	limit, err = parseQueryInt(values.Get("limit"), 10)
+	if err != nil {
+		return 0, 0, fmt.Errorf("limit deve ser um inteiro, recebido %q", values.Get("limit"))
+	}
+	return clamp(offset, 0, maxOffset), clamp(limit, minLimit, maxLimit), nil
 }
 
 func parseQueryInt(value string, defaultValue int) (int, error) {

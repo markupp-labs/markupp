@@ -74,19 +74,23 @@ func (r *PostgresNotesRepository) DefaultVaultID(ctx context.Context) (string, e
 }
 
 // Update grava a nota. Com force falso a escrita é condicionada a
-// lastModifiedAt e devolve notes.ErrConflict se a versão não bater.
+// lastModifiedAt e devolve notes.ErrConflict se a versão não bater. A nota volta com
+// a organização derivada que o último segundo estágio gravou.
 func (r *PostgresNotesRepository) Update(ctx context.Context, id, path, content string, updatedAt, lastModifiedAt time.Time, force bool) (notes.Note, error) {
 	p := gen.UpdateNoteWithVersionCheckParams{ID: id, Path: path, Content: content, UpdatedAt: updatedAt, PrevUpdatedAt: lastModifiedAt}
-	var row gen.Note
+	var note notes.Note
 	err := r.run(ctx, func(q *gen.Queries) error {
-		var qErr error
-		row, qErr = updateNote(ctx, q, p, force)
+		row, qErr := updateNote(ctx, q, p, force)
+		if qErr != nil {
+			return qErr
+		}
+		note, qErr = withRank(ctx, q, toNote(row))
 		return qErr
 	})
 	if err != nil {
 		return notes.Note{}, mapWriteErr(err)
 	}
-	return toNote(row), nil
+	return note, nil
 }
 
 func updateNote(ctx context.Context, q *gen.Queries, p gen.UpdateNoteWithVersionCheckParams, force bool) (gen.Note, error) {
@@ -121,15 +125,19 @@ func (r *PostgresNotesRepository) Delete(ctx context.Context, id string) error {
 	})
 }
 
-// GetNoteByID lê a nota de id, devolvendo notes.ErrNotFound se ela não existir.
+// GetNoteByID lê a nota de id com a organização derivada dela, devolvendo
+// notes.ErrNotFound se ela não existir.
 func (r *PostgresNotesRepository) GetNoteByID(ctx context.Context, id string) (notes.Note, error) {
-	var row gen.Note
+	var note notes.Note
 	err := r.run(ctx, func(q *gen.Queries) error {
-		var qErr error
-		row, qErr = q.GetNoteByID(ctx, id)
-		return notFoundOnNoRows(qErr)
+		row, qErr := q.GetNoteByID(ctx, id)
+		if qErr != nil {
+			return notFoundOnNoRows(qErr)
+		}
+		note, qErr = withRank(ctx, q, toNote(row))
+		return qErr
 	})
-	return toNote(row), err
+	return note, err
 }
 
 // SearchNotes devolve as notas indexadas que casam com query, na sintaxe de

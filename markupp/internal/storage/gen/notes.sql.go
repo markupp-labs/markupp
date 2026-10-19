@@ -8,6 +8,8 @@ package gen
 import (
 	"context"
 	"time"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createNote = `-- name: CreateNote :one
@@ -97,6 +99,34 @@ func (q *Queries) GetNoteByID(ctx context.Context, id string) (Note, error) {
 	return i, err
 }
 
+const getNoteRank = `-- name: GetNoteRank :one
+SELECT c.pagerank, c.in_degree, c.out_degree, m.community_id
+FROM notes n
+LEFT JOIN note_centrality c ON c.note_id = n.id
+LEFT JOIN note_communities m ON m.note_id = n.id
+WHERE n.id = $1
+`
+
+type GetNoteRankRow struct {
+	Pagerank    pgtype.Float8
+	InDegree    pgtype.Int4
+	OutDegree   pgtype.Int4
+	CommunityID pgtype.Int8
+}
+
+// Organização derivada da nota, nula antes do segundo estágio.
+func (q *Queries) GetNoteRank(ctx context.Context, noteID string) (GetNoteRankRow, error) {
+	row := q.db.QueryRow(ctx, getNoteRank, noteID)
+	var i GetNoteRankRow
+	err := row.Scan(
+		&i.Pagerank,
+		&i.InDegree,
+		&i.OutDegree,
+		&i.CommunityID,
+	)
+	return i, err
+}
+
 const listNotes = `-- name: ListNotes :many
 SELECT id, path, content, created_at, updated_at, tenant_id, vault_id, content_sha256 FROM notes
 ORDER BY path, vault_id
@@ -120,6 +150,92 @@ func (q *Queries) ListNotes(ctx context.Context) ([]Note, error) {
 			&i.TenantID,
 			&i.VaultID,
 			&i.ContentSha256,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listVaultNotes = `-- name: ListVaultNotes :many
+SELECT n.id, n.vault_id, n.path, n.content, n.content_sha256, n.created_at, n.updated_at,
+       c.pagerank, c.in_degree, c.out_degree, m.community_id
+FROM notes n
+LEFT JOIN note_centrality c ON c.note_id = n.id
+LEFT JOIN note_communities m ON m.note_id = n.id
+WHERE n.vault_id = $1
+  AND ($2::bool IS NULL OR (c.in_degree + c.out_degree = 0) = $2::bool)
+  AND ($3::bigint IS NULL OR m.community_id = $3::bigint)
+ORDER BY
+    CASE WHEN $4::text = 'pagerank' AND $5::bool THEN c.pagerank END DESC NULLS LAST,
+    CASE WHEN $4::text = 'pagerank' AND NOT $5::bool THEN c.pagerank END NULLS LAST,
+    CASE WHEN $4::text = 'degree' AND $5::bool THEN c.in_degree + c.out_degree END DESC NULLS LAST,
+    CASE WHEN $4::text = 'degree' AND NOT $5::bool THEN c.in_degree + c.out_degree END NULLS LAST,
+    CASE WHEN $4::text = 'updated' AND $5::bool THEN n.updated_at END DESC,
+    CASE WHEN $4::text = 'updated' AND NOT $5::bool THEN n.updated_at END,
+    n.path, n.id
+LIMIT $7 OFFSET $6
+`
+
+type ListVaultNotesParams struct {
+	VaultID     string
+	Orphan      pgtype.Bool
+	CommunityID pgtype.Int8
+	Sort        string
+	Descending  bool
+	PageOffset  int32
+	PageLimit   int32
+}
+
+type ListVaultNotesRow struct {
+	ID            string
+	VaultID       string
+	Path          string
+	Content       string
+	ContentSha256 []byte
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+	Pagerank      pgtype.Float8
+	InDegree      pgtype.Int4
+	OutDegree     pgtype.Int4
+	CommunityID   pgtype.Int8
+}
+
+// A nota sem organização derivada fica fora dos filtros de órfã e de comunidade e
+// vai para o fim das ordens por PageRank e por grau.
+func (q *Queries) ListVaultNotes(ctx context.Context, arg ListVaultNotesParams) ([]ListVaultNotesRow, error) {
+	rows, err := q.db.Query(ctx, listVaultNotes,
+		arg.VaultID,
+		arg.Orphan,
+		arg.CommunityID,
+		arg.Sort,
+		arg.Descending,
+		arg.PageOffset,
+		arg.PageLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListVaultNotesRow
+	for rows.Next() {
+		var i ListVaultNotesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.VaultID,
+			&i.Path,
+			&i.Content,
+			&i.ContentSha256,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Pagerank,
+			&i.InDegree,
+			&i.OutDegree,
+			&i.CommunityID,
 		); err != nil {
 			return nil, err
 		}

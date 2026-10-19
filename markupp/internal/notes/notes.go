@@ -16,7 +16,8 @@ import (
 
 // Note é uma nota persistida, identificada por ID e endereçada por Path dentro
 // do cofre VaultID. ContentSHA256 é o SHA-256 dos bytes UTF-8 de Content, em hex
-// minúsculo.
+// minúsculo. Rank é a organização derivada que o segundo estágio do indexador
+// gravou para ela.
 type Note struct {
 	ID            string
 	VaultID       string
@@ -25,6 +26,7 @@ type Note struct {
 	ContentSHA256 string
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
+	Rank          NoteRank
 }
 
 // SearchResult é a projeção de uma nota devolvida pela busca: sem o conteúdo, com o
@@ -45,6 +47,7 @@ type Repository interface {
 	Delete(ctx context.Context, id string) error
 	GetNoteByID(ctx context.Context, id string) (Note, error)
 	ListNotes(ctx context.Context) ([]Note, error)
+	ListVaultNotes(ctx context.Context, vaultID string, q VaultNotesQuery) ([]Note, error)
 	SearchNotes(ctx context.Context, query string, offset, limit int32) ([]SearchResult, error)
 }
 

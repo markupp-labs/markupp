@@ -13,11 +13,9 @@ import (
 type NoteGraph interface {
 	Backlinks(ctx context.Context, noteID string, offset, limit int) ([]notes.Backlink, error)
 	Neighbors(ctx context.Context, noteID string, offset, limit int) ([]notes.Neighbor, error)
-	Orphans(ctx context.Context, vaultID string, offset, limit int) ([]notes.LinkedNote, error)
 	UnresolvedLinks(ctx context.Context, vaultID string, offset, limit int) ([]notes.UnresolvedLink, error)
 	Mentions(ctx context.Context, noteID string, offset, limit int) ([]notes.UnlinkedMention, error)
 	Suggestions(ctx context.Context, noteID string, offset, limit int) ([]notes.LinkSuggestion, error)
-	Hubs(ctx context.Context, vaultID string, offset, limit int) ([]notes.Hub, error)
 	Communities(ctx context.Context, vaultID string, offset, limit int) ([]notes.CommunityMember, error)
 }
 
@@ -26,9 +24,7 @@ func mountNoteGraphRoutes(r chi.Router, graph NoteGraph) {
 	r.Get("/notes/{id}/neighbors", servePage(graph.Neighbors))
 	r.Get("/notes/{id}/mentions", servePage(graph.Mentions))
 	r.Get("/notes/{id}/suggestions", servePage(graph.Suggestions))
-	r.Get("/vaults/{id}/orphans", servePage(graph.Orphans))
 	r.Get("/vaults/{id}/unresolved-links", servePage(graph.UnresolvedLinks))
-	r.Get("/vaults/{id}/hubs", servePage(graph.Hubs))
 	r.Get("/vaults/{id}/clusters", servePage(graph.Communities))
 }
 

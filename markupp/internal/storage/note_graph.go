@@ -48,18 +48,6 @@ func (g *PostgresNoteGraph) Neighbors(ctx context.Context, noteID string, offset
 	return out, err
 }
 
-// Orphans devolve as notas indexadas do cofre vaultID sem ligação em sentido algum,
-// por caminho, ou notes.ErrVaultForbidden quando o ator não enxerga o cofre.
-func (g *PostgresNoteGraph) Orphans(ctx context.Context, vaultID string, offset, limit int) ([]notes.LinkedNote, error) {
-	var out []notes.LinkedNote
-	err := g.inVault(ctx, vaultID, func(q *gen.Queries) error {
-		rows, err := q.ListOrphans(ctx, gen.ListOrphansParams{VaultID: vaultID, PageOffset: toInt32(offset), PageLimit: toInt32(limit)})
-		out = convertRows(rows, func(r gen.ListOrphansRow) notes.LinkedNote { return notes.LinkedNote(r) })
-		return err
-	})
-	return out, err
-}
-
 // UnresolvedLinks devolve as ligações do cofre vaultID para títulos sem nota, por
 // caminho da nota que liga, ou notes.ErrVaultForbidden quando o ator não enxerga o
 // cofre.
@@ -68,18 +56,6 @@ func (g *PostgresNoteGraph) UnresolvedLinks(ctx context.Context, vaultID string,
 	err := g.inVault(ctx, vaultID, func(q *gen.Queries) error {
 		rows, err := q.ListUnresolvedLinks(ctx, gen.ListUnresolvedLinksParams{VaultID: vaultID, PageOffset: toInt32(offset), PageLimit: toInt32(limit)})
 		out = convertRows(rows, toUnresolvedLink)
-		return err
-	})
-	return out, err
-}
-
-// Hubs devolve as notas do cofre vaultID pelo PageRank, da maior para a menor, ou
-// notes.ErrVaultForbidden quando o ator não enxerga o cofre.
-func (g *PostgresNoteGraph) Hubs(ctx context.Context, vaultID string, offset, limit int) ([]notes.Hub, error) {
-	var out []notes.Hub
-	err := g.inVault(ctx, vaultID, func(q *gen.Queries) error {
-		rows, err := q.ListHubs(ctx, gen.ListHubsParams{VaultID: vaultID, PageOffset: toInt32(offset), PageLimit: toInt32(limit)})
-		out = convertRows(rows, toHub)
 		return err
 	})
 	return out, err
@@ -111,15 +87,24 @@ func (g *PostgresNoteGraph) inNote(ctx context.Context, noteID string, read func
 // inVault roda read depois de conferir que o ator enxerga o cofre vaultID.
 func (g *PostgresNoteGraph) inVault(ctx context.Context, vaultID string, read func(q *gen.Queries) error) error {
 	return inActorTx(ctx, g.pool, func(q *gen.Queries) error {
-		visible, err := q.VaultVisible(ctx, vaultID)
-		if err != nil {
+		if err := requireVisibleVault(ctx, q, vaultID); err != nil {
 			return err
-		}
-		if !visible {
-			return notes.ErrVaultForbidden
 		}
 		return read(q)
 	})
+}
+
+// requireVisibleVault devolve notes.ErrVaultForbidden quando o ator não enxerga o
+// cofre vaultID.
+func requireVisibleVault(ctx context.Context, q *gen.Queries, vaultID string) error {
+	visible, err := q.VaultVisible(ctx, vaultID)
+	if err != nil {
+		return err
+	}
+	if !visible {
+		return notes.ErrVaultForbidden
+	}
+	return nil
 }
 
 func toBacklink(r gen.ListBacklinksRow) notes.Backlink {
@@ -143,13 +128,6 @@ func toNeighbor(r gen.ListNeighborsRow) notes.Neighbor {
 
 func toUnresolvedLink(r gen.ListUnresolvedLinksRow) notes.UnresolvedLink {
 	return notes.UnresolvedLink{NoteID: r.NoteID, Path: r.Path, Title: r.CitedTitle, Kind: r.Kind}
-}
-
-func toHub(r gen.ListHubsRow) notes.Hub {
-	return notes.Hub{
-		LinkedNote: notes.LinkedNote{ID: r.ID, VaultID: r.VaultID, Path: r.Path, UpdatedAt: r.UpdatedAt},
-		PageRank:   r.Pagerank, InDegree: int(r.InDegree), OutDegree: int(r.OutDegree),
-	}
 }
 
 func toCommunityMember(r gen.ListCommunityMembersRow) notes.CommunityMember {

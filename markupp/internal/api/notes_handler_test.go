@@ -388,6 +388,10 @@ func (s *stubRepository) ListNotes(ctx context.Context) ([]notes.Note, error) {
 	return s.listResult, s.listErr
 }
 
+func (s *stubRepository) ListVaultNotes(ctx context.Context, vaultID string, q notes.VaultNotesQuery) ([]notes.Note, error) {
+	return nil, nil
+}
+
 func (s *stubRepository) SearchNotes(ctx context.Context, query string, offset, limit int32) ([]notes.SearchResult, error) {
 	return nil, nil
 }
