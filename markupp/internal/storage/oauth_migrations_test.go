@@ -108,6 +108,22 @@ func TestMigracao00016_SourceInvalido_Rejeitado(t *testing.T) {
 	assert.Error(t, err)
 }
 
+// O CHECK é o que garante que GetFreshCIMDClient nunca devolve cliente de outra origem:
+// só o cimd tem validade de documento.
+func TestMigracao00016_ValidadeDoDocumento_SoEmClienteCIMD(t *testing.T) {
+	pool := bancoComOAuth(t)
+	inserir := func(id, source string) error {
+		_, err := pool.Exec(context.Background(), `INSERT INTO oauth_clients (id, source, name, redirect_uris, metadata_expires_at)
+			VALUES ($1, $2, 'Agente', ARRAY['http://127.0.0.1/cb'], now() + interval '1 hour')`, id, source)
+		return err
+	}
+
+	assert.Error(t, inserir("c2", "dcr"))
+	assert.NoError(t, inserir("https://agente.example/c.json", "cimd"))
+	_, err := pool.Exec(context.Background(), `UPDATE oauth_clients SET metadata_expires_at = now() WHERE id = 'c1'`)
+	assert.Error(t, err)
+}
+
 func TestMigracao00016_DuasAutorizacoesAtivasDoMesmoPar_Rejeitadas(t *testing.T) {
 	pool := bancoComOAuth(t)
 	require.NoError(t, autorizar(pool, "a1", "{notas:leitura}", false))

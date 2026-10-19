@@ -68,11 +68,3 @@ func TestPostgresOAuthRepo_GetFreshCIMDClient_IgnoraVencido(t *testing.T) {
 
 	require.ErrorIs(t, err, oauth.ErrClientNotFound)
 }
-
-func TestPostgresOAuthRepo_GetFreshCIMDClient_IgnoraClienteDCR(t *testing.T) {
-	repo, _ := repoOAuth(t)
-
-	_, err := repo.GetFreshCIMDClient(context.Background(), "c1", instanteOAuth)
-
-	require.ErrorIs(t, err, oauth.ErrClientNotFound)
-}
