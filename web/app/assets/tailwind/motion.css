@@ -127,11 +127,7 @@
 }
 
 /* Troca de modo da nota (data-mode-switched, note_mode_controller.js; abrir a nota não anima): o painel que entra
-   surge com popin e fade; o que sai sai do fluxo, por cima do que entra, e some rápido sem empurrar o outro. */
-.note-panes {
-  position: relative;
-}
-
+   surge com popin e fade; o que sai some na hora, sem animação, para não cruzar por cima do que entra. */
 .note-form[data-mode-switched] :is(.note-editor-pane, .note-preview) {
   transition: opacity var(--motion-window-in) var(--ease-out-quint), transform var(--motion-window-in) var(--ease-out-quint);
 }
@@ -141,18 +137,6 @@
     opacity: 0;
     transform: scale(var(--popin-scale));
   }
-}
-
-.note-form[data-mode-switched][data-mode="edit"] .note-preview,
-.note-form[data-mode-switched][data-mode="read"] .note-editor-pane {
-  position: absolute;
-  inset: 0;
-  overflow: hidden;
-  pointer-events: none;
-  opacity: 0;
-  transform: scale(var(--popin-scale));
-  transition: opacity var(--motion-window-out) linear, transform var(--motion-window-out) linear,
-    display var(--motion-window-out) linear allow-discrete;
 }
 
 /* Indicador de carregamento: os quadros braille de 80ms, como o spinner "dots" dos terminais. content muda de quadro
