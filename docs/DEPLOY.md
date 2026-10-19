@@ -209,6 +209,19 @@ sem o cabeçalho, o documento fica uma hora em cache. O mínimo não pode passar
 A busca do documento ignora HTTP_PROXY e HTTPS_PROXY e recusa destinos fora da internet
 pública, então o servidor precisa de saída direta para a internet.
 
+Clientes sem documento publicado podem se registrar sozinhos em `POST /oauth/register`
+(registro dinâmico, RFC 7591), sem login. O registro só aceita clientes públicos, sem
+client_secret, e as mesmas redirect_uris do documento. Um cliente registrado que ainda não
+recebeu nenhuma autorização conta como pendente: o servidor apaga os pendentes mais antigos
+que o prazo e, com o teto atingido, recusa novos registros com 429 até abrir vaga. As
+variáveis são opcionais e lidas só com o OAuth ligado:
+
+| Variável | Padrão | Faixa | O que controla |
+|---|---|---|---|
+| `MARKUPP_OAUTH_DCR_ENABLED` | true | true ou false | liga o registro dinâmico; desligado, `/oauth/register` responde 404 e a metadata não o anuncia |
+| `MARKUPP_OAUTH_DCR_MAX_PENDING` | 1000 | 1 a 100000 | teto de clientes pendentes |
+| `MARKUPP_OAUTH_DCR_PENDING_HOURS` | 24 | 1 a 168 | prazo, desde o registro, para o cliente pendente receber uma autorização antes de ser apagado |
+
 ## Aviso
 
 Com o banco vazio, quem fizer o primeiro login vira owner do tenant inicial
