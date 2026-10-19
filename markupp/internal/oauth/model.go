@@ -125,11 +125,14 @@ type Repository interface {
 	// transação. Devolve ErrAuthorizationNotFound se ela não existe.
 	RevokeAuthorizationTokens(ctx context.Context, authorizationID string) error
 	// ConsumeRefreshToken marca o refresh token como rotacionado e lê a Autorização
-	// ativa na mesma transação. Devolve ErrTokenNotFound se o hash não é de um refresh
-	// válido (inexistente, expirado em relação a now ou revogado, mesmo já rotacionado),
-	// ErrRefreshReused junto com o TokenGrant quando ele já tinha sido rotacionado e
-	// ainda não foi revogado, com a Autorização dona mesmo revogada, como FindToken, e
-	// ErrAuthorizationNotFound se a Autorização foi revogada.
+	// ativa na mesma transação. Os erros, por caso:
+	//   - ErrTokenNotFound: o hash não é de um refresh válido (inexistente, expirado em
+	//     relação a now ou revogado, mesmo já rotacionado);
+	//   - ErrRefreshReused, junto com o TokenGrant: o refresh já tinha sido rotacionado e
+	//     não foi revogado; o grant traz a Autorização dona mesmo revogada, como
+	//     FindToken, para a auditoria ter ator e alvo;
+	//   - ErrAuthorizationNotFound: o refresh era vigente, mas a Autorização dele foi
+	//     revogada; a rotação fica gravada mesmo assim.
 	ConsumeRefreshToken(ctx context.Context, tokenHash string, now time.Time) (TokenGrant, error)
 	// SaveRefreshedTokens trava a Autorização dos tokens, grava o novo par e audita o
 	// evento, numa transação. Sem gravar nada, devolve ErrAuthorizationNotFound se a
@@ -140,7 +143,7 @@ type Repository interface {
 	// o evento, numa transação. triggerHash é o token que disparou a revogação: já com a
 	// trava, ele precisa existir, ser da Autorização e não estar revogado e, com
 	// requireUnexpired, não ter expirado em event.OccurredAt. Senão não revoga nem audita
-	// e devolve false, nil.
+	// e devolve false, nil. Devolve ErrAuthorizationNotFound se a Autorização não existe.
 	RevokeAuthorizationTokensAudited(ctx context.Context, authorizationID, triggerHash string, requireUnexpired bool, event AuditEvent) (bool, error)
 	// FindToken devolve o dono de um token de qualquer tipo, mesmo revogado ou expirado,
 	// ou ErrTokenNotFound.
@@ -150,8 +153,8 @@ type Repository interface {
 	ListActiveAuthorizations(ctx context.Context, userID string) ([]AuthorizationSummary, error)
 	// RevokeAuthorization trava a Autorização, marca a da conta como revogada, revoga os
 	// tokens dela e audita o evento com event.ClientID preenchido pela Autorização, numa
-	// transação. Devolve ErrAuthorizationNotFound se ela
-	// não existe, já foi revogada ou é de outra conta.
+	// transação. Devolve ErrAuthorizationNotFound se ela não existe, já foi revogada ou é
+	// de outra conta.
 	RevokeAuthorization(ctx context.Context, userID, authorizationID string, event AuditEvent) error
 }
 
