@@ -90,3 +90,15 @@ func TestIndex_MesmaChaveRepetindoOTitulo_ContaUmaVez(t *testing.T) {
 
 	assert.Equal(t, []indexing.Link{{CitedTitle: "Alvo", TitleKey: "alvo", Kind: indexing.TypedLink, Predicate: "rel"}}, nota.Links)
 }
+
+func TestIndex_FrontmatterComWikilinkSemAspas_ViraLigacaoTipada(t *testing.T) {
+	conteudo := "---\nrelacionada: [[Alvo]]\nlista:\n  - [[pasta/B]]\n  - [[C|apelido]]\nplana: [x]\naninhada: [[x, y]]\n---\n"
+
+	nota := indexaUma(t, "origem.md", conteudo)
+
+	assert.Equal(t, []indexing.Link{
+		{CitedTitle: "Alvo", TitleKey: "alvo", Kind: indexing.TypedLink, Predicate: "relacionada"},
+		{CitedTitle: "B", TitleKey: "b", TargetPath: "pasta/B.md", Kind: indexing.TypedLink, Predicate: "lista"},
+		{CitedTitle: "C", TitleKey: "c", Kind: indexing.TypedLink, Predicate: "lista"},
+	}, nota.Links, "o YAML le [[X]] sem aspas como lista dentro de lista; lista comum nao e ligacao")
+}
