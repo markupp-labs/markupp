@@ -57,6 +57,18 @@ func TestListAuthorizations_SemAutorizacoes_SliceVazioNaoNil(t *testing.T) {
 	}
 }
 
+func TestListAuthorizations_EscoposNil_SliceVazioNaoNil(t *testing.T) {
+	repo := testRepositoryWithActiveAuthorization()
+	repo.summaries[0].Scopes = nil
+
+	views, err := newTestService(repo).ListAuthorizations(context.Background(), testUserID)
+
+	require.NoError(t, err)
+	require.Len(t, views, 1)
+	assert.NotNil(t, views[0].Scopes)
+	assert.Empty(t, views[0].Scopes)
+}
+
 func TestListAuthorizations_FalhaDoRepositorio_DevolveErroEmbrulhado(t *testing.T) {
 	repo := newFakeOAuthRepository()
 	repo.listErr = errors.New("banco fora do ar")
