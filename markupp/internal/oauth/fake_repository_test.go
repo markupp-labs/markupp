@@ -14,8 +14,12 @@ type fakeOAuthRepository struct {
 	requests       map[string]oauth.AuthorizationRequest
 	authorizations map[string]oauth.Authorization
 	redeemed       oauth.RedeemedCode
+	consumed       oauth.TokenGrant
+	found          oauth.TokenGrant
+	summaries      []oauth.AuthorizationSummary
 
-	getClientErr, createErr, approveErr, activeErr, redeemErr, saveErr, revokeErr error
+	getClientErr, createErr, approveErr, activeErr, redeemErr, saveErr, revokeErr   error
+	consumeErr, saveRefreshedErr, revokeAuditedErr, findErr, listErr, revokeAuthErr error
 
 	created     []oauth.AuthorizationRequest
 	pendingNow  []time.Time
@@ -25,6 +29,28 @@ type fakeOAuthRepository struct {
 	redeemNow   []time.Time
 	saved       [][]oauth.IssuedToken
 	revoked     []string
+
+	consumeCalls   []string
+	consumeNow     []time.Time
+	refreshed      [][]oauth.IssuedToken
+	refreshEvents  []oauth.AuditEvent
+	auditedRevokes []auditedRevoke
+	findCalls      []string
+	listCalls      []string
+	revokedAuths   []revokedAuthorization
+}
+
+// auditedRevoke é uma chamada a RevokeAuthorizationTokensAudited.
+type auditedRevoke struct {
+	AuthorizationID string
+	Event           oauth.AuditEvent
+}
+
+// revokedAuthorization é uma chamada a RevokeAuthorization.
+type revokedAuthorization struct {
+	UserID          string
+	AuthorizationID string
+	Event           oauth.AuditEvent
 }
 
 func newFakeOAuthRepository() *fakeOAuthRepository {
@@ -112,28 +138,38 @@ func (f *fakeOAuthRepository) RevokeAuthorizationTokens(_ context.Context, autho
 	return f.revokeErr
 }
 
-// Métodos do refresh e da revogação: o fake ainda não os exercita.
-
-func (f *fakeOAuthRepository) ConsumeRefreshToken(context.Context, string, time.Time) (oauth.TokenGrant, error) {
-	return oauth.TokenGrant{}, oauth.ErrTokenNotFound
+func (f *fakeOAuthRepository) ConsumeRefreshToken(_ context.Context, tokenHash string, now time.Time) (oauth.TokenGrant, error) {
+	f.consumeCalls = append(f.consumeCalls, tokenHash)
+	f.consumeNow = append(f.consumeNow, now)
+	return f.consumed, f.consumeErr
 }
 
-func (f *fakeOAuthRepository) SaveRefreshedTokens(context.Context, []oauth.IssuedToken, oauth.AuditEvent) error {
-	return nil
+func (f *fakeOAuthRepository) SaveRefreshedTokens(_ context.Context, tokens []oauth.IssuedToken, event oauth.AuditEvent) error {
+	f.refreshed = append(f.refreshed, tokens)
+	f.refreshEvents = append(f.refreshEvents, event)
+	return f.saveRefreshedErr
 }
 
-func (f *fakeOAuthRepository) RevokeAuthorizationTokensAudited(context.Context, string, oauth.AuditEvent) error {
-	return nil
+func (f *fakeOAuthRepository) RevokeAuthorizationTokensAudited(_ context.Context, authorizationID string, event oauth.AuditEvent) error {
+	f.auditedRevokes = append(f.auditedRevokes, auditedRevoke{AuthorizationID: authorizationID, Event: event})
+	return f.revokeAuditedErr
 }
 
-func (f *fakeOAuthRepository) FindToken(context.Context, string) (oauth.TokenGrant, error) {
-	return oauth.TokenGrant{}, oauth.ErrTokenNotFound
+// FindToken devolve found, ou ErrTokenNotFound enquanto found não foi configurado.
+func (f *fakeOAuthRepository) FindToken(_ context.Context, tokenHash string) (oauth.TokenGrant, error) {
+	f.findCalls = append(f.findCalls, tokenHash)
+	if f.findErr == nil && f.found.Authorization.ID == "" {
+		return oauth.TokenGrant{}, oauth.ErrTokenNotFound
+	}
+	return f.found, f.findErr
 }
 
-func (f *fakeOAuthRepository) ListActiveAuthorizations(context.Context, string) ([]oauth.AuthorizationSummary, error) {
-	return nil, nil
+func (f *fakeOAuthRepository) ListActiveAuthorizations(_ context.Context, userID string) ([]oauth.AuthorizationSummary, error) {
+	f.listCalls = append(f.listCalls, userID)
+	return f.summaries, f.listErr
 }
 
-func (f *fakeOAuthRepository) RevokeAuthorization(context.Context, string, string, oauth.AuditEvent) error {
-	return nil
+func (f *fakeOAuthRepository) RevokeAuthorization(_ context.Context, userID, authorizationID string, event oauth.AuditEvent) error {
+	f.revokedAuths = append(f.revokedAuths, revokedAuthorization{UserID: userID, AuthorizationID: authorizationID, Event: event})
+	return f.revokeAuthErr
 }
