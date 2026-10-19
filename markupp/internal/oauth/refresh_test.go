@@ -3,6 +3,7 @@ package oauth_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -58,6 +59,7 @@ func TestRefreshToken_RefreshValido_RotacionaOParEAudita(t *testing.T) {
 	}, response)
 	assert.Equal(t, []string{auth.HashOpaqueToken(testRefreshToken)}, repo.consumeCalls)
 	assert.Equal(t, []time.Time{testNow}, repo.consumeNow)
+	assert.Equal(t, []string{auth.HashOpaqueToken(testRefreshToken)}, repo.refreshParents, "a gravação confere o refresh pai")
 	assert.Equal(t, [][]oauth.IssuedToken{expectedIssuedTokens()}, repo.refreshed)
 	assert.Equal(t, []oauth.AuditEvent{testAuditEvent(oauth.AuditActionRefresh, oauth.AuditResultSuccess)}, repo.refreshEvents)
 	assert.Empty(t, repo.saved, "o refresh grava pelo SaveRefreshedTokens, que audita")
@@ -137,6 +139,26 @@ func TestRefreshToken_RefreshRecusadoPeloRepositorio_InvalidGrantSemRevogar(t *t
 
 			requireProtocolError(t, err, "invalid_grant", "", "")
 			assert.Empty(t, repo.refreshed)
+			assert.Empty(t, repo.auditedRevokes)
+		})
+	}
+}
+
+// TestRefreshToken_RevogadoAntesDeGravar_InvalidGrant cobre a revogação que entra entre
+// o consumo e a gravação do par novo.
+func TestRefreshToken_RevogadoAntesDeGravar_InvalidGrant(t *testing.T) {
+	casos := map[string]error{
+		"refresh pai revogado": oauth.ErrTokenNotFound,
+		"autorizacao revogada": fmt.Errorf("contexto: %w", oauth.ErrAuthorizationNotFound),
+	}
+	for nome, causa := range casos {
+		t.Run(nome, func(t *testing.T) {
+			repo := testRepositoryWithRefreshableToken()
+			repo.saveRefreshedErr = causa
+
+			_, err := newTestService(repo).RefreshToken(context.Background(), validRefreshGrant())
+
+			requireProtocolError(t, err, "invalid_grant", "", "")
 			assert.Empty(t, repo.auditedRevokes)
 		})
 	}

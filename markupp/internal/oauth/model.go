@@ -125,7 +125,7 @@ type Repository interface {
 	// a Autorização foi revogada.
 	ConsumeRefreshToken(ctx context.Context, tokenHash string, now time.Time) (TokenGrant, error)
 	// SaveRefreshedTokens grava o novo par e audita o evento, numa transação.
-	SaveRefreshedTokens(ctx context.Context, tokens []IssuedToken, event AuditEvent) error
+	SaveRefreshedTokens(ctx context.Context, parentHash string, tokens []IssuedToken, event AuditEvent) error
 	// RevokeAuthorizationTokensAudited revoga os tokens da Autorização e audita o evento,
 	// numa transação.
 	RevokeAuthorizationTokensAudited(ctx context.Context, authorizationID string, event AuditEvent) error

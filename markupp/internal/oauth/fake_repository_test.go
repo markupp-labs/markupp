@@ -32,6 +32,7 @@ type fakeOAuthRepository struct {
 
 	consumeCalls   []string
 	consumeNow     []time.Time
+	refreshParents []string
 	refreshed      [][]oauth.IssuedToken
 	refreshEvents  []oauth.AuditEvent
 	auditedRevokes []auditedRevoke
@@ -144,7 +145,8 @@ func (f *fakeOAuthRepository) ConsumeRefreshToken(_ context.Context, tokenHash s
 	return f.consumed, f.consumeErr
 }
 
-func (f *fakeOAuthRepository) SaveRefreshedTokens(_ context.Context, tokens []oauth.IssuedToken, event oauth.AuditEvent) error {
+func (f *fakeOAuthRepository) SaveRefreshedTokens(_ context.Context, parentHash string, tokens []oauth.IssuedToken, event oauth.AuditEvent) error {
+	f.refreshParents = append(f.refreshParents, parentHash)
 	f.refreshed = append(f.refreshed, tokens)
 	f.refreshEvents = append(f.refreshEvents, event)
 	return f.saveRefreshedErr

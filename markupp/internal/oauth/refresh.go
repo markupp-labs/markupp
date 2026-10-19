@@ -102,7 +102,7 @@ func (s *Service) saveRefreshed(ctx context.Context, grant TokenGrant, scopes []
 	base := IssuedToken{AuthorizationID: grant.Authorization.ID, Resource: grant.Token.Resource, Scopes: scopes}
 	pair := s.newTokenPair(base, now)
 	event := auditEvent(AuditActionRefresh, AuditResultSuccess, grant.Authorization, now)
-	if err := s.repo.SaveRefreshedTokens(ctx, pair.tokens, event); err != nil {
+	if err := s.repo.SaveRefreshedTokens(ctx, "", pair.tokens, event); err != nil {
 		return TokenResponse{}, fmt.Errorf("oauth: gravando os tokens rotacionados da autorização %q: %w", grant.Authorization.ID, err)
 	}
 	return pair.response, nil

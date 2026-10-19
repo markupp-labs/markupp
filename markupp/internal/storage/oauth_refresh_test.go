@@ -126,30 +126,95 @@ func TestPostgresOAuthRepo_ConsumeRefreshToken_AutorizacaoRevogadaConsomeMesmoAs
 	assert.Empty(t, got.Authorization.ID)
 }
 
-func TestPostgresOAuthRepo_SaveRefreshedTokens_GravaEAudita(t *testing.T) {
-	repo, pool := repoOAuth(t)
-	require.NoError(t, autorizar(pool, "a1", "{notas:leitura}", false))
+// parNovo é o par emitido na rotação de t-refresh, com hashes diferentes do original.
+func parNovo() []oauth.IssuedToken {
+	tokens := tokensOAuth("a1")
+	tokens[0].Hash, tokens[1].Hash = "t-acesso-2", "t-refresh-2"
+	return tokens
+}
 
-	err := repo.SaveRefreshedTokens(context.Background(), tokensOAuth("a1"),
+func salvarParNovo(repo *storage.PostgresOAuthRepository, tokens []oauth.IssuedToken) error {
+	return repo.SaveRefreshedTokens(context.Background(), "t-refresh", tokens,
 		eventoOAuth(oauth.AuditActionRefresh, oauth.AuditResultSuccess))
+}
+
+func TestPostgresOAuthRepo_SaveRefreshedTokens_GravaEAudita(t *testing.T) {
+	repo, pool := repoComTokens(t)
+
+	err := salvarParNovo(repo, parNovo())
 
 	require.NoError(t, err)
-	assert.Equal(t, 2, countRows(t, pool, "SELECT count(*) FROM oauth_tokens WHERE authorization_id = 'a1'"))
+	assert.Equal(t, 4, countRows(t, pool, "SELECT count(*) FROM oauth_tokens WHERE authorization_id = 'a1' AND NOT revoked"))
 	assert.Equal(t, 1, auditoriasDe(t, pool, oauth.AuditActionRefresh, oauth.AuditResultSuccess))
 }
 
 func TestPostgresOAuthRepo_SaveRefreshedTokens_FalhaNaoGravaNemAudita(t *testing.T) {
-	repo, pool := repoOAuth(t)
-	require.NoError(t, autorizar(pool, "a1", "{notas:leitura}", false))
-	tokens := tokensOAuth("a1")
+	repo, pool := repoComTokens(t)
+	tokens := parNovo()
 	tokens[1].Scopes = []string{"notas:tudo"}
 
-	err := repo.SaveRefreshedTokens(context.Background(), tokens,
-		eventoOAuth(oauth.AuditActionRefresh, oauth.AuditResultSuccess))
+	err := salvarParNovo(repo, tokens)
 
 	require.Error(t, err)
-	assert.Equal(t, 0, countRows(t, pool, "SELECT count(*) FROM oauth_tokens"))
+	assert.Equal(t, 2, countRows(t, pool, "SELECT count(*) FROM oauth_tokens"))
 	assert.Equal(t, 0, countRows(t, pool, "SELECT count(*) FROM audit_events"))
+}
+
+// TestPostgresOAuthRepo_SaveRefreshedTokens_RevogacaoEntreConsumoEGravacao reproduz a
+// janela em que a revogação entra entre ConsumeRefreshToken e SaveRefreshedTokens.
+func TestPostgresOAuthRepo_SaveRefreshedTokens_RevogacaoEntreConsumoEGravacao(t *testing.T) {
+	evento := eventoOAuth(oauth.AuditActionRevoke, oauth.AuditResultSuccess)
+	casos := map[string]struct {
+		revogar func(*storage.PostgresOAuthRepository) error
+		want    error
+	}{
+		"tokens revogados por reuso ou /oauth/revoke": {
+			revogar: func(r *storage.PostgresOAuthRepository) error {
+				return r.RevokeAuthorizationTokensAudited(context.Background(), "a1", evento)
+			},
+			want: oauth.ErrTokenNotFound,
+		},
+		"autorizacao revogada pela conta": {
+			revogar: func(r *storage.PostgresOAuthRepository) error {
+				return r.RevokeAuthorization(context.Background(), "u1", "a1", evento)
+			},
+			want: oauth.ErrAuthorizationNotFound,
+		},
+	}
+	for nome, caso := range casos {
+		t.Run(nome, func(t *testing.T) {
+			repo, pool := repoComTokens(t)
+			_, err := repo.ConsumeRefreshToken(context.Background(), "t-refresh", instanteOAuth)
+			require.NoError(t, err)
+			require.NoError(t, caso.revogar(repo))
+
+			err = salvarParNovo(repo, parNovo())
+
+			require.ErrorIs(t, err, caso.want)
+			assert.Equal(t, 0, countRows(t, pool, "SELECT count(*) FROM oauth_tokens WHERE NOT revoked"))
+			assert.Equal(t, 0, countRows(t, pool, "SELECT count(*) FROM oauth_tokens WHERE token_hash LIKE '%-2'"))
+			assert.Equal(t, 0, auditoriasDe(t, pool, oauth.AuditActionRefresh, oauth.AuditResultSuccess))
+		})
+	}
+}
+
+func TestPostgresOAuthRepo_ConsumeRefreshToken_ConcorrenteSoUmVence(t *testing.T) {
+	repo, _ := repoComTokens(t)
+	errs := make(chan error, 2)
+	for range 2 {
+		go func() {
+			_, err := repo.ConsumeRefreshToken(context.Background(), "t-refresh", instanteOAuth)
+			errs <- err
+		}()
+	}
+
+	first, second := <-errs, <-errs
+
+	if first != nil {
+		first, second = second, first
+	}
+	require.NoError(t, first)
+	require.ErrorIs(t, second, oauth.ErrRefreshReused)
 }
 
 func TestPostgresOAuthRepo_RevokeAuthorizationTokensAudited_RevogaTokensEAudita(t *testing.T) {

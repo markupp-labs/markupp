@@ -77,7 +77,7 @@ func activeAuthorizationByID(ctx context.Context, q *gen.Queries, id string) (oa
 }
 
 // SaveRefreshedTokens grava o novo par e audita o evento, numa transação.
-func (r *PostgresOAuthRepository) SaveRefreshedTokens(ctx context.Context, tokens []oauth.IssuedToken, event oauth.AuditEvent) error {
+func (r *PostgresOAuthRepository) SaveRefreshedTokens(ctx context.Context, _ string, tokens []oauth.IssuedToken, event oauth.AuditEvent) error {
 	return inTx(ctx, r.pool, func(qtx *gen.Queries) error {
 		if err := saveTokensInTx(ctx, qtx, tokens); err != nil {
 			return err
