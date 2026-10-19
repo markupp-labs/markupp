@@ -39,6 +39,17 @@ class WikilinksTest < ApplicationSystemTestCase
     assert_no_selector ".note-preview a", text: /nobody|someone/
   end
 
+  test "a missing name with dollar signs keeps them in the title" do
+    use_fake_api(notes: [ { id: "1", path: "plan.md", content: "Ask [[a$'b]] and [[c$&d]].\n" } ])
+    sign_in_through_form
+
+    visit note_path("1")
+    click_on "Read"
+
+    assert_equal "No note named a$'b", find(".note-preview .wikilink-missing", text: "a$'b")["title"]
+    assert_equal "No note named c$&d", find(".note-preview .wikilink-missing", text: "c$&d")["title"]
+  end
+
   test "an ambiguous name picks the note in the same folder, else the shortest path" do
     use_fake_api(notes: [ { id: "1", path: "b/plan.md", content: "[[todo]]\n" }, { id: "2", path: "plan.md", content: "[[todo]]\n" },
                           { id: "3", path: "a/z/todo.md", content: "" }, { id: "4", path: "b/todo.md", content: "" },
