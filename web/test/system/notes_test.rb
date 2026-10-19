@@ -146,6 +146,19 @@ class NotesTest < ApplicationSystemTestCase
     assert_empty api.post_requests
   end
 
+  test "the blank title error goes away once a title is typed" do
+    use_fake_api(notes: [])
+    sign_in_through_form
+
+    visit new_note_path
+    send_keys :tab, "Fresh idea.", [ :control, "s" ]
+    assert_selector "#note_path_error", text: "Title can't be blank"
+    send_keys "Plan"
+
+    assert_no_selector "#note_path_error"
+    assert_selector "#note_title:not([aria-invalid=true]):not([aria-describedby])"
+  end
+
   test "saving a note with its title cleared asks for one in place" do
     api = use_fake_api(notes: [ { id: "1", path: "plan.md", content: "# Plan\n" } ])
     sign_in_through_form
