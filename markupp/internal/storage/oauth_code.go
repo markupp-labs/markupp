@@ -120,7 +120,7 @@ func checkCodeRequestInTx(ctx context.Context, qtx *gen.Queries, requestID, auth
 		return fmt.Errorf("conferir o reuso do código da autorização %q: %w", authorizationID, err)
 	}
 	if !unreused {
-		return fmt.Errorf("%w: código da autorização %q reapresentado antes de gravar o par", oauth.ErrCodeAlreadyUsed, authorizationID)
+		return fmt.Errorf("%w: código da autorização %q reapresentado, ou pedido inexistente ou de outra autorização, esperado o pedido do código ainda sem reuso", oauth.ErrCodeAlreadyUsed, authorizationID)
 	}
 	return nil
 }
