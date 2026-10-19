@@ -16,7 +16,8 @@ const (
 	errAccessDenied            = "access_denied"
 )
 
-// maxDescribedValueLen limita o trecho do valor recebido citado num error_description.
+// maxDescribedValueLen limita o trecho de um valor vindo do cliente citado num
+// error_description ou numa mensagem de erro que vai para o log (ClientValue).
 const maxDescribedValueLen = 80
 
 // ServiceConfig é a configuração do authorization server. Resources já vem na forma
