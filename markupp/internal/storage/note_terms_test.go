@@ -102,3 +102,15 @@ func TestRLS_PapelDoIndexador_NaoGravaTermosDeOutroCofre(t *testing.T) {
 	require.ErrorAs(t, err, &pgErr)
 	assert.Equal(t, "42501", pgErr.Code, "recebido %v", err)
 }
+}
+
+func TestVaultIndexer_DocumentoSemLexema_NaoGravaTermosNemTravaOCofre(t *testing.T) {
+	db := setupNotesDB(t)
+	repo := storage.NewPostgresNotesRepository(db, "simple")
+	storagetest.SaveNote(ctxDeTeste, t, repo, notaComCaminho("n1", "--.md", "..."))
+
+	indexaTodosOsCofres(t, db, "simple")
+
+	assert.Empty(t, termosDaNota(t, db, "n1"))
+	assert.Zero(t, countRows(t, db, consultaDoScaler))
+}
