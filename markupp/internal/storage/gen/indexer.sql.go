@@ -139,7 +139,7 @@ func (q *Queries) MarkSecondStage(ctx context.Context, vaultID string) error {
 
 const noteGraphFingerprint = `-- name: NoteGraphFingerprint :one
 SELECT md5(
-    coalesce((SELECT string_agg(ROW(t.note_id, t.title_key)::text, ',' ORDER BY ROW(t.note_id, t.title_key)::text)
+    coalesce((SELECT string_agg(ROW(t.note_id, t.title_key, t.path)::text, ',' ORDER BY ROW(t.note_id, t.title_key, t.path)::text)
               FROM note_titles t WHERE t.note_id = ANY ($1::text[])), '')
     || ';' ||
     coalesce((SELECT string_agg(ROW(l.note_id, l.title_key, l.target_path, l.kind, l.predicate)::text, ','
@@ -148,8 +148,8 @@ SELECT md5(
 )::text AS fingerprint
 `
 
-// Impressão dos títulos e das ligações das notas do lote, para saber se o lote os mudou.
-// A ligação inferida fica de fora porque o lote não a grava.
+// Impressão dos títulos, dos caminhos e das ligações das notas do lote, para saber se o
+// lote os mudou. A ligação inferida fica de fora porque o lote não a grava.
 func (q *Queries) NoteGraphFingerprint(ctx context.Context, noteIds []string) (string, error) {
 	row := q.db.QueryRow(ctx, noteGraphFingerprint, noteIds)
 	var fingerprint string
@@ -316,8 +316,8 @@ func (q *Queries) SaveNoteTerms(ctx context.Context, arg SaveNoteTermsParams) er
 }
 
 const saveNoteTitles = `-- name: SaveNoteTitles :exec
-INSERT INTO note_titles (note_id, vault_id, title_key)
-SELECT n.id, n.vault_id, d.title_key
+INSERT INTO note_titles (note_id, vault_id, title_key, path)
+SELECT n.id, n.vault_id, d.title_key, n.path
 FROM (SELECT unnest($1::text[]) AS note_id, unnest($2::text[]) AS title_key) d
 JOIN notes n ON n.id = d.note_id
 `

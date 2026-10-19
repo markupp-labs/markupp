@@ -112,6 +112,7 @@ type NoteTitle struct {
 	NoteID   string
 	VaultID  string
 	TitleKey string
+	Path     string
 }
 
 type NoteUnresolvedLinkItem struct {

@@ -62,8 +62,8 @@ DELETE FROM note_titles WHERE note_id = ANY (sqlc.arg(note_ids)::text[]);
 
 -- O cofre vem da nota. Nota apagada depois da leitura some no JOIN.
 -- name: SaveNoteTitles :exec
-INSERT INTO note_titles (note_id, vault_id, title_key)
-SELECT n.id, n.vault_id, d.title_key
+INSERT INTO note_titles (note_id, vault_id, title_key, path)
+SELECT n.id, n.vault_id, d.title_key, n.path
 FROM (SELECT unnest(sqlc.arg(note_ids)::text[]) AS note_id, unnest(sqlc.arg(title_keys)::text[]) AS title_key) d
 JOIN notes n ON n.id = d.note_id;
 
@@ -77,11 +77,11 @@ FROM (SELECT unnest(sqlc.arg(note_ids)::text[]) AS note_id, unnest(sqlc.arg(cite
              unnest(sqlc.arg(kinds)::text[]) AS kind, unnest(sqlc.arg(predicates)::text[]) AS predicate) d
 JOIN notes n ON n.id = d.note_id;
 
--- Impressão dos títulos e das ligações das notas do lote, para saber se o lote os mudou.
--- A ligação inferida fica de fora porque o lote não a grava.
+-- Impressão dos títulos, dos caminhos e das ligações das notas do lote, para saber se o
+-- lote os mudou. A ligação inferida fica de fora porque o lote não a grava.
 -- name: NoteGraphFingerprint :one
 SELECT md5(
-    coalesce((SELECT string_agg(ROW(t.note_id, t.title_key)::text, ',' ORDER BY ROW(t.note_id, t.title_key)::text)
+    coalesce((SELECT string_agg(ROW(t.note_id, t.title_key, t.path)::text, ',' ORDER BY ROW(t.note_id, t.title_key, t.path)::text)
               FROM note_titles t WHERE t.note_id = ANY (sqlc.arg(note_ids)::text[])), '')
     || ';' ||
     coalesce((SELECT string_agg(ROW(l.note_id, l.title_key, l.target_path, l.kind, l.predicate)::text, ','

@@ -6,11 +6,14 @@
 -- tenant não fica na linha porque o cofre muda de tenant na adoção de cofres legados:
 -- ele vem do cofre, pelas políticas.
 
--- Chaves de título da nota (caminho e aliases), já normalizadas pelo indexador.
+-- Chaves de título da nota (caminho e aliases), já normalizadas pelo indexador, com o
+-- caminho da nota quando foi indexada: mover a nota de pasta não muda o título, mas
+-- muda a que ligação por caminho ela responde, e o lote compara o caminho gravado.
 CREATE TABLE note_titles (
     note_id   TEXT NOT NULL REFERENCES notes (id) ON DELETE CASCADE ON UPDATE CASCADE,
     vault_id  TEXT NOT NULL,
     title_key TEXT NOT NULL,
+    path      TEXT NOT NULL,
     PRIMARY KEY (note_id, title_key)
 );
 CREATE INDEX note_titles_vault_title_idx ON note_titles (vault_id, title_key);

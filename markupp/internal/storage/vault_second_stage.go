@@ -12,8 +12,8 @@ import (
 )
 
 // saveGraphMarkingChange grava o grafo do lote e marca o cofre para o segundo estágio
-// quando o lote mudou títulos ou ligações: nota nova, renomeada ou com outras
-// ligações. A exclusão de nota marca o cofre por trigger.
+// quando o lote mudou títulos, caminhos ou ligações: nota nova, renomeada, movida de
+// pasta ou com outras ligações. A exclusão de nota marca o cofre por trigger.
 func saveGraphMarkingChange(ctx context.Context, q *gen.Queries, cs indexing.Changeset, indexed []indexing.IndexedNote) error {
 	noteIDs := batchNoteIDs(indexed)
 	before, err := q.NoteGraphFingerprint(ctx, noteIDs)
