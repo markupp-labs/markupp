@@ -1,4 +1,4 @@
-import { Decoration, MatchDecorator, ViewPlugin } from "@codemirror/view"
+import { Decoration, ViewPlugin } from "@codemirror/view"
 import { syntaxTree } from "@codemirror/language"
 
 // Live preview no estilo do Obsidian: esconde a sintaxe markdown fora das linhas com cursor.
@@ -50,18 +50,5 @@ export const livePreview = ViewPlugin.fromClass(class {
     if (update.docChanged || update.selectionSet || update.viewportChanged || reparsed) {
       this.decorations = hiddenSyntaxDecorations(update.view)
     }
-  }
-}, { decorations: (plugin) => plugin.decorations })
-
-// [[wikilink]] só ganha destaque visual; não navega.
-const wikilinkMatcher = new MatchDecorator({ regexp: /\[\[[^[\]\n]+\]\]/g, decoration: Decoration.mark({ class: "cm-wikilink" }) })
-
-export const wikilinks = ViewPlugin.fromClass(class {
-  constructor(view) {
-    this.decorations = wikilinkMatcher.createDeco(view)
-  }
-
-  update(update) {
-    this.decorations = wikilinkMatcher.updateDeco(update, this.decorations)
   }
 }, { decorations: (plugin) => plugin.decorations })
