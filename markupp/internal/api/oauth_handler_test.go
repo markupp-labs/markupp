@@ -26,6 +26,7 @@ type fakeOAuthService struct {
 	view       oauth.RequestView
 	redirectTo string
 	tokens     oauth.TokenResponse
+	exchange   oauth.ExchangeResponse
 	err        error
 
 	authorizations []oauth.AuthorizationView
@@ -34,6 +35,7 @@ type fakeOAuthService struct {
 	gotGrant           oauth.CodeGrant
 	gotRefresh         oauth.RefreshGrant
 	gotRevoke          oauth.RevokeRequest
+	gotExchange        oauth.ExchangeGrant
 	gotRequestID       string
 	gotUserID          string
 	gotAuthorizationID string
@@ -68,6 +70,11 @@ func (f *fakeOAuthService) ExchangeCode(_ context.Context, g oauth.CodeGrant) (o
 func (f *fakeOAuthService) RefreshToken(_ context.Context, g oauth.RefreshGrant) (oauth.TokenResponse, error) {
 	f.gotRefresh = g
 	return f.tokens, f.err
+}
+
+func (f *fakeOAuthService) ExchangeToken(_ context.Context, g oauth.ExchangeGrant) (oauth.ExchangeResponse, error) {
+	f.gotExchange = g
+	return f.exchange, f.err
 }
 
 func (f *fakeOAuthService) RevokeToken(_ context.Context, r oauth.RevokeRequest) error {

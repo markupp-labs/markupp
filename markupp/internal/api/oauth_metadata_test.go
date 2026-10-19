@@ -33,7 +33,7 @@ func TestOAuthMetadata_Configurado_Retorna200ComOsCampos(t *testing.T) {
 		"revocation_endpoint": "https://markupp.exemplo/oauth/revoke",
 		"scopes_supported": ["notas:leitura", "notas:escrita", "administracao"],
 		"response_types_supported": ["code"],
-		"grant_types_supported": ["authorization_code", "refresh_token"],
+		"grant_types_supported": ["authorization_code", "refresh_token", "urn:ietf:params:oauth:grant-type:token-exchange"],
 		"code_challenge_methods_supported": ["S256"],
 		"token_endpoint_auth_methods_supported": ["none"],
 		"revocation_endpoint_auth_methods_supported": ["none"]
