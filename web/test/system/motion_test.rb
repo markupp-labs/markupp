@@ -20,20 +20,21 @@ class MotionTest < ApplicationSystemTestCase
     assert_equal [ {}, {}, {} ], motions_after("", "main", ".note-editor-pane", "nav#sidebar")
   end
 
-  test "the sidebar slides out fast and back in on the curve, with the content and the spine along" do
+  # A coluna da barra no grid do body encolhe e cresce junto com o deslize da barra: o main acompanha pela borda
+  # esquerda, sem transform próprio.
+  test "the sidebar slides out fast and back in on the curve, with its column and the spine along" do
     visit root_path
 
-    closing = motions_after("document.querySelector('.sidebar-spine').click()", "nav#sidebar", "main", ".sidebar-spine")
+    closing = motions_after("document.querySelector('.sidebar-spine').click()", "nav#sidebar", "body", ".sidebar-spine", "main")
     assert_equal [ { "display" => "150 linear", "transform" => "150 linear" },
-                   { "workspace-slide-left" => "150 linear" },
-                   { "transform" => "150 linear" } ], closing
+                   { "grid-template-columns" => "150 linear" },
+                   { "transform" => "150 linear" }, {} ], closing
 
     assert_no_selector "nav#sidebar"
-    opening = motions_after("document.querySelector('.sidebar-spine').click()", "nav#sidebar", "main", ".sidebar-spine")
-    assert_equal [ { "transform" => "480 #{QUINT}" }, { "workspace-slide-right" => "480 #{QUINT}" }, { "transform" => "480 #{QUINT}" } ], opening
+    opening = motions_after("document.querySelector('.sidebar-spine').click()", "nav#sidebar", "body", ".sidebar-spine", "main")
+    assert_equal [ { "transform" => "480 #{QUINT}" }, { "grid-template-columns" => "480 #{QUINT}" }, { "transform" => "480 #{QUINT}" }, {} ], opening
   end
 
-  # O que sai não cruza por cima do que entra: some no ato, sem animação.
   # O deslize leva a borda esquerda do main junto com a barra: o que encosta à direita no cabeçalho (o seletor de modo)
   # fica parado e o que encosta à esquerda (o caminho) anda sem saltos, quadro a quadro, do lugar onde estava.
   test "the note header holds still while the sidebar slides, only its left edge follows the sidebar" do
