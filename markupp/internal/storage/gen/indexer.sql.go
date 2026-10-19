@@ -11,6 +11,18 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const countVaultNotes = `-- name: CountVaultNotes :one
+SELECT count(*)::int AS note_count FROM notes WHERE vault_id = $1
+`
+
+// Notas do cofre, para decidir se o lote foi grande frente a ele.
+func (q *Queries) CountVaultNotes(ctx context.Context, vaultID string) (int32, error) {
+	row := q.db.QueryRow(ctx, countVaultNotes, vaultID)
+	var note_count int32
+	err := row.Scan(&note_count)
+	return note_count, err
+}
+
 const deleteNoteGraph = `-- name: DeleteNoteGraph :exec
 WITH apagadas AS (DELETE FROM note_links WHERE note_id = ANY ($1::text[]) AND kind <> 'inferred')
 DELETE FROM note_titles WHERE note_id = ANY ($1::text[])
@@ -162,7 +174,7 @@ const reservePendingVault = `-- name: ReservePendingVault :one
 SELECT v.id AS vault_id, v.tenant_id
 FROM vaults v
 WHERE v.id IN (SELECT n.vault_id FROM note_index_queue q JOIN notes n ON n.id = q.note_id)
-   OR v.id IN (SELECT s.vault_id FROM vault_second_stage_queue s)
+   OR v.id IN (SELECT s.vault_id FROM vault_second_stage_queue s WHERE NOT markupp_second_stage_running(s.vault_id))
 ORDER BY random()
 LIMIT 1
 FOR NO KEY UPDATE OF v SKIP LOCKED
@@ -178,7 +190,8 @@ type ReservePendingVaultRow struct {
 // Trava a linha do cofre, e não a fila, para dois Jobs nunca pegarem o mesmo cofre. NO KEY
 // UPDATE não conflita com a checagem de chave estrangeira, então as notas seguem
 // graváveis. A ordem aleatória impede que um cofre que sempre falha segure os outros. O
-// cofre só marcado para o segundo estágio também é pendente.
+// cofre só marcado para o segundo estágio também é pendente, desde que nenhum Job já
+// esteja no segundo estágio dele.
 func (q *Queries) ReservePendingVault(ctx context.Context) (ReservePendingVaultRow, error) {
 	row := q.db.QueryRow(ctx, reservePendingVault)
 	var i ReservePendingVaultRow
@@ -385,6 +398,18 @@ func (q *Queries) SecondStageRevision(ctx context.Context, vaultID string) (int6
 	var revision int64
 	err := row.Scan(&revision)
 	return revision, err
+}
+
+const tryLockSecondStage = `-- name: TryLockSecondStage :one
+SELECT markupp_try_lock_second_stage($1::text)::bool AS locked
+`
+
+// Falso quando outro Job já está no segundo estágio do cofre. Solta no fim da transação.
+func (q *Queries) TryLockSecondStage(ctx context.Context, vaultID string) (bool, error) {
+	row := q.db.QueryRow(ctx, tryLockSecondStage, vaultID)
+	var locked bool
+	err := row.Scan(&locked)
+	return locked, err
 }
 
 const unmarkSecondStage = `-- name: UnmarkSecondStage :exec

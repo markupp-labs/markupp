@@ -30,9 +30,31 @@ func NewPostgresVaultIndexer(ctx context.Context, pool *pgxpool.Pool, searchConf
 }
 
 // IndexNextVault reserva um cofre com nota pendente ou marcado para o segundo
-// estágio, indexa as notas pendentes dele com index, grava o resultado e roda o
-// segundo estágio na mesma transação. Devolve false quando não há cofre pendente livre.
+// estágio, indexa as notas pendentes dele com index e grava o resultado. Depois do
+// commit do lote, e já sem a reserva, roda o segundo estágio em transação própria.
+// Devolve false quando não há cofre pendente livre.
 func (x *PostgresVaultIndexer) IndexNextVault(ctx context.Context, index indexing.IndexFunc) (bool, error) {
+	batch, found, err := x.indexNextBatch(ctx, index)
+	if !found || err != nil {
+		return found, err
+	}
+	if err := x.analyzeLargeBatch(ctx, batch); err != nil {
+		return true, err
+	}
+	return true, x.secondStage(ctx, batch.vault)
+}
+
+// indexedBatch é o lote que uma transação gravou: o cofre, quantas notas vieram e
+// quantas o cofre tinha.
+type indexedBatch struct {
+	vault      gen.ReservePendingVaultRow
+	notes      int
+	vaultNotes int
+}
+
+// indexNextBatch reserva o cofre e grava o lote dele numa transação.
+func (x *PostgresVaultIndexer) indexNextBatch(ctx context.Context, index indexing.IndexFunc) (indexedBatch, bool, error) {
+	var batch indexedBatch
 	found := false
 	err := inTx(ctx, x.pool, func(q *gen.Queries) error {
 		vault, err := q.ReservePendingVault(ctx)
@@ -42,28 +64,90 @@ func (x *PostgresVaultIndexer) IndexNextVault(ctx context.Context, index indexin
 		if err != nil {
 			return fmt.Errorf("reservar cofre pendente: %w", err)
 		}
-		found = true
-		return x.indexVault(ctx, q, vault, index)
+		found, batch.vault = true, vault
+		if batch.notes, err = x.indexVault(ctx, q, vault, index); err != nil {
+			return err
+		}
+		batch.vaultNotes, err = countVaultNotes(ctx, q, vault.VaultID)
+		return err
 	})
-	return found, err
+	return batch, found, err
 }
 
-func (x *PostgresVaultIndexer) indexVault(ctx context.Context, q *gen.Queries, vault gen.ReservePendingVaultRow, index indexing.IndexFunc) error {
-	if err := q.EnterIndexer(ctx, gen.EnterIndexerParams{TenantID: vault.TenantID, VaultID: vault.VaultID}); err != nil {
-		return fmt.Errorf("entrar no cofre %q do tenant %q: %w", vault.VaultID, vault.TenantID, err)
+// indexVault grava o lote do cofre e devolve quantas notas ele trouxe.
+func (x *PostgresVaultIndexer) indexVault(ctx context.Context, q *gen.Queries, vault gen.ReservePendingVaultRow, index indexing.IndexFunc) (int, error) {
+	if err := enterVault(ctx, q, vault); err != nil {
+		return 0, err
 	}
 	rows, err := q.ListPendingNotes(ctx, vault.VaultID)
 	if err != nil {
-		return fmt.Errorf("listar notas pendentes do cofre %q: %w", vault.VaultID, err)
+		return 0, fmt.Errorf("listar notas pendentes do cofre %q: %w", vault.VaultID, err)
 	}
 	cs := toChangeset(vault, rows)
 	if err := x.applyBatch(ctx, q, cs, index(cs)); err != nil {
-		return err
+		return 0, err
 	}
-	if err := dequeue(ctx, q, vault.VaultID, rows); err != nil {
-		return err
+	return len(rows), dequeue(ctx, q, vault.VaultID, rows)
+}
+
+func countVaultNotes(ctx context.Context, q *gen.Queries, vaultID string) (int, error) {
+	n, err := q.CountVaultNotes(ctx, vaultID)
+	if err != nil {
+		return 0, fmt.Errorf("contar as notas do cofre %q: %w", vaultID, err)
 	}
-	return runSecondStage(ctx, q, vault.VaultID, x.searchConfig)
+	return int(n), nil
+}
+
+func enterVault(ctx context.Context, q *gen.Queries, vault gen.ReservePendingVaultRow) error {
+	if err := q.EnterIndexer(ctx, gen.EnterIndexerParams{TenantID: vault.TenantID, VaultID: vault.VaultID}); err != nil {
+		return fmt.Errorf("entrar no cofre %q do tenant %q: %w", vault.VaultID, vault.TenantID, err)
+	}
+	return nil
+}
+
+// Um lote é grande, e pede ANALYZE das tabelas derivadas antes do segundo estágio,
+// quando passa de largeBatchBase notas mais largeBatchFraction das notas do cofre: o
+// mesmo limiar padrão do autovacuum (autovacuum_analyze_threshold e
+// autovacuum_analyze_scale_factor). O segundo estágio roda logo depois do commit,
+// antes de o autovacuum acordar, e sem estatística da carga nova as consultas por
+// título planejam como se as tabelas estivessem vazias.
+const (
+	largeBatchBase     = 50
+	largeBatchFraction = 0.1
+)
+
+// analyzeDerivedTables analisa as tabelas que o lote grava e o segundo estágio lê.
+const analyzeDerivedTables = "ANALYZE note_search_index, note_titles, note_links, note_terms"
+
+// analyzeLargeBatch atualiza as estatísticas das tabelas derivadas quando batch foi
+// grande. Roda fora de transação, no papel da conexão, dono das tabelas.
+func (x *PostgresVaultIndexer) analyzeLargeBatch(ctx context.Context, batch indexedBatch) error {
+	if float64(batch.notes) <= largeBatchBase+largeBatchFraction*float64(batch.vaultNotes) {
+		return nil
+	}
+	if _, err := x.pool.Exec(ctx, analyzeDerivedTables); err != nil {
+		return fmt.Errorf("analisar as tabelas derivadas depois do lote de %d notas do cofre %q: %w", batch.notes, batch.vault.VaultID, err)
+	}
+	return nil
+}
+
+// secondStage roda o segundo estágio do cofre numa transação própria, sob a trava
+// consultiva do cofre. Outro Job no segundo estágio do mesmo cofre faz este pular:
+// a marcação fica, e o próximo Job recalcula.
+func (x *PostgresVaultIndexer) secondStage(ctx context.Context, vault gen.ReservePendingVaultRow) error {
+	return inTx(ctx, x.pool, func(q *gen.Queries) error {
+		locked, err := q.TryLockSecondStage(ctx, vault.VaultID)
+		if err != nil {
+			return fmt.Errorf("travar o segundo estagio do cofre %q: %w", vault.VaultID, err)
+		}
+		if !locked {
+			return nil
+		}
+		if err := enterVault(ctx, q, vault); err != nil {
+			return err
+		}
+		return runSecondStage(ctx, q, vault.VaultID, x.searchConfig)
+	})
 }
 
 // applyBatch grava as linhas derivadas do lote: documentos, termos e grafo.

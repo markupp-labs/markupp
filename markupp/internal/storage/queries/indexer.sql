@@ -4,12 +4,13 @@
 -- Trava a linha do cofre, e não a fila, para dois Jobs nunca pegarem o mesmo cofre. NO KEY
 -- UPDATE não conflita com a checagem de chave estrangeira, então as notas seguem
 -- graváveis. A ordem aleatória impede que um cofre que sempre falha segure os outros. O
--- cofre só marcado para o segundo estágio também é pendente.
+-- cofre só marcado para o segundo estágio também é pendente, desde que nenhum Job já
+-- esteja no segundo estágio dele.
 -- name: ReservePendingVault :one
 SELECT v.id AS vault_id, v.tenant_id
 FROM vaults v
 WHERE v.id IN (SELECT n.vault_id FROM note_index_queue q JOIN notes n ON n.id = q.note_id)
-   OR v.id IN (SELECT s.vault_id FROM vault_second_stage_queue s)
+   OR v.id IN (SELECT s.vault_id FROM vault_second_stage_queue s WHERE NOT markupp_second_stage_running(s.vault_id))
 ORDER BY random()
 LIMIT 1
 FOR NO KEY UPDATE OF v SKIP LOCKED;
@@ -91,6 +92,14 @@ SELECT md5(
 -- name: MarkSecondStage :exec
 INSERT INTO vault_second_stage_queue (vault_id) VALUES (sqlc.arg(vault_id))
 ON CONFLICT (vault_id) DO UPDATE SET revision = nextval('vault_second_stage_revision_seq');
+
+-- Falso quando outro Job já está no segundo estágio do cofre. Solta no fim da transação.
+-- name: TryLockSecondStage :one
+SELECT markupp_try_lock_second_stage(sqlc.arg(vault_id)::text)::bool AS locked;
+
+-- Notas do cofre, para decidir se o lote foi grande frente a ele.
+-- name: CountVaultNotes :one
+SELECT count(*)::int AS note_count FROM notes WHERE vault_id = sqlc.arg(vault_id);
 
 -- name: SecondStageRevision :one
 SELECT revision FROM vault_second_stage_queue WHERE vault_id = sqlc.arg(vault_id);

@@ -29,6 +29,25 @@ CREATE TABLE vault_term_stats (
     note_count INTEGER NOT NULL
 );
 
+-- O segundo estágio roda em transação própria, depois do commit do lote, sem segurar a
+-- reserva do cofre: uma trava consultiva da transação, por cofre, impede dois Jobs de
+-- calculá-lo juntos. A primeira chave, 37, separa estas travas de outros usos; cofres
+-- com o mesmo hashtext dividem a trava e só esperam um pelo outro.
+-- +goose StatementBegin
+CREATE FUNCTION markupp_try_lock_second_stage(p_vault_id TEXT) RETURNS BOOLEAN
+LANGUAGE sql VOLATILE RETURN pg_try_advisory_xact_lock(37, hashtext(p_vault_id));
+-- +goose StatementEnd
+REVOKE ALL ON FUNCTION markupp_try_lock_second_stage(TEXT) FROM PUBLIC;
+
+-- Se algum Job está no segundo estágio do cofre, pela trava de cima.
+-- +goose StatementBegin
+CREATE FUNCTION markupp_second_stage_running(p_vault_id TEXT) RETURNS BOOLEAN
+LANGUAGE sql STABLE RETURN EXISTS (
+    SELECT 1 FROM pg_catalog.pg_locks l
+    WHERE l.locktype = 'advisory' AND l.classid = 37 AND l.objid = hashtext(p_vault_id)::oid AND l.objsubid = 2
+);
+-- +goose StatementEnd
+
 -- Apagar nota muda títulos e ligações do cofre sem passar pelo indexador. SECURITY
 -- DEFINER porque a nota é apagada no papel markupp_app, que não enxerga a marcação.
 -- +goose StatementBegin
@@ -129,6 +148,8 @@ $$;
 -- +goose StatementEnd
 DROP TRIGGER IF EXISTS notes_mark_vault_on_delete ON notes;
 DROP FUNCTION IF EXISTS markupp_mark_deleted_notes_vaults();
+DROP FUNCTION IF EXISTS markupp_second_stage_running(TEXT);
+DROP FUNCTION IF EXISTS markupp_try_lock_second_stage(TEXT);
 DROP TABLE IF EXISTS vault_term_stats;
 DROP TABLE IF EXISTS vault_term_frequencies;
 DROP TABLE IF EXISTS vault_second_stage_queue;
