@@ -30,7 +30,8 @@ func serveAuthenticated(w http.ResponseWriter, r *http.Request, next http.Handle
 		return
 	}
 	claims, err := validator.ValidateToken(tokenString)
-	if err != nil {
+	// Scope só de espaços não é login nem escopo algum: o token é recusado inteiro.
+	if err != nil || (claims.Scope != "" && strings.TrimSpace(claims.Scope) == "") {
 		writeError(w, "unauthorized", "token ausente ou invalido", http.StatusUnauthorized)
 		return
 	}
