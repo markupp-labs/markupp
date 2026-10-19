@@ -310,27 +310,6 @@ func (q *Queries) GetPendingOAuthRequest(ctx context.Context, arg GetPendingOAut
 	return i, err
 }
 
-const getRotatedOAuthRefreshToken = `-- name: GetRotatedOAuthRefreshToken :one
-SELECT token_hash, authorization_id, kind, resource, scopes, expires_at, revoked, rotated_at, created_at FROM oauth_tokens WHERE token_hash = $1 AND kind = 'refresh' AND rotated_at IS NOT NULL
-`
-
-func (q *Queries) GetRotatedOAuthRefreshToken(ctx context.Context, tokenHash string) (OauthToken, error) {
-	row := q.db.QueryRow(ctx, getRotatedOAuthRefreshToken, tokenHash)
-	var i OauthToken
-	err := row.Scan(
-		&i.TokenHash,
-		&i.AuthorizationID,
-		&i.Kind,
-		&i.Resource,
-		&i.Scopes,
-		&i.ExpiresAt,
-		&i.Revoked,
-		&i.RotatedAt,
-		&i.CreatedAt,
-	)
-	return i, err
-}
-
 const isUnrevokedOAuthToken = `-- name: IsUnrevokedOAuthToken :one
 SELECT EXISTS (
     SELECT 1 FROM oauth_tokens WHERE token_hash = $1 AND authorization_id = $2 AND NOT revoked

@@ -120,9 +120,10 @@ type Repository interface {
 	RevokeAuthorizationTokens(ctx context.Context, authorizationID string) error
 	// ConsumeRefreshToken marca o refresh token como rotacionado e lê a Autorização
 	// ativa na mesma transação. Devolve ErrTokenNotFound se o hash não é de um refresh
-	// válido (inexistente, expirado em relação a now ou revogado), ErrRefreshReused junto
-	// com o TokenGrant quando ele já tinha sido rotacionado, e ErrAuthorizationNotFound se
-	// a Autorização foi revogada.
+	// válido (inexistente, expirado em relação a now ou revogado, mesmo já rotacionado),
+	// ErrRefreshReused junto com o TokenGrant quando ele já tinha sido rotacionado e
+	// ainda não foi revogado, com a Autorização dona mesmo revogada, como FindToken, e
+	// ErrAuthorizationNotFound se a Autorização foi revogada.
 	ConsumeRefreshToken(ctx context.Context, tokenHash string, now time.Time) (TokenGrant, error)
 	// SaveRefreshedTokens trava a Autorização dos tokens, grava o novo par e audita o
 	// evento, numa transação. Sem gravar nada, devolve ErrAuthorizationNotFound se a

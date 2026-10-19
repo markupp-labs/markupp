@@ -46,22 +46,22 @@ func consumeRefreshInTx(ctx context.Context, qtx *gen.Queries, tokenHash string,
 	return oauth.TokenGrant{Token: token, Authorization: authz}, err
 }
 
-// rotatedRefresh distingue o refresh reapresentado depois de rotacionado do inexistente,
-// expirado ou revogado, devolvendo a Autorização ativa dele se houver.
+// rotatedRefresh distingue o reuso, refresh rotacionado e ainda não revogado, do refresh
+// inexistente, expirado ou revogado. O reuso volta com a Autorização dona, mesmo
+// revogada, para a auditoria ter ator e alvo.
 func (r *PostgresOAuthRepository) rotatedRefresh(ctx context.Context, tokenHash string) (oauth.TokenGrant, error) {
-	row, err := r.q.GetRotatedOAuthRefreshToken(ctx, tokenHash)
+	row, err := r.q.GetOAuthTokenWithAuthorization(ctx, tokenHash)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return oauth.TokenGrant{}, oauth.ErrTokenNotFound
 	}
 	if err != nil {
 		return oauth.TokenGrant{}, fmt.Errorf("buscar refresh token oauth já rotacionado: %w", err)
 	}
-	token := toIssuedToken(row)
-	authz, err := activeAuthorizationByID(ctx, r.q, token.AuthorizationID)
-	if err != nil && !errors.Is(err, oauth.ErrAuthorizationNotFound) {
-		return oauth.TokenGrant{}, err
+	token := row.OauthToken
+	if token.Kind != oauth.TokenKindRefresh || !token.RotatedAt.Valid || token.Revoked {
+		return oauth.TokenGrant{}, oauth.ErrTokenNotFound
 	}
-	return oauth.TokenGrant{Token: token, Authorization: authz}, oauth.ErrRefreshReused
+	return oauth.TokenGrant{Token: toIssuedToken(token), Authorization: toAuthorization(row.OauthAuthorization)}, oauth.ErrRefreshReused
 }
 
 // activeAuthorizationByID busca a Autorização não revogada pelo ID, por q.

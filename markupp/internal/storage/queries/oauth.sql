@@ -62,9 +62,6 @@ WHERE token_hash = sqlc.arg(token_hash)::TEXT AND kind = 'refresh' AND NOT revok
   AND rotated_at IS NULL AND expires_at > sqlc.arg(now)::TIMESTAMPTZ
 RETURNING *;
 
--- name: GetRotatedOAuthRefreshToken :one
-SELECT * FROM oauth_tokens WHERE token_hash = $1 AND kind = 'refresh' AND rotated_at IS NOT NULL;
-
 -- name: GetActiveOAuthAuthorizationByID :one
 SELECT * FROM oauth_authorizations WHERE id = $1 AND revoked_at IS NULL;
 
