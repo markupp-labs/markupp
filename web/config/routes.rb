@@ -11,6 +11,7 @@ Rails.application.routes.draw do
   resource :password_request, only: [ :new, :create ]
   resource :password_reset, only: [ :new, :create ]
   get "account" => redirect("/settings/account")
+  resource :password_change, only: :create
   resource :email_verification, only: :create
   resource :email_confirmation, only: [ :new, :create ]
   resources :tenants, only: [ :index, :create ]
