@@ -773,6 +773,13 @@ paths:
         ligações das outras na hora; o que a própria nota cita só muda quando o
         indexador processa o cofre dela. Ligação para outro cofre é sempre não
         resolvida.
+
+        Também é ligação a tipada: a chave do frontmatter cujo valor é um wikilink
+        inteiro, como o Obsidian grava entre aspas (autor: "[[Fulana]]"), ou uma lista
+        com wikilinks. A chave é o predicado, como escrita, e o alvo resolve como o
+        wikilink do corpo. Valor literal (texto, número, data, tag) e a chave aliases
+        não viram ligação. Cada nota aparece uma vez, com os predicados das ligações
+        tipadas que faz para esta em predicates.
       parameters:
         - $ref: '#/components/parameters/TenantHeader'
         - $ref: '#/components/parameters/NoteID'
@@ -786,7 +793,7 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/LinkedNoteResponse'
+                  $ref: '#/components/schemas/BacklinkResponse'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '400':
@@ -812,7 +819,9 @@ paths:
       summary: Lista as notas ligadas a esta em qualquer sentido
       description: |
         Vizinhança de raio 1: as notas que ligam a esta e as notas a que esta liga, uma
-        vez cada, ordenadas por caminho, com o sentido da ligação. A resolução segue as regras de GET /notes/{id}/backlinks. O viewer também lê.
+        vez cada, ordenadas por caminho, com o sentido da ligação e os predicados das
+        ligações tipadas em cada sentido. A resolução segue as regras de GET
+        /notes/{id}/backlinks. O viewer também lê.
       parameters:
         - $ref: '#/components/parameters/TenantHeader'
         - $ref: '#/components/parameters/NoteID'
@@ -1328,6 +1337,19 @@ components:
           type: string
           format: date-time
           description: Data da última atualização da nota
+    BacklinkResponse:
+      allOf:
+        - $ref: '#/components/schemas/LinkedNoteResponse'
+        - type: object
+          properties:
+            predicates:
+              type: array
+              items:
+                type: string
+              description: |
+                Chaves do frontmatter pelas quais a nota liga a esta, sem repetir e em
+                ordem alfabética; vazio quando ela liga só pelo corpo.
+              example: ["autor", "revisor"]
     NeighborResponse:
       allOf:
         - $ref: '#/components/schemas/LinkedNoteResponse'
@@ -1339,6 +1361,18 @@ components:
             outgoing:
               type: boolean
               description: Esta nota liga à vizinha
+            incoming_predicates:
+              type: array
+              items:
+                type: string
+              description: Chaves do frontmatter pelas quais a vizinha liga a esta nota, sem repetir
+              example: ["autor"]
+            outgoing_predicates:
+              type: array
+              items:
+                type: string
+              description: Chaves do frontmatter pelas quais esta nota liga à vizinha, sem repetir
+              example: []
     UnresolvedLinkResponse:
       type: object
       properties:
@@ -1354,8 +1388,10 @@ components:
           example: "Reunião Semanal"
         kind:
           type: string
-          enum: [explicit, embed]
-          description: explicit para wikilink e link markdown, embed para ![[...]]
+          enum: [explicit, embed, typed]
+          description: |
+            explicit para wikilink e link markdown, embed para ![[...]] e typed para
+            ligação tipada do frontmatter
     HealthResponse:
       type: object
       properties:
