@@ -141,12 +141,21 @@ func orderedScopes(scopes []string) []string {
 // auditAuthorize registra a decisão do pedido como oauth.authorize, com o cliente como
 // alvo e a conta que decidiu como ator.
 func auditAuthorize(ctx context.Context, qtx *gen.Queries, req gen.OauthRequest, result string, at time.Time) error {
+	return auditOAuth(ctx, qtx, oauth.AuditEvent{
+		Action: auditActionOAuthAuthorize, Result: result, UserID: req.UserID.String,
+		ClientID: req.ClientID, OccurredAt: at,
+	})
+}
+
+// auditOAuth grava o evento do authorization server sem tenant, com a conta como ator e
+// o cliente como alvo.
+func auditOAuth(ctx context.Context, qtx *gen.Queries, e oauth.AuditEvent) error {
 	err := qtx.CreateAuditEvent(ctx, toCreateAuditEventParams(auth.AuditEventRecord{
-		ID: uuid.NewString(), ActorID: req.UserID.String, Action: auditActionOAuthAuthorize,
-		Target: req.ClientID, Result: result, OccurredAt: at,
+		ID: uuid.NewString(), ActorID: e.UserID, Action: e.Action,
+		Target: e.ClientID, Result: e.Result, OccurredAt: e.OccurredAt,
 	}))
 	if err != nil {
-		return fmt.Errorf("registrar auditoria %s (%s) para o cliente %s: %w", auditActionOAuthAuthorize, result, oauth.ClientValue(req.ClientID), err)
+		return fmt.Errorf("registrar auditoria %s (%s) para o cliente %s: %w", e.Action, e.Result, oauth.ClientValue(e.ClientID), err)
 	}
 	return nil
 }
