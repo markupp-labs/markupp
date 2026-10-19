@@ -107,7 +107,9 @@ class MyInvitesControllerTest < ActionDispatch::IntegrationTest
 
     get root_path
 
-    assert_select "#tenant_switcher turbo-frame#my_invites[src=?][loading=lazy][target=_top]", my_invites_path, text: "Loading"
+    assert_select "#tenant_switcher turbo-frame#my_invites[src=?][loading=lazy][target=_top]", my_invites_path, text: "" do
+      assert_select "[data-controller=busy-spinner][data-busy-spinner-busy-when-value=?]", "#my_invites[aria-busy]"
+    end
   end
 
   test "the invites frame lists the pending invites with accept and decline" do
