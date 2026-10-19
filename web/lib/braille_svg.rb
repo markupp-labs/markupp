@@ -4,7 +4,8 @@ module BrailleSvg
   # Margem e distância entre pontos, em unidades do viewBox; o desenho começa em PADDING e o viewBox é quadrado.
   PADDING = 2
   STEP = 1
-  RADIUS = 0.42
+  # Quase encostando no vizinho: a 16px o desenho é a média de fundo e pontos, e ponto fino apagava o rosto.
+  RADIUS = 0.48
   BLANK = 0x2800
 
   # Bit do caractere braille (Unicode) => [coluna, linha] do ponto na célula de 2x4.
@@ -12,10 +13,10 @@ module BrailleSvg
            0x08 => [ 1, 0 ], 0x10 => [ 1, 1 ], 0x20 => [ 1, 2 ], 0x80 => [ 1, 3 ] }.freeze
 
   # Kanagawa do painel (application.css), invertido como o favicon do GitHub para contrastar com a aba: no navegador
-  # claro o ícone é o wave (fundo escuro, pontos claros); no escuro, o lotus (fundo claro, pontos escuros). Os PNGs,
-  # sem tema, saem como no navegador claro.
-  STYLE = ".bg{fill:#1f1f28}.dot{fill:#dcd7ba}" \
-          "@media (prefers-color-scheme: dark){.bg{fill:#f2ecbc}.dot{fill:#545464}}".freeze
+  # claro o ícone é escuro e no escuro, claro. As duas versões usam o par mais contrastante da paleta (o surface do
+  # wave e o do lotus, 14:1), só trocando fundo e pontos. Os PNGs, sem tema, saem como no navegador claro.
+  STYLE = ".bg{fill:#1f1f28}.dot{fill:#f2ecbc}" \
+          "@media (prefers-color-scheme: dark){.bg{fill:#f2ecbc}.dot{fill:#1f1f28}}".freeze
 
   def self.from_lines(lines)
     width = lines.map(&:length).max.to_i * 2
