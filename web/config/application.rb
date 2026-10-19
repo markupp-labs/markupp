@@ -36,7 +36,11 @@ module Web
     # config.time_zone = "Central Time (US & Canada)"
     # config.eager_load_paths << Rails.root.join("extras")
 
-    # Os erros tratados (400, 404, 406, 422, 500) saem do próprio painel, pelo ErrorsController.
-    config.exceptions_app = routes
+    # Os erros tratados (400, 404, 406, 422, 500) saem do próprio painel, pelo ErrorsController. O lambda resolve a classe
+    # só no erro, quando o lib/ já carrega.
+    config.exceptions_app = ->(env) do
+      PanelExceptionsApp.new(panel: Rails.application.routes, static: ActionDispatch::PublicExceptions.new(Rails.public_path),
+                             logger: Rails.logger).call(env)
+    end
   end
 end
