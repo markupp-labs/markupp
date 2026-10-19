@@ -17,7 +17,7 @@ func BenchmarkNoteGraph(b *testing.B) {
 		"backlinks":        "/v1/notes/cofre-bench-00042/backlinks",
 		"mentions":         "/v1/notes/cofre-bench-00042/mentions",
 		"backmentions":     "/v1/notes/cofre-bench-00042/backmentions",
-		"suggestions":      "/notes/cofre-bench-00042/suggestions",
+		"suggestions":      "/v1/notes/cofre-bench-00042/suggestions",
 		"note":             "/v1/notes/cofre-bench-00042",
 		"orphans":          "/v1/vaults/cofre-bench/notes?orphan=true",
 		"by_pagerank":      "/v1/vaults/cofre-bench/notes?sort=pagerank",

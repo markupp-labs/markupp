@@ -63,8 +63,8 @@ func (f *fakeNoteGraph) Backmentions(_ context.Context, noteID string, p notes.P
 	return f.mentions, f.err
 }
 
-func (f *fakeNoteGraph) Suggestions(_ context.Context, noteID string, offset, limit int) ([]notes.LinkSuggestion, error) {
-	f.record("suggestions", noteID, offset, limit)
+func (f *fakeNoteGraph) Suggestions(_ context.Context, noteID string, p notes.Page) ([]notes.LinkSuggestion, error) {
+	f.record("suggestions", noteID, p.Offset, p.Limit)
 	return f.suggested, f.err
 }
 
@@ -176,17 +176,17 @@ func TestRotaDeMencoesSemVersao_SaiSemVersaoObsoleta(t *testing.T) {
 	assert.Equal(t, http.StatusNotFound, rec.Code)
 }
 
-func TestGetSuggestions_DevolveAPontuacaoFundidaEOsDoisSinais(t *testing.T) {
+func TestV1GetSuggestions_DevolveANotaAPontuacaoFundidaEOsDoisSinais(t *testing.T) {
 	graph := &fakeNoteGraph{suggested: []notes.LinkSuggestion{
-		{LinkedNote: notaLigada, Score: 0.03, ResourceAllocation: 0.5, Cosine: 0.25},
+		{Note: notes.NoteSummary{ID: "n2", Title: "b", Path: "pasta/b.md"}, Score: 0.03, ResourceAllocation: 0.5, Cosine: 0.25},
 	}}
 
-	rec := getGrafo(t, graph, "viewer", "/notes/n1/suggestions")
+	rec := getGrafo(t, graph, "viewer", "/v1/notes/n1/suggestions")
 
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
-	assert.JSONEq(t, `[{"id":"n2","vault_id":"va","path":"b.md","updated_at":"2026-10-16T12:00:00Z",
-		"score":0.03,"resource_allocation":0.5,"cosine":0.25}]`, rec.Body.String())
+	assert.JSONEq(t, `[{"note":{"id":"n2","title":"b","path":"pasta/b.md"},"score":0.03,"resource_allocation":0.5,"cosine":0.25}]`, rec.Body.String())
 	assert.Equal(t, []any{"suggestions", "n1", 0, 10}, []any{graph.method, graph.id, graph.offset, graph.limit}, "limite padrao do repo")
+	assert.Equal(t, http.StatusNotFound, getGrafo(t, &fakeNoteGraph{}, "member", "/notes/n1/suggestions").Code, "a rota sem versao sai")
 }
 
 func TestGetClusters_DevolveAComunidadeDeCadaNota(t *testing.T) {
@@ -210,7 +210,7 @@ func TestGrafo_ErrosDeDominio_ViramStatus(t *testing.T) {
 		"saida sem nota":         {notes.ErrNotFound, "/v1/notes/x/links", http.StatusNotFound},
 		"mencao sem nota":        {notes.ErrNotFound, "/v1/notes/x/mentions", http.StatusNotFound},
 		"quem menciona sem nota": {notes.ErrNotFound, "/v1/notes/x/backmentions", http.StatusNotFound},
-		"sugestao sem nota":      {notes.ErrNotFound, "/notes/x/suggestions", http.StatusNotFound},
+		"sugestao sem nota":      {notes.ErrNotFound, "/v1/notes/x/suggestions", http.StatusNotFound},
 		"cofre sem acesso":       {notes.ErrVaultForbidden, "/v1/vaults/x/links", http.StatusForbidden},
 		"comunidade sem acesso":  {notes.ErrVaultForbidden, "/vaults/x/clusters", http.StatusForbidden},
 		"limit nao inteiro":      {nil, "/v1/vaults/x/links?limit=abc", http.StatusBadRequest},

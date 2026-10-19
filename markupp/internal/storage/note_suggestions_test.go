@@ -34,7 +34,7 @@ func cofreComSugestoes(t *testing.T) *storage.PostgresNoteGraph {
 
 func sugestoes(t *testing.T, graph *storage.PostgresNoteGraph, noteID string, offset, limit int) []notes.LinkSuggestion {
 	t.Helper()
-	lidas, err := graph.Suggestions(ctxDeTeste, noteID, offset, limit)
+	lidas, err := graph.Suggestions(ctxDeTeste, noteID, notes.Page{Offset: offset, Limit: limit})
 	require.NoError(t, err, "sugestoes de %q", noteID)
 	return lidas
 }
@@ -42,7 +42,7 @@ func sugestoes(t *testing.T, graph *storage.PostgresNoteGraph, noteID string, of
 func caminhosDasSugestoes(lidas []notes.LinkSuggestion) []string {
 	caminhos := make([]string, 0, len(lidas))
 	for _, lida := range lidas {
-		caminhos = append(caminhos, lida.Path)
+		caminhos = append(caminhos, lida.Note.Path)
 	}
 	return caminhos
 }
@@ -59,7 +59,7 @@ func TestNoteGraph_Suggestions_FundeEstruturaETextoSemAPropriaNemAsLigadas(t *te
 	assert.InDelta(t, 1.0/61+1.0/62, lidas[0].Score, 1e-9, "primeira na estrutural e segunda na lexica")
 	assert.Zero(t, lidas[1].ResourceAllocation)
 	assert.Greater(t, lidas[1].Cosine, lidas[0].Cosine, "lex divide mais termos com x do que y")
-	assert.Equal(t, notes.LinkedNote{ID: "lex", VaultID: cofreDeTeste, Path: "lex.md", UpdatedAt: lidas[1].UpdatedAt}, lidas[1].LinkedNote)
+	assert.Equal(t, resumo("lex", "lex.md"), lidas[1].Note)
 }
 
 func TestNoteGraph_Suggestions_Paginado(t *testing.T) {
@@ -87,9 +87,9 @@ func TestNoteGraph_Suggestions_ViewerLeEEstranhoNaoVe(t *testing.T) {
 	estranho := identity.Actor{UserID: "u-fora", TenantID: "outro", Role: "admin"}
 	ctxFora := storagetest.SeedMember(t, db, estranho, "cofre-fora")
 
-	lidas, err := graph.Suggestions(ctxViewer, "a", 0, 10)
+	lidas, err := graph.Suggestions(ctxViewer, "a", notes.Page{Limit: 10})
 	require.NoError(t, err)
 	assert.Equal(t, []string{"b.md"}, caminhosDasSugestoes(lidas))
-	_, err = graph.Suggestions(ctxFora, "a", 0, 10)
+	_, err = graph.Suggestions(ctxFora, "a", notes.Page{Limit: 10})
 	require.ErrorIs(t, err, notes.ErrNotFound)
 }
