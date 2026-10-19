@@ -1,11 +1,11 @@
 require "test_helper"
 
 # Ajuda de atalhos (?) e paleta de comandos (Ctrl+Shift+P) saem do mesmo registro: a paleta mostra cada ação com a
-# tecla que a ajuda lista para ela.
+# tecla que a ajuda lista para ela, as da nota primeiro.
 class ShortcutsTest < ActionDispatch::IntegrationTest
   PALETTE = [
     [ "New note", "Alt N" ], [ "Edit mode", "Ctrl E" ], [ "Read mode", "Ctrl E" ], [ "Side by side", "Ctrl \\" ],
-    [ "Toggle sidebar", "Ctrl B" ], [ "Search notes", "Ctrl K" ], [ "Settings", "Ctrl ," ], [ "Keyboard shortcuts", "?" ],
+    [ "Keyboard shortcuts", "?" ], [ "Search notes", "Ctrl K" ], [ "Settings", "Ctrl ," ], [ "Toggle sidebar", "Ctrl B" ],
     [ "Light theme", "" ], [ "Dark theme", "" ], [ "Editor style: plain", "" ], [ "Editor style: styled", "" ],
     [ "Tenants", "" ], [ "Switch tenant", "" ], [ "Log out", "" ]
   ].freeze

@@ -76,7 +76,7 @@ class CommandPaletteTest < ApplicationSystemTestCase
 
   private
     def open_palette
-      find("body").send_keys([ :control, :shift, "p" ])
+      send_keys [ :control, :shift, "p" ]
       assert_selector "dialog#command_palette[open] input:focus"
     end
 
