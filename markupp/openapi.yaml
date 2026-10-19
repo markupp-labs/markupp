@@ -582,8 +582,11 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
   /notes/search:
     get:
+      deprecated: true
       summary: Busca notas por texto no índice léxico
       description: |
+        Obsoleta, substituída por GET /v1/search/notes.
+
         Busca por palavras no título (o nome do arquivo sem extensão, mais os aliases do
         frontmatter) e no conteúdo das notas, com a sintaxe de busca web do PostgreSQL:
         termos soltos exigem todos, aspas pedem a frase, OR aceita qualquer um dos lados
@@ -987,6 +990,70 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: Nota inexistente ou fora dos cofres do usuário (not_found)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Erro interno do servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/search/notes:
+    get:
+      summary: Busca notas por texto no índice léxico
+      description: |
+        Busca por palavras no título (o nome do arquivo sem extensão, mais os aliases do
+        frontmatter) e no conteúdo das notas, com a sintaxe de busca web do PostgreSQL:
+        termos soltos exigem todos, aspas pedem a frase, OR aceita qualquer um dos lados
+        e -termo exclui. Não é busca por substring, e % e _ não são curinga. A
+        configuração de texto é a do indexador (MARKUPP_SEARCH_CONFIG).
+
+        O resultado vem do mais relevante para o menos, com o título e os aliases
+        pesando mais que o conteúdo, e desempate pelo id. Só aparecem notas já
+        indexadas: a nota recém escrita entra na busca quando o indexador processa o
+        cofre dela. Consulta sem palavra buscável, como só stopwords, devolve lista
+        vazia. O resultado não carrega o conteúdo da nota, só um trecho dele.
+
+        Com vault, busca só nas notas desse cofre; sem ele, em todos os cofres do
+        usuário. Cada resultado traz a relevância (ts_rank com normalização 1), que
+        ordena a lista. O viewer também lê.
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Consulta na sintaxe de websearch_to_tsquery, como `"frase exata" OR termo -excluido`
+        - name: vault
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Cofre em que buscar; sem ele, todos os cofres do usuário
+        - $ref: '#/components/parameters/PageOffset'
+        - $ref: '#/components/parameters/PageLimit'
+      responses:
+        '200':
+          description: Resultados da busca, vazio quando nada casa
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SearchHitResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '400':
+          description: q ausente, ou offset e limit não inteiros (invalid_request)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Cofre inexistente ou de que o usuário não é membro (vault_forbidden)
           content:
             application/json:
               schema:
@@ -1942,6 +2009,28 @@ components:
           allOf:
             - $ref: '#/components/schemas/NoteSummary'
           description: A nota da comunidade de maior PageRank
+    SearchHitResponse:
+      type: object
+      properties:
+        note:
+          $ref: '#/components/schemas/NoteSummary'
+        vault_id:
+          type: string
+          description: Cofre da nota
+          example: "3b241101-e2bb-4255-8caf-4136c566a962"
+        rank:
+          type: number
+          format: double
+          description: Relevância da nota para a consulta, que ordena a lista
+          example: 0.0607
+        snippet:
+          type: string
+          description: >-
+            Trecho do texto cru da nota, sem HTML gerado pelo servidor, com cada termo
+            casado entre os caracteres de controle U+0002 (início) e U+0003 (fim).
+            O cliente deve escapar o texto e só então trocar os marcadores pelo
+            destaque que preferir.
+          example: "reunião sobre o \u0002kubernetes\u0003 do cluster novo"
     SearchResultResponse:
       type: object
       properties:
