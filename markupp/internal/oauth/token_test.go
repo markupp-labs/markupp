@@ -96,7 +96,6 @@ func TestExchangeCode_GrantQueNaoBateComOPedido_InvalidGrant(t *testing.T) {
 			requireProtocolError(t, err, "invalid_grant", "", "")
 			assert.Len(t, repo.redeemCalls, 1, "o código é consumido antes das conferências")
 			assert.Empty(t, repo.saved)
-			assert.Empty(t, repo.revoked)
 		})
 	}
 }
@@ -137,19 +136,17 @@ func TestExchangeCode_CodigoRecusadoPeloRepositorio_InvalidGrant(t *testing.T) {
 
 			requireProtocolError(t, err, "invalid_grant", "", "")
 			assert.Empty(t, repo.saved)
-			assert.Empty(t, repo.revoked)
 		})
 	}
 }
 
-func TestExchangeCode_CodigoReusado_InvalidGrantSemGravarNemRevogarDeNovo(t *testing.T) {
+func TestExchangeCode_CodigoReusado_InvalidGrantSemGravar(t *testing.T) {
 	repo := testRepositoryWithRedeemableCode()
 	repo.redeemErr = oauth.ErrCodeAlreadyUsed
 
 	_, err := newTestService(repo).ExchangeCode(context.Background(), validCodeGrant())
 
 	requireProtocolError(t, err, "invalid_grant", "", "")
-	assert.Empty(t, repo.revoked, "o RedeemCode já revoga os tokens da Autorização do pedido no reuso")
 	assert.Empty(t, repo.saved)
 }
 
@@ -171,16 +168,6 @@ func TestExchangeCode_ParRecusadoNaGravacao_InvalidGrant(t *testing.T) {
 			assert.Len(t, repo.saved, 1)
 		})
 	}
-}
-
-func TestExchangeCode_CodigoReusadoSemAutorizacao_NaoRevoga(t *testing.T) {
-	repo := newFakeOAuthRepository()
-	repo.redeemErr = oauth.ErrCodeAlreadyUsed
-
-	_, err := newTestService(repo).ExchangeCode(context.Background(), validCodeGrant())
-
-	requireProtocolError(t, err, "invalid_grant", "", "")
-	assert.Empty(t, repo.revoked)
 }
 
 func TestExchangeCode_FalhaDoRepositorio_DevolveErroEmbrulhado(t *testing.T) {

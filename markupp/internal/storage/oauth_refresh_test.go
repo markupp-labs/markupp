@@ -45,6 +45,13 @@ func auditoriasDe(t *testing.T, pool *pgxpool.Pool, action, result string) int {
 		AND occurred_at = '2026-10-16T12:00:00Z'`)
 }
 
+// revogarTokensDeA1 revoga direto no banco os tokens de a1, como faz o reuso de código.
+func revogarTokensDeA1(t *testing.T, pool *pgxpool.Pool) {
+	t.Helper()
+	_, err := pool.Exec(context.Background(), "UPDATE oauth_tokens SET revoked = TRUE WHERE authorization_id = 'a1'")
+	require.NoError(t, err)
+}
+
 func revogarAutorizacoes(t *testing.T, pool *pgxpool.Pool) {
 	t.Helper()
 	_, err := pool.Exec(context.Background(), "UPDATE oauth_authorizations SET revoked_at = now()")
@@ -86,9 +93,9 @@ func TestPostgresOAuthRepo_ConsumeRefreshToken_RotacionadoReapresentadoEReuso(t 
 }
 
 func TestPostgresOAuthRepo_ConsumeRefreshToken_RevogadoSemRotacaoNaoEReuso(t *testing.T) {
-	repo, _ := repoComTokens(t)
+	repo, pool := repoComTokens(t)
 	ctx := context.Background()
-	require.NoError(t, repo.RevokeAuthorizationTokens(ctx, "a1"))
+	revogarTokensDeA1(t, pool)
 
 	_, err := repo.ConsumeRefreshToken(ctx, "t-refresh", instanteOAuth)
 
@@ -139,11 +146,11 @@ func TestPostgresOAuthRepo_ConsumeRefreshToken_AutorizacaoRevogadaConsomeMesmoAs
 }
 
 func TestPostgresOAuthRepo_ConsumeRefreshToken_RotacionadoERevogadoNaoEReuso(t *testing.T) {
-	repo, _ := repoComTokens(t)
+	repo, pool := repoComTokens(t)
 	ctx := context.Background()
 	_, err := repo.ConsumeRefreshToken(ctx, "t-refresh", instanteOAuth)
 	require.NoError(t, err)
-	require.NoError(t, repo.RevokeAuthorizationTokens(ctx, "a1"))
+	revogarTokensDeA1(t, pool)
 
 	_, err = repo.ConsumeRefreshToken(ctx, "t-refresh", instanteOAuth.Add(time.Second))
 
@@ -267,7 +274,7 @@ func TestPostgresOAuthRepo_RevokeAuthorizationTokensAudited_RevogaTokensEAudita(
 func TestPostgresOAuthRepo_FindToken_DevolveDonoMesmoRevogado(t *testing.T) {
 	repo, pool := repoComTokens(t)
 	ctx := context.Background()
-	require.NoError(t, repo.RevokeAuthorizationTokens(ctx, "a1"))
+	revogarTokensDeA1(t, pool)
 	revogarAutorizacoes(t, pool)
 
 	got, err := repo.FindToken(ctx, "t-acesso")

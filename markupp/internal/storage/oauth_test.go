@@ -439,19 +439,6 @@ func TestPostgresOAuthRepo_SaveCodeTokens_FalhaNaoGravaNenhum(t *testing.T) {
 	assert.Equal(t, 0, countRows(t, pool, "SELECT count(*) FROM oauth_tokens"))
 }
 
-func TestPostgresOAuthRepo_RevokeAuthorizationTokens_RevogaSoOsDaAutorizacao(t *testing.T) {
-	repo, pool := repoOAuth(t)
-	ctx := context.Background()
-	require.NoError(t, autorizar(pool, "a1", "{notas:leitura}", false))
-	gravarTokens(t, pool, tokensOAuth("a1"))
-	require.NoError(t, emitirTokenDe(pool, "a0", "t-outro"))
-
-	require.NoError(t, repo.RevokeAuthorizationTokens(ctx, "a1"))
-
-	assert.Equal(t, 2, countRows(t, pool, "SELECT count(*) FROM oauth_tokens WHERE authorization_id = 'a1' AND revoked"))
-	assert.Equal(t, 0, countRows(t, pool, "SELECT count(*) FROM oauth_tokens WHERE authorization_id = 'a0' AND revoked"))
-}
-
 // emitirTokenDe grava um token numa Autorização revogada a0, para conferir o alcance da revogação.
 func emitirTokenDe(pool *pgxpool.Pool, authorizationID, hash string) error {
 	if err := autorizar(pool, authorizationID, "{notas:leitura}", true); err != nil {

@@ -39,9 +39,6 @@ const gravarParNovoNaTransacao = `INSERT INTO oauth_tokens (token_hash, authoriz
 func TestPostgresOAuthRepo_Revogacao_EsperaGravacaoDoParRotacionado(t *testing.T) {
 	evento := eventoOAuth(oauth.AuditActionRevoke, oauth.AuditResultSuccess)
 	casos := map[string]func(*storage.PostgresOAuthRepository) error{
-		"reuso de codigo": func(r *storage.PostgresOAuthRepository) error {
-			return r.RevokeAuthorizationTokens(context.Background(), "a1")
-		},
 		"reuso de refresh ou /oauth/revoke": func(r *storage.PostgresOAuthRepository) error {
 			return revogarPorGatilho(r, "t-refresh", evento)
 		},

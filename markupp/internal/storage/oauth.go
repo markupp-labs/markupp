@@ -197,15 +197,6 @@ func saveTokensInTx(ctx context.Context, qtx *gen.Queries, tokens []oauth.Issued
 	return nil
 }
 
-// RevokeAuthorizationTokens trava a Autorização e revoga todos os tokens dela, numa
-// transação.
-func (r *PostgresOAuthRepository) RevokeAuthorizationTokens(ctx context.Context, authorizationID string) error {
-	return inTx(ctx, r.pool, func(qtx *gen.Queries) error {
-		_, err := revokeTokens(ctx, qtx, authorizationID)
-		return err
-	})
-}
-
 // revokeTokens trava a Autorização e revoga os tokens dela por qtx, que precisa ser de
 // uma transação para a trava valer até o commit. A trava serializa a revogação com a
 // gravação do par rotacionado, que trava a mesma linha: sem ela, um par gravado em

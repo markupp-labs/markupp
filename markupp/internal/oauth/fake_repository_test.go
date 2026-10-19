@@ -20,7 +20,7 @@ type fakeOAuthRepository struct {
 	// revokeAuditedStale simula o token que disparou a revogação já revogado por outra.
 	revokeAuditedStale bool
 
-	getClientErr, createErr, approveErr, activeErr, redeemErr, saveErr, revokeErr   error
+	getClientErr, createErr, approveErr, activeErr, redeemErr, saveErr              error
 	consumeErr, saveRefreshedErr, revokeAuditedErr, findErr, listErr, revokeAuthErr error
 
 	created     []oauth.AuthorizationRequest
@@ -32,7 +32,6 @@ type fakeOAuthRepository struct {
 	saved       [][]oauth.IssuedToken
 	// savedRequests guarda o pedido de cada chamada a SaveCodeTokens.
 	savedRequests []string
-	revoked       []string
 
 	consumeCalls   []string
 	consumeNow     []time.Time
@@ -139,11 +138,6 @@ func (f *fakeOAuthRepository) SaveCodeTokens(_ context.Context, requestID string
 	f.savedRequests = append(f.savedRequests, requestID)
 	f.saved = append(f.saved, tokens)
 	return f.saveErr
-}
-
-func (f *fakeOAuthRepository) RevokeAuthorizationTokens(_ context.Context, authorizationID string) error {
-	f.revoked = append(f.revoked, authorizationID)
-	return f.revokeErr
 }
 
 func (f *fakeOAuthRepository) ConsumeRefreshToken(_ context.Context, tokenHash string, now time.Time) (oauth.TokenGrant, error) {

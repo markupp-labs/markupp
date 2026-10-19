@@ -22,11 +22,10 @@ func TestExchangeCode_QualquerFalha_NaoVazaCodigoNemVerifier(t *testing.T) {
 		"redirect_uri diferente": {testRepositoryWithRedeemableCode, func(g *oauth.CodeGrant) { g.RedirectURI = testRedirectURI }},
 		"verifier errado":        {testRepositoryWithRedeemableCode, func(g *oauth.CodeGrant) { g.CodeVerifier += "x" }},
 		"resource diferente":     {testRepositoryWithRedeemableCode, func(g *oauth.CodeGrant) { g.Resource = "https://outro.dev/mcp" }},
-		"codigo inexistente":     {repoFailingRedeem(oauth.ErrCodeNotFound, nil), nil},
-		"sem autorizacao ativa":  {repoFailingRedeem(oauth.ErrAuthorizationNotFound, nil), nil},
-		"codigo reusado":         {repoFailingRedeem(oauth.ErrCodeAlreadyUsed, nil), nil},
-		"falha ao consumir":      {repoFailingRedeem(errors.New("banco fora do ar"), nil), nil},
-		"falha ao revogar":       {repoFailingRedeem(oauth.ErrCodeAlreadyUsed, errors.New("banco fora do ar")), nil},
+		"codigo inexistente":     {repoFailingRedeem(oauth.ErrCodeNotFound), nil},
+		"sem autorizacao ativa":  {repoFailingRedeem(oauth.ErrAuthorizationNotFound), nil},
+		"codigo reusado":         {repoFailingRedeem(oauth.ErrCodeAlreadyUsed), nil},
+		"falha ao consumir":      {repoFailingRedeem(errors.New("banco fora do ar")), nil},
 		"falha ao salvar":        {repoFailingSave, nil},
 	}
 	for nome, caso := range casos {
@@ -44,12 +43,11 @@ func TestExchangeCode_QualquerFalha_NaoVazaCodigoNemVerifier(t *testing.T) {
 	}
 }
 
-// repoFailingRedeem devolve o repositório cujo RedeemCode falha com redeemErr e cujo
-// RevokeAuthorizationTokens falha com revokeErr.
-func repoFailingRedeem(redeemErr, revokeErr error) func() *fakeOAuthRepository {
+// repoFailingRedeem devolve o repositório cujo RedeemCode falha com redeemErr.
+func repoFailingRedeem(redeemErr error) func() *fakeOAuthRepository {
 	return func() *fakeOAuthRepository {
 		repo := testRepositoryWithRedeemableCode()
-		repo.redeemErr, repo.revokeErr = redeemErr, revokeErr
+		repo.redeemErr = redeemErr
 		return repo
 	}
 }
