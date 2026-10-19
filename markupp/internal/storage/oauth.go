@@ -230,3 +230,8 @@ func toAuthorization(row gen.OauthAuthorization) oauth.Authorization {
 		CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt, Revoked: row.RevokedAt.Valid,
 	}
 }
+
+// RecordAuditEvent grava um evento avulso do authorization server.
+func (r *PostgresOAuthRepository) RecordAuditEvent(ctx context.Context, event oauth.AuditEvent) error {
+	return auditOAuth(ctx, gen.New(r.pool), event)
+}

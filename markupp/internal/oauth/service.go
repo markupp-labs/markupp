@@ -21,15 +21,18 @@ const (
 const maxDescribedValueLen = 80
 
 // ServiceConfig é a configuração do authorization server. Resources já vem na forma
-// canônica de CanonicalURL.
+// canônica de CanonicalURL, e ResourceSecrets guarda o segredo de cada um, pela mesma
+// URL canônica. ExchangeTTL é a validade do token da API entregue pela troca.
 type ServiceConfig struct {
-	Issuer     string
-	PanelURL   string
-	Resources  []string
-	AccessTTL  time.Duration
-	RefreshTTL time.Duration
-	RequestTTL time.Duration
-	CodeTTL    time.Duration
+	Issuer          string
+	PanelURL        string
+	Resources       []string
+	ResourceSecrets map[string]string
+	AccessTTL       time.Duration
+	RefreshTTL      time.Duration
+	RequestTTL      time.Duration
+	CodeTTL         time.Duration
+	ExchangeTTL     time.Duration
 }
 
 // Service conduz o fluxo authorization code com PKCE: cria o pedido, mostra e decide o
@@ -37,15 +40,16 @@ type ServiceConfig struct {
 type Service struct {
 	repo     Repository
 	cfg      ServiceConfig
+	scoped   ScopedTokenIssuer
 	clock    func() time.Time
 	newID    func() string
 	newToken func() string
 }
 
-// NewService monta o Service. newToken gera os códigos e tokens opacos, que só chegam ao
-// repositório pelo hash.
-func NewService(repo Repository, cfg ServiceConfig, clock func() time.Time, newID func() string, newToken func() string) *Service {
-	return &Service{repo: repo, cfg: cfg, clock: clock, newID: newID, newToken: newToken}
+// NewService monta o Service. scoped emite o token da API entregue pela troca, e
+// newToken gera os códigos e tokens opacos, que só chegam ao repositório pelo hash.
+func NewService(repo Repository, cfg ServiceConfig, scoped ScopedTokenIssuer, clock func() time.Time, newID func() string, newToken func() string) *Service {
+	return &Service{repo: repo, cfg: cfg, scoped: scoped, clock: clock, newID: newID, newToken: newToken}
 }
 
 // canonicalize devolve a forma canônica de uma URL recebida; ok falso se ela não parseia.

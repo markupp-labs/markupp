@@ -10,6 +10,8 @@ import (
 // fakeOAuthRepository guarda em memória o que o Service pede ao repositório e devolve o
 // que cada teste configurou. Os campos *Err forçam a falha do método correspondente.
 type fakeOAuthRepository struct {
+	recordedEvents []oauth.AuditEvent
+	recordErr      error
 	clients        map[string]oauth.Client
 	requests       map[string]oauth.AuthorizationRequest
 	authorizations map[string]oauth.Authorization
@@ -178,4 +180,9 @@ func (f *fakeOAuthRepository) ListActiveAuthorizations(_ context.Context, userID
 func (f *fakeOAuthRepository) RevokeAuthorization(_ context.Context, userID, authorizationID string, event oauth.AuditEvent) error {
 	f.revokedAuths = append(f.revokedAuths, revokedAuthorization{UserID: userID, AuthorizationID: authorizationID, Event: event})
 	return f.revokeAuthErr
+}
+
+func (f *fakeOAuthRepository) RecordAuditEvent(_ context.Context, event oauth.AuditEvent) error {
+	f.recordedEvents = append(f.recordedEvents, event)
+	return f.recordErr
 }

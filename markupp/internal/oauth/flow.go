@@ -5,6 +5,35 @@ import (
 	"net/url"
 )
 
+// Identificadores da troca de token (RFC 8693). São URNs fixas da especificação, não
+// credenciais, por isso o gosec é silenciado nelas.
+const (
+	GrantTypeTokenExchange = "urn:ietf:params:oauth:grant-type:token-exchange" //nolint:gosec // URN da RFC 8693
+	TokenTypeAccessToken   = "urn:ietf:params:oauth:token-type:access_token"   //nolint:gosec // URN da RFC 8693
+)
+
+// ExchangeGrant são os parâmetros de POST /oauth/token com o grant de troca de token. O
+// resource se autentica por HTTP Basic: ResourceID é a URL dele e ResourceSecret o
+// segredo configurado.
+type ExchangeGrant struct {
+	ResourceID         string
+	ResourceSecret     string
+	SubjectToken       string
+	SubjectTokenType   string
+	RequestedTokenType string
+	Audience           string
+	Resource           string
+}
+
+// ExchangeResponse é a resposta de sucesso da troca de token (RFC 8693, seção 2.2.1).
+type ExchangeResponse struct {
+	AccessToken     string `json:"access_token"`
+	IssuedTokenType string `json:"issued_token_type"`
+	TokenType       string `json:"token_type"`
+	ExpiresIn       int64  `json:"expires_in"`
+	Scope           string `json:"scope"`
+}
+
 // AuthorizeParams são os parâmetros de GET /oauth/authorize.
 type AuthorizeParams struct {
 	ResponseType        string

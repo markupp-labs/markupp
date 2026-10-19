@@ -189,18 +189,18 @@ func newHandler(cfg config.Config, pool *pgxpool.Pool, logger *slog.Logger) http
 	return api.NewRouter(api.RouterDeps{
 		Notes: notesSvc, Auth: authSvc, Admin: adminSvc, AccountEmail: accountEmail,
 		Tokens: codec, Tenants: authSvc, Probe: pool, AllowedOrigins: cfg.AllowedOrigins,
-		OAuthMetadata: oauthMetadataFrom(cfg), OAuth: newOAuthService(cfg, pool),
+		OAuthMetadata: oauthMetadataFrom(cfg), OAuth: newOAuthService(cfg, pool, codec),
 	})
 }
 
 // newOAuthService monta o authorization server só com o OAuth ligado. Devolve nil de
 // interface, e não um *oauth.Service nil, para o roteador não montar as rotas.
-func newOAuthService(cfg config.Config, pool *pgxpool.Pool) api.OAuthService {
+func newOAuthService(cfg config.Config, pool *pgxpool.Pool, scoped oauth.ScopedTokenIssuer) api.OAuthService {
 	if !cfg.OAuthEnabled() {
 		return nil
 	}
 	repo := storage.NewPostgresOAuthRepository(pool)
-	return oauth.NewService(repo, oauthServiceConfigFrom(cfg), time.Now, uuid.NewString, newOAuthToken)
+	return oauth.NewService(repo, oauthServiceConfigFrom(cfg), scoped, time.Now, uuid.NewString, newOAuthToken)
 }
 
 // newOAuthToken gera os tokens opacos do OAuth. A leitura de crypto/rand não falha num
@@ -237,7 +237,7 @@ func oauthMetadataFrom(cfg config.Config) *api.OAuthMetadata {
 	return &api.OAuthMetadata{Issuer: cfg.PublicURL}
 }
 
-func newAuthService(cfg config.Config, pool *pgxpool.Pool) (*auth.Service, api.TokenValidator) {
+func newAuthService(cfg config.Config, pool *pgxpool.Pool) (*auth.Service, *auth.TokenCodec) {
 	authRepo := storage.NewPostgresAuthRepository(pool)
 	codec := auth.NewTokenCodec(cfg.AuthSecret, time.Duration(cfg.JWTExpirationMinutes)*time.Minute, time.Now)
 	hasher := auth.NewBcryptHasher()

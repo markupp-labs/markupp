@@ -177,3 +177,11 @@ func HashOpaqueToken(token string) string {
 	h := sha256.Sum256([]byte(token))
 	return hex.EncodeToString(h[:])
 }
+
+// errScopedTokenPending marca a emissão de token com escopo ainda sem implementação.
+var errScopedTokenPending = errors.New("auth: token com escopo ainda não implementado")
+
+// IssueScopedToken emite o token da API com escopo que a troca de token OAuth entrega.
+func (c *TokenCodec) IssueScopedToken(_ string, _ []string, _ time.Duration) (string, error) {
+	return "", errScopedTokenPending
+}

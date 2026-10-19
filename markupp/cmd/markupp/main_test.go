@@ -193,5 +193,5 @@ func TestOAuthServiceConfigFrom_ConverteDuracoesEListaOsResources(t *testing.T) 
 }
 
 func TestNewOAuthService_SemPublicURL_DevolveNilDeInterface(t *testing.T) {
-	assert.Nil(t, newOAuthService(config.Config{}, nil))
+	assert.Nil(t, newOAuthService(config.Config{}, nil, nil))
 }

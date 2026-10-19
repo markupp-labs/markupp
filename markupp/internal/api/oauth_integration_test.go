@@ -51,7 +51,7 @@ func setupOAuthIntegrationServer(t *testing.T) (*httptest.Server, *pgxpool.Pool)
 	oauthSvc := oauth.NewService(storage.NewPostgresOAuthRepository(pool), oauth.ServiceConfig{
 		Issuer: issuerDeIntegracao, PanelURL: painelDeIntegracao, Resources: []string{resourceDeIntegracao},
 		AccessTTL: time.Hour, RefreshTTL: 24 * time.Hour, RequestTTL: 10 * time.Minute, CodeTTL: time.Minute,
-	}, time.Now, uuid.NewString, func() string { return uuid.NewString() + uuid.NewString() })
+	}, codec, time.Now, uuid.NewString, func() string { return uuid.NewString() + uuid.NewString() })
 	router := api.NewRouter(api.RouterDeps{
 		Auth: authSvc, Tokens: codec, Tenants: authSvc, Probe: pool,
 		OAuthMetadata: &api.OAuthMetadata{Issuer: issuerDeIntegracao}, OAuth: oauthSvc,

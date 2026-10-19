@@ -163,6 +163,8 @@ type Repository interface {
 	// ListActiveAuthorizations devolve as Autorizações ativas da conta com o nome do
 	// cliente, da mais recente para a mais antiga.
 	ListActiveAuthorizations(ctx context.Context, userID string) ([]AuthorizationSummary, error)
+	// RecordAuditEvent grava um evento avulso do authorization server.
+	RecordAuditEvent(ctx context.Context, event AuditEvent) error
 	// RevokeAuthorization trava a Autorização, confere que ela é da conta e segue ativa
 	// antes de escrever, marca-a como revogada, revoga os tokens dela e audita o evento
 	// com event.ClientID preenchido pela Autorização, numa transação. Devolve
@@ -180,6 +182,12 @@ const (
 	// ExpiredTriggerIgnored não revoga com o gatilho expirado, como no /oauth/revoke.
 	ExpiredTriggerIgnored
 )
+
+// ScopedTokenIssuer emite o token curto da API que a troca de token entrega ao
+// resource, com a conta como sujeito e os escopos da Autorização.
+type ScopedTokenIssuer interface {
+	IssueScopedToken(userID string, scopes []string, ttl time.Duration) (string, error)
+}
 
 // TokenGrant liga um token emitido à Autorização que o originou.
 type TokenGrant struct {
@@ -199,6 +207,7 @@ const (
 	AuditActionRefreshReuse = "oauth.refresh_reuse"
 	AuditActionRevoke       = "oauth.revoke"
 	AuditActionCodeReuse    = "oauth.code_reuse"
+	AuditActionExchange     = "oauth.exchange"
 )
 
 // Resultados de um evento auditado.
