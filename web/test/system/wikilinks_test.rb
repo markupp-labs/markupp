@@ -106,7 +106,46 @@ class WikilinksTest < ApplicationSystemTestCase
     assert_link "Ideas", href: "/notes/2"
   end
 
+  FILLER = Array.new(60) { |line| "Filler paragraph #{line}." }.join("\n\n")
+
+  test "a wikilink to a heading opens the note scrolled to that heading" do
+    use_fake_api(notes: [ { id: "1", path: "plan.md", content: "Go to [[deep#Deep Section]] or [[deep#Deep Section|the end]].\n" },
+                          { id: "2", path: "deep.md", content: "# Top\n\n#{FILLER}\n\n## Deep Section\n\nThe end.\n" } ])
+    sign_in_through_form
+
+    visit note_path("1")
+    click_on "Read"
+    assert_link "the end", href: "/notes/2#deep-section"
+    click_on "deep#Deep Section"
+
+    assert_current_path note_path("2")
+    assert_heading_in_view "deep-section"
+  end
+
+  test "a wikilink with only a heading scrolls within the note and repeated headings get their own ids" do
+    use_fake_api(notes: [ { id: "1", path: "plan.md", content: "[[#Bottom part]]\n\n## Same\n\n#{FILLER}\n\n## Bottom part\n\n## Same\n" } ])
+    sign_in_through_form
+
+    visit note_path("1")
+    click_on "Read"
+    assert_selector "h2#user-content-same", text: "Same"
+    assert_selector "h2#user-content-same-1", text: "Same"
+    assert_link "#Bottom part", href: "#bottom-part"
+    click_on "#Bottom part"
+
+    assert_current_path note_path("1")
+    assert_heading_in_view "bottom-part"
+  end
+
   private
+    # O id leva o prefixo do DOMPurify (SANITIZE_NAMED_PROPS), que impede o markdown de clobberar o DOM da página.
+    # Dentro da janela inteira: perto do fim da nota o título não chega ao topo.
+    def assert_heading_in_view(slug)
+      assert_selector "#user-content-#{slug}" do |heading|
+        heading.evaluate_script("(({ top, bottom }) => top >= 0 && bottom <= innerHeight)(this.getBoundingClientRect())")
+      end
+    end
+
     def assert_broken_link_style(element, theme)
       style = element.evaluate_script(<<~JS)
         (() => { const own = getComputedStyle(this), text = getComputedStyle(this.parentElement)
