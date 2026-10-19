@@ -23,6 +23,7 @@ type fakeNoteGraph struct {
 	neighbors  []notes.Neighbor
 	unresolved []notes.UnresolvedLink
 	mentions   []notes.UnlinkedMention
+	suggested  []notes.LinkSuggestion
 	err        error
 
 	method string
@@ -58,6 +59,11 @@ func (f *fakeNoteGraph) UnresolvedLinks(_ context.Context, vaultID string, offse
 func (f *fakeNoteGraph) Mentions(_ context.Context, noteID string, offset, limit int) ([]notes.UnlinkedMention, error) {
 	f.record("mentions", noteID, offset, limit)
 	return f.mentions, f.err
+}
+
+func (f *fakeNoteGraph) Suggestions(_ context.Context, noteID string, offset, limit int) ([]notes.LinkSuggestion, error) {
+	f.record("suggestions", noteID, offset, limit)
+	return f.suggested, f.err
 }
 
 func getGrafo(t *testing.T, graph api.NoteGraph, role, target string) *httptest.ResponseRecorder {
@@ -133,6 +139,19 @@ func TestGetMentions_DizOSentidoOTituloEAProbabilidade(t *testing.T) {
 	assert.Equal(t, []any{"mentions", "n1", 0, 5}, []any{graph.method, graph.id, graph.offset, graph.limit})
 }
 
+func TestGetSuggestions_DevolveAPontuacaoFundidaEOsDoisSinais(t *testing.T) {
+	graph := &fakeNoteGraph{suggested: []notes.LinkSuggestion{
+		{LinkedNote: notaLigada, Score: 0.03, ResourceAllocation: 0.5, Cosine: 0.25},
+	}}
+
+	rec := getGrafo(t, graph, "viewer", "/notes/n1/suggestions")
+
+	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+	assert.JSONEq(t, `[{"id":"n2","vault_id":"va","path":"b.md","updated_at":"2026-10-16T12:00:00Z",
+		"score":0.03,"resource_allocation":0.5,"cosine":0.25}]`, rec.Body.String())
+	assert.Equal(t, []any{"suggestions", "n1", 0, 10}, []any{graph.method, graph.id, graph.offset, graph.limit}, "limite padrao do repo")
+}
+
 func TestGrafo_ErrosDeDominio_ViramStatus(t *testing.T) {
 	casos := map[string]struct {
 		err    error
@@ -141,6 +160,7 @@ func TestGrafo_ErrosDeDominio_ViramStatus(t *testing.T) {
 	}{
 		"nota inexistente":   {notes.ErrNotFound, "/notes/x/backlinks", http.StatusNotFound},
 		"mencao sem nota":    {notes.ErrNotFound, "/notes/x/mentions", http.StatusNotFound},
+		"sugestao sem nota":  {notes.ErrNotFound, "/notes/x/suggestions", http.StatusNotFound},
 		"cofre sem acesso":   {notes.ErrVaultForbidden, "/vaults/x/orphans", http.StatusForbidden},
 		"limit nao inteiro":  {nil, "/vaults/x/unresolved-links?limit=abc", http.StatusBadRequest},
 		"offset nao inteiro": {nil, "/notes/x/neighbors?offset=abc", http.StatusBadRequest},
