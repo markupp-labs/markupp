@@ -94,3 +94,47 @@ func TestPostgresOAuthRepo_DenyRequest_FalhaDeAuditoriaTemContexto(t *testing.T)
 	require.ErrorContains(t, err, `oauth.authorize`)
 	require.ErrorContains(t, err, "'c1'")
 }
+
+// autorizacaoDoPedido devolve a Autorização gravada no pedido, ou "" se ele não tem.
+func autorizacaoDoPedido(t *testing.T, pool *pgxpool.Pool, requestID string) string {
+	t.Helper()
+	var id *string
+	err := pool.QueryRow(context.Background(), "SELECT authorization_id FROM oauth_requests WHERE id = $1", requestID).Scan(&id)
+	require.NoError(t, err)
+	if id == nil {
+		return ""
+	}
+	return *id
+}
+
+func TestPostgresOAuthRepo_ApproveRequest_GravaNoPedidoAAutorizacaoCriadaOuAmpliada(t *testing.T) {
+	repo, pool := repoOAuth(t)
+	ctx := context.Background()
+	pedidoAprovado(t, repo, "r1", "h1", oauth.ScopeNotesRead)
+	criada, err := repo.ActiveAuthorization(ctx, "u1", "c1")
+	require.NoError(t, err)
+	require.NoError(t, repo.CreateRequest(ctx, pedidoOAuth("r2", oauth.ScopeNotesWrite)))
+
+	_, err = repo.ApproveRequest(ctx, aprovacao("r2", "h2", instanteOAuth.Add(2*time.Minute)))
+
+	require.NoError(t, err)
+	assert.Equal(t, criada.ID, autorizacaoDoPedido(t, pool, "r1"), "o pedido que criou a Autorização")
+	assert.Equal(t, criada.ID, autorizacaoDoPedido(t, pool, "r2"), "o pedido que ampliou a Autorização")
+}
+
+func TestPostgresOAuthRepo_ApproveRequest_DepoisDeRevogarGravaANova(t *testing.T) {
+	repo, pool := repoOAuth(t)
+	ctx := context.Background()
+	pedidoAprovado(t, repo, "r1", "h1", oauth.ScopeNotesRead)
+	revogarAutorizacoes(t, pool)
+	require.NoError(t, repo.CreateRequest(ctx, pedidoOAuth("r2", oauth.ScopeNotesRead)))
+
+	_, err := repo.ApproveRequest(ctx, aprovacao("r2", "h2", instanteOAuth.Add(2*time.Minute)))
+
+	require.NoError(t, err)
+	nova, err := repo.ActiveAuthorization(ctx, "u1", "c1")
+	require.NoError(t, err)
+	assert.Equal(t, nova.ID, autorizacaoDoPedido(t, pool, "r2"))
+	assert.NotEqual(t, nova.ID, autorizacaoDoPedido(t, pool, "r1"))
+	assert.NotEmpty(t, autorizacaoDoPedido(t, pool, "r1"), "o pedido antigo segue com a revogada")
+}
