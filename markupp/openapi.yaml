@@ -768,51 +768,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-  /vaults/{id}/clusters:
-    get:
-      summary: Lista as comunidades do cofre
-      description: |
-        Comunidades do cofre pelo Louvain (resolução 1, semente fixa) na projeção não
-        dirigida do grafo de ligações, ligação inferida incluída. Uma linha por nota,
-        das maiores comunidades para as menores e, dentro de cada uma, por PageRank.
-        Nota sem ligação não tem comunidade. A comunidade mantém o id da anterior com
-        mais notas em comum quando o Jaccard entre as duas é de pelo menos 0,5. O
-        indexador recalcula tudo quando ligações ou títulos do cofre mudam. O viewer
-        também lê.
-      parameters:
-        - $ref: '#/components/parameters/TenantHeader'
-        - $ref: '#/components/parameters/VaultID'
-        - $ref: '#/components/parameters/PageOffset'
-        - $ref: '#/components/parameters/PageLimit'
-      responses:
-        '200':
-          description: Lista, vazia quando não há nenhum item
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/CommunityMemberResponse'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '400':
-          description: offset ou limit não inteiros
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '403':
-          description: Cofre inexistente ou de que o usuário não é membro (vault_forbidden)
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: Erro interno do servidor
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
   /v1/notes/{id}:
     get:
       summary: Lê uma nota
@@ -1032,6 +987,108 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: Nota inexistente ou fora dos cofres do usuário (not_found)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Erro interno do servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/vaults/{id}/communities:
+    get:
+      summary: Lista as comunidades do cofre
+      description: |
+        Uma linha por comunidade, das maiores para as menores, depois por id, com a
+        nota de maior PageRank dela.
+
+        Comunidades do cofre pelo Louvain (resolução 1, semente fixa) na projeção não
+        dirigida do grafo de ligações, ligação inferida incluída. Nota sem ligação não
+        tem comunidade. A comunidade mantém o id da anterior com mais notas em comum
+        quando o Jaccard entre as duas é de pelo menos 0,5. O indexador recalcula tudo
+        no segundo estágio do cofre, quando ligações ou títulos mudam. As notas de uma
+        comunidade estão em GET /v1/vaults/{id}/notes?community={cid}. O viewer também
+        lê.
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+        - $ref: '#/components/parameters/VaultID'
+        - $ref: '#/components/parameters/PageOffset'
+        - $ref: '#/components/parameters/PageLimit'
+      responses:
+        '200':
+          description: Lista, vazia quando não há nenhum item
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CommunityResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '400':
+          description: offset ou limit não inteiros (invalid_request)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Cofre inexistente ou de que o usuário não é membro (vault_forbidden)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Erro interno do servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/vaults/{id}/communities/{cid}:
+    get:
+      summary: Lê uma comunidade do cofre
+      description: |
+        Comunidades do cofre pelo Louvain (resolução 1, semente fixa) na projeção não
+        dirigida do grafo de ligações, ligação inferida incluída. Nota sem ligação não
+        tem comunidade. A comunidade mantém o id da anterior com mais notas em comum
+        quando o Jaccard entre as duas é de pelo menos 0,5. O indexador recalcula tudo
+        no segundo estágio do cofre, quando ligações ou títulos mudam. As notas de uma
+        comunidade estão em GET /v1/vaults/{id}/notes?community={cid}. O viewer também
+        lê.
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+        - $ref: '#/components/parameters/VaultID'
+        - name: cid
+          in: path
+          required: true
+          description: Id da comunidade
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Comunidade encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommunityResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '400':
+          description: Id de comunidade não inteiro (invalid_id), com o valor na mensagem
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Cofre inexistente ou de que o usuário não é membro (vault_forbidden)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: O cofre não tem comunidade com esse id (not_found)
           content:
             application/json:
               schema:
@@ -1869,6 +1926,22 @@ components:
           format: double
           description: Probabilidade a priori de o título apontar para a nota citada
           example: 0.33
+    CommunityResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: Id da comunidade, estável enquanto ela mantém a maior parte das notas
+          example: 7
+        size:
+          type: integer
+          description: Número de notas da comunidade
+          example: 42
+        hub:
+          allOf:
+            - $ref: '#/components/schemas/NoteSummary'
+          description: A nota da comunidade de maior PageRank
     SearchResultResponse:
       type: object
       properties:
@@ -1897,23 +1970,6 @@ components:
             O cliente deve escapar o texto e só então trocar os marcadores pelo
             destaque que preferir.
           example: "reunião sobre o \u0002kubernetes\u0003 do cluster novo"
-    LinkedNoteResponse:
-      type: object
-      properties:
-        id:
-          type: string
-          description: Identificador único da nota
-        vault_id:
-          type: string
-          description: Cofre da nota
-        path:
-          type: string
-          description: Caminho da nota
-          example: "notas/meeting.md"
-        updated_at:
-          type: string
-          format: date-time
-          description: Data da última atualização da nota
     LinkSuggestionResponse:
       type: object
       properties:
@@ -1934,20 +1990,6 @@ components:
           format: double
           description: Cosseno tf-idf com esta nota, zero fora da lista léxica
           example: 0.38
-    CommunityMemberResponse:
-      allOf:
-        - $ref: '#/components/schemas/LinkedNoteResponse'
-        - type: object
-          properties:
-            community_id:
-              type: integer
-              format: int64
-              description: Id da comunidade, estável enquanto ela mantém a maior parte das notas
-              example: 7
-            community_size:
-              type: integer
-              description: Número de notas da comunidade
-              example: 42
     HealthResponse:
       type: object
       properties:
