@@ -116,6 +116,10 @@ func newGuardedClient(policy IPPolicy, roots *x509.CertPool, timeout time.Durati
 }
 
 // Fetch valida o client_id, busca o documento e devolve os metadados com o TTL de cache.
+//
+// Os erros trazem detalhe para log: ErrBlockedAddress cita o IP resolvido (que pode ser
+// interno) e ErrFetchFailed embrulha o erro de rede. O chamador não deve repassar a
+// mensagem ao cliente; responda só com base em errors.Is.
 func (f *Fetcher) Fetch(ctx context.Context, clientID string) (ClientMetadata, error) {
 	if _, err := ParseClientID(clientID); err != nil {
 		return ClientMetadata{}, err
