@@ -94,6 +94,15 @@ class NotesControllerTest < ActionDispatch::IntegrationTest
     assert response.body.empty?, "expected an empty json 404, got a #{response.media_type} body"
   end
 
+  test "the save button names its shortcut like the mode buttons" do
+    use_fake_api(notes: [ { id: "1", path: "a.md", content: "x" } ])
+    sign_in_as
+
+    get note_path("1")
+
+    assert_select "button[title=?][aria-keyshortcuts=?]", "Save (Ctrl+S)", "Control+S Meta+S", text: "Save"
+  end
+
   test "show puts the note in a save form with the version read" do
     use_fake_api(notes: [ { id: "1", path: "a.md", content: "x", updated_at: "2026-09-30T12:00:00.123Z" } ])
     sign_in_as
