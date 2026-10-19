@@ -1,5 +1,6 @@
 # Vínculo da conta com um tenant, como GET /me/tenants devolve: o papel vem daqui a cada página, sem cache.
-Tenant = Data.define(:id, :name, :role) do
+# notes_count e last_note_at são estatísticas que o servidor pode não mandar: sem elas, ficam nil.
+Tenant = Data.define(:id, :name, :role, :notes_count, :last_note_at) do
   # Mesma ordem do servidor, do posto mais alto ao mais baixo.
   self::ROLES = %w[owner admin member viewer].freeze
 
@@ -8,7 +9,12 @@ Tenant = Data.define(:id, :name, :role) do
   # Quem cria é owner; nome recusado pela API levanta InvalidRequest, a regra fica no servidor.
   def self.create(api, name) = from_api(api.post("/tenants", name:))
 
-  def self.from_api(attributes) = new(**attributes.symbolize_keys.slice(*members))
+  def self.from_api(attributes)
+    fields = attributes.symbolize_keys.slice(*members)
+    new(**fields, last_note_at: fields[:last_note_at] && Time.zone.parse(fields[:last_note_at]))
+  end
+
+  def initialize(notes_count: nil, last_note_at: nil, **) = super
 
   # viewer só lê notas; os outros papéis escrevem.
   def writer? = role != "viewer"
