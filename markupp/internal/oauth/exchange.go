@@ -2,6 +2,7 @@ package oauth
 
 import (
 	"context"
+	"crypto/sha256"
 	"crypto/subtle"
 	"errors"
 	"fmt"
@@ -34,16 +35,19 @@ func (s *Service) ExchangeToken(ctx context.Context, g ExchangeGrant) (ExchangeR
 func (s *Service) authenticateResource(g ExchangeGrant) (string, error) {
 	resource, ok := canonicalize(g.ResourceID)
 	secret, known := s.cfg.ResourceSecrets[resource]
-	if !ok || !known {
-		// Compara com um segredo fictício do tamanho do recebido, para o tempo da recusa
-		// não revelar quais URLs de resource estão configuradas.
-		_ = subtle.ConstantTimeCompare([]byte(g.ResourceSecret), make([]byte, len(g.ResourceSecret)))
-		return "", errResourceUnauthenticated()
-	}
-	if subtle.ConstantTimeCompare([]byte(g.ResourceSecret), []byte(secret)) != 1 {
+	if !sameSecret(g.ResourceSecret, secret) || !ok || !known {
 		return "", errResourceUnauthenticated()
 	}
 	return resource, nil
+}
+
+// sameSecret compara os resumos SHA-256 dos dois segredos em tempo constante. Os resumos
+// têm sempre o mesmo tamanho, então nem o tamanho do segredo nem um resource desconhecido
+// (segredo vazio) mudam o tempo da comparação.
+func sameSecret(received, configured string) bool {
+	receivedSum := sha256.Sum256([]byte(received))
+	configuredSum := sha256.Sum256([]byte(configured))
+	return subtle.ConstantTimeCompare(receivedSum[:], configuredSum[:]) == 1
 }
 
 func errResourceUnauthenticated() error {
