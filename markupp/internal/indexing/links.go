@@ -64,7 +64,7 @@ func extractLinks(notePath string, doc markdown.Document) []Link {
 		}
 	}
 	for _, w := range doc.TypedLinks {
-		if link, ok := citedLink(w.Target, "", TypedLink); ok {
+		if link, ok := citedLink(w.Target, wikilinkPath(w.Target), TypedLink); ok {
 			link.Predicate = w.Predicate
 			candidates = append(candidates, link)
 		}
@@ -91,13 +91,29 @@ func toLink(notePath string, w markdown.Link) (Link, bool) {
 	case markdown.MarkdownLink:
 		return markdownLink(notePath, w.Target)
 	case markdown.Embed:
-		return citedLink(w.Target, "", EmbedLink)
+		return citedLink(w.Target, wikilinkPath(w.Target), EmbedLink)
 	}
-	return citedLink(w.Target, "", ExplicitLink)
+	return citedLink(w.Target, wikilinkPath(w.Target), ExplicitLink)
+}
+
+// wikilinkPath é o caminho que o wikilink com pasta aponta, a partir da raiz do
+// cofre e com a extensão .md que o título tira. Sem pasta, o wikilink não tem
+// caminho e resolve só pelo título.
+func wikilinkPath(target string) string {
+	target = strings.TrimSpace(target)
+	if !strings.Contains(target, "/") {
+		return ""
+	}
+	notePath := strings.TrimPrefix(path.Clean("/"+target), "/")
+	if strings.EqualFold(path.Ext(notePath), ".md") {
+		return notePath
+	}
+	return notePath + ".md"
 }
 
 // citedLink cita o título do último segmento de target, como o wikilink com pasta
-// ou com .md que o editor aceita.
+// ou com .md que o editor aceita. Com targetPath, a ligação vai primeiro para a nota
+// desse caminho e, se ela não existir, para as notas com o título.
 func citedLink(target, targetPath string, kind LinkKind) (Link, bool) {
 	title := Title(strings.TrimSpace(target))
 	link := Link{CitedTitle: title, TitleKey: TitleKey(title), TargetPath: targetPath, Kind: kind}
