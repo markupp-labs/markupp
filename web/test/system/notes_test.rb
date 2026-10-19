@@ -253,6 +253,49 @@ class NotesTest < ApplicationSystemTestCase
     assert_current_path root_path
   end
 
+  test "an absolute path moves the note from the root and the field shows where it went" do
+    api = use_fake_api(notes: [ { id: "1", path: "work/plan.md", content: "# Plan\n" } ])
+    sign_in_through_form
+
+    visit note_path("1")
+    assert_field "Path", with: "/work/plan"
+    fill_in "Path", with: "/dev/teste.md"
+    click_on "Save"
+
+    assert_text "Saved"
+    assert_field "Path", with: "/dev/teste"
+    assert_equal "dev/teste.md", api.put_requests.sole[:path]
+  end
+
+  test "a relative path renames the note inside its folder and the field shows it absolute" do
+    api = use_fake_api(notes: [ { id: "1", path: "work/plan.md", content: "# Plan\n" } ])
+    sign_in_through_form
+
+    visit note_path("1")
+    assert_field "Path", with: "/work/plan"
+    fill_in "Path", with: "dev/teste"
+    click_on "Save"
+
+    assert_text "Saved"
+    assert_field "Path", with: "/work/dev/teste"
+    assert_equal "work/dev/teste.md", api.put_requests.sole[:path]
+  end
+
+  test "a path ending in a slash asks for a name in place and keeps what was typed" do
+    api = use_fake_api(notes: [ { id: "1", path: "work/plan.md", content: "# Plan\n" } ])
+    sign_in_through_form
+
+    visit note_path("1")
+    assert_field "Path", with: "/work/plan"
+    execute_script("window.stayedOnPage = true")
+    fill_in "Path", with: "/dev/teste/"
+    click_on "Save"
+
+    assert_blank_title_refused_in_place
+    assert_field "Path", with: "/dev/teste/"
+    assert_empty api.put_requests
+  end
+
   test "a viewer gets the editor read only and ctrl+s does nothing" do
     api = use_fake_api(notes: [ { id: "1", path: "plan.md", content: "# Plan\n" } ],
                        tenants: [ { id: "tenant-1", name: "Acme research", members: { FakeMarkuppAccounts::DEFAULT_EMAIL => "viewer" } } ])
