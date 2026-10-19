@@ -37,4 +37,15 @@ class SettingsTest < ApplicationSystemTestCase
     assert_current_path settings_appearance_path
     assert_selector "main button[aria-pressed=true]", text: "Dark"
   end
+
+  test "change password emails the reset token and the token link opens the reset form" do
+    visit settings_account_path
+    within("main") { click_on "Change password" }
+
+    assert_current_path settings_account_path
+    assert_text "Password reset email sent to #{FakeMarkuppAccounts::DEFAULT_EMAIL}."
+    within("main") { click_on "I have a reset token" }
+
+    assert_current_path new_password_reset_path
+  end
 end

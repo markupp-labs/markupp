@@ -41,6 +41,18 @@ module Settings
       assert_select "main a[href=?]", new_email_confirmation_path, text: "I have a token"
     end
 
+    test "show offers the password change through the reset email" do
+      use_fake_api
+      sign_in_as
+
+      get settings_account_path
+
+      assert_select "main h2", "Password"
+      assert_select "main", text: /emails a token to #{EMAIL}/
+      assert_select "main form[action=?][method=post] button", password_change_path, text: "Change password"
+      assert_select "main a[href=?]", new_password_reset_path, text: "I have a reset token"
+    end
+
     test "a close button leads back to the notes" do
       use_fake_api
       sign_in_as
