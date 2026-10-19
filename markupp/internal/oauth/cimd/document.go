@@ -64,8 +64,12 @@ func validateRedirectURIs(uris []string) error {
 	return nil
 }
 
-const redirectURIShape = "https com host, http em 127.0.0.1 ou [::1], ou esquema privado em dominio reverso " +
-	"com ponto (RFC 8252, secao 7.1), sem fragmento e sem credenciais"
+const redirectURIShape = "https com host, http em 127.0.0.1 ou [::1], ou esquema privado (RFC 8252, secao 7.1) " +
+	"fora de javascript, data, vbscript e file, sem fragmento e sem credenciais"
+
+// forbiddenRedirectSchemes são os esquemas que executam código ou leem arquivo local; o
+// vazio é a URL relativa. O url.Parse já devolve o esquema em minúsculas.
+var forbiddenRedirectSchemes = map[string]bool{"": true, "javascript": true, "data": true, "vbscript": true, "file": true}
 
 func redirectURIProblem(raw string) string {
 	parsed, err := url.Parse(raw)
@@ -80,8 +84,8 @@ func redirectURIProblem(raw string) string {
 	return redirectSchemeProblem(parsed)
 }
 
-// redirectSchemeProblem exige ponto no esquema privado, o que já recusa javascript,
-// data, vbscript, file e URL relativa. URL opaca de http/https sai sem host.
+// redirectSchemeProblem aceita qualquer esquema privado, com ou sem ponto, fora dos
+// proibidos. URL opaca de http/https sai sem host.
 func redirectSchemeProblem(parsed *url.URL) string {
 	switch parsed.Scheme {
 	case "https":
@@ -93,8 +97,8 @@ func redirectSchemeProblem(parsed *url.URL) string {
 			return "http fora de 127.0.0.1 e [::1]"
 		}
 	default:
-		if !strings.Contains(parsed.Scheme, ".") {
-			return "esquema sem ponto de dominio reverso"
+		if forbiddenRedirectSchemes[parsed.Scheme] {
+			return "esquema proibido ou URL relativa"
 		}
 	}
 	return ""
