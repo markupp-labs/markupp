@@ -28,7 +28,6 @@ en:
   layouts:
     application:
       notes: "Notes"
-      open_notes: "Notes"
       light_theme: "Light theme"
       dark_theme: "Dark theme"
       search: "Search"
@@ -72,6 +71,7 @@ en:
     index:
       choose: "Choose a tenant"
       first: "Create your first tenant"
+      sidebar_label: "Tenants"
       first_hint: "A tenant holds the notes you share with other people."
       new_tenant: "New tenant"
       pending_invites: "Pending invites"

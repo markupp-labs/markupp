@@ -1,5 +1,6 @@
 <% heading = t(current_tenants.any? ? "tenants.index.choose" : "tenants.index.first") %>
 <% content_for :title, heading %>
+<% content_for :sidebar_label, t("tenants.index.sidebar_label") %>
 
 <div class="max-w-[65ch]">
   <h1 class="text-base font-semibold"><%= heading %></h1>
