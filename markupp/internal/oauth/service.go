@@ -24,6 +24,8 @@ const maxDescribedValueLen = 80
 // ServiceConfig é a configuração do authorization server. Resources já vem na forma
 // canônica de CanonicalURL, e ResourceSecrets guarda o segredo de cada um, pela mesma
 // URL canônica. ExchangeTTL é a validade do token da API entregue pela troca.
+// CIMDFailureTTL é quanto tempo uma busca de documento CIMD que falhou fica lembrada,
+// recusando o client_id sem buscar de novo; zero desliga o cache negativo.
 type ServiceConfig struct {
 	Issuer          string
 	PanelURL        string
@@ -34,6 +36,7 @@ type ServiceConfig struct {
 	RequestTTL      time.Duration
 	CodeTTL         time.Duration
 	ExchangeTTL     time.Duration
+	CIMDFailureTTL  time.Duration
 }
 
 // Service conduz o fluxo authorization code com PKCE: cria o pedido, mostra e decide o
@@ -43,6 +46,7 @@ type Service struct {
 	cfg      ServiceConfig
 	scoped   ScopedTokenIssuer
 	metadata ClientMetadataFetcher
+	failures *cimdFailureMemory
 	clock    func() time.Time
 	newID    func() string
 	newToken func() string
@@ -52,7 +56,10 @@ type Service struct {
 // busca o documento dos clientes registrados por CIMD, e newToken gera os códigos e
 // tokens opacos, que só chegam ao repositório pelo hash.
 func NewService(repo Repository, cfg ServiceConfig, scoped ScopedTokenIssuer, metadata ClientMetadataFetcher, clock func() time.Time, newID func() string, newToken func() string) *Service {
-	return &Service{repo: repo, cfg: cfg, scoped: scoped, metadata: metadata, clock: clock, newID: newID, newToken: newToken}
+	return &Service{
+		repo: repo, cfg: cfg, scoped: scoped, metadata: metadata, failures: newCIMDFailureMemory(),
+		clock: clock, newID: newID, newToken: newToken,
+	}
 }
 
 // canonicalize devolve a forma canônica de uma URL recebida; ok falso se ela não parseia.

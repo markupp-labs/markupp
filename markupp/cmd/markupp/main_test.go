@@ -198,6 +198,12 @@ func TestOAuthServiceConfigFrom_ConverteDuracoesEListaOsResources(t *testing.T) 
 	assert.Equal(t, time.Minute, got.CodeTTL)
 }
 
+func TestOAuthServiceConfigFrom_CacheNegativoDoCIMDUsaOMinimoDoCache(t *testing.T) {
+	got := oauthServiceConfigFrom(config.Config{OAuthCIMDCacheMinMinutes: 7})
+
+	assert.Equal(t, 7*time.Minute, got.CIMDFailureTTL)
+}
+
 func TestOAuthServiceConfigFrom_MapeiaOsSegredosEAValidadeDaTroca(t *testing.T) {
 	cfg := config.Config{
 		OAuthResources: []config.OAuthResource{

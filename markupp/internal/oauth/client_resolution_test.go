@@ -18,10 +18,14 @@ const testMetadataTTL = 30 * time.Minute
 
 // newTestServiceWithMetadata é o newTestService com o fetcher de documentos CIMD.
 func newTestServiceWithMetadata(repo *fakeOAuthRepository, metadata oauth.ClientMetadataFetcher) *oauth.Service {
+	return newCIMDTestService(repo, metadata, testServiceConfig(), func() time.Time { return testNow })
+}
+
+// newCIMDTestService monta o Service com o fetcher, a config e o relógio dados.
+func newCIMDTestService(repo *fakeOAuthRepository, metadata oauth.ClientMetadataFetcher, cfg oauth.ServiceConfig, clock func() time.Time) *oauth.Service {
 	ids := &sequenceSource{prefix: "pedido"}
 	tokens := &sequenceSource{prefix: "token"}
-	clock := func() time.Time { return testNow }
-	return oauth.NewService(repo, testServiceConfig(), nil, metadata, clock, ids.next, tokens.next)
+	return oauth.NewService(repo, cfg, nil, metadata, clock, ids.next, tokens.next)
 }
 
 func testMetadataFetcher() *fakeClientMetadataFetcher {

@@ -1,0 +1,93 @@
+package oauth_test
+
+import (
+	"context"
+	"errors"
+	"testing"
+	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/oauth"
+)
+
+// testFailureTTL é o tempo do cache negativo do CIMD nos testes.
+const testFailureTTL = 5 * time.Minute
+
+// manualClock é o relógio que o teste avança à mão.
+type manualClock struct{ now time.Time }
+
+func (c *manualClock) read() time.Time { return c.now }
+
+// newFailureCacheService é o Service com cache negativo de testFailureTTL e o relógio dado.
+func newFailureCacheService(repo *fakeOAuthRepository, fetcher *fakeClientMetadataFetcher, clock *manualClock) *oauth.Service {
+	cfg := testServiceConfig()
+	cfg.CIMDFailureTTL = testFailureTTL
+	return newCIMDTestService(repo, fetcher, cfg, clock.read)
+}
+
+func failingFetchers() map[string]func() *fakeClientMetadataFetcher {
+	return map[string]func() *fakeClientMetadataFetcher{
+		"busca falhando": func() *fakeClientMetadataFetcher {
+			return &fakeClientMetadataFetcher{err: errors.New("dial tcp 10.0.0.7:443: connection refused")}
+		},
+		"documento fora do contrato": func() *fakeClientMetadataFetcher {
+			fetcher := testMetadataFetcher()
+			fetcher.metadata.TTL = 0
+			return fetcher
+		},
+	}
+}
+
+func TestStartAuthorization_CIMDFalhaRecente_RecusaIgualSemBuscarDeNovo(t *testing.T) {
+	for nome, novoFetcher := range failingFetchers() {
+		t.Run(nome, func(t *testing.T) {
+			repo, fetcher, clock := newFakeOAuthRepository(), novoFetcher(), &manualClock{now: testNow}
+			svc := newFailureCacheService(repo, fetcher, clock)
+			_, primeira := svc.StartAuthorization(context.Background(), validAuthorizeParams())
+			requireProtocolError(t, primeira, "invalid_request", "", "")
+
+			clock.now = testNow.Add(testFailureTTL - time.Second)
+			_, err := svc.StartAuthorization(context.Background(), validAuthorizeParams())
+
+			requireProtocolError(t, err, "invalid_request", "", "")
+			assert.Equal(t, primeira.Error(), err.Error(), "a mesma recusa genérica")
+			assert.Equal(t, []string{testClientID}, fetcher.calls)
+			assert.Empty(t, repo.savedCIMD)
+			assert.Empty(t, repo.created)
+		})
+	}
+}
+
+func TestStartAuthorization_CIMDFalhaVencida_BuscaDeNovo(t *testing.T) {
+	repo, fetcher, clock := newFakeOAuthRepository(), testMetadataFetcher(), &manualClock{now: testNow}
+	fetcher.err = errors.New("dial tcp 10.0.0.7:443: connection refused")
+	svc := newFailureCacheService(repo, fetcher, clock)
+	_, err := svc.StartAuthorization(context.Background(), validAuthorizeParams())
+	require.Error(t, err)
+
+	fetcher.err = nil
+	clock.now = testNow.Add(testFailureTTL)
+	_, err = svc.StartAuthorization(context.Background(), validAuthorizeParams())
+
+	require.NoError(t, err)
+	assert.Equal(t, []string{testClientID, testClientID}, fetcher.calls)
+	assert.Len(t, repo.created, 1)
+}
+
+func TestStartAuthorization_CIMDFalhaDeOutroCliente_NaoAfeta(t *testing.T) {
+	repo, fetcher, clock := newFakeOAuthRepository(), testMetadataFetcher(), &manualClock{now: testNow}
+	fetcher.err = errors.New("dial tcp 10.0.0.7:443: connection refused")
+	svc := newFailureCacheService(repo, fetcher, clock)
+	outro := validAuthorizeParams()
+	outro.ClientID = "https://outro.exemplo.dev/oauth.json"
+	_, err := svc.StartAuthorization(context.Background(), outro)
+	require.Error(t, err)
+
+	fetcher.err = nil
+	_, err = svc.StartAuthorization(context.Background(), validAuthorizeParams())
+
+	require.NoError(t, err)
+	assert.Equal(t, []string{outro.ClientID, testClientID}, fetcher.calls)
+}
