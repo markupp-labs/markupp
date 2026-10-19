@@ -104,6 +104,33 @@
     color: var(--ink-muted);
   }
 
+  /* Indicador de carregamento (busy_spinner_controller.js): o glifo braille no accent e o rótulo apagado, como o
+     spinner de um terminal. O quadro vem do ::before e gira pelo motion.css; quiet deixa o rótulo só para o leitor
+     de tela. */
+  .busy-spinner {
+    @apply inline-flex items-center gap-1.5 text-ink-muted;
+  }
+
+  /* O braille vem da fonte de reserva, menor que a Fira Code: 1.4em deixa a célula do tamanho de uma letra. */
+  .busy-spinner-glyph {
+    font-size: 1.4em;
+    line-height: 1;
+    color: var(--accent);
+  }
+
+  .busy-spinner-glyph::before {
+    content: "⠋";
+  }
+
+  .busy-spinner-quiet .busy-spinner-label {
+    @apply sr-only;
+  }
+
+  /* No topo à direita, no lugar da barra de progresso do Turbo. */
+  .busy-spinner-page {
+    @apply pointer-events-none fixed top-2 right-3 z-10;
+  }
+
   .tree-row {
     @apply rounded-md px-2 py-1 hover:bg-accent-soft;
   }
@@ -145,6 +172,12 @@
 :focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 1px;
+}
+
+/* A barra de progresso do Turbo dá lugar ao .busy-spinner-page. Fora de @layer: o <style> que o Turbo injeta não tem
+   camada e venceria qualquer regra dentro de uma. */
+.turbo-progress-bar {
+  display: none;
 }
 
 /* Barra lateral no desktop, estilo VS Code: coluna na largura escolhida (cookie, --sidebar-width no <html>);

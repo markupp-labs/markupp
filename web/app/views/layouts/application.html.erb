@@ -13,6 +13,7 @@
         <%= tag.attributes(data: { controller: [ "sidebar", "settings-shortcut", ("search" if current_tenant) ].compact.join(" "), action: shortcuts,
                                   settings_shortcut_url_value: settings_path,
                                   sidebar_hide_label_value: t(".hide_sidebar"), sidebar_show_label_value: t(".show_sidebar") }) %>>
+    <%= page_busy_spinner %>
     <%# Cada página nomeia a barra lateral pelo que ela mostra ali; sem nome, são as notas. %>
     <% sidebar_label = content_for(:sidebar_label).presence || t(".notes") %>
     <button popovertarget="sidebar" class="btn m-2 text-ink-muted md:hidden">
@@ -57,12 +58,13 @@
     <% if current_tenant %>
       <dialog data-search-target="dialog" aria-label="<%= t(".search_notes") %>"
               class="layer mx-auto mt-[15vh] w-[min(36rem,calc(100vw-2rem))] rounded-md border border-line bg-surface text-ink backdrop:bg-surface-sunken/70">
-        <%= form_with url: search_path, method: :get, data: { turbo_frame: "search_results", search_target: "form" } do |form| %>
+        <%= form_with url: search_path, method: :get, class: "relative", data: { turbo_frame: "search_results", search_target: "form" } do |form| %>
           <%= form.search_field :q, placeholder: t(".search_placeholder"), autocomplete: "off", role: "combobox",
                                 aria: { label: t(".search_notes"), controls: "search_options", expanded: true },
                                 data: { search_target: "input",
                                         action: "input->search#submit keydown.down->search#next:prevent keydown.up->search#previous:prevent keydown.enter->search#choose" },
-                                class: "w-full border-0 border-b border-line bg-transparent px-3 py-2 outline-none" %>
+                                class: "w-full border-0 border-b border-line bg-transparent py-2 pr-8 pl-3 outline-none" %>
+          <%= busy_spinner(busy_when: "#search_results[aria-busy]", class: "busy-spinner-quiet absolute inset-y-0 right-3") %>
         <% end %>
         <%= turbo_frame_tag "search_results" %>
       </dialog>

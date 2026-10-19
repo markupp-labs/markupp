@@ -26,6 +26,8 @@ en:
               account_exists: "This email already has an account. Log in and accept the invite from your tenant list."
               local_auth_disabled: "Password login is disabled on this server."
               email_unavailable: "This server can't send email, so password reset is off. Ask an administrator."
+  busy_spinner:
+    label: "Loading"
   layouts:
     application:
       notes: "Notes"
@@ -40,7 +42,6 @@ en:
     tenant_switcher:
       switch: "Switch tenant"
       new_tenant: "New tenant"
-      loading: "Loading"
     sidebar_footer:
       settings: "Settings"
       settings_shortcut: "Settings (Ctrl+,)"

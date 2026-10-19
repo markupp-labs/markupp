@@ -22,7 +22,7 @@
   </ul>
   <%# Preguiçoso: o popover fechado não aparece na tela, então a lista só carrega quando ele abre. %>
   <%= turbo_frame_tag "my_invites", src: my_invites_path, loading: :lazy, target: "_top" do %>
-    <p class="mt-1 border-t border-line px-2 py-1 text-ink-muted"><%= t(".loading") %></p>
+    <%= busy_spinner(busy_when: "#my_invites[aria-busy]", class: "flex px-2 not-empty:mt-1 not-empty:border-t not-empty:border-line not-empty:py-1") %>
   <% end %>
   <div class="mt-1 border-t border-line pt-1">
     <%= link_to tenants_path, class: "tree-row flex items-center gap-2" do %>

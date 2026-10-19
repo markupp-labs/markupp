@@ -154,3 +154,24 @@
   transition: opacity var(--motion-window-out) linear, transform var(--motion-window-out) linear,
     display var(--motion-window-out) linear allow-discrete;
 }
+
+/* Indicador de carregamento: os quadros braille de 80ms, como o spinner "dots" dos terminais. content muda de quadro
+   em quadro (step-end); com reduced-motion não há animação e fica o primeiro quadro, parado (application.css). */
+@media (prefers-reduced-motion: no-preference) {
+  .busy-spinner-glyph::before {
+    animation: braille-spin 800ms step-end infinite;
+  }
+}
+
+@keyframes braille-spin {
+  0% { content: "⠋"; }
+  10% { content: "⠙"; }
+  20% { content: "⠹"; }
+  30% { content: "⠸"; }
+  40% { content: "⠼"; }
+  50% { content: "⠴"; }
+  60% { content: "⠦"; }
+  70% { content: "⠧"; }
+  80% { content: "⠇"; }
+  90% { content: "⠏"; }
+}
