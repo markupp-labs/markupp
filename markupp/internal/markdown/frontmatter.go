@@ -79,10 +79,14 @@ func parseTypedLinks(fields []*yaml.Node) []TypedLink {
 	return links
 }
 
-// scalarItems devolve o próprio valor quando ele é escalar, ou os itens de uma lista.
+// scalarItems devolve o próprio valor quando ele é escalar, ou os itens de uma lista;
+// mapa aninhado não tem itens.
 func scalarItems(value *yaml.Node) []*yaml.Node {
 	if value.Kind == yaml.ScalarNode {
 		return []*yaml.Node{value}
+	}
+	if value.Kind != yaml.SequenceNode {
+		return nil
 	}
 	return value.Content
 }
