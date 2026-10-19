@@ -10,10 +10,10 @@ import (
 // ErrInvalidClientID indica um client_id que não serve como URL de metadados.
 var ErrInvalidClientID = errors.New("client_id invalido")
 
-const clientIDShape = "URL https com host e caminho, sem fragmento, sem credenciais e sem segmentos . ou .."
+const clientIDShape = "URL https com host e caminho, sem query, sem fragmento, sem credenciais e sem segmentos . ou .."
 
 // ParseClientID valida o client_id antes de qualquer busca e devolve a URL interpretada.
-// A porta é permitida; a query também, porque o draft só a desaconselha.
+// A porta é permitida; a query não, nem vazia, embora o draft só a desaconselhe.
 func ParseClientID(raw string) (*url.URL, error) {
 	parsed, err := url.Parse(raw)
 	if err != nil {
@@ -33,6 +33,8 @@ func clientIDProblem(raw string, parsed *url.URL) string {
 		return "sem host"
 	case parsed.User != nil:
 		return "contem credenciais"
+	case strings.Contains(raw, "?"):
+		return "contem query"
 	case strings.Contains(raw, "#"):
 		return "contem fragmento"
 	case parsed.Path == "" || parsed.Path == "/":
