@@ -17,16 +17,7 @@ class SessionsController < ApplicationController
   end
 
   def destroy
-    revoke_refresh_token
-    credential.sign_out
+    end_session
     redirect_to new_session_path, notice: t(".logged_out")
   end
-
-  private
-    # A API responde 204 sempre; fora do ar, o painel sai do mesmo jeito e o refresh vence sozinho.
-    def revoke_refresh_token
-      credential.public_api.post("/auth/logout", refresh_token: credential.refresh_token)
-    rescue MarkuppApi::Error => error
-      log_api_event("markupp_logout_not_revoked", error, level: :warn)
-    end
 end

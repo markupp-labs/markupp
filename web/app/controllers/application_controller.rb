@@ -47,6 +47,19 @@ class ApplicationController < ActionController::Base
       return_to
     end
 
+    # Logout de verdade: o refresh é revogado na API antes de a sessão do Rails sumir.
+    def end_session
+      revoke_refresh_token
+      credential.sign_out
+    end
+
+    # A API responde 204 sempre; fora do ar, o painel sai do mesmo jeito e o refresh vence sozinho.
+    def revoke_refresh_token
+      credential.public_api.post("/auth/logout", refresh_token: credential.refresh_token)
+    rescue MarkuppApi::Error => error
+      log_api_event("markupp_logout_not_revoked", error, level: :warn)
+    end
+
     # Só nas páginas que agem num tenant: o papel vem da lista, sem cache, a cada página.
     def require_tenant
       @current_tenant = Tenant.pick(current_tenants, credential.tenant_id)
