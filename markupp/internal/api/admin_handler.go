@@ -11,6 +11,7 @@ import (
 
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/auth"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/identity"
+	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/oauth"
 )
 
 // AdminService é o que as rotas de administração consomem.
@@ -48,7 +49,7 @@ type issuedInviteResponse struct {
 func mountAdminRoutes(r chi.Router, svc AdminService, validator TokenValidator, tenants TenantResolver) {
 	h := &adminHandler{svc: svc}
 	r.Group(func(g chi.Router) {
-		g.Use(RequireAuth(validator), RequireTenant(tenants), requireAdmin)
+		g.Use(RequireAuth(validator), requireOAuthScope(oauth.ScopeAdmin), RequireTenant(tenants), requireAdmin)
 		g.Get("/users", h.listMembers)
 		g.Get("/users/invites", h.listInvites)
 		g.Post("/users/invites", h.issueInvite)

@@ -43,7 +43,7 @@ func mountAccountEmailRoutes(r chi.Router, svc AccountEmailService, validator To
 	r.Post("/auth/password/forgot", h.forgotPassword)
 	r.Post("/auth/password/reset", h.resetPassword)
 	r.Group(func(g chi.Router) {
-		g.Use(RequireAuth(validator))
+		g.Use(RequireAuth(validator), rejectOAuthToken)
 		g.Post("/auth/email/verification", h.requestVerification)
 		g.Post("/auth/email/verify", h.confirmEmail)
 	})

@@ -33,8 +33,17 @@ func serveAuthenticated(w http.ResponseWriter, r *http.Request, next http.Handle
 		writeError(w, "unauthorized", "token ausente ou invalido", http.StatusUnauthorized)
 		return
 	}
-	ctx := identity.WithActor(r.Context(), identity.Actor{UserID: claims.Subject})
+	ctx := identity.WithActor(r.Context(), actorFromClaims(claims))
 	next.ServeHTTP(w, r.WithContext(ctx))
+}
+
+// actorFromClaims monta o ator do token. Scope vazio é token de login, de acesso inteiro.
+func actorFromClaims(claims auth.Claims) identity.Actor {
+	actor := identity.Actor{UserID: claims.Subject}
+	if claims.Scope != "" {
+		actor.FromOAuth, actor.OAuthScopes = true, strings.Fields(claims.Scope)
+	}
+	return actor
 }
 
 func extractBearerToken(authHeader string) (string, bool) {

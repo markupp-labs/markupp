@@ -15,7 +15,7 @@ import (
 func mountOAuthAuthorizationRoutes(r chi.Router, svc OAuthService, tokenValidator TokenValidator) {
 	h := &oauthHandler{svc: svc}
 	r.Route(currentVersionPrefix+"/me/authorizations", func(g chi.Router) {
-		g.Use(RequireAuth(tokenValidator))
+		g.Use(RequireAuth(tokenValidator), rejectOAuthToken)
 		g.Get("/", h.listAuthorizations)
 		g.Delete("/{id}", h.revokeAuthorization)
 	})

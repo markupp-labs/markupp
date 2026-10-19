@@ -34,7 +34,7 @@ type requestDecision func(ctx context.Context, requestID, userID string) (string
 func mountOAuthRequestRoutes(r chi.Router, svc OAuthService, tokenValidator TokenValidator) {
 	h := &oauthHandler{svc: svc}
 	r.Route(currentVersionPrefix+"/oauth/requests", func(g chi.Router) {
-		g.Use(RequireAuth(tokenValidator))
+		g.Use(RequireAuth(tokenValidator), rejectOAuthToken)
 		g.Get("/{id}", h.describeRequest)
 		g.Post("/{id}/approve", h.approveRequest)
 		g.Post("/{id}/deny", h.denyRequest)
