@@ -1,24 +1,30 @@
-<%# open_folders: pastas da nota atual ainda não percorridas, para abrir só os ancestrais dela %>
-<ul class="space-y-px">
-  <% folder.folders.each do |child| %>
-    <% ancestor = child.name == open_folders.first %>
-    <li>
-      <details <%= "open" if ancestor %>>
-        <summary class="tree-row flex cursor-pointer select-none list-none items-center gap-2 text-ink-muted [&::-webkit-details-marker]:hidden">
-          <%= icon("folder") %><%= icon("folder-open") %><span class="truncate"><%= child.name %></span>
-        </summary>
-        <div class="ml-3 border-l border-line pl-2">
-          <%= render "notes/folder", folder: child, current: current, open_folders: ancestor ? open_folders.drop(1) : [] %>
-        </div>
-      </details>
-    </li>
-  <% end %>
-  <% folder.notes.each do |note| %>
-    <li>
-      <%= link_to note_path(note), title: note.path, class: "tree-row flex items-center gap-2 aria-[current=page]:bg-accent-soft aria-[current=page]:text-ink",
-                  aria: { current: ("page" if note.id == current&.id) } do %>
-        <%= icon("file-text") %><span class="truncate"><%= note.name %></span>
+<%# Os itens de uma pasta, desenhados como o comando tree: pastas antes das notas, cada linha com as guias ("├── ", "│   ")
+    em texto apagado e fora do leitor de tela. path: caminho desta pasta ("" na raiz); guide: as guias dos ancestrais;
+    open_folders: pastas da nota atual ainda não percorridas, para abrir só os ancestrais dela. A pasta é um treeitem
+    com aria-owns no grupo dos filhos, como o treeview de navegação da WAI; abre e fecha pelo note_tree_controller.js. %>
+<% entries = folder.folders + folder.notes %>
+<% entries.each_with_index do |entry, index| %>
+  <% last = index == entries.size - 1 %>
+  <% branch = "#{guide}#{last ? "└── " : "├── "}" %>
+  <li role="none">
+    <% if entry.is_a?(Note::Tree::Folder) %>
+      <% child_path = [ path.presence, entry.name ].compact.join("/") %>
+      <% open = entry.name == open_folders.first %>
+      <% group = "tree_#{child_path.unpack1("H*")}" %>
+      <button type="button" role="treeitem" aria-expanded="<%= open %>" aria-owns="<%= group %>" data-path="/<%= child_path %>"
+              data-action="note-tree#toggle" class="tree-row w-full text-left text-ink-muted">
+        <span aria-hidden="true" class="tree-guide"><%= branch %></span><span class="tree-marker"></span><span class="truncate"><%= entry.name %><span aria-hidden="true">/</span></span>
+      </button>
+      <ul role="group" id="<%= group %>" <%= "hidden" unless open %>>
+        <%= render "notes/folder", folder: entry, path: child_path, guide: "#{guide}#{last ? "    " : "│   "}",
+                                   current:, open_folders: open ? open_folders.drop(1) : [] %>
+      </ul>
+    <% else %>
+      <%= link_to note_path(entry), role: "treeitem", title: entry.path, data: { path: entry.location },
+                  aria: { current: ("page" if entry.id == current&.id) },
+                  class: "tree-row aria-[current=page]:bg-accent-soft aria-[current=page]:text-ink" do %>
+        <span aria-hidden="true" class="tree-guide"><%= branch %></span><span class="truncate"><%= entry.title %></span>
       <% end %>
-    </li>
-  <% end %>
-</ul>
+    <% end %>
+  </li>
+<% end %>

@@ -154,10 +154,28 @@
     font-weight: 700;
   }
 
-  /* Pasta da árvore: o ícone aberto ou fechado mostra o estado no lugar do triângulo do details. */
-  details[open] > summary > [data-icon="folder"],
-  details:not([open]) > summary > [data-icon="folder-open"] {
-    display: none;
+  /* Árvore de notas como a saída do comando tree: 13px, linhas coladas (py-0) para as guias quase se tocarem, guias na
+     ink-muted (no line sumiam nos dois temas) e o nome cortado com reticências. */
+  .note-tree {
+    font-size: 13px;
+  }
+
+  .note-tree .tree-row {
+    @apply flex items-center py-0 leading-6;
+  }
+
+  .tree-guide {
+    @apply shrink-0 whitespace-pre text-ink-muted;
+  }
+
+  /* Marcador da pasta no lugar do ícone: + fechada, - aberta, à moda do NERDTree em ASCII; o aria-expanded já diz o estado. */
+  .tree-marker::before {
+    content: "+ " / "";
+    @apply whitespace-pre;
+  }
+
+  [aria-expanded="true"] > .tree-marker::before {
+    content: "- " / "";
   }
 
   /* No desktop a barra lateral fica sempre visível; no celular é popover (gaveta). */

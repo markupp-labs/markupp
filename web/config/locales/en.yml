@@ -257,6 +257,7 @@ en:
       deleted: "Deleted"
     sidebar:
       new_note: "New note"
+      tree: "Notes"
       empty: "No notes yet."
     not_found:
       title: "Note not found"
