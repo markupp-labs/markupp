@@ -96,7 +96,8 @@
   }
 
   /* Mascote em braille (script/mascot.rb): linha de altura 1 para os pontos encostarem. O tamanho da fonte
-     é o tamanho do desenho: o grande cabe ao lado do formulário, o pequeno na altura da marca. */
+     é o tamanho do desenho: o grande cabe ao lado do formulário, o pequeno (48x48px) na altura das duas linhas da marca,
+     em negrito para os pontos encorparem. */
   .mascot {
     @apply m-0 shrink-0 font-mono leading-none whitespace-pre text-ink-muted select-none;
   }
@@ -107,6 +108,7 @@
 
   .mascot-small {
     font-size: 4px;
+    font-weight: 700;
   }
 
   /* Pasta da árvore: o ícone aberto ou fechado mostra o estado no lugar do triângulo do details. */

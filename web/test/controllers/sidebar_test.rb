@@ -11,7 +11,7 @@ class SidebarTest < ActionDispatch::IntegrationTest
     get root_path
 
     assert_select "nav #current_tenant" do
-      assert_select "a[href=?]", root_path, text: /markupp\s*\/\s*Acme research/
+      assert_select "a[href=?]", root_path, text: /Acme research/
       assert_select "button[popovertarget=tenant_switcher][aria-label=?][title=?] svg[data-icon=caret-up-down]", "Switch tenant", "Switch tenant"
     end
   end

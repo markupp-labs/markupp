@@ -31,6 +31,11 @@
             <%= icon("magnifying-glass") %><%= t(".search") %>
             <kbd aria-hidden="true" class="ml-auto text-xs">Ctrl K</kbd>
           </button>
+        <% else %>
+          <%# Sem tenant (onboarding, ou a API caiu antes de carregá-lo) a marca fica, com o nome do produto no lugar. %>
+          <%= link_to root_path, class: "tree-row mb-2 flex items-center gap-2" do %>
+            <%= mascot(:small) %><span>markupp</span>
+          <% end %>
         <% end %>
         <%= yield :sidebar %>
       </div>

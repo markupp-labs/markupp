@@ -10,11 +10,13 @@ require_relative "../lib/braille_art"
 WEB = File.expand_path("..", __dir__)
 LOGO = File.join(WEB, "../docs/assets/logo.png")
 
-# columns x lines em caracteres; o pixel do braille é alto (célula ~0.6 x 1), por isso a altura é esticada.
-# crop recorta o rosto para a versão pequena; threshold mais alto acende mais pontos onde o traço é fino.
+# columns x lines em caracteres; o ponto do braille é 1.2 vezes mais largo que alto (célula 0.6 x 1 com 2x4 pontos),
+# então um recorte quadrado pede columns = lines * 5 / 3 para não achatar o rosto.
+# crop recorta cabeça e franja para a versão pequena; threshold mais alto acende mais pontos onde o traço é fino.
+# No pequeno o limiar é baixo: só o cabelo e o contorno acendem, e o rosto fica vazado e legível a 4px.
 VERSIONS = {
   "large" => { columns: 60, lines: 32, threshold: 160, crop: nil },
-  "small" => { columns: 12, lines: 6, threshold: 170, crop: "220x220+50+10" }
+  "small" => { columns: 20, lines: 12, threshold: 100, crop: "220x220+50+30" }
 }.freeze
 
 def gray_pixels(columns:, lines:, crop:, **)
