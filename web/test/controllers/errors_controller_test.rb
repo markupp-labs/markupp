@@ -29,6 +29,11 @@ class ErrorsControllerTest < ActionDispatch::IntegrationTest
     assert_select "main h1", "404: Nothing at /nowhere.php"
   end
 
+  # A coringa do 404 vem depois das rotas que as gems desenham (turbo-rails), não antes.
+  test "the unknown route catch-all leaves the routes drawn by engines alone" do
+    assert_recognizes({ controller: "turbo/native/navigation", action: "recede" }, "/recede_historical_location")
+  end
+
   test "a request missing its parameters answers a styled 400" do
     sign_in_as
 
