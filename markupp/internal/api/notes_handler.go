@@ -25,8 +25,19 @@ type NoteService interface {
 	SearchNotes(ctx context.Context, query string, offset, limit int) ([]notes.SearchResult, error)
 }
 
+// notesHandler serve as notas pelo serviço, e render dá a representação de cada
+// nota na resposta, que muda entre as rotas sem prefixo e as de /v1.
 type notesHandler struct {
-	svc NoteService
+	svc    NoteService
+	render func(notes.Note) any
+}
+
+// createNoteRequest é o corpo da criação; as rotas de /v1 ignoram VaultID e tiram
+// o cofre do caminho.
+type createNoteRequest struct {
+	VaultID string `json:"vault_id"`
+	Path    string `json:"path"`
+	Content string `json:"content"`
 }
 
 type noteResponse struct {
@@ -50,7 +61,11 @@ const (
 	minLimit  = 1
 )
 
-func toResponse(n notes.Note) noteResponse {
+func toResponse(n notes.Note) any {
+	return toNoteResponse(n)
+}
+
+func toNoteResponse(n notes.Note) noteResponse {
 	return noteResponse{
 		ID:            n.ID,
 		VaultID:       n.VaultID,
@@ -63,21 +78,22 @@ func toResponse(n notes.Note) noteResponse {
 }
 
 func (h *notesHandler) create(w http.ResponseWriter, r *http.Request) {
-	var req struct {
-		VaultID string `json:"vault_id"`
-		Path    string `json:"path"`
-		Content string `json:"content"`
-	}
+	h.createIn(w, r, func(req createNoteRequest) string { return req.VaultID })
+}
+
+// createIn cria a nota do corpo no cofre que vaultOf escolhe.
+func (h *notesHandler) createIn(w http.ResponseWriter, r *http.Request, vaultOf func(createNoteRequest) string) {
+	var req createNoteRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, "invalid_request", "JSON inválido", http.StatusBadRequest)
 		return
 	}
-	note, err := h.svc.Create(r.Context(), req.VaultID, req.Path, req.Content)
+	note, err := h.svc.Create(r.Context(), vaultOf(req), req.Path, req.Content)
 	if err != nil {
 		writeDomainError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusCreated, toResponse(note))
+	writeJSON(w, http.StatusCreated, h.render(note))
 }
 
 func (h *notesHandler) update(w http.ResponseWriter, r *http.Request) {
@@ -97,7 +113,7 @@ func (h *notesHandler) update(w http.ResponseWriter, r *http.Request) {
 		writeDomainError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, toResponse(note))
+	writeJSON(w, http.StatusOK, h.render(note))
 }
 
 func (h *notesHandler) get(w http.ResponseWriter, r *http.Request) {
@@ -107,7 +123,7 @@ func (h *notesHandler) get(w http.ResponseWriter, r *http.Request) {
 		writeDomainError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, toResponse(note))
+	writeJSON(w, http.StatusOK, h.render(note))
 }
 
 func (h *notesHandler) list(w http.ResponseWriter, r *http.Request) {
@@ -116,9 +132,9 @@ func (h *notesHandler) list(w http.ResponseWriter, r *http.Request) {
 		writeDomainError(w, err)
 		return
 	}
-	out := make([]noteResponse, 0, len(list))
+	out := make([]any, 0, len(list))
 	for _, n := range list {
-		out = append(out, toResponse(n))
+		out = append(out, h.render(n))
 	}
 	writeJSON(w, http.StatusOK, out)
 }

@@ -87,7 +87,7 @@ func mountAuthRoutes(r chi.Router, authSvc AuthService, tokenValidator TokenVali
 }
 
 func mountNotesRoutes(r chi.Router, svc NoteService) {
-	h := &notesHandler{svc: svc}
+	h := &notesHandler{svc: svc, render: toResponse}
 	r.Get("/notes", h.list)
 	r.Get("/notes/search", h.search)
 	r.Get("/notes/{id}", h.get)
