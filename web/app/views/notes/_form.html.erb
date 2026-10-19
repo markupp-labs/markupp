@@ -21,12 +21,14 @@
                               "keydown.shift+tab->note-form#focusPath note-form:heading->editor#replaceStart" } do |form| %>
   <%# Erro de caminho (API) ou de nome em branco: os dois aparecem sob o campo. %>
   <% path_error = @note.errors.full_messages_for(:path).first || @note.errors.full_messages_for(:title).first %>
-  <header class="flex flex-wrap items-center gap-x-3 gap-y-1">
+  <%# items-start: o erro sob o campo cresce o bloco dele sem descer os controles. O campo (38px) sobe 4px no desktop
+      para os controles (30px) ficarem no meio dele, como no items-center. %>
+  <header class="flex flex-wrap items-start gap-x-3 gap-y-1">
     <%# Pasta e nome num campo só: o caminho inteiro sem .md (/work/plano). Editar é renomear e mover, como o :e do Vim,
         com a pasta da nota como diretório atual (Note#resolve); a origem vai escondida para o servidor resolver. Nota nova
         abre com a pasta de onde veio e o foco no fim; Tab vai para o fim do conteúdo. Num erro o campo volta como foi
         digitado. No celular ganha a linha inteira e os controles descem para a linha de baixo, sem cortar o campo. %>
-    <div class="min-w-0 flex-1 max-md:basis-full">
+    <div class="min-w-0 flex-1 max-md:basis-full md:-mt-1">
       <%= form.label :path, class: "sr-only" %>
       <%= form.text_field :path, value: @typed_path || @note.location, autofocus: writer && !@note.persisted?,
                           spellcheck: false, autocomplete: "off", readonly: !writer,
@@ -35,6 +37,11 @@
                           class: "w-full rounded-md border border-transparent bg-transparent px-1 py-0.5 text-2xl font-semibold text-ink " \
                                  "hover:border-line focus:border-accent focus-visible:outline-none aria-invalid:border-danger" %>
       <%= hidden_field_tag :origin_path, @origin_path || @note.path, id: nil %>
+      <%# Sempre presente: o note-form mostra aqui o nome em branco sem ir ao servidor. É alerta porque o Ctrl+S pode vir
+          do próprio campo, e aí devolver o foco a ele não anuncia nada. Fica no bloco do campo: no celular os controles
+          descem para a linha de baixo e o erro continua colado ao campo. %>
+      <%= tag.p path_error, id: "note_path_error", role: "alert", hidden: path_error.blank?, class: "px-1 text-danger",
+                            data: { note_form_target: [ "pathError", ("pending" if path_error) ].compact.join(" ") } %>
     </div>
     <div role="group" aria-label="<%= t(".mode") %>" class="flex items-center rounded-md border border-line">
       <% NoteModeHelper::NOTE_MODES.each do |name| %>
@@ -61,11 +68,6 @@
       <% end %>
     <% end %>
   </header>
-
-  <%# Sempre presente: o note-form mostra aqui o nome em branco sem ir ao servidor. É alerta porque o Ctrl+S pode vir
-      do próprio campo, e aí devolver o foco a ele não anuncia nada. %>
-  <%= tag.p path_error, id: "note_path_error", role: "alert", hidden: path_error.blank?, class: "-mt-2 px-1 text-danger",
-                        data: { note_form_target: [ "pathError", ("pending" if path_error) ].compact.join(" ") } %>
 
   <% if @conflict %>
     <div role="alert" data-note-form-target="pending" class="flex flex-wrap items-center gap-3 rounded-md border border-danger p-2">
