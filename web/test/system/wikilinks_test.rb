@@ -39,6 +39,24 @@ class WikilinksTest < ApplicationSystemTestCase
     assert_no_selector ".note-preview a", text: /nobody|someone/
   end
 
+  # Quebrado se distingue do link pelo tracejado e pela cor do texto (não a do link), sem ficar apagado; clicar não cria nota.
+  test "a broken wikilink keeps the text color with a dashed underline in both themes and a click creates nothing" do
+    api = use_fake_api(notes: [ { id: "1", path: "plan.md", content: "Ask [[nobody]] today.\n" } ])
+    sign_in_through_form
+
+    %w[Light Dark].each do |theme|
+      visit settings_appearance_path
+      within("main") { click_on theme }
+      visit note_path("1")
+      click_on "Read"
+      assert_broken_link_style find(".note-preview .wikilink-missing", text: "nobody"), theme
+    end
+    find(".note-preview .wikilink-missing", text: "nobody").click
+
+    assert_current_path note_path("1")
+    assert_empty api.post_requests
+  end
+
   # O title só aparece com mouse: para o leitor de tela o motivo vem no texto da página, escondido da vista.
   test "a broken wikilink says why without hover" do
     use_fake_api(notes: [ { id: "1", path: "plan.md", content: "Ask [[ghost|someone]].\n" } ])
@@ -85,4 +103,14 @@ class WikilinksTest < ApplicationSystemTestCase
 
     assert_link "Ideas", href: "/notes/2"
   end
+
+  private
+    def assert_broken_link_style(element, theme)
+      style = element.evaluate_script(<<~JS)
+        (() => { const own = getComputedStyle(this), text = getComputedStyle(this.parentElement)
+                 return { color: own.color, text: text.color, line: own.textDecorationLine, dash: own.textDecorationStyle } })()
+      JS
+      assert_equal style["text"], style["color"], "expected the broken link in the text color in #{theme}, got #{style}"
+      assert_equal [ "underline", "dashed" ], style.values_at("line", "dash"), "expected a dashed underline in #{theme}, got #{style}"
+    end
 end
