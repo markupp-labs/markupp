@@ -24,16 +24,6 @@ func TestCIMDFailureMemory_FalhaLembrada_VaiAteOFimDoPrazo(t *testing.T) {
 	assert.False(t, ok, "outro client_id não é afetado")
 }
 
-func TestCIMDFailureMemory_NovaFalha_DescartaAsVencidas(t *testing.T) {
-	memory := newCIMDFailureMemory()
-	memory.remember("https://a.exemplo.dev/c.json", instanteDaFalha.Add(time.Minute), instanteDaFalha)
-
-	depois := instanteDaFalha.Add(2 * time.Minute)
-	memory.remember("https://b.exemplo.dev/c.json", depois.Add(time.Minute), depois)
-
-	assert.Equal(t, map[string]time.Time{"https://b.exemplo.dev/c.json": depois.Add(time.Minute)}, memory.until)
-}
-
 func encherMemoria(memory *cimdFailureMemory, fim time.Time) {
 	for i := range 1000 {
 		memory.remember(fmt.Sprintf("https://a.exemplo.dev/%d.json", i), fim, instanteDaFalha)

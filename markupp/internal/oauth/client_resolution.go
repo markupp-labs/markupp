@@ -8,6 +8,10 @@ import (
 	"time"
 )
 
+// maxCIMDClientIDLen limita o client_id tratado como URL de documento CIMD, que chega de
+// qualquer pedido sem login.
+const maxCIMDClientIDLen = 2048
+
 // metadataDocumentShape descreve o documento esperado quando a busca do CIMD falha.
 const metadataDocumentShape = "um Client ID Metadata Document acessivel e valido (draft-ietf-oauth-client-id-metadata-document)"
 
@@ -16,6 +20,9 @@ const metadataDocumentShape = "um Client ID Metadata Document acessivel e valido
 func (s *Service) resolveClient(ctx context.Context, clientID string) (Client, error) {
 	if s.metadata == nil || !isHTTPSURL(clientID) {
 		return s.registeredClient(ctx, clientID)
+	}
+	if len(clientID) > maxCIMDClientIDLen {
+		return Client{}, &ProtocolError{Code: errInvalidRequest, Description: fmt.Sprintf("client_id com %d caracteres; esperado no maximo %d", len(clientID), maxCIMDClientIDLen)}
 	}
 	return s.cimdClient(ctx, clientID)
 }
@@ -68,9 +75,11 @@ func (s *Service) fetchCIMDClient(ctx context.Context, clientID string, now time
 	return s.saveCIMDClient(ctx, clientID, metadata, now)
 }
 
-// fetchCheckedMetadata busca o documento e confere o que o fetcher devolveu.
+// fetchCheckedMetadata busca o documento e confere o que o fetcher devolveu. A busca não
+// herda o cancelamento do pedido, só o timeout do próprio fetcher: senão quem derruba a
+// conexão faria a busca de um cliente legítimo falhar e cair no cache negativo.
 func (s *Service) fetchCheckedMetadata(ctx context.Context, clientID string) (ClientMetadata, error) {
-	metadata, err := s.metadata.FetchClientMetadata(ctx, clientID)
+	metadata, err := s.metadata.FetchClientMetadata(context.WithoutCancel(ctx), clientID)
 	if err != nil {
 		return ClientMetadata{}, err
 	}

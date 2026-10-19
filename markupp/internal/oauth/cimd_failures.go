@@ -10,6 +10,10 @@ import (
 //
 // ponytail: em memória, vale por réplica (cada réplica busca uma vez por client_id
 // falho); a alternativa é uma tabela, se várias réplicas precisarem concordar.
+// maxCIMDFailures limita o cache negativo, que qualquer pedido sem login consegue
+// alimentar com client_ids inventados.
+const maxCIMDFailures = 1000
+
 type cimdFailureMemory struct {
 	mu    sync.Mutex
 	until map[string]time.Time
@@ -19,18 +23,29 @@ func newCIMDFailureMemory() *cimdFailureMemory {
 	return &cimdFailureMemory{until: map[string]time.Time{}}
 }
 
-// remember recusa clientID até until e descarta as entradas já vencidas em now.
-// Um until que não passa de now não é guardado.
+// remember recusa clientID até until. Cheia, descarta as entradas vencidas em now e,
+// se mesmo assim não houver lugar, não lembra a nova: o pedido continua recusado, só a
+// próxima tentativa volta a buscar. Um until que não passa de now não é guardado.
 func (m *cimdFailureMemory) remember(clientID string, until, now time.Time) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	if !now.Before(until) {
+		return
+	}
+	if len(m.until) >= maxCIMDFailures {
+		m.dropExpired(now)
+	}
+	if len(m.until) < maxCIMDFailures {
+		m.until[clientID] = until
+	}
+}
+
+// dropExpired descarta as falhas já vencidas em now; quem chama segura o mutex.
+func (m *cimdFailureMemory) dropExpired(now time.Time) {
 	for id, expiry := range m.until {
 		if !now.Before(expiry) {
 			delete(m.until, id)
 		}
-	}
-	if now.Before(until) {
-		m.until[clientID] = until
 	}
 }
 
