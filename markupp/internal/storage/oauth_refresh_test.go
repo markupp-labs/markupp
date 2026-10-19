@@ -336,11 +336,12 @@ func TestPostgresOAuthRepo_ListActiveAuthorizations_ContaSemAutorizacao(t *testi
 	assert.Empty(t, got)
 }
 
-func TestPostgresOAuthRepo_RevokeAuthorization_RevogaAutorizacaoTokensEAudita(t *testing.T) {
+func TestPostgresOAuthRepo_RevokeAuthorization_RevogaAutorizacaoTokensEAuditaComOCliente(t *testing.T) {
 	repo, pool := repoComTokens(t)
+	evento := eventoOAuth(oauth.AuditActionRevoke, oauth.AuditResultSuccess)
+	evento.ClientID = ""
 
-	err := repo.RevokeAuthorization(context.Background(), "u1", "a1",
-		eventoOAuth(oauth.AuditActionRevoke, oauth.AuditResultSuccess))
+	err := repo.RevokeAuthorization(context.Background(), "u1", "a1", evento)
 
 	require.NoError(t, err)
 	assert.Equal(t, 1, countRows(t, pool, `SELECT count(*) FROM oauth_authorizations
@@ -361,6 +362,16 @@ func TestPostgresOAuthRepo_RevokeAuthorization_DeOutraContaNaoMexe(t *testing.T)
 	require.ErrorIs(t, err, oauth.ErrAuthorizationNotFound)
 	assert.Equal(t, 1, countRows(t, pool, "SELECT count(*) FROM oauth_authorizations WHERE id = 'a1' AND revoked_at IS NULL"))
 	assert.Equal(t, 0, countRows(t, pool, "SELECT count(*) FROM oauth_tokens WHERE revoked"))
+	assert.Equal(t, 0, countRows(t, pool, "SELECT count(*) FROM audit_events"))
+}
+
+func TestPostgresOAuthRepo_RevokeAuthorization_Inexistente(t *testing.T) {
+	repo, pool := repoComTokens(t)
+
+	err := repo.RevokeAuthorization(context.Background(), "u1", "a-inexistente",
+		eventoOAuth(oauth.AuditActionRevoke, oauth.AuditResultSuccess))
+
+	require.ErrorIs(t, err, oauth.ErrAuthorizationNotFound)
 	assert.Equal(t, 0, countRows(t, pool, "SELECT count(*) FROM audit_events"))
 }
 

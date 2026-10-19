@@ -66,59 +66,51 @@ func TestListAuthorizations_FalhaDoRepositorio_DevolveErroEmbrulhado(t *testing.
 	require.ErrorIs(t, err, repo.listErr)
 }
 
-func TestRevokeAuthorization_AutorizacaoDaConta_RevogaEAuditaComOCliente(t *testing.T) {
-	repo := testRepositoryWithActiveAuthorization()
+// testRevokeAuthorizationEvent é o evento que o serviço manda; o cliente alvo o
+// repositório preenche pela Autorização, na transação.
+func testRevokeAuthorizationEvent() oauth.AuditEvent {
+	event := testAuditEvent(oauth.AuditActionRevoke, oauth.AuditResultSuccess)
+	event.ClientID = ""
+	return event
+}
+
+func TestRevokeAuthorization_AutorizacaoDaConta_RevogaEAuditaSemLerAntes(t *testing.T) {
+	repo := newFakeOAuthRepository()
 
 	err := newTestService(repo).RevokeAuthorization(context.Background(), testUserID, "aut-1")
 
 	require.NoError(t, err)
 	assert.Equal(t, []revokedAuthorization{{
-		UserID: testUserID, AuthorizationID: "aut-1", Event: testAuditEvent(oauth.AuditActionRevoke, oauth.AuditResultSuccess),
+		UserID: testUserID, AuthorizationID: "aut-1", Event: testRevokeAuthorizationEvent(),
 	}}, repo.revokedAuths)
+	assert.Empty(t, repo.listCalls, "o cliente alvo vem da transação do repositório")
 	assert.Empty(t, repo.auditedRevokes)
 }
 
 func TestRevokeAuthorization_AutorizacaoInexistente_ErrAuthorizationNotFound(t *testing.T) {
-	casos := map[string]struct {
-		id         string
-		revokeErr  error
-		wantRevoke bool
-	}{
-		"id vazio":                       {id: ""},
-		"fora das ativas da conta":       {id: "aut-de-outra-conta"},
-		"revogada no meio do caminho":    {id: "aut-1", revokeErr: oauth.ErrAuthorizationNotFound, wantRevoke: true},
-		"revogada no caminho embrulhado": {id: "aut-1", revokeErr: errors.Join(errors.New("contexto"), oauth.ErrAuthorizationNotFound), wantRevoke: true},
+	casos := map[string]error{
+		"inexistente, revogada ou de outra conta": oauth.ErrAuthorizationNotFound,
+		"embrulhado": errors.Join(errors.New("contexto"), oauth.ErrAuthorizationNotFound),
 	}
-	for nome, caso := range casos {
+	for nome, causa := range casos {
 		t.Run(nome, func(t *testing.T) {
-			repo := testRepositoryWithActiveAuthorization()
-			repo.revokeAuthErr = caso.revokeErr
+			repo := newFakeOAuthRepository()
+			repo.revokeAuthErr = causa
 
-			err := newTestService(repo).RevokeAuthorization(context.Background(), testUserID, caso.id)
+			err := newTestService(repo).RevokeAuthorization(context.Background(), testUserID, "aut-1")
 
 			require.ErrorIs(t, err, oauth.ErrAuthorizationNotFound)
-			assert.Equal(t, caso.wantRevoke, len(repo.revokedAuths) == 1)
+			assert.Len(t, repo.revokedAuths, 1)
 		})
 	}
 }
 
 func TestRevokeAuthorization_FalhaDoRepositorio_DevolveErroEmbrulhado(t *testing.T) {
-	casos := map[string]func(*fakeOAuthRepository) error{
-		"ao listar": func(r *fakeOAuthRepository) error { r.listErr = errors.New("banco fora do ar"); return r.listErr },
-		"ao revogar": func(r *fakeOAuthRepository) error {
-			r.revokeAuthErr = errors.New("banco fora do ar")
-			return r.revokeAuthErr
-		},
-	}
-	for nome, falha := range casos {
-		t.Run(nome, func(t *testing.T) {
-			repo := testRepositoryWithActiveAuthorization()
-			causa := falha(repo)
+	repo := newFakeOAuthRepository()
+	repo.revokeAuthErr = errors.New("banco fora do ar")
 
-			err := newTestService(repo).RevokeAuthorization(context.Background(), testUserID, "aut-1")
+	err := newTestService(repo).RevokeAuthorization(context.Background(), testUserID, "aut-1")
 
-			require.ErrorIs(t, err, causa)
-			assert.NotErrorIs(t, err, oauth.ErrAuthorizationNotFound)
-		})
-	}
+	require.ErrorIs(t, err, repo.revokeAuthErr)
+	assert.NotErrorIs(t, err, oauth.ErrAuthorizationNotFound)
 }
