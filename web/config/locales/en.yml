@@ -244,6 +244,9 @@ en:
         split: "Side by side"
       preview: "Preview"
       missing_note: "No note named %{name}"
+      copy_code: "Copy code"
+      copied: "Copied"
+      copy_failed: "Could not copy"
     update:
       saved: "Saved"
     create:

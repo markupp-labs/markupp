@@ -11,7 +11,8 @@
               data: { controller: "editor note-form note-mode", mode:, note_form_leave_message_value: t(".leave"), note_form_new_value: !@note.persisted?,
                       note_form_blank_title_value: ActiveModel::Error.new(@note, :title, :blank).full_message,
                       note_mode_wikilinks_value: wikilink_targets(@tree), note_mode_folder_value: @note.folder,
-                      note_mode_missing_note_value: t(".missing_note"),
+                      note_mode_missing_note_value: t(".missing_note"), note_mode_copied_value: t(".copied"),
+                      note_mode_copy_failed_value: t(".copy_failed"),
                       action: "keydown.ctrl+s@window->note-form#save:prevent keydown.meta+s@window->note-form#save:prevent " \
                               "keydown@window->note-mode#shortcut input->note-mode#render turbo:load@document->note-mode#scrollToHash click->note-mode#followAnchor scroll->note-mode#followScroll:capture " \
                               "input->note-form#track submit->note-form#submit turbo:submit-start@document->note-form#allowLeavingOnDelete " \
@@ -90,6 +91,14 @@
                          readonly: !writer, class: "min-h-[60dvh] w-full flex-1 rounded-md border border-line bg-surface p-2" %>
     </div>
     <%# Markdown renderizado e sanitizado no navegador (editor/render_markdown.js). %>
+    <%# Ferramentas de cada bloco de código da leitura, clonadas depois do render (editor/code_blocks.js). %>
+    <template data-note-mode-target="codeTools">
+      <span class="code-tools">
+        <span role="status" aria-live="polite" class="code-copy-status"></span>
+        <button type="button" class="btn-icon" aria-label="<%= t(".copy_code") %>" title="<%= t(".copy_code") %>"
+                data-action="note-mode#copyCode"><%= icon("copy") %></button>
+      </span>
+    </template>
     <article data-note-mode-target="preview" aria-label="<%= t(".preview") %>" class="note-preview markdown-body min-w-0"></article>
   </div>
 <% end %>

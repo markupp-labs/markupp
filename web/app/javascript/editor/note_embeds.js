@@ -2,13 +2,16 @@ import { renderMarkdown } from "editor/render_markdown"
 
 // Corpo de cada ![[nota]] do preview (editor/wikilinks.js deixa o bloco vazio): a nota renderizada pelo mesmo
 // renderMarkdown, logo pelo mesmo DOMPurify, marcada como embutida (sem embed dentro, sem ids, sem linhas do editor).
-// Sem conteúdo (erro, sessão vencida, nota apagada) o bloco fica só com o link para abrir a nota.
-export function fillEmbeds(root, contentFor, env) {
+// Sem conteúdo (erro, sessão vencida, nota apagada) o bloco fica só com o link para abrir a nota. afterFill recebe
+// o corpo preenchido, para o que o preview ganha depois do render (as ferramentas dos blocos de código).
+export function fillEmbeds(root, contentFor, env, afterFill) {
   root.querySelectorAll(".note-embed[data-embed-url]").forEach(async (embed) => {
     const content = await contentFor(embed.dataset.embedUrl)
     if (content == null) return
 
-    embed.querySelector(".note-embed-body").innerHTML = renderMarkdown(content, { ...env, embedded: true })
+    const body = embed.querySelector(".note-embed-body")
+    body.innerHTML = renderMarkdown(content, { ...env, embedded: true })
+    afterFill(body)
   })
 }
 

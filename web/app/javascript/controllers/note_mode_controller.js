@@ -3,6 +3,7 @@ import { renderMarkdown } from "editor/render_markdown"
 import { resolveWikilink } from "editor/wikilinks"
 import { scrollToHeading } from "editor/heading_ids"
 import { embedContentLoader, fillEmbeds } from "editor/note_embeds"
+import { addCodeTools, copyCode } from "editor/code_blocks"
 import { editorScrollTopFor, previewScrollTopFor } from "editor/scroll_sync"
 import { EditorView } from "@codemirror/view"
 
@@ -13,8 +14,8 @@ const COOKIE_MAX_AGE = 60 * 60 * 24 * 365
 const SHORTCUTS = { e: "read", "\\": "split" }
 
 export default class extends Controller {
-  static targets = [ "source", "preview", "button" ]
-  static values = { wikilinks: Object, folder: String, missingNote: String }
+  static targets = [ "source", "preview", "button", "codeTools" ]
+  static values = { wikilinks: Object, folder: String, missingNote: String, copied: String, copyFailed: String }
 
   connect() {
     this.render()
@@ -50,8 +51,10 @@ export default class extends Controller {
     if (this.mode == "edit") return
 
     const env = { wikilinks: this.wikilinkLookup }
+    const addTools = (root) => addCodeTools(root, this.codeToolsTarget)
     this.previewTarget.innerHTML = renderMarkdown(this.sourceTarget.value, env)
-    fillEmbeds(this.previewTarget, this.embedContent, env)
+    addTools(this.previewTarget)
+    fillEmbeds(this.previewTarget, this.embedContent, env, addTools)
     if (this.mode == "split") this.alignPreview()
   }
 
@@ -69,6 +72,10 @@ export default class extends Controller {
 
     event.preventDefault()
     history.replaceState(history.state, "", hash)
+  }
+
+  copyCode({ currentTarget }) {
+    copyCode(currentTarget, { copied: this.copiedValue, failed: this.copyFailedValue })
   }
 
   // Lado a lado, mão dupla como no VS Code: o scroll de um painel (o scroller do CodeMirror ou o preview, pego na
