@@ -35,7 +35,7 @@ func (r *PostgresOAuthRepository) SaveCIMDClient(ctx context.Context, client oau
 		return fmt.Errorf("salvar cliente cimd %s: %w", oauth.ClientValue(client.ID), err)
 	}
 	if rows == 0 {
-		return fmt.Errorf(`salvar cliente cimd %s: id já registrado por outra origem, esperado source "cimd"`, oauth.ClientValue(client.ID))
+		return fmt.Errorf(`salvar cliente cimd %s: %w, esperado source "cimd"`, oauth.ClientValue(client.ID), oauth.ErrClientSourceConflict)
 	}
 	return nil
 }

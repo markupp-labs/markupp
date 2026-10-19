@@ -63,7 +63,11 @@ func (s *Service) fetchCIMDClient(ctx context.Context, clientID string, now time
 		return Client{}, unusableMetadataError(clientID, err)
 	}
 	client := Client{ID: clientID, Name: metadata.Name, RedirectURIs: metadata.RedirectURIs}
-	if err := s.repo.SaveCIMDClient(ctx, client, now.Add(metadata.TTL)); err != nil {
+	err = s.repo.SaveCIMDClient(ctx, client, now.Add(metadata.TTL))
+	if errors.Is(err, ErrClientSourceConflict) {
+		return Client{}, unusableMetadataError(clientID, err)
+	}
+	if err != nil {
 		return Client{}, fmt.Errorf("oauth: gravando o cliente cimd %s: %w", ClientValue(clientID), err)
 	}
 	return client, nil
