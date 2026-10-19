@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -21,7 +20,7 @@ type fakeNoteGraph struct {
 	links     []notes.Link
 	mentions  []notes.Mention
 	suggested []notes.LinkSuggestion
-	members   []notes.CommunityMember
+	groups    []notes.Community
 	err       error
 
 	method string
@@ -68,9 +67,18 @@ func (f *fakeNoteGraph) Suggestions(_ context.Context, noteID string, p notes.Pa
 	return f.suggested, f.err
 }
 
-func (f *fakeNoteGraph) Communities(_ context.Context, vaultID string, offset, limit int) ([]notes.CommunityMember, error) {
-	f.record("communities", vaultID, offset, limit)
-	return f.members, f.err
+func (f *fakeNoteGraph) Communities(_ context.Context, vaultID string, p notes.Page) ([]notes.Community, error) {
+	f.record("communities", vaultID, p.Offset, p.Limit)
+	return f.groups, f.err
+}
+
+func (f *fakeNoteGraph) Community(_ context.Context, vaultID string, communityID int64) (notes.Community, error) {
+	f.record("community", vaultID, 0, 0)
+	f.query = communityID
+	if len(f.groups) == 0 {
+		return notes.Community{}, f.err
+	}
+	return f.groups[0], f.err
 }
 
 func getGrafo(t *testing.T, graph api.NoteGraph, role, target string) *httptest.ResponseRecorder {
@@ -86,8 +94,6 @@ func getGrafo(t *testing.T, graph api.NoteGraph, role, target string) *httptest.
 	router.ServeHTTP(rec, req)
 	return rec
 }
-
-var notaLigada = notes.LinkedNote{ID: "n2", VaultID: "va", Path: "b.md", UpdatedAt: time.Date(2026, 10, 16, 12, 0, 0, 0, time.UTC)}
 
 var ligacaoDeTeste = notes.Link{
 	Source:     notes.NoteSummary{ID: "n1", Title: "a", Path: "a.md"},
@@ -189,15 +195,36 @@ func TestV1GetSuggestions_DevolveANotaAPontuacaoFundidaEOsDoisSinais(t *testing.
 	assert.Equal(t, http.StatusNotFound, getGrafo(t, &fakeNoteGraph{}, "member", "/notes/n1/suggestions").Code, "a rota sem versao sai")
 }
 
-func TestGetClusters_DevolveAComunidadeDeCadaNota(t *testing.T) {
-	graph := &fakeNoteGraph{members: []notes.CommunityMember{{LinkedNote: notaLigada, CommunityID: 7, CommunitySize: 12}}}
+var comunidadeDeTeste = notes.Community{ID: 7, Size: 12, Hub: notes.NoteSummary{ID: "n2", Title: "b", Path: "pasta/b.md"}}
 
-	rec := getGrafo(t, graph, "member", "/vaults/va/clusters?offset=2")
+const comunidadeDeTesteJSON = `{"id":7,"size":12,"hub":{"id":"n2","title":"b","path":"pasta/b.md"}}`
+
+func TestV1GetCommunities_DevolveTamanhoENotaCentral(t *testing.T) {
+	graph := &fakeNoteGraph{groups: []notes.Community{comunidadeDeTeste}}
+
+	rec := getGrafo(t, graph, "viewer", "/v1/vaults/va/communities?offset=2")
 
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
-	assert.JSONEq(t, `[{"id":"n2","vault_id":"va","path":"b.md","updated_at":"2026-10-16T12:00:00Z",
-		"community_id":7,"community_size":12}]`, rec.Body.String())
+	assert.JSONEq(t, "["+comunidadeDeTesteJSON+"]", rec.Body.String())
 	assert.Equal(t, []any{"communities", "va", 2, 10}, []any{graph.method, graph.id, graph.offset, graph.limit})
+	assert.Equal(t, http.StatusNotFound, getGrafo(t, &fakeNoteGraph{}, "member", "/vaults/va/clusters").Code, "a rota sem versao sai")
+}
+
+func TestV1GetCommunity_LeUmaPeloId(t *testing.T) {
+	graph := &fakeNoteGraph{groups: []notes.Community{comunidadeDeTeste}}
+
+	rec := getGrafo(t, graph, "member", "/v1/vaults/va/communities/7")
+
+	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+	assert.JSONEq(t, comunidadeDeTesteJSON, rec.Body.String())
+	assert.Equal(t, []any{"community", "va", int64(7)}, []any{graph.method, graph.id, graph.query})
+}
+
+func TestV1GetCommunity_IdNaoInteiro_Retorna400ComOValor(t *testing.T) {
+	rec := getGrafo(t, &fakeNoteGraph{}, "member", "/v1/vaults/va/communities/sete")
+
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+	assert.Contains(t, rec.Body.String(), "sete")
 }
 
 func TestGrafo_ErrosDeDominio_ViramStatus(t *testing.T) {
@@ -212,7 +239,9 @@ func TestGrafo_ErrosDeDominio_ViramStatus(t *testing.T) {
 		"quem menciona sem nota": {notes.ErrNotFound, "/v1/notes/x/backmentions", http.StatusNotFound},
 		"sugestao sem nota":      {notes.ErrNotFound, "/v1/notes/x/suggestions", http.StatusNotFound},
 		"cofre sem acesso":       {notes.ErrVaultForbidden, "/v1/vaults/x/links", http.StatusForbidden},
-		"comunidade sem acesso":  {notes.ErrVaultForbidden, "/vaults/x/clusters", http.StatusForbidden},
+		"comunidade sem acesso":  {notes.ErrVaultForbidden, "/v1/vaults/x/communities", http.StatusForbidden},
+		"comunidade inexistente": {notes.ErrCommunityNotFound, "/v1/vaults/x/communities/3", http.StatusNotFound},
+		"uma sem acesso":         {notes.ErrVaultForbidden, "/v1/vaults/x/communities/3", http.StatusForbidden},
 		"limit nao inteiro":      {nil, "/v1/vaults/x/links?limit=abc", http.StatusBadRequest},
 		"offset nao inteiro":     {nil, "/v1/notes/x/links?offset=abc", http.StatusBadRequest},
 	}

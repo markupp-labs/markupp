@@ -1,6 +1,8 @@
 package api_test
 
 import (
+	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -23,11 +25,29 @@ func BenchmarkNoteGraph(b *testing.B) {
 		"by_pagerank":      "/v1/vaults/cofre-bench/notes?sort=pagerank",
 		"vault_links":      "/v1/vaults/cofre-bench/links",
 		"unresolved_links": "/v1/vaults/cofre-bench/links?status=unresolved",
-		"clusters":         "/vaults/cofre-bench/clusters",
+		"communities":      "/v1/vaults/cofre-bench/communities",
 	}
+	maior := maiorComunidade(b, router)
+	rotas["community"] = fmt.Sprintf("/v1/vaults/cofre-bench/communities/%d", maior)
+	rotas["by_community"] = fmt.Sprintf("/v1/vaults/cofre-bench/notes?community=%d&sort=pagerank", maior)
 	for nome, rota := range rotas {
 		b.Run(nome, func(b *testing.B) { benchGet(b, router, rota) })
 	}
+}
+
+// maiorComunidade lê o id da maior comunidade do cofre sintético.
+func maiorComunidade(b *testing.B, router http.Handler) int64 {
+	b.Helper()
+	req := httptest.NewRequest(http.MethodGet, "/v1/vaults/cofre-bench/communities?limit=1", nil)
+	req.Header.Set("Authorization", "Bearer token-valido")
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	var comunidades []struct {
+		ID int64 `json:"id"`
+	}
+	require.NoError(b, json.NewDecoder(rec.Body).Decode(&comunidades), rec.Body.String())
+	require.NotEmpty(b, comunidades, "o segundo estagio agrupa o cofre sintetico")
+	return comunidades[0].ID
 }
 
 func benchGet(b *testing.B, router http.Handler, rota string) {

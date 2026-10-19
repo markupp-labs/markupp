@@ -39,18 +39,17 @@ func cofreComDoisGrupos(t *testing.T) (*pgxpool.Pool, *storage.PostgresNotesRepo
 	return db, repo, storage.NewPostgresNoteGraph(db, "simple")
 }
 
-// comunidadesLidas agrupa os membros lidos por id de comunidade.
-func comunidadesLidas(t *testing.T, graph *storage.PostgresNoteGraph) map[int64][]string {
+// comunidadesLidas lê as comunidades do cofre e as notas de cada uma, por id.
+func comunidadesLidas(t *testing.T, repo *storage.PostgresNotesRepository, graph *storage.PostgresNoteGraph) map[int64][]string {
 	t.Helper()
-	membros, err := graph.Communities(ctxDeTeste, cofreDeTeste, 0, 100)
+	comunidades, err := graph.Communities(ctxDeTeste, cofreDeTeste, notes.Page{Limit: 100})
 	require.NoError(t, err)
 	grupos := map[int64][]string{}
-	for _, m := range membros {
-		grupos[m.CommunityID] = append(grupos[m.CommunityID], m.ID)
-		assert.Positive(t, m.CommunitySize)
-	}
-	for id := range grupos {
-		slices.Sort(grupos[id])
+	for _, c := range comunidades {
+		membros := idsDasNotas(notasDoCofre(ctxDeTeste, t, repo, notes.VaultNotesQuery{Community: &c.ID, Limit: 100}))
+		assert.Len(t, membros, c.Size, "comunidade %d", c.ID)
+		slices.Sort(membros)
+		grupos[c.ID] = membros
 	}
 	return grupos
 }
@@ -66,43 +65,71 @@ func idDaComunidade(grupos map[int64][]string, noteID string) int64 {
 }
 
 func TestCommunities_SeparaOsGruposESemNotaSolta(t *testing.T) {
-	_, _, graph := cofreComDoisGrupos(t)
+	_, repo, graph := cofreComDoisGrupos(t)
 
-	grupos := comunidadesLidas(t, graph)
+	grupos := comunidadesLidas(t, repo, graph)
 
 	assert.ElementsMatch(t, [][]string{{"a", "b", "c", "indice"}, {"d", "e", "f"}}, slices.Collect(maps.Values(grupos)))
 }
 
+func TestCommunities_DaMaiorParaAMenorComANotaDeMaiorPageRank(t *testing.T) {
+	_, _, graph := cofreComDoisGrupos(t)
+
+	comunidades, err := graph.Communities(ctxDeTeste, cofreDeTeste, notes.Page{Limit: 100})
+
+	require.NoError(t, err)
+	require.Len(t, comunidades, 2)
+	assert.Equal(t, []int{4, 3}, []int{comunidades[0].Size, comunidades[1].Size})
+	assert.Equal(t, resumo("indice", "indice.md"), comunidades[0].Hub)
+	pagina, err := graph.Communities(ctxDeTeste, cofreDeTeste, notes.Page{Offset: 1, Limit: 1})
+	require.NoError(t, err)
+	assert.Equal(t, comunidades[1:], pagina)
+}
+
+func TestCommunity_LeUmaPeloIdEDizQuandoNaoExiste(t *testing.T) {
+	_, _, graph := cofreComDoisGrupos(t)
+	comunidades, err := graph.Communities(ctxDeTeste, cofreDeTeste, notes.Page{Limit: 100})
+	require.NoError(t, err)
+
+	lida, err := graph.Community(ctxDeTeste, cofreDeTeste, comunidades[1].ID)
+	require.NoError(t, err)
+	assert.Equal(t, comunidades[1], lida)
+	_, err = graph.Community(ctxDeTeste, cofreDeTeste, -1)
+	require.ErrorIs(t, err, notes.ErrCommunityNotFound)
+}
+
 func TestCommunities_ComunidadeQueCresceHerdaOId(t *testing.T) {
 	db, repo, graph := cofreComDoisGrupos(t)
-	antes := comunidadesLidas(t, graph)
+	antes := comunidadesLidas(t, repo, graph)
 	storagetest.SaveNote(ctxDeTeste, t, repo, notaComCaminho("g", "g.md", "[[d]] [[e]] [[f]]"))
 
 	indexaTodosOsCofres(t, db, "simple")
 
-	depois := comunidadesLidas(t, graph)
+	depois := comunidadesLidas(t, repo, graph)
 	assert.Equal(t, idDaComunidade(antes, "a"), idDaComunidade(depois, "a"))
 	assert.Equal(t, idDaComunidade(antes, "d"), idDaComunidade(depois, "g"), "d, e, f e g dividem 3/4 com d, e, f")
 	assert.Equal(t, []string{"d", "e", "f", "g"}, depois[idDaComunidade(depois, "g")])
 }
 
-func TestCentralidadeEComunidades_CofreInvisivel_ErrVaultForbidden(t *testing.T) {
+func TestCommunities_CofreInvisivel_ErrVaultForbidden(t *testing.T) {
 	db, _, graph := cofreComDoisGrupos(t)
 	estranho := identity.Actor{UserID: "u-fora", TenantID: "outro", Role: "admin"}
 	ctxFora := storagetest.SeedMember(t, db, estranho, "cofre-fora")
 
-	_, err := graph.Communities(ctxFora, cofreDeTeste, 0, 10)
+	_, err := graph.Communities(ctxFora, cofreDeTeste, notes.Page{Limit: 10})
+	require.ErrorIs(t, err, notes.ErrVaultForbidden)
+	_, err = graph.Community(ctxFora, cofreDeTeste, 1)
 	require.ErrorIs(t, err, notes.ErrVaultForbidden)
 }
 
-func TestCentralidadeEComunidades_ViewerLe(t *testing.T) {
+func TestCommunities_ViewerLe(t *testing.T) {
 	db, _, graph := cofreComDoisGrupos(t)
 	viewer := identity.Actor{UserID: "u-viewer", TenantID: membroDeTeste.TenantID, Role: "viewer"}
 	ctxViewer := storagetest.SeedMember(t, db, viewer, cofreDeTeste)
 
-	membros, err := graph.Communities(ctxViewer, cofreDeTeste, 0, 100)
+	comunidades, err := graph.Communities(ctxViewer, cofreDeTeste, notes.Page{Limit: 100})
 	require.NoError(t, err)
-	assert.Len(t, membros, 7)
+	assert.Len(t, comunidades, 2)
 }
 
 func TestRLS_PapelDoIndexador_NaoGravaCentralidadeNemComunidadeDeOutroCofre(t *testing.T) {
