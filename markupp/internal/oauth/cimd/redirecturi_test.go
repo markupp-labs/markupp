@@ -48,7 +48,7 @@ func TestFetcher_RedirectURIProibida_RecusaComValor(t *testing.T) {
 		"fragmento https":       "https://agente.example.com/cb#x",
 		"fragmento vazio":       "https://agente.example.com/cb#",
 		"fragmento privado":     "com.exemplo.app:/cb#x",
-		"credenciais":           "https://usuario@agente.example.com/cb",
+		"userinfo":              "https://usuario@agente.example.com/cb",
 		"relativa":              "/callback",
 		"vazia":                 "",
 	}
