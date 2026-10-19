@@ -59,7 +59,7 @@ func TestOAuthRoutePolicy_TodaRotaRecusaTokenOAuthOuDeclaraOQueAceita(t *testing
 	routes := walkedRoutes(t)
 	require.NotEmpty(t, routes)
 	for _, route := range routes {
-		if strings.HasSuffix(route.path, "/*") {
+		if route.path == "/*" {
 			continue // alias obsoleto sem prefixo, conferido pelas rotas de /v1
 		}
 		policy := declaredOAuthPolicies[route.method+" "+route.path]
