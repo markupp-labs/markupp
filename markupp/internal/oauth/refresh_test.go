@@ -168,6 +168,7 @@ func TestRefreshToken_RefreshJaRotacionado_RevogaTokensEAuditaReuso(t *testing.T
 	repo := testRepositoryWithRefreshableToken()
 	repo.consumeErr = oauth.ErrRefreshReused
 	repo.consumed.Token.Hash = "hash-vindo-do-repositorio"
+	repo.consumed.Token.ExpiresAt = testNow.Add(-time.Minute)
 
 	_, err := newTestService(repo).RefreshToken(context.Background(), validRefreshGrant())
 
