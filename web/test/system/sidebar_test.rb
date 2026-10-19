@@ -81,6 +81,25 @@ class SidebarTest < ApplicationSystemTestCase
     assert_in_delta top, edge(spine, "top"), 0.5
   end
 
+  # Fechada, a barra deixa na borda esquerda uma faixa de 2px no fundo dela e com a linha dela, de onde a lombada sai;
+  # o conteúdo começa depois da faixa.
+  test "a closed sidebar leaves a thin strip in its colors on the left edge" do
+    use_fake_api(notes: [])
+    sign_in_through_form
+
+    visit root_path
+    sidebar = find("nav#sidebar")
+    colors = [ style(sidebar, "backgroundColor"), style(sidebar, "borderRightColor") ]
+    assert_equal "none", strip_style("content")
+
+    click_on "Hide sidebar"
+    assert_no_selector "nav#sidebar"
+    assert_equal [ "fixed", "0px", "2px", "1px" ], %w[position left width borderRightWidth].map { strip_style(it) }
+    assert_equal colors, [ strip_style("backgroundColor"), strip_style("borderRightColor") ]
+    assert_equal evaluate_script("innerHeight"), strip_style("height").to_f.round
+    assert_in_delta 3, edge(find("main"), "left"), 0.5
+  end
+
   # Hover e foco não pintam o fundo (a aba segue sendo a borda puxada da barra); só o ícone sobe para o accent, que
   # aparece também no claro (do ink-muted para o ink a diferença era 1.11:1).
   test "hovering or focusing the spine keeps the sidebar background and lifts only the icon to the accent" do
@@ -187,6 +206,10 @@ class SidebarTest < ApplicationSystemTestCase
 
     def style(element, property)
       element.evaluate_script("getComputedStyle(this).#{property}")
+    end
+
+    def strip_style(property)
+      evaluate_script("getComputedStyle(document.body, '::before').#{property}")
     end
 
     def accent_color
