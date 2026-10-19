@@ -153,3 +153,14 @@ type VaultMember struct {
 	UserID    string
 	CreatedAt time.Time
 }
+
+type VaultSecondStageQueue struct {
+	VaultID  string
+	Revision int64
+}
+
+type VaultTermFrequency struct {
+	VaultID string
+	Term    string
+	Df      int32
+}

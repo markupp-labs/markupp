@@ -3,11 +3,13 @@
 
 -- Trava a linha do cofre, e não a fila, para dois Jobs nunca pegarem o mesmo cofre. NO KEY
 -- UPDATE não conflita com a checagem de chave estrangeira, então as notas seguem
--- graváveis. A ordem aleatória impede que um cofre que sempre falha segure os outros.
+-- graváveis. A ordem aleatória impede que um cofre que sempre falha segure os outros. O
+-- cofre só marcado para o segundo estágio também é pendente.
 -- name: ReservePendingVault :one
 SELECT v.id AS vault_id, v.tenant_id
 FROM vaults v
 WHERE v.id IN (SELECT n.vault_id FROM note_index_queue q JOIN notes n ON n.id = q.note_id)
+   OR v.id IN (SELECT s.vault_id FROM vault_second_stage_queue s)
 ORDER BY random()
 LIMIT 1
 FOR NO KEY UPDATE OF v SKIP LOCKED;
@@ -72,3 +74,38 @@ FROM (SELECT unnest(sqlc.arg(note_ids)::text[]) AS note_id, unnest(sqlc.arg(cite
              unnest(sqlc.arg(title_keys)::text[]) AS title_key, unnest(sqlc.arg(target_paths)::text[]) AS target_path,
              unnest(sqlc.arg(kinds)::text[]) AS kind, unnest(sqlc.arg(predicates)::text[]) AS predicate) d
 JOIN notes n ON n.id = d.note_id;
+
+-- Impressão dos títulos e das ligações das notas do lote, para saber se o lote os mudou.
+-- name: NoteGraphFingerprint :one
+SELECT md5(
+    coalesce((SELECT string_agg(ROW(t.note_id, t.title_key)::text, ',' ORDER BY ROW(t.note_id, t.title_key)::text)
+              FROM note_titles t WHERE t.note_id = ANY (sqlc.arg(note_ids)::text[])), '')
+    || ';' ||
+    coalesce((SELECT string_agg(ROW(l.note_id, l.title_key, l.target_path, l.kind, l.predicate)::text, ','
+                                ORDER BY ROW(l.note_id, l.title_key, l.target_path, l.kind, l.predicate)::text)
+              FROM note_links l WHERE l.note_id = ANY (sqlc.arg(note_ids)::text[])), '')
+)::text AS fingerprint;
+
+-- name: MarkSecondStage :exec
+INSERT INTO vault_second_stage_queue (vault_id) VALUES (sqlc.arg(vault_id))
+ON CONFLICT (vault_id) DO UPDATE SET revision = nextval('vault_second_stage_revision_seq');
+
+-- name: SecondStageRevision :one
+SELECT revision FROM vault_second_stage_queue WHERE vault_id = sqlc.arg(vault_id);
+
+-- Desmarca só a revisão lida: a mudança confirmada depois dela deixa o cofre marcado.
+-- name: UnmarkSecondStage :exec
+DELETE FROM vault_second_stage_queue WHERE vault_id = sqlc.arg(vault_id) AND revision = sqlc.arg(revision);
+
+-- name: DeleteVaultTermFrequencies :exec
+DELETE FROM vault_term_frequencies WHERE vault_id = sqlc.arg(vault_id);
+
+-- df de cada lexema do índice léxico das notas do cofre.
+-- name: SaveVaultTermFrequencies :exec
+INSERT INTO vault_term_frequencies (vault_id, term, df)
+SELECT n.vault_id, u.lexeme, count(*)
+FROM notes n
+JOIN note_search_index s ON s.note_id = n.id
+CROSS JOIN LATERAL unnest(s.document) AS u
+WHERE n.vault_id = sqlc.arg(vault_id)
+GROUP BY n.vault_id, u.lexeme;

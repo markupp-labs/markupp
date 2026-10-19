@@ -29,9 +29,9 @@ func NewPostgresVaultIndexer(ctx context.Context, pool *pgxpool.Pool, searchConf
 	return &PostgresVaultIndexer{pool: pool, searchConfig: searchConfig}, nil
 }
 
-// IndexNextVault reserva um cofre com nota pendente, indexa as notas pendentes dele
-// com index e grava o resultado na mesma transação. Devolve false quando não há
-// cofre pendente livre.
+// IndexNextVault reserva um cofre com nota pendente ou marcado para o segundo
+// estágio, indexa as notas pendentes dele com index, grava o resultado e roda o
+// segundo estágio na mesma transação. Devolve false quando não há cofre pendente livre.
 func (x *PostgresVaultIndexer) IndexNextVault(ctx context.Context, index indexing.IndexFunc) (bool, error) {
 	found := false
 	err := inTx(ctx, x.pool, func(q *gen.Queries) error {
@@ -61,10 +61,13 @@ func (x *PostgresVaultIndexer) indexVault(ctx context.Context, q *gen.Queries, v
 	if err := x.saveDocuments(ctx, q, cs, indexed); err != nil {
 		return err
 	}
-	if err := saveGraph(ctx, q, cs, indexed); err != nil {
+	if err := saveGraphMarkingChange(ctx, q, cs, indexed); err != nil {
 		return err
 	}
-	return dequeue(ctx, q, vault.VaultID, rows)
+	if err := dequeue(ctx, q, vault.VaultID, rows); err != nil {
+		return err
+	}
+	return runSecondStage(ctx, q, vault.VaultID)
 }
 
 func toChangeset(vault gen.ReservePendingVaultRow, rows []gen.ListPendingNotesRow) indexing.Changeset {

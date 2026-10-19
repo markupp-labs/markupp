@@ -22,6 +22,15 @@ func (q *Queries) DeleteNoteGraph(ctx context.Context, noteIds []string) error {
 	return err
 }
 
+const deleteVaultTermFrequencies = `-- name: DeleteVaultTermFrequencies :exec
+DELETE FROM vault_term_frequencies WHERE vault_id = $1
+`
+
+func (q *Queries) DeleteVaultTermFrequencies(ctx context.Context, vaultID string) error {
+	_, err := q.db.Exec(ctx, deleteVaultTermFrequencies, vaultID)
+	return err
+}
+
 const dequeueNotes = `-- name: DequeueNotes :exec
 DELETE FROM note_index_queue q
 USING (SELECT unnest($1::text[]) AS note_id, unnest($2::bigint[]) AS revision) r
@@ -96,6 +105,35 @@ func (q *Queries) ListPendingNotes(ctx context.Context, vaultID string) ([]ListP
 	return items, nil
 }
 
+const markSecondStage = `-- name: MarkSecondStage :exec
+INSERT INTO vault_second_stage_queue (vault_id) VALUES ($1)
+ON CONFLICT (vault_id) DO UPDATE SET revision = nextval('vault_second_stage_revision_seq')
+`
+
+func (q *Queries) MarkSecondStage(ctx context.Context, vaultID string) error {
+	_, err := q.db.Exec(ctx, markSecondStage, vaultID)
+	return err
+}
+
+const noteGraphFingerprint = `-- name: NoteGraphFingerprint :one
+SELECT md5(
+    coalesce((SELECT string_agg(ROW(t.note_id, t.title_key)::text, ',' ORDER BY ROW(t.note_id, t.title_key)::text)
+              FROM note_titles t WHERE t.note_id = ANY ($1::text[])), '')
+    || ';' ||
+    coalesce((SELECT string_agg(ROW(l.note_id, l.title_key, l.target_path, l.kind, l.predicate)::text, ','
+                                ORDER BY ROW(l.note_id, l.title_key, l.target_path, l.kind, l.predicate)::text)
+              FROM note_links l WHERE l.note_id = ANY ($1::text[])), '')
+)::text AS fingerprint
+`
+
+// Impressão dos títulos e das ligações das notas do lote, para saber se o lote os mudou.
+func (q *Queries) NoteGraphFingerprint(ctx context.Context, noteIds []string) (string, error) {
+	row := q.db.QueryRow(ctx, noteGraphFingerprint, noteIds)
+	var fingerprint string
+	err := row.Scan(&fingerprint)
+	return fingerprint, err
+}
+
 const requeueNotes = `-- name: RequeueNotes :one
 SELECT markupp_requeue_notes($1::text) AS requeued
 `
@@ -113,6 +151,7 @@ const reservePendingVault = `-- name: ReservePendingVault :one
 SELECT v.id AS vault_id, v.tenant_id
 FROM vaults v
 WHERE v.id IN (SELECT n.vault_id FROM note_index_queue q JOIN notes n ON n.id = q.note_id)
+   OR v.id IN (SELECT s.vault_id FROM vault_second_stage_queue s)
 ORDER BY random()
 LIMIT 1
 FOR NO KEY UPDATE OF v SKIP LOCKED
@@ -127,7 +166,8 @@ type ReservePendingVaultRow struct {
 // só então entra no papel markupp_indexer, preso pelo RLS ao cofre reservado.
 // Trava a linha do cofre, e não a fila, para dois Jobs nunca pegarem o mesmo cofre. NO KEY
 // UPDATE não conflita com a checagem de chave estrangeira, então as notas seguem
-// graváveis. A ordem aleatória impede que um cofre que sempre falha segure os outros.
+// graváveis. A ordem aleatória impede que um cofre que sempre falha segure os outros. O
+// cofre só marcado para o segundo estágio também é pendente.
 func (q *Queries) ReservePendingVault(ctx context.Context) (ReservePendingVaultRow, error) {
 	row := q.db.QueryRow(ctx, reservePendingVault)
 	var i ReservePendingVaultRow
@@ -224,5 +264,47 @@ func (q *Queries) SaveSearchDocuments(ctx context.Context, arg SaveSearchDocumen
 		arg.Titles,
 		arg.Bodies,
 	)
+	return err
+}
+
+const saveVaultTermFrequencies = `-- name: SaveVaultTermFrequencies :exec
+INSERT INTO vault_term_frequencies (vault_id, term, df)
+SELECT n.vault_id, u.lexeme, count(*)
+FROM notes n
+JOIN note_search_index s ON s.note_id = n.id
+CROSS JOIN LATERAL unnest(s.document) AS u
+WHERE n.vault_id = $1
+GROUP BY n.vault_id, u.lexeme
+`
+
+// df de cada lexema do índice léxico das notas do cofre.
+func (q *Queries) SaveVaultTermFrequencies(ctx context.Context, vaultID string) error {
+	_, err := q.db.Exec(ctx, saveVaultTermFrequencies, vaultID)
+	return err
+}
+
+const secondStageRevision = `-- name: SecondStageRevision :one
+SELECT revision FROM vault_second_stage_queue WHERE vault_id = $1
+`
+
+func (q *Queries) SecondStageRevision(ctx context.Context, vaultID string) (int64, error) {
+	row := q.db.QueryRow(ctx, secondStageRevision, vaultID)
+	var revision int64
+	err := row.Scan(&revision)
+	return revision, err
+}
+
+const unmarkSecondStage = `-- name: UnmarkSecondStage :exec
+DELETE FROM vault_second_stage_queue WHERE vault_id = $1 AND revision = $2
+`
+
+type UnmarkSecondStageParams struct {
+	VaultID  string
+	Revision int64
+}
+
+// Desmarca só a revisão lida: a mudança confirmada depois dela deixa o cofre marcado.
+func (q *Queries) UnmarkSecondStage(ctx context.Context, arg UnmarkSecondStageParams) error {
+	_, err := q.db.Exec(ctx, unmarkSecondStage, arg.VaultID, arg.Revision)
 	return err
 }
