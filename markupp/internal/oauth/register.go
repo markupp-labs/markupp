@@ -7,8 +7,6 @@ import (
 	"slices"
 	"strings"
 	"time"
-	"unicode"
-	"unicode/utf8"
 
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/oauth/cimd"
 )
@@ -23,9 +21,6 @@ const (
 // dcrClientIDPrefix marca o client_id emitido pelo registro dinâmico, que nunca é URL
 // https e por isso nunca cai no caminho do CIMD.
 const dcrClientIDPrefix = "markupp-dcr-"
-
-// maxClientNameLen limita, em caracteres, o nome que a tela de consentimento mostra.
-const maxClientNameLen = 100
 
 // dcrGrantTypes são os grants que o cliente registrado pode usar, na ordem da resposta.
 func dcrGrantTypes() []string { return []string{"authorization_code", "refresh_token"} }
@@ -55,9 +50,9 @@ func checkRegistration(req RegistrationRequest) (Client, error) {
 	if err := checkPublicClientMetadata(req); err != nil {
 		return Client{}, err
 	}
-	name, err := cleanClientName(req.ClientName)
+	name, err := cimd.SanitizeClientName(req.ClientName)
 	if err != nil {
-		return Client{}, err
+		return Client{}, invalidClientMetadata(err.Error())
 	}
 	if err := checkDCRRedirectURIs(req.RedirectURIs); err != nil {
 		return Client{}, err
@@ -76,32 +71,6 @@ func checkPublicClientMetadata(req RegistrationRequest) error {
 		return invalidClientMetadata("response_types " + ClientValue(strings.Join(req.ResponseTypes, " ")) + "; esperado ausente ou so code")
 	}
 	return nil
-}
-
-// cleanClientName troca controles por espaço, descarta caracteres de formatação (como a
-// inversão de direção do texto), junta os espaços e limita o tamanho.
-func cleanClientName(raw string) (string, error) {
-	if !utf8.ValidString(raw) {
-		return "", invalidClientMetadata("client_name com UTF-8 invalido; esperado texto UTF-8")
-	}
-	name := strings.Join(strings.Fields(strings.Map(nameRune, raw)), " ")
-	if name == "" {
-		return "", invalidClientMetadata(fmt.Sprintf("client_name ausente ou vazio; esperado nome com 1 a %d caracteres", maxClientNameLen))
-	}
-	if count := utf8.RuneCountInString(name); count > maxClientNameLen {
-		return "", invalidClientMetadata(fmt.Sprintf("client_name com %d caracteres; esperado no maximo %d", count, maxClientNameLen))
-	}
-	return name, nil
-}
-
-func nameRune(r rune) rune {
-	switch {
-	case unicode.IsControl(r):
-		return ' '
-	case unicode.Is(unicode.Cf, r):
-		return -1
-	}
-	return r
 }
 
 // checkDCRRedirectURIs aplica a mesma regra das redirect_uris do documento CIMD.
