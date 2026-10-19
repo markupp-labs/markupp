@@ -19,7 +19,7 @@ import (
 // fakeNoteGraph devolve listas fixas e guarda o último pedido recebido.
 type fakeNoteGraph struct {
 	links     []notes.Link
-	mentions  []notes.UnlinkedMention
+	mentions  []notes.Mention
 	suggested []notes.LinkSuggestion
 	members   []notes.CommunityMember
 	err       error
@@ -53,8 +53,13 @@ func (f *fakeNoteGraph) VaultLinks(_ context.Context, vaultID string, q notes.Va
 	return f.links, f.err
 }
 
-func (f *fakeNoteGraph) Mentions(_ context.Context, noteID string, offset, limit int) ([]notes.UnlinkedMention, error) {
-	f.record("mentions", noteID, offset, limit)
+func (f *fakeNoteGraph) Mentions(_ context.Context, noteID string, p notes.Page) ([]notes.Mention, error) {
+	f.record("mentions", noteID, p.Offset, p.Limit)
+	return f.mentions, f.err
+}
+
+func (f *fakeNoteGraph) Backmentions(_ context.Context, noteID string, p notes.Page) ([]notes.Mention, error) {
+	f.record("backmentions", noteID, p.Offset, p.Limit)
 	return f.mentions, f.err
 }
 
@@ -151,17 +156,24 @@ func TestRotasDasLigacoesSemVersao_SaemSemVersaoObsoleta(t *testing.T) {
 	}
 }
 
-func TestGetMentions_DizOSentidoOTituloEAProbabilidade(t *testing.T) {
-	graph := &fakeNoteGraph{mentions: []notes.UnlinkedMention{
-		{LinkedNote: notaLigada, Title: "kubernetes", Direction: notes.MentionIncoming, Prior: 0.5},
-	}}
+func TestV1GetMentionsEBackmentions_DevolvemANotaOTituloEAProbabilidade(t *testing.T) {
+	for _, sentido := range []string{"mentions", "backmentions"} {
+		graph := &fakeNoteGraph{mentions: []notes.Mention{
+			{Note: notes.NoteSummary{ID: "n2", Title: "b", Path: "pasta/b.md"}, CitedTitle: "kubernetes", Prior: 0.5},
+		}}
 
-	rec := getGrafo(t, graph, "viewer", "/notes/n1/mentions?limit=5")
+		rec := getGrafo(t, graph, "viewer", "/v1/notes/n1/"+sentido+"?limit=5")
 
-	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
-	assert.JSONEq(t, `[{"id":"n2","vault_id":"va","path":"b.md","updated_at":"2026-10-16T12:00:00Z",
-		"title":"kubernetes","direction":"incoming","prior":0.5}]`, rec.Body.String())
-	assert.Equal(t, []any{"mentions", "n1", 0, 5}, []any{graph.method, graph.id, graph.offset, graph.limit})
+		require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+		assert.JSONEq(t, `[{"note":{"id":"n2","title":"b","path":"pasta/b.md"},"cited_title":"kubernetes","prior":0.5}]`, rec.Body.String())
+		assert.Equal(t, []any{sentido, "n1", 0, 5}, []any{graph.method, graph.id, graph.offset, graph.limit})
+	}
+}
+
+func TestRotaDeMencoesSemVersao_SaiSemVersaoObsoleta(t *testing.T) {
+	rec := getGrafo(t, &fakeNoteGraph{}, "member", "/notes/n1/mentions")
+
+	assert.Equal(t, http.StatusNotFound, rec.Code)
 }
 
 func TestGetSuggestions_DevolveAPontuacaoFundidaEOsDoisSinais(t *testing.T) {
@@ -194,14 +206,15 @@ func TestGrafo_ErrosDeDominio_ViramStatus(t *testing.T) {
 		target string
 		status int
 	}{
-		"nota inexistente":      {notes.ErrNotFound, "/v1/notes/x/backlinks", http.StatusNotFound},
-		"saida sem nota":        {notes.ErrNotFound, "/v1/notes/x/links", http.StatusNotFound},
-		"mencao sem nota":       {notes.ErrNotFound, "/notes/x/mentions", http.StatusNotFound},
-		"sugestao sem nota":     {notes.ErrNotFound, "/notes/x/suggestions", http.StatusNotFound},
-		"cofre sem acesso":      {notes.ErrVaultForbidden, "/v1/vaults/x/links", http.StatusForbidden},
-		"comunidade sem acesso": {notes.ErrVaultForbidden, "/vaults/x/clusters", http.StatusForbidden},
-		"limit nao inteiro":     {nil, "/v1/vaults/x/links?limit=abc", http.StatusBadRequest},
-		"offset nao inteiro":    {nil, "/v1/notes/x/links?offset=abc", http.StatusBadRequest},
+		"nota inexistente":       {notes.ErrNotFound, "/v1/notes/x/backlinks", http.StatusNotFound},
+		"saida sem nota":         {notes.ErrNotFound, "/v1/notes/x/links", http.StatusNotFound},
+		"mencao sem nota":        {notes.ErrNotFound, "/v1/notes/x/mentions", http.StatusNotFound},
+		"quem menciona sem nota": {notes.ErrNotFound, "/v1/notes/x/backmentions", http.StatusNotFound},
+		"sugestao sem nota":      {notes.ErrNotFound, "/notes/x/suggestions", http.StatusNotFound},
+		"cofre sem acesso":       {notes.ErrVaultForbidden, "/v1/vaults/x/links", http.StatusForbidden},
+		"comunidade sem acesso":  {notes.ErrVaultForbidden, "/vaults/x/clusters", http.StatusForbidden},
+		"limit nao inteiro":      {nil, "/v1/vaults/x/links?limit=abc", http.StatusBadRequest},
+		"offset nao inteiro":     {nil, "/v1/notes/x/links?offset=abc", http.StatusBadRequest},
 	}
 	for nome, caso := range casos {
 		rec := getGrafo(t, &fakeNoteGraph{err: caso.err}, "member", caso.target)

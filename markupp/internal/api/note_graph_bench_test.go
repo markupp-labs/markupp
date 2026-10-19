@@ -15,7 +15,8 @@ func BenchmarkNoteGraph(b *testing.B) {
 	rotas := map[string]string{
 		"links":            "/v1/notes/cofre-bench-00042/links",
 		"backlinks":        "/v1/notes/cofre-bench-00042/backlinks",
-		"mentions":         "/notes/cofre-bench-00042/mentions",
+		"mentions":         "/v1/notes/cofre-bench-00042/mentions",
+		"backmentions":     "/v1/notes/cofre-bench-00042/backmentions",
 		"suggestions":      "/notes/cofre-bench-00042/suggestions",
 		"note":             "/v1/notes/cofre-bench-00042",
 		"orphans":          "/v1/vaults/cofre-bench/notes?orphan=true",
