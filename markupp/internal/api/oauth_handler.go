@@ -74,6 +74,8 @@ func mountOAuthProtocolRoutes(r chi.Router, h *oauthHandler) {
 		p.Use(allowAnyOrigin)
 		p.Post("/token", h.token)
 		p.Options("/token", openPreflight(http.MethodPost, "Content-Type"))
+		p.Post("/revoke", h.revoke)
+		p.Options("/revoke", openPreflight(http.MethodPost, "Content-Type"))
 	})
 }
 
@@ -189,6 +191,26 @@ func codeGrantFrom(form url.Values) oauth.CodeGrant {
 		RedirectURI:  form.Get("redirect_uri"),
 		Resource:     form.Get("resource"),
 	}
+}
+
+// revoke atende a revogação (RFC 7009): token desconhecido também responde 200, sem
+// corpo, para não revelar quais tokens existem; token_type_hint é ignorado.
+func (h *oauthHandler) revoke(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Cache-Control", "no-store")
+	form, protoErr := readOAuthForm(w, r)
+	if protoErr == nil && form.Get("token") == "" {
+		protoErr = invalidRequest(`parametro "token" obrigatorio, esperado o access ou refresh token a revogar`)
+	}
+	if protoErr != nil {
+		writeOAuthError(w, protoErr)
+		return
+	}
+	err := h.svc.RevokeToken(r.Context(), oauth.RevokeRequest{Token: form.Get("token"), ClientID: form.Get("client_id")})
+	if err != nil {
+		writeOAuthServiceError(w, "revogar token oauth", err)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
 }
 
 func refreshGrantFrom(form url.Values) oauth.RefreshGrant {
