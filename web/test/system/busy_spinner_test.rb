@@ -73,6 +73,8 @@ class BusySpinnerTest < ApplicationSystemTestCase
 
     assert_spinner_after_threshold(".note-embed .busy-spinner") { click_on "Read" }
     assert_selector ".note-embed .busy-spinner", text: "Loading"
+    # O rótulo vem do en.yml, como nos outros indicadores, e não de um texto fixo no JS.
+    assert_selector ".note-embed .busy-spinner[data-busy-spinner-label-value='#{I18n.t("busy_spinner.label")}']"
     assert_selector ".note-embed-body[aria-busy=true]"
 
     @api.release_calls!
