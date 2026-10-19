@@ -273,9 +273,12 @@ func (s *Service) RevokeSession(ctx context.Context, rawRefreshToken string) err
 	return s.repo.RevokeRefreshToken(ctx, hash)
 }
 
-// GetAccount busca os detalhes da conta do usuário.
+// GetAccount busca os detalhes da conta do usuário. Toda conta nasce com identidade
+// local, então PasswordLogin segue só a config; com outro provedor, cruzar com a identidade.
 func (s *Service) GetAccount(ctx context.Context, userID string) (User, error) {
-	return s.repo.GetUserByID(ctx, userID)
+	user, err := s.repo.GetUserByID(ctx, userID)
+	user.PasswordLogin = err == nil && s.cfg.LocalEnabled
+	return user, err
 }
 
 // ResolveTenant devolve o vínculo de userID com o tenant requested. Sem pedido, vale o
