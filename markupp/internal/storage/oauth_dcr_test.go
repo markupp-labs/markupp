@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -137,4 +138,46 @@ func TestPostgresOAuthRepo_RegisterDCRClient_ConcorrenteRespeitaOTetoExato(t *te
 	}
 	assert.Equal(t, tentativas-teto, recusas)
 	assert.Equal(t, teto, countRows(t, pool, "SELECT count(*) FROM oauth_clients WHERE id LIKE 'dcr-%'"))
+}
+
+// segurarAuditoria abre uma transação que trava a tabela de auditoria contra gravações,
+// para a aprovação parar no fim, com a Autorização já gravada e ainda não commitada.
+func segurarAuditoria(t *testing.T, pool *pgxpool.Pool) pgx.Tx {
+	t.Helper()
+	ctx := context.Background()
+	tx, err := pool.Begin(ctx)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = tx.Rollback(ctx) })
+	_, err = tx.Exec(ctx, "LOCK TABLE audit_events IN EXCLUSIVE MODE")
+	require.NoError(t, err)
+	return tx
+}
+
+// TestPostgresOAuthRepo_RegisterDCRClient_EsperaAprovacaoAbertaDoPendente prova que a
+// limpeza dos pendentes vencidos espera a aprovação ainda não commitada de um deles:
+// depois do commit, o cliente deixa de ser pendente e a Autorização sobrevive.
+func TestPostgresOAuthRepo_RegisterDCRClient_EsperaAprovacaoAbertaDoPendente(t *testing.T) {
+	repo, pool := repoDCR(t)
+	ctx := context.Background()
+	clienteAntigo(t, pool, "dcr-velho", "dcr", instanteOAuth.Add(-prazoDosPendentes))
+	pedido := pedidoOAuth("r1", oauth.ScopeNotesRead)
+	pedido.ClientID = "dcr-velho"
+	require.NoError(t, repo.CreateRequest(ctx, pedido))
+	auditoria := segurarAuditoria(t, pool)
+	aprovou := make(chan error, 1)
+	go func() {
+		_, err := repo.ApproveRequest(ctx, aprovacao("r1", "h1", instanteOAuth.Add(-time.Second)))
+		aprovou <- err
+	}()
+	esperarBloqueios(t, pool, 1, "a aprovação deveria parar na auditoria, com a Autorização gravada e aberta")
+	registrou := make(chan error, 1)
+	go func() { registrou <- repo.RegisterDCRClient(ctx, registroDCR("dcr-novo", instanteOAuth, 10)) }()
+	esperarBloqueios(t, pool, 2, "o registro deveria esperar a aprovação aberta")
+
+	require.NoError(t, auditoria.Commit(ctx))
+
+	require.NoError(t, <-aprovou)
+	require.NoError(t, <-registrou)
+	assert.Equal(t, 1, countRows(t, pool, "SELECT count(*) FROM oauth_authorizations WHERE client_id = 'dcr-velho'"), "a Autorização sobrevive")
+	assert.Equal(t, 1, clientesComID(t, pool, "dcr-velho"))
 }
