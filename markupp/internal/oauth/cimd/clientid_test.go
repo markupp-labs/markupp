@@ -13,7 +13,6 @@ func TestParseClientID_URLsValidas_Aceita(t *testing.T) {
 	validas := []string{
 		"https://app.example.com/client.json",
 		"https://app.example.com:8443/oauth/client",
-		"https://app.example.com/client?versao=2",
 	}
 	for _, raw := range validas {
 		t.Run(raw, func(t *testing.T) {
@@ -33,6 +32,8 @@ func TestParseClientID_URLsInvalidas_RecusaComValorEFormato(t *testing.T) {
 		"so barra":               "https://app.example.com/",
 		"fragmento":              "https://app.example.com/client.json#x",
 		"fragmento vazio":        "https://app.example.com/client.json#",
+		"query":                  "https://app.example.com/client.json?versao=2",
+		"query vazia":            "https://app.example.com/client.json?",
 		"userinfo":               "https://usuario@app.example.com/client.json",
 		"ponto":                  "https://app.example.com/./client.json",
 		"ponto ponto":            "https://app.example.com/a/../client.json",
