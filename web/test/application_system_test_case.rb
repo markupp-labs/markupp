@@ -10,6 +10,14 @@ class ApplicationSystemTestCase < ActionDispatch::SystemTestCase
   # HEADED=1 abre a janela do navegador para acompanhar o teste.
   driven_by :selenium, using: ENV["HEADED"] ? :chrome : :headless_chrome, screen_size: [ 1400, 900 ]
 
+  # Sem animação por padrão: a troca é instantânea e quem mede posição ou estado não pega o meio de uma transição.
+  # O teste de movimento (motion_test.rb) volta ao no-preference.
+  setup { emulate_motion_preference("reduce") }
+
+  def emulate_motion_preference(value)
+    page.driver.browser.execute_cdp("Emulation.setEmulatedMedia", features: [ { name: "prefers-reduced-motion", value: } ])
+  end
+
   # Entra pelo formulário de login, contra a fake, e espera a barra lateral com o email.
   def sign_in_through_form(email = FakeMarkuppAccounts::DEFAULT_EMAIL, password: FakeMarkuppAccounts::DEFAULT_PASSWORD)
     visit new_session_path
