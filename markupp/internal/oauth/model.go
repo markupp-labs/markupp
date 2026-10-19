@@ -121,7 +121,8 @@ type Repository interface {
 	// do pedido original quando o código já foi consumido.
 	RedeemCode(ctx context.Context, codeHash string, now time.Time) (RedeemedCode, error)
 	SaveTokens(ctx context.Context, tokens []IssuedToken) error
-	// RevokeAuthorizationTokens revoga todos os tokens da Autorização.
+	// RevokeAuthorizationTokens trava a Autorização e revoga todos os tokens dela, numa
+	// transação. Devolve ErrAuthorizationNotFound se ela não existe.
 	RevokeAuthorizationTokens(ctx context.Context, authorizationID string) error
 	// ConsumeRefreshToken marca o refresh token como rotacionado e lê a Autorização
 	// ativa na mesma transação. Devolve ErrTokenNotFound se o hash não é de um refresh

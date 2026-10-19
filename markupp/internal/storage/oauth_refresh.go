@@ -131,10 +131,7 @@ func lockAuthorization(ctx context.Context, qtx *gen.Queries, id string) (gen.Oa
 // ativa, e audita o evento, numa transação.
 func (r *PostgresOAuthRepository) RevokeAuthorizationTokensAudited(ctx context.Context, authorizationID string, event oauth.AuditEvent) error {
 	return inTx(ctx, r.pool, func(qtx *gen.Queries) error {
-		if _, err := lockAuthorization(ctx, qtx, authorizationID); err != nil {
-			return err
-		}
-		if err := revokeTokens(ctx, qtx, authorizationID); err != nil {
+		if _, err := revokeTokens(ctx, qtx, authorizationID); err != nil {
 			return err
 		}
 		return auditOAuth(ctx, qtx, event)
@@ -175,15 +172,12 @@ func (r *PostgresOAuthRepository) ListActiveAuthorizations(ctx context.Context, 
 // numa transação.
 func (r *PostgresOAuthRepository) RevokeAuthorization(ctx context.Context, userID, authorizationID string, event oauth.AuditEvent) error {
 	return inTx(ctx, r.pool, func(qtx *gen.Queries) error {
-		row, err := lockAuthorization(ctx, qtx, authorizationID)
+		row, err := revokeTokens(ctx, qtx, authorizationID)
 		if err != nil {
 			return err
 		}
 		event.ClientID = row.ClientID
 		if err := revokeAuthorizationInTx(ctx, qtx, userID, authorizationID, event.OccurredAt); err != nil {
-			return err
-		}
-		if err := revokeTokens(ctx, qtx, authorizationID); err != nil {
 			return err
 		}
 		return auditOAuth(ctx, qtx, event)
