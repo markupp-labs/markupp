@@ -148,3 +148,13 @@ func TestMigracao00016_EscopoDoToken_RestritoAosSuportados(t *testing.T) {
 	assert.Error(t, emitirToken(pool, "t2", "{notas:tudo}"))
 	assert.Error(t, emitirToken(pool, "t3", "{}"), "lista vazia de escopos")
 }
+
+func TestMigracao00016_TokenRotacionado_GuardaQuandoFoiTrocado(t *testing.T) {
+	pool := bancoComOAuth(t)
+	require.NoError(t, autorizar(pool, "a1", "{notas:leitura}", false))
+	require.NoError(t, emitirToken(pool, "t1", "{notas:leitura}"))
+
+	_, err := pool.Exec(context.Background(), `UPDATE oauth_tokens SET rotated_at = now() WHERE token_hash = 't1'`)
+
+	assert.NoError(t, err)
+}
