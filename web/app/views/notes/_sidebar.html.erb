@@ -5,7 +5,10 @@
   <% end %>
 <% end %>
 
-<% if tree.folders.empty? && tree.notes.empty? %>
+<%# Sem árvore (a listagem falhou nas configurações) o aviso é curto; a página ao lado continua funcionando. %>
+<% if tree.nil? %>
+  <p class="px-2 py-1 text-danger"><%= t("notes.unreachable.title") %></p>
+<% elsif tree.folders.empty? && tree.notes.empty? %>
   <p class="px-2 py-1 text-ink-muted"><%= t(".empty") %></p>
 <% else %>
   <%= render "notes/folder", folder: tree, current:, open_folders: current&.folder_names || [] %>

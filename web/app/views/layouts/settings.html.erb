@@ -1,5 +1,10 @@
 <%# Configurações como no VS Code e no Obsidian: navegação à esquerda, seção à direita; no celular a navegação vira uma linha acima. %>
-<% content_for :sidebar_label, t("settings.nav.title") %>
+<%# Com tenant a barra lateral é a das notas, árvore e New note; sem ele (onboarding) fica só a marca e o rodapé. %>
+<% if current_tenant %>
+  <% content_for :sidebar, render("notes/sidebar", tree: sidebar_note_tree, current: nil) %>
+<% else %>
+  <% content_for :sidebar_label, t("settings.nav.title") %>
+<% end %>
 <% content_for :main do %>
   <div class="max-w-5xl">
     <div class="flex items-center justify-between border-b border-line pb-2">
