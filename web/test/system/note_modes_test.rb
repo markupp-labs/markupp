@@ -171,7 +171,7 @@ class NoteModesTest < ApplicationSystemTestCase
 
     # Perto do fim o preview bate no fundo antes do editor; sem a trava, o preview no fundo mandaria o editor ao fundo.
     scrolled_to = scroll_editor_near_end
-    sleep 0.3
+    wait_for_panes_to_settle
     assert_equal scrolled_to, evaluate_script("document.querySelector('.cm-scroller').scrollTop"), "expected the editor to stay where it was scrolled"
   end
 
@@ -180,7 +180,7 @@ class NoteModesTest < ApplicationSystemTestCase
     # a volta ao topo tira o preview do fundo, e a segunda ida é a que vale.
     def scroll_editor_near_end
       [ true, false, true ].map do |near_end|
-        sleep 0.2
+        wait_for_panes_to_settle
         evaluate_script(<<~JS, near_end)
           (() => {
             const scroller = document.querySelector(".cm-scroller")
@@ -189,6 +189,23 @@ class NoteModesTest < ApplicationSystemTestCase
           })()
         JS
       end.last
+    end
+
+    # Espera os dois painéis ficarem parados por alguns quadros: o alinhamento roda num quadro e a medição do
+    # CodeMirror no seguinte, então quadros quietos querem dizer que nada mais vai rolar.
+    def wait_for_panes_to_settle(quiet_frames: 5)
+      evaluate_async_script(<<~JS, quiet_frames)
+        const [quietFrames, done] = arguments
+        const positions = () => [".cm-scroller", ".note-preview"].map((selector) => document.querySelector(selector).scrollTop).join()
+        let last = positions(), quiet = 0
+        const check = () => {
+          const now = positions()
+          quiet = now == last ? quiet + 1 : 0
+          last = now
+          quiet >= quietFrames ? done() : requestAnimationFrame(check)
+        }
+        requestAnimationFrame(check)
+      JS
     end
 
     def pane_boxes
