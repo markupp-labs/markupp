@@ -35,6 +35,15 @@ module Settings
       assert_select "nav#sidebar a[href=?]", settings_invites_path, count: 0
     end
 
+    test "the tenant sections also show the note tree in the sidebar" do
+      use_fake_api(accounts: ACCOUNTS, tenants: [ ACME ], notes: [ { id: "1", path: "plan.md", content: "" } ])
+      sign_in_as
+
+      get settings_members_path
+
+      assert_select "nav#sidebar .sidebar-scroll a[href=?]", note_path("1"), text: "plan.md"
+    end
+
     test "a member or viewer is sent back to the notes" do
       use_fake_api(tenants: [ ACME.merge(members: { ANA => "member" }) ])
       sign_in_as

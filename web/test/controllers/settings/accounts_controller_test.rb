@@ -53,6 +53,43 @@ module Settings
       assert_select "main a[href=?]", new_password_reset_path, text: "I have a reset token"
     end
 
+    test "the sidebar shows the note tree and new note, as on the note pages" do
+      use_fake_api(notes: [ { id: "1", path: "work/plan.md", content: "" } ])
+      sign_in_as
+
+      get settings_account_path
+
+      assert_select "nav#sidebar .sidebar-scroll" do
+        assert_select "a[href=?]", new_note_path, text: "New note"
+        assert_select "details summary", text: "work"
+        assert_select "a[href=?]", note_path("1"), text: "plan.md"
+        assert_select "button[data-action='search#open']", text: /Search/
+      end
+    end
+
+    test "the settings still work when the note listing fails, with a short warning in the sidebar" do
+      api = use_fake_api(notes: [ { id: "1", path: "plan.md", content: "" } ])
+      sign_in_as
+      api.cut_notes!
+
+      get settings_account_path
+
+      assert_response :success
+      assert_select "main h1", "Account"
+      assert_select "nav#sidebar .sidebar-scroll p", text: "Can't reach the markupp server"
+      assert_select "nav#sidebar .sidebar-scroll a[href=?]", note_path("1"), count: 0
+    end
+
+    test "without tenant the sidebar has no note tree" do
+      use_fake_api(tenants: [])
+      sign_in_as
+
+      get settings_account_path
+
+      assert_response :success
+      assert_select "nav#sidebar a[href=?]", new_note_path, count: 0
+    end
+
     test "a close button leads back to the notes" do
       use_fake_api
       sign_in_as

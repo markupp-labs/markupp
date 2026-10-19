@@ -30,6 +30,9 @@ class FakeMarkuppApi
   # Cenário: a API cai depois do login.
   def cut_connection! = @unreachable = true
 
+  # Cenário: só a listagem de notas cai; login, tenants e conta seguem respondendo.
+  def cut_notes! = @notes_unreachable = true
+
   def get(path) = receive("GET", path)
 
   def put(path, body) = receive("PUT", path, body)
@@ -46,7 +49,7 @@ class FakeMarkuppApi
   private
     def receive(verb, path, *body)
       call = "#{verb} #{path}"
-      raise MarkuppApi::Error, "fake API unreachable on #{call}" if @unreachable
+      raise MarkuppApi::Error, "fake API unreachable on #{call}" if @unreachable || (@notes_unreachable && path.start_with?("/notes"))
 
       @received_credentials << @credentials.merge(call:) if @credentials
       account = authenticate(call)

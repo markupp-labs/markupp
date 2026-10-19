@@ -138,8 +138,18 @@ class SidebarTest < ActionDispatch::IntegrationTest
     assert_select "nav#sidebar[aria-label=?]", "Notes"
   end
 
-  test "the phone menu button and the sidebar are named after the settings on settings pages" do
+  test "the phone menu button and the sidebar are named after the notes on settings pages, which show the tree" do
     use_fake_api(notes: [])
+    sign_in_as
+
+    get settings_account_path
+
+    assert_select "button[popovertarget=sidebar]", text: "Notes"
+    assert_select "nav#sidebar[aria-label=?]", "Notes"
+  end
+
+  test "the phone menu button and the sidebar are named after the settings on settings pages without tenant" do
+    use_fake_api(notes: [], tenants: [])
     sign_in_as
 
     get settings_account_path
