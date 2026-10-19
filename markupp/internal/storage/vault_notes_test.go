@@ -100,6 +100,16 @@ func TestListVaultNotes_Orfas_GrauZeroGravadoPeloSegundoEstagio(t *testing.T) {
 	assert.Equal(t, notes.NoteRank{}, nova.Rank, "sem segundo estagio, sem organizacao derivada")
 }
 
+func TestListVaultNotes_Orfas_IndiceParcialDoGrauZeroPorCofre(t *testing.T) {
+	db := setupTestDB(t)
+
+	assert.Equal(t, 1, countRows(t, db, `SELECT count(*) FROM pg_index i
+WHERE i.indrelid = 'note_centrality'::regclass
+  AND pg_get_indexdef(i.indexrelid) LIKE '%(vault_id%'
+  AND pg_get_expr(i.indpred, i.indrelid) = '((in_degree = 0) AND (out_degree = 0))'`),
+		"orphan=true le as notas de grau zero do cofre pelo indice, sem varrer o cofre")
+}
+
 func TestListVaultNotes_LigacaoInferidaContaParaNotaOrfa(t *testing.T) {
 	_, repo, _ := cofreComErroDeDigitacao(t)
 
