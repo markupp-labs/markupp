@@ -112,6 +112,20 @@ type NoteTitle struct {
 	TitleKey string
 }
 
+type NoteUnresolvedLinkItem struct {
+	SourceID           string
+	SourcePath         string
+	VaultID            string
+	TargetID           pgtype.Text
+	TargetPath         pgtype.Text
+	CitedTitle         string
+	TitleKey           string
+	Kind               string
+	Predicate          pgtype.Text
+	InferredTargetID   pgtype.Text
+	InferredTargetPath pgtype.Text
+}
+
 type Notification struct {
 	ID             string
 	TenantID       pgtype.Text

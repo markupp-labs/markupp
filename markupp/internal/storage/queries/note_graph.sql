@@ -26,8 +26,24 @@ LIMIT sqlc.arg(page_limit) OFFSET sqlc.arg(page_offset);
 SELECT * FROM note_link_items
 WHERE vault_id = sqlc.arg(vault_id)
   AND (sqlc.arg(kind)::text = '' OR kind = sqlc.arg(kind)::text)
-  AND (sqlc.arg(status)::text = '' OR (sqlc.arg(status)::text = 'resolved') = (target_id IS NOT NULL))
 ORDER BY source_path, source_id, title_key, kind, predicate NULLS FIRST, target_path NULLS FIRST, target_id
+LIMIT sqlc.arg(page_limit) OFFSET sqlc.arg(page_offset);
+
+-- O destino nulo das não resolvidas é constante, então o filtro descarta a parte
+-- delas já no plano.
+-- name: ListVaultResolvedLinks :many
+SELECT * FROM note_link_items
+WHERE vault_id = sqlc.arg(vault_id)
+  AND target_id IS NOT NULL
+  AND (sqlc.arg(kind)::text = '' OR kind = sqlc.arg(kind)::text)
+ORDER BY source_path, source_id, title_key, kind, predicate NULLS FIRST, target_path NULLS FIRST, target_id
+LIMIT sqlc.arg(page_limit) OFFSET sqlc.arg(page_offset);
+
+-- name: ListVaultUnresolvedLinks :many
+SELECT * FROM note_unresolved_link_items
+WHERE vault_id = sqlc.arg(vault_id)
+  AND (sqlc.arg(kind)::text = '' OR kind = sqlc.arg(kind)::text)
+ORDER BY source_path, source_id, title_key, kind, predicate NULLS FIRST
 LIMIT sqlc.arg(page_limit) OFFSET sqlc.arg(page_offset);
 
 -- Chaves de título da nota, para achar quem a menciona.

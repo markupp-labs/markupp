@@ -413,15 +413,13 @@ const listVaultLinks = `-- name: ListVaultLinks :many
 SELECT source_id, source_path, vault_id, target_id, target_path, cited_title, title_key, kind, predicate, inferred_target_id, inferred_target_path FROM note_link_items
 WHERE vault_id = $1
   AND ($2::text = '' OR kind = $2::text)
-  AND ($3::text = '' OR ($3::text = 'resolved') = (target_id IS NOT NULL))
 ORDER BY source_path, source_id, title_key, kind, predicate NULLS FIRST, target_path NULLS FIRST, target_id
-LIMIT $5 OFFSET $4
+LIMIT $4 OFFSET $3
 `
 
 type ListVaultLinksParams struct {
 	VaultID    string
 	Kind       string
-	Status     string
 	PageOffset int32
 	PageLimit  int32
 }
@@ -430,7 +428,6 @@ func (q *Queries) ListVaultLinks(ctx context.Context, arg ListVaultLinksParams) 
 	rows, err := q.db.Query(ctx, listVaultLinks,
 		arg.VaultID,
 		arg.Kind,
-		arg.Status,
 		arg.PageOffset,
 		arg.PageLimit,
 	)
@@ -441,6 +438,113 @@ func (q *Queries) ListVaultLinks(ctx context.Context, arg ListVaultLinksParams) 
 	var items []NoteLinkItem
 	for rows.Next() {
 		var i NoteLinkItem
+		if err := rows.Scan(
+			&i.SourceID,
+			&i.SourcePath,
+			&i.VaultID,
+			&i.TargetID,
+			&i.TargetPath,
+			&i.CitedTitle,
+			&i.TitleKey,
+			&i.Kind,
+			&i.Predicate,
+			&i.InferredTargetID,
+			&i.InferredTargetPath,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listVaultResolvedLinks = `-- name: ListVaultResolvedLinks :many
+SELECT source_id, source_path, vault_id, target_id, target_path, cited_title, title_key, kind, predicate, inferred_target_id, inferred_target_path FROM note_link_items
+WHERE vault_id = $1
+  AND target_id IS NOT NULL
+  AND ($2::text = '' OR kind = $2::text)
+ORDER BY source_path, source_id, title_key, kind, predicate NULLS FIRST, target_path NULLS FIRST, target_id
+LIMIT $4 OFFSET $3
+`
+
+type ListVaultResolvedLinksParams struct {
+	VaultID    string
+	Kind       string
+	PageOffset int32
+	PageLimit  int32
+}
+
+// O destino nulo das não resolvidas é constante, então o filtro descarta a parte
+// delas já no plano.
+func (q *Queries) ListVaultResolvedLinks(ctx context.Context, arg ListVaultResolvedLinksParams) ([]NoteLinkItem, error) {
+	rows, err := q.db.Query(ctx, listVaultResolvedLinks,
+		arg.VaultID,
+		arg.Kind,
+		arg.PageOffset,
+		arg.PageLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []NoteLinkItem
+	for rows.Next() {
+		var i NoteLinkItem
+		if err := rows.Scan(
+			&i.SourceID,
+			&i.SourcePath,
+			&i.VaultID,
+			&i.TargetID,
+			&i.TargetPath,
+			&i.CitedTitle,
+			&i.TitleKey,
+			&i.Kind,
+			&i.Predicate,
+			&i.InferredTargetID,
+			&i.InferredTargetPath,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listVaultUnresolvedLinks = `-- name: ListVaultUnresolvedLinks :many
+SELECT source_id, source_path, vault_id, target_id, target_path, cited_title, title_key, kind, predicate, inferred_target_id, inferred_target_path FROM note_unresolved_link_items
+WHERE vault_id = $1
+  AND ($2::text = '' OR kind = $2::text)
+ORDER BY source_path, source_id, title_key, kind, predicate NULLS FIRST
+LIMIT $4 OFFSET $3
+`
+
+type ListVaultUnresolvedLinksParams struct {
+	VaultID    string
+	Kind       string
+	PageOffset int32
+	PageLimit  int32
+}
+
+func (q *Queries) ListVaultUnresolvedLinks(ctx context.Context, arg ListVaultUnresolvedLinksParams) ([]NoteUnresolvedLinkItem, error) {
+	rows, err := q.db.Query(ctx, listVaultUnresolvedLinks,
+		arg.VaultID,
+		arg.Kind,
+		arg.PageOffset,
+		arg.PageLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []NoteUnresolvedLinkItem
+	for rows.Next() {
+		var i NoteUnresolvedLinkItem
 		if err := rows.Scan(
 			&i.SourceID,
 			&i.SourcePath,

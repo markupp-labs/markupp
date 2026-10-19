@@ -51,17 +51,29 @@ func (g *PostgresNoteGraph) Backlinks(ctx context.Context, noteID string, f note
 }
 
 // VaultLinks devolve as ligações das notas do cofre vaultID, ou
-// notes.ErrVaultForbidden quando o ator não enxerga o cofre.
+// notes.ErrVaultForbidden quando o ator não enxerga o cofre. Cada situação de
+// resolução tem a própria consulta, para o plano ler só a parte pedida.
 func (g *PostgresNoteGraph) VaultLinks(ctx context.Context, vaultID string, vq notes.VaultLinkQuery) ([]notes.Link, error) {
 	var out []notes.Link
 	err := g.inVault(ctx, vaultID, func(q *gen.Queries) error {
-		rows, err := q.ListVaultLinks(ctx, gen.ListVaultLinksParams{
-			VaultID: vaultID, Kind: vq.Type, Status: vq.Status, PageOffset: toInt32(vq.Offset), PageLimit: toInt32(vq.Limit),
-		})
+		rows, err := listVaultLinks(ctx, q, gen.ListVaultLinksParams{
+			VaultID: vaultID, Kind: vq.Type, PageOffset: toInt32(vq.Offset), PageLimit: toInt32(vq.Limit),
+		}, vq.Status)
 		out = convertRows(rows, toLink)
 		return err
 	})
 	return out, err
+}
+
+func listVaultLinks(ctx context.Context, q *gen.Queries, p gen.ListVaultLinksParams, status string) ([]gen.NoteLinkItem, error) {
+	switch status {
+	case notes.LinkResolved:
+		return q.ListVaultResolvedLinks(ctx, gen.ListVaultResolvedLinksParams(p))
+	case notes.LinkUnresolved:
+		rows, err := q.ListVaultUnresolvedLinks(ctx, gen.ListVaultUnresolvedLinksParams(p))
+		return convertRows(rows, func(r gen.NoteUnresolvedLinkItem) gen.NoteLinkItem { return gen.NoteLinkItem(r) }), err
+	}
+	return q.ListVaultLinks(ctx, p)
 }
 
 // Communities devolve as comunidades do cofre vaultID, das maiores para as menores,
