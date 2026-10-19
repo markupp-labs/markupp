@@ -171,6 +171,10 @@ en:
         light: "Light"
         dark: "Dark"
         follows_system: "Follows your system theme until you pick one."
+        editor_style: "Editor"
+        plain: "Plain"
+        styled: "Styled"
+        editor_style_hint: "Plain shows the markdown at one size, like VS Code. Styled makes headings larger, like the Obsidian source mode."
     members:
       index:
         email: "Email"

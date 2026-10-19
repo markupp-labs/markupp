@@ -27,7 +27,7 @@ export default class extends Controller {
     return [
       EditorState.readOnly.of(readOnly), EditorView.editable.of(!readOnly),
       history(), keymap.of([ ...defaultKeymap, ...historyKeymap ]), EditorView.lineWrapping,
-      markdown({ base: markdownLanguage }), wikilinkMarks, kanagawaTheme,
+      markdown({ base: markdownLanguage }), wikilinkMarks, kanagawaTheme(document.documentElement.dataset.editorStyle),
       EditorView.updateListener.of((update) => this.syncSource(update)),
     ]
   }

@@ -13,14 +13,29 @@ const editorTheme = EditorView.theme({
   ".cm-wikilink": { color: "var(--accent)", textDecoration: "underline" },
 })
 
-// Como no VS Code: o markdown aparece como está escrito, tudo no mesmo tamanho, e a sintaxe só ganha cor e peso.
-const markdownHighlight = HighlightStyle.define([
+// Plain, como no VS Code: o markdown aparece como está escrito, tudo no mesmo tamanho, e a sintaxe só ganha cor e peso.
+const commonHighlight = [
   { tag: tags.heading, color: "var(--accent)", fontWeight: "700" },
   { tag: tags.strong, fontWeight: "700" },
   { tag: tags.emphasis, fontStyle: "italic" },
   { tag: tags.monospace, backgroundColor: "var(--surface-sunken)", borderRadius: "0.375rem" },
   { tag: [ tags.link, tags.url ], color: "var(--accent)" },
   { tag: [ tags.processingInstruction, tags.quote ], color: "var(--ink-muted)" },
-])
+]
 
-export const kanagawaTheme = [ editorTheme, syntaxHighlighting(markdownHighlight) ]
+// Styled, como o source do Obsidian: as mesmas marcas à vista, com títulos maiores.
+const headingSizes = [
+  { tag: tags.heading1, fontSize: "1.5em" },
+  { tag: tags.heading2, fontSize: "1.3em" },
+  { tag: tags.heading3, fontSize: "1.15em" },
+]
+
+const HIGHLIGHTS = {
+  plain: HighlightStyle.define(commonHighlight),
+  styled: HighlightStyle.define([ ...commonHighlight, ...headingSizes ]),
+}
+
+// style vem do data-editor-style do html (cookie lido no servidor); valor desconhecido cai no plain.
+export function kanagawaTheme(style) {
+  return [ editorTheme, syntaxHighlighting(HIGHLIGHTS[style] || HIGHLIGHTS.plain) ]
+}

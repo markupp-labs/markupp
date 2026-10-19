@@ -5,6 +5,9 @@ module SettingsHelper
   # Tema gravado no cookie, ou nil quando o painel segue o sistema.
   def chosen_theme = cookies[:theme].presence_in(ThemesController::THEMES)
 
+  # Estilo do editor gravado no cookie; sem escolha, o plain do VS Code.
+  def chosen_editor_style = cookies[:editor_style].presence_in(EditorStylesController::STYLES) || "plain"
+
   # Item da navegação das configurações; a seção aberta leva o mesmo realce da nota atual.
   def settings_nav_link(section, path)
     link_to t("settings.nav.#{section}"), path, aria: { current: ("page" if section == settings_section) },
