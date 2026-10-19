@@ -83,12 +83,12 @@ func getGrafo(t *testing.T, graph api.NoteGraph, role, target string) *httptest.
 var notaLigada = notes.LinkedNote{ID: "n2", VaultID: "va", Path: "b.md", UpdatedAt: time.Date(2026, 10, 16, 12, 0, 0, 0, time.UTC)}
 
 func TestGetBacklinks_DevolveAsNotasEPaginaNoPadrao(t *testing.T) {
-	graph := &fakeNoteGraph{backlinks: []notes.Backlink{{LinkedNote: notaLigada, Predicates: []string{"autor"}}}}
+	graph := &fakeNoteGraph{backlinks: []notes.Backlink{{LinkedNote: notaLigada, Predicates: []string{"autor"}, Inferred: true}}}
 
 	rec := getGrafo(t, graph, "viewer", "/notes/n1/backlinks?offset=3&limit=500")
 
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
-	assert.JSONEq(t, `[{"id":"n2","vault_id":"va","path":"b.md","updated_at":"2026-10-16T12:00:00Z","predicates":["autor"]}]`, rec.Body.String())
+	assert.JSONEq(t, `[{"id":"n2","vault_id":"va","path":"b.md","updated_at":"2026-10-16T12:00:00Z","predicates":["autor"],"inferred":true}]`, rec.Body.String())
 	assert.Equal(t, []any{"backlinks", "n1", 3, 100}, []any{graph.method, graph.id, graph.offset, graph.limit}, "limit acima do teto vira 100")
 }
 
@@ -102,7 +102,7 @@ func TestGetNeighbors_DizOSentidoDeCadaVizinho(t *testing.T) {
 
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
 	assert.JSONEq(t, `[{"id":"n2","vault_id":"va","path":"b.md","updated_at":"2026-10-16T12:00:00Z","incoming":true,"outgoing":false,
-		"incoming_predicates":["autor"],"outgoing_predicates":[]}]`, rec.Body.String())
+		"incoming_predicates":["autor"],"outgoing_predicates":[],"inferred":false}]`, rec.Body.String())
 	assert.Equal(t, []any{"neighbors", "n1", 0, 10}, []any{graph.method, graph.id, graph.offset, graph.limit})
 }
 

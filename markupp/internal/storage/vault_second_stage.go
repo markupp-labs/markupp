@@ -34,8 +34,8 @@ func saveGraphMarkingChange(ctx context.Context, q *gen.Queries, cs indexing.Cha
 }
 
 // runSecondStage recalcula o que depende do cofre inteiro, se ele estiver marcado, e
-// desmarca só a revisão lida.
-func runSecondStage(ctx context.Context, q *gen.Queries, vaultID string) error {
+// desmarca só a revisão lida. searchConfig é a configuração de texto do índice léxico.
+func runSecondStage(ctx context.Context, q *gen.Queries, vaultID, searchConfig string) error {
 	revision, err := q.SecondStageRevision(ctx, vaultID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil
@@ -44,6 +44,9 @@ func runSecondStage(ctx context.Context, q *gen.Queries, vaultID string) error {
 		return fmt.Errorf("ler a marcacao do segundo estagio do cofre %q: %w", vaultID, err)
 	}
 	if err := refreshTermFrequencies(ctx, q, vaultID); err != nil {
+		return err
+	}
+	if err := refreshVaultGraph(ctx, q, vaultID, searchConfig); err != nil {
 		return err
 	}
 	if err := q.UnmarkSecondStage(ctx, gen.UnmarkSecondStageParams{VaultID: vaultID, Revision: revision}); err != nil {

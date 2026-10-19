@@ -101,6 +101,7 @@ func toBacklink(r gen.ListBacklinksRow) notes.Backlink {
 	return notes.Backlink{
 		LinkedNote: notes.LinkedNote{ID: r.ID, VaultID: r.VaultID, Path: r.Path, UpdatedAt: r.UpdatedAt},
 		Predicates: r.Predicates,
+		Inferred:   r.Inferred,
 	}
 }
 
@@ -111,6 +112,7 @@ func toNeighbor(r gen.ListNeighborsRow) notes.Neighbor {
 		Outgoing:           r.Outgoing,
 		IncomingPredicates: r.IncomingPredicates,
 		OutgoingPredicates: r.OutgoingPredicates,
+		Inferred:           r.Inferred,
 	}
 }
 

@@ -53,9 +53,10 @@ SELECT sqlc.arg(name)::text::regconfig::oid::bigint AS config_oid;
 -- name: RequeueNotes :one
 SELECT markupp_requeue_notes(sqlc.narg(vault_id)::text) AS requeued;
 
--- O lote substitui as linhas do grafo das notas dele: apaga e grava de novo.
+-- O lote substitui as linhas do grafo das notas dele: apaga e grava de novo. A
+-- ligação inferida é do segundo estágio, que a refaz quando o grafo muda.
 -- name: DeleteNoteGraph :exec
-WITH apagadas AS (DELETE FROM note_links WHERE note_id = ANY (sqlc.arg(note_ids)::text[]))
+WITH apagadas AS (DELETE FROM note_links WHERE note_id = ANY (sqlc.arg(note_ids)::text[]) AND kind <> 'inferred')
 DELETE FROM note_titles WHERE note_id = ANY (sqlc.arg(note_ids)::text[]);
 
 -- O cofre vem da nota. Nota apagada depois da leitura some no JOIN.
@@ -76,6 +77,7 @@ FROM (SELECT unnest(sqlc.arg(note_ids)::text[]) AS note_id, unnest(sqlc.arg(cite
 JOIN notes n ON n.id = d.note_id;
 
 -- Impressão dos títulos e das ligações das notas do lote, para saber se o lote os mudou.
+-- A ligação inferida fica de fora porque o lote não a grava.
 -- name: NoteGraphFingerprint :one
 SELECT md5(
     coalesce((SELECT string_agg(ROW(t.note_id, t.title_key)::text, ',' ORDER BY ROW(t.note_id, t.title_key)::text)
@@ -83,7 +85,7 @@ SELECT md5(
     || ';' ||
     coalesce((SELECT string_agg(ROW(l.note_id, l.title_key, l.target_path, l.kind, l.predicate)::text, ','
                                 ORDER BY ROW(l.note_id, l.title_key, l.target_path, l.kind, l.predicate)::text)
-              FROM note_links l WHERE l.note_id = ANY (sqlc.arg(note_ids)::text[])), '')
+              FROM note_links l WHERE l.note_id = ANY (sqlc.arg(note_ids)::text[]) AND l.kind <> 'inferred'), '')
 )::text AS fingerprint;
 
 -- name: MarkSecondStage :exec

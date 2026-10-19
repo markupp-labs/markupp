@@ -12,11 +12,12 @@ import (
 )
 
 const deleteNoteGraph = `-- name: DeleteNoteGraph :exec
-WITH apagadas AS (DELETE FROM note_links WHERE note_id = ANY ($1::text[]))
+WITH apagadas AS (DELETE FROM note_links WHERE note_id = ANY ($1::text[]) AND kind <> 'inferred')
 DELETE FROM note_titles WHERE note_id = ANY ($1::text[])
 `
 
-// O lote substitui as linhas do grafo das notas dele: apaga e grava de novo.
+// O lote substitui as linhas do grafo das notas dele: apaga e grava de novo. A
+// ligação inferida é do segundo estágio, que a refaz quando o grafo muda.
 func (q *Queries) DeleteNoteGraph(ctx context.Context, noteIds []string) error {
 	_, err := q.db.Exec(ctx, deleteNoteGraph, noteIds)
 	return err
@@ -131,11 +132,12 @@ SELECT md5(
     || ';' ||
     coalesce((SELECT string_agg(ROW(l.note_id, l.title_key, l.target_path, l.kind, l.predicate)::text, ','
                                 ORDER BY ROW(l.note_id, l.title_key, l.target_path, l.kind, l.predicate)::text)
-              FROM note_links l WHERE l.note_id = ANY ($1::text[])), '')
+              FROM note_links l WHERE l.note_id = ANY ($1::text[]) AND l.kind <> 'inferred'), '')
 )::text AS fingerprint
 `
 
 // Impressão dos títulos e das ligações das notas do lote, para saber se o lote os mudou.
+// A ligação inferida fica de fora porque o lote não a grava.
 func (q *Queries) NoteGraphFingerprint(ctx context.Context, noteIds []string) (string, error) {
 	row := q.db.QueryRow(ctx, noteGraphFingerprint, noteIds)
 	var fingerprint string

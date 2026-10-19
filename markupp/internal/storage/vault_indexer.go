@@ -63,7 +63,7 @@ func (x *PostgresVaultIndexer) indexVault(ctx context.Context, q *gen.Queries, v
 	if err := dequeue(ctx, q, vault.VaultID, rows); err != nil {
 		return err
 	}
-	return runSecondStage(ctx, q, vault.VaultID)
+	return runSecondStage(ctx, q, vault.VaultID, x.searchConfig)
 }
 
 // applyBatch grava as linhas derivadas do lote: documentos, termos e grafo.

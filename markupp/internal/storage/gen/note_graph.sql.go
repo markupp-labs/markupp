@@ -12,7 +12,8 @@ import (
 
 const listBacklinks = `-- name: ListBacklinks :many
 SELECT n.id, n.vault_id, n.path, n.updated_at,
-       coalesce(array_agg(DISTINCT e.predicate) FILTER (WHERE e.predicate IS NOT NULL), '{}')::text[] AS predicates
+       coalesce(array_agg(DISTINCT e.predicate) FILTER (WHERE e.predicate IS NOT NULL), '{}')::text[] AS predicates,
+       bool_and(e.kind = 'inferred')::bool AS inferred
 FROM note_edges e JOIN notes n ON n.id = e.source_id
 WHERE e.target_id = $1
 GROUP BY n.id
@@ -32,9 +33,11 @@ type ListBacklinksRow struct {
 	Path       string
 	UpdatedAt  time.Time
 	Predicates []string
+	Inferred   bool
 }
 
-// Uma linha por nota que liga, com as chaves das ligações tipadas dela, sem repetir.
+// Uma linha por nota que liga, com as chaves das ligações tipadas dela, sem repetir,
+// e se ela liga só por ligação inferida.
 func (q *Queries) ListBacklinks(ctx context.Context, arg ListBacklinksParams) ([]ListBacklinksRow, error) {
 	rows, err := q.db.Query(ctx, listBacklinks, arg.NoteID, arg.PageOffset, arg.PageLimit)
 	if err != nil {
@@ -50,6 +53,7 @@ func (q *Queries) ListBacklinks(ctx context.Context, arg ListBacklinksParams) ([
 			&i.Path,
 			&i.UpdatedAt,
 			&i.Predicates,
+			&i.Inferred,
 		); err != nil {
 			return nil, err
 		}
@@ -224,13 +228,14 @@ func (q *Queries) ListMentioningNotes(ctx context.Context, arg ListMentioningNot
 
 const listNeighbors = `-- name: ListNeighbors :many
 WITH v AS (
-    SELECT e.target_id AS id, false AS incoming, true AS outgoing, e.predicate FROM note_edges e WHERE e.source_id = $3
+    SELECT e.target_id AS id, false AS incoming, true AS outgoing, e.predicate, e.kind FROM note_edges e WHERE e.source_id = $3
     UNION ALL
-    SELECT e.source_id, true, false, e.predicate FROM note_edges e WHERE e.target_id = $3
+    SELECT e.source_id, true, false, e.predicate, e.kind FROM note_edges e WHERE e.target_id = $3
 )
 SELECT n.id, n.vault_id, n.path, n.updated_at, bool_or(v.incoming)::bool AS incoming, bool_or(v.outgoing)::bool AS outgoing,
        coalesce(array_agg(DISTINCT v.predicate) FILTER (WHERE v.incoming AND v.predicate IS NOT NULL), '{}')::text[] AS incoming_predicates,
-       coalesce(array_agg(DISTINCT v.predicate) FILTER (WHERE v.outgoing AND v.predicate IS NOT NULL), '{}')::text[] AS outgoing_predicates
+       coalesce(array_agg(DISTINCT v.predicate) FILTER (WHERE v.outgoing AND v.predicate IS NOT NULL), '{}')::text[] AS outgoing_predicates,
+       bool_and(v.kind = 'inferred')::bool AS inferred
 FROM v JOIN notes n ON n.id = v.id
 GROUP BY n.id
 ORDER BY n.path, n.id
@@ -252,8 +257,10 @@ type ListNeighborsRow struct {
 	Outgoing           bool
 	IncomingPredicates []string
 	OutgoingPredicates []string
+	Inferred           bool
 }
 
+// inferred diz se as duas notas se ligam só por ligação inferida, em qualquer sentido.
 func (q *Queries) ListNeighbors(ctx context.Context, arg ListNeighborsParams) ([]ListNeighborsRow, error) {
 	rows, err := q.db.Query(ctx, listNeighbors, arg.PageOffset, arg.PageLimit, arg.NoteID)
 	if err != nil {
@@ -272,6 +279,7 @@ func (q *Queries) ListNeighbors(ctx context.Context, arg ListNeighborsParams) ([
 			&i.Outgoing,
 			&i.IncomingPredicates,
 			&i.OutgoingPredicates,
+			&i.Inferred,
 		); err != nil {
 			return nil, err
 		}
@@ -405,6 +413,7 @@ SELECT l.note_id, n.path, l.cited_title, l.kind
 FROM note_links l
 JOIN notes n ON n.id = l.note_id
 WHERE l.vault_id = $1
+  AND l.kind <> 'inferred'
   AND NOT EXISTS (SELECT 1 FROM note_titles t WHERE t.vault_id = l.vault_id AND t.title_key = l.title_key)
 ORDER BY n.path, l.title_key, l.kind
 LIMIT $3 OFFSET $2
@@ -423,6 +432,8 @@ type ListUnresolvedLinksRow struct {
 	Kind       string
 }
 
+// A ligação inferida não entra: ela é o palpite para a não resolvida, que continua na
+// lista como foi escrita.
 func (q *Queries) ListUnresolvedLinks(ctx context.Context, arg ListUnresolvedLinksParams) ([]ListUnresolvedLinksRow, error) {
 	rows, err := q.db.Query(ctx, listUnresolvedLinks, arg.VaultID, arg.PageOffset, arg.PageLimit)
 	if err != nil {
