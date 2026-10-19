@@ -56,7 +56,10 @@ func loadOAuthSettings(lookup LookupFunc, cfg *Config) error {
 	if cfg.OAuthResources, err = readOAuthResources(lookup); err != nil {
 		return err
 	}
-	return loadOAuthDurations(lookup, cfg)
+	if err = loadOAuthDurations(lookup, cfg); err != nil {
+		return err
+	}
+	return cfg.checkCIMDCacheBounds()
 }
 
 // oauthDuration liga uma variável de duração do OAuth à sua faixa e ao campo da Config.
@@ -66,7 +69,7 @@ type oauthDuration struct {
 	target          *int
 }
 
-// loadOAuthDurations lê as validades do OAuth; variável ausente mantém o padrão.
+// loadOAuthDurations lê as validades e os limites do OAuth; variável ausente mantém o padrão.
 func loadOAuthDurations(lookup LookupFunc, cfg *Config) error {
 	durations := []oauthDuration{
 		{"MARKUPP_OAUTH_ACCESS_MINUTES", 1, 1440, &cfg.OAuthAccessMinutes},
@@ -74,6 +77,10 @@ func loadOAuthDurations(lookup LookupFunc, cfg *Config) error {
 		{"MARKUPP_OAUTH_REQUEST_MINUTES", 1, 60, &cfg.OAuthRequestMinutes},
 		{"MARKUPP_OAUTH_CODE_SECONDS", 10, 600, &cfg.OAuthCodeSeconds},
 		{"MARKUPP_OAUTH_EXCHANGE_MINUTES", 1, 15, &cfg.OAuthExchangeMinutes},
+		{"MARKUPP_OAUTH_CIMD_TIMEOUT_SECONDS", 1, 30, &cfg.OAuthCIMDTimeoutSeconds},
+		{"MARKUPP_OAUTH_CIMD_MAX_KB", 1, 1024, &cfg.OAuthCIMDMaxKB},
+		{"MARKUPP_OAUTH_CIMD_CACHE_MIN_MINUTES", 1, 60, &cfg.OAuthCIMDCacheMinMinutes},
+		{"MARKUPP_OAUTH_CIMD_CACHE_MAX_HOURS", 1, 168, &cfg.OAuthCIMDCacheMaxHours},
 	}
 	for _, duration := range durations {
 		value := int64(*duration.target)
@@ -88,7 +95,11 @@ func loadOAuthDurations(lookup LookupFunc, cfg *Config) error {
 
 // checkCIMDCacheBounds recusa o mínimo do cache dos documentos CIMD acima do máximo.
 func (c Config) checkCIMDCacheBounds() error {
-	return nil
+	if c.OAuthCIMDCacheMinMinutes <= c.OAuthCIMDCacheMaxHours*60 {
+		return nil
+	}
+	return fmt.Errorf("MARKUPP_OAUTH_CIMD_CACHE_MIN_MINUTES=%d acima de MARKUPP_OAUTH_CIMD_CACHE_MAX_HOURS=%d, esperado minimo ate o maximo",
+		c.OAuthCIMDCacheMinMinutes, c.OAuthCIMDCacheMaxHours)
 }
 
 // loadPanelURL exige o painel, para onde o authorization server manda o login e o consentimento.
