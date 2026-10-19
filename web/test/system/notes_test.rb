@@ -307,6 +307,19 @@ class NotesTest < ApplicationSystemTestCase
     assert_field "Path", with: "/", focused: true
   end
 
+  # O aviso acima do form não pode empurrar a nota em branco para fora da tela.
+  test "after deleting a note the blank note fits the window with the notice above it" do
+    use_fake_api(notes: [ { id: "1", path: "plan.md", content: "# Plan\n" } ])
+    sign_in_through_form
+
+    visit note_path("1")
+    accept_confirm("Delete this note? This cannot be undone.") { click_on "Delete" }
+
+    assert_text "Deleted"
+    scroll, window = evaluate_script("[document.documentElement.scrollHeight, window.innerHeight]")
+    assert_operator scroll, :<=, window, "expected nothing to scroll, got a page of #{scroll}px in a window of #{window}px"
+  end
+
   test "a viewer gets the editor read only and ctrl+s does nothing" do
     api = use_fake_api(notes: [ { id: "1", path: "plan.md", content: "# Plan\n" } ],
                        tenants: [ { id: "tenant-1", name: "Acme research", members: { FakeMarkuppAccounts::DEFAULT_EMAIL => "viewer" } } ])
