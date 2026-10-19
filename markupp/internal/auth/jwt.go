@@ -28,11 +28,13 @@ type tokenHeader struct {
 }
 
 // Claims são as declarações de identidade do JWT. Tenant e papel ficam fora: vêm do
-// vínculo no banco a cada requisição, e nunca envelhecem dentro do token.
+// vínculo no banco a cada requisição, e nunca envelhecem dentro do token. Scope só
+// existe no token que a troca OAuth entrega; vazio é token de login, de acesso inteiro.
 type Claims struct {
 	Subject   string `json:"sub"`
 	IssuedAt  int64  `json:"iat"`
 	ExpiresAt int64  `json:"exp"`
+	Scope     string `json:"scope,omitempty"`
 }
 
 // TokenPair representa o par de tokens emitidos para a sessão.
