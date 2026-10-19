@@ -3,6 +3,7 @@ package api_test
 import (
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -38,12 +39,16 @@ var (
 // serveScoped manda a rota a um roteador com todos os serviços, autenticada por um
 // token com a claim scope dada (vazia é token de login) e com o papel owner no tenant.
 func serveScoped(route scopedRoute, scope string) *httptest.ResponseRecorder {
+	return serveScopedWith(route, scope, &fakeTenantResolver{membership: auth.Membership{TenantID: "t1", Role: "owner"}})
+}
+
+func serveScopedWith(route scopedRoute, scope string, tenants api.TenantResolver) *httptest.ResponseRecorder {
 	router := api.NewRouter(api.RouterDeps{
 		Notes: &fakeService{}, Auth: &fakeAuthService{}, Admin: &fakeAdminService{},
 		AccountEmail: &fakeAccountEmailService{}, OAuth: &fakeOAuthService{},
 		OAuthMetadata: &api.OAuthMetadata{Issuer: issuerDeTeste}, Probe: &fakeProbe{},
 		Tokens:  &fakeTokenValidator{claims: auth.Claims{Subject: "u1", Scope: scope}},
-		Tenants: &fakeTenantResolver{membership: auth.Membership{TenantID: "t1", Role: "owner"}},
+		Tenants: tenants,
 	})
 	req := httptest.NewRequest(route.method, route.path, nil)
 	req.Header.Set("Authorization", "Bearer token-valido")
@@ -111,5 +116,15 @@ func TestScopeRoutes_RotasSoDeLogin_RecusamTokenOAuth(t *testing.T) {
 			assert.Contains(t, rec.Body.String(), `"error":"first_party_only"`, route.path)
 			assert.Empty(t, rec.Header().Get("WWW-Authenticate"), route.path)
 		}
+	}
+}
+
+func TestScopeRoutes_EscopoDasNotas_FalhaAntesDoTenant(t *testing.T) {
+	semTenant := &fakeTenantResolver{err: auth.ErrTenantRequired}
+	for _, route := range slices.Concat(notesReadRoutes, notesWriteRoutes) {
+		rec := serveScopedWith(route, "administracao", semTenant)
+
+		assert.Equal(t, http.StatusForbidden, rec.Code, "%s %s", route.method, route.path)
+		assert.Contains(t, rec.Body.String(), `"error":"insufficient_scope"`, route.path)
 	}
 }
