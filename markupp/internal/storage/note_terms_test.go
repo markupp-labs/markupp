@@ -22,7 +22,7 @@ import (
 // com o tf de cada um.
 func termosDaNota(t *testing.T, db *pgxpool.Pool, noteID string) map[string]float64 {
 	t.Helper()
-	rows, err := db.Query(context.Background(), "SELECT term, tf FROM note_terms WHERE note_id = $1", noteID)
+	rows, err := db.Query(context.Background(), "SELECT u.term, u.tf FROM note_terms t, unnest(t.terms, t.tfs) AS u (term, tf) WHERE t.note_id = $1", noteID)
 	require.NoError(t, err)
 	termos := map[string]float64{}
 	for rows.Next() {
@@ -96,12 +96,11 @@ func TestRLS_PapelDoIndexador_NaoGravaTermosDeOutroCofre(t *testing.T) {
 	storagetest.SaveNote(ctx, t, repo, notaComConteudo("n2", "vb", "dois"))
 
 	_, err := comoIndexador(t, db, "t1", "va",
-		"WITH i AS (INSERT INTO note_terms (note_id, vault_id, term, tf) VALUES ('n2', 'vb', 'x', 1) RETURNING 1) SELECT count(*) FROM i")
+		"WITH i AS (INSERT INTO note_terms (note_id, vault_id, terms, tfs) VALUES ('n2', 'vb', '{x}', '{1}') RETURNING 1) SELECT count(*) FROM i")
 
 	var pgErr *pgconn.PgError
 	require.ErrorAs(t, err, &pgErr)
 	assert.Equal(t, "42501", pgErr.Code, "recebido %v", err)
-}
 }
 
 func TestVaultIndexer_DocumentoSemLexema_NaoGravaTermosNemTravaOCofre(t *testing.T) {

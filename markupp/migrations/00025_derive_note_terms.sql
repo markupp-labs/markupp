@@ -1,15 +1,17 @@
 -- +goose Up
 -- Termos de cada nota para a similaridade léxica: os de maior tf-idf, no analisador da
--- busca, com o tf. O idf não fica gravado porque muda com o cofre inteiro: a leitura o
--- calcula com o df vigente. O tenant vem do cofre, pelas políticas, como em note_titles.
+-- busca, com o tf de cada um na mesma posição. O idf não fica gravado porque muda com o
+-- cofre inteiro: a leitura o calcula com o df vigente. Uma linha por nota, e não por
+-- termo, porque a checagem de chave estrangeira e de RLS por linha dominava o lote. O
+-- tenant vem do cofre, pelas políticas, como em note_titles.
 CREATE TABLE note_terms (
-    note_id  TEXT NOT NULL REFERENCES notes (id) ON DELETE CASCADE ON UPDATE CASCADE,
+    note_id  TEXT PRIMARY KEY REFERENCES notes (id) ON DELETE CASCADE ON UPDATE CASCADE,
     vault_id TEXT NOT NULL,
-    term     TEXT NOT NULL,
-    tf       DOUBLE PRECISION NOT NULL,
-    PRIMARY KEY (note_id, term)
+    terms    TEXT[] NOT NULL,
+    tfs      DOUBLE PRECISION[] NOT NULL CHECK (cardinality(tfs) = cardinality(terms))
 );
-CREATE INDEX note_terms_vault_term_idx ON note_terms (vault_id, term);
+-- O GIN acha as notas que dividem termos com outra.
+CREATE INDEX note_terms_terms_idx ON note_terms USING GIN (terms);
 
 -- idf = log10(notas do cofre / df). Termo ausente do df apareceu depois do último
 -- segundo estágio e conta como de uma nota só; cofre ainda sem df pesa só pelo tf. df

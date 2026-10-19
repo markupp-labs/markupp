@@ -73,8 +73,8 @@ type NoteSearchIndex struct {
 type NoteTerm struct {
 	NoteID  string
 	VaultID string
-	Term    string
-	Tf      float64
+	Terms   []string
+	Tfs     []float64
 }
 
 type NoteTitle struct {

@@ -28,10 +28,11 @@ LANGUAGE sql STABLE AS $$
         SELECT (SELECT count(*) FROM notes c WHERE c.vault_id = p_vault_id) AS note_count,
                EXISTS (SELECT 1 FROM vault_term_frequencies k WHERE k.vault_id = p_vault_id) AS df_known
     )
-    SELECT t.note_id, t.term, t.tf * markupp_term_idf(stats.note_count, f.df, stats.df_known)
+    SELECT t.note_id, u.term, u.tf * markupp_term_idf(stats.note_count, f.df, stats.df_known)
     FROM note_terms t
+    CROSS JOIN LATERAL unnest(t.terms, t.tfs) AS u (term, tf)
     CROSS JOIN stats
-    LEFT JOIN vault_term_frequencies f ON f.vault_id = t.vault_id AND f.term = t.term
+    LEFT JOIN vault_term_frequencies f ON f.vault_id = t.vault_id AND f.term = u.term
     WHERE t.vault_id = p_vault_id AND t.note_id = ANY (p_note_ids)
 $$;
 -- +goose StatementEnd
@@ -44,9 +45,10 @@ RETURNS TABLE (note_id TEXT, score DOUBLE PRECISION)
 LANGUAGE sql STABLE AS $$
     WITH x AS (SELECT w.term, w.weight FROM markupp_note_term_weights(p_vault_id, ARRAY[p_note_id]) w),
     cand AS (
-        SELECT coalesce(array_agg(DISTINCT o.note_id), '{}') AS ids
-        FROM note_terms o JOIN x ON x.term = o.term
-        WHERE x.weight > 0 AND o.vault_id = p_vault_id AND o.note_id <> p_note_id
+        SELECT coalesce(array_agg(o.note_id), '{}') AS ids
+        FROM note_terms o
+        WHERE o.terms && (SELECT array_agg(x.term) FROM x WHERE x.weight > 0)
+          AND o.vault_id = p_vault_id AND o.note_id <> p_note_id
           AND o.note_id NOT IN (SELECT markupp_linked_notes(p_note_id))
     ),
     scored AS (

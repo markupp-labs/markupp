@@ -230,36 +230,43 @@ func (q *Queries) SaveNoteLinks(ctx context.Context, arg SaveNoteLinksParams) er
 
 const saveNoteTerms = `-- name: SaveNoteTerms :exec
 WITH stats AS (
-    SELECT (SELECT count(*) FROM notes c WHERE c.vault_id = $2) AS note_count,
-           EXISTS (SELECT 1 FROM vault_term_frequencies k WHERE k.vault_id = $2) AS df_known
-), weighted AS (
-    SELECT s.note_id, u.lexeme AS term, 1 + log(cardinality(u.positions)::double precision) AS tf,
-           markupp_term_idf(stats.note_count, f.df, stats.df_known) AS idf
-    FROM note_search_index s
-    CROSS JOIN LATERAL unnest(s.document) AS u (lexeme, positions, weights)
-    CROSS JOIN stats
-    LEFT JOIN vault_term_frequencies f ON f.vault_id = $2 AND f.term = u.lexeme
-    WHERE s.note_id = ANY ($3::text[])
-), ranked AS (
-    SELECT w.note_id, w.term, w.tf, row_number() OVER (PARTITION BY w.note_id ORDER BY w.tf * w.idf DESC, w.term) AS position
-    FROM weighted w
+    SELECT (SELECT count(*) FROM notes c WHERE c.vault_id = $1) AS note_count,
+           EXISTS (SELECT 1 FROM vault_term_frequencies k WHERE k.vault_id = $1) AS df_known
 )
-INSERT INTO note_terms (note_id, vault_id, term, tf)
-SELECT n.id, n.vault_id, r.term, r.tf
-FROM ranked r JOIN notes n ON n.id = r.note_id
-WHERE r.position <= $1::int
+INSERT INTO note_terms (note_id, vault_id, terms, tfs)
+SELECT n.id, n.vault_id, top.terms, top.tfs
+FROM note_search_index s
+JOIN notes n ON n.id = s.note_id
+CROSS JOIN stats
+CROSS JOIN LATERAL (
+    SELECT array_agg(w.term ORDER BY w.weight DESC, w.term)::text[] AS terms,
+           array_agg(w.tf ORDER BY w.weight DESC, w.term)::float8[] AS tfs
+    FROM (
+        SELECT u.lexeme AS term, 1 + log(cardinality(u.positions)::float8) AS tf,
+               (1 + log(cardinality(u.positions)::float8))
+               * markupp_term_idf(stats.note_count,
+                    (SELECT f.df FROM vault_term_frequencies f WHERE f.vault_id = $1 AND f.term = u.lexeme),
+                    stats.df_known) AS weight
+        FROM unnest(s.document) AS u (lexeme, positions, weights)
+        ORDER BY weight DESC, term
+        LIMIT $2::int
+    ) w
+) top
+WHERE s.note_id = ANY ($3::text[]) AND top.terms IS NOT NULL
 `
 
 type SaveNoteTermsParams struct {
-	TermsPerNote int32
 	VaultID      string
+	TermsPerNote int32
 	NoteIds      []string
 }
 
 // Os termos de maior tf-idf de cada nota do lote, tirados do documento que o lote
-// acabou de gravar, com o df vigente. tf = 1 + log10 das posições do lexema.
+// acabou de gravar, com o df vigente. tf = 1 + log10 das posições do lexema. A ordem
+// por nota, no LATERAL, ordena poucos lexemas de cada vez em memória. Documento sem
+// lexema não grava linha.
 func (q *Queries) SaveNoteTerms(ctx context.Context, arg SaveNoteTermsParams) error {
-	_, err := q.db.Exec(ctx, saveNoteTerms, arg.TermsPerNote, arg.VaultID, arg.NoteIds)
+	_, err := q.db.Exec(ctx, saveNoteTerms, arg.VaultID, arg.TermsPerNote, arg.NoteIds)
 	return err
 }
 
