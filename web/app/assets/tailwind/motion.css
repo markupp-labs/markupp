@@ -54,19 +54,34 @@
     display var(--motion-fade) linear allow-discrete;
 }
 
-.layer:not([open])::backdrop {
+.layer:not(:popover-open, [open])::backdrop {
   opacity: 0;
 }
 
 @starting-style {
-  .layer[open]::backdrop {
+  .layer:is(:popover-open, [open])::backdrop {
     opacity: 0;
   }
 }
 
-/* A gaveta encosta na esquerda: o popin cresce dali, não do meio da tela. */
-.sidebar {
-  transform-origin: left center;
+/* Gaveta do celular: em vez do popin, desliza inteira da borda esquerda (sem fade) sobre o fundo escurecido, com os
+   tempos das camadas (saída rápida e linear). */
+@media (width < 48rem) {
+  .sidebar.layer:not(:popover-open) {
+    opacity: 1;
+    transform: translateX(-100%);
+  }
+
+  @starting-style {
+    .sidebar.layer:popover-open {
+      opacity: 1;
+      transform: translateX(-100%);
+    }
+  }
+
+  .sidebar::backdrop {
+    background: var(--scrim);
+  }
 }
 
 /* Barra lateral no desktop: recolher e expandir deslizam como a troca de workspace do Hyprland, só com transform. A
