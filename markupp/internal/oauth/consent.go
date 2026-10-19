@@ -31,7 +31,7 @@ func (s *Service) DescribeRequest(ctx context.Context, requestID, userID string)
 		return RequestView{}, err
 	}
 	return RequestView{
-		ID: req.ID, ClientID: client.ID, ClientName: client.Name, RedirectHost: redirectHost(req.RedirectURI),
+		ID: req.ID, ClientID: client.ID, ClientName: client.Name, ClientSource: client.Source, RedirectHost: redirectHost(req.RedirectURI),
 		Scopes: req.Scopes, AlreadyAuthorized: authorized, ExpiresAt: req.ExpiresAt.UTC().Format(time.RFC3339),
 	}, nil
 }
@@ -60,11 +60,15 @@ func (s *Service) alreadyAuthorized(ctx context.Context, userID string, req Auth
 	return true, nil
 }
 
-// redirectHost devolve o host (com porta, se houver) da redirect_uri já validada.
+// redirectHost devolve o host (com porta, se houver) da redirect_uri já validada ou, no
+// esquema privado sem host, o esquema com dois-pontos, para a tela nunca mostrar vazio.
 func redirectHost(redirectURI string) string {
 	parsed, err := url.Parse(redirectURI)
 	if err != nil {
 		return ""
+	}
+	if parsed.Host == "" {
+		return parsed.Scheme + ":"
 	}
 	return parsed.Host
 }

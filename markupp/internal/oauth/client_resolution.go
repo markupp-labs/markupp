@@ -95,7 +95,7 @@ func (s *Service) fetchMetadata(ctx context.Context, clientID string, now time.T
 // saveCIMDClient grava o cliente até o fim do TTL do documento. O conflito com cliente de
 // outra origem vira a mesma recusa genérica.
 func (s *Service) saveCIMDClient(ctx context.Context, clientID string, metadata ClientMetadata, now time.Time) (Client, error) {
-	client := Client{ID: clientID, Name: metadata.Name, RedirectURIs: metadata.RedirectURIs}
+	client := Client{ID: clientID, Name: metadata.Name, RedirectURIs: metadata.RedirectURIs, Source: ClientSourceCIMD}
 	err := s.repo.SaveCIMDClient(ctx, client, now.Add(metadata.TTL), now)
 	if errors.Is(err, ErrClientSourceConflict) {
 		return Client{}, unusableMetadataError(clientID, err)

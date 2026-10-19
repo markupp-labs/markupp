@@ -62,7 +62,7 @@ func checkRegistration(req RegistrationRequest) (Client, error) {
 	if err := checkDCRRedirectURIs(req.RedirectURIs); err != nil {
 		return Client{}, err
 	}
-	return Client{Name: name, RedirectURIs: req.RedirectURIs}, nil
+	return Client{Name: name, RedirectURIs: req.RedirectURIs, Source: ClientSourceDCR}, nil
 }
 
 // checkPublicClientMetadata aceita só o cliente público do fluxo authorization code.

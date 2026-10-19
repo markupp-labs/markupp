@@ -15,6 +15,7 @@ type oauthRequestResponse struct {
 	ID                string   `json:"id"`
 	ClientID          string   `json:"client_id"`
 	ClientName        string   `json:"client_name"`
+	ClientSource      string   `json:"client_source"`
 	RedirectHost      string   `json:"redirect_host"`
 	Scopes            []string `json:"scopes"`
 	AlreadyAuthorized bool     `json:"already_authorized"`
@@ -57,7 +58,7 @@ func newOAuthRequestResponse(v oauth.RequestView) oauthRequestResponse {
 		scopes = []string{}
 	}
 	return oauthRequestResponse{
-		ID: v.ID, ClientID: v.ClientID, ClientName: v.ClientName, RedirectHost: v.RedirectHost,
+		ID: v.ID, ClientID: v.ClientID, ClientName: v.ClientName, ClientSource: v.ClientSource, RedirectHost: v.RedirectHost,
 		Scopes: scopes, AlreadyAuthorized: v.AlreadyAuthorized, ExpiresAt: v.ExpiresAt,
 	}
 }

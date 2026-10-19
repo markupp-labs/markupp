@@ -44,7 +44,7 @@ func (r *PostgresOAuthRepository) GetClient(ctx context.Context, id string, dcrP
 	if err != nil {
 		return oauth.Client{}, fmt.Errorf("buscar cliente oauth %s: %w", oauth.ClientValue(id), err)
 	}
-	return oauth.Client{ID: row.ID, Name: row.Name, RedirectURIs: row.RedirectUris}, nil
+	return oauth.Client{ID: row.ID, Name: row.Name, RedirectURIs: row.RedirectUris, Source: row.Source}, nil
 }
 
 // CreateRequest grava o Pedido de autorização ainda sem conta nem código.
