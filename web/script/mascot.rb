@@ -3,9 +3,12 @@
 #
 #   cd web && ruby script/mascot.rb
 #
-# Precisa do ImageMagick 7 (comando magick) no PATH, só para ler o PNG e reduzir em tons de cinza.
-# Escreve app/assets/mascot/large.txt (telas públicas e páginas de erro) e small.txt (marca da barra lateral).
+# Precisa do ImageMagick 7 (comando magick) no PATH, só para ler o PNG e reduzir em tons de cinza, e do rsvg-convert
+# (librsvg) para os PNGs do favicon.
+# Escreve app/assets/mascot/large.txt (telas públicas e páginas de erro) e small.txt (marca da barra lateral), e o
+# favicon a partir do small: public/icon.svg (segue o tema do sistema) e os PNGs no claro.
 require_relative "../lib/braille_art"
+require_relative "../lib/braille_svg"
 
 WEB = File.expand_path("..", __dir__)
 LOGO = File.join(WEB, "../docs/assets/logo.png")
@@ -34,4 +37,15 @@ VERSIONS.each do |name, options|
   path = File.join(WEB, "app/assets/mascot/#{name}.txt")
   File.write(path, art.lines.map(&:rstrip).reject { |line| line.delete("⠀").empty? }.join("\n") + "\n")
   puts "#{path}: #{art.lines.size} lines"
+end
+
+FAVICON_PNGS = { "favicon-32.png" => 32, "apple-touch-icon.png" => 180 }.freeze
+
+svg_path = File.join(WEB, "public/icon.svg")
+File.write(svg_path, BrailleSvg.from_lines(File.readlines(File.join(WEB, "app/assets/mascot/small.txt"), chomp: true)))
+puts svg_path
+FAVICON_PNGS.each do |name, size|
+  png_path = File.join(WEB, "public", name)
+  system("rsvg-convert", "-w", size.to_s, "-h", size.to_s, svg_path, "-o", png_path, exception: true)
+  puts "#{png_path}: #{size}x#{size}"
 end
