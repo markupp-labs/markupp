@@ -1,18 +1,8 @@
 package notes
 
 import (
-	"time"
-
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/indexing"
 )
-
-// LinkedNote é a projeção de uma nota no grafo de ligações, sem o conteúdo.
-type LinkedNote struct {
-	ID        string    `json:"id"`
-	VaultID   string    `json:"vault_id"`
-	Path      string    `json:"path"`
-	UpdatedAt time.Time `json:"updated_at"`
-}
 
 // NoteSummary é a nota citada em outro recurso: id, título e caminho.
 type NoteSummary struct {
@@ -92,10 +82,10 @@ type LinkSuggestion struct {
 	Cosine             float64     `json:"cosine"`
 }
 
-// CommunityMember é a nota que pertence a uma comunidade do cofre, com o id e o
-// número de notas da comunidade.
-type CommunityMember struct {
-	LinkedNote
-	CommunityID   int64 `json:"community_id"`
-	CommunitySize int   `json:"community_size"`
+// Community é uma comunidade do cofre: o id, o número de notas e Hub, a nota dela de
+// maior PageRank.
+type Community struct {
+	ID   int64       `json:"id"`
+	Size int         `json:"size"`
+	Hub  NoteSummary `json:"hub"`
 }

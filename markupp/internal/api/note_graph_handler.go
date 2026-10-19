@@ -2,7 +2,9 @@ package api
 
 import (
 	"context"
+	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/go-chi/chi/v5"
 
@@ -17,7 +19,8 @@ type NoteGraph interface {
 	Mentions(ctx context.Context, noteID string, p notes.Page) ([]notes.Mention, error)
 	Backmentions(ctx context.Context, noteID string, p notes.Page) ([]notes.Mention, error)
 	Suggestions(ctx context.Context, noteID string, p notes.Page) ([]notes.LinkSuggestion, error)
-	Communities(ctx context.Context, vaultID string, offset, limit int) ([]notes.CommunityMember, error)
+	Communities(ctx context.Context, vaultID string, p notes.Page) ([]notes.Community, error)
+	Community(ctx context.Context, vaultID string, communityID int64) (notes.Community, error)
 }
 
 func mountNoteGraphRoutes(r chi.Router, graph NoteGraph) {
@@ -27,7 +30,8 @@ func mountNoteGraphRoutes(r chi.Router, graph NoteGraph) {
 	r.Get("/v1/notes/{id}/mentions", serveList(readPage, graph.Mentions))
 	r.Get("/v1/notes/{id}/backmentions", serveList(readPage, graph.Backmentions))
 	r.Get("/v1/notes/{id}/suggestions", serveList(readPage, graph.Suggestions))
-	r.Get("/vaults/{id}/clusters", servePage(graph.Communities))
+	r.Get("/v1/vaults/{id}/communities", serveList(readPage, graph.Communities))
+	r.Get("/v1/vaults/{id}/communities/{cid}", serveCommunity(graph))
 }
 
 // serveList responde com a página que list devolve para o id da rota e a consulta
@@ -66,22 +70,20 @@ func readVaultLinkQuery(qr *queryReader) notes.VaultLinkQuery {
 	return notes.VaultLinkQuery{Status: qr.oneOf("status", notes.LinkResolved, notes.LinkUnresolved), LinkFilter: readLinkFilter(qr)}
 }
 
-// servePage responde com a página que list devolve para o id da rota, sempre como
-// array JSON.
-func servePage[T any](list func(ctx context.Context, id string, offset, limit int) ([]T, error)) http.HandlerFunc {
+// serveCommunity responde com a comunidade do id da rota.
+func serveCommunity(graph NoteGraph) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		offset, limit, ok := parsePage(w, r)
-		if !ok {
+		raw := chi.URLParam(r, "cid")
+		communityID, err := strconv.ParseInt(raw, 10, 64)
+		if err != nil {
+			writeError(w, "invalid_id", fmt.Sprintf("id de comunidade %q, esperado inteiro", raw), http.StatusBadRequest)
 			return
 		}
-		page, err := list(r.Context(), chi.URLParam(r, "id"), offset, limit)
+		community, err := graph.Community(r.Context(), chi.URLParam(r, "id"), communityID)
 		if err != nil {
 			writeDomainError(w, err)
 			return
 		}
-		if page == nil {
-			page = []T{}
-		}
-		writeJSON(w, http.StatusOK, page)
+		writeJSON(w, http.StatusOK, community)
 	}
 }

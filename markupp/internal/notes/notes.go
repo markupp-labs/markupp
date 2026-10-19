@@ -54,13 +54,14 @@ type Repository interface {
 // Erros de domínio devolvidos pelo Service e traduzidos em status HTTP pela
 // camada de API.
 var (
-	ErrInvalidPath    = errors.New("path inválido")
-	ErrInvalidContent = errors.New("content inválido")
-	ErrDuplicatePath  = errors.New("path já existe")
-	ErrNotFound       = errors.New("nota não encontrada")
-	ErrInvalidID      = errors.New("ID inválido")
-	ErrConflict       = errors.New("nota foi atualizada por outro cliente")
-	ErrVaultForbidden = errors.New("cofre inexistente ou sem acesso")
+	ErrInvalidPath       = errors.New("path inválido")
+	ErrInvalidContent    = errors.New("content inválido")
+	ErrDuplicatePath     = errors.New("path já existe")
+	ErrNotFound          = errors.New("nota não encontrada")
+	ErrInvalidID         = errors.New("ID inválido")
+	ErrConflict          = errors.New("nota foi atualizada por outro cliente")
+	ErrVaultForbidden    = errors.New("cofre inexistente ou sem acesso")
+	ErrCommunityNotFound = errors.New("comunidade não encontrada")
 )
 
 // Service aplica as regras de negócio das notas sobre um Repository.

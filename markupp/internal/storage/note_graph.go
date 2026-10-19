@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"fmt"
 	"math"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -63,15 +64,34 @@ func (g *PostgresNoteGraph) VaultLinks(ctx context.Context, vaultID string, vq n
 	return out, err
 }
 
-// Communities devolve as notas do cofre vaultID que pertencem a alguma comunidade,
-// das maiores comunidades para as menores, ou notes.ErrVaultForbidden quando o ator
-// não enxerga o cofre.
-func (g *PostgresNoteGraph) Communities(ctx context.Context, vaultID string, offset, limit int) ([]notes.CommunityMember, error) {
-	var out []notes.CommunityMember
+// Communities devolve as comunidades do cofre vaultID, das maiores para as menores,
+// ou notes.ErrVaultForbidden quando o ator não enxerga o cofre.
+func (g *PostgresNoteGraph) Communities(ctx context.Context, vaultID string, p notes.Page) ([]notes.Community, error) {
+	var out []notes.Community
 	err := g.inVault(ctx, vaultID, func(q *gen.Queries) error {
-		rows, err := q.ListCommunityMembers(ctx, gen.ListCommunityMembersParams{VaultID: vaultID, PageOffset: toInt32(offset), PageLimit: toInt32(limit)})
-		out = convertRows(rows, toCommunityMember)
+		rows, err := q.ListCommunities(ctx, gen.ListCommunitiesParams{VaultID: vaultID, PageOffset: toInt32(p.Offset), PageLimit: toInt32(p.Limit)})
+		out = convertRows(rows, toCommunity)
 		return err
+	})
+	return out, err
+}
+
+// Community devolve a comunidade communityID do cofre vaultID, notes.ErrCommunityNotFound
+// quando o cofre não a tem ou notes.ErrVaultForbidden quando o ator não enxerga o cofre.
+func (g *PostgresNoteGraph) Community(ctx context.Context, vaultID string, communityID int64) (notes.Community, error) {
+	var out notes.Community
+	err := g.inVault(ctx, vaultID, func(q *gen.Queries) error {
+		rows, err := q.ListCommunities(ctx, gen.ListCommunitiesParams{
+			VaultID: vaultID, CommunityID: pgtype.Int8{Int64: communityID, Valid: true}, PageLimit: 1,
+		})
+		if err != nil {
+			return err
+		}
+		if len(rows) == 0 {
+			return fmt.Errorf("%w: id %d no cofre %q", notes.ErrCommunityNotFound, communityID, vaultID)
+		}
+		out = toCommunity(rows[0])
+		return nil
 	})
 	return out, err
 }
@@ -129,11 +149,8 @@ func optionalSummary(id, notePath pgtype.Text) *notes.NoteSummary {
 	return &summary
 }
 
-func toCommunityMember(r gen.ListCommunityMembersRow) notes.CommunityMember {
-	return notes.CommunityMember{
-		LinkedNote:  notes.LinkedNote{ID: r.ID, VaultID: r.VaultID, Path: r.Path, UpdatedAt: r.UpdatedAt},
-		CommunityID: r.CommunityID, CommunitySize: int(r.CommunitySize),
-	}
+func toCommunity(r gen.ListCommunitiesRow) notes.Community {
+	return notes.Community{ID: r.CommunityID, Size: int(r.Size), Hub: notes.Summarize(r.HubID, r.HubPath)}
 }
 
 // convertRows converte as linhas do sqlc no tipo de domínio.

@@ -242,6 +242,8 @@ func writeDomainError(w http.ResponseWriter, err error) {
 		writeError(w, "conflict", notes.ErrConflict.Error(), http.StatusConflict)
 	case errors.Is(err, notes.ErrNotFound):
 		writeError(w, "not_found", notes.ErrNotFound.Error(), http.StatusNotFound)
+	case errors.Is(err, notes.ErrCommunityNotFound):
+		writeError(w, "not_found", notes.ErrCommunityNotFound.Error(), http.StatusNotFound)
 	case errors.Is(err, notes.ErrInvalidID):
 		writeError(w, "invalid_id", notes.ErrInvalidID.Error(), http.StatusBadRequest)
 	default:

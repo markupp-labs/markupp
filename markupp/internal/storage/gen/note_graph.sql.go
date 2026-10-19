@@ -8,52 +8,62 @@ package gen
 import (
 	"context"
 	"time"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const listCommunityMembers = `-- name: ListCommunityMembers :many
-SELECT n.id, n.vault_id, n.path, n.updated_at, m.community_id,
-       (count(*) OVER (PARTITION BY m.community_id))::int AS community_size
-FROM note_communities m
-JOIN notes n ON n.id = m.note_id
-LEFT JOIN note_centrality c ON c.note_id = m.note_id
-WHERE m.vault_id = $1
-ORDER BY community_size DESC, m.community_id, c.pagerank DESC NULLS LAST, n.path, n.id
-LIMIT $3 OFFSET $2
+const listCommunities = `-- name: ListCommunities :many
+WITH ranked AS (
+    SELECT m.community_id, n.id, n.path,
+           count(*) OVER (PARTITION BY m.community_id) AS size,
+           row_number() OVER (PARTITION BY m.community_id ORDER BY c.pagerank DESC NULLS LAST, n.path, n.id) AS position
+    FROM note_communities m
+    JOIN notes n ON n.id = m.note_id
+    LEFT JOIN note_centrality c ON c.note_id = m.note_id
+    WHERE m.vault_id = $3
+      AND ($4::bigint IS NULL OR m.community_id = $4::bigint)
+)
+SELECT community_id, size::int AS size, id AS hub_id, path AS hub_path
+FROM ranked
+WHERE position = 1
+ORDER BY size DESC, community_id
+LIMIT $2 OFFSET $1
 `
 
-type ListCommunityMembersParams struct {
-	VaultID    string
-	PageOffset int32
-	PageLimit  int32
+type ListCommunitiesParams struct {
+	PageOffset  int32
+	PageLimit   int32
+	VaultID     string
+	CommunityID pgtype.Int8
 }
 
-type ListCommunityMembersRow struct {
-	ID            string
-	VaultID       string
-	Path          string
-	UpdatedAt     time.Time
-	CommunityID   int64
-	CommunitySize int32
+type ListCommunitiesRow struct {
+	CommunityID int64
+	Size        int32
+	HubID       string
+	HubPath     string
 }
 
-// Uma linha por nota com comunidade: as maiores comunidades primeiro e, dentro de
-// cada uma, as notas de maior PageRank.
-func (q *Queries) ListCommunityMembers(ctx context.Context, arg ListCommunityMembersParams) ([]ListCommunityMembersRow, error) {
-	rows, err := q.db.Query(ctx, listCommunityMembers, arg.VaultID, arg.PageOffset, arg.PageLimit)
+// Uma linha por comunidade, das maiores para as menores, com a nota de maior PageRank.
+func (q *Queries) ListCommunities(ctx context.Context, arg ListCommunitiesParams) ([]ListCommunitiesRow, error) {
+	rows, err := q.db.Query(ctx, listCommunities,
+		arg.PageOffset,
+		arg.PageLimit,
+		arg.VaultID,
+		arg.CommunityID,
+	)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []ListCommunityMembersRow
+	var items []ListCommunitiesRow
 	for rows.Next() {
-		var i ListCommunityMembersRow
+		var i ListCommunitiesRow
 		if err := rows.Scan(
-			&i.ID,
-			&i.VaultID,
-			&i.Path,
-			&i.UpdatedAt,
 			&i.CommunityID,
-			&i.CommunitySize,
+			&i.Size,
+			&i.HubID,
+			&i.HubPath,
 		); err != nil {
 			return nil, err
 		}
