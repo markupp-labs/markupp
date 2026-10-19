@@ -84,7 +84,7 @@ func TestMigracao00016_TabelasOAuth_SemPrivilegioParaPapeis(t *testing.T) {
 func TestMigracao00016_ChavesEstrangeiras_Indexadas(t *testing.T) {
 	pool := bancoComOAuth(t)
 
-	for _, fk := range [][2]string{{"oauth_requests", "user_id"}, {"oauth_requests", "client_id"},
+	for _, fk := range [][2]string{{"oauth_requests", "user_id"}, {"oauth_requests", "client_id"}, {"oauth_requests", "authorization_id"},
 		{"oauth_authorizations", "user_id"}, {"oauth_authorizations", "client_id"}, {"oauth_tokens", "authorization_id"}} {
 		assert.Positive(t, countRows(t, pool, `SELECT count(*) FROM pg_indexes WHERE tablename = '`+fk[0]+
 			`' AND indexdef ~ '\(`+fk[1]+`[,)]'`), "%s.%s precisa de índice com a coluna na frente", fk[0], fk[1])
@@ -155,6 +155,37 @@ func TestMigracao00016_TokenRotacionado_GuardaQuandoFoiTrocado(t *testing.T) {
 	require.NoError(t, emitirToken(pool, "t1", "{notas:leitura}"))
 
 	_, err := pool.Exec(context.Background(), `UPDATE oauth_tokens SET rotated_at = now() WHERE token_hash = 't1'`)
+
+	assert.NoError(t, err)
+}
+
+// pedidoDaAutorizacao grava o pedido r1 de c1 ligado à Autorização authorizationID.
+func pedidoDaAutorizacao(pool *pgxpool.Pool, authorizationID string) error {
+	_, err := pool.Exec(context.Background(), `INSERT INTO oauth_requests (id, client_id, redirect_uri, scopes,
+		resource, code_challenge, expires_at, authorization_id)
+		VALUES ('r1', 'c1', 'http://127.0.0.1/cb', '{notas:leitura}', 'https://mcp.markupp.dev', 'desafio',
+		now() + interval '10 minutes', $1)`, authorizationID)
+	return err
+}
+
+func TestMigracao00016_PedidoLigadoAAutorizacao_SaiComEla(t *testing.T) {
+	pool := bancoComOAuth(t)
+	require.NoError(t, autorizar(pool, "a1", "{notas:leitura}", false))
+	require.NoError(t, pedidoDaAutorizacao(pool, "a1"))
+
+	_, err := pool.Exec(context.Background(), "DELETE FROM oauth_authorizations WHERE id = 'a1'")
+
+	require.NoError(t, err)
+	assert.Equal(t, 0, countRows(t, pool, "SELECT count(*) FROM oauth_requests"))
+	assert.Error(t, pedidoDaAutorizacao(pool, "a-nenhuma"), "o pedido só aponta para Autorização existente")
+}
+
+func TestMigracao00016_PedidoGuardaQuandoOCodigoFoiReusado(t *testing.T) {
+	pool := bancoComOAuth(t)
+	require.NoError(t, autorizar(pool, "a1", "{notas:leitura}", false))
+	require.NoError(t, pedidoDaAutorizacao(pool, "a1"))
+
+	_, err := pool.Exec(context.Background(), "UPDATE oauth_requests SET code_reused_at = now() WHERE id = 'r1'")
 
 	assert.NoError(t, err)
 }
