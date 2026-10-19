@@ -16,7 +16,7 @@ type NoteGraph interface {
 	VaultLinks(ctx context.Context, vaultID string, q notes.VaultLinkQuery) ([]notes.Link, error)
 	Mentions(ctx context.Context, noteID string, p notes.Page) ([]notes.Mention, error)
 	Backmentions(ctx context.Context, noteID string, p notes.Page) ([]notes.Mention, error)
-	Suggestions(ctx context.Context, noteID string, offset, limit int) ([]notes.LinkSuggestion, error)
+	Suggestions(ctx context.Context, noteID string, p notes.Page) ([]notes.LinkSuggestion, error)
 	Communities(ctx context.Context, vaultID string, offset, limit int) ([]notes.CommunityMember, error)
 }
 
@@ -26,7 +26,7 @@ func mountNoteGraphRoutes(r chi.Router, graph NoteGraph) {
 	r.Get("/v1/vaults/{id}/links", serveList(readVaultLinkQuery, graph.VaultLinks))
 	r.Get("/v1/notes/{id}/mentions", serveList(readPage, graph.Mentions))
 	r.Get("/v1/notes/{id}/backmentions", serveList(readPage, graph.Backmentions))
-	r.Get("/notes/{id}/suggestions", servePage(graph.Suggestions))
+	r.Get("/v1/notes/{id}/suggestions", serveList(readPage, graph.Suggestions))
 	r.Get("/vaults/{id}/clusters", servePage(graph.Communities))
 }
 

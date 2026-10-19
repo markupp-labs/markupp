@@ -86,10 +86,10 @@ type Mention struct {
 // lista e os dois sinais fundidos nela, a alocação de recursos na vizinhança de dois
 // saltos e o cosseno tf-idf; zero quando a nota não aparece na lista do sinal.
 type LinkSuggestion struct {
-	LinkedNote
-	Score              float64 `json:"score"`
-	ResourceAllocation float64 `json:"resource_allocation"`
-	Cosine             float64 `json:"cosine"`
+	Note               NoteSummary `json:"note"`
+	Score              float64     `json:"score"`
+	ResourceAllocation float64     `json:"resource_allocation"`
+	Cosine             float64     `json:"cosine"`
 }
 
 // CommunityMember é a nota que pertence a uma comunidade do cofre, com o id e o
