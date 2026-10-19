@@ -52,18 +52,36 @@ func (s *Service) cimdClient(ctx context.Context, clientID string) (Client, erro
 	return s.fetchCIMDClient(ctx, clientID, now)
 }
 
-// fetchCIMDClient busca o documento e grava o cliente até o fim do TTL dele. O erro da
-// busca vai só para o log, como causa interna, para não servir de oráculo da rede interna.
+// fetchCIMDClient busca o documento e grava o cliente até o fim do TTL dele. A falha da
+// busca fica lembrada por CIMDFailureTTL e vai só para o log, como causa interna, para
+// não servir de oráculo da rede interna.
 func (s *Service) fetchCIMDClient(ctx context.Context, clientID string, now time.Time) (Client, error) {
-	metadata, err := s.metadata.FetchClientMetadata(ctx, clientID)
-	if err == nil {
-		err = checkFetchedMetadata(clientID, metadata)
+	if until, failed := s.failures.failedUntil(clientID, now); failed {
+		return Client{}, unusableMetadataError(clientID, fmt.Errorf("oauth: busca do documento cimd de %s falhou ha pouco; esperada nova tentativa a partir de %s",
+			ClientValue(clientID), until.Format(time.RFC3339)))
 	}
+	metadata, err := s.fetchCheckedMetadata(ctx, clientID)
 	if err != nil {
+		s.failures.remember(clientID, now.Add(s.cfg.CIMDFailureTTL), now)
 		return Client{}, unusableMetadataError(clientID, err)
 	}
+	return s.saveCIMDClient(ctx, clientID, metadata, now)
+}
+
+// fetchCheckedMetadata busca o documento e confere o que o fetcher devolveu.
+func (s *Service) fetchCheckedMetadata(ctx context.Context, clientID string) (ClientMetadata, error) {
+	metadata, err := s.metadata.FetchClientMetadata(ctx, clientID)
+	if err != nil {
+		return ClientMetadata{}, err
+	}
+	return metadata, checkFetchedMetadata(clientID, metadata)
+}
+
+// saveCIMDClient grava o cliente até o fim do TTL do documento. O conflito com cliente de
+// outra origem vira a mesma recusa genérica.
+func (s *Service) saveCIMDClient(ctx context.Context, clientID string, metadata ClientMetadata, now time.Time) (Client, error) {
 	client := Client{ID: clientID, Name: metadata.Name, RedirectURIs: metadata.RedirectURIs}
-	err = s.repo.SaveCIMDClient(ctx, client, now.Add(metadata.TTL))
+	err := s.repo.SaveCIMDClient(ctx, client, now.Add(metadata.TTL))
 	if errors.Is(err, ErrClientSourceConflict) {
 		return Client{}, unusableMetadataError(clientID, err)
 	}

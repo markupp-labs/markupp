@@ -20,10 +20,24 @@ func newCIMDFailureMemory() *cimdFailureMemory {
 }
 
 // remember recusa clientID até until e descarta as entradas já vencidas em now.
+// Um until que não passa de now não é guardado.
 func (m *cimdFailureMemory) remember(clientID string, until, now time.Time) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	for id, expiry := range m.until {
+		if !now.Before(expiry) {
+			delete(m.until, id)
+		}
+	}
+	if now.Before(until) {
+		m.until[clientID] = until
+	}
 }
 
 // failedUntil diz até quando clientID segue recusado; ok falso se não há falha vigente.
 func (m *cimdFailureMemory) failedUntil(clientID string, now time.Time) (until time.Time, ok bool) {
-	return time.Time{}, false
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	until, ok = m.until[clientID]
+	return until, ok && now.Before(until)
 }

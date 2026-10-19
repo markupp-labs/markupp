@@ -240,6 +240,8 @@ func oauthServiceConfigFrom(cfg config.Config) oauth.ServiceConfig {
 		RequestTTL:  time.Duration(cfg.OAuthRequestMinutes) * time.Minute,
 		CodeTTL:     time.Duration(cfg.OAuthCodeSeconds) * time.Second,
 		ExchangeTTL: time.Duration(cfg.OAuthExchangeMinutes) * time.Minute,
+		// A falha da busca fica lembrada pelo menor tempo de cache do documento.
+		CIMDFailureTTL: time.Duration(cfg.OAuthCIMDCacheMinMinutes) * time.Minute,
 	}
 }
 
