@@ -65,7 +65,8 @@
       </dialog>
     <% end %>
 
-    <main class="min-w-0 p-4 md:p-6">
+    <%# @container: o lado a lado escolhe colunas ou pilha pela largura do main (application.css). %>
+    <main class="@container min-w-0 p-4 md:p-6">
       <%# Um botão só, fora da barra e no mesmo lugar aberta ou fechada, como no VS Code; no celular a gaveta tem o seu. %>
       <%= sidebar_toggle_button(t(sidebar_closed? ? ".show_sidebar" : ".hide_sidebar"), classes: "mb-2 hidden md:inline-flex") %>
       <%= render "layouts/flash" %>

@@ -171,7 +171,7 @@
 }
 
 /* Modos da nota (data-mode no form, NoteModeHelper): edição mostra o editor, leitura o markdown renderizado,
-   lado a lado os dois em colunas. No celular o lado a lado não cabe: o botão some e o modo vale como edição
+   lado a lado os dois. No celular o lado a lado não cabe: o botão some e o modo vale como edição
    (o botão de edição aparece marcado). */
 .note-form[data-mode="edit"] .note-preview,
 .note-form[data-mode="read"] .note-editor-pane {
@@ -179,16 +179,6 @@
 }
 
 @media (width >= 48rem) {
-  .note-form[data-mode="split"] .note-panes {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  }
-
-  .note-form[data-mode="split"] .note-preview {
-    border-left: 1px solid var(--line);
-    padding-left: 1.5rem;
-  }
-
   /* No lado a lado a nota ocupa a altura da tela e cada painel rola sozinho, como no VS Code: o editor rola o
      próprio scroller e o preview acompanha (note_mode_controller.js). */
   main:has(.note-form[data-mode="split"]) {
@@ -202,8 +192,15 @@
     min-height: 0;
   }
 
+  /* Conteúdo estreito (o main é o container): editor em cima, preview embaixo, metade da altura cada. */
   .note-form[data-mode="split"] .note-panes {
-    grid-template-rows: minmax(0, 1fr);
+    display: grid;
+    grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .note-form[data-mode="split"] .note-preview {
+    border-top: 1px solid var(--line);
+    padding-top: 1rem;
   }
 
   .note-form[data-mode="split"] .cm-editor {
@@ -214,6 +211,21 @@
   .note-form[data-mode="split"] :is(.cm-scroller, .note-preview) {
     overflow-y: auto;
     scrollbar-color: var(--line) transparent;
+  }
+}
+
+/* Conteúdo largo, medido no main e não na janela (a barra lateral aberta come largura): as duas colunas. */
+@container (width >= 48rem) {
+  .note-form[data-mode="split"] .note-panes {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr);
+  }
+
+  .note-form[data-mode="split"] .note-preview {
+    border-top: 0;
+    padding-top: 0;
+    border-left: 1px solid var(--line);
+    padding-left: 1.5rem;
   }
 }
 
