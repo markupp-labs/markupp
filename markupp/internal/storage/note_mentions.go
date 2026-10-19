@@ -14,10 +14,9 @@ import (
 // mentionCandidate é uma menção achada no texto, ainda sem a probabilidade: a outra
 // nota, o título citado e a nota que tem esse título.
 type mentionCandidate struct {
-	other     notes.LinkedNote
-	titleKey  string
-	targetID  string
-	direction string
+	other    notes.NoteSummary
+	titleKey string
+	targetID string
 }
 
 // anchorPair identifica um título e uma nota que o tem, a unidade da probabilidade.
@@ -26,34 +25,39 @@ type anchorPair struct {
 	targetID string
 }
 
-// Mentions devolve as menções não ligadas da nota noteID nos dois sentidos, uma por
-// nota e sentido, da maior probabilidade a priori para a menor, ou notes.ErrNotFound
-// quando o ator não enxerga a nota. Tudo é calculado na leitura.
-func (g *PostgresNoteGraph) Mentions(ctx context.Context, noteID string, offset, limit int) ([]notes.UnlinkedMention, error) {
-	var out []notes.UnlinkedMention
+// findMentions acha as menções de um sentido no texto, para a nota lida.
+type findMentions func(ctx context.Context, q *gen.Queries, note gen.Note) ([]mentionCandidate, error)
+
+// Mentions devolve os títulos de outras notas que a nota noteID cita sem ligar, uma
+// menção por nota citada, ou notes.ErrNotFound quando o ator não enxerga a nota.
+func (g *PostgresNoteGraph) Mentions(ctx context.Context, noteID string, p notes.Page) ([]notes.Mention, error) {
+	return g.readMentions(ctx, noteID, p, mentionsOf)
+}
+
+// Backmentions devolve as notas que citam um título da nota noteID sem ligar, uma
+// menção por nota que cita, ou notes.ErrNotFound quando o ator não enxerga a nota.
+func (g *PostgresNoteGraph) Backmentions(ctx context.Context, noteID string, p notes.Page) ([]notes.Mention, error) {
+	return g.readMentions(ctx, noteID, p, g.mentionedBy)
+}
+
+// readMentions calcula na leitura as menções que find acha, da maior probabilidade a
+// priori para a menor.
+func (g *PostgresNoteGraph) readMentions(ctx context.Context, noteID string, p notes.Page, find findMentions) ([]notes.Mention, error) {
+	var out []notes.Mention
 	err := g.inNote(ctx, noteID, func(q *gen.Queries) error {
 		note, err := q.GetNoteByID(ctx, noteID)
 		if err != nil {
 			return err
 		}
-		found, err := g.findMentions(ctx, q, note)
+		found, err := find(ctx, q, note)
 		if err != nil {
 			return err
 		}
 		ranked, err := g.rankMentions(ctx, q, note.VaultID, found)
-		out = pageOf(ranked, offset, limit)
+		out = pageOf(ranked, p.Offset, p.Limit)
 		return err
 	})
 	return out, err
-}
-
-func (g *PostgresNoteGraph) findMentions(ctx context.Context, q *gen.Queries, note gen.Note) ([]mentionCandidate, error) {
-	incoming, err := g.mentionedBy(ctx, q, note)
-	if err != nil {
-		return nil, err
-	}
-	outgoing, err := mentionsOf(ctx, q, note)
-	return append(incoming, outgoing...), err
 }
 
 // mentionedBy acha as notas que citam um título de note: o índice léxico dá as
@@ -79,9 +83,9 @@ func matchMentioningNotes(rows []gen.ListMentioningNotesRow, keys []string, targ
 	matcher := mention.NewMatcher(keys)
 	var found []mentionCandidate
 	for _, row := range rows {
-		other := notes.LinkedNote{ID: row.ID, VaultID: row.VaultID, Path: row.Path, UpdatedAt: row.UpdatedAt}
+		other := notes.Summarize(row.ID, row.Path)
 		for _, key := range matcher.Find(row.Content) {
-			found = append(found, mentionCandidate{other: other, titleKey: key, targetID: targetID, direction: notes.MentionIncoming})
+			found = append(found, mentionCandidate{other: other, titleKey: key, targetID: targetID})
 		}
 	}
 	return found
@@ -100,8 +104,7 @@ func mentionsOf(ctx context.Context, q *gen.Queries, note gen.Note) ([]mentionCa
 	var found []mentionCandidate
 	for _, row := range rows {
 		if cited[row.TitleKey] {
-			other := notes.LinkedNote{ID: row.ID, VaultID: row.VaultID, Path: row.Path, UpdatedAt: row.UpdatedAt}
-			found = append(found, mentionCandidate{other: other, titleKey: row.TitleKey, targetID: row.ID, direction: notes.MentionOutgoing})
+			found = append(found, mentionCandidate{other: notes.Summarize(row.ID, row.Path), titleKey: row.TitleKey, targetID: row.ID})
 		}
 	}
 	return found, nil
@@ -114,18 +117,17 @@ func eligibleUniqueKeys(rows []gen.ListMentionableTitlesRow) []string {
 }
 
 // rankMentions descarta os títulos stopword, fica com a menção de maior
-// probabilidade por nota e sentido e ordena pela probabilidade, depois pelo caminho.
-func (g *PostgresNoteGraph) rankMentions(ctx context.Context, q *gen.Queries, vaultID string, found []mentionCandidate) ([]notes.UnlinkedMention, error) {
+// probabilidade por nota e ordena pela probabilidade, depois pelo caminho.
+func (g *PostgresNoteGraph) rankMentions(ctx context.Context, q *gen.Queries, vaultID string, found []mentionCandidate) ([]notes.Mention, error) {
 	priors, err := g.anchorPriors(ctx, q, vaultID, found)
 	if err != nil {
 		return nil, err
 	}
-	best := make(map[[2]string]notes.UnlinkedMention)
+	best := make(map[string]notes.Mention)
 	for _, c := range found {
 		prior, ok := priors[anchorPair{c.titleKey, c.targetID}]
-		key := [2]string{c.other.ID, c.direction}
-		if ok && prior >= best[key].Prior {
-			best[key] = notes.UnlinkedMention{LinkedNote: c.other, Title: c.titleKey, Direction: c.direction, Prior: prior}
+		if ok && prior >= best[c.other.ID].Prior {
+			best[c.other.ID] = notes.Mention{Note: c.other, CitedTitle: c.titleKey, Prior: prior}
 		}
 	}
 	ranked := slices.Collect(maps.Values(best))
@@ -133,8 +135,8 @@ func (g *PostgresNoteGraph) rankMentions(ctx context.Context, q *gen.Queries, va
 	return ranked, nil
 }
 
-func compareMentions(a, b notes.UnlinkedMention) int {
-	return cmp.Or(cmp.Compare(b.Prior, a.Prior), cmp.Compare(a.Path, b.Path), cmp.Compare(a.ID, b.ID), cmp.Compare(a.Direction, b.Direction))
+func compareMentions(a, b notes.Mention) int {
+	return cmp.Or(cmp.Compare(b.Prior, a.Prior), cmp.Compare(a.Note.Path, b.Note.Path), cmp.Compare(a.Note.ID, b.Note.ID))
 }
 
 // anchorPriors calcula, num comando, a probabilidade de cada par título e nota

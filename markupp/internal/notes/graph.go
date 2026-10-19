@@ -72,22 +72,14 @@ type VaultLinkQuery struct {
 	LinkFilter
 }
 
-// Sentidos de uma menção não ligada em relação à nota lida.
-const (
-	// MentionIncoming é a outra nota citando um título da nota lida.
-	MentionIncoming = "incoming"
-	// MentionOutgoing é a nota lida citando um título da outra.
-	MentionOutgoing = "outgoing"
-)
-
-// UnlinkedMention é a menção não ligada entre a nota lida e a outra, que não se
-// ligam em sentido algum: o título citado, na forma normalizada sem caixa, o
-// sentido e a probabilidade a priori de o título apontar para a nota citada.
-type UnlinkedMention struct {
-	LinkedNote
-	Title     string  `json:"title"`
-	Direction string  `json:"direction"`
-	Prior     float64 `json:"prior"`
+// Mention é a menção não ligada entre a nota lida e Note, que não se ligam em
+// sentido algum: o título citado, na forma normalizada sem caixa, e a probabilidade
+// a priori de ele apontar para a nota citada. Nas menções da nota lida, Note é a
+// nota citada; nas backmentions, a nota que cita.
+type Mention struct {
+	Note       NoteSummary `json:"note"`
+	CitedTitle string      `json:"cited_title"`
+	Prior      float64     `json:"prior"`
 }
 
 // LinkSuggestion é a nota que a nota lida poderia ligar: a pontuação RRF que ordena a
