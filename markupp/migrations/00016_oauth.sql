@@ -8,7 +8,9 @@ CREATE TABLE oauth_clients (
     name                TEXT NOT NULL,
     redirect_uris       TEXT[] NOT NULL CHECK (cardinality(redirect_uris) > 0),
     metadata_expires_at TIMESTAMPTZ,
-    created_at          TIMESTAMPTZ NOT NULL DEFAULT now()
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
+    -- Só o cliente CIMD tem documento em cache com validade.
+    CHECK (source = 'cimd' OR metadata_expires_at IS NULL)
 );
 
 CREATE TABLE oauth_authorizations (
