@@ -462,6 +462,22 @@ func TestAuthHandler_MeusTenants_ListaVinculos(t *testing.T) {
 	assert.Equal(t, map[string]any{"id": "t2", "name": "Globex", "role": "viewer", "notes_count": float64(0), "last_note_at": nil}, resp[1])
 }
 
+func TestAuthHandler_MeusTenants_ResumeAsNotasEmRFC3339(t *testing.T) {
+	ultima := time.Date(2026, 10, 2, 9, 30, 0, 0, time.UTC)
+	svc := &fakeAuthService{tenants: []auth.TenantSummary{
+		{Membership: auth.Membership{TenantID: "t1", TenantName: "Acme", Role: "owner"}, NotesCount: 3, LastNoteAt: &ultima},
+	}}
+	router := setupAuthRouter(svc, &fakeTokenValidator{claims: auth.Claims{Subject: "u1"}})
+	req := httptest.NewRequest(http.MethodGet, "/me/tenants", nil)
+	req.Header.Set("Authorization", "Bearer token-valido")
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.JSONEq(t, `[{"id":"t1","name":"Acme","role":"owner","notes_count":3,"last_note_at":"2026-10-02T09:30:00Z"}]`, rec.Body.String())
+}
+
 func postTenant(svc *fakeAuthService, body string) *httptest.ResponseRecorder {
 	router := setupAuthRouter(svc, &fakeTokenValidator{claims: auth.Claims{Subject: "u1"}})
 	req := httptest.NewRequest(http.MethodPost, "/tenants", bytes.NewBufferString(body))
