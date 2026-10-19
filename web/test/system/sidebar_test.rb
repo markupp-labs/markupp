@@ -81,6 +81,23 @@ class SidebarTest < ApplicationSystemTestCase
     assert_in_delta top, edge(spine, "top"), 0.5
   end
 
+  test "the sidebar sticks to the top and the spine stays on its edge while a long note scrolls" do
+    use_fake_api(notes: [ { id: "1", path: "plan.md", content: "# Plan\n\n#{(1..200).map { "Line #{it}." }.join("\n\n")}\n" } ])
+    sign_in_through_form
+
+    visit note_path("1")
+    click_on "Read"
+    assert_selector ".note-preview p", text: "Line 200."
+    execute_script("window.scrollTo(0, 1500)")
+    assert_operator evaluate_script("window.scrollY"), :>, 0
+
+    sidebar = find("nav#sidebar")
+    spine = find("button[aria-controls=sidebar]")
+    assert_in_delta 0, edge(sidebar, "top"), 0.5
+    assert_in_delta edge(sidebar, "right") - 1, edge(spine, "left"), 0.5
+    assert_operator edge(spine, "top"), :<, 40
+  end
+
   test "the resize handle stays reachable right beside the spine" do
     use_fake_api(notes: [])
     sign_in_through_form
