@@ -70,36 +70,13 @@ func (s *Service) ListAuthorizations(ctx context.Context, userID string) ([]Auth
 	return views, nil
 }
 
-// RevokeAuthorization revoga a Autorização da conta e os tokens dela. A Autorização é
-// lida antes entre as ativas da conta para o evento levar o cliente como alvo; uma que
-// não está lá, ou que é revogada no meio do caminho, sai como ErrAuthorizationNotFound.
+// RevokeAuthorization revoga a Autorização da conta e os tokens dela. O repositório
+// preenche o cliente alvo do evento na transação; Autorização inexistente, revogada ou
+// de outra conta sai como ErrAuthorizationNotFound.
 func (s *Service) RevokeAuthorization(ctx context.Context, userID, authorizationID string) error {
-	authorization, err := s.activeAuthorizationByID(ctx, userID, authorizationID)
-	if err != nil {
-		return err
-	}
-	event := auditEvent(AuditActionRevoke, AuditResultSuccess, authorization, s.clock())
-	if err := s.repo.RevokeAuthorization(ctx, userID, authorization.ID, event); err != nil {
+	event := AuditEvent{Action: AuditActionRevoke, Result: AuditResultSuccess, UserID: userID, OccurredAt: s.clock()}
+	if err := s.repo.RevokeAuthorization(ctx, userID, authorizationID, event); err != nil {
 		return fmt.Errorf("oauth: revogando a autorização %s da conta %q: %w", ClientValue(authorizationID), userID, err)
 	}
 	return nil
-}
-
-// activeAuthorizationByID procura a Autorização entre as ativas da conta.
-// ponytail: varre a lista da conta, que tem poucas Autorizações; um GetAuthorization no
-// Repository resolve se ela crescer.
-func (s *Service) activeAuthorizationByID(ctx context.Context, userID, authorizationID string) (Authorization, error) {
-	if authorizationID == "" {
-		return Authorization{}, fmt.Errorf("oauth: id da autorização ausente; esperado o id de uma autorização ativa da conta: %w", ErrAuthorizationNotFound)
-	}
-	summaries, err := s.repo.ListActiveAuthorizations(ctx, userID)
-	if err != nil {
-		return Authorization{}, fmt.Errorf("oauth: listando as autorizações da conta %q: %w", userID, err)
-	}
-	for _, summary := range summaries {
-		if summary.ID == authorizationID {
-			return summary.Authorization, nil
-		}
-	}
-	return Authorization{}, fmt.Errorf("oauth: autorização %s fora das ativas da conta %q; esperado o id de uma autorização ativa dela: %w", ClientValue(authorizationID), userID, ErrAuthorizationNotFound)
 }

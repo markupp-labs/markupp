@@ -171,12 +171,15 @@ func (r *PostgresOAuthRepository) ListActiveAuthorizations(ctx context.Context, 
 }
 
 // RevokeAuthorization trava a Autorização e revoga a ativa da conta em
-// event.OccurredAt, os tokens dela, e audita o evento, numa transação.
+// event.OccurredAt, os tokens dela, e audita o evento com o cliente dela como alvo,
+// numa transação.
 func (r *PostgresOAuthRepository) RevokeAuthorization(ctx context.Context, userID, authorizationID string, event oauth.AuditEvent) error {
 	return inTx(ctx, r.pool, func(qtx *gen.Queries) error {
-		if _, err := lockAuthorization(ctx, qtx, authorizationID); err != nil {
+		row, err := lockAuthorization(ctx, qtx, authorizationID)
+		if err != nil {
 			return err
 		}
+		event.ClientID = row.ClientID
 		if err := revokeAuthorizationInTx(ctx, qtx, userID, authorizationID, event.OccurredAt); err != nil {
 			return err
 		}
