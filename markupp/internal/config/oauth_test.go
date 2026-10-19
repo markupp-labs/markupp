@@ -337,6 +337,7 @@ func TestDefault_DuracoesDoOAuth(t *testing.T) {
 	assert.Equal(t, 30, cfg.OAuthRefreshDays)
 	assert.Equal(t, 10, cfg.OAuthRequestMinutes)
 	assert.Equal(t, 60, cfg.OAuthCodeSeconds)
+	assert.Equal(t, 5, cfg.OAuthExchangeMinutes)
 }
 
 func TestLoad_OAuthSemDuracoes_UsaOPadrao(t *testing.T) {
@@ -347,17 +348,19 @@ func TestLoad_OAuthSemDuracoes_UsaOPadrao(t *testing.T) {
 	assert.Equal(t, 30, cfg.OAuthRefreshDays)
 	assert.Equal(t, 10, cfg.OAuthRequestMinutes)
 	assert.Equal(t, 60, cfg.OAuthCodeSeconds)
+	assert.Equal(t, 5, cfg.OAuthExchangeMinutes)
 }
 
 func TestLoad_DuracoesDoOAuthNosLimites_Aceita(t *testing.T) {
-	for _, limite := range []struct{ acesso, refresh, pedido, codigo int }{
-		{1, 1, 1, 10}, {1440, 365, 60, 600},
+	for _, limite := range []struct{ acesso, refresh, pedido, codigo, troca int }{
+		{1, 1, 1, 10, 1}, {1440, 365, 60, 600, 15},
 	} {
 		env := envComOAuth()
 		env["MARKUPP_OAUTH_ACCESS_MINUTES"] = strconv.Itoa(limite.acesso)
 		env["MARKUPP_OAUTH_REFRESH_DAYS"] = strconv.Itoa(limite.refresh)
 		env["MARKUPP_OAUTH_REQUEST_MINUTES"] = strconv.Itoa(limite.pedido)
 		env["MARKUPP_OAUTH_CODE_SECONDS"] = strconv.Itoa(limite.codigo)
+		env["MARKUPP_OAUTH_EXCHANGE_MINUTES"] = strconv.Itoa(limite.troca)
 
 		cfg, err := config.Load(env.Lookup)
 
@@ -366,6 +369,7 @@ func TestLoad_DuracoesDoOAuthNosLimites_Aceita(t *testing.T) {
 		assert.Equal(t, limite.refresh, cfg.OAuthRefreshDays)
 		assert.Equal(t, limite.pedido, cfg.OAuthRequestMinutes)
 		assert.Equal(t, limite.codigo, cfg.OAuthCodeSeconds)
+		assert.Equal(t, limite.troca, cfg.OAuthExchangeMinutes)
 	}
 }
 
@@ -378,6 +382,8 @@ func TestLoad_DuracaoDoOAuthInvalida_RetornaErroComVariavelEValor(t *testing.T) 
 		{"MARKUPP_OAUTH_CODE_SECONDS", "9", "de 10 a 600"},
 		{"MARKUPP_OAUTH_CODE_SECONDS", "601", "de 10 a 600"},
 		{"MARKUPP_OAUTH_CODE_SECONDS", "um minuto", "de 10 a 600"},
+		{"MARKUPP_OAUTH_EXCHANGE_MINUTES", "0", "de 1 a 15"},
+		{"MARKUPP_OAUTH_EXCHANGE_MINUTES", "16", "de 1 a 15"},
 	}
 	for _, caso := range casos {
 		env := envComOAuth()
@@ -396,6 +402,7 @@ func TestLoad_SemPublicURL_IgnoraDuracoesDoOAuth(t *testing.T) {
 	env := fakeEnv{
 		"MARKUPP_DATABASE_URL": urlDeTeste, "MARKUPP_AUTH_SECRET": segredoDeTesteValido,
 		"MARKUPP_OAUTH_ACCESS_MINUTES": "0", "MARKUPP_OAUTH_CODE_SECONDS": "lixo",
+		"MARKUPP_OAUTH_EXCHANGE_MINUTES": "16",
 	}
 
 	cfg, err := config.Load(env.Lookup)
@@ -403,4 +410,5 @@ func TestLoad_SemPublicURL_IgnoraDuracoesDoOAuth(t *testing.T) {
 	require.NoError(t, err, "sem MARKUPP_PUBLIC_URL as duracoes do OAuth nem sao lidas")
 	assert.Equal(t, 60, cfg.OAuthAccessMinutes)
 	assert.Equal(t, 60, cfg.OAuthCodeSeconds)
+	assert.Equal(t, 5, cfg.OAuthExchangeMinutes)
 }

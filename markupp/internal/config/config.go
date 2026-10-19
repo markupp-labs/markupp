@@ -57,6 +57,8 @@ type Config struct {
 	OAuthRequestMinutes int
 	// OAuthCodeSeconds é a validade do authorization code até a troca pelo token.
 	OAuthCodeSeconds int
+	// OAuthExchangeMinutes é a validade do token da API entregue pela troca de token.
+	OAuthExchangeMinutes int
 }
 
 // Default devolve a configuração usada nas variáveis não definidas.
