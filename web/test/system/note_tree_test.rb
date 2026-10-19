@@ -17,6 +17,24 @@ class NoteTreeTest < ApplicationSystemTestCase
     assert_equal [ "├── home/", "├── work/", "│   ├── 2026/", "│   │   └── goals", "│   └── plan", "├── ideas", "└── readme" ], visible_rows
   end
 
+  # Com 13px de fonte e linhas de 24px, os caracteres │ ├ └ não alcançam a altura da linha e a guia ficava com vãos. As
+  # guias são traços de CSS em células de 4 caracteres, da altura toda da linha: a vertical de uma linha encosta na da
+  # seguinte (└ para no meio, como no tree).
+  test "the vertical lines run unbroken from one row to the next" do
+    visit note_path("1")
+
+    rows = all("[role=tree] [role=treeitem]", minimum: 7).select(&:visible?)
+    pairs = rows.each_cons(2).map { |above, below| [ edge(above, "bottom"), edge(below, "top") ] }
+    assert(pairs.all? { |bottom, top| (bottom - top).abs < 0.5 }, "rows should touch, got #{pairs.inspect}")
+
+    goals = rows.find { it.text.end_with?("goals") }
+    heights = evaluate_script(<<~JS, goals)
+      [...arguments[0].querySelectorAll(".tree-cell")].map((cell) => [cell.dataset.cell, getComputedStyle(cell, "::before").height])
+    JS
+    row_height = "#{goals.native.size.height.round}px"
+    assert_equal [ [ "pipe", row_height ], [ "pipe", row_height ], [ "elbow", "#{goals.native.size.height.round / 2}px" ] ], heights
+  end
+
   test "the lines are muted text out of the screen reader, with no icons" do
     visit note_path("1")
 
@@ -74,4 +92,6 @@ class NoteTreeTest < ApplicationSystemTestCase
         })()
       JS
     end
+
+    def edge(element, side) = evaluate_script("arguments[0].getBoundingClientRect().#{side}", element)
 end
