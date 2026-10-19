@@ -45,6 +45,20 @@ class PasswordResetsControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to root_path
   end
 
+  test "create while logged in ends the panel session and asks to log in again" do
+    api = use_fake_api
+    token = emailed_token(api)
+    sign_in_as
+
+    reset_password(token, "senha-nova")
+
+    assert_redirected_to new_session_path
+    assert_equal "Password changed. Log in again.", flash[:notice]
+    assert_not api.refresh_token_valid?("refresh-1")
+    get root_path
+    assert_redirected_to new_session_path
+  end
+
   test "create with a token the API refuses says so under the field and keeps the token" do
     use_fake_api
 

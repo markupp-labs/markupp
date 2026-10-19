@@ -3,7 +3,7 @@ require "application_system_test_case"
 # Configurações unificadas: Ctrl+, ou Cmd+, abrem de qualquer tela logada, como no VS Code e no Obsidian.
 class SettingsTest < ApplicationSystemTestCase
   setup do
-    use_fake_api(notes: [ { id: "1", path: "plan.md", content: "# Plan\n" } ])
+    @api = use_fake_api(notes: [ { id: "1", path: "plan.md", content: "# Plan\n" } ])
     sign_in_through_form
   end
 
@@ -47,6 +47,21 @@ class SettingsTest < ApplicationSystemTestCase
     within("main") { click_on "I have a reset token" }
 
     assert_current_path new_password_reset_path
+  end
+
+  test "resetting the password from the account ends the session and asks to log in again" do
+    visit settings_account_path
+    within("main") { click_on "Change password" }
+    assert_text "Password reset email sent to #{FakeMarkuppAccounts::DEFAULT_EMAIL}."
+    within("main") { click_on "I have a reset token" }
+    fill_in "Token", with: @api.sent_tokens.last.fetch(:token)
+    fill_in "New password", with: "senha-nova"
+    click_on "Reset password"
+
+    assert_text "Password changed. Log in again."
+    assert_current_path new_session_path
+    visit settings_account_path
+    assert_current_path new_session_path
   end
 
   test "the settings sidebar opens a note from the tree" do
