@@ -141,7 +141,7 @@ func (r *PostgresOAuthRepository) RevokeAuthorizationTokensAudited(ctx context.C
 		if err != nil || !live {
 			return err
 		}
-		if _, err := revokeTokens(ctx, qtx, authorizationID); err != nil {
+		if err := revokeLockedTokens(ctx, qtx, authorizationID); err != nil {
 			return err
 		}
 		revoked = true

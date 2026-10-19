@@ -273,10 +273,16 @@ func revokeTokens(ctx context.Context, qtx *gen.Queries, authorizationID string)
 	if err != nil {
 		return row, err
 	}
+	return row, revokeLockedTokens(ctx, qtx, authorizationID)
+}
+
+// revokeLockedTokens revoga os tokens da Autorização que a transação de qtx já travou com
+// lockAuthorization. É o único caminho do UPDATE que revoga tokens.
+func revokeLockedTokens(ctx context.Context, qtx *gen.Queries, authorizationID string) error {
 	if err := qtx.RevokeOAuthAuthorizationTokens(ctx, authorizationID); err != nil {
-		return row, fmt.Errorf("revogar tokens da autorização %q: %w", authorizationID, err)
+		return fmt.Errorf("revogar tokens da autorização %q: %w", authorizationID, err)
 	}
-	return row, nil
+	return nil
 }
 
 // requestErr traduz a ausência de linha para oauth.ErrRequestNotFound.
