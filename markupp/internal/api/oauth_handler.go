@@ -64,13 +64,14 @@ func mountOAuthServerRoutes(r chi.Router, d RouterDeps) {
 		m.Options("/", openPreflight(http.MethodGet, "Content-Type, "+mcpProtocolVersionHeader))
 	})
 	if d.OAuth != nil {
-		mountOAuthProtocolRoutes(r, &oauthHandler{svc: d.OAuth, issuer: d.OAuthMetadata.Issuer})
+		mountOAuthProtocolRoutes(r, &oauthHandler{svc: d.OAuth, issuer: d.OAuthMetadata.Issuer}, d.OAuthMetadata.DynamicRegistration)
 	}
 }
 
 // mountOAuthProtocolRoutes deixa o authorize, aberto por navegação, sem CORS, e o resto
-// de /oauth com CORS aberto, inclusive no 404 e no 405.
-func mountOAuthProtocolRoutes(r chi.Router, h *oauthHandler) {
+// de /oauth com CORS aberto, inclusive no 404 e no 405. O registro dinâmico só entra
+// quando ligado.
+func mountOAuthProtocolRoutes(r chi.Router, h *oauthHandler, dynamicRegistration bool) {
 	r.Route(oauthAuthorizePath, func(a chi.Router) {
 		a.Get("/", h.authorize)
 	})
@@ -82,6 +83,10 @@ func mountOAuthProtocolRoutes(r chi.Router, h *oauthHandler) {
 		p.Options("/token", openPreflight(http.MethodPost, "Content-Type"))
 		p.Post("/revoke", h.revoke)
 		p.Options("/revoke", openPreflight(http.MethodPost, "Content-Type"))
+		if dynamicRegistration {
+			p.Post("/register", h.register)
+			p.Options("/register", openPreflight(http.MethodPost, "Content-Type"))
+		}
 	})
 }
 
