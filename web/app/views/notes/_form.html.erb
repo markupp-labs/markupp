@@ -85,13 +85,16 @@
                          readonly: !writer, class: "min-h-[60dvh] w-full flex-1 rounded-md border border-line bg-surface p-2" %>
     </div>
     <%# Markdown renderizado e sanitizado no navegador (editor/render_markdown.js). %>
-    <%# Ferramentas de cada bloco de código da leitura, clonadas depois do render (editor/code_blocks.js). %>
+    <%# Cabeçalho de cada bloco de código da leitura (linguagem e copiar), clonado depois do render (editor/code_blocks.js). %>
     <template data-note-mode-target="codeTools">
-      <span class="code-tools">
-        <span role="status" aria-live="polite" class="code-copy-status"></span>
-        <button type="button" class="btn-icon" aria-label="<%= t(".copy_code") %>" title="<%= t(".copy_code") %>"
-                data-action="note-mode#copyCode"><%= icon("copy") %></button>
-      </span>
+      <div class="code-header">
+        <span class="code-language"></span>
+        <span class="code-tools">
+          <span role="status" aria-live="polite" class="code-copy-status"></span>
+          <button type="button" class="btn-icon" aria-label="<%= t(".copy_code") %>" title="<%= t(".copy_code") %>"
+                  data-action="note-mode#copyCode"><%= icon("copy") %></button>
+        </span>
+      </div>
     </template>
     <article data-note-mode-target="preview" aria-label="<%= t(".preview") %>" class="note-preview markdown-body min-w-0"></article>
   </div>
