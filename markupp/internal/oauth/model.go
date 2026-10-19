@@ -73,6 +73,8 @@ type Approval struct {
 	CodeHash      string
 	CodeExpiresAt time.Time
 	DecidedAt     time.Time
+	// DCRPendingCutoff é o limite de criação do cliente DCR pendente.
+	DCRPendingCutoff time.Time
 }
 
 // Denial registra a recusa de um pedido pela conta.
@@ -104,7 +106,7 @@ var (
 // Repository é a porta de persistência do authorization server. Todas as tabelas são
 // globais (ADR-0034): a implementação não usa ator nem RLS.
 type Repository interface {
-	GetClient(ctx context.Context, id string) (Client, error)
+	GetClient(ctx context.Context, id string, dcrPendingCutoff time.Time) (Client, error)
 	CreateRequest(ctx context.Context, req AuthorizationRequest) error
 	// GetPendingRequest devolve ErrRequestNotFound se o pedido não existe, expirou em
 	// relação a now ou já foi decidido.

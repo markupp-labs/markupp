@@ -35,7 +35,7 @@ func isHTTPSURL(clientID string) bool {
 
 // registeredClient busca o cliente cadastrado, por CIMD ou DCR, sem buscar documento.
 func (s *Service) registeredClient(ctx context.Context, clientID string) (Client, error) {
-	client, err := s.repo.GetClient(ctx, clientID)
+	client, err := s.repo.GetClient(ctx, clientID, time.Time{})
 	if errors.Is(err, ErrClientNotFound) {
 		return Client{}, &ProtocolError{Code: errInvalidRequest, Description: "client_id " + ClientValue(clientID) + " nao registrado; esperado " + registeredClientShape}
 	}

@@ -95,7 +95,7 @@ func authorizationKey(userID, clientID string) string {
 	return userID + "|" + clientID
 }
 
-func (f *fakeOAuthRepository) GetClient(_ context.Context, id string) (oauth.Client, error) {
+func (f *fakeOAuthRepository) GetClient(_ context.Context, id string, _ time.Time) (oauth.Client, error) {
 	f.getClientCalls = append(f.getClientCalls, id)
 	if f.getClientErr != nil {
 		return oauth.Client{}, f.getClientErr

@@ -19,7 +19,7 @@ func (s *Service) DescribeRequest(ctx context.Context, requestID, userID string)
 	if err != nil {
 		return RequestView{}, fmt.Errorf("oauth: buscando o pedido %s: %w", ClientValue(requestID), err)
 	}
-	client, err := s.repo.GetClient(ctx, req.ClientID)
+	client, err := s.repo.GetClient(ctx, req.ClientID, time.Time{})
 	if errors.Is(err, ErrClientNotFound) {
 		return RequestView{}, clientGoneErr(requestID)
 	}

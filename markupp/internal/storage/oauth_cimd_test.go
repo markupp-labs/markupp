@@ -52,7 +52,7 @@ func TestPostgresOAuthRepo_SaveCIMDClient_NaoSobrescreveClienteDCR(t *testing.T)
 
 	require.ErrorIs(t, err, oauth.ErrClientSourceConflict)
 	assert.ErrorContains(t, err, `esperado source "cimd"`)
-	got, err := repo.GetClient(ctx, "c1")
+	got, err := repo.GetClient(ctx, "c1", time.Time{})
 	require.NoError(t, err)
 	assert.Equal(t, oauth.Client{ID: "c1", Name: "Agente", RedirectURIs: []string{"http://127.0.0.1/cb"}}, got)
 	assert.Equal(t, 1, countRows(t, pool, `SELECT count(*) FROM oauth_clients

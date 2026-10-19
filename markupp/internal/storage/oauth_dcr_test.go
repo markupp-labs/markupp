@@ -49,7 +49,7 @@ func TestPostgresOAuthRepo_RegisterDCRClient_GravaClienteDCR(t *testing.T) {
 
 	require.NoError(t, repo.RegisterDCRClient(context.Background(), reg))
 
-	got, err := repo.GetClient(context.Background(), "dcr-1")
+	got, err := repo.GetClient(context.Background(), "dcr-1", time.Time{})
 	require.NoError(t, err)
 	assert.Equal(t, reg.Client, got)
 	assert.Equal(t, 1, countRows(t, pool, `SELECT count(*) FROM oauth_clients WHERE id = 'dcr-1'

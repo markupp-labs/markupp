@@ -35,7 +35,7 @@ func NewPostgresOAuthRepository(pool *pgxpool.Pool) *PostgresOAuthRepository {
 }
 
 // GetClient devolve o cliente registrado, ou oauth.ErrClientNotFound.
-func (r *PostgresOAuthRepository) GetClient(ctx context.Context, id string) (oauth.Client, error) {
+func (r *PostgresOAuthRepository) GetClient(ctx context.Context, id string, _ time.Time) (oauth.Client, error) {
 	row, err := r.q.GetOAuthClient(ctx, id)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return oauth.Client{}, fmt.Errorf("%w: client_id %s", oauth.ErrClientNotFound, oauth.ClientValue(id))
