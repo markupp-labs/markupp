@@ -297,6 +297,7 @@ func TestNewFetcher_OpcaoForaDaFaixa_DevolveErroComValor(t *testing.T) {
 		"ttl minimo zero":        {cimd.WithTTLBounds(0, time.Hour), "0s"},
 		"ttl minimo negativo":    {cimd.WithTTLBounds(-time.Minute, time.Hour), "-1m0s"},
 		"ttl minimo acima":       {cimd.WithTTLBounds(2*time.Hour, time.Hour), "2h0m0s"},
+		"politica de ip nula":    {cimd.WithIPPolicy(nil), "nil"},
 	}
 	for nome, caso := range casos {
 		t.Run(nome, func(t *testing.T) {
