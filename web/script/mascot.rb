@@ -15,7 +15,7 @@ LOGO = File.join(WEB, "../docs/assets/logo.png")
 # crop recorta cabeça e franja para a versão pequena; threshold mais alto acende mais pontos onde o traço é fino.
 # No pequeno o limiar é baixo: só o cabelo e o contorno acendem, e o rosto fica vazado e legível a 4px.
 VERSIONS = {
-  "large" => { columns: 60, lines: 32, threshold: 160, crop: nil },
+  "large" => { columns: 55, lines: 33, threshold: 160, crop: nil },
   "small" => { columns: 20, lines: 12, threshold: 100, crop: "220x220+50+30" }
 }.freeze
 
