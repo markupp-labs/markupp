@@ -195,8 +195,8 @@ func TestOAuthServiceConfigFrom_ConverteDuracoesEListaOsResources(t *testing.T) 
 func TestOAuthServiceConfigFrom_MapeiaOsSegredosEAValidadeDaTroca(t *testing.T) {
 	cfg := config.Config{
 		OAuthResources: []config.OAuthResource{
-			{URL: "https://mcp.markupp.dev/mcp", Secret: "segredo-um"},
-			{URL: "https://outro.markupp.dev", Secret: "segredo-dois"},
+			{URL: "https://mcp.markupp.dev/mcp", Secret: "segredo-um"}, // #nosec G101 -- valor fictício de teste
+			{URL: "https://outro.markupp.dev", Secret: "segredo-dois"}, // #nosec G101 -- valor fictício de teste
 		},
 		OAuthExchangeMinutes: 5,
 	}

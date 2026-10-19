@@ -13,7 +13,7 @@ import (
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/oauth"
 )
 
-const testScopedToken = "jwt-curto-da-api"
+const testScopedToken = "jwt-curto-da-api" // #nosec G101 -- valor fictício de teste
 
 // scopedIssue é uma chamada a IssueScopedToken.
 type scopedIssue struct {
