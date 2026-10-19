@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<%= tag.html lang: "en", data: { theme: cookies[:theme].presence_in(ThemesController::THEMES) } do %>
+<%= tag.html lang: "en", data: { theme: chosen_theme } do %>
   <%= render "layouts/head" %>
 
   <%# Telas sem sessão: o mascote à esquerda e o formulário numa coluna estreita, como o banner de um terminal. %>
