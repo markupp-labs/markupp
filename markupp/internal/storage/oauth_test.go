@@ -63,7 +63,7 @@ func TestPostgresOAuthRepo_GetClient_DevolveCliente(t *testing.T) {
 	client, err := repo.GetClient(context.Background(), "c1", time.Time{})
 
 	require.NoError(t, err)
-	assert.Equal(t, oauth.Client{ID: "c1", Name: "Agente", RedirectURIs: []string{"http://127.0.0.1/cb"}}, client)
+	assert.Equal(t, oauth.Client{ID: "c1", Name: "Agente", RedirectURIs: []string{"http://127.0.0.1/cb"}, Source: oauth.ClientSourceDCR}, client)
 }
 
 func TestPostgresOAuthRepo_GetClient_Inexistente(t *testing.T) {

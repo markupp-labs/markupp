@@ -47,6 +47,7 @@ func TestDescribeRequest_PedidoPendente_DevolveVisaoDoConsentimento(t *testing.T
 		ID:           "pedido-9",
 		ClientID:     testClientID,
 		ClientName:   "Cliente de teste",
+		ClientSource: oauth.ClientSourceCIMD,
 		RedirectHost: "cliente.exemplo.dev:8443",
 		Scopes:       []string{oauth.ScopeNotesRead, oauth.ScopeNotesWrite},
 		ExpiresAt:    "2026-10-16T15:10:00Z",
@@ -64,6 +65,38 @@ func TestDescribeRequest_RedirectComPorta_RedirectHostMantemAPorta(t *testing.T)
 
 	require.NoError(t, err)
 	assert.Equal(t, "127.0.0.1:53682", view.RedirectHost)
+}
+
+func TestDescribeRequest_RedirectDeEsquemaPrivadoSemHost_RedirectHostMostraOEsquema(t *testing.T) {
+	casos := map[string]string{
+		"caminho absoluto": "cursor:/oauth/callback",
+		"opaca":            "cursor:callback",
+	}
+	for nome, redirectURI := range casos {
+		t.Run(nome, func(t *testing.T) {
+			repo := testRepositoryWithPendingRequest()
+			req := pendingTestRequest()
+			req.RedirectURI = redirectURI
+			repo.requests["pedido-9"] = req
+
+			view, err := newTestService(repo).DescribeRequest(context.Background(), "pedido-9", testUserID)
+
+			require.NoError(t, err)
+			assert.Equal(t, "cursor:", view.RedirectHost)
+		})
+	}
+}
+
+func TestDescribeRequest_ClienteDCR_MarcaAOrigemDoNome(t *testing.T) {
+	repo := testRepositoryWithPendingRequest()
+	client := testClient()
+	client.Source = oauth.ClientSourceDCR
+	repo.clients[testClientID] = client
+
+	view, err := newTestService(repo).DescribeRequest(context.Background(), "pedido-9", testUserID)
+
+	require.NoError(t, err)
+	assert.Equal(t, oauth.ClientSourceDCR, view.ClientSource)
 }
 
 func TestDescribeRequest_AutorizacaoAtiva_MarcaJaAutorizadoSeCobreOsEscopos(t *testing.T) {

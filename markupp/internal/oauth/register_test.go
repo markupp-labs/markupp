@@ -54,7 +54,7 @@ func TestRegisterClient_Valido_GravaClientePublicoEDevolveOsValoresEfetivos(t *t
 	}, got)
 	require.Len(t, repo.dcrRegistrations, 1)
 	assert.Equal(t, oauth.DCRRegistration{
-		Client:   oauth.Client{ID: "markupp-dcr-token-1", Name: "Agente DCR", RedirectURIs: got.RedirectURIs},
+		Client:   oauth.Client{ID: "markupp-dcr-token-1", Name: "Agente DCR", RedirectURIs: got.RedirectURIs, Source: oauth.ClientSourceDCR},
 		IssuedAt: testNow, MaxPending: testDCRMaxPending, PendingTTL: testDCRPendingTTL,
 	}, repo.dcrRegistrations[0])
 }

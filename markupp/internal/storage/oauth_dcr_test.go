@@ -30,7 +30,9 @@ func repoDCR(t *testing.T) (*storage.PostgresOAuthRepository, *pgxpool.Pool) {
 
 func registroDCR(id string, emitidoEm time.Time, teto int) oauth.DCRRegistration {
 	return oauth.DCRRegistration{
-		Client:   oauth.Client{ID: id, Name: "Agente " + id, RedirectURIs: []string{"http://127.0.0.1/cb", "meuapp://cb"}},
+		Client: oauth.Client{
+			ID: id, Name: "Agente " + id, RedirectURIs: []string{"http://127.0.0.1/cb", "meuapp://cb"}, Source: oauth.ClientSourceDCR,
+		},
 		IssuedAt: emitidoEm, MaxPending: teto, PendingTTL: prazoDosPendentes,
 	}
 }
