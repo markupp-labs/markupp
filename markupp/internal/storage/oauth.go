@@ -222,17 +222,22 @@ func (r *PostgresOAuthRepository) usedCode(ctx context.Context, codeHash string)
 // SaveTokens grava os tokens emitidos, só pelo hash, todos ou nenhum.
 func (r *PostgresOAuthRepository) SaveTokens(ctx context.Context, tokens []oauth.IssuedToken) error {
 	return inTx(ctx, r.pool, func(qtx *gen.Queries) error {
-		for _, t := range tokens {
-			err := qtx.SaveOAuthToken(ctx, gen.SaveOAuthTokenParams{
-				TokenHash: t.Hash, AuthorizationID: t.AuthorizationID, Kind: t.Kind,
-				Resource: t.Resource, Scopes: t.Scopes, ExpiresAt: t.ExpiresAt,
-			})
-			if err != nil {
-				return fmt.Errorf("gravar token %s da autorização %q: %w", t.Kind, t.AuthorizationID, err)
-			}
-		}
-		return nil
+		return saveTokensInTx(ctx, qtx, tokens)
 	})
+}
+
+// saveTokensInTx grava os tokens por qtx, parando no primeiro erro.
+func saveTokensInTx(ctx context.Context, qtx *gen.Queries, tokens []oauth.IssuedToken) error {
+	for _, t := range tokens {
+		err := qtx.SaveOAuthToken(ctx, gen.SaveOAuthTokenParams{
+			TokenHash: t.Hash, AuthorizationID: t.AuthorizationID, Kind: t.Kind,
+			Resource: t.Resource, Scopes: t.Scopes, ExpiresAt: t.ExpiresAt,
+		})
+		if err != nil {
+			return fmt.Errorf("gravar token %s da autorização %q: %w", t.Kind, t.AuthorizationID, err)
+		}
+	}
+	return nil
 }
 
 // RevokeAuthorizationTokens revoga todos os tokens da Autorização.
