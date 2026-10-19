@@ -30,16 +30,16 @@ func prepararGatilho(t *testing.T, pool *pgxpool.Pool, comando string) {
 
 func TestPostgresOAuthRepo_RevokeAuthorizationTokensAudited_GatilhoQueNaoValeNaoRevoga(t *testing.T) {
 	casos := map[string]struct {
-		preparar         string
-		gatilho          string
-		requireUnexpired bool
+		preparar string
+		gatilho  string
+		expiry   oauth.TriggerExpiry
 	}{
 		"gatilho desconhecido":         {gatilho: "t-desconhecido"},
 		"gatilho de outra autorizacao": {gatilho: "t-outro"},
 		"gatilho ja revogado":          {preparar: "UPDATE oauth_tokens SET revoked = TRUE WHERE token_hash = 't-refresh'", gatilho: "t-refresh"},
 		"gatilho expirado no /oauth/revoke": {
 			preparar: "UPDATE oauth_tokens SET expires_at = '2026-10-16T12:00:00Z' WHERE token_hash = 't-acesso'",
-			gatilho:  "t-acesso", requireUnexpired: true,
+			gatilho:  "t-acesso", expiry: oauth.ExpiredTriggerIgnored,
 		},
 	}
 	for nome, caso := range casos {
@@ -48,10 +48,9 @@ func TestPostgresOAuthRepo_RevokeAuthorizationTokensAudited_GatilhoQueNaoValeNao
 			prepararGatilho(t, pool, caso.preparar)
 			antes := countRows(t, pool, revogadosDeA1)
 
-			revogou, err := repo.RevokeAuthorizationTokensAudited(context.Background(), "a1", caso.gatilho, caso.requireUnexpired, eventoDeRevogacao())
+			err := repo.RevokeAuthorizationTokensAudited(context.Background(), "a1", caso.gatilho, caso.expiry, eventoDeRevogacao())
 
 			require.NoError(t, err)
-			assert.False(t, revogou)
 			assert.Equal(t, antes, countRows(t, pool, revogadosDeA1))
 			assert.Equal(t, 0, countRows(t, pool, "SELECT count(*) FROM audit_events"))
 		})
@@ -63,47 +62,42 @@ func TestPostgresOAuthRepo_RevokeAuthorizationTokensAudited_ReusoDeGatilhoExpira
 	_, err := pool.Exec(context.Background(), "UPDATE oauth_tokens SET expires_at = '2026-10-16T12:00:00Z'")
 	require.NoError(t, err)
 
-	revogou, err := repo.RevokeAuthorizationTokensAudited(context.Background(), "a1", "t-refresh", false, eventoDeRevogacao())
+	err = repo.RevokeAuthorizationTokensAudited(context.Background(), "a1", "t-refresh", oauth.ExpiredTriggerRevokes, eventoDeRevogacao())
 
 	require.NoError(t, err)
-	assert.True(t, revogou)
 	assert.Equal(t, 0, countRows(t, pool, "SELECT count(*) FROM oauth_tokens WHERE NOT revoked"))
+	assert.Equal(t, 1, auditoriasDe(t, pool, oauth.AuditActionRevoke, oauth.AuditResultSuccess))
 }
 
 func TestPostgresOAuthRepo_RevokeAuthorizationTokensAudited_ReapresentadoAuditaUmaVez(t *testing.T) {
 	repo, pool := repoComTokens(t)
 	ctx := context.Background()
-	primeira, err := repo.RevokeAuthorizationTokensAudited(ctx, "a1", "t-refresh", false, eventoDeRevogacao())
-	require.NoError(t, err)
+	require.NoError(t, repo.RevokeAuthorizationTokensAudited(ctx, "a1", "t-refresh", oauth.ExpiredTriggerRevokes, eventoDeRevogacao()))
 
-	segunda, err := repo.RevokeAuthorizationTokensAudited(ctx, "a1", "t-refresh", false, eventoDeRevogacao())
+	err := repo.RevokeAuthorizationTokensAudited(ctx, "a1", "t-refresh", oauth.ExpiredTriggerRevokes, eventoDeRevogacao())
 
 	require.NoError(t, err)
-	assert.True(t, primeira)
-	assert.False(t, segunda, "o gatilho já foi revogado pela primeira")
-	assert.Equal(t, 1, auditoriasDe(t, pool, oauth.AuditActionRevoke, oauth.AuditResultSuccess))
+	assert.Equal(t, 1, auditoriasDe(t, pool, oauth.AuditActionRevoke, oauth.AuditResultSuccess), "o gatilho já foi revogado pela primeira")
 }
 
 // TestPostgresOAuthRepo_RevokeAuthorizationTokensAudited_EsperaOutraRevogacao prova que a
 // conferência do gatilho acontece com a trava: com outra revogação segurando a1, esta
 // espera e, depois do commit, vê o gatilho revogado e não revoga nem audita.
 func TestPostgresOAuthRepo_RevokeAuthorizationTokensAudited_EsperaOutraRevogacao(t *testing.T) {
-	casos := map[string]bool{"reuso de refresh": false, "/oauth/revoke": true}
-	for nome, requireUnexpired := range casos {
+	casos := map[string]oauth.TriggerExpiry{"reuso de refresh": oauth.ExpiredTriggerRevokes, "/oauth/revoke": oauth.ExpiredTriggerIgnored}
+	for nome, expiry := range casos {
 		t.Run(nome, func(t *testing.T) {
 			repo, pool := repoComTokens(t)
 			outra := travarAutorizacao(t, pool, "UPDATE oauth_tokens SET revoked = TRUE WHERE authorization_id = 'a1'")
-			revogou := make(chan bool, 1)
+			revogou := make(chan error, 1)
 			go func() {
-				ok, err := repo.RevokeAuthorizationTokensAudited(context.Background(), "a1", "t-refresh", requireUnexpired, eventoDeRevogacao())
-				assert.NoError(t, err)
-				revogou <- ok
+				revogou <- repo.RevokeAuthorizationTokensAudited(context.Background(), "a1", "t-refresh", expiry, eventoDeRevogacao())
 			}()
 			esperarBloqueio(t, pool, "a revogação deveria esperar a trava da outra revogação")
 
 			require.NoError(t, outra.Commit(context.Background()))
 
-			assert.False(t, <-revogou)
+			require.NoError(t, <-revogou)
 			assert.Equal(t, 0, countRows(t, pool, "SELECT count(*) FROM audit_events"))
 		})
 	}

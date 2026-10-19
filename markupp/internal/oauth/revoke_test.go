@@ -34,7 +34,7 @@ func TestRevokeToken_TokenDoCliente_DerrubaOsTokensDaAutorizacaoEAudita(t *testi
 	require.NoError(t, err)
 	assert.Equal(t, []string{auth.HashOpaqueToken(testAccessToken)}, repo.findCalls)
 	assert.Equal(t, []auditedRevoke{{
-		AuthorizationID: "aut-1", TriggerHash: auth.HashOpaqueToken(testAccessToken), RequireUnexpired: true,
+		AuthorizationID: "aut-1", TriggerHash: auth.HashOpaqueToken(testAccessToken), Expiry: oauth.ExpiredTriggerIgnored,
 		Event: testAuditEvent(oauth.AuditActionRevoke, oauth.AuditResultSuccess),
 	}}, repo.auditedRevokes)
 	assert.Empty(t, repo.revokedAuths, "o /oauth/revoke mantém o consentimento")
@@ -129,14 +129,4 @@ func TestRevokeToken_RepositorioSoRecebeOHash(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.NotContains(t, fmt.Sprintf("%+v %+v", repo.findCalls, repo.auditedRevokes), testAccessToken)
-}
-
-func TestRevokeToken_TokenRevogadoDepoisDaLeitura_SemErro(t *testing.T) {
-	repo := testRepositoryWithFoundToken()
-	repo.revokeAuditedStale = true
-
-	err := newTestService(repo).RevokeToken(context.Background(), validRevokeRequest())
-
-	require.NoError(t, err, "outra revogação entrou entre a leitura e a ação; nada a revelar ao cliente")
-	assert.Len(t, repo.auditedRevokes, 1)
 }

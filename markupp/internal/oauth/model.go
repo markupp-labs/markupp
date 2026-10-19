@@ -151,9 +151,9 @@ type Repository interface {
 	// RevokeAuthorizationTokensAudited trava a Autorização, revoga os tokens dela e audita
 	// o evento, numa transação. triggerHash é o token que disparou a revogação: já com a
 	// trava, ele precisa existir, ser da Autorização e não estar revogado e, com
-	// requireUnexpired, não ter expirado em event.OccurredAt. Senão não revoga nem audita
-	// e devolve false, nil. Devolve ErrAuthorizationNotFound se a Autorização não existe.
-	RevokeAuthorizationTokensAudited(ctx context.Context, authorizationID, triggerHash string, requireUnexpired bool, event AuditEvent) (bool, error)
+	// ExpiredTriggerIgnored, não ter expirado em event.OccurredAt. Senão não revoga nem
+	// audita e devolve nil. Devolve ErrAuthorizationNotFound se a Autorização não existe.
+	RevokeAuthorizationTokensAudited(ctx context.Context, authorizationID, triggerHash string, expiry TriggerExpiry, event AuditEvent) error
 	// FindToken devolve o dono de um token de qualquer tipo, mesmo revogado ou expirado,
 	// ou ErrTokenNotFound.
 	FindToken(ctx context.Context, tokenHash string) (TokenGrant, error)
@@ -166,6 +166,17 @@ type Repository interface {
 	// de outra conta.
 	RevokeAuthorization(ctx context.Context, userID, authorizationID string, event AuditEvent) error
 }
+
+// TriggerExpiry diz se o token que disparou a revogação auditada ainda revoga depois de
+// expirar.
+type TriggerExpiry int
+
+const (
+	// ExpiredTriggerRevokes revoga mesmo com o gatilho expirado, como no reuso de refresh.
+	ExpiredTriggerRevokes TriggerExpiry = iota
+	// ExpiredTriggerIgnored não revoga com o gatilho expirado, como no /oauth/revoke.
+	ExpiredTriggerIgnored
+)
 
 // TokenGrant liga um token emitido à Autorização que o originou.
 type TokenGrant struct {

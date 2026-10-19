@@ -71,7 +71,7 @@ func (s *Service) revokeReusedRefresh(ctx context.Context, authorization Authori
 		return grantError(reusedRefreshDescription)
 	}
 	event := auditEvent(AuditActionRefreshReuse, AuditResultFailure, authorization, now)
-	if _, err := s.repo.RevokeAuthorizationTokensAudited(ctx, authorization.ID, refreshHash, false, event); err != nil {
+	if err := s.repo.RevokeAuthorizationTokensAudited(ctx, authorization.ID, refreshHash, ExpiredTriggerRevokes, event); err != nil {
 		return fmt.Errorf("oauth: revogando os tokens da autorização %q após reuso de refresh token: %w", authorization.ID, err)
 	}
 	return grantError(reusedRefreshDescription)

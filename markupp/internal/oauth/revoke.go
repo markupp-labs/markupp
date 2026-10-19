@@ -52,7 +52,7 @@ func liveGrant(grant TokenGrant, now time.Time) bool {
 // segue vigente: se outra revogação entrou no meio, não revoga nem audita de novo.
 func (s *Service) revokeTokens(ctx context.Context, authorization Authorization, tokenHash string, now time.Time) error {
 	event := auditEvent(AuditActionRevoke, AuditResultSuccess, authorization, now)
-	if _, err := s.repo.RevokeAuthorizationTokensAudited(ctx, authorization.ID, tokenHash, true, event); err != nil {
+	if err := s.repo.RevokeAuthorizationTokensAudited(ctx, authorization.ID, tokenHash, ExpiredTriggerIgnored, event); err != nil {
 		return fmt.Errorf("oauth: revogando os tokens da autorização %q: %w", authorization.ID, err)
 	}
 	return nil

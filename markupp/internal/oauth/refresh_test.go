@@ -173,21 +173,11 @@ func TestRefreshToken_RefreshJaRotacionado_RevogaTokensEAuditaReuso(t *testing.T
 
 	requireProtocolError(t, err, "invalid_grant", "", "")
 	assert.Equal(t, []auditedRevoke{{
-		AuthorizationID: "aut-1", TriggerHash: auth.HashOpaqueToken(testRefreshToken), RequireUnexpired: false,
+		AuthorizationID: "aut-1", TriggerHash: auth.HashOpaqueToken(testRefreshToken), Expiry: oauth.ExpiredTriggerRevokes,
 		Event: testAuditEvent(oauth.AuditActionRefreshReuse, oauth.AuditResultFailure),
 	}}, repo.auditedRevokes, "o reuso revoga mesmo com o refresh rotacionado já expirado")
 	assert.Empty(t, repo.refreshed)
 	assert.Empty(t, repo.revokedAuths, "o reuso derruba os tokens, não a Autorização")
-}
-
-func TestRefreshToken_ReusoJaRevogadoPorOutro_InvalidGrantMesmoAssim(t *testing.T) {
-	repo := testRepositoryWithRefreshableToken()
-	repo.consumeErr, repo.revokeAuditedStale = oauth.ErrRefreshReused, true
-
-	_, err := newTestService(repo).RefreshToken(context.Background(), validRefreshGrant())
-
-	requireProtocolError(t, err, "invalid_grant", "", "")
-	assert.Len(t, repo.auditedRevokes, 1)
 }
 
 func TestRefreshToken_ReusoSemAutorizacao_NaoRevoga(t *testing.T) {
