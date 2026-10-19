@@ -192,6 +192,20 @@ O token da API entregue pela troca não passa pelo banco: revogar a Autorizaçã
 OAuth não o derruba, e ele segue valendo até expirar (ADR-0039). Por isso a validade dele é
 curta.
 
+Os clientes também podem se identificar por um Client ID Metadata Document: o client_id é
+uma URL https que o servidor busca para ler o nome e os redirect_uris do cliente. A busca
+tem limites próprios, também opcionais e lidos só com o OAuth ligado:
+
+| Variável | Padrão | Faixa | O que controla |
+|---|---|---|---|
+| `MARKUPP_OAUTH_CIMD_TIMEOUT_SECONDS` | 5 | 1 a 30 | tempo máximo da busca do documento |
+| `MARKUPP_OAUTH_CIMD_MAX_KB` | 64 | 1 a 1024 | tamanho máximo do documento |
+| `MARKUPP_OAUTH_CIMD_CACHE_MIN_MINUTES` | 5 | 1 a 60 | menor tempo de cache do documento |
+| `MARKUPP_OAUTH_CIMD_CACHE_MAX_HOURS` | 24 | 1 a 168 | maior tempo de cache do documento |
+
+O tempo de cache vem do max-age do Cache-Control da resposta, limitado ao intervalo acima;
+sem o cabeçalho, o documento fica uma hora em cache. O mínimo não pode passar do máximo.
+
 ## Aviso
 
 Com o banco vazio, quem fizer o primeiro login vira owner do tenant inicial
