@@ -7,7 +7,8 @@ info:
     Todas as rotas vivem sob /v1 (ADR-0026). Durante a transição, os mesmos caminhos
     continuam servidos sem prefixo, com os cabeçalhos Deprecation (RFC 9745) e
     Link rel="successor-version" apontando o caminho sob /v1. As rotas /oauth/requests
-    nasceram depois da transição e existem só sob /v1, sem o caminho sem prefixo.
+    e /me/authorizations nasceram depois da transição e existem só sob /v1, sem o
+    caminho sem prefixo.
   version: 0.1.0
 servers:
   - url: http://localhost:8080/v1
@@ -495,6 +496,47 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/InviteNotFound'
+  /me/authorizations:
+    get:
+      summary: Lista as Autorizações OAuth ativas da conta
+      description: >
+        Rota do painel. Exige login, mas não o cabeçalho de tenant: a Autorização é da conta.
+      responses:
+        '200':
+          description: Autorizações ativas, uma por cliente
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum: [no-store]
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/OAuthAuthorizationResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /me/authorizations/{id}:
+    delete:
+      summary: Revoga uma Autorização OAuth da conta
+      description: >
+        Revoga a Autorização e todos os tokens emitidos por ela; o cliente precisa de um
+        novo consentimento para voltar a acessar a conta.
+      parameters:
+        - $ref: '#/components/parameters/OAuthAuthorizationID'
+      responses:
+        '204':
+          description: Autorização revogada
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum: [no-store]
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/OAuthAuthorizationNotFound'
   /oauth/requests/{id}:
     get:
       summary: Descreve um pedido de autorização OAuth para a tela de consentimento
@@ -883,6 +925,13 @@ components:
       description: Id do pedido de autorização
       schema:
         type: string
+    OAuthAuthorizationID:
+      name: id
+      in: path
+      required: true
+      description: Id da Autorização, um dos de GET /me/authorizations
+      schema:
+        type: string
   securitySchemes:
     bearerAuth:
       type: http
@@ -931,7 +980,32 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/ErrorResponse'
+    OAuthAuthorizationNotFound:
+      description: Autorização inexistente, já revogada ou de outra conta (authorization_not_found)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
   schemas:
+    OAuthAuthorizationResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        client_id:
+          type: string
+        client_name:
+          type: string
+        scopes:
+          type: array
+          items:
+            type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
     OAuthRequestResponse:
       type: object
       properties:
