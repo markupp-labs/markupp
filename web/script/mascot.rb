@@ -6,7 +6,9 @@
 # Precisa do ImageMagick 7 (comando magick) no PATH, só para ler o PNG e reduzir em tons de cinza, e do rsvg-convert
 # (librsvg) para os PNGs do favicon.
 # Escreve app/assets/mascot/large.txt (telas públicas e páginas de erro) e small.txt (marca da barra lateral), e o
-# favicon a partir do small: public/icon.svg (segue o tema do sistema) e os PNGs no claro.
+# favicon a partir do small: public/favicon.svg (segue o tema do sistema), os PNGs e o favicon.ico que o navegador pede
+# sozinho, estes como no navegador claro. Endereços próprios do favicon, que o navegador guarda por muito tempo.
+require "tmpdir"
 require_relative "../lib/braille_art"
 require_relative "../lib/braille_svg"
 
@@ -40,12 +42,24 @@ VERSIONS.each do |name, options|
 end
 
 FAVICON_PNGS = { "favicon-32.png" => 32, "apple-touch-icon.png" => 180 }.freeze
+ICO_SIZES = [ 16, 32, 48 ].freeze
 
-svg_path = File.join(WEB, "public/icon.svg")
+def render_png(svg_path, size, png_path)
+  system("rsvg-convert", "-w", size.to_s, "-h", size.to_s, svg_path, "-o", png_path, exception: true)
+end
+
+svg_path = File.join(WEB, "public/favicon.svg")
 File.write(svg_path, BrailleSvg.from_lines(File.readlines(File.join(WEB, "app/assets/mascot/small.txt"), chomp: true)))
 puts svg_path
 FAVICON_PNGS.each do |name, size|
   png_path = File.join(WEB, "public", name)
-  system("rsvg-convert", "-w", size.to_s, "-h", size.to_s, svg_path, "-o", png_path, exception: true)
+  render_png(svg_path, size, png_path)
   puts "#{png_path}: #{size}x#{size}"
 end
+
+ico_path = File.join(WEB, "public/favicon.ico")
+Dir.mktmpdir do |dir|
+  layers = ICO_SIZES.map { |size| File.join(dir, "#{size}.png").tap { render_png(svg_path, size, it) } }
+  system("magick", *layers, ico_path, exception: true)
+end
+puts "#{ico_path}: #{ICO_SIZES.join(", ")}"
