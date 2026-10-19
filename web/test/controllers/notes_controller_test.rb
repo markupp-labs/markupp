@@ -9,7 +9,7 @@ class NotesControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select "nav[aria-label=?] [role=tree] [role=treeitem][aria-expanded=false]", "Notes", text: "├── work/"
-    assert_select "nav [role=treeitem]", text: "│   └── plan"
+    assert_select "nav [role=treeitem]", text: "│ └── plan"
     assert_select "nav [role=treeitem]", text: "└── inbox"
   end
 
@@ -55,7 +55,7 @@ class NotesControllerTest < ActionDispatch::IntegrationTest
 
     get note_path("1")
 
-    assert_select "nav a[aria-current=page]", text: "│   └── plan", count: 1
+    assert_select "nav a[aria-current=page]", text: "│ └── plan", count: 1
     assert_select "nav a[aria-current]", count: 1
     assert_select "nav [role=treeitem][aria-expanded=true]", text: "└── work/"
     assert_select "nav [role=treeitem][aria-expanded=true]", text: "├── 2026/"
