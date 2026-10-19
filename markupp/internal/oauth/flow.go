@@ -3,6 +3,7 @@ package oauth
 import (
 	"fmt"
 	"net/url"
+	"time"
 )
 
 // Identificadores da troca de token (RFC 8693). São URNs fixas da especificação, não
@@ -99,15 +100,40 @@ type TokenResponse struct {
 	Scope        string `json:"scope"`
 }
 
+// RegistrationRequest é o corpo de POST /oauth/register (RFC 7591, seção 2), com os
+// campos que o servidor confere. Lista ausente fica nil e o método de autenticação
+// ausente fica nil; os campos desconhecidos são ignorados.
+type RegistrationRequest struct {
+	ClientName              string   `json:"client_name"`
+	RedirectURIs            []string `json:"redirect_uris"`
+	TokenEndpointAuthMethod *string  `json:"token_endpoint_auth_method"`
+	GrantTypes              []string `json:"grant_types"`
+	ResponseTypes           []string `json:"response_types"`
+}
+
+// RegistrationResponse é a resposta de sucesso do registro dinâmico (RFC 7591, seção
+// 3.2.1): um cliente público, sem client_secret, com os valores que o servidor aplica.
+type RegistrationResponse struct {
+	ClientID                string   `json:"client_id"`
+	ClientIDIssuedAt        int64    `json:"client_id_issued_at"`
+	ClientName              string   `json:"client_name"`
+	RedirectURIs            []string `json:"redirect_uris"`
+	TokenEndpointAuthMethod string   `json:"token_endpoint_auth_method"`
+	GrantTypes              []string `json:"grant_types"`
+	ResponseTypes           []string `json:"response_types"`
+}
+
 // ProtocolError é um erro do protocolo OAuth com o código da RFC 6749 (invalid_request,
 // invalid_scope, invalid_grant, access_denied, invalid_target...). Quando RedirectURI vem
 // preenchida, o erro volta ao cliente por redirect com State; senão, é mostrado ali mesmo.
 // A causa interna, quando há, serve só para o log e nunca entra em Error nem na resposta.
+// RetryAfter positivo marca a recusa temporária, que o cliente pode repetir depois dele.
 type ProtocolError struct {
 	Code        string
 	Description string
 	RedirectURI string
 	State       string
+	RetryAfter  time.Duration
 	cause       error
 }
 

@@ -25,7 +25,9 @@ const maxDescribedValueLen = 80
 // canônica de CanonicalURL, e ResourceSecrets guarda o segredo de cada um, pela mesma
 // URL canônica. ExchangeTTL é a validade do token da API entregue pela troca.
 // CIMDFailureTTL é quanto tempo uma busca de documento CIMD que falhou fica lembrada,
-// recusando o client_id sem buscar de novo; zero desliga o cache negativo.
+// recusando o client_id sem buscar de novo; zero desliga o cache negativo. DCRMaxPending
+// e DCRPendingTTL são o teto e o prazo dos clientes registrados por DCR que ainda não
+// ganharam Autorização.
 type ServiceConfig struct {
 	Issuer          string
 	PanelURL        string
@@ -37,6 +39,8 @@ type ServiceConfig struct {
 	CodeTTL         time.Duration
 	ExchangeTTL     time.Duration
 	CIMDFailureTTL  time.Duration
+	DCRMaxPending   int
+	DCRPendingTTL   time.Duration
 }
 
 // Service conduz o fluxo authorization code com PKCE: cria o pedido, mostra e decide o
