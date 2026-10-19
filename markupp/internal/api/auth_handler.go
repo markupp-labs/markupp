@@ -6,6 +6,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"time"
 
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/auth"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/identity"
@@ -57,6 +58,13 @@ type tenantResponse struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`
 	Role string `json:"role"`
+}
+
+// myTenantResponse é o tenant de GET /me/tenants com o resumo das notas que a conta lê.
+type myTenantResponse struct {
+	tenantResponse
+	NotesCount int        `json:"notes_count"`
+	LastNoteAt *time.Time `json:"last_note_at"`
 }
 
 // decodeJSONBody lê o corpo JSON pequeno das rotas de conta em dst, limitado a
@@ -175,9 +183,13 @@ func (h *authHandler) myTenants(w http.ResponseWriter, r *http.Request) {
 		writeError(w, "internal", "erro interno", http.StatusInternalServerError)
 		return
 	}
-	out := make([]tenantResponse, 0, len(summaries))
+	out := make([]myTenantResponse, 0, len(summaries))
 	for _, m := range summaries {
-		out = append(out, tenantResponse{ID: m.TenantID, Name: m.TenantName, Role: m.Role})
+		out = append(out, myTenantResponse{
+			tenantResponse: tenantResponse{ID: m.TenantID, Name: m.TenantName, Role: m.Role},
+			NotesCount:     m.NotesCount,
+			LastNoteAt:     m.LastNoteAt,
+		})
 	}
 	writeJSON(w, http.StatusOK, out)
 }
