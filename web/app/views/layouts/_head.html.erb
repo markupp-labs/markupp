@@ -6,6 +6,8 @@
   <meta name="mobile-web-app-capable" content="yes">
   <%= csrf_meta_tags %>
   <%= csp_meta_tag %>
+  <%# Visitas do Turbo por view transition; só a troca de área anima (area_transition_controller.js, motion.css). %>
+  <meta name="view-transition" content="same-origin">
 
   <%= yield :head %>
 

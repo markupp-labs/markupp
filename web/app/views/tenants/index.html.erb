@@ -1,3 +1,4 @@
 <% content_for :sidebar_label, t(".sidebar_label") %>
+<% content_for :area, "tenants" %>
 <%# Sem tenant é o onboarding (criar o primeiro e os convites); com tenants, a lista em cards. %>
 <%= render current_tenants.empty? ? "tenants/onboarding" : "tenants/grid" %>

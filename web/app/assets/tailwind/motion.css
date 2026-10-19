@@ -164,3 +164,52 @@
   80% { content: "⠇"; }
   90% { content: "⠏"; }
 }
+
+/* Troca de área (area_transition_controller.js): entrar e sair das configurações, da lista de tenants e das telas
+   públicas desliza como a troca de workspace do Hyprland, de leve. A página que sai some rápida e linear andando para a
+   esquerda; a que entra vem da direita com fade, na easeOutQuint. A barra lateral e a lombada são grupos à parte:
+   iguais dos dois lados, ficam paradas; só de um lado (login e logout), saem ou entram junto. Sem a marca (nota para nota) nada anima e
+   a view transition acaba no ato. Com reduced-motion o Turbo nem começa a view transition. */
+:root {
+  --area-shift: 1.5rem;
+}
+
+.sidebar {
+  view-transition-name: sidebar;
+}
+
+.sidebar-spine {
+  view-transition-name: sidebar-spine;
+}
+
+::view-transition-group(*),
+::view-transition-old(*),
+::view-transition-new(*) {
+  animation: none;
+}
+
+:root[data-area-moved]::view-transition-old(root),
+:root[data-area-moved]::view-transition-old(sidebar):only-child,
+:root[data-area-moved]::view-transition-old(sidebar-spine):only-child {
+  animation: area-out var(--motion-window-out) linear both;
+}
+
+:root[data-area-moved]::view-transition-new(root),
+:root[data-area-moved]::view-transition-new(sidebar):only-child,
+:root[data-area-moved]::view-transition-new(sidebar-spine):only-child {
+  animation: area-in var(--motion-window-in) var(--ease-out-quint) both;
+}
+
+@keyframes area-out {
+  to {
+    opacity: 0;
+    transform: translateX(calc(-1 * var(--area-shift)));
+  }
+}
+
+@keyframes area-in {
+  from {
+    opacity: 0;
+    transform: translateX(var(--area-shift));
+  }
+}
