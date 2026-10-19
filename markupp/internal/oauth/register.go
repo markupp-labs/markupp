@@ -60,9 +60,14 @@ func checkRegistration(req RegistrationRequest) (Client, error) {
 	return Client{Name: name, RedirectURIs: req.RedirectURIs, Source: ClientSourceDCR}, nil
 }
 
-// checkPublicClientMetadata aceita só o cliente público do fluxo authorization code.
+// checkPublicClientMetadata aceita só o cliente público do fluxo authorization code. Lista
+// presente e vazia é recusada, como em grant_types e response_types: ausente vale o padrão.
 func checkPublicClientMetadata(req RegistrationRequest) error {
 	switch {
+	case presentButEmpty(req.GrantTypes):
+		return invalidClientMetadata("grant_types presente e vazio; esperado ausente ou com ao menos um valor")
+	case presentButEmpty(req.ResponseTypes):
+		return invalidClientMetadata("response_types presente e vazio; esperado ausente ou com ao menos um valor")
 	case req.TokenEndpointAuthMethod != nil && *req.TokenEndpointAuthMethod != "none":
 		return invalidClientMetadata("token_endpoint_auth_method " + ClientValue(*req.TokenEndpointAuthMethod) + "; esperado ausente ou none")
 	case slices.ContainsFunc(req.GrantTypes, func(g string) bool { return !slices.Contains(dcrGrantTypes(), g) }):
@@ -71,6 +76,11 @@ func checkPublicClientMetadata(req RegistrationRequest) error {
 		return invalidClientMetadata("response_types " + ClientValue(strings.Join(req.ResponseTypes, " ")) + "; esperado ausente ou so code")
 	}
 	return nil
+}
+
+// presentButEmpty diz se a lista veio no corpo, mesmo como [], sem nenhum valor.
+func presentButEmpty(list []string) bool {
+	return list != nil && len(list) == 0
 }
 
 // checkDCRRedirectURIs aplica a mesma regra das redirect_uris do documento CIMD.
