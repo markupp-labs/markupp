@@ -22,8 +22,9 @@
   <%# Erro de caminho (API) ou de título em branco: os dois aparecem sob o título. %>
   <% path_error = @note.errors.full_messages_for(:path).first || @note.errors.full_messages_for(:title).first %>
   <header class="flex flex-wrap items-center gap-x-3 gap-y-1">
-    <%# Breadcrumb da pasta: pequeno, acima do título, trocável à parte. %>
-    <div class="flex min-w-0 flex-1 items-center gap-1 text-ink-muted">
+    <%# Breadcrumb da pasta: pequeno, acima do título, trocável à parte. No celular ganha a linha inteira e os controles
+        descem para a linha de baixo, sem cortar o campo. %>
+    <div class="flex min-w-0 flex-1 items-center gap-1 text-ink-muted max-md:basis-full">
       <%= icon("folder") %>
       <%= form.label :folder, class: "sr-only" %>
       <%# Como no Unix: a raiz é só a barra, e uma pasta lê /work/ideas. %>
