@@ -22,6 +22,15 @@ class BrailleSvgTest < ActiveSupport::TestCase
     assert_match(/viewBox="[\d. -]+"/, svg)
   end
 
+  # Como o favicon do GitHub: contrasta com a aba, então é escuro no navegador claro e claro no escuro.
+  test "the icon is dark on a light browser and light on a dark one" do
+    style = Nokogiri::XML(BrailleSvg.from_lines([ "⣿" ])).at("style").text
+    light_browser, dark_browser = style.split("@media (prefers-color-scheme: dark)")
+
+    assert_includes light_browser, ".bg{fill:#1f1f28}"
+    assert_includes dark_browser, ".bg{fill:#f2ecbc}"
+  end
+
   private
     def circles(svg) = Nokogiri::XML(svg).css("circle")
 
