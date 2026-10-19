@@ -5,7 +5,6 @@ require "application_system_test_case"
 class MotionTest < ApplicationSystemTestCase
   QUINT = "cubic-bezier(0.23, 1, 0.32, 1)".freeze
   POPIN_IN = { "opacity" => "410 #{QUINT}", "transform" => "410 #{QUINT}" }.freeze
-  POPIN_OUT = { "display" => "150 linear", "opacity" => "150 linear", "transform" => "150 linear" }.freeze
   LAYER_IN = { "opacity" => "380 #{QUINT}", "transform" => "380 #{QUINT}" }.freeze
   LAYER_OUT = { "display" => "150 linear", "opacity" => "150 linear", "overlay" => "150 linear", "transform" => "150 linear" }.freeze
 
@@ -34,11 +33,13 @@ class MotionTest < ApplicationSystemTestCase
     assert_equal [ { "transform" => "480 #{QUINT}" }, { "workspace-slide-right" => "480 #{QUINT}" }, { "transform" => "480 #{QUINT}" } ], opening
   end
 
-  test "the pane that comes in pops in and the one that leaves fades out fast" do
+  # O que sai não cruza por cima do que entra: some no ato, sem animação.
+  test "the pane that comes in pops in and the one that leaves is gone at once" do
     visit note_path("1")
 
     reading = motions_after("document.querySelector('[data-note-mode-mode-param=read]').click()", ".note-preview", ".note-editor-pane")
-    assert_equal [ POPIN_IN, POPIN_OUT ], reading
+    assert_equal [ POPIN_IN, {} ], reading
+    assert_equal "none", find(".note-editor-pane", visible: :all).evaluate_script("getComputedStyle(this).display")
   end
 
   test "the tenant switcher and the search come in as layers and leave fast" do
