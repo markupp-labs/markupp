@@ -165,13 +165,13 @@ module Settings
       assert_select "nav#sidebar .sidebar-scroll a[href^='/settings']", count: 0
     end
 
-    test "the sidebar footer marks the email link as current" do
+    test "the account menu of the sidebar footer marks the account as current" do
       use_fake_api
       sign_in_as
 
       get settings_account_path
 
-      assert_select "nav footer a[href=?][aria-current=page]", settings_account_path, text: EMAIL
+      assert_select "nav footer #account_menu a[href=?][aria-current=page]", settings_account_path, text: "Account"
     end
 
     test "show works for an account without tenant" do

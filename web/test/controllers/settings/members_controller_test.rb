@@ -60,7 +60,7 @@ module Settings
 
       get root_path
 
-      assert_select "nav > footer a[href=?]", settings_path, text: "Settings"
+      assert_select "nav > footer a[href=?][aria-label=Settings]", settings_path
       assert_select "#tenant_switcher a[href=?]", settings_path, count: 0
     end
 

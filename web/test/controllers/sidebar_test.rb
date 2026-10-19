@@ -16,22 +16,26 @@ class SidebarTest < ActionDispatch::IntegrationTest
     end
   end
 
-  test "the footer holds the account, the settings and the log out with icons" do
+  test "the footer is one line: the email opens the account menu, then the theme and the settings icons" do
     use_fake_api(notes: [])
     sign_in_as
 
     get root_path
 
     assert_select "nav > footer" do
-      assert_select "a[href=?] svg[data-icon=user-circle]", settings_account_path
-      assert_select "a[href=?]", settings_account_path, text: EMAIL
-      assert_select "a[href=?][title=?][aria-keyshortcuts=?]", settings_path, "Settings (Ctrl+,)", "Control+, Meta+,", text: "Settings" do
+      assert_select "button[popovertarget=account_menu][aria-haspopup=menu][title=?]", EMAIL, text: EMAIL do
+        assert_select "svg[data-icon=user-circle]"
+      end
+      assert_select "a[href=?][aria-label=Settings][title=?][aria-keyshortcuts=?]", settings_path, "Settings (Ctrl+,)", "Control+, Meta+," do
         assert_select "svg[data-icon=gear-six]"
       end
-      assert_select "form[action=?] button", session_path, text: "Log out" do
-        assert_select "svg[data-icon=sign-out]"
+      assert_select "#account_menu[role=menu][popover]" do
+        assert_select "a[role=menuitem][href=?]", settings_account_path, text: "Account"
+        assert_select "a[role=menuitem][href=?][aria-keyshortcuts=?]", settings_path, "Control+, Meta+,", text: /Settings/
+        assert_select "form[action=?] button[role=menuitem]", session_path, text: "Log out"
       end
     end
+    assert_select "nav > footer button", text: "Log out", count: 1
   end
 
   test "the footer shows the settings to a member too" do
@@ -40,7 +44,7 @@ class SidebarTest < ActionDispatch::IntegrationTest
 
     get root_path
 
-    assert_select "nav > footer a[href=?]", settings_path, text: "Settings"
+    assert_select "nav > footer a[href=?][aria-label=Settings]", settings_path
   end
 
   test "the notes scroll apart from the fixed footer" do
