@@ -25,17 +25,18 @@ class TenantSelectionTest < ActionDispatch::IntegrationTest
     assert_redirected_to tenants_path
   end
 
-  test "the tenant list offers each tenant with its role" do
+  test "the tenant list has a card per tenant, with its role, that enters it" do
     use_fake_api(tenants: TWO_TENANTS)
     sign_in_as
 
     get tenants_path
 
     assert_response :success
-    assert_select "h1", "Choose a tenant"
-    assert_select "main form[action=?]", current_tenant_path, count: 2
-    assert_select "main form[action=?] input[name=tenant_id][value=tenant-2]", current_tenant_path
-    assert_select "main form button", text: /Home lab\s+member/
+    assert_select "h1", "Tenants"
+    assert_select "main #tenant_cards > li", count: 2
+    assert_select "main #tenant_cards > li", text: /Home lab\s+member/ do
+      assert_select "form[action=?] input[name=tenant_id][value=tenant-2]", current_tenant_path
+    end
   end
 
   test "choosing a tenant opens its notes with its header" do
@@ -110,7 +111,7 @@ class TenantSelectionTest < ActionDispatch::IntegrationTest
       assert_select "form[action=?]", current_tenant_path, count: 2
       assert_select "button[aria-current=true]", count: 1, text: /Home lab\s+member/
       assert_select "button:not([aria-current])", text: /Acme research\s+owner/
-      assert_select "a[href=?]", tenants_path, text: "New tenant"
+      assert_select "a[href=?]", new_tenant_path, text: "New tenant"
     end
   end
 

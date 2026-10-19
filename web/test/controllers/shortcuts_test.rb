@@ -7,7 +7,7 @@ class ShortcutsTest < ActionDispatch::IntegrationTest
     [ "New note", "Alt N" ], [ "Edit mode", "Ctrl E" ], [ "Read mode", "Ctrl E" ], [ "Side by side", "Ctrl \\" ],
     [ "Keyboard shortcuts", "?" ], [ "Search notes", "Ctrl K" ], [ "Settings", "Ctrl ," ], [ "Toggle sidebar", "Ctrl B" ],
     [ "Light theme", "" ], [ "Dark theme", "" ], [ "Editor style: plain", "" ], [ "Editor style: styled", "" ],
-    [ "Tenants", "" ], [ "Switch tenant", "" ], [ "Log out", "" ]
+    [ "All tenants", "g t" ], [ "Switch tenant", "" ], [ "Log out", "" ], [ "New tenant", "Alt N" ]
   ].freeze
 
   setup do

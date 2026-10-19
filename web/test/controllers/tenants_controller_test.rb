@@ -41,15 +41,15 @@ class TenantsControllerTest < ActionDispatch::IntegrationTest
     assert_select "nav > .sidebar-scroll + footer", text: /#{FakeMarkuppAccounts::DEFAULT_EMAIL}/
   end
 
-  test "the tenant list also offers a form for a new tenant" do
+  test "the tenant list also offers a form for a new tenant, in a dialog" do
     use_fake_api
     sign_in_as
 
     get tenants_path
 
-    assert_select "h1", "Choose a tenant"
-    assert_select "h2", "New tenant"
-    assert_select "main form[action=?][method=post] input[name=?]", tenants_path, "tenant[name]"
+    assert_select "h1", "Tenants"
+    assert_select "dialog#new_tenant h2", "New tenant"
+    assert_select "dialog#new_tenant form[action=?][method=post] input[name=?]", tenants_path, "tenant[name]"
   end
 
   test "create makes the tenant, activates it and opens its notes" do
