@@ -87,9 +87,9 @@
   <%= hidden_field_tag :crlf, @note.crlf?, id: nil %>
   <%= hidden_field_tag :markdown, @note.markdown?, id: nil %>
   <div class="note-panes min-h-0 flex-1 gap-6">
-    <%# O editor monta o CodeMirror aqui, ao lado do textarea. %>
+    <%# O editor monta o CodeMirror aqui, ao lado do textarea. Na nota nova o caminho ainda não existe: rótulo Content. %>
     <div class="note-editor-pane flex min-w-0 flex-col">
-      <%= form.text_area :content, data: { editor_target: "source", note_form_target: "source", note_mode_target: "source" }, aria: { label: @note.path },
+      <%= form.text_area :content, data: { editor_target: "source", note_form_target: "source", note_mode_target: "source" }, aria: { label: @note.persisted? ? @note.path : Note.human_attribute_name(:content) },
                          readonly: !writer, class: "min-h-[60dvh] w-full flex-1 rounded-md border border-line bg-surface p-2" %>
     </div>
     <%# Markdown renderizado e sanitizado no navegador (editor/render_markdown.js). %>
