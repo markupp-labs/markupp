@@ -134,8 +134,9 @@
     .sidebar {
       display: flex;
       position: sticky;
-      top: 0;
+      /* inset antes do top: o shorthand depois desfaria o top e a barra rolaria para fora com a página. */
       inset: auto;
+      top: 0;
     }
   }
 }
