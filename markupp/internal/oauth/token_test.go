@@ -3,6 +3,7 @@ package oauth_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -141,15 +142,35 @@ func TestExchangeCode_CodigoRecusadoPeloRepositorio_InvalidGrant(t *testing.T) {
 	}
 }
 
-func TestExchangeCode_CodigoReusado_RevogaTokensDaAutorizacao(t *testing.T) {
+func TestExchangeCode_CodigoReusado_InvalidGrantSemGravarNemRevogarDeNovo(t *testing.T) {
 	repo := testRepositoryWithRedeemableCode()
 	repo.redeemErr = oauth.ErrCodeAlreadyUsed
 
 	_, err := newTestService(repo).ExchangeCode(context.Background(), validCodeGrant())
 
 	requireProtocolError(t, err, "invalid_grant", "", "")
-	assert.Equal(t, []string{"aut-1"}, repo.revoked)
+	assert.Empty(t, repo.revoked, "o RedeemCode já revoga os tokens da Autorização do pedido no reuso")
 	assert.Empty(t, repo.saved)
+}
+
+// TestExchangeCode_ParRecusadoNaGravacao_InvalidGrant cobre o reuso do código ou a
+// revogação pela conta que entra entre o consumo e a gravação do par.
+func TestExchangeCode_ParRecusadoNaGravacao_InvalidGrant(t *testing.T) {
+	casos := map[string]error{
+		"codigo reapresentado": oauth.ErrCodeAlreadyUsed,
+		"autorizacao revogada": fmt.Errorf("contexto: %w", oauth.ErrAuthorizationNotFound),
+	}
+	for nome, causa := range casos {
+		t.Run(nome, func(t *testing.T) {
+			repo := testRepositoryWithRedeemableCode()
+			repo.saveErr = causa
+
+			_, err := newTestService(repo).ExchangeCode(context.Background(), validCodeGrant())
+
+			requireProtocolError(t, err, "invalid_grant", "", "")
+			assert.Len(t, repo.saved, 1)
+		})
+	}
 }
 
 func TestExchangeCode_CodigoReusadoSemAutorizacao_NaoRevoga(t *testing.T) {
@@ -166,11 +187,6 @@ func TestExchangeCode_FalhaDoRepositorio_DevolveErroEmbrulhado(t *testing.T) {
 	casos := map[string]func(*fakeOAuthRepository) error{
 		"ao consumir": func(r *fakeOAuthRepository) error { r.redeemErr = errors.New("banco fora do ar"); return r.redeemErr },
 		"ao salvar":   func(r *fakeOAuthRepository) error { r.saveErr = errors.New("banco fora do ar"); return r.saveErr },
-		"ao revogar": func(r *fakeOAuthRepository) error {
-			r.redeemErr = oauth.ErrCodeAlreadyUsed
-			r.revokeErr = errors.New("banco fora do ar")
-			return r.revokeErr
-		},
 	}
 	for nome, falha := range casos {
 		t.Run(nome, func(t *testing.T) {

@@ -352,11 +352,11 @@ func TestPostgresOAuthRepo_RedeemCode_ReusoDepoisDeExpirarContinuaJaUsado(t *tes
 	assert.Equal(t, "r1", got.Request.ID)
 }
 
-func TestPostgresOAuthRepo_RedeemCode_ReusoSemAutorizacaoAtiva(t *testing.T) {
+func TestPostgresOAuthRepo_RedeemCode_ReusoComAutorizacaoRevogadaDevolveADoPedido(t *testing.T) {
 	repo, pool := repoOAuth(t)
 	ctx := context.Background()
 	pedidoAprovado(t, repo, "r1", "h1", oauth.ScopeNotesRead)
-	_, err := repo.RedeemCode(ctx, "h1", instanteOAuth.Add(90*time.Second))
+	primeiro, err := repo.RedeemCode(ctx, "h1", instanteOAuth.Add(90*time.Second))
 	require.NoError(t, err)
 	_, err = pool.Exec(ctx, "UPDATE oauth_authorizations SET revoked_at = now()")
 	require.NoError(t, err)
@@ -366,7 +366,8 @@ func TestPostgresOAuthRepo_RedeemCode_ReusoSemAutorizacaoAtiva(t *testing.T) {
 	require.ErrorIs(t, err, oauth.ErrCodeAlreadyUsed)
 	assert.Equal(t, "r1", got.Request.ID)
 	assert.Equal(t, "u1", got.Request.UserID)
-	assert.Empty(t, got.Authorization.ID)
+	assert.Equal(t, primeiro.Authorization.ID, got.Authorization.ID, "a Autorização do pedido, mesmo revogada")
+	assert.True(t, got.Authorization.Revoked)
 }
 
 func TestPostgresOAuthRepo_RedeemCode_ExpiradoNoInstanteExato(t *testing.T) {
