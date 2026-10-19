@@ -26,6 +26,16 @@ pin "@marijn/find-cluster-break", to: "@marijn--find-cluster-break.js" # @1.0.3
 pin "crelt" # @1.0.7
 pin "style-mod" # @4.1.4
 pin "w3c-keyname" # @2.2.8
+# Linguagens dos blocos cercados no editor (editor/code_languages.js): sem preload, baixam quando aparece um bloco delas.
+# Arquivos de mode/ do pacote npm sem mudança (não importam nada); licença em vendor/javascript/LICENSES.txt.
+pin "@codemirror/legacy-modes/mode/diff", to: "@codemirror--legacy-modes--mode--diff.js", preload: false # @6.5.4
+pin "@codemirror/legacy-modes/mode/go", to: "@codemirror--legacy-modes--mode--go.js", preload: false # @6.5.4
+pin "@codemirror/legacy-modes/mode/javascript", to: "@codemirror--legacy-modes--mode--javascript.js", preload: false # @6.5.4
+pin "@codemirror/legacy-modes/mode/python", to: "@codemirror--legacy-modes--mode--python.js", preload: false # @6.5.4
+pin "@codemirror/legacy-modes/mode/ruby", to: "@codemirror--legacy-modes--mode--ruby.js", preload: false # @6.5.4
+pin "@codemirror/legacy-modes/mode/shell", to: "@codemirror--legacy-modes--mode--shell.js", preload: false # @6.5.4
+pin "@codemirror/legacy-modes/mode/sql", to: "@codemirror--legacy-modes--mode--sql.js", preload: false # @6.5.4
+pin "@codemirror/legacy-modes/mode/yaml", to: "@codemirror--legacy-modes--mode--yaml.js", preload: false # @6.5.4
 # Preview de markdown; licencas de quem nao traz o aviso no arquivo em vendor/javascript/LICENSES.txt.
 pin "dompurify" # @3.4.16
 pin "markdown-it" # @15.0.2
