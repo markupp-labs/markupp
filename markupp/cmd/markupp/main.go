@@ -242,16 +242,18 @@ func oauthServiceConfigFrom(cfg config.Config) oauth.ServiceConfig {
 		ExchangeTTL: time.Duration(cfg.OAuthExchangeMinutes) * time.Minute,
 		// A falha da busca fica lembrada pelo menor tempo de cache do documento.
 		CIMDFailureTTL: time.Duration(cfg.OAuthCIMDCacheMinMinutes) * time.Minute,
+		DCRMaxPending:  cfg.OAuthDCRMaxPending,
+		DCRPendingTTL:  time.Duration(cfg.OAuthDCRPendingHours) * time.Hour,
 	}
 }
 
 // oauthMetadataFrom publica a metadata do authorization server só quando a
-// MARKUPP_PUBLIC_URL liga o OAuth.
+// MARKUPP_PUBLIC_URL liga o OAuth, com o registro dinâmico conforme a config.
 func oauthMetadataFrom(cfg config.Config) *api.OAuthMetadata {
 	if !cfg.OAuthEnabled() {
 		return nil
 	}
-	return &api.OAuthMetadata{Issuer: cfg.PublicURL}
+	return &api.OAuthMetadata{Issuer: cfg.PublicURL, DynamicRegistration: cfg.OAuthDCREnabled}
 }
 
 func newAuthService(cfg config.Config, pool *pgxpool.Pool) (*auth.Service, *auth.TokenCodec) {
