@@ -44,6 +44,7 @@ type TitleIndex struct {
 type foldedTitle struct {
 	Title
 	runes []rune
+	bag   runeBag
 }
 
 // NewTitleIndex prepara os títulos do cofre para Candidates.
@@ -51,7 +52,7 @@ func NewTitleIndex(titles []Title) *TitleIndex {
 	idx := &TitleIndex{byLength: make(map[int][]foldedTitle)}
 	for _, t := range titles {
 		runes := []rune(mention.Fold(t.Key))
-		idx.byLength[len(runes)] = append(idx.byLength[len(runes)], foldedTitle{Title: t, runes: runes})
+		idx.byLength[len(runes)] = append(idx.byLength[len(runes)], foldedTitle{Title: t, runes: runes, bag: newRuneBag(runes)})
 	}
 	return idx
 }
@@ -62,6 +63,7 @@ func NewTitleIndex(titles []Title) *TitleIndex {
 // sai por distância e id.
 func (idx *TitleIndex) Candidates(sourceID, citedKey string) []Candidate {
 	cited := []rune(mention.Fold(citedKey))
+	citedBag := newRuneBag(cited)
 	best := make(map[string]Candidate)
 	for length, titles := range idx.byLength {
 		longest := max(length, len(cited))
@@ -69,7 +71,9 @@ func (idx *TitleIndex) Candidates(sourceID, citedKey string) []Candidate {
 			continue
 		}
 		for _, t := range titles {
-			idx.keepCloser(best, sourceID, t, cited, longest)
+			if citedBag.lowerBound(t.bag)*editRatioDenominator <= longest {
+				idx.keepCloser(best, sourceID, t, cited, longest)
+			}
 		}
 	}
 	return sortedCandidates(best)
