@@ -100,8 +100,9 @@ export default class extends Controller {
   }
 }
 
-// Só o editor põe o cabeçalho; o servidor grava o conteúdo como veio.
+// Só o editor põe o cabeçalho; o servidor grava o conteúdo como veio. O título é o nome do arquivo: o que vem antes
+// da última barra é pasta e não entra; com barra no fim não há nome, e nem cabeçalho.
 function headingFor(title) {
-  const trimmed = title.trim()
-  return trimmed ? `# ${trimmed}\n\n` : ""
+  const name = title.trim().split("/").pop().trim()
+  return name ? `# ${name}\n\n` : ""
 }
