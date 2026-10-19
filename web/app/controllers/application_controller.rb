@@ -29,12 +29,14 @@ class ApplicationController < ActionController::Base
   private
     def credential = @credential ||= PanelCredential.new(session, markupp_api_factory)
 
-    # Só GET de página inteira volta depois do login: formulário enviado sem sessão se perde, e frame sozinho não é página.
+    # Só GET de página inteira volta depois do login: formulário enviado sem sessão se perde, e frame sozinho ou json
+    # (a busca do ![[nota]] em segundo plano) não é página.
     def require_login
       return if credential.signed_in?
+      return head :unauthorized if request.format.json?
       return render_frame_alert(new_session_path, t("markupp_api.errors.session_expired"), status: :unauthorized) if turbo_frame_request?
 
-      session[:return_to] = request.fullpath if request.get?
+      session[:return_to] = request.fullpath if request.get? && request.format.html?
       redirect_to new_session_path
     end
 
@@ -105,7 +107,9 @@ class ApplicationController < ActionController::Base
       leave_page(new_session_path, t("markupp_api.errors.session_expired"), frame_status: :unauthorized)
     end
 
+    # Json não segue redirect para página: só o status, e o aviso fica para a próxima página de verdade.
     def leave_page(path, alert, frame_status:)
+      return head frame_status if request.format.json?
       return render_frame_alert(path, alert, status: frame_status) if turbo_frame_request?
 
       redirect_to path, alert:
