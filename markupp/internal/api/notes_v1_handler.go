@@ -40,7 +40,7 @@ func (h *notesHandler) createInRouteVault(w http.ResponseWriter, r *http.Request
 func (h *notesHandler) listVault(w http.ResponseWriter, r *http.Request) {
 	q, err := parseVaultNotesQuery(r)
 	if err != nil {
-		writeError(w, "invalid_request", err.Error(), http.StatusBadRequest)
+		writeDomainError(w, err)
 		return
 	}
 	list, err := h.svc.ListVaultNotes(r.Context(), chi.URLParam(r, "id"), q)

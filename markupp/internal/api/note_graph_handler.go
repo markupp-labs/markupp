@@ -11,21 +11,53 @@ import (
 
 // NoteGraph é a leitura do grafo de ligações que os handlers HTTP consomem.
 type NoteGraph interface {
-	Backlinks(ctx context.Context, noteID string, offset, limit int) ([]notes.Backlink, error)
-	Neighbors(ctx context.Context, noteID string, offset, limit int) ([]notes.Neighbor, error)
-	UnresolvedLinks(ctx context.Context, vaultID string, offset, limit int) ([]notes.UnresolvedLink, error)
+	Links(ctx context.Context, noteID string, f notes.LinkFilter) ([]notes.Link, error)
+	Backlinks(ctx context.Context, noteID string, f notes.LinkFilter) ([]notes.Link, error)
+	VaultLinks(ctx context.Context, vaultID string, q notes.VaultLinkQuery) ([]notes.Link, error)
 	Mentions(ctx context.Context, noteID string, offset, limit int) ([]notes.UnlinkedMention, error)
 	Suggestions(ctx context.Context, noteID string, offset, limit int) ([]notes.LinkSuggestion, error)
 	Communities(ctx context.Context, vaultID string, offset, limit int) ([]notes.CommunityMember, error)
 }
 
 func mountNoteGraphRoutes(r chi.Router, graph NoteGraph) {
-	r.Get("/notes/{id}/backlinks", servePage(graph.Backlinks))
-	r.Get("/notes/{id}/neighbors", servePage(graph.Neighbors))
+	r.Get("/v1/notes/{id}/links", serveList(readLinkFilter, graph.Links))
+	r.Get("/v1/notes/{id}/backlinks", serveList(readLinkFilter, graph.Backlinks))
+	r.Get("/v1/vaults/{id}/links", serveList(readVaultLinkQuery, graph.VaultLinks))
 	r.Get("/notes/{id}/mentions", servePage(graph.Mentions))
 	r.Get("/notes/{id}/suggestions", servePage(graph.Suggestions))
-	r.Get("/vaults/{id}/unresolved-links", servePage(graph.UnresolvedLinks))
 	r.Get("/vaults/{id}/clusters", servePage(graph.Communities))
+}
+
+// serveList responde com a página que list devolve para o id da rota e a consulta
+// que read lê da query string, sempre como array JSON; consulta inválida é 400.
+func serveList[Q, T any](read func(*queryReader) Q, list func(ctx context.Context, id string, q Q) ([]T, error)) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		qr := queryReader{values: r.URL.Query()}
+		q := read(&qr)
+		if qr.err != nil {
+			writeDomainError(w, qr.err)
+			return
+		}
+		page, err := list(r.Context(), chi.URLParam(r, "id"), q)
+		if err != nil {
+			writeDomainError(w, err)
+			return
+		}
+		if page == nil {
+			page = []T{}
+		}
+		writeJSON(w, http.StatusOK, page)
+	}
+}
+
+func readLinkFilter(qr *queryReader) notes.LinkFilter {
+	f := notes.LinkFilter{Type: qr.oneOf("type", notes.LinkExplicit, notes.LinkEmbed, notes.LinkTyped, notes.LinkInferred)}
+	f.Offset, f.Limit = qr.page()
+	return f
+}
+
+func readVaultLinkQuery(qr *queryReader) notes.VaultLinkQuery {
+	return notes.VaultLinkQuery{Status: qr.oneOf("status", notes.LinkResolved, notes.LinkUnresolved), LinkFilter: readLinkFilter(qr)}
 }
 
 // servePage responde com a página que list devolve para o id da rota, sempre como

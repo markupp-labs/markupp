@@ -4,6 +4,7 @@ import (
 	"context"
 	"math"
 
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/notes"
@@ -24,38 +25,39 @@ func NewPostgresNoteGraph(pool *pgxpool.Pool, searchConfig string) *PostgresNote
 	return &PostgresNoteGraph{pool: pool, searchConfig: searchConfig}
 }
 
-// Backlinks devolve as notas que ligam à nota noteID, por caminho, com os predicados
-// das ligações tipadas, ou notes.ErrNotFound quando o ator não enxerga a nota.
-func (g *PostgresNoteGraph) Backlinks(ctx context.Context, noteID string, offset, limit int) ([]notes.Backlink, error) {
-	var out []notes.Backlink
+// Links devolve as ligações que a nota noteID faz, ou notes.ErrNotFound quando o ator
+// não enxerga a nota.
+func (g *PostgresNoteGraph) Links(ctx context.Context, noteID string, f notes.LinkFilter) ([]notes.Link, error) {
+	var out []notes.Link
 	err := g.inNote(ctx, noteID, func(q *gen.Queries) error {
-		rows, err := q.ListBacklinks(ctx, gen.ListBacklinksParams{NoteID: noteID, PageOffset: toInt32(offset), PageLimit: toInt32(limit)})
-		out = convertRows(rows, toBacklink)
+		rows, err := q.ListOutgoingLinks(ctx, gen.ListOutgoingLinksParams{NoteID: noteID, Kind: f.Type, PageOffset: toInt32(f.Offset), PageLimit: toInt32(f.Limit)})
+		out = convertRows(rows, toLink)
 		return err
 	})
 	return out, err
 }
 
-// Neighbors devolve as notas ligadas à nota noteID em qualquer sentido, por
-// caminho, ou notes.ErrNotFound quando o ator não enxerga a nota.
-func (g *PostgresNoteGraph) Neighbors(ctx context.Context, noteID string, offset, limit int) ([]notes.Neighbor, error) {
-	var out []notes.Neighbor
+// Backlinks devolve as ligações resolvidas para a nota noteID, ou notes.ErrNotFound
+// quando o ator não enxerga a nota.
+func (g *PostgresNoteGraph) Backlinks(ctx context.Context, noteID string, f notes.LinkFilter) ([]notes.Link, error) {
+	var out []notes.Link
 	err := g.inNote(ctx, noteID, func(q *gen.Queries) error {
-		rows, err := q.ListNeighbors(ctx, gen.ListNeighborsParams{NoteID: noteID, PageOffset: toInt32(offset), PageLimit: toInt32(limit)})
-		out = convertRows(rows, toNeighbor)
+		rows, err := q.ListIncomingLinks(ctx, gen.ListIncomingLinksParams{NoteID: noteID, Kind: f.Type, PageOffset: toInt32(f.Offset), PageLimit: toInt32(f.Limit)})
+		out = convertRows(rows, toLink)
 		return err
 	})
 	return out, err
 }
 
-// UnresolvedLinks devolve as ligações do cofre vaultID para títulos sem nota, por
-// caminho da nota que liga, ou notes.ErrVaultForbidden quando o ator não enxerga o
-// cofre.
-func (g *PostgresNoteGraph) UnresolvedLinks(ctx context.Context, vaultID string, offset, limit int) ([]notes.UnresolvedLink, error) {
-	var out []notes.UnresolvedLink
+// VaultLinks devolve as ligações das notas do cofre vaultID, ou
+// notes.ErrVaultForbidden quando o ator não enxerga o cofre.
+func (g *PostgresNoteGraph) VaultLinks(ctx context.Context, vaultID string, vq notes.VaultLinkQuery) ([]notes.Link, error) {
+	var out []notes.Link
 	err := g.inVault(ctx, vaultID, func(q *gen.Queries) error {
-		rows, err := q.ListUnresolvedLinks(ctx, gen.ListUnresolvedLinksParams{VaultID: vaultID, PageOffset: toInt32(offset), PageLimit: toInt32(limit)})
-		out = convertRows(rows, toUnresolvedLink)
+		rows, err := q.ListVaultLinks(ctx, gen.ListVaultLinksParams{
+			VaultID: vaultID, Kind: vq.Type, Status: vq.Status, PageOffset: toInt32(vq.Offset), PageLimit: toInt32(vq.Limit),
+		})
+		out = convertRows(rows, toLink)
 		return err
 	})
 	return out, err
@@ -107,27 +109,24 @@ func requireVisibleVault(ctx context.Context, q *gen.Queries, vaultID string) er
 	return nil
 }
 
-func toBacklink(r gen.ListBacklinksRow) notes.Backlink {
-	return notes.Backlink{
-		LinkedNote: notes.LinkedNote{ID: r.ID, VaultID: r.VaultID, Path: r.Path, UpdatedAt: r.UpdatedAt},
-		Predicates: r.Predicates,
-		Inferred:   r.Inferred,
+func toLink(r gen.NoteLinkItem) notes.Link {
+	link := notes.Link{
+		Source: notes.Summarize(r.SourceID, r.SourcePath), CitedTitle: r.CitedTitle, Type: r.Kind,
+		Target: optionalSummary(r.TargetID, r.TargetPath), InferredTarget: optionalSummary(r.InferredTargetID, r.InferredTargetPath),
 	}
+	if r.Predicate.Valid {
+		link.Predicate = &r.Predicate.String
+	}
+	return link
 }
 
-func toNeighbor(r gen.ListNeighborsRow) notes.Neighbor {
-	return notes.Neighbor{
-		LinkedNote:         notes.LinkedNote{ID: r.ID, VaultID: r.VaultID, Path: r.Path, UpdatedAt: r.UpdatedAt},
-		Incoming:           r.Incoming,
-		Outgoing:           r.Outgoing,
-		IncomingPredicates: r.IncomingPredicates,
-		OutgoingPredicates: r.OutgoingPredicates,
-		Inferred:           r.Inferred,
+// optionalSummary resume a nota que a coluna nula pode não trazer.
+func optionalSummary(id, notePath pgtype.Text) *notes.NoteSummary {
+	if !id.Valid {
+		return nil
 	}
-}
-
-func toUnresolvedLink(r gen.ListUnresolvedLinksRow) notes.UnresolvedLink {
-	return notes.UnresolvedLink{NoteID: r.NoteID, Path: r.Path, Title: r.CitedTitle, Kind: r.Kind}
+	summary := notes.Summarize(id.String, notePath.String)
+	return &summary
 }
 
 func toCommunityMember(r gen.ListCommunityMembersRow) notes.CommunityMember {

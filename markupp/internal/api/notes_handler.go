@@ -181,11 +181,11 @@ func parsePage(w http.ResponseWriter, r *http.Request) (offset, limit int, ok bo
 func pageParams(values url.Values) (offset, limit int, err error) {
 	offset, err = parseQueryInt(values.Get("offset"), 0)
 	if err != nil {
-		return 0, 0, fmt.Errorf("offset deve ser um inteiro, recebido %q", values.Get("offset"))
+		return 0, 0, fmt.Errorf("%w: offset deve ser um inteiro, recebido %q", errInvalidQuery, values.Get("offset"))
 	}
 	limit, err = parseQueryInt(values.Get("limit"), 10)
 	if err != nil {
-		return 0, 0, fmt.Errorf("limit deve ser um inteiro, recebido %q", values.Get("limit"))
+		return 0, 0, fmt.Errorf("%w: limit deve ser um inteiro, recebido %q", errInvalidQuery, values.Get("limit"))
 	}
 	return clamp(offset, 0, maxOffset), clamp(limit, minLimit, maxLimit), nil
 }
@@ -228,6 +228,8 @@ func writeError(w http.ResponseWriter, code, message string, status int) {
 
 func writeDomainError(w http.ResponseWriter, err error) {
 	switch {
+	case errors.Is(err, errInvalidQuery):
+		writeError(w, "invalid_request", err.Error(), http.StatusBadRequest)
 	case errors.Is(err, notes.ErrInvalidPath):
 		writeError(w, "invalid_path", err.Error(), http.StatusBadRequest)
 	case errors.Is(err, notes.ErrInvalidContent):

@@ -56,12 +56,13 @@ type NoteCommunity struct {
 }
 
 type NoteEdge struct {
-	SourceID  string
-	TargetID  string
-	VaultID   string
-	Kind      string
-	Predicate pgtype.Text
-	TitleKey  string
+	SourceID   string
+	TargetID   string
+	VaultID    string
+	Kind       string
+	Predicate  pgtype.Text
+	TitleKey   string
+	CitedTitle string
 }
 
 type NoteIndexQueue struct {
@@ -77,6 +78,20 @@ type NoteLink struct {
 	TargetPath pgtype.Text
 	Kind       string
 	Predicate  pgtype.Text
+}
+
+type NoteLinkItem struct {
+	SourceID           string
+	SourcePath         string
+	VaultID            string
+	TargetID           pgtype.Text
+	TargetPath         pgtype.Text
+	CitedTitle         string
+	TitleKey           string
+	Kind               string
+	Predicate          pgtype.Text
+	InferredTargetID   pgtype.Text
+	InferredTargetPath pgtype.Text
 }
 
 type NoteSearchIndex struct {

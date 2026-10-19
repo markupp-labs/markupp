@@ -1,47 +1,33 @@
 -- Leituras do grafo de ligações, no papel da aplicação: o RLS recorta o tenant e os
--- cofres do ator, e note_edges resolve as ligações pelos títulos naquele momento.
+-- cofres do ator, e note_edges e note_link_items resolvem as ligações pelos títulos
+-- naquele momento.
 
 -- name: VaultVisible :one
 SELECT EXISTS (SELECT 1 FROM vaults WHERE id = sqlc.arg(vault_id)) AS visible;
 
--- Uma linha por nota que liga, com as chaves das ligações tipadas dela, sem repetir,
--- e se ela liga só por ligação inferida.
--- name: ListBacklinks :many
-SELECT n.id, n.vault_id, n.path, n.updated_at,
-       coalesce(array_agg(DISTINCT e.predicate) FILTER (WHERE e.predicate IS NOT NULL), '{}')::text[] AS predicates,
-       bool_and(e.kind = 'inferred')::bool AS inferred
-FROM note_edges e JOIN notes n ON n.id = e.source_id
-WHERE e.target_id = sqlc.arg(note_id)
-GROUP BY n.id
-ORDER BY n.path, n.id
+-- As listas de ligações saem na mesma ordem: nota que liga, título citado, tipo,
+-- predicado e nota a que liga.
+
+-- name: ListOutgoingLinks :many
+SELECT * FROM note_link_items
+WHERE source_id = sqlc.arg(note_id)
+  AND (sqlc.arg(kind)::text = '' OR kind = sqlc.arg(kind)::text)
+ORDER BY source_path, source_id, title_key, kind, predicate NULLS FIRST, target_path NULLS FIRST, target_id
 LIMIT sqlc.arg(page_limit) OFFSET sqlc.arg(page_offset);
 
--- inferred diz se as duas notas se ligam só por ligação inferida, em qualquer sentido.
--- name: ListNeighbors :many
-WITH v AS (
-    SELECT e.target_id AS id, false AS incoming, true AS outgoing, e.predicate, e.kind FROM note_edges e WHERE e.source_id = sqlc.arg(note_id)
-    UNION ALL
-    SELECT e.source_id, true, false, e.predicate, e.kind FROM note_edges e WHERE e.target_id = sqlc.arg(note_id)
-)
-SELECT n.id, n.vault_id, n.path, n.updated_at, bool_or(v.incoming)::bool AS incoming, bool_or(v.outgoing)::bool AS outgoing,
-       coalesce(array_agg(DISTINCT v.predicate) FILTER (WHERE v.incoming AND v.predicate IS NOT NULL), '{}')::text[] AS incoming_predicates,
-       coalesce(array_agg(DISTINCT v.predicate) FILTER (WHERE v.outgoing AND v.predicate IS NOT NULL), '{}')::text[] AS outgoing_predicates,
-       bool_and(v.kind = 'inferred')::bool AS inferred
-FROM v JOIN notes n ON n.id = v.id
-GROUP BY n.id
-ORDER BY n.path, n.id
+-- name: ListIncomingLinks :many
+SELECT * FROM note_link_items
+WHERE target_id = sqlc.arg(note_id)::text
+  AND (sqlc.arg(kind)::text = '' OR kind = sqlc.arg(kind)::text)
+ORDER BY source_path, source_id, title_key, kind, predicate NULLS FIRST, target_path NULLS FIRST, target_id
 LIMIT sqlc.arg(page_limit) OFFSET sqlc.arg(page_offset);
 
--- A ligação inferida não entra: ela é o palpite para a não resolvida, que continua na
--- lista como foi escrita.
--- name: ListUnresolvedLinks :many
-SELECT l.note_id, n.path, l.cited_title, l.kind
-FROM note_links l
-JOIN notes n ON n.id = l.note_id
-WHERE l.vault_id = sqlc.arg(vault_id)
-  AND l.kind <> 'inferred'
-  AND NOT EXISTS (SELECT 1 FROM note_titles t WHERE t.vault_id = l.vault_id AND t.title_key = l.title_key)
-ORDER BY n.path, l.title_key, l.kind
+-- name: ListVaultLinks :many
+SELECT * FROM note_link_items
+WHERE vault_id = sqlc.arg(vault_id)
+  AND (sqlc.arg(kind)::text = '' OR kind = sqlc.arg(kind)::text)
+  AND (sqlc.arg(status)::text = '' OR (sqlc.arg(status)::text = 'resolved') = (target_id IS NOT NULL))
+ORDER BY source_path, source_id, title_key, kind, predicate NULLS FIRST, target_path NULLS FIRST, target_id
 LIMIT sqlc.arg(page_limit) OFFSET sqlc.arg(page_offset);
 
 -- Chaves de título da nota, para achar quem a menciona.

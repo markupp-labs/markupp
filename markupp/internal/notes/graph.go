@@ -1,6 +1,10 @@
 package notes
 
-import "time"
+import (
+	"time"
+
+	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/indexing"
+)
 
 // LinkedNote é a projeção de uma nota no grafo de ligações, sem o conteúdo.
 type LinkedNote struct {
@@ -10,35 +14,62 @@ type LinkedNote struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
-// Backlink é uma nota que liga a outra, com os predicados das ligações tipadas que
-// ela faz para a outra, vazio quando ela liga só pelo corpo, e Inferred quando ela
-// liga só por ligação inferida.
-type Backlink struct {
-	LinkedNote
-	Predicates []string `json:"predicates"`
-	Inferred   bool     `json:"inferred"`
+// NoteSummary é a nota citada em outro recurso: id, título e caminho.
+type NoteSummary struct {
+	ID    string `json:"id"`
+	Title string `json:"title"`
+	Path  string `json:"path"`
 }
 
-// Neighbor é uma nota ligada a outra, com o sentido da ligação: Incoming quando ela
-// liga à outra, Outgoing quando a outra liga a ela; as duas coisas podem valer. Os
-// predicados das ligações tipadas vêm separados pelo mesmo sentido, e Inferred diz
-// que as duas se ligam só por ligação inferida.
-type Neighbor struct {
-	LinkedNote
-	Incoming           bool     `json:"incoming"`
-	Outgoing           bool     `json:"outgoing"`
-	IncomingPredicates []string `json:"incoming_predicates"`
-	OutgoingPredicates []string `json:"outgoing_predicates"`
-	Inferred           bool     `json:"inferred"`
+// Summarize resume a nota de id e caminho notePath, com o título que vem do caminho.
+func Summarize(id, notePath string) NoteSummary {
+	return NoteSummary{ID: id, Title: indexing.Title(notePath), Path: notePath}
 }
 
-// UnresolvedLink é a ligação da nota NoteID, de caminho Path, para um título que
-// nenhuma nota do cofre tem, como escrito na nota.
-type UnresolvedLink struct {
-	NoteID string `json:"note_id"`
-	Path   string `json:"path"`
-	Title  string `json:"title"`
-	Kind   string `json:"kind"`
+// Tipos de ligação.
+const (
+	LinkExplicit = "explicit"
+	LinkEmbed    = "embed"
+	LinkTyped    = "typed"
+	LinkInferred = "inferred"
+)
+
+// Situações de resolução de uma ligação.
+const (
+	LinkResolved   = "resolved"
+	LinkUnresolved = "unresolved"
+)
+
+// Link é uma ligação que Source faz citando CitedTitle, como escrito na nota, para
+// Target. A ligação ambígua aparece uma vez por nota com o título, e a não resolvida
+// uma vez, com Target nil e o palpite do segundo estágio em InferredTarget, quando
+// há. Predicate é a chave do frontmatter da ligação tipada, nil nas outras.
+type Link struct {
+	Source         NoteSummary  `json:"source"`
+	Target         *NoteSummary `json:"target"`
+	CitedTitle     string       `json:"cited_title"`
+	Type           string       `json:"type"`
+	Predicate      *string      `json:"predicate"`
+	InferredTarget *NoteSummary `json:"inferred_target"`
+}
+
+// Page é a página pedida de uma lista: quantos itens pular e quantos devolver.
+type Page struct {
+	Offset int
+	Limit  int
+}
+
+// LinkFilter recorta uma lista de ligações pelo tipo, vazio para todos.
+type LinkFilter struct {
+	Type string
+	Page
+}
+
+// VaultLinkQuery recorta as ligações do cofre também pela resolução, vazia para as
+// duas.
+type VaultLinkQuery struct {
+	Status string
+	LinkFilter
 }
 
 // Sentidos de uma menção não ligada em relação à nota lida.

@@ -10,61 +10,6 @@ import (
 	"time"
 )
 
-const listBacklinks = `-- name: ListBacklinks :many
-SELECT n.id, n.vault_id, n.path, n.updated_at,
-       coalesce(array_agg(DISTINCT e.predicate) FILTER (WHERE e.predicate IS NOT NULL), '{}')::text[] AS predicates,
-       bool_and(e.kind = 'inferred')::bool AS inferred
-FROM note_edges e JOIN notes n ON n.id = e.source_id
-WHERE e.target_id = $1
-GROUP BY n.id
-ORDER BY n.path, n.id
-LIMIT $3 OFFSET $2
-`
-
-type ListBacklinksParams struct {
-	NoteID     string
-	PageOffset int32
-	PageLimit  int32
-}
-
-type ListBacklinksRow struct {
-	ID         string
-	VaultID    string
-	Path       string
-	UpdatedAt  time.Time
-	Predicates []string
-	Inferred   bool
-}
-
-// Uma linha por nota que liga, com as chaves das ligações tipadas dela, sem repetir,
-// e se ela liga só por ligação inferida.
-func (q *Queries) ListBacklinks(ctx context.Context, arg ListBacklinksParams) ([]ListBacklinksRow, error) {
-	rows, err := q.db.Query(ctx, listBacklinks, arg.NoteID, arg.PageOffset, arg.PageLimit)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []ListBacklinksRow
-	for rows.Next() {
-		var i ListBacklinksRow
-		if err := rows.Scan(
-			&i.ID,
-			&i.VaultID,
-			&i.Path,
-			&i.UpdatedAt,
-			&i.Predicates,
-			&i.Inferred,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const listCommunityMembers = `-- name: ListCommunityMembers :many
 SELECT n.id, n.vault_id, n.path, n.updated_at, m.community_id,
        (count(*) OVER (PARTITION BY m.community_id))::int AS community_size
@@ -109,6 +54,58 @@ func (q *Queries) ListCommunityMembers(ctx context.Context, arg ListCommunityMem
 			&i.UpdatedAt,
 			&i.CommunityID,
 			&i.CommunitySize,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listIncomingLinks = `-- name: ListIncomingLinks :many
+SELECT source_id, source_path, vault_id, target_id, target_path, cited_title, title_key, kind, predicate, inferred_target_id, inferred_target_path FROM note_link_items
+WHERE target_id = $1::text
+  AND ($2::text = '' OR kind = $2::text)
+ORDER BY source_path, source_id, title_key, kind, predicate NULLS FIRST, target_path NULLS FIRST, target_id
+LIMIT $4 OFFSET $3
+`
+
+type ListIncomingLinksParams struct {
+	NoteID     string
+	Kind       string
+	PageOffset int32
+	PageLimit  int32
+}
+
+func (q *Queries) ListIncomingLinks(ctx context.Context, arg ListIncomingLinksParams) ([]NoteLinkItem, error) {
+	rows, err := q.db.Query(ctx, listIncomingLinks,
+		arg.NoteID,
+		arg.Kind,
+		arg.PageOffset,
+		arg.PageLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []NoteLinkItem
+	for rows.Next() {
+		var i NoteLinkItem
+		if err := rows.Scan(
+			&i.SourceID,
+			&i.SourcePath,
+			&i.VaultID,
+			&i.TargetID,
+			&i.TargetPath,
+			&i.CitedTitle,
+			&i.TitleKey,
+			&i.Kind,
+			&i.Predicate,
+			&i.InferredTargetID,
+			&i.InferredTargetPath,
 		); err != nil {
 			return nil, err
 		}
@@ -281,71 +278,6 @@ func (q *Queries) ListMentioningNotes(ctx context.Context, arg ListMentioningNot
 	return items, nil
 }
 
-const listNeighbors = `-- name: ListNeighbors :many
-WITH v AS (
-    SELECT e.target_id AS id, false AS incoming, true AS outgoing, e.predicate, e.kind FROM note_edges e WHERE e.source_id = $3
-    UNION ALL
-    SELECT e.source_id, true, false, e.predicate, e.kind FROM note_edges e WHERE e.target_id = $3
-)
-SELECT n.id, n.vault_id, n.path, n.updated_at, bool_or(v.incoming)::bool AS incoming, bool_or(v.outgoing)::bool AS outgoing,
-       coalesce(array_agg(DISTINCT v.predicate) FILTER (WHERE v.incoming AND v.predicate IS NOT NULL), '{}')::text[] AS incoming_predicates,
-       coalesce(array_agg(DISTINCT v.predicate) FILTER (WHERE v.outgoing AND v.predicate IS NOT NULL), '{}')::text[] AS outgoing_predicates,
-       bool_and(v.kind = 'inferred')::bool AS inferred
-FROM v JOIN notes n ON n.id = v.id
-GROUP BY n.id
-ORDER BY n.path, n.id
-LIMIT $2 OFFSET $1
-`
-
-type ListNeighborsParams struct {
-	PageOffset int32
-	PageLimit  int32
-	NoteID     string
-}
-
-type ListNeighborsRow struct {
-	ID                 string
-	VaultID            string
-	Path               string
-	UpdatedAt          time.Time
-	Incoming           bool
-	Outgoing           bool
-	IncomingPredicates []string
-	OutgoingPredicates []string
-	Inferred           bool
-}
-
-// inferred diz se as duas notas se ligam só por ligação inferida, em qualquer sentido.
-func (q *Queries) ListNeighbors(ctx context.Context, arg ListNeighborsParams) ([]ListNeighborsRow, error) {
-	rows, err := q.db.Query(ctx, listNeighbors, arg.PageOffset, arg.PageLimit, arg.NoteID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []ListNeighborsRow
-	for rows.Next() {
-		var i ListNeighborsRow
-		if err := rows.Scan(
-			&i.ID,
-			&i.VaultID,
-			&i.Path,
-			&i.UpdatedAt,
-			&i.Incoming,
-			&i.Outgoing,
-			&i.IncomingPredicates,
-			&i.OutgoingPredicates,
-			&i.Inferred,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const listNoteTitleKeys = `-- name: ListNoteTitleKeys :many
 SELECT title_key FROM note_titles WHERE note_id = $1 ORDER BY title_key
 `
@@ -364,6 +296,61 @@ func (q *Queries) ListNoteTitleKeys(ctx context.Context, noteID string) ([]strin
 			return nil, err
 		}
 		items = append(items, title_key)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listOutgoingLinks = `-- name: ListOutgoingLinks :many
+
+SELECT source_id, source_path, vault_id, target_id, target_path, cited_title, title_key, kind, predicate, inferred_target_id, inferred_target_path FROM note_link_items
+WHERE source_id = $1
+  AND ($2::text = '' OR kind = $2::text)
+ORDER BY source_path, source_id, title_key, kind, predicate NULLS FIRST, target_path NULLS FIRST, target_id
+LIMIT $4 OFFSET $3
+`
+
+type ListOutgoingLinksParams struct {
+	NoteID     string
+	Kind       string
+	PageOffset int32
+	PageLimit  int32
+}
+
+// As listas de ligações saem na mesma ordem: nota que liga, título citado, tipo,
+// predicado e nota a que liga.
+func (q *Queries) ListOutgoingLinks(ctx context.Context, arg ListOutgoingLinksParams) ([]NoteLinkItem, error) {
+	rows, err := q.db.Query(ctx, listOutgoingLinks,
+		arg.NoteID,
+		arg.Kind,
+		arg.PageOffset,
+		arg.PageLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []NoteLinkItem
+	for rows.Next() {
+		var i NoteLinkItem
+		if err := rows.Scan(
+			&i.SourceID,
+			&i.SourcePath,
+			&i.VaultID,
+			&i.TargetID,
+			&i.TargetPath,
+			&i.CitedTitle,
+			&i.TitleKey,
+			&i.Kind,
+			&i.Predicate,
+			&i.InferredTargetID,
+			&i.InferredTargetPath,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -412,46 +399,50 @@ func (q *Queries) ListStructuralSuggestions(ctx context.Context, noteID string) 
 	return items, nil
 }
 
-const listUnresolvedLinks = `-- name: ListUnresolvedLinks :many
-SELECT l.note_id, n.path, l.cited_title, l.kind
-FROM note_links l
-JOIN notes n ON n.id = l.note_id
-WHERE l.vault_id = $1
-  AND l.kind <> 'inferred'
-  AND NOT EXISTS (SELECT 1 FROM note_titles t WHERE t.vault_id = l.vault_id AND t.title_key = l.title_key)
-ORDER BY n.path, l.title_key, l.kind
-LIMIT $3 OFFSET $2
+const listVaultLinks = `-- name: ListVaultLinks :many
+SELECT source_id, source_path, vault_id, target_id, target_path, cited_title, title_key, kind, predicate, inferred_target_id, inferred_target_path FROM note_link_items
+WHERE vault_id = $1
+  AND ($2::text = '' OR kind = $2::text)
+  AND ($3::text = '' OR ($3::text = 'resolved') = (target_id IS NOT NULL))
+ORDER BY source_path, source_id, title_key, kind, predicate NULLS FIRST, target_path NULLS FIRST, target_id
+LIMIT $5 OFFSET $4
 `
 
-type ListUnresolvedLinksParams struct {
+type ListVaultLinksParams struct {
 	VaultID    string
+	Kind       string
+	Status     string
 	PageOffset int32
 	PageLimit  int32
 }
 
-type ListUnresolvedLinksRow struct {
-	NoteID     string
-	Path       string
-	CitedTitle string
-	Kind       string
-}
-
-// A ligação inferida não entra: ela é o palpite para a não resolvida, que continua na
-// lista como foi escrita.
-func (q *Queries) ListUnresolvedLinks(ctx context.Context, arg ListUnresolvedLinksParams) ([]ListUnresolvedLinksRow, error) {
-	rows, err := q.db.Query(ctx, listUnresolvedLinks, arg.VaultID, arg.PageOffset, arg.PageLimit)
+func (q *Queries) ListVaultLinks(ctx context.Context, arg ListVaultLinksParams) ([]NoteLinkItem, error) {
+	rows, err := q.db.Query(ctx, listVaultLinks,
+		arg.VaultID,
+		arg.Kind,
+		arg.Status,
+		arg.PageOffset,
+		arg.PageLimit,
+	)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []ListUnresolvedLinksRow
+	var items []NoteLinkItem
 	for rows.Next() {
-		var i ListUnresolvedLinksRow
+		var i NoteLinkItem
 		if err := rows.Scan(
-			&i.NoteID,
-			&i.Path,
+			&i.SourceID,
+			&i.SourcePath,
+			&i.VaultID,
+			&i.TargetID,
+			&i.TargetPath,
 			&i.CitedTitle,
+			&i.TitleKey,
 			&i.Kind,
+			&i.Predicate,
+			&i.InferredTargetID,
+			&i.InferredTargetPath,
 		); err != nil {
 			return nil, err
 		}
@@ -535,7 +526,8 @@ SELECT EXISTS (SELECT 1 FROM vaults WHERE id = $1) AS visible
 `
 
 // Leituras do grafo de ligações, no papel da aplicação: o RLS recorta o tenant e os
-// cofres do ator, e note_edges resolve as ligações pelos títulos naquele momento.
+// cofres do ator, e note_edges e note_link_items resolvem as ligações pelos títulos
+// naquele momento.
 func (q *Queries) VaultVisible(ctx context.Context, vaultID string) (bool, error) {
 	row := q.db.QueryRow(ctx, vaultVisible, vaultID)
 	var visible bool
