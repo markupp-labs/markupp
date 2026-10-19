@@ -78,6 +78,7 @@ func Default() Config {
 		OAuthRefreshDays:        30,
 		OAuthRequestMinutes:     10,
 		OAuthCodeSeconds:        60,
+		OAuthExchangeMinutes:    5,
 	}
 }
 

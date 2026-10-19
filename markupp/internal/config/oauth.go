@@ -73,6 +73,7 @@ func loadOAuthDurations(lookup LookupFunc, cfg *Config) error {
 		{"MARKUPP_OAUTH_REFRESH_DAYS", 1, 365, &cfg.OAuthRefreshDays},
 		{"MARKUPP_OAUTH_REQUEST_MINUTES", 1, 60, &cfg.OAuthRequestMinutes},
 		{"MARKUPP_OAUTH_CODE_SECONDS", 10, 600, &cfg.OAuthCodeSeconds},
+		{"MARKUPP_OAUTH_EXCHANGE_MINUTES", 1, 15, &cfg.OAuthExchangeMinutes},
 	}
 	for _, duration := range durations {
 		value := int64(*duration.target)
