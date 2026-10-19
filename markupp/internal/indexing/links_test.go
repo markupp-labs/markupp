@@ -36,9 +36,21 @@ func TestIndex_Wikilinks_ViramLigacoesPeloTituloCitado(t *testing.T) {
 
 	assert.Equal(t, []indexing.Link{
 		{CitedTitle: "Alvo", TitleKey: "alvo", Kind: indexing.ExplicitLink},
-		{CitedTitle: "Outra Nota", TitleKey: "outra nota", Kind: indexing.ExplicitLink},
+		{CitedTitle: "Outra Nota", TitleKey: "outra nota", TargetPath: "pasta/Outra Nota.md", Kind: indexing.ExplicitLink},
 		{CitedTitle: "foto.png", TitleKey: "foto.png", Kind: indexing.EmbedLink},
 	}, nota.Links, "ligacao repetida para o mesmo titulo conta uma vez")
+}
+
+func TestIndex_WikilinkComPasta_ResolvePeloCaminhoAPartirDaRaizDoCofre(t *testing.T) {
+	nota := indexaUma(t, "sub/origem.md", "[[pasta/Nota]] [[/raiz/Doc.MD]] ![[anexos/foto.png]] [[Solta]] [[a/../b/Outra]]")
+
+	assert.Equal(t, []indexing.Link{
+		{CitedTitle: "Nota", TitleKey: "nota", TargetPath: "pasta/Nota.md", Kind: indexing.ExplicitLink},
+		{CitedTitle: "Doc", TitleKey: "doc", TargetPath: "raiz/Doc.MD", Kind: indexing.ExplicitLink},
+		{CitedTitle: "foto.png", TitleKey: "foto.png", TargetPath: "anexos/foto.png.md", Kind: indexing.EmbedLink},
+		{CitedTitle: "Solta", TitleKey: "solta", Kind: indexing.ExplicitLink},
+		{CitedTitle: "Outra", TitleKey: "outra", TargetPath: "b/Outra.md", Kind: indexing.ExplicitLink},
+	}, nota.Links, "o caminho sem .md ganha a extensao, como o titulo a tira; sem pasta resolve so pelo titulo")
 }
 
 func TestIndex_LinksMarkdown_ResolvemOCaminhoAPartirDaPastaDaNota(t *testing.T) {
@@ -68,7 +80,7 @@ func TestIndex_FrontmatterComWikilinks_ViraLigacaoTipadaComPredicado(t *testing.
 		{CitedTitle: "Fulana", TitleKey: "fulana", Kind: indexing.ExplicitLink},
 		{CitedTitle: "Fulana", TitleKey: "fulana", Kind: indexing.TypedLink, Predicate: "autor"},
 		{CitedTitle: "FULANA", TitleKey: "fulana", Kind: indexing.TypedLink, Predicate: "revisor"},
-		{CitedTitle: "Beltrano", TitleKey: "beltrano", Kind: indexing.TypedLink, Predicate: "revisor"},
+		{CitedTitle: "Beltrano", TitleKey: "beltrano", TargetPath: "pasta/Beltrano.md", Kind: indexing.TypedLink, Predicate: "revisor"},
 		{CitedTitle: "Fulana", TitleKey: "fulana", Kind: indexing.TypedLink, Predicate: "autor2"},
 	}, nota.Links, "cada chave da a sua ligacao tipada, alem da ligacao do corpo")
 }

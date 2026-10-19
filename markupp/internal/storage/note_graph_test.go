@@ -198,3 +198,21 @@ func TestMigracao00029_DownEUp(t *testing.T) {
 	_, err = provider.Up(context.Background())
 	require.NoError(t, err)
 }
+
+func TestNoteGraph_WikilinkComPasta_ResolvePeloCaminhoECaiParaOTitulo(t *testing.T) {
+	db := setupNotesDB(t)
+	repo := storage.NewPostgresNotesRepository(db, "simple")
+	for _, nota := range []notes.Note{
+		notaComCaminho("x1", "a/Nota.md", "x"),
+		notaComCaminho("x2", "b/Nota.md", "x"),
+		notaComCaminho("o1", "o1.md", "[[b/Nota]]"),
+		notaComCaminho("o2", "o2.md", "[[c/Nota]]"),
+	} {
+		storagetest.SaveNote(ctxDeTeste, t, repo, nota)
+	}
+	indexaTodosOsCofres(t, db, "simple")
+	graph := storage.NewPostgresNoteGraph(db, "simple")
+
+	assert.Equal(t, []string{"o2"}, backlinks(ctxDeTeste, t, graph, "x1"), "caminho inexistente cai para o titulo")
+	assert.Equal(t, []string{"o1", "o2"}, backlinks(ctxDeTeste, t, graph, "x2"), "caminho existente liga so a ele")
+}
