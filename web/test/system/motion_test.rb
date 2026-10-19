@@ -204,8 +204,13 @@ class MotionTest < ApplicationSystemTestCase
     def area_motions_of_visit(path) = area_motions_while("Turbo.visit(#{path.to_json})")
 
     # Roda a ação e junta, quadro a quadro até o turbo:load (que vem depois do fim da view transition), as animações
-    # dos pseudo-elementos da view transition: "pseudo nome duração curva", em ordem.
+    # dos pseudo-elementos da view transition: "pseudo nome duração curva", em ordem. A visita inteira cabe no prazo do
+    # script, que o Capybara tira do tempo de espera: 10s, como o login, para os Chromes em paralelo.
     def area_motions_while(action)
+      using_wait_time(10) { collect_area_motions(action) }
+    end
+
+    def collect_area_motions(action)
       evaluate_async_script(<<~JS)
         const done = arguments[0], seen = new Set()
         let loaded = false
