@@ -97,12 +97,8 @@ func (r *PostgresOAuthRepository) SaveRefreshedTokens(ctx context.Context, paren
 // checkRefreshParentInTx trava a Autorização e confere que ela segue ativa e que o
 // refresh pai dela não foi revogado.
 func checkRefreshParentInTx(ctx context.Context, qtx *gen.Queries, parentHash, authorizationID string) error {
-	row, err := lockAuthorization(ctx, qtx, authorizationID)
-	if err != nil {
+	if err := lockActiveAuthorization(ctx, qtx, authorizationID, "o par rotacionado"); err != nil {
 		return err
-	}
-	if row.RevokedAt.Valid {
-		return fmt.Errorf("%w: autorização %q revogada antes de gravar o par rotacionado", oauth.ErrAuthorizationNotFound, authorizationID)
 	}
 	live, err := qtx.IsUnrevokedOAuthToken(ctx, gen.IsUnrevokedOAuthTokenParams{TokenHash: parentHash, AuthorizationID: authorizationID})
 	if err != nil {
@@ -125,6 +121,19 @@ func lockAuthorization(ctx context.Context, qtx *gen.Queries, id string) (gen.Oa
 		return row, fmt.Errorf("travar autorização %s: %w", oauth.ClientValue(id), err)
 	}
 	return row, nil
+}
+
+// lockActiveAuthorization trava a Autorização e devolve oauth.ErrAuthorizationNotFound se
+// ela não existe ou foi revogada antes de gravar o que what descreve.
+func lockActiveAuthorization(ctx context.Context, qtx *gen.Queries, id, what string) error {
+	row, err := lockAuthorization(ctx, qtx, id)
+	if err != nil {
+		return err
+	}
+	if row.RevokedAt.Valid {
+		return fmt.Errorf("%w: autorização %q revogada antes de gravar %s", oauth.ErrAuthorizationNotFound, id, what)
+	}
+	return nil
 }
 
 // RevokeAuthorizationTokensAudited trava a Autorização e, se o token que disparou a

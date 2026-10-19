@@ -220,34 +220,6 @@ func (q *Queries) GetOAuthClient(ctx context.Context, id string) (OauthClient, e
 	return i, err
 }
 
-const getOAuthRequestByUsedCode = `-- name: GetOAuthRequestByUsedCode :one
-SELECT id, client_id, redirect_uri, scopes, resource, state, code_challenge, created_at, expires_at, decided_at, user_id, code_hash, code_expires_at, code_used_at, authorization_id, code_reused_at FROM oauth_requests WHERE code_hash = $1::TEXT AND code_used_at IS NOT NULL
-`
-
-func (q *Queries) GetOAuthRequestByUsedCode(ctx context.Context, codeHash string) (OauthRequest, error) {
-	row := q.db.QueryRow(ctx, getOAuthRequestByUsedCode, codeHash)
-	var i OauthRequest
-	err := row.Scan(
-		&i.ID,
-		&i.ClientID,
-		&i.RedirectUri,
-		&i.Scopes,
-		&i.Resource,
-		&i.State,
-		&i.CodeChallenge,
-		&i.CreatedAt,
-		&i.ExpiresAt,
-		&i.DecidedAt,
-		&i.UserID,
-		&i.CodeHash,
-		&i.CodeExpiresAt,
-		&i.CodeUsedAt,
-		&i.AuthorizationID,
-		&i.CodeReusedAt,
-	)
-	return i, err
-}
-
 const getOAuthTokenWithAuthorization = `-- name: GetOAuthTokenWithAuthorization :one
 SELECT oauth_tokens.token_hash, oauth_tokens.authorization_id, oauth_tokens.kind, oauth_tokens.resource, oauth_tokens.scopes, oauth_tokens.expires_at, oauth_tokens.revoked, oauth_tokens.rotated_at, oauth_tokens.created_at, oauth_authorizations.id, oauth_authorizations.user_id, oauth_authorizations.client_id, oauth_authorizations.scopes, oauth_authorizations.created_at, oauth_authorizations.updated_at, oauth_authorizations.revoked_at
 FROM oauth_tokens JOIN oauth_authorizations ON oauth_authorizations.id = oauth_tokens.authorization_id
@@ -316,6 +288,25 @@ func (q *Queries) GetPendingOAuthRequest(ctx context.Context, arg GetPendingOAut
 		&i.CodeReusedAt,
 	)
 	return i, err
+}
+
+const isUnreusedOAuthCode = `-- name: IsUnreusedOAuthCode :one
+SELECT EXISTS (
+    SELECT 1 FROM oauth_requests
+    WHERE id = $1 AND authorization_id = $2::TEXT AND code_reused_at IS NULL
+)
+`
+
+type IsUnreusedOAuthCodeParams struct {
+	ID              string
+	AuthorizationID string
+}
+
+func (q *Queries) IsUnreusedOAuthCode(ctx context.Context, arg IsUnreusedOAuthCodeParams) (bool, error) {
+	row := q.db.QueryRow(ctx, isUnreusedOAuthCode, arg.ID, arg.AuthorizationID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
 }
 
 const isUnrevokedOAuthToken = `-- name: IsUnrevokedOAuthToken :one
@@ -394,6 +385,42 @@ func (q *Queries) LockOAuthAuthorization(ctx context.Context, id string) (OauthA
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.RevokedAt,
+	)
+	return i, err
+}
+
+const markOAuthCodeReused = `-- name: MarkOAuthCodeReused :one
+UPDATE oauth_requests SET code_reused_at = COALESCE(code_reused_at, $1::TIMESTAMPTZ)
+WHERE code_hash = $2::TEXT AND code_used_at IS NOT NULL
+RETURNING id, client_id, redirect_uri, scopes, resource, state, code_challenge, created_at, expires_at, decided_at, user_id, code_hash, code_expires_at, code_used_at, authorization_id, code_reused_at
+`
+
+type MarkOAuthCodeReusedParams struct {
+	Now      time.Time
+	CodeHash string
+}
+
+// Marca o reuso do código já usado, guardando o primeiro reuso.
+func (q *Queries) MarkOAuthCodeReused(ctx context.Context, arg MarkOAuthCodeReusedParams) (OauthRequest, error) {
+	row := q.db.QueryRow(ctx, markOAuthCodeReused, arg.Now, arg.CodeHash)
+	var i OauthRequest
+	err := row.Scan(
+		&i.ID,
+		&i.ClientID,
+		&i.RedirectUri,
+		&i.Scopes,
+		&i.Resource,
+		&i.State,
+		&i.CodeChallenge,
+		&i.CreatedAt,
+		&i.ExpiresAt,
+		&i.DecidedAt,
+		&i.UserID,
+		&i.CodeHash,
+		&i.CodeExpiresAt,
+		&i.CodeUsedAt,
+		&i.AuthorizationID,
+		&i.CodeReusedAt,
 	)
 	return i, err
 }

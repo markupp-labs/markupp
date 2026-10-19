@@ -183,65 +183,6 @@ func activeAuthorization(ctx context.Context, q *gen.Queries, userID, clientID s
 	return toAuthorization(row), nil
 }
 
-// RedeemCode consome o código e lê a Autorização ativa na mesma transação, devolvendo o
-// pedido com ela. Sem Autorização ativa, o consumo fica gravado e o erro volta junto com
-// o pedido. No reuso, devolve o mesmo resultado junto com oauth.ErrCodeAlreadyUsed.
-func (r *PostgresOAuthRepository) RedeemCode(ctx context.Context, codeHash string, now time.Time) (oauth.RedeemedCode, error) {
-	var redeemed oauth.RedeemedCode
-	var missing error
-	err := inTx(ctx, r.pool, func(qtx *gen.Queries) error {
-		var err error
-		redeemed, err = redeemInTx(ctx, qtx, codeHash, now)
-		if errors.Is(err, oauth.ErrAuthorizationNotFound) {
-			missing, err = err, nil
-		}
-		return err
-	})
-	if errors.Is(err, pgx.ErrNoRows) {
-		return r.usedCode(ctx, codeHash)
-	}
-	if err != nil {
-		return oauth.RedeemedCode{}, err
-	}
-	return redeemed, missing
-}
-
-// redeemInTx marca o código como usado e busca a Autorização ativa do pedido.
-func redeemInTx(ctx context.Context, qtx *gen.Queries, codeHash string, now time.Time) (oauth.RedeemedCode, error) {
-	row, err := qtx.RedeemOAuthCode(ctx, gen.RedeemOAuthCodeParams{CodeHash: codeHash, Now: now})
-	if err != nil {
-		return oauth.RedeemedCode{}, fmt.Errorf("consumir código de autorização: %w", err)
-	}
-	req := toAuthorizationRequest(row)
-	authz, err := activeAuthorization(ctx, qtx, req.UserID, req.ClientID)
-	return oauth.RedeemedCode{Request: req, Authorization: authz}, err
-}
-
-// usedCode distingue o código reusado do inexistente ou expirado.
-func (r *PostgresOAuthRepository) usedCode(ctx context.Context, codeHash string) (oauth.RedeemedCode, error) {
-	row, err := r.q.GetOAuthRequestByUsedCode(ctx, codeHash)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return oauth.RedeemedCode{}, oauth.ErrCodeNotFound
-	}
-	if err != nil {
-		return oauth.RedeemedCode{}, fmt.Errorf("buscar código de autorização já usado: %w", err)
-	}
-	req := toAuthorizationRequest(row)
-	authz, err := r.ActiveAuthorization(ctx, req.UserID, req.ClientID)
-	if err != nil && !errors.Is(err, oauth.ErrAuthorizationNotFound) {
-		return oauth.RedeemedCode{}, err
-	}
-	return oauth.RedeemedCode{Request: req, Authorization: authz}, oauth.ErrCodeAlreadyUsed
-}
-
-// SaveCodeTokens grava os tokens emitidos pela troca do código, só pelo hash, todos ou
-// nenhum.
-func (r *PostgresOAuthRepository) SaveCodeTokens(ctx context.Context, _ string, tokens []oauth.IssuedToken) error {
-	return inTx(ctx, r.pool, func(qtx *gen.Queries) error {
-		return saveTokensInTx(ctx, qtx, tokens)
-	})
-}
-
 // saveTokensInTx grava os tokens por qtx, parando no primeiro erro.
 func saveTokensInTx(ctx context.Context, qtx *gen.Queries, tokens []oauth.IssuedToken) error {
 	for _, t := range tokens {

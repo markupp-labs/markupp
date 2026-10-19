@@ -38,8 +38,8 @@ type Authorization struct {
 	Scopes    []string
 	CreatedAt time.Time
 	UpdatedAt time.Time
-	// Revoked é preenchido por FindToken e no reuso de ConsumeRefreshToken, que
-	// devolvem a Autorização mesmo revogada.
+	// Revoked é preenchido por FindToken, RedeemCode e no reuso de
+	// ConsumeRefreshToken, que devolvem a Autorização mesmo revogada.
 	Revoked bool
 }
 
@@ -80,7 +80,7 @@ type Denial struct {
 }
 
 // RedeemedCode é o resultado de consumir um código: o pedido que o originou e a
-// Autorização ativa da conta para o cliente.
+// Autorização gravada nele na aprovação.
 type RedeemedCode struct {
 	Request       AuthorizationRequest
 	Authorization Authorization
@@ -108,8 +108,8 @@ type Repository interface {
 	// ApproveRequest marca o pedido como decidido, grava o hash do código, cria a
 	// Autorização ativa da conta para o cliente ou amplia os escopos dela com os do
 	// pedido, grava no pedido o ID dessa Autorização e audita oauth.authorize com
-	// sucesso, tudo numa transação. Devolve
-	// ErrRequestNotFound se o pedido já não estiver pendente.
+	// sucesso, tudo numa transação. Devolve ErrRequestNotFound se o pedido já não
+	// estiver pendente.
 	ApproveRequest(ctx context.Context, approval Approval) (AuthorizationRequest, error)
 	// DenyRequest marca o pedido como decidido e audita oauth.authorize com falha, na
 	// mesma transação. Devolve ErrRequestNotFound se o pedido já não estiver pendente.
@@ -117,11 +117,21 @@ type Repository interface {
 	// ActiveAuthorization devolve ErrAuthorizationNotFound quando não há Autorização
 	// ativa da conta para o cliente.
 	ActiveAuthorization(ctx context.Context, userID, clientID string) (Authorization, error)
-	// RedeemCode consome o código de uso único. Devolve ErrCodeNotFound se o hash não
-	// existe ou expirou em relação a now, e ErrCodeAlreadyUsed junto com o RedeemedCode
-	// do pedido original quando o código já foi consumido.
+	// RedeemCode consome o código de uso único e lê, com a trava, a Autorização gravada
+	// no pedido, não a ativa da conta para o cliente. Os erros, por caso:
+	//   - ErrCodeNotFound: o hash não existe ou expirou sem uso em relação a now;
+	//   - ErrAuthorizationNotFound, junto com o RedeemedCode: a Autorização do pedido
+	//     foi revogada; o consumo fica gravado mesmo assim;
+	//   - ErrCodeAlreadyUsed, junto com o RedeemedCode e a Autorização do pedido mesmo
+	//     revogada: o código já foi consumido. Numa transação, o pedido fica marcado
+	//     como reusado (guardando o primeiro reuso em now) e os tokens daquela
+	//     Autorização são revogados com a trava dela (RFC 9700, 4.4.2).
 	RedeemCode(ctx context.Context, codeHash string, now time.Time) (RedeemedCode, error)
-	// SaveCodeTokens grava o par emitido pela troca do código do pedido requestID.
+	// SaveCodeTokens trava a Autorização dos tokens e grava o par emitido pela troca do
+	// código do pedido requestID, numa transação. Sem gravar nada, devolve
+	// ErrAuthorizationNotFound se a Autorização foi revogada e ErrCodeAlreadyUsed se o
+	// código do pedido foi reapresentado depois do consumo, ou se o pedido não é dessa
+	// Autorização.
 	SaveCodeTokens(ctx context.Context, requestID string, tokens []IssuedToken) error
 	// RevokeAuthorizationTokens trava a Autorização e revoga todos os tokens dela, numa
 	// transação. Devolve ErrAuthorizationNotFound se ela não existe.

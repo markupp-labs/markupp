@@ -24,32 +24,27 @@ func (s *Service) ExchangeCode(ctx context.Context, g CodeGrant) (TokenResponse,
 	return s.issueTokens(ctx, redeemed, now)
 }
 
-// redeemCode consome o código. Reuso revoga os tokens da Autorização (RFC 9700, 4.4.2).
+// redeemCode consome o código. No reuso, o repositório já revogou os tokens da
+// Autorização do pedido (RFC 9700, 4.4.2).
 func (s *Service) redeemCode(ctx context.Context, code string, now time.Time) (RedeemedCode, error) {
 	redeemed, err := s.repo.RedeemCode(ctx, auth.HashOpaqueToken(code), now)
 	switch {
 	case err == nil:
 		return redeemed, nil
 	case errors.Is(err, ErrCodeAlreadyUsed):
-		return RedeemedCode{}, s.revokeReusedCode(ctx, redeemed.Authorization.ID)
+		return RedeemedCode{}, grantError(reusedCodeDescription)
 	case errors.Is(err, ErrCodeNotFound), errors.Is(err, ErrAuthorizationNotFound):
-		return RedeemedCode{}, grantError("codigo de autorizacao invalido ou expirado; esperado um codigo emitido por este servidor e ainda valido")
+		return RedeemedCode{}, grantError(invalidCodeDescription)
 	}
 	return RedeemedCode{}, fmt.Errorf("oauth: consumindo o código de autorização: %w", err)
 }
 
+// invalidCodeDescription é a descrição do código que não vale, ou cuja Autorização foi
+// revogada.
+const invalidCodeDescription = "codigo de autorizacao invalido ou expirado; esperado um codigo emitido por este servidor e ainda valido"
+
 // reusedCodeDescription é a descrição do código apresentado pela segunda vez.
 const reusedCodeDescription = "codigo de autorizacao ja usado; esperado um codigo de uso unico ainda nao trocado"
-
-func (s *Service) revokeReusedCode(ctx context.Context, authorizationID string) error {
-	if authorizationID == "" {
-		return grantError(reusedCodeDescription)
-	}
-	if err := s.repo.RevokeAuthorizationTokens(ctx, authorizationID); err != nil {
-		return fmt.Errorf("oauth: revogando os tokens da autorização %q após reuso de código: %w", authorizationID, err)
-	}
-	return grantError(reusedCodeDescription)
-}
 
 // checkGrant confere o grant contra o pedido que originou o código.
 func checkGrant(g CodeGrant, req AuthorizationRequest) error {
@@ -77,14 +72,22 @@ func checkResource(raw, granted string) error {
 	return nil
 }
 
-// issueTokens emite e grava o par de tokens com os escopos e o resource do pedido.
+// issueTokens emite e grava o par de tokens com os escopos e o resource do pedido. O
+// reuso do código ou a revogação da Autorização que entrou depois do consumo derruba o
+// grant sem gravar nada.
 func (s *Service) issueTokens(ctx context.Context, redeemed RedeemedCode, now time.Time) (TokenResponse, error) {
 	base := IssuedToken{AuthorizationID: redeemed.Authorization.ID, Resource: redeemed.Request.Resource, Scopes: redeemed.Request.Scopes}
 	pair := s.newTokenPair(base, now)
-	if err := s.repo.SaveCodeTokens(ctx, redeemed.Request.ID, pair.tokens); err != nil {
-		return TokenResponse{}, fmt.Errorf("oauth: gravando os tokens da autorização %q: %w", redeemed.Authorization.ID, err)
+	err := s.repo.SaveCodeTokens(ctx, redeemed.Request.ID, pair.tokens)
+	switch {
+	case err == nil:
+		return pair.response, nil
+	case errors.Is(err, ErrCodeAlreadyUsed):
+		return TokenResponse{}, grantError(reusedCodeDescription)
+	case errors.Is(err, ErrAuthorizationNotFound):
+		return TokenResponse{}, grantError(invalidCodeDescription)
 	}
-	return pair.response, nil
+	return TokenResponse{}, fmt.Errorf("oauth: gravando os tokens da autorização %q: %w", redeemed.Authorization.ID, err)
 }
 
 // tokenPair é o par access e refresh recém-gerado: os registros com o hash, para o
