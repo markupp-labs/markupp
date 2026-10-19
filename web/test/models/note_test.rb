@@ -234,19 +234,4 @@ class NoteTest < ActiveSupport::TestCase
     assert_empty api.put_requests
     assert_equal "work/a.md", Note.find(api, "1").path
   end
-
-  test "with_title_heading starts the content with the title as a heading and a blank line" do
-    assert_equal "# Plan\n\nShip it.", Note.with_title_heading("Ship it.", " Plan ")
-    assert_equal "# Plan\n\n", Note.with_title_heading("", "Plan")
-  end
-
-  test "with_title_heading keeps content that already starts with the same heading" do
-    assert_equal "# Plan\n\nShip it.", Note.with_title_heading("# Plan\n\nShip it.", "Plan")
-    assert_equal "# Plan", Note.with_title_heading("# Plan", "Plan")
-    assert_equal "# Plan\n\n# Planning", Note.with_title_heading("# Planning", "Plan")
-  end
-
-  test "with_title_heading leaves the content alone without a title" do
-    assert_equal "Ship it.", Note.with_title_heading("Ship it.", " ")
-  end
 end

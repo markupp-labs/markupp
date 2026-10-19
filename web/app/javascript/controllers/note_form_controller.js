@@ -73,7 +73,7 @@ export default class extends Controller {
   }
 }
 
-// O mesmo cabeçalho que o servidor põe na criação (Note.with_title_heading).
+// Só o editor põe o cabeçalho; o servidor grava o conteúdo como veio.
 function headingFor(title) {
   const trimmed = title.trim()
   return trimmed ? `# ${trimmed}\n\n` : ""

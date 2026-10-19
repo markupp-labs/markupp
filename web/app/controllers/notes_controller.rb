@@ -19,7 +19,7 @@ class NotesController < ApplicationController
   end
 
   def create
-    @note = Note.new(path: note_path_param, content: Note.with_title_heading(note_content_param, params.dig(:note, :title)))
+    @note = Note.new(path: note_path_param(note_params[:title].presence || Note.untitled_name), content: note_content_param)
     if @note.save(credential.api)
       redirect_to note_path(@note), notice: t(".created")
     else
@@ -29,7 +29,7 @@ class NotesController < ApplicationController
 
   def update
     @note = Note.new(id: params[:id], updated_at: params[:last_modified_at])
-    if @note.update(credential.api, { path: note_path_param, content: note_content_param }, force: params[:force] == "true")
+    if @note.update(credential.api, { path: note_path_param(note_params[:title]), content: note_content_param }, force: params[:force] == "true")
       redirect_to note_path(@note), notice: t(".saved")
     else
       render :show, status: path_error_status
@@ -48,8 +48,8 @@ class NotesController < ApplicationController
     def note_params = params.expect(note: [ :folder, :title, :content ])
 
     # Sem o campo markdown (nota nova) o nome ganha .md; nota existente sem .md continua sem.
-    def note_path_param
-      Note.compose_path(folder: note_params[:folder], title: note_params[:title], markdown: params[:markdown] != "false")
+    def note_path_param(title)
+      Note.compose_path(folder: note_params[:folder], title:, markdown: params[:markdown] != "false")
     end
 
     def note_content_param = Note.restore_line_breaks(note_params[:content], crlf: params[:crlf] == "true")

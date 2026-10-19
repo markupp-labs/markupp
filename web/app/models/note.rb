@@ -36,18 +36,9 @@ class Note
 
   MARKDOWN_EXTENSION = ".md"
 
-  # O título é o nome do arquivo sem .md, como no Obsidian; título em branco vira o nome padrão.
+  # O título é o nome do arquivo sem .md, como no Obsidian; título em branco deixa o nome vazio (update recusa).
   def self.compose_path(folder:, title:, markdown: true)
-    name = title.to_s.strip.presence || untitled_name
-    [ folder.presence, "#{name}#{MARKDOWN_EXTENSION if markdown}" ].compact.join("/")
-  end
-
-  # Só na criação: o conteúdo começa com "# título" e uma linha em branco, a menos que já comece com ele.
-  def self.with_title_heading(content, title)
-    heading = "# #{title.to_s.strip}"
-    return content.to_s if heading == "# " || content.to_s.lines.first&.chomp == heading
-
-    "#{heading}\n\n#{content}"
+    [ folder.presence, "#{title.to_s.strip}#{MARKDOWN_EXTENSION if markdown}" ].compact.join("/")
   end
 
   def persisted? = id.present?
@@ -71,8 +62,11 @@ class Note
 
   # updated_at é a versão lida; a API recusa com Conflict se a nota mudou depois, a menos que force.
   # A API guarda a versão em milissegundos, então lastModifiedAt vai com essa precisão.
+  # Título em branco não renomeia para o nome padrão: recusa sem chamar a API.
   def update(api, attributes, force: false)
     assign_attributes(attributes)
+    return errors.add(:title, :blank) && false if title.empty?
+
     refusing_path { api.put(Note.api_path(id), path:, content:, lastModifiedAt: updated_at&.iso8601(3), force:) }
   end
 
@@ -96,7 +90,8 @@ class Note
   def folder_names = path_segments[...-1]
 
   private
-    def path_segments = path.to_s.split("/").reject(&:empty?)
+    # A barra no fim fica como nome vazio ("work/" é título em branco na pasta work).
+    def path_segments = path.to_s.squeeze("/").delete_prefix("/").split("/", -1)
 
     def post(api) = api.post("/notes", path:, content:)
 

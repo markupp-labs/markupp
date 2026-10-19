@@ -381,7 +381,7 @@ class NotesControllerTest < ActionDispatch::IntegrationTest
     post notes_path, params: { note: { folder: "..", title: "a", content: "mine" } }
 
     assert_response :unprocessable_content
-    assert_equal "# a\n\nmine", css_select("main textarea").sole.text
+    assert_equal "mine", css_select("main textarea").sole.text
     assert_select "#note_path_error", text: "Path is invalid"
   end
 end
