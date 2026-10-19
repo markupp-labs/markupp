@@ -25,6 +25,28 @@ DELETE FROM oauth_clients c
 WHERE c.source = 'cimd' AND c.metadata_expires_at <= sqlc.arg(now)::TIMESTAMPTZ
   AND NOT EXISTS (SELECT 1 FROM oauth_authorizations a WHERE a.client_id = c.id AND a.revoked_at IS NULL);
 
+-- Serializa os registros DCR da instância até o fim da transação, para o teto de
+-- pendentes valer sob concorrência.
+-- name: LockDCRRegistrations :exec
+SELECT pg_advisory_xact_lock(hashtextextended('markupp.oauth_dcr_registration', 0));
+
+-- Pendente é o cliente DCR que nunca ganhou Autorização, revogada ou não. Os pedidos
+-- dele saem junto, pelo ON DELETE CASCADE.
+-- name: DeleteExpiredPendingDCRClients :exec
+DELETE FROM oauth_clients c
+WHERE c.source = 'dcr' AND c.created_at <= sqlc.arg(cutoff)::TIMESTAMPTZ
+  AND NOT EXISTS (SELECT 1 FROM oauth_authorizations a WHERE a.client_id = c.id);
+
+-- name: CountPendingDCRClients :one
+SELECT count(*) AS pending,
+    COALESCE(min(c.created_at), sqlc.arg(now)::TIMESTAMPTZ)::TIMESTAMPTZ AS oldest_created_at
+FROM oauth_clients c
+WHERE c.source = 'dcr' AND NOT EXISTS (SELECT 1 FROM oauth_authorizations a WHERE a.client_id = c.id);
+
+-- name: CreateDCRClient :exec
+INSERT INTO oauth_clients (id, source, name, redirect_uris, created_at)
+VALUES (sqlc.arg(id), 'dcr', sqlc.arg(name), sqlc.arg(redirect_uris), sqlc.arg(created_at)::TIMESTAMPTZ);
+
 -- name: CreateOAuthRequest :exec
 INSERT INTO oauth_requests (id, client_id, redirect_uri, scopes, resource, state, code_challenge, created_at, expires_at)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9);

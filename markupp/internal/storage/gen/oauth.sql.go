@@ -88,6 +88,47 @@ func (q *Queries) ConsumeOAuthRefreshToken(ctx context.Context, arg ConsumeOAuth
 	return i, err
 }
 
+const countPendingDCRClients = `-- name: CountPendingDCRClients :one
+SELECT count(*) AS pending,
+    COALESCE(min(c.created_at), $1::TIMESTAMPTZ)::TIMESTAMPTZ AS oldest_created_at
+FROM oauth_clients c
+WHERE c.source = 'dcr' AND NOT EXISTS (SELECT 1 FROM oauth_authorizations a WHERE a.client_id = c.id)
+`
+
+type CountPendingDCRClientsRow struct {
+	Pending         int64
+	OldestCreatedAt time.Time
+}
+
+func (q *Queries) CountPendingDCRClients(ctx context.Context, now time.Time) (CountPendingDCRClientsRow, error) {
+	row := q.db.QueryRow(ctx, countPendingDCRClients, now)
+	var i CountPendingDCRClientsRow
+	err := row.Scan(&i.Pending, &i.OldestCreatedAt)
+	return i, err
+}
+
+const createDCRClient = `-- name: CreateDCRClient :exec
+INSERT INTO oauth_clients (id, source, name, redirect_uris, created_at)
+VALUES ($1, 'dcr', $2, $3, $4::TIMESTAMPTZ)
+`
+
+type CreateDCRClientParams struct {
+	ID           string
+	Name         string
+	RedirectUris []string
+	CreatedAt    time.Time
+}
+
+func (q *Queries) CreateDCRClient(ctx context.Context, arg CreateDCRClientParams) error {
+	_, err := q.db.Exec(ctx, createDCRClient,
+		arg.ID,
+		arg.Name,
+		arg.RedirectUris,
+		arg.CreatedAt,
+	)
+	return err
+}
+
 const createOAuthRequest = `-- name: CreateOAuthRequest :exec
 INSERT INTO oauth_requests (id, client_id, redirect_uri, scopes, resource, state, code_challenge, created_at, expires_at)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
@@ -117,6 +158,19 @@ func (q *Queries) CreateOAuthRequest(ctx context.Context, arg CreateOAuthRequest
 		arg.CreatedAt,
 		arg.ExpiresAt,
 	)
+	return err
+}
+
+const deleteExpiredPendingDCRClients = `-- name: DeleteExpiredPendingDCRClients :exec
+DELETE FROM oauth_clients c
+WHERE c.source = 'dcr' AND c.created_at <= $1::TIMESTAMPTZ
+  AND NOT EXISTS (SELECT 1 FROM oauth_authorizations a WHERE a.client_id = c.id)
+`
+
+// Pendente é o cliente DCR que nunca ganhou Autorização, revogada ou não. Os pedidos
+// dele saem junto, pelo ON DELETE CASCADE.
+func (q *Queries) DeleteExpiredPendingDCRClients(ctx context.Context, cutoff time.Time) error {
+	_, err := q.db.Exec(ctx, deleteExpiredPendingDCRClients, cutoff)
 	return err
 }
 
@@ -431,6 +485,17 @@ func (q *Queries) ListActiveOAuthAuthorizations(ctx context.Context, userID stri
 		return nil, err
 	}
 	return items, nil
+}
+
+const lockDCRRegistrations = `-- name: LockDCRRegistrations :exec
+SELECT pg_advisory_xact_lock(hashtextextended('markupp.oauth_dcr_registration', 0))
+`
+
+// Serializa os registros DCR da instância até o fim da transação, para o teto de
+// pendentes valer sob concorrência.
+func (q *Queries) LockDCRRegistrations(ctx context.Context) error {
+	_, err := q.db.Exec(ctx, lockDCRRegistrations)
+	return err
 }
 
 const lockOAuthAuthorization = `-- name: LockOAuthAuthorization :one

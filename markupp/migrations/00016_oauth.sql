@@ -12,6 +12,8 @@ CREATE TABLE oauth_clients (
     -- Só o cliente CIMD tem documento em cache com validade.
     CHECK (source = 'cimd' OR metadata_expires_at IS NULL)
 );
+-- Os registros DCR varrem os clientes dessa origem para expirar e contar os pendentes.
+CREATE INDEX oauth_clients_dcr_created_at_idx ON oauth_clients (created_at) WHERE source = 'dcr';
 
 CREATE TABLE oauth_authorizations (
     id         TEXT PRIMARY KEY,
