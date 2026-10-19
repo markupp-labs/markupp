@@ -264,6 +264,28 @@ en:
     unreachable:
       title: "Can't reach the markupp server"
       hint: "Check that it is running and that MARKUPP_API_URL points to it."
+  errors:
+    show:
+      back_to_notes: "Back to your notes"
+      back_to_login: "Go to log in"
+      "400":
+        title: "Bad request"
+        hint: "The panel could not read what was sent. Go back and try again."
+      "404":
+        title: "Nothing at %{path}"
+        hint: "Check the address, or go back from here."
+      "406":
+        title: "Can't answer in that format"
+        hint: "This address only answers web pages. Open it in the browser."
+      "422":
+        title: "Change rejected"
+        hint: "The form may have expired. Reload the page and send it again."
+      "500":
+        title: "Something broke on the panel"
+        hint: "The error was logged. Try again in a moment."
+      other:
+        title: "Request failed"
+        hint: "Go back and try again."
   searches:
     show:
       empty: "No matches"

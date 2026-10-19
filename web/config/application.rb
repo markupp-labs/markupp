@@ -35,5 +35,8 @@ module Web
     #
     # config.time_zone = "Central Time (US & Canada)"
     # config.eager_load_paths << Rails.root.join("extras")
+
+    # Os erros tratados (400, 404, 406, 422, 500) saem do próprio painel, pelo ErrorsController.
+    config.exceptions_app = routes
   end
 end

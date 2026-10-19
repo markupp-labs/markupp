@@ -26,4 +26,9 @@ Rails.application.routes.draw do
     resources :members, only: [ :index, :update, :destroy ]
     resources :invites, only: [ :index, :create, :destroy ]
   end
+
+  # Páginas de erro: o ShowExceptions pede /<status> (config.exceptions_app) e o resto que não casou acima é o 404.
+  # A coringa fica por último; em development ela também troca a página de rota inexistente do Rails pelo 404 do painel.
+  match "/:code", to: "errors#show", via: :all, constraints: { code: /[45]\d\d/ }
+  match "*unmatched", to: "errors#show", via: :all, defaults: { code: "404" }, format: false
 end

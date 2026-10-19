@@ -1,3 +1,3 @@
 <% content_for :sidebar, render("notes/sidebar", tree: @tree, current: nil) %>
 
-<%= render "notes/error_page", title: t(".title"), hint: t(".hint") %>
+<%= render "application/error_page", code: 404, title: t(".title"), hint: t(".hint") %>
