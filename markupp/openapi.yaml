@@ -768,61 +768,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-  /notes/{id}/mentions:
-    get:
-      summary: Lista as menções não ligadas desta nota nos dois sentidos
-      description: |
-        Menção não ligada é um título de nota (o último segmento do caminho sem .md ou
-        um alias) citado no texto de outra nota do mesmo cofre sem ligação entre as
-        duas, em sentido algum. É sugestão de ligação e é calculada na leitura, sobre
-        o que o indexador já processou. direction diz o sentido: incoming quando a outra
-        nota cita um título desta, outgoing quando esta cita um título da outra.
-
-        O título casa inteiro, com fronteira de palavra, sem diferença de caixa nem de
-        acento, fora de wikilink, embed e link markdown. Ficam de fora a própria nota,
-        títulos com menos de 3 letras e títulos que são stopword em português ou
-        inglês. Quem menciona esta nota vem do índice léxico, então um corpo acentuado
-        não acha título escrito sem acento.
-
-        Cada nota aparece uma vez por sentido, com o título de maior prior: a
-        probabilidade a priori de o título apontar para a nota citada, com suavização
-        de Laplace, (notas que ligam à nota citada por esse título + 1) / (notas do
-        cofre com o título no corpo + notas do cofre com esse título). A lista vem da
-        maior prior para a menor, depois por caminho. O viewer também lê.
-      parameters:
-        - $ref: '#/components/parameters/TenantHeader'
-        - $ref: '#/components/parameters/NoteID'
-        - $ref: '#/components/parameters/PageOffset'
-        - $ref: '#/components/parameters/PageLimit'
-      responses:
-        '200':
-          description: Lista, vazia quando não há nenhum item
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/UnlinkedMentionResponse'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '400':
-          description: offset ou limit não inteiros
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
-          description: Nota inexistente ou fora dos cofres do usuário (not_found)
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: Erro interno do servidor
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
   /notes/{id}/suggestions:
     get:
       summary: Lista as notas que esta nota poderia ligar
@@ -1186,6 +1131,119 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '403':
           description: Cofre inexistente ou de que o usuário não é membro (vault_forbidden)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Erro interno do servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/notes/{id}/mentions:
+    get:
+      summary: Lista os títulos que esta nota menciona sem ligar
+      description: |
+        As notas do cofre cujo título esta nota cita no texto sem ligar, com o título
+        citado.
+
+        Menção não ligada é um título de nota (o último segmento do caminho sem .md ou
+        um alias) citado no texto de outra nota do mesmo cofre sem ligação entre as
+        duas, em sentido algum. É sugestão de ligação e é calculada na leitura, sobre
+        o que o indexador já processou.
+
+        O título casa inteiro, com fronteira de palavra, sem diferença de caixa nem de
+        acento, fora de wikilink, embed e link markdown. Ficam de fora a própria nota,
+        títulos com menos de 3 letras e títulos que são stopword em português ou
+        inglês.
+
+        Cada nota aparece uma vez, com o título de maior prior: a probabilidade a
+        priori de o título apontar para a nota citada, com suavização de Laplace,
+        (notas que ligam à nota citada por esse título + 1) / (notas do cofre com o
+        título no corpo + notas do cofre com esse título). A lista vem da maior prior
+        para a menor, depois por caminho. O viewer também lê.
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+        - $ref: '#/components/parameters/NoteID'
+        - $ref: '#/components/parameters/PageOffset'
+        - $ref: '#/components/parameters/PageLimit'
+      responses:
+        '200':
+          description: Lista, vazia quando não há nenhum item
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MentionResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '400':
+          description: offset ou limit não inteiros (invalid_request)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Nota inexistente ou fora dos cofres do usuário (not_found)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Erro interno do servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/notes/{id}/backmentions:
+    get:
+      summary: Lista as notas que mencionam esta sem ligar
+      description: |
+        As notas do cofre que citam no texto um título desta sem ligar, com o título
+        citado. Elas vêm do índice léxico, então um corpo acentuado não acha título
+        escrito sem acento.
+
+        Menção não ligada é um título de nota (o último segmento do caminho sem .md ou
+        um alias) citado no texto de outra nota do mesmo cofre sem ligação entre as
+        duas, em sentido algum. É sugestão de ligação e é calculada na leitura, sobre
+        o que o indexador já processou.
+
+        O título casa inteiro, com fronteira de palavra, sem diferença de caixa nem de
+        acento, fora de wikilink, embed e link markdown. Ficam de fora a própria nota,
+        títulos com menos de 3 letras e títulos que são stopword em português ou
+        inglês.
+
+        Cada nota aparece uma vez, com o título de maior prior: a probabilidade a
+        priori de o título apontar para a nota citada, com suavização de Laplace,
+        (notas que ligam à nota citada por esse título + 1) / (notas do cofre com o
+        título no corpo + notas do cofre com esse título). A lista vem da maior prior
+        para a menor, depois por caminho. O viewer também lê.
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+        - $ref: '#/components/parameters/NoteID'
+        - $ref: '#/components/parameters/PageOffset'
+        - $ref: '#/components/parameters/PageLimit'
+      responses:
+        '200':
+          description: Lista, vazia quando não há nenhum item
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MentionResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '400':
+          description: offset ou limit não inteiros (invalid_request)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Nota inexistente ou fora dos cofres do usuário (not_found)
           content:
             application/json:
               schema:
@@ -1793,6 +1851,24 @@ components:
           description: |
             Na ligação não resolvida, a nota que o indexador inferiu para ela; null
             quando não há palpite e na ligação resolvida
+    MentionResponse:
+      type: object
+      properties:
+        note:
+          allOf:
+            - $ref: '#/components/schemas/NoteSummary'
+          description: |
+            Em mentions, a nota cujo título esta cita; em backmentions, a nota que cita
+            um título desta
+        cited_title:
+          type: string
+          description: Título citado, na forma normalizada sem caixa
+          example: "kubernetes"
+        prior:
+          type: number
+          format: double
+          description: Probabilidade a priori de o título apontar para a nota citada
+          example: 0.33
     SearchResultResponse:
       type: object
       properties:
@@ -1838,26 +1914,6 @@ components:
           type: string
           format: date-time
           description: Data da última atualização da nota
-    UnlinkedMentionResponse:
-      allOf:
-        - $ref: '#/components/schemas/LinkedNoteResponse'
-        - type: object
-          properties:
-            title:
-              type: string
-              description: Título citado, na forma normalizada sem caixa
-              example: "kubernetes"
-            direction:
-              type: string
-              enum: [incoming, outgoing]
-              description: |
-                incoming quando a nota listada cita um título desta, outgoing quando
-                esta cita um título da nota listada
-            prior:
-              type: number
-              format: double
-              description: Probabilidade a priori de o título apontar para a nota citada
-              example: 0.33
     LinkSuggestionResponse:
       allOf:
         - $ref: '#/components/schemas/LinkedNoteResponse'
