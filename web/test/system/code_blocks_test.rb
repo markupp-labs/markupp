@@ -12,6 +12,16 @@ class CodeBlocksTest < ApplicationSystemTestCase
     click_on "Read"
   end
 
+  test "line numbers sit beside the code and stay out of the selection" do
+    assert_selector ".note-preview pre .code-lines[aria-hidden=true]", count: 2
+    assert_equal "1\n2\n3", first(".note-preview pre .code-lines").evaluate_script("this.textContent")
+
+    selected = evaluate_script(<<~JS)
+      (() => { const selection = getSelection(); selection.selectAllChildren(document.querySelector(".note-preview pre")); return selection.toString() })()
+    JS
+    assert selected.start_with?("def greet"), "expected the selection to start at the code, got #{selected.inspect}"
+  end
+
   # A barra fica no código, não no pre: o que mais morar no pre fica parado ao rolar.
   test "a long line scrolls inside the code with the theme scrollbar" do
     assert_selector ".note-preview pre code", count: 2
