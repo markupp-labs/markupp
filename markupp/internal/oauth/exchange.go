@@ -81,10 +81,17 @@ func (s *Service) findSubjectToken(ctx context.Context, subject, resource string
 	if err != nil {
 		return TokenGrant{}, fmt.Errorf("oauth: buscando o subject_token da troca: %w", err)
 	}
-	if grant.Token.Kind != TokenKindAccess || grant.Token.Resource != resource || !liveGrant(grant, now) {
+	if !exchangeable(grant, resource, now) {
 		return TokenGrant{}, grantError(invalidSubjectDescription)
 	}
 	return grant, nil
+}
+
+// exchangeable diz se o token é um access token vigente do resource e com escopos: sem
+// eles, o token emitido sairia sem a claim scope e valeria como o de login.
+func exchangeable(grant TokenGrant, resource string, now time.Time) bool {
+	hasScopes := strings.TrimSpace(strings.Join(grant.Token.Scopes, "")) != ""
+	return grant.Token.Kind == TokenKindAccess && grant.Token.Resource == resource && liveGrant(grant, now) && hasScopes
 }
 
 // issueExchanged emite o token da API com os escopos do access token e audita a troca.
