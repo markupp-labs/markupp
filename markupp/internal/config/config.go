@@ -59,6 +59,14 @@ type Config struct {
 	OAuthCodeSeconds int
 	// OAuthExchangeMinutes é a validade do token da API entregue pela troca de token.
 	OAuthExchangeMinutes int
+	// OAuthCIMDTimeoutSeconds limita a busca do Client ID Metadata Document de um cliente.
+	OAuthCIMDTimeoutSeconds int
+	// OAuthCIMDMaxKB é o maior Client ID Metadata Document aceito, em KB.
+	OAuthCIMDMaxKB int
+	// OAuthCIMDCacheMinMinutes é o menor tempo que um documento fica em cache.
+	OAuthCIMDCacheMinMinutes int
+	// OAuthCIMDCacheMaxHours é o maior tempo que um documento fica em cache.
+	OAuthCIMDCacheMaxHours int
 }
 
 // Default devolve a configuração usada nas variáveis não definidas.

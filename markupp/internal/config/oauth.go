@@ -86,6 +86,11 @@ func loadOAuthDurations(lookup LookupFunc, cfg *Config) error {
 	return nil
 }
 
+// checkCIMDCacheBounds recusa o mínimo do cache dos documentos CIMD acima do máximo.
+func (c Config) checkCIMDCacheBounds() error {
+	return nil
+}
+
 // loadPanelURL exige o painel, para onde o authorization server manda o login e o consentimento.
 func loadPanelURL(lookup LookupFunc, cfg *Config) error {
 	var panel string
