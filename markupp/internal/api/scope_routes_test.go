@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/go-chi/chi/v5"
@@ -17,7 +18,7 @@ type scopedRoute struct{ method, path string }
 
 var (
 	notesReadRoutes = []scopedRoute{
-		{http.MethodGet, "/v1/notes"}, {http.MethodGet, "/v1/notes/search?q=x"}, {http.MethodGet, "/v1/notes/n1"},
+		{http.MethodGet, "/v1/notes"}, {http.MethodGet, "/v1/notes/search?query=x"}, {http.MethodGet, "/v1/notes/n1"},
 	}
 	notesWriteRoutes = []scopedRoute{
 		{http.MethodPost, "/v1/notes"}, {http.MethodPut, "/v1/notes/n1"}, {http.MethodDelete, "/v1/notes/n1"},
@@ -45,7 +46,8 @@ func serveScoped(route scopedRoute, scope string) *httptest.ResponseRecorder {
 
 func serveScopedWith(route scopedRoute, scope string, tenants api.TenantResolver) *httptest.ResponseRecorder {
 	router := routerWithAllServices(&fakeTokenValidator{claims: auth.Claims{Subject: "u1", Scope: scope}}, tenants)
-	req := httptest.NewRequest(route.method, route.path, nil)
+	// Corpo JSON vazio para os handlers que leem um; os de GET e DELETE o ignoram.
+	req := httptest.NewRequest(route.method, route.path, strings.NewReader("{}"))
 	req.Header.Set("Authorization", "Bearer token-valido")
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
@@ -67,7 +69,7 @@ func assertRoutesPass(t *testing.T, routes []scopedRoute, scope string) {
 	for _, route := range routes {
 		rec := serveScoped(route, scope)
 
-		assert.NotContains(t, []int{http.StatusUnauthorized, http.StatusForbidden}, rec.Code, "%s %s com scope %q", route.method, route.path, scope)
+		assert.True(t, rec.Code >= 200 && rec.Code < 300, "%s %s com scope %q respondeu %d: %s", route.method, route.path, scope, rec.Code, rec.Body.String())
 	}
 }
 
@@ -136,5 +138,14 @@ func TestScopeRoutes_EscopoDasNotas_FalhaAntesDoTenant(t *testing.T) {
 
 		assert.Equal(t, http.StatusForbidden, rec.Code, "%s %s", route.method, route.path)
 		assert.Contains(t, rec.Body.String(), `"error":"insufficient_scope"`, route.path)
+	}
+}
+
+func TestScopeRoutes_ScopeSoDeEspacos_RecusadoEmTodaRota(t *testing.T) {
+	for _, route := range slices.Concat(notesReadRoutes, notesWriteRoutes, adminScopeRoutes, anyScopeRoutes, loginOnlyRoutes) {
+		rec := serveScoped(route, "  \t ")
+
+		assert.Equal(t, http.StatusUnauthorized, rec.Code, "%s %s", route.method, route.path)
+		assert.JSONEq(t, `{"error":"unauthorized","message":"token ausente ou invalido"}`, rec.Body.String(), route.path)
 	}
 }
