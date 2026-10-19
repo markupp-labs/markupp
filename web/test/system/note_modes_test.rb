@@ -45,7 +45,8 @@ class NoteModesTest < ApplicationSystemTestCase
     assert_no_selector ".cm-editor"
     find("body").send_keys([ :control, "e" ])
     assert_no_selector ".note-preview"
-    find(".cm-content").send_keys([ :control, "\\" ])
+    find(".cm-content").click
+    press_ctrl_backslash
 
     assert_selector ".cm-editor"
     assert_selector ".note-preview h1", text: "Plan"
@@ -57,7 +58,7 @@ class NoteModesTest < ApplicationSystemTestCase
     content = <<~MARKDOWN
       <script>window.pwned = "script"</script>
 
-      <img src="missing.png" onerror="window.pwned = 'onerror'" alt="pic">
+      <img src="https://example.invalid/pic.png" onerror="window.pwned = 'onerror'" alt="pic">
 
       [bad](javascript:window.pwned='link') and [site](https://example.com)
     MARKDOWN
@@ -85,4 +86,12 @@ class NoteModesTest < ApplicationSystemTestCase
   ensure
     page.current_window.resize_to(1400, 900)
   end
+
+  private
+    # O chromedriver manda Ctrl+\ com key vazia; pelo CDP a tecla chega como no navegador de verdade.
+    def press_ctrl_backslash
+      %w[keyDown keyUp].each do |type|
+        page.driver.browser.execute_cdp("Input.dispatchKeyEvent", type:, modifiers: 2, key: "\\", code: "Backslash", windowsVirtualKeyCode: 220)
+      end
+    end
 end
