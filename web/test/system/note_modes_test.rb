@@ -116,6 +116,21 @@ class NoteModesTest < ApplicationSystemTestCase
     page.current_window.resize_to(1400, 900)
   end
 
+  test "side by side stacks by the width of the content, not of the window" do
+    use_fake_api(notes: [ { id: "1", path: "plan.md", content: "# Plan\n" } ])
+    sign_in_through_form
+
+    visit note_path("1")
+    click_on "Side by side"
+    page.current_window.resize_to(1024, 768)
+    assert_preview_below_editor
+
+    within("main") { click_on "Hide sidebar" }
+    assert_preview_beside_editor
+  ensure
+    page.current_window.resize_to(1400, 900)
+  end
+
   test "side by side scrolls the preview along with the editor" do
     filler = ->(part, count) { (1..count).map { |n| "#{part} paragraph #{n}." }.join("\n\n") }
     content = "# Plan\n\n#{filler.('Opening', 12)}\n\n## Middle\n\n#{filler.('Closing', 40)}\n"
@@ -130,6 +145,22 @@ class NoteModesTest < ApplicationSystemTestCase
   end
 
   private
+    def pane_boxes
+      evaluate_script(<<~JS)
+        [".note-editor-pane", ".note-preview"].map((selector) => document.querySelector(selector).getBoundingClientRect().toJSON())
+      JS
+    end
+
+    def assert_preview_below_editor
+      editor, preview = pane_boxes
+      assert_operator preview["top"], :>=, editor["bottom"] - 1, "expected the preview under the editor, got editor #{editor} and preview #{preview}"
+    end
+
+    def assert_preview_beside_editor
+      editor, preview = pane_boxes
+      assert_operator preview["left"], :>=, editor["right"] - 1, "expected the preview right of the editor, got editor #{editor} and preview #{preview}"
+    end
+
     # O chromedriver manda Ctrl+\ com key vazia; pelo CDP a tecla chega como no navegador de verdade.
     def press_ctrl_backslash
       %w[keyDown keyUp].each do |type|
