@@ -23,7 +23,7 @@ class NoteTreeTest < ApplicationSystemTestCase
     assert_no_selector "[role=tree] svg", visible: :all
     guides = all("[role=tree] [role=treeitem] > [aria-hidden=true]:first-child", minimum: 7)
     assert(guides.all? { it.text.match?(/\A[│├└─ ]+\z/) })
-    assert_equal css_color("var(--line)"), guides.first.evaluate_script("getComputedStyle(this).color")
+    assert_equal css_color("var(--ink-muted)"), guides.first.evaluate_script("getComputedStyle(this).color")
     assert_equal "goals", find("[role=treeitem][aria-current=page]").native.accessible_name
     assert_equal "work", find("[role=treeitem]", text: "work/").native.accessible_name
   end
