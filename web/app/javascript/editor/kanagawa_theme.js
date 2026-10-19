@@ -28,6 +28,20 @@ const commonHighlight = [
   { tag: [ tags.processingInstruction, tags.quote ], color: "var(--ink-muted)" },
 ]
 
+// Código dentro dos blocos cercados (editor/code_languages.js), nas cores --code-* da leitura (hljs-* no application.css).
+const codeHighlight = [
+  { tag: tags.keyword, color: "var(--code-keyword)" },
+  { tag: [ tags.string, tags.special(tags.string), tags.regexp, tags.inserted ], color: "var(--code-string)" },
+  { tag: [ tags.number, tags.bool, tags.null ], color: "var(--code-number)" },
+  { tag: [ tags.function(tags.variableName), tags.function(tags.propertyName), tags.tagName ], color: "var(--code-function)" },
+  { tag: [ tags.typeName, tags.className, tags.namespace ], color: "var(--code-type)" },
+  { tag: [ tags.propertyName, tags.attributeName, tags.special(tags.variableName) ], color: "var(--code-identifier)" },
+  { tag: [ tags.atom, tags.self, tags.constant(tags.variableName) ], color: "var(--code-constant)" },
+  { tag: tags.standard(tags.variableName), color: "var(--code-builtin)" },
+  { tag: [ tags.meta, tags.deleted ], color: "var(--code-special)" },
+  { tag: tags.comment, color: "var(--ink-muted)", fontStyle: "italic" },
+]
+
 // Styled, como o source do Obsidian: as mesmas marcas à vista, com títulos maiores.
 const headingSizes = [
   { tag: tags.heading1, fontSize: "1.5em" },
@@ -36,8 +50,8 @@ const headingSizes = [
 ]
 
 const HIGHLIGHTS = {
-  plain: HighlightStyle.define(commonHighlight),
-  styled: HighlightStyle.define([ ...commonHighlight, ...headingSizes ]),
+  plain: HighlightStyle.define([ ...commonHighlight, ...codeHighlight ]),
+  styled: HighlightStyle.define([ ...commonHighlight, ...codeHighlight, ...headingSizes ]),
 }
 
 // style vem do data-editor-style do html (cookie lido no servidor); valor desconhecido cai no plain.
