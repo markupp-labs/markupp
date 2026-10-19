@@ -192,6 +192,23 @@ func TestOAuthServiceConfigFrom_ConverteDuracoesEListaOsResources(t *testing.T) 
 	assert.Equal(t, time.Minute, got.CodeTTL)
 }
 
+func TestOAuthServiceConfigFrom_MapeiaOsSegredosEAValidadeDaTroca(t *testing.T) {
+	cfg := config.Config{
+		OAuthResources: []config.OAuthResource{
+			{URL: "https://mcp.markupp.dev/mcp", Secret: "segredo-um"},
+			{URL: "https://outro.markupp.dev", Secret: "segredo-dois"},
+		},
+		OAuthExchangeMinutes: 5,
+	}
+
+	got := oauthServiceConfigFrom(cfg)
+
+	assert.Equal(t, map[string]string{
+		"https://mcp.markupp.dev/mcp": "segredo-um", "https://outro.markupp.dev": "segredo-dois",
+	}, got.ResourceSecrets)
+	assert.Equal(t, 5*time.Minute, got.ExchangeTTL)
+}
+
 func TestNewOAuthService_SemPublicURL_DevolveNilDeInterface(t *testing.T) {
 	assert.Nil(t, newOAuthService(config.Config{}, nil, nil))
 }
