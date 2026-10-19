@@ -3,6 +3,7 @@ import DOMPurify from "dompurify"
 import { embedRule, wikilinkRule } from "editor/wikilinks"
 import { highlightCode } from "editor/highlight_code"
 import { headingIds } from "editor/heading_ids"
+import { withLineNumbers } from "editor/code_blocks"
 
 // Markdown para HTML na leitura e no lado a lado. HTML dentro do markdown é aceito, como no Obsidian,
 // mas tudo passa pelo DOMPurify antes de entrar na página: sem script, sem on*, sem javascript:.
@@ -10,6 +11,7 @@ const markdownIt = new MarkdownIt({ html: true, linkify: true, highlight: highli
 markdownIt.inline.ruler.before("link", "wikilink", wikilinkRule)
 markdownIt.inline.ruler.before("image", "note_embed", embedRule)
 markdownIt.core.ruler.push("heading_ids", headingIds)
+markdownIt.renderer.rules.fence = withLineNumbers(markdownIt.renderer.rules.fence)
 // Cada bloco leva a linha do markdown onde começa, para o lado a lado alinhar o preview ao editor (scroll_sync.js).
 // Nota embutida (env.embedded) fica sem: as linhas dela não são as do editor.
 markdownIt.core.ruler.push("source_line", ({ tokens, env }) => {

@@ -318,6 +318,9 @@
   /* Bloco cercado: quem rola na horizontal é o code, não o pre, com a barra fina nos tokens do tema (sem o trilho
      branco padrão no claro). O pre vira a moldura parada; o padding passa para o code, e a barra encosta na borda. */
   & pre:has(> code) { display: flex; padding: 0; overflow: hidden; }
+  /* Números de linha (editor/code_blocks.js) na coluna antes do code, apagados, fora da seleção e da cópia. Mesma fonte
+     e altura de linha do code para as linhas casarem. */
+  & pre > .code-lines { flex: none; padding: 0.75rem 0 0.75rem 1rem; font-size: 0.95em; text-align: right; white-space: pre; color: var(--ink-muted); user-select: none; }
   & pre > code { display: block; flex: 1; min-width: 0; padding: 0.75rem 1rem; overflow-x: auto; scrollbar-color: var(--line) transparent; scrollbar-width: thin; }
   /* Destaque de sintaxe (editor/highlight_code.js): classes do highlight.js nas variáveis --code-*.
      Tudo em :where (especificidade zero): a regra composta (.hljs-variable.language_) vem depois da simples. */
