@@ -67,8 +67,9 @@
                         data: { note_form_target: "title", action: "input->note-form#syncHeading input->note-form#clearBlankTitle keydown.tab->editor#focusEnd" },
                         class: "w-full rounded-md border border-transparent bg-transparent px-1 py-0.5 text-2xl font-semibold text-ink " \
                                "hover:border-line focus:border-accent focus-visible:outline-none aria-invalid:border-danger" %>
-    <%# Sempre presente: o note-form mostra aqui o título em branco sem ir ao servidor. %>
-    <%= tag.p path_error, id: "note_path_error", hidden: path_error.blank?, class: "px-1 text-danger",
+    <%# Sempre presente: o note-form mostra aqui o título em branco sem ir ao servidor. É alerta porque o Ctrl+S pode vir
+        do próprio título, e aí devolver o foco a ele não anuncia nada. %>
+    <%= tag.p path_error, id: "note_path_error", role: "alert", hidden: path_error.blank?, class: "px-1 text-danger",
                           data: { note_form_target: [ "titleError", ("pending" if path_error) ].compact.join(" ") } %>
   </div>
 
