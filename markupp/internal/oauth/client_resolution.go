@@ -56,6 +56,9 @@ func (s *Service) cimdClient(ctx context.Context, clientID string) (Client, erro
 // busca vai só para o log, como causa interna, para não servir de oráculo da rede interna.
 func (s *Service) fetchCIMDClient(ctx context.Context, clientID string, now time.Time) (Client, error) {
 	metadata, err := s.metadata.FetchClientMetadata(ctx, clientID)
+	if err == nil {
+		err = checkFetchedMetadata(clientID, metadata)
+	}
 	if err != nil {
 		return Client{}, unusableMetadataError(clientID, err)
 	}
@@ -71,4 +74,18 @@ func (s *Service) fetchCIMDClient(ctx context.Context, clientID string, now time
 func unusableMetadataError(clientID string, cause error) error {
 	recusa := &ProtocolError{Code: errInvalidRequest, Description: "documento de metadados do client_id " + ClientValue(clientID) + " inacessivel ou invalido; esperado " + metadataDocumentShape}
 	return recusa.WithInternalCause(cause)
+}
+
+// checkFetchedMetadata não confia no fetcher: o documento tem de ser do client_id pedido,
+// ter redirect_uris e um TTL de cache positivo.
+func checkFetchedMetadata(clientID string, metadata ClientMetadata) error {
+	switch {
+	case metadata.ClientID != clientID:
+		return fmt.Errorf("oauth: documento cimd com client_id %s; esperado %s", ClientValue(metadata.ClientID), ClientValue(clientID))
+	case len(metadata.RedirectURIs) == 0:
+		return fmt.Errorf("oauth: documento cimd de %s sem redirect_uris; esperada ao menos uma", ClientValue(clientID))
+	case metadata.TTL <= 0:
+		return fmt.Errorf("oauth: documento cimd de %s com TTL %s; esperado maior que zero", ClientValue(clientID), metadata.TTL)
+	}
+	return nil
 }
