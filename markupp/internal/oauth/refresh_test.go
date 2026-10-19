@@ -14,7 +14,7 @@ import (
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/oauth"
 )
 
-const testRefreshToken = "refresh-em-claro-1"
+const testRefreshToken = "refresh-antigo-1"
 
 func testAuthorization() oauth.Authorization {
 	return oauth.Authorization{ID: "aut-1", UserID: testUserID, ClientID: testClientID, Scopes: oauth.SupportedScopes()}
