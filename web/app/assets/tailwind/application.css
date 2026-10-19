@@ -259,8 +259,8 @@
   & h3::before { content: "### " / ""; }
   & :where(h4, h5, h6)::before { content: "#### " / ""; }
   & a { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
-  /* [[wikilink]] sem nota: apagado e com sublinhado tracejado, como o link não resolvido do Obsidian. */
-  & .wikilink-missing { color: var(--ink-muted); text-decoration: underline dashed; text-underline-offset: 2px; cursor: help; }
+  /* [[wikilink]] sem nota: na cor do texto (não a do link) e com sublinhado tracejado; não navega nem cria nota. */
+  & .wikilink-missing { color: inherit; text-decoration: underline dashed; text-underline-offset: 2px; cursor: help; }
   & :where(ul, ol) { padding-left: 1.5rem; }
   & ul { list-style: "- "; }
   & ul ::marker { color: var(--ink-muted); }
