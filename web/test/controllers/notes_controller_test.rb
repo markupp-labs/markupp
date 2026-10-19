@@ -94,6 +94,28 @@ class NotesControllerTest < ActionDispatch::IntegrationTest
     assert response.body.empty?, "expected an empty json 404, got a #{response.media_type} body"
   end
 
+  test "show as json without a session answers unauthorized and login does not go back to it" do
+    use_fake_api(notes: [ { id: "1", path: "plan.md", content: "" } ])
+
+    get note_path("1", format: :json)
+    assert_response :unauthorized
+    sign_in_as
+
+    assert_redirected_to root_path
+  end
+
+  test "show as json with an expired session answers unauthorized and keeps the notice for the page" do
+    api = use_fake_api(notes: [ { id: "1", path: "plan.md", content: "" } ])
+    sign_in_as
+    api.expire_access_tokens!
+    api.revoke_refresh_tokens!
+
+    get note_path("1", format: :json)
+
+    assert_response :unauthorized
+    assert_nil flash[:alert]
+  end
+
   test "the save button names its shortcut like the mode buttons" do
     use_fake_api(notes: [ { id: "1", path: "a.md", content: "x" } ])
     sign_in_as
