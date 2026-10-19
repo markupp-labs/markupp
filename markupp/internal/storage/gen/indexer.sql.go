@@ -22,6 +22,15 @@ func (q *Queries) DeleteNoteGraph(ctx context.Context, noteIds []string) error {
 	return err
 }
 
+const deleteNoteTerms = `-- name: DeleteNoteTerms :exec
+DELETE FROM note_terms WHERE note_id = ANY ($1::text[])
+`
+
+func (q *Queries) DeleteNoteTerms(ctx context.Context, noteIds []string) error {
+	_, err := q.db.Exec(ctx, deleteNoteTerms, noteIds)
+	return err
+}
+
 const deleteVaultTermFrequencies = `-- name: DeleteVaultTermFrequencies :exec
 DELETE FROM vault_term_frequencies WHERE vault_id = $1
 `
@@ -219,6 +228,41 @@ func (q *Queries) SaveNoteLinks(ctx context.Context, arg SaveNoteLinksParams) er
 	return err
 }
 
+const saveNoteTerms = `-- name: SaveNoteTerms :exec
+WITH stats AS (
+    SELECT (SELECT count(*) FROM notes c WHERE c.vault_id = $2) AS note_count,
+           EXISTS (SELECT 1 FROM vault_term_frequencies k WHERE k.vault_id = $2) AS df_known
+), weighted AS (
+    SELECT s.note_id, u.lexeme AS term, 1 + log(cardinality(u.positions)::double precision) AS tf,
+           markupp_term_idf(stats.note_count, f.df, stats.df_known) AS idf
+    FROM note_search_index s
+    CROSS JOIN LATERAL unnest(s.document) AS u (lexeme, positions, weights)
+    CROSS JOIN stats
+    LEFT JOIN vault_term_frequencies f ON f.vault_id = $2 AND f.term = u.lexeme
+    WHERE s.note_id = ANY ($3::text[])
+), ranked AS (
+    SELECT w.note_id, w.term, w.tf, row_number() OVER (PARTITION BY w.note_id ORDER BY w.tf * w.idf DESC, w.term) AS position
+    FROM weighted w
+)
+INSERT INTO note_terms (note_id, vault_id, term, tf)
+SELECT n.id, n.vault_id, r.term, r.tf
+FROM ranked r JOIN notes n ON n.id = r.note_id
+WHERE r.position <= $1::int
+`
+
+type SaveNoteTermsParams struct {
+	TermsPerNote int32
+	VaultID      string
+	NoteIds      []string
+}
+
+// Os termos de maior tf-idf de cada nota do lote, tirados do documento que o lote
+// acabou de gravar, com o df vigente. tf = 1 + log10 das posições do lexema.
+func (q *Queries) SaveNoteTerms(ctx context.Context, arg SaveNoteTermsParams) error {
+	_, err := q.db.Exec(ctx, saveNoteTerms, arg.TermsPerNote, arg.VaultID, arg.NoteIds)
+	return err
+}
+
 const saveNoteTitles = `-- name: SaveNoteTitles :exec
 INSERT INTO note_titles (note_id, vault_id, title_key)
 SELECT n.id, n.vault_id, d.title_key
@@ -272,7 +316,7 @@ INSERT INTO vault_term_frequencies (vault_id, term, df)
 SELECT n.vault_id, u.lexeme, count(*)
 FROM notes n
 JOIN note_search_index s ON s.note_id = n.id
-CROSS JOIN LATERAL unnest(s.document) AS u
+CROSS JOIN LATERAL unnest(s.document) AS u (lexeme, positions, weights)
 WHERE n.vault_id = $1
 GROUP BY n.vault_id, u.lexeme
 `

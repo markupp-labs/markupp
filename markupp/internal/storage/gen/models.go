@@ -70,6 +70,13 @@ type NoteSearchIndex struct {
 	Document string
 }
 
+type NoteTerm struct {
+	NoteID  string
+	VaultID string
+	Term    string
+	Tf      float64
+}
+
 type NoteTitle struct {
 	NoteID   string
 	VaultID  string

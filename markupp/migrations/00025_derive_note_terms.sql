@@ -1,0 +1,36 @@
+-- +goose Up
+-- Termos de cada nota para a similaridade léxica: os de maior tf-idf, no analisador da
+-- busca, com o tf. O idf não fica gravado porque muda com o cofre inteiro: a leitura o
+-- calcula com o df vigente. O tenant vem do cofre, pelas políticas, como em note_titles.
+CREATE TABLE note_terms (
+    note_id  TEXT NOT NULL REFERENCES notes (id) ON DELETE CASCADE ON UPDATE CASCADE,
+    vault_id TEXT NOT NULL,
+    term     TEXT NOT NULL,
+    tf       DOUBLE PRECISION NOT NULL,
+    PRIMARY KEY (note_id, term)
+);
+CREATE INDEX note_terms_vault_term_idx ON note_terms (vault_id, term);
+
+-- idf = log10(notas do cofre / df). Termo ausente do df apareceu depois do último
+-- segundo estágio e conta como de uma nota só; cofre ainda sem df pesa só pelo tf. df
+-- defasado acima do total de notas não dá peso negativo.
+CREATE FUNCTION markupp_term_idf(note_count BIGINT, df INTEGER, df_known BOOLEAN) RETURNS DOUBLE PRECISION
+LANGUAGE sql IMMUTABLE PARALLEL SAFE
+RETURN CASE WHEN df_known THEN greatest(log(greatest(note_count, 1)::double precision / coalesce(df, 1)), 0) ELSE 1 END;
+
+GRANT SELECT, INSERT, DELETE ON note_terms TO markupp_indexer;
+GRANT SELECT ON note_terms TO markupp_app;
+
+ALTER TABLE note_terms ENABLE ROW LEVEL SECURITY;
+CREATE POLICY note_terms_indexer ON note_terms TO markupp_indexer
+    USING (vault_id = current_setting('markupp.vault_id', true)
+           AND EXISTS (SELECT 1 FROM notes n WHERE n.id = note_id));
+CREATE POLICY note_terms_read ON note_terms FOR SELECT TO markupp_app
+    USING (vault_id IN (SELECT markupp_member_vaults()));
+
+-- As notas já indexadas não têm termos: todas voltam para a fila.
+SELECT markupp_requeue_notes(NULL);
+
+-- +goose Down
+DROP FUNCTION IF EXISTS markupp_term_idf(BIGINT, INTEGER, BOOLEAN);
+DROP TABLE IF EXISTS note_terms;

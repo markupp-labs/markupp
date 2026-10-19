@@ -61,6 +61,9 @@ func (x *PostgresVaultIndexer) indexVault(ctx context.Context, q *gen.Queries, v
 	if err := x.saveDocuments(ctx, q, cs, indexed); err != nil {
 		return err
 	}
+	if err := saveTerms(ctx, q, cs, indexed); err != nil {
+		return err
+	}
 	if err := saveGraphMarkingChange(ctx, q, cs, indexed); err != nil {
 		return err
 	}

@@ -106,6 +106,32 @@ INSERT INTO vault_term_frequencies (vault_id, term, df)
 SELECT n.vault_id, u.lexeme, count(*)
 FROM notes n
 JOIN note_search_index s ON s.note_id = n.id
-CROSS JOIN LATERAL unnest(s.document) AS u
+CROSS JOIN LATERAL unnest(s.document) AS u (lexeme, positions, weights)
 WHERE n.vault_id = sqlc.arg(vault_id)
 GROUP BY n.vault_id, u.lexeme;
+
+-- name: DeleteNoteTerms :exec
+DELETE FROM note_terms WHERE note_id = ANY (sqlc.arg(note_ids)::text[]);
+
+-- Os termos de maior tf-idf de cada nota do lote, tirados do documento que o lote
+-- acabou de gravar, com o df vigente. tf = 1 + log10 das posições do lexema.
+-- name: SaveNoteTerms :exec
+WITH stats AS (
+    SELECT (SELECT count(*) FROM notes c WHERE c.vault_id = sqlc.arg(vault_id)) AS note_count,
+           EXISTS (SELECT 1 FROM vault_term_frequencies k WHERE k.vault_id = sqlc.arg(vault_id)) AS df_known
+), weighted AS (
+    SELECT s.note_id, u.lexeme AS term, 1 + log(cardinality(u.positions)::double precision) AS tf,
+           markupp_term_idf(stats.note_count, f.df, stats.df_known) AS idf
+    FROM note_search_index s
+    CROSS JOIN LATERAL unnest(s.document) AS u (lexeme, positions, weights)
+    CROSS JOIN stats
+    LEFT JOIN vault_term_frequencies f ON f.vault_id = sqlc.arg(vault_id) AND f.term = u.lexeme
+    WHERE s.note_id = ANY (sqlc.arg(note_ids)::text[])
+), ranked AS (
+    SELECT w.note_id, w.term, w.tf, row_number() OVER (PARTITION BY w.note_id ORDER BY w.tf * w.idf DESC, w.term) AS position
+    FROM weighted w
+)
+INSERT INTO note_terms (note_id, vault_id, term, tf)
+SELECT n.id, n.vault_id, r.term, r.tf
+FROM ranked r JOIN notes n ON n.id = r.note_id
+WHERE r.position <= sqlc.arg(terms_per_note)::int;
