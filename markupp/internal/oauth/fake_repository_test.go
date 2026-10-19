@@ -19,9 +19,12 @@ type fakeOAuthRepository struct {
 	consumed       oauth.TokenGrant
 	found          oauth.TokenGrant
 	summaries      []oauth.AuthorizationSummary
+	// freshCIMD são os clientes CIMD com documento em cache ainda válido.
+	freshCIMD map[string]oauth.Client
 
 	getClientErr, createErr, approveErr, activeErr, redeemErr, saveErr              error
 	consumeErr, saveRefreshedErr, revokeAuditedErr, findErr, listErr, revokeAuthErr error
+	getFreshCIMDErr, saveCIMDErr                                                    error
 
 	created     []oauth.AuthorizationRequest
 	pendingNow  []time.Time
@@ -44,6 +47,21 @@ type fakeOAuthRepository struct {
 	findCalls      []string
 	listCalls      []string
 	revokedAuths   []revokedAuthorization
+	getClientCalls []string
+	freshCIMDCalls []freshCIMDLookup
+	savedCIMD      []savedCIMDClient
+}
+
+// freshCIMDLookup é uma chamada a GetFreshCIMDClient.
+type freshCIMDLookup struct {
+	ID  string
+	Now time.Time
+}
+
+// savedCIMDClient é uma chamada a SaveCIMDClient.
+type savedCIMDClient struct {
+	Client    oauth.Client
+	ExpiresAt time.Time
 }
 
 // auditedRevoke é uma chamada a RevokeAuthorizationTokensAudited.
@@ -66,6 +84,7 @@ func newFakeOAuthRepository() *fakeOAuthRepository {
 		clients:        map[string]oauth.Client{},
 		requests:       map[string]oauth.AuthorizationRequest{},
 		authorizations: map[string]oauth.Authorization{},
+		freshCIMD:      map[string]oauth.Client{},
 	}
 }
 
@@ -74,6 +93,7 @@ func authorizationKey(userID, clientID string) string {
 }
 
 func (f *fakeOAuthRepository) GetClient(_ context.Context, id string) (oauth.Client, error) {
+	f.getClientCalls = append(f.getClientCalls, id)
 	if f.getClientErr != nil {
 		return oauth.Client{}, f.getClientErr
 	}
@@ -187,10 +207,19 @@ func (f *fakeOAuthRepository) RecordAuditEvent(_ context.Context, event oauth.Au
 	return f.recordErr
 }
 
-func (f *fakeOAuthRepository) GetFreshCIMDClient(context.Context, string, time.Time) (oauth.Client, error) {
-	return oauth.Client{}, oauth.ErrClientNotFound
+func (f *fakeOAuthRepository) GetFreshCIMDClient(_ context.Context, id string, now time.Time) (oauth.Client, error) {
+	f.freshCIMDCalls = append(f.freshCIMDCalls, freshCIMDLookup{ID: id, Now: now})
+	if f.getFreshCIMDErr != nil {
+		return oauth.Client{}, f.getFreshCIMDErr
+	}
+	client, ok := f.freshCIMD[id]
+	if !ok {
+		return oauth.Client{}, oauth.ErrClientNotFound
+	}
+	return client, nil
 }
 
-func (f *fakeOAuthRepository) SaveCIMDClient(context.Context, oauth.Client, time.Time) error {
-	return nil
+func (f *fakeOAuthRepository) SaveCIMDClient(_ context.Context, client oauth.Client, expiresAt time.Time) error {
+	f.savedCIMD = append(f.savedCIMD, savedCIMDClient{Client: client, ExpiresAt: expiresAt})
+	return f.saveCIMDErr
 }
