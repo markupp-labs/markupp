@@ -86,13 +86,6 @@ class NoteTest < ActiveSupport::TestCase
     assert_equal "mine", Note.find(api, "1").content
   end
 
-  test "untitled is an empty note named Untitled.md in the given folder" do
-    assert_equal "work/2026/Untitled.md", Note.untitled("work/2026").path
-    assert_equal "Untitled.md", Note.untitled(nil).path
-    assert_equal "", Note.untitled("").content
-    assert_not Note.untitled(nil).persisted?
-  end
-
   test "save posts path and content and takes the id and version from the API" do
     api = FakeMarkuppApi.new(notes: [])
     note = Note.new(path: "work/plan.md", content: "# Plan\n")
@@ -104,17 +97,7 @@ class NoteTest < ActiveSupport::TestCase
     assert_equal Time.utc(2026, 10, 1, 12), note.updated_at
   end
 
-  test "save numbers an untitled note until the path is free" do
-    api = FakeMarkuppApi.new(notes: [ { id: "1", path: "work/Untitled.md" }, { id: "2", path: "work/Untitled 1.md" } ])
-    note = Note.untitled("work")
-
-    note.save(api)
-
-    assert_equal "work/Untitled 2.md", note.path
-    assert_equal "work/Untitled 2.md", Note.find(api, note.id).path
-  end
-
-  test "save does not renumber a path the user chose" do
+  test "save flags a taken path after a single try" do
     api = FakeMarkuppApi.new(notes: [ { id: "1", path: "plan.md" } ])
 
     note = Note.new(path: "plan.md", content: "")
@@ -122,17 +105,6 @@ class NoteTest < ActiveSupport::TestCase
     assert_not note.save(api)
     assert note.errors.of_kind?(:path, :taken)
     assert_equal 1, api.post_requests.size
-  end
-
-  test "save gives up numbering at the limit, flagging the last path tried" do
-    taken = [ "Untitled.md", *(1..Note::UNTITLED_LIMIT).map { "Untitled #{it}.md" } ]
-    api = FakeMarkuppApi.new(notes: taken.map.with_index { |path, index| { id: index.to_s, path: } })
-
-    note = Note.untitled(nil)
-
-    assert_not note.save(api)
-    assert note.errors.of_kind?(:path, :taken)
-    assert_equal "Untitled #{Note::UNTITLED_LIMIT}.md", note.path
   end
 
   test "update raises Conflict when the note changed on the server" do

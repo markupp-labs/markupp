@@ -52,12 +52,6 @@ class ContrastTest < ApplicationSystemTestCase
     assert_readable find("#sidebar a[aria-current=page]")
   end
 
-  test "the untitled placeholder of a new note reads as large text" do
-    visit new_note_path
-
-    assert_readable find_field("Title"), pseudo: "::placeholder", minimum: 3
-  end
-
   test "highlighted code reads clearly in the light and the dark theme" do
     %w[Light Dark].each do |theme|
       visit settings_appearance_path
