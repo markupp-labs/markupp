@@ -182,7 +182,7 @@ module Settings
 
       assert_response :success
       assert_select "main nav a[href=?]", settings_appearance_path
-      assert_select "nav footer a[href=?]", settings_account_path
+      assert_select "nav footer a[href=?][aria-label=Settings]", settings_path
     end
 
     test "the empty invite list of the onboarding points to the account" do

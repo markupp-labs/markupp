@@ -33,7 +33,7 @@ class SidebarTest < ActionDispatch::IntegrationTest
       assert_select "#account_menu[role=menu][popover]" do
         assert_select "[role=menuitem]", count: 1
         assert_select "form[action=?] button[role=menuitem]", session_path, text: "Log out"
-        assert_select "p", text: EMAIL
+        assert_select "p", text: /Signed in as\s*#{Regexp.escape(EMAIL)}/
       end
     end
     assert_select "nav > footer button", text: "Log out", count: 1
