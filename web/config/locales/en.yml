@@ -261,6 +261,14 @@ en:
       new_note: "New note"
       tree: "Notes"
       empty: "No notes yet."
+      copied: "Copied %{text}"
+    tree_menu:
+      label: "Note actions"
+      new_here: "New note here"
+      rename: "Rename / move"
+      delete: "Delete"
+      copy_path: "Copy path"
+      copy_wikilink: "Copy wikilink"
     not_found:
       title: "Note not found"
       hint: "It may have been renamed or deleted. Pick another one from the sidebar."

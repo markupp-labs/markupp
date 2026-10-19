@@ -15,7 +15,14 @@ export default class extends Controller {
     const heading = headingFor(this.pathTarget.value)
     this.heading = this.newValue && this.sourceTarget.value.startsWith(heading) ? heading : ""
     if (this.newValue) this.moveCaretToEnd()
+    if (new URL(location.href).searchParams.has("rename")) this.selectPath()
     this.track()
+  }
+
+  // Rename / move da árvore (note_tree_controller.js): o caminho inteiro selecionado, pronto para trocar.
+  selectPath() {
+    this.pathTarget.focus()
+    this.pathTarget.select()
   }
 
   // Nota só de leitura (papel viewer) ou sem mudança não tem o que salvar.

@@ -1,0 +1,20 @@
+<%# Menu de contexto da árvore, à moda do VS Code: o note_tree_controller.js guarda a linha e esconde o que só vale para
+    nota (data-note-only); o context_menu_controller.js abre no ponto, anda pelas setas e devolve o foco à linha.
+    Quem só lê fica com os itens de copiar. %>
+<div id="tree_menu" popover="manual" role="menu" aria-label="<%= t(".label") %>" data-controller="context-menu"
+     data-action="keydown->context-menu#navigate toggle->context-menu#returnFocus pointerdown@document->context-menu#closeOutside"
+     class="layer fixed m-0 w-64 rounded-md border border-line bg-surface-sunken p-1 text-[13px] text-ink [inset:auto]">
+  <% if writer %>
+    <%= tree_menu_item(:new_here, "Alt+N") %>
+    <%= tree_menu_item(:rename, "F2", note_only: true) %>
+    <%# Apagar pede confirmação antes (data-turbo-confirm do form), com o mesmo texto do Delete da nota. %>
+    <%= tree_menu_item(:delete, "Delete", note_only: true, danger: true, type: "submit", form: "tree_delete_note") %>
+  <% end %>
+  <%= tree_menu_item(:copy_path, "Alt+Shift+C") %>
+  <%= tree_menu_item(:copy_wikilink, "Alt+Shift+W", note_only: true) %>
+</div>
+<% if writer %>
+  <%# O destino é a nota da linha, que o note_tree_controller.js põe no action antes de enviar. %>
+  <%= form_with url: notes_path, method: :delete, id: "tree_delete_note", hidden: true,
+                data: { note_tree_target: "deleteForm", turbo_confirm: t("notes.form.confirm_delete") } do %><% end %>
+<% end %>

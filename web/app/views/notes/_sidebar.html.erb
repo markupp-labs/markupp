@@ -1,20 +1,25 @@
-<%# Sem árvore (a listagem falhou nas configurações) fica só o aviso, sem New note. %>
-<% if current_tenant.writer? && tree %>
-  <%= link_to new_note_path(folder: current&.folder_names&.join("/").presence),
-              class: "tree-row mb-2 flex items-center gap-2 border border-line" do %>
-    <%= icon("file-plus") %><%= t(".new_note") %>
-  <% end %>
-<% end %>
-
-<%# O aviso é curto; a página ao lado continua funcionando. %>
+<%# O aviso é curto; a página ao lado continua funcionando. Sem árvore (a listagem falhou) não há nota nova nem menu. %>
 <% if tree.nil? %>
   <p class="px-2 py-1 text-danger"><%= t("notes.unreachable.title") %></p>
-<% elsif tree.folders.empty? && tree.notes.empty? %>
-  <p class="px-2 py-1 text-ink-muted"><%= t(".empty") %></p>
 <% else %>
-  <%# Ctrl+Shift+E (Cmd+Shift+E) traz o foco para cá de qualquer lugar, como o explorador do VS Code (sidebar_controller.js). %>
-  <ul role="tree" aria-label="<%= t(".tree") %>" aria-keyshortcuts="Control+Shift+E Meta+Shift+E" class="note-tree"
-      data-controller="note-tree" data-action="keydown->note-tree#navigate focusin->note-tree#roveToFocused">
-    <%= render "notes/folder", folder: tree, path: "", guide: "", current:, open_folders: current&.folder_names || [] %>
-  </ul>
+  <%# Nota nova sem botão: Alt+N de qualquer lugar, na pasta da nota aberta (ou da linha com o foco), ou "New note here"
+      no menu de contexto (note_tree_controller.js). Só quem escreve recebe o url, e com ele as ações que mudam notas. %>
+  <% writer = current_tenant.writer? %>
+  <%= tag.div data: { controller: "note-tree", note_tree_context_menu_outlet: "#tree_menu",
+                      note_tree_new_note_url_value: (new_note_path(folder: current&.folder.presence) if writer),
+                      note_tree_copied_value: t(".copied"), note_tree_copy_failed_value: t("notes.form.copy_failed"),
+                      action: "keydown@window->note-tree#newNote" } do %>
+    <% if tree.folders.empty? && tree.notes.empty? %>
+      <p class="px-2 py-1 text-ink-muted"><%= t(".empty") %></p>
+    <% else %>
+      <%# Ctrl+Shift+E (Cmd+Shift+E) traz o foco para cá de qualquer lugar, como o explorador do VS Code (sidebar_controller.js).
+          Botão direito, Shift+F10 ou a tecla Menu numa linha abrem o menu de contexto dela. %>
+      <ul role="tree" aria-label="<%= t(".tree") %>" aria-keyshortcuts="Control+Shift+E Meta+Shift+E" class="note-tree"
+          data-action="keydown->note-tree#navigate keydown->note-tree#rowShortcut focusin->note-tree#roveToFocused contextmenu->note-tree#openMenuAtPointer">
+        <%= render "notes/folder", folder: tree, path: "", guide: "", current:, open_folders: current&.folder_names || [] %>
+      </ul>
+    <% end %>
+    <%= render "notes/tree_menu", writer: %>
+    <p role="status" data-note-tree-target="status" class="truncate px-2 text-xs text-ink-muted"></p>
+  <% end %>
 <% end %>

@@ -168,6 +168,24 @@
     @apply shrink-0 whitespace-pre text-ink-muted;
   }
 
+  /* Item do menu de contexto da árvore (com o .tree-row): a linha da árvore com o atalho à direita, apagado. O foco (teclado ou o
+     primeiro item ao abrir com o mouse) pinta como o hover; o Delete usa o .btn-danger também no foco. */
+  .context-menu-item {
+    @apply flex w-full items-center justify-between gap-4 py-0.5 text-left whitespace-nowrap focus:bg-accent-soft focus:outline-none;
+
+    & kbd {
+      @apply font-mono text-xs text-ink-muted;
+    }
+
+    &.btn-danger:focus {
+      @apply bg-danger text-surface;
+
+      & kbd {
+        @apply text-surface;
+      }
+    }
+  }
+
   /* Marcador da pasta no lugar do ícone: + fechada, - aberta, à moda do NERDTree em ASCII; o aria-expanded já diz o estado. */
   .tree-marker::before {
     content: "+ " / "";
