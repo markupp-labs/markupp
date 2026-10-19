@@ -1,6 +1,7 @@
 // Package benchfixture gera o cofre sintético dos benchmarks de leveza: notas
 // markdown com título, texto e wikilinks entre elas, sempre iguais para a mesma
-// semente.
+// semente. O cofre padrão tem a frequência das palavras e das ligações em lei de
+// Zipf, como um cofre real; o uniforme é o pior caso.
 package benchfixture
 
 import (
@@ -29,57 +30,43 @@ type Note struct {
 	Content string
 }
 
-var vocabulary = strings.Fields(`reuniao cliente projeto prazo entrega relatorio
-	orcamento equipe servidor banco indice busca grafo ligacao nota cofre tarefa
-	revisao codigo teste deploy cluster fila evento usuario conta senha convite
-	contrato reuniao ideia livro capitulo leitura resumo artigo pesquisa dado
-	modelo metrica painel alerta incidente plano meta semana mes ano viagem
-	receita compra mercado saude treino corrida sono humor familia amigo escola
-	curso aula prova nota historia musica filme serie jogo foto jardim casa`)
+// sampler sorteia as palavras do texto e o índice da nota que cada wikilink cita.
+type sampler struct {
+	word   func() string
+	target func() int
+}
 
-// GenerateVault gera size notas a partir de seed; a mesma semente gera o mesmo cofre.
-func GenerateVault(seed uint64, size int) []Note {
-	rng := rand.New(rand.NewPCG(seed, seed)) //nolint:gosec // G404: o cofre precisa ser reprodutivel, nao imprevisivel
-	titles := generateTitles(rng, size)
-	vault := make([]Note, 0, size)
+func newRand(seed uint64) *rand.Rand {
+	return rand.New(rand.NewPCG(seed, seed)) //nolint:gosec // G404: o cofre precisa ser reprodutivel, nao imprevisivel
+}
+
+func generate(rng *rand.Rand, titles []string, s sampler) []Note {
+	vault := make([]Note, 0, len(titles))
 	for i, title := range titles {
 		path := fmt.Sprintf("pasta-%02d/%s.md", i%folderCount, title)
-		vault = append(vault, Note{Path: path, Content: generateContent(rng, title, titles)})
+		vault = append(vault, Note{Path: path, Content: generateContent(rng, title, titles, s)})
 	}
 	return vault
 }
 
-// generateTitles sorteia duas palavras por título; o índice no fim o torna único.
-func generateTitles(rng *rand.Rand, size int) []string {
-	titles := make([]string, size)
-	for i := range titles {
-		titles[i] = fmt.Sprintf("%s %s %05d", randomWord(rng), randomWord(rng), i)
-	}
-	return titles
-}
-
-func generateContent(rng *rand.Rand, title string, titles []string) string {
+func generateContent(rng *rand.Rand, title string, titles []string, s sampler) string {
 	var b strings.Builder
 	b.WriteString("# " + title + "\n")
 	for range paragraphsPerNote {
-		b.WriteString("\n" + generateParagraph(rng, titles) + "\n")
+		b.WriteString("\n" + generateParagraph(rng, titles, s) + "\n")
 	}
 	return b.String()
 }
 
-// generateParagraph sorteia palavras do vocabulário e troca algumas por wikilinks
-// para títulos do cofre.
-func generateParagraph(rng *rand.Rand, titles []string) string {
+// generateParagraph sorteia palavras e troca algumas por wikilinks para títulos do
+// cofre.
+func generateParagraph(rng *rand.Rand, titles []string, s sampler) string {
 	words := make([]string, minWordsPerPara+rng.IntN(maxWordsPerPara-minWordsPerPara+1))
 	for i := range words {
-		words[i] = randomWord(rng)
+		words[i] = s.word()
 	}
 	for range rng.IntN(maxLinksPerPara + 1) {
-		words[rng.IntN(len(words))] = "[[" + titles[rng.IntN(len(titles))] + "]]"
+		words[rng.IntN(len(words))] = "[[" + titles[s.target()] + "]]"
 	}
 	return strings.Join(words, " ")
-}
-
-func randomWord(rng *rand.Rand) string {
-	return vocabulary[rng.IntN(len(vocabulary))]
 }
