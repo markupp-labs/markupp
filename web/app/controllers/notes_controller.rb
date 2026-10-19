@@ -66,6 +66,6 @@ class NotesController < ApplicationController
     def path_error_status = @note.errors.of_kind?(:path, :taken) ? :conflict : :unprocessable_content
 
     def render_not_found
-      render :not_found, status: :not_found
+      render :not_found, status: :not_found, formats: :html
     end
 end
