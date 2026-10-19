@@ -120,8 +120,8 @@ class MotionTest < ApplicationSystemTestCase
   end
 
   # Troca de área (notas, configurações, tenants, telas públicas) como a troca de workspace do Hyprland: a página que
-  # sai some rápida e linear deslizando um pouco, a que entra vem na easeOutQuint. A barra lateral, igual dos dois
-  # lados, fica parada.
+  # sai some rápida e linear deslizando um pouco, a que entra vem na easeOutQuint. A barra lateral e a lombada, iguais
+  # dos dois lados, ficam paradas.
   test "entering and leaving the settings and the tenants slides the area, the sidebar holds still" do
     visit note_path("1")
 
@@ -137,12 +137,13 @@ class MotionTest < ApplicationSystemTestCase
     assert_empty area_motions_of_visit(note_path("1"))
   end
 
-  test "logging out slides to the login, with the sidebar leaving along" do
+  test "logging out slides to the login, with the sidebar and its spine leaving along" do
     visit note_path("1")
     click_on FakeMarkuppAccounts::DEFAULT_EMAIL
 
     motions = area_motions_while(%(document.querySelector("form[action='#{session_path}'] button").click()))
-    assert_equal AREA_MOVE + [ "::view-transition-old(sidebar) area-out 150 linear" ], motions
+    assert_equal AREA_MOVE + [ "::view-transition-old(sidebar) area-out 150 linear", "::view-transition-old(sidebar-spine) area-out 150 linear" ],
+                 motions
   end
 
   test "reduced motion swaps the area at once" do
