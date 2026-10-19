@@ -3,9 +3,9 @@
   <%= render "layouts/head" %>
 
   <%# Telas sem sessão: o mascote à esquerda e o formulário numa coluna estreita, como o banner de um terminal. %>
-  <%# No celular o mascote some e fica só a coluna. %>
-  <body class="min-h-dvh bg-surface font-mono text-sm text-ink">
-    <main class="p-4 md:mx-auto md:mt-[12vh] md:flex md:max-w-3xl md:items-center md:justify-center md:gap-10 md:p-6">
+  <%# No celular o mascote some e fica só a coluna. Os dois ficam no centro da tela em qualquer largura. %>
+  <body class="grid min-h-dvh place-items-center bg-surface font-mono text-sm text-ink">
+    <main class="flex w-full max-w-3xl items-center justify-center gap-10 p-4 md:p-6">
       <%= mascot(:large, class: "hidden md:block") %>
       <div class="w-full max-w-sm">
         <p class="mb-4 text-ink-muted">markupp</p>
