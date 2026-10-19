@@ -34,7 +34,7 @@ class NotesTest < ApplicationSystemTestCase
 
     visit note_path("1")
     click_on "New note"
-    assert_field "Folder", with: "work"
+    assert_field "Path", with: "/work/"
     send_keys "Idea", :tab, "Fresh idea.", [ :control, "s" ]
 
     assert_text "Created"
@@ -47,8 +47,8 @@ class NotesTest < ApplicationSystemTestCase
     sign_in_through_form
 
     visit note_path("1")
-    fill_in "Title", with: "roadmap"
-    fill_in "Folder", with: "work"
+    assert_field "Path", with: "/plan"
+    fill_in "Path", with: "/work/roadmap"
     assert_text "Unsaved changes"
     click_on "Save"
 
@@ -57,12 +57,12 @@ class NotesTest < ApplicationSystemTestCase
     assert_equal({ path: "work/roadmap.md", content: "# Plan\n" }, api.put_requests.sole.slice(:path, :content))
   end
 
-  test "the home is a blank note: the title takes the focus and tab moves to the content" do
+  test "the home is a blank note: the path takes the focus and tab moves to the content" do
     api = use_fake_api(notes: [])
     sign_in_through_form
 
     visit root_path
-    assert_equal "note_title", evaluate_script("document.activeElement.id")
+    assert_field "Path", with: "/", focused: true
     send_keys "Plan"
     assert_selector ".cm-content", text: "Plan"
     send_keys :tab
@@ -74,7 +74,7 @@ class NotesTest < ApplicationSystemTestCase
     assert_equal({ path: "Plan.md", content: "# Plan\n\nShip it." }, api.post_requests.sole)
   end
 
-  test "shift+tab goes back from the content to the title" do
+  test "shift+tab goes back from the content to the path" do
     use_fake_api(notes: [])
     sign_in_through_form
 
@@ -83,7 +83,7 @@ class NotesTest < ApplicationSystemTestCase
     assert_selector ".cm-content:focus"
     send_keys [ :shift, :tab ]
 
-    assert_equal "note_title", evaluate_script("document.activeElement.id")
+    assert_field "Path", with: "/Plan", focused: true
   end
 
   test "the heading follows the title while the note is new" do
@@ -96,19 +96,20 @@ class NotesTest < ApplicationSystemTestCase
     assert_equal "# Plan\n\nBody", find("textarea", visible: :hidden).value
   end
 
-  test "the heading takes only the file name when the title carries a folder" do
+  test "the heading takes only the name of the note, without the folders nor .md" do
     use_fake_api(notes: [])
     sign_in_through_form
 
     visit root_path
     send_keys "2026/Plan", :tab, "Body"
+    assert_field "Path", with: "/2026/Plan"
     assert_equal "# Plan\n\nBody", find("textarea", visible: :hidden).value
 
-    find_field("Title").send_keys([ :control, "a" ], "/abs/plan")
+    find_field("Path").send_keys([ :control, "a" ], "/abs/plan.md")
     assert_equal "# plan\n\nBody", find("textarea", visible: :hidden).value
   end
 
-  test "a title refused for its trailing slash leaves a single heading once the title is typed again" do
+  test "a path refused for its trailing slash leaves a single heading once the name is typed again" do
     use_fake_api(notes: [])
     sign_in_through_form
 
@@ -116,7 +117,8 @@ class NotesTest < ApplicationSystemTestCase
     send_keys "trail/", :tab, "Body."
     send_keys [ :control, "s" ]
     assert_text "Title can't be blank"
-    find_field("Title").send_keys("Plan")
+    assert_field "Path", with: "/trail/"
+    find_field("Path").send_keys("Plan")
 
     assert_equal "# Plan\n\nBody.", find("textarea", visible: :hidden).value
   end
@@ -138,7 +140,8 @@ class NotesTest < ApplicationSystemTestCase
     sign_in_through_form
 
     visit note_path("1")
-    fill_in "Title", with: "Roadmap"
+    assert_field "Path", with: "/Plan"
+    fill_in "Path", with: "/Roadmap"
     click_on "Save"
 
     assert_text "Saved"
@@ -157,7 +160,7 @@ class NotesTest < ApplicationSystemTestCase
     assert_empty api.post_requests
   end
 
-  test "saving a new note without a title asks for one in place, keeping folder and content" do
+  test "saving a new note without a name asks for one in place, keeping its folder and content" do
     api = use_fake_api(notes: [])
     sign_in_through_form
 
@@ -166,7 +169,7 @@ class NotesTest < ApplicationSystemTestCase
     send_keys :tab, "Fresh idea.", [ :control, "s" ]
 
     assert_blank_title_refused_in_place
-    assert_field "Folder", with: "work"
+    assert_field "Path", with: "/work/"
     assert_selector ".cm-content", text: "Fresh idea."
     assert_empty api.post_requests
   end
@@ -181,7 +184,7 @@ class NotesTest < ApplicationSystemTestCase
     send_keys "Plan"
 
     assert_no_selector "#note_path_error"
-    assert_selector "#note_title:not([aria-invalid=true]):not([aria-describedby])"
+    assert_selector "#note_path:not([aria-invalid=true]):not([aria-describedby])"
   end
 
   # Com o foco já no título, devolver o foco não anuncia nada: o aviso precisa ser um alerta.
@@ -195,13 +198,14 @@ class NotesTest < ApplicationSystemTestCase
     assert_selector "#note_path_error[role=alert]", text: "Title can't be blank"
   end
 
-  test "saving a note with its title cleared asks for one in place" do
+  test "saving a note with its path cleared asks for a name in place" do
     api = use_fake_api(notes: [ { id: "1", path: "plan.md", content: "# Plan\n" } ])
     sign_in_through_form
 
     visit note_path("1")
     execute_script("window.stayedOnPage = true")
-    fill_in "Title", with: ""
+    assert_field "Path", with: "/plan"
+    fill_in "Path", with: ""
     find(".cm-content").click
     click_on "Save"
 
@@ -228,7 +232,8 @@ class NotesTest < ApplicationSystemTestCase
     sign_in_through_form
 
     visit note_path("1")
-    fill_in "Title", with: "renamed"
+    assert_field "Path", with: "/plan"
+    fill_in "Path", with: "renamed"
     click_on "Save"
 
     assert_text "Saved"
@@ -263,11 +268,11 @@ class NotesTest < ApplicationSystemTestCase
   end
 
   private
-    # Recusado no navegador: a página não recarregou e o foco voltou ao título.
+    # Recusado no navegador: a página não recarregou e o foco voltou ao caminho.
     def assert_blank_title_refused_in_place
       assert_selector "#note_path_error", text: "Title can't be blank"
-      assert_selector "#note_title[aria-invalid=true][aria-describedby=note_path_error]"
-      assert_equal "note_title", evaluate_script("document.activeElement.id")
+      assert_selector "#note_path[aria-invalid=true][aria-describedby=note_path_error]"
+      assert_equal "note_path", evaluate_script("document.activeElement.id")
       assert evaluate_script("window.stayedOnPage"), "expected the page to stay, got a reload from the server"
     end
 end

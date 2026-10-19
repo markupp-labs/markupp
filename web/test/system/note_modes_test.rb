@@ -74,15 +74,16 @@ class NoteModesTest < ApplicationSystemTestCase
     assert_nil evaluate_script("window.pwned")
   end
 
-  test "tab in the title moves on when the editor is hidden in read mode" do
+  test "tab in the path moves on when the editor is hidden in read mode" do
     use_fake_api(notes: [ { id: "1", path: "plan.md", content: "# Plan\n" } ])
     sign_in_through_form
 
     visit note_path("1")
     click_on "Read"
-    find_field("Title").send_keys(:tab)
+    assert_field "Path", with: "/plan"
+    find_field("Path").send_keys(:tab)
 
-    assert_not_equal "note_title", evaluate_script("document.activeElement.id")
+    assert_not_equal "note_path", evaluate_script("document.activeElement.id")
   end
 
   test "form controls in the markdown never join the note form" do
@@ -214,12 +215,13 @@ class NoteModesTest < ApplicationSystemTestCase
       JS
     end
 
-    # Onde começa o texto do título (dentro da borda e do padding do campo) e onde começa o markdown renderizado.
+    # Onde começa o texto do caminho (dentro da borda e do padding do campo) e onde começa o markdown renderizado.
     def assert_title_aligned_with_preview
       assert_selector ".note-preview h1", text: "Plan"
+      assert_selector "#note_path"
       title, preview = evaluate_script(<<~JS)
         (() => {
-          const title = document.querySelector("#note_title")
+          const title = document.querySelector("#note_path")
           const style = getComputedStyle(title)
           const text = title.getBoundingClientRect().left + parseFloat(style.borderLeftWidth) + parseFloat(style.paddingLeft)
           return [text, document.querySelector(".note-preview h1").getBoundingClientRect().left]

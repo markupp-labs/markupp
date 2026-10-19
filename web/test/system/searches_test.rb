@@ -14,8 +14,7 @@ class SearchesTest < ApplicationSystemTestCase
     assert_selector "[role=option]", count: 2
     find_field("Search notes").send_keys(:down, :enter)
 
-    assert_field "Title", with: "list"
-    assert_field "Folder", with: "home"
+    assert_field "Path", with: "/home/list"
     assert_selector "nav a[aria-current=page]", text: "list.md"
   end
 

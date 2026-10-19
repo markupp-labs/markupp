@@ -42,11 +42,10 @@ class NotesControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_equal content, css_select("main textarea").sole.text
-    assert_select "main input[name=?][value=?]", "note[title]", "plan"
-    assert_select "main input[name=?][value=?]", "note[folder]", "work"
-    assert_select "main input[name=?]:not([placeholder])", "note[folder]"
-    assert_select "main input[name=?]:not([placeholder])", "note[title]"
-    assert_select "main label[for=note_folder] + [aria-hidden=true]", "/"
+    assert_select "main input[type=text][name=?][value=?]:not([placeholder])", "note[path]", "/work/plan"
+    assert_select "main input[type=hidden][name=origin_path][value=?]", "work/plan.md"
+    assert_select "main input[name=?]", "note[folder]", count: 0
+    assert_select "main input[name=?]", "note[title]", count: 0
   end
 
   test "show marks the current note and opens only its ancestors" do
@@ -133,8 +132,9 @@ class NotesControllerTest < ActionDispatch::IntegrationTest
 
     assert_select "form[action=?]", note_path("1") do
       assert_select "input[type=hidden][name=last_modified_at][value=?]", "2026-09-30T12:00:00.123Z"
-      assert_select "input[type=text][name=?][value=?]", "note[title]", "a"
-      assert_select "input[type=hidden][name=markdown][value=true]"
+      assert_select "input[type=text][name=?][value=?]", "note[path]", "/a"
+      assert_select "input[type=hidden][name=origin_path][value=?]", "a.md"
+      assert_select "input[name=markdown]", count: 0
       assert_select "button[hidden]", text: "Save"
     end
   end
@@ -143,7 +143,7 @@ class NotesControllerTest < ActionDispatch::IntegrationTest
     api = use_fake_api(notes: [ { id: "1", path: "a.md", content: "old" } ])
     sign_in_as
 
-    patch note_path("1"), params: { note: { folder: "", title: "a", content: "new" }, markdown: "true", last_modified_at: "2026-09-30T12:00:00.123Z" }
+    patch note_path("1"), params: { note: { path: "/a", content: "new" }, origin_path: "a.md", last_modified_at: "2026-09-30T12:00:00.123Z" }
 
     assert_redirected_to note_path("1")
     assert_equal({ path: "a.md", content: "new", lastModifiedAt: "2026-09-30T12:00:00.123Z", force: false }, api.put_requests.sole)
@@ -155,7 +155,7 @@ class NotesControllerTest < ActionDispatch::IntegrationTest
     use_fake_api(notes: [ { id: "1", path: "a.md", content: "theirs" } ], conflict: true)
     sign_in_as
 
-    patch note_path("1"), params: { note: { folder: "", title: "a", content: "mine" }, markdown: "true", last_modified_at: "2026-09-30T12:00:00.123Z" }
+    patch note_path("1"), params: { note: { path: "/a", content: "mine" }, origin_path: "a.md", last_modified_at: "2026-09-30T12:00:00.123Z" }
 
     assert_response :conflict
     assert_equal "mine", css_select("main textarea").sole.text
@@ -169,7 +169,7 @@ class NotesControllerTest < ActionDispatch::IntegrationTest
     api = use_fake_api(notes: [ { id: "1", path: "a.md", content: "theirs" } ], conflict: true)
     sign_in_as
 
-    patch note_path("1"), params: { note: { folder: "", title: "a", content: "mine" }, markdown: "true", last_modified_at: "2026-09-30T12:00:00.123Z", force: "true" }
+    patch note_path("1"), params: { note: { path: "/a", content: "mine" }, origin_path: "a.md", last_modified_at: "2026-09-30T12:00:00.123Z", force: "true" }
 
     assert_redirected_to note_path("1")
     assert api.put_requests.sole[:force]
@@ -193,7 +193,7 @@ class NotesControllerTest < ActionDispatch::IntegrationTest
     assert_select "nav a[href=?]", new_note_path, text: "New note"
   end
 
-  test "new opens a blank note in the folder with the focus on an empty title" do
+  test "new opens a blank note with the path of its folder and the focus on it" do
     use_fake_api(notes: [])
     sign_in_as
 
@@ -201,8 +201,8 @@ class NotesControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select "form[action=?][method=post]", notes_path do
-      assert_select "input[type=text][name=?][value=?]", "note[folder]", "work"
-      assert_select "input[type=text][name=?][value=''][autofocus]:not([placeholder])", "note[title]"
+      assert_select "input[type=text][name=?][value=?][autofocus]:not([placeholder])", "note[path]", "/work/"
+      assert_select "input[type=hidden][name=origin_path][value=?]", "work/"
       assert_select "button[hidden]", text: "Save"
     end
     assert_select "button", text: "Delete", count: 0
@@ -216,7 +216,7 @@ class NotesControllerTest < ActionDispatch::IntegrationTest
     get new_note_path
     assert_select "title", "New note"
 
-    post notes_path, params: { note: { folder: "", title: "plan", content: "mine" } }
+    post notes_path, params: { note: { path: "/plan", content: "mine" }, origin_path: "" }
     assert_response :conflict
     assert_select "title", "New note"
   end
@@ -238,8 +238,7 @@ class NotesControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select "form[action=?][method=post]", notes_path do
-      assert_select "input[name=?][value='']", "note[folder]"
-      assert_select "input[name=?][value=''][autofocus]", "note[title]"
+      assert_select "input[name=?][value=?][autofocus]", "note[path]", "/"
     end
     assert_equal "", css_select("main textarea").sole.text
     assert_select "nav a[aria-current]", count: 0
@@ -249,7 +248,7 @@ class NotesControllerTest < ActionDispatch::IntegrationTest
     api = use_fake_api(notes: [])
     sign_in_as
 
-    post notes_path, params: { note: { folder: "work", title: "Plan", content: "Ship it." } }
+    post notes_path, params: { note: { path: "/work/Plan", content: "Ship it." }, origin_path: "" }
 
     assert_redirected_to note_path("created-1")
     assert_equal({ path: "work/Plan.md", content: "Ship it." }, api.post_requests.sole)
@@ -259,30 +258,30 @@ class NotesControllerTest < ActionDispatch::IntegrationTest
     api = use_fake_api(notes: [])
     sign_in_as
 
-    post notes_path, params: { note: { folder: "", title: "Baz", content: "# Foo bar\n\nbody" } }
+    post notes_path, params: { note: { path: "/Baz", content: "# Foo bar\n\nbody" }, origin_path: "" }
 
-    assert_equal({ path: "Baz.md", content: "# Foo bar\n\nbody" }, api.post_requests.sole)
+    assert_equal([ { path: "Baz.md", content: "# Foo bar\n\nbody" } ], api.post_requests)
   end
 
-  test "create with a slash in the title files the note in a subfolder" do
+  test "create with a relative path files the note under the folder it came from" do
     api = use_fake_api(notes: [])
     sign_in_as
 
-    post notes_path, params: { note: { folder: "work", title: "2026/Plan", content: "x" } }
+    post notes_path, params: { note: { path: "2026/Plan", content: "x" }, origin_path: "work/" }
 
-    assert_equal "work/2026/Plan.md", api.post_requests.sole[:path]
+    assert_equal [ "work/2026/Plan.md" ], api.post_requests.map { it[:path] }
   end
 
-  test "create without a title keeps what was typed and asks for a title under the field" do
+  test "create without a name keeps what was typed and asks for a name under the field" do
     api = use_fake_api(notes: [])
     sign_in_as
 
-    post notes_path, params: { note: { folder: "work", title: "  ", content: "Ship it." } }
+    post notes_path, params: { note: { path: "/dev/teste/", content: "Ship it." }, origin_path: "work/" }
 
     assert_response :unprocessable_content
     assert_empty api.post_requests
-    assert_select "input[name=?][value=''][aria-invalid=true][aria-describedby=note_path_error]", "note[title]"
-    assert_select "input[name=?][value=?]", "note[folder]", "work"
+    assert_select "input[name=?][value=?][aria-invalid=true][aria-describedby=note_path_error]", "note[path]", "/dev/teste/"
+    assert_select "input[type=hidden][name=origin_path][value=?]", "work/"
     assert_select "#note_path_error", text: "Title can't be blank"
     assert_equal "Ship it.", css_select("main textarea").sole.text
   end
@@ -291,11 +290,11 @@ class NotesControllerTest < ActionDispatch::IntegrationTest
     use_fake_api(notes: [ { id: "1", path: "plan.md", content: "" } ])
     sign_in_as
 
-    post notes_path, params: { note: { folder: "", title: "plan", content: "# plan\n\nmine" } }
+    post notes_path, params: { note: { path: "/plan", content: "# plan\n\nmine" }, origin_path: "" }
 
     assert_response :conflict
     assert_equal "# plan\n\nmine", css_select("main textarea").sole.text
-    assert_select "input[name=?][value=?][aria-invalid=true]", "note[title]", "plan"
+    assert_select "input[name=?][value=?][aria-invalid=true]", "note[path]", "/plan"
     assert_select "#note_path_error", text: "Path already taken"
     assert_select "button:not([hidden])", text: "Save"
   end
@@ -304,7 +303,7 @@ class NotesControllerTest < ActionDispatch::IntegrationTest
     api = use_fake_api(notes: [ { id: "1", path: "a.md", content: "x" } ])
     sign_in_as
 
-    patch note_path("1"), params: { note: { folder: "", title: "b", content: "x" }, markdown: "true" }
+    patch note_path("1"), params: { note: { path: "b", content: "x" }, origin_path: "a.md" }
 
     assert_redirected_to note_path("1")
     assert_equal "b.md", api.put_requests.sole[:path]
@@ -317,23 +316,24 @@ class NotesControllerTest < ActionDispatch::IntegrationTest
     use_fake_api(notes: [ { id: "1", path: "a.md", content: "x" } ])
     sign_in_as
 
-    patch note_path("1"), params: { note: { folder: "work/2026", title: "a", content: "x" }, markdown: "true" }
+    patch note_path("1"), params: { note: { path: "/work/2026/a", content: "x" }, origin_path: "a.md" }
+    assert_redirected_to note_path("1")
     follow_redirect!
 
     assert_select "nav details[open] details[open] a[aria-current=page]", text: "a.md"
-    assert_select "input[name=?][value=?]", "note[folder]", "work/2026"
+    assert_select "input[name=?][value=?]", "note[path]", "/work/2026/a"
   end
 
-  test "update with a blank title keeps the name and asks for a title under the field" do
+  test "update with a trailing slash keeps the typed path and the folder it came from" do
     api = use_fake_api(notes: [ { id: "1", path: "work/a.md", content: "x" } ])
     sign_in_as
 
-    patch note_path("1"), params: { note: { folder: "work", title: "  ", content: "mine" }, markdown: "true" }
+    patch note_path("1"), params: { note: { path: "/dev/teste/", content: "mine" }, origin_path: "work/a.md" }
 
     assert_response :unprocessable_content
     assert_empty api.put_requests
-    assert_select "input[name=?][value=''][aria-invalid=true][aria-describedby=note_path_error]", "note[title]"
-    assert_select "input[name=?][value=?]", "note[folder]", "work"
+    assert_select "input[name=?][value=?][aria-invalid=true][aria-describedby=note_path_error]", "note[path]", "/dev/teste/"
+    assert_select "input[type=hidden][name=origin_path][value=?]", "work/a.md"
     assert_select "#note_path_error", text: "Title can't be blank"
     assert_equal "mine", css_select("main textarea").sole.text
     assert_select "button:not([hidden])", text: "Save"
@@ -343,10 +343,10 @@ class NotesControllerTest < ActionDispatch::IntegrationTest
     use_fake_api(notes: [ { id: "1", path: "a.md", content: "x" }, { id: "2", path: "b.md", content: "y" } ])
     sign_in_as
 
-    patch note_path("1"), params: { note: { folder: "", title: "b", content: "mine" }, markdown: "true", last_modified_at: "2026-09-30T12:00:00.123Z" }
+    patch note_path("1"), params: { note: { path: "b", content: "mine" }, origin_path: "a.md", last_modified_at: "2026-09-30T12:00:00.123Z" }
 
     assert_response :conflict
-    assert_select "input[name=?][value=?][aria-invalid=true]", "note[title]", "b"
+    assert_select "input[name=?][value=?][aria-invalid=true]", "note[path]", "b"
     assert_select "#note_path_error", text: "Path already taken"
     assert_equal "mine", css_select("main textarea").sole.text
     assert_select "input[name=last_modified_at][value=?]", "2026-09-30T12:00:00.123Z"
@@ -356,10 +356,10 @@ class NotesControllerTest < ActionDispatch::IntegrationTest
     use_fake_api(notes: [ { id: "1", path: "a.md", content: "x" } ])
     sign_in_as
 
-    patch note_path("1"), params: { note: { folder: "../work", title: "a", content: "mine" }, markdown: "true" }
+    patch note_path("1"), params: { note: { path: "../work/a", content: "mine" }, origin_path: "a.md" }
 
     assert_response :unprocessable_content
-    assert_select "#note_path_error", text: "Path is invalid"
+    assert_select "#note_path_error", text: "Path can't contain .. or pass 1024 characters"
   end
 
   test "show offers a delete button that asks for confirmation" do
@@ -420,18 +420,18 @@ class NotesControllerTest < ActionDispatch::IntegrationTest
     api = use_fake_api(notes: [ { id: "1", path: "a.md", content: "x\r\ny\r\n" } ])
     sign_in_as
 
-    patch note_path("1"), params: { note: { folder: "", title: "a", content: "x\ny\nz\n" }, markdown: "true", crlf: "true" }
+    patch note_path("1"), params: { note: { path: "/a", content: "x\ny\nz\n" }, origin_path: "a.md", crlf: "true" }
 
-    assert_equal "x\r\ny\r\nz\r\n", api.put_requests.sole[:content]
+    assert_equal [ "x\r\ny\r\nz\r\n" ], api.put_requests.map { it[:content] }
   end
 
   test "update keeps an LF note in LF when the browser sends CRLF" do
     api = use_fake_api(notes: [ { id: "1", path: "a.md", content: "x\n" } ])
     sign_in_as
 
-    patch note_path("1"), params: { note: { folder: "", title: "a", content: "x\r\ny\r\n" }, markdown: "true", crlf: "false" }
+    patch note_path("1"), params: { note: { path: "/a", content: "x\r\ny\r\n" }, origin_path: "a.md", crlf: "false" }
 
-    assert_equal "x\ny\n", api.put_requests.sole[:content]
+    assert_equal [ "x\ny\n" ], api.put_requests.map { it[:content] }
   end
 
   test "show records whether the note uses CRLF" do
@@ -448,10 +448,9 @@ class NotesControllerTest < ActionDispatch::IntegrationTest
     sign_in_as
 
     get note_path("1")
-    assert_select "input[name=?][value=?]", "note[title]", "README"
-    assert_select "input[type=hidden][name=markdown][value=false]"
+    assert_select "input[name=?][value=?]", "note[path]", "/README"
 
-    patch note_path("1"), params: { note: { folder: "", title: "README", content: "y" }, markdown: "false" }
+    patch note_path("1"), params: { note: { path: "/README", content: "y" }, origin_path: "README" }
 
     assert_equal "README", api.put_requests.sole[:path]
   end
@@ -460,10 +459,10 @@ class NotesControllerTest < ActionDispatch::IntegrationTest
     use_fake_api(notes: [])
     sign_in_as
 
-    post notes_path, params: { note: { folder: "..", title: "a", content: "mine" } }
+    post notes_path, params: { note: { path: "../a", content: "mine" }, origin_path: "" }
 
     assert_response :unprocessable_content
     assert_equal "mine", css_select("main textarea").sole.text
-    assert_select "#note_path_error", text: "Path is invalid"
+    assert_select "#note_path_error", text: "Path can't contain .. or pass 1024 characters"
   end
 end

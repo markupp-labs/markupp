@@ -11,7 +11,7 @@ class WikilinksTest < ApplicationSystemTestCase
     assert_link "work/ideas", href: "/notes/3"
     click_on "ideas", exact: true
 
-    assert_field "Title", with: "ideas"
+    assert_field "Path", with: "/ideas"
     assert_current_path note_path("2")
   end
 

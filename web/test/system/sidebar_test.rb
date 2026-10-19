@@ -81,6 +81,17 @@ class SidebarTest < ApplicationSystemTestCase
     assert_in_delta top, edge(spine, "top"), 0.5
   end
 
+  test "the spine leaves room around its icon" do
+    use_fake_api(notes: [])
+    sign_in_through_form
+
+    visit root_path
+    spine = find("button[aria-controls=sidebar]")
+    icon = spine.find("svg", visible: :all)
+    assert_operator edge(icon, "left") - edge(spine, "left"), :>=, 6
+    assert_operator edge(spine, "right") - edge(icon, "right"), :>=, 6
+  end
+
   test "the sidebar sticks to the top and the spine stays on its edge while a long note scrolls" do
     use_fake_api(notes: [ { id: "1", path: "plan.md", content: "# Plan\n\n#{(1..200).map { "Line #{it}." }.join("\n\n")}\n" } ])
     sign_in_through_form
