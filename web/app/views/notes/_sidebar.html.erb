@@ -1,11 +1,12 @@
-<% if current_tenant.writer? %>
+<%# Sem árvore (a listagem falhou nas configurações) fica só o aviso, sem New note. %>
+<% if current_tenant.writer? && tree %>
   <%= link_to new_note_path(folder: current&.folder_names&.join("/").presence),
               class: "tree-row mb-2 flex items-center gap-2 border border-line" do %>
     <%= icon("file-plus") %><%= t(".new_note") %>
   <% end %>
 <% end %>
 
-<%# Sem árvore (a listagem falhou nas configurações) o aviso é curto; a página ao lado continua funcionando. %>
+<%# O aviso é curto; a página ao lado continua funcionando. %>
 <% if tree.nil? %>
   <p class="px-2 py-1 text-danger"><%= t("notes.unreachable.title") %></p>
 <% elsif tree.folders.empty? && tree.notes.empty? %>
