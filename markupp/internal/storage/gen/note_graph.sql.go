@@ -61,6 +61,52 @@ func (q *Queries) ListBacklinks(ctx context.Context, arg ListBacklinksParams) ([
 	return items, nil
 }
 
+const listLexicalSuggestions = `-- name: ListLexicalSuggestions :many
+SELECT n.id, n.vault_id, n.path, n.updated_at, c.score::float8 AS score
+FROM markupp_lexical_similarity($1, $2) AS c (note_id, score)
+JOIN notes n ON n.id = c.note_id
+ORDER BY c.score DESC, n.path, n.id
+`
+
+type ListLexicalSuggestionsParams struct {
+	VaultID string
+	NoteID  string
+}
+
+type ListLexicalSuggestionsRow struct {
+	ID        string
+	VaultID   string
+	Path      string
+	UpdatedAt time.Time
+	Score     float64
+}
+
+func (q *Queries) ListLexicalSuggestions(ctx context.Context, arg ListLexicalSuggestionsParams) ([]ListLexicalSuggestionsRow, error) {
+	rows, err := q.db.Query(ctx, listLexicalSuggestions, arg.VaultID, arg.NoteID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListLexicalSuggestionsRow
+	for rows.Next() {
+		var i ListLexicalSuggestionsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.VaultID,
+			&i.Path,
+			&i.UpdatedAt,
+			&i.Score,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listMentionableTitles = `-- name: ListMentionableTitles :many
 SELECT n.id, n.vault_id, n.path, n.updated_at, t.title_key
 FROM note_titles t
@@ -302,6 +348,47 @@ func (q *Queries) ListOrphans(ctx context.Context, arg ListOrphansParams) ([]Lis
 			&i.VaultID,
 			&i.Path,
 			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listStructuralSuggestions = `-- name: ListStructuralSuggestions :many
+SELECT n.id, n.vault_id, n.path, n.updated_at, r.score::float8 AS score
+FROM markupp_resource_allocation($1) AS r (note_id, score)
+JOIN notes n ON n.id = r.note_id
+ORDER BY r.score DESC, n.path, n.id
+`
+
+type ListStructuralSuggestionsRow struct {
+	ID        string
+	VaultID   string
+	Path      string
+	UpdatedAt time.Time
+	Score     float64
+}
+
+func (q *Queries) ListStructuralSuggestions(ctx context.Context, noteID string) ([]ListStructuralSuggestionsRow, error) {
+	rows, err := q.db.Query(ctx, listStructuralSuggestions, noteID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListStructuralSuggestionsRow
+	for rows.Next() {
+		var i ListStructuralSuggestionsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.VaultID,
+			&i.Path,
+			&i.UpdatedAt,
+			&i.Score,
 		); err != nil {
 			return nil, err
 		}

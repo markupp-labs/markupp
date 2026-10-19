@@ -16,12 +16,14 @@ type NoteGraph interface {
 	Orphans(ctx context.Context, vaultID string, offset, limit int) ([]notes.LinkedNote, error)
 	UnresolvedLinks(ctx context.Context, vaultID string, offset, limit int) ([]notes.UnresolvedLink, error)
 	Mentions(ctx context.Context, noteID string, offset, limit int) ([]notes.UnlinkedMention, error)
+	Suggestions(ctx context.Context, noteID string, offset, limit int) ([]notes.LinkSuggestion, error)
 }
 
 func mountNoteGraphRoutes(r chi.Router, graph NoteGraph) {
 	r.Get("/notes/{id}/backlinks", servePage(graph.Backlinks))
 	r.Get("/notes/{id}/neighbors", servePage(graph.Neighbors))
 	r.Get("/notes/{id}/mentions", servePage(graph.Mentions))
+	r.Get("/notes/{id}/suggestions", servePage(graph.Suggestions))
 	r.Get("/vaults/{id}/orphans", servePage(graph.Orphans))
 	r.Get("/vaults/{id}/unresolved-links", servePage(graph.UnresolvedLinks))
 }

@@ -97,3 +97,15 @@ SELECT a.title_key::text AS title_key, a.target_id::text AS target_id,
        (SELECT count(*) FROM note_titles t
         WHERE t.vault_id = sqlc.arg(vault_id) AND t.title_key = a.title_key)::int AS candidates
 FROM (SELECT unnest(sqlc.arg(title_keys)::text[]) AS title_key, unnest(sqlc.arg(target_ids)::text[]) AS target_id) a;
+
+-- name: ListStructuralSuggestions :many
+SELECT n.id, n.vault_id, n.path, n.updated_at, r.score::float8 AS score
+FROM markupp_resource_allocation(sqlc.arg(note_id)) AS r (note_id, score)
+JOIN notes n ON n.id = r.note_id
+ORDER BY r.score DESC, n.path, n.id;
+
+-- name: ListLexicalSuggestions :many
+SELECT n.id, n.vault_id, n.path, n.updated_at, c.score::float8 AS score
+FROM markupp_lexical_similarity(sqlc.arg(vault_id), sqlc.arg(note_id)) AS c (note_id, score)
+JOIN notes n ON n.id = c.note_id
+ORDER BY c.score DESC, n.path, n.id;
