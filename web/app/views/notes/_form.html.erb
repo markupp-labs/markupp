@@ -4,10 +4,13 @@
 <% content_for :sidebar, render("notes/sidebar", tree: @tree, current: @note) %>
 <%# viewer só lê: caminho e texto readonly, sem salvar nem apagar; o editor lê o readonly do textarea. %>
 <% writer = current_tenant.writer? %>
+<% mode = current_note_mode(@note) %>
 
-<%= form_with model: @note, class: "flex h-full flex-col gap-3",
-              data: { controller: "editor note-form", note_form_leave_message_value: t(".leave"), note_form_new_value: !@note.persisted?,
+<%# data-mode escolhe os painéis visíveis (CSS .note-form); Ctrl+E e Ctrl+\ trocam o modo (note_mode_controller.js). %>
+<%= form_with model: @note, class: "note-form flex h-full flex-col gap-3",
+              data: { controller: "editor note-form note-mode", mode:, note_form_leave_message_value: t(".leave"), note_form_new_value: !@note.persisted?,
                       action: "keydown.ctrl+s@window->note-form#save:prevent keydown.meta+s@window->note-form#save:prevent " \
+                              "keydown@window->note-mode#shortcut input->note-mode#render " \
                               "input->note-form#track submit->note-form#allowLeaving turbo:submit-start@document->note-form#allowLeavingOnDelete " \
                               "beforeunload@window->note-form#warnBeforeUnload turbo:before-visit@document->note-form#confirmVisit " \
                               "keydown.shift+tab->note-form#focusTitle note-form:heading->editor#replaceStart" } do |form| %>
@@ -21,6 +24,11 @@
                           data: { note_form_target: "folder" },
                           class: "field-sizing-content min-w-24 max-w-full rounded-md border border-transparent bg-transparent px-1 py-0.5 " \
                                  "placeholder:text-ink-muted hover:border-line focus:border-line focus:text-ink focus:outline-none" %>
+    </div>
+    <div role="group" aria-label="<%= t(".mode") %>" class="flex items-center rounded-md border border-line">
+      <% NoteModeHelper::NOTE_MODES.each do |name| %>
+        <%= note_mode_button(name, current: mode) %>
+      <% end %>
     </div>
     <span data-note-form-target="unsaved" hidden class="py-1 text-ink-muted"><%= t(".unsaved") %></span>
     <% if writer %>
@@ -66,8 +74,15 @@
   <%= hidden_field_tag :last_modified_at, @note.updated_at&.iso8601(3), id: nil %>
   <%= hidden_field_tag :crlf, @note.crlf?, id: nil %>
   <%= hidden_field_tag :markdown, @note.markdown?, id: nil %>
-  <%= form.text_area :content, data: { editor_target: "source", note_form_target: "source" }, aria: { label: @note.path }, readonly: !writer,
-                     class: "min-h-[60dvh] w-full flex-1 rounded-md border border-line bg-surface p-2" %>
+  <div class="note-panes min-h-0 flex-1 gap-6">
+    <%# O editor monta o CodeMirror aqui, ao lado do textarea. %>
+    <div class="note-editor-pane flex min-w-0 flex-col">
+      <%= form.text_area :content, data: { editor_target: "source", note_form_target: "source", note_mode_target: "source" }, aria: { label: @note.path },
+                         readonly: !writer, class: "min-h-[60dvh] w-full flex-1 rounded-md border border-line bg-surface p-2" %>
+    </div>
+    <%# Markdown renderizado e sanitizado no navegador (editor/render_markdown.js). %>
+    <article data-note-mode-target="preview" aria-label="<%= t(".preview") %>" class="note-preview markdown-body min-w-0"></article>
+  </div>
 <% end %>
 
 <% if writer && @note.persisted? %>

@@ -12,7 +12,7 @@ export default class extends Controller {
   static targets = [ "source" ]
 
   connect() {
-    this.view = new EditorView({ doc: this.sourceTarget.value, extensions: this.extensions(), parent: this.element })
+    this.view = new EditorView({ doc: this.sourceTarget.value, extensions: this.extensions(), parent: this.sourceTarget.parentElement })
     this.sourceTarget.hidden = true
   }
 

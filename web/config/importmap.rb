@@ -26,3 +26,10 @@ pin "@marijn/find-cluster-break", to: "@marijn--find-cluster-break.js" # @1.0.3
 pin "crelt" # @1.0.7
 pin "style-mod" # @4.1.4
 pin "w3c-keyname" # @2.2.8
+pin "dompurify" # @3.4.16
+pin "markdown-it" # @15.0.2
+pin "entities" # @8.1.0 (bundle do jsdelivr +esm, ver o cabecalho do arquivo)
+pin "linkify-it" # @6.1.0
+pin "mdurl" # @2.1.0
+pin "punycode.js" # @2.3.1
+pin "uc.micro" # @3.0.0

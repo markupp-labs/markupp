@@ -227,6 +227,12 @@ en:
       delete: "Delete"
       confirm_delete: "Delete this note? This cannot be undone."
       read_only: "Read only: your role here is viewer."
+      mode: "Note view"
+      modes:
+        edit: "Edit"
+        read: "Read"
+        split: "Side by side"
+      preview: "Preview"
     update:
       saved: "Saved"
     create:
