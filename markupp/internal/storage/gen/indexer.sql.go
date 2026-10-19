@@ -215,22 +215,26 @@ const reweightVaultNoteTerms = `-- name: ReweightVaultNoteTerms :exec
 UPDATE note_terms t
 SET weights = r.weights, norm = r.norm
 FROM (
-    SELECT o.note_id, array_agg(w.weight ORDER BY w.ord)::float8[] AS weights, sqrt(sum(w.weight ^ 2))::float8 AS norm
-    FROM (SELECT l.note_id, l.vault_id, l.terms, l.tfs FROM note_terms l WHERE l.vault_id = $1 FOR UPDATE SKIP LOCKED) o
-    CROSS JOIN (SELECT k.note_count FROM vault_term_stats k WHERE k.vault_id = $1) st
-    CROSS JOIN LATERAL (
-        SELECT i.ord, o.tfs[i.ord] * markupp_term_idf(st.note_count, f.df, st.note_count > 0) AS weight
-        FROM generate_subscripts(o.terms, 1) AS i (ord)
-        LEFT JOIN vault_term_frequencies f ON f.vault_id = o.vault_id AND f.term = o.terms[i.ord]
+    SELECT w.note_id, array_agg(w.weight ORDER BY w.ord)::float8[] AS weights, sqrt(sum(w.weight ^ 2))::float8 AS norm
+    FROM (
+        SELECT p.note_id, p.ord, p.tf * markupp_term_idf(st.note_count, f.df, st.note_count > 0) AS weight
+        FROM (
+            SELECT o.note_id, i.ord, o.terms[i.ord] AS term, o.tfs[i.ord] AS tf
+            FROM (SELECT l.note_id, l.terms, l.tfs FROM note_terms l WHERE l.vault_id = $1 FOR UPDATE SKIP LOCKED) o
+            CROSS JOIN LATERAL generate_subscripts(o.terms, 1) AS i (ord)
+        ) p
+        CROSS JOIN (SELECT k.note_count FROM vault_term_stats k WHERE k.vault_id = $1) st
+        LEFT JOIN vault_term_frequencies f ON f.vault_id = $1 AND f.term = p.term
     ) w
-    GROUP BY o.note_id
+    GROUP BY w.note_id
 ) r
 WHERE t.note_id = r.note_id
 `
 
-// Repesa as postagens do cofre com o df e o N recém-gravados, na ordem dos termos. A
-// linha que um lote concorrente está regravando fica de fora: o lote a grava com o df
-// anterior, e o segundo estágio não espera por ele nem o faz esperar além do commit.
+// Repesa as postagens do cofre com o df e o N recém-gravados, na ordem dos termos, numa
+// junção só entre os termos de todas as notas e o df do cofre. A linha que um lote
+// concorrente está regravando fica de fora: o lote a grava com o df anterior, e o
+// segundo estágio não espera por ele nem o faz esperar além do commit.
 func (q *Queries) ReweightVaultNoteTerms(ctx context.Context, vaultID string) error {
 	_, err := q.db.Exec(ctx, reweightVaultNoteTerms, vaultID)
 	return err
