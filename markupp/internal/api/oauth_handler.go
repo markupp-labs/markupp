@@ -22,6 +22,10 @@ type OAuthService interface {
 	Approve(ctx context.Context, requestID, userID string) (redirectTo string, err error)
 	Deny(ctx context.Context, requestID, userID string) (redirectTo string, err error)
 	ExchangeCode(ctx context.Context, g oauth.CodeGrant) (oauth.TokenResponse, error)
+	RefreshToken(ctx context.Context, g oauth.RefreshGrant) (oauth.TokenResponse, error)
+	RevokeToken(ctx context.Context, r oauth.RevokeRequest) error
+	ListAuthorizations(ctx context.Context, userID string) ([]oauth.AuthorizationView, error)
+	RevokeAuthorization(ctx context.Context, userID, authorizationID string) error
 }
 
 const (

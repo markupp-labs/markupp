@@ -28,11 +28,16 @@ type fakeOAuthService struct {
 	tokens     oauth.TokenResponse
 	err        error
 
-	gotParams    oauth.AuthorizeParams
-	gotGrant     oauth.CodeGrant
-	gotRequestID string
-	gotUserID    string
-	decision     string
+	authorizations []oauth.AuthorizationView
+
+	gotParams          oauth.AuthorizeParams
+	gotGrant           oauth.CodeGrant
+	gotRefresh         oauth.RefreshGrant
+	gotRevoke          oauth.RevokeRequest
+	gotRequestID       string
+	gotUserID          string
+	gotAuthorizationID string
+	decision           string
 }
 
 func (f *fakeOAuthService) StartAuthorization(_ context.Context, p oauth.AuthorizeParams) (string, error) {
@@ -58,6 +63,26 @@ func (f *fakeOAuthService) Deny(_ context.Context, requestID, userID string) (st
 func (f *fakeOAuthService) ExchangeCode(_ context.Context, g oauth.CodeGrant) (oauth.TokenResponse, error) {
 	f.gotGrant = g
 	return f.tokens, f.err
+}
+
+func (f *fakeOAuthService) RefreshToken(_ context.Context, g oauth.RefreshGrant) (oauth.TokenResponse, error) {
+	f.gotRefresh = g
+	return f.tokens, f.err
+}
+
+func (f *fakeOAuthService) RevokeToken(_ context.Context, r oauth.RevokeRequest) error {
+	f.gotRevoke = r
+	return f.err
+}
+
+func (f *fakeOAuthService) ListAuthorizations(_ context.Context, userID string) ([]oauth.AuthorizationView, error) {
+	f.gotUserID = userID
+	return f.authorizations, f.err
+}
+
+func (f *fakeOAuthService) RevokeAuthorization(_ context.Context, userID, authorizationID string) error {
+	f.gotUserID, f.gotAuthorizationID = userID, authorizationID
+	return f.err
 }
 
 func oauthRouter(svc *fakeOAuthService) http.Handler {
