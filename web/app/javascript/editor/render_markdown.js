@@ -1,6 +1,6 @@
 import MarkdownIt from "markdown-it"
 import DOMPurify from "dompurify"
-import { wikilinkRule } from "editor/wikilinks"
+import { embedRule, wikilinkRule } from "editor/wikilinks"
 import { highlightCode } from "editor/highlight_code"
 import { headingIds } from "editor/heading_ids"
 
@@ -8,9 +8,12 @@ import { headingIds } from "editor/heading_ids"
 // mas tudo passa pelo DOMPurify antes de entrar na página: sem script, sem on*, sem javascript:.
 const markdownIt = new MarkdownIt({ html: true, linkify: true, highlight: highlightCode })
 markdownIt.inline.ruler.before("link", "wikilink", wikilinkRule)
+markdownIt.inline.ruler.before("image", "note_embed", embedRule)
 markdownIt.core.ruler.push("heading_ids", headingIds)
 // Cada bloco leva a linha do markdown onde começa, para o lado a lado alinhar o preview ao editor (scroll_sync.js).
-markdownIt.core.ruler.push("source_line", ({ tokens }) => {
+// Nota embutida (env.embedded) fica sem: as linhas dela não são as do editor.
+markdownIt.core.ruler.push("source_line", ({ tokens, env }) => {
+  if (env.embedded) return
   tokens.filter((token) => token.map && token.nesting >= 0).forEach((token) => token.attrSet("data-source-line", String(token.map[0])))
 })
 const purifier = DOMPurify()
@@ -26,7 +29,8 @@ purifier.addHook("afterSanitizeAttributes", (node) => {
   node.setAttribute("rel", "noopener noreferrer")
 })
 
-// env.wikilinks resolve os [[wikilinks]] (editor/wikilinks.js); sem ele ficam como texto. SANITIZE_NAMED_PROPS
+// env.wikilinks resolve os [[wikilinks]] (editor/wikilinks.js); sem ele ficam como texto. env.embedded marca o
+// render de uma nota embutida. SANITIZE_NAMED_PROPS
 // prefixa todo id e name com user-content-: um título "Title" ou um <a name> do markdown não clobbera o DOM da página.
 export function renderMarkdown(source, env = {}) {
   return purifier.sanitize(markdownIt.render(source, env), { FORBID_TAGS: FORM_CONTROLS, SANITIZE_NAMED_PROPS: true })

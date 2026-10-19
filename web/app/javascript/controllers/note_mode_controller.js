@@ -2,6 +2,7 @@ import { Controller } from "@hotwired/stimulus"
 import { renderMarkdown } from "editor/render_markdown"
 import { resolveWikilink } from "editor/wikilinks"
 import { scrollToHeading } from "editor/heading_ids"
+import { embedContentLoader, fillEmbeds } from "editor/note_embeds"
 import { editorScrollTopFor, previewScrollTopFor } from "editor/scroll_sync"
 import { EditorView } from "@codemirror/view"
 
@@ -48,7 +49,9 @@ export default class extends Controller {
   render() {
     if (this.mode == "edit") return
 
-    this.previewTarget.innerHTML = renderMarkdown(this.sourceTarget.value, { wikilinks: this.wikilinkLookup })
+    const env = { wikilinks: this.wikilinkLookup }
+    this.previewTarget.innerHTML = renderMarkdown(this.sourceTarget.value, env)
+    fillEmbeds(this.previewTarget, this.embedContent, env)
     if (this.mode == "split") this.alignPreview()
   }
 
@@ -115,6 +118,13 @@ export default class extends Controller {
       resolve: (name) => resolveWikilink(name, this.wikilinksValue, this.folderValue),
       missingTitle: (name) => this.missingNoteValue.replace("%{name}", () => name),
     }
+  }
+
+  get embedContent() {
+    this.embedLoader ??= embedContentLoader({
+      noteUrls: Object.values(this.wikilinksValue), ownUrl: location.pathname, ownContent: () => this.sourceTarget.value,
+    })
+    return this.embedLoader
   }
 
   get mode() {

@@ -3,15 +3,21 @@ class NotesController < ApplicationController
 
   before_action :require_tenant
   before_action :require_writer, only: :new
-  before_action :set_tree, except: :destroy
+  before_action :set_tree, except: :destroy, unless: -> { request.format.json? }
 
   # A tela padrão é uma nota nova em branco; viewer não cria, então só escolhe na árvore.
   def index
     @note = Note.blank(nil) if current_tenant.writer?
   end
 
+  # Em json só caminho e conteúdo: o ![[nota]] da leitura busca daqui a nota embutida (editor/note_embeds.js),
+  # com a sessão, o tenant e o papel de quem lê, sem a árvore.
   def show
     @note = Note.find(credential.api, params[:id])
+    respond_to do |format|
+      format.html
+      format.json { render json: @note.attributes.slice("path", "content") }
+    end
   end
 
   def new
@@ -66,6 +72,8 @@ class NotesController < ApplicationController
     def path_error_status = @note.errors.of_kind?(:path, :taken) ? :conflict : :unprocessable_content
 
     def render_not_found
+      return head :not_found if request.format.json?
+
       render :not_found, status: :not_found, formats: :html
     end
 end

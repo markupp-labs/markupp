@@ -297,6 +297,13 @@
   & a { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
   /* [[wikilink]] sem nota: na cor do texto (não a do link) e com sublinhado tracejado; não navega nem cria nota. */
   & .wikilink-missing { color: inherit; text-decoration: underline dashed; text-underline-offset: 2px; cursor: help; }
+  /* ![[nota]] embutida (editor/note_embeds.js): bloco com borda, a faixa de destaque à esquerda como a citação e o
+     link da nota no topo, como no Obsidian. É um span (vem de regra inline), por isso o display block. */
+  & .note-embed { display: block; margin-block: 0.5rem 1rem; border: 1px solid var(--line); border-left: 2px solid var(--accent); border-radius: 0.375rem; padding: 0.5rem 1rem 0.75rem; }
+  & .note-embed-link { display: inline-block; margin-bottom: 0.5rem; font-size: 0.9em; }
+  & .note-embed-body { display: block; }
+  & .note-embed-body > :first-child { margin-top: 0; }
+  & .note-embed-body > :last-child { margin-bottom: 0; }
   & :where(ul, ol) { padding-left: 1.5rem; }
   & ul { list-style: "- "; }
   & ul ::marker { color: var(--ink-muted); }

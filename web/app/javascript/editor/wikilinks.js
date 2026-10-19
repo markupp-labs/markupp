@@ -14,6 +14,30 @@ export function wikilinkRule(state, silent) {
   return true
 }
 
+// ![[nome]]: a nota inteira embutida, como no Obsidian. Sai um bloco com o link para abrir a nota e o corpo vazio,
+// que o editor/note_embeds.js preenche. Dentro de uma nota embutida vira link (profundidade 1, ciclo não trava);
+// nota que não existe vira o aviso de link quebrado.
+export function embedRule(state, silent) {
+  const match = state.src.startsWith("![[", state.pos) && WIKILINK.exec(state.src.slice(state.pos + 1))
+  const link = match && parseWikilink(match)
+  if (!link || !state.env.wikilinks) return false
+
+  if (!silent) pushEmbed(state, link)
+  state.pos += match[0].length + 1
+  return true
+}
+
+function pushEmbed(state, link) {
+  const url = link.name && state.env.wikilinks.resolve(link.name)
+  if (!url || state.env.embedded) return pushWikilink(state, link)
+
+  state.push("note_embed_open", "span", 1).attrs = [ [ "class", "note-embed" ], [ "data-embed-url", url ] ]
+  pushWrapped(state, "link", "a", [ [ "href", url ], [ "class", "wikilink note-embed-link" ] ], link.text)
+  state.push("note_embed_body_open", "span", 1).attrs = [ [ "class", "note-embed-body" ] ]
+  state.push("note_embed_body_close", "span", -1)
+  state.push("note_embed_close", "span", -1)
+}
+
 // Nome, slug do título (vazio sem #) e texto; sem nome e sem título não é wikilink.
 function parseWikilink(match) {
   const [ name, ...heading ] = match[1].split("#")

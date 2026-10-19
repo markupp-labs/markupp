@@ -5,8 +5,10 @@ export const headingSlug = (text) => text.trim().toLowerCase().replace(/[^\p{L}\
 
 const HEADING_ID_PREFIX = "user-content-"
 
-// Regra core do markdown-it.
-export function headingIds({ tokens }) {
+// Regra core do markdown-it. Nota embutida não leva ids: repetiriam os da nota em volta.
+export function headingIds({ tokens, env }) {
+  if (env.embedded) return
+
   const seen = new Map()
   tokens.forEach((token, index) => {
     const slug = token.type == "heading_open" && headingSlug(tokens[index + 1].content)
