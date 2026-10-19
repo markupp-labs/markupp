@@ -21,6 +21,9 @@ type fakeOAuthRepository struct {
 	summaries      []oauth.AuthorizationSummary
 	// freshCIMD são os clientes CIMD com documento em cache ainda válido.
 	freshCIMD map[string]oauth.Client
+	// pendingDCRCreatedAt é quando foi criado cada cliente DCR pendente: criado no
+	// limite dos pendentes ou antes, conta como inexistente.
+	pendingDCRCreatedAt map[string]time.Time
 
 	getClientErr, createErr, approveErr, activeErr, redeemErr, saveErr              error
 	consumeErr, saveRefreshedErr, revokeAuditedErr, findErr, listErr, revokeAuthErr error
@@ -48,8 +51,10 @@ type fakeOAuthRepository struct {
 	listCalls      []string
 	revokedAuths   []revokedAuthorization
 	getClientCalls []string
-	freshCIMDCalls []freshCIMDLookup
-	savedCIMD      []savedCIMDClient
+	// getClientCutoffs guarda o limite dos pendentes de cada chamada a GetClient.
+	getClientCutoffs []time.Time
+	freshCIMDCalls   []freshCIMDLookup
+	savedCIMD        []savedCIMDClient
 	// dcrRegistrations guarda cada chamada a RegisterDCRClient.
 	dcrRegistrations []oauth.DCRRegistration
 }
@@ -88,20 +93,29 @@ func newFakeOAuthRepository() *fakeOAuthRepository {
 		requests:       map[string]oauth.AuthorizationRequest{},
 		authorizations: map[string]oauth.Authorization{},
 		freshCIMD:      map[string]oauth.Client{},
+
+		pendingDCRCreatedAt: map[string]time.Time{},
 	}
+}
+
+// expiredPendingDCR diz se o cliente é DCR pendente criado no limite ou antes.
+func (f *fakeOAuthRepository) expiredPendingDCR(clientID string, cutoff time.Time) bool {
+	createdAt, pending := f.pendingDCRCreatedAt[clientID]
+	return pending && !createdAt.After(cutoff)
 }
 
 func authorizationKey(userID, clientID string) string {
 	return userID + "|" + clientID
 }
 
-func (f *fakeOAuthRepository) GetClient(_ context.Context, id string, _ time.Time) (oauth.Client, error) {
+func (f *fakeOAuthRepository) GetClient(_ context.Context, id string, dcrPendingCutoff time.Time) (oauth.Client, error) {
 	f.getClientCalls = append(f.getClientCalls, id)
+	f.getClientCutoffs = append(f.getClientCutoffs, dcrPendingCutoff)
 	if f.getClientErr != nil {
 		return oauth.Client{}, f.getClientErr
 	}
 	client, ok := f.clients[id]
-	if !ok {
+	if !ok || f.expiredPendingDCR(id, dcrPendingCutoff) {
 		return oauth.Client{}, oauth.ErrClientNotFound
 	}
 	return client, nil
@@ -127,7 +141,7 @@ func (f *fakeOAuthRepository) ApproveRequest(_ context.Context, approval oauth.A
 		return oauth.AuthorizationRequest{}, f.approveErr
 	}
 	req, ok := f.requests[approval.RequestID]
-	if !ok {
+	if !ok || f.expiredPendingDCR(req.ClientID, approval.DCRPendingCutoff) {
 		return oauth.AuthorizationRequest{}, oauth.ErrRequestNotFound
 	}
 	return req, nil

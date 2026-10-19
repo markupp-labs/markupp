@@ -56,8 +56,11 @@ func TestPostgresOAuthRepo_RegisterDCRClient_GravaClienteDCR(t *testing.T) {
 		AND source = 'dcr' AND metadata_expires_at IS NULL AND created_at = '2026-10-16T12:00:00Z'`))
 }
 
-func TestPostgresOAuthRepo_RegisterDCRClient_ApagaSoOsPendentesVencidos(t *testing.T) {
-	repo, pool := repoDCR(t)
+// clientesEmVoltaDoLimite grava, para instanteOAuth, o pendente vencido dcr-vencido, o
+// pendente ainda no prazo dcr-quase e os antigos que não são pendentes, dcr-autorizado
+// (com Autorização revogada) e cimd-antigo.
+func clientesEmVoltaDoLimite(t *testing.T, pool *pgxpool.Pool) {
+	t.Helper()
 	limite := instanteOAuth.Add(-prazoDosPendentes)
 	clienteAntigo(t, pool, "dcr-vencido", "dcr", limite)
 	clienteAntigo(t, pool, "dcr-quase", "dcr", limite.Add(time.Second))
@@ -66,6 +69,11 @@ func TestPostgresOAuthRepo_RegisterDCRClient_ApagaSoOsPendentesVencidos(t *testi
 	_, err := pool.Exec(context.Background(), `INSERT INTO oauth_authorizations (id, user_id, client_id, scopes, revoked_at)
 		VALUES ('a-antiga', 'u1', 'dcr-autorizado', '{notas:leitura}', now())`)
 	require.NoError(t, err)
+}
+
+func TestPostgresOAuthRepo_RegisterDCRClient_ApagaSoOsPendentesVencidos(t *testing.T) {
+	repo, pool := repoDCR(t)
+	clientesEmVoltaDoLimite(t, pool)
 
 	require.NoError(t, repo.RegisterDCRClient(context.Background(), registroDCR("dcr-novo", instanteOAuth, 10)))
 

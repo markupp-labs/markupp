@@ -37,6 +37,7 @@ func testServiceConfig() oauth.ServiceConfig {
 		CodeTTL:         time.Minute,
 		ResourceSecrets: map[string]string{testResource: testResourceSecret},
 		ExchangeTTL:     5 * time.Minute,
+		DCRPendingTTL:   testDCRPendingTTL,
 	}
 }
 

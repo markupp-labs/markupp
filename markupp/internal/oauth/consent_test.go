@@ -146,6 +146,8 @@ func TestApprove_PedidoPendente_GravaHashDoCodigoEDevolveRedirect(t *testing.T) 
 		CodeHash:      auth.HashOpaqueToken("token-1"),
 		CodeExpiresAt: testNow.Add(testServiceConfig().CodeTTL),
 		DecidedAt:     testNow,
+
+		DCRPendingCutoff: testNow.Add(-testDCRPendingTTL),
 	}}, repo.approvals)
 	assertRedirect(t, redirectTo, url.Values{
 		"origem": {"x"}, "code": {"token-1"}, "state": {"estado-do-cliente"}, "iss": {testIssuer},
