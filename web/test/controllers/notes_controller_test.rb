@@ -200,13 +200,18 @@ class NotesControllerTest < ActionDispatch::IntegrationTest
     assert_equal "work/2026/Plan.md", api.post_requests.sole[:path]
   end
 
-  test "create without a title adds no heading" do
+  test "create without a title keeps what was typed and asks for a title under the field" do
     api = use_fake_api(notes: [])
     sign_in_as
 
-    post notes_path, params: { note: { folder: "", title: "", content: "Ship it." } }
+    post notes_path, params: { note: { folder: "work", title: "  ", content: "Ship it." } }
 
-    assert_equal({ path: "Untitled.md", content: "Ship it." }, api.post_requests.sole)
+    assert_response :unprocessable_content
+    assert_empty api.post_requests
+    assert_select "input[name=?][value=''][aria-invalid=true][aria-describedby=note_path_error]", "note[title]"
+    assert_select "input[name=?][value=?]", "note[folder]", "work"
+    assert_select "#note_path_error", text: "Title can't be blank"
+    assert_equal "Ship it.", css_select("main textarea").sole.text
   end
 
   test "create with a taken path keeps the text and flags the path" do

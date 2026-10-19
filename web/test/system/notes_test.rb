@@ -35,12 +35,11 @@ class NotesTest < ApplicationSystemTestCase
     visit note_path("1")
     click_on "New note"
     assert_field "Folder", with: "work"
-    find(".cm-content").send_keys("Fresh idea.")
-    find(".cm-content").send_keys([ :control, "s" ])
+    send_keys "Idea", :tab, "Fresh idea.", [ :control, "s" ]
 
     assert_text "Created"
-    assert_selector "nav a[aria-current=page]", text: "Untitled.md"
-    assert_equal({ path: "work/Untitled.md", content: "Fresh idea." }, api.post_requests.sole)
+    assert_selector "nav a[aria-current=page]", text: "Idea.md"
+    assert_equal({ path: "work/Idea.md", content: "# Idea\n\nFresh idea." }, api.post_requests.sole)
   end
 
   test "renaming and moving the note marks it unsaved and saves the new path" do
