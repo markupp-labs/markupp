@@ -18,8 +18,14 @@ class FakeMarkuppApi
     @account_email = FakeMarkuppAccountEmail.new(@accounts, @auth, email_enabled:)
     @notes = FakeMarkuppNotes.new(notes:, conflict:)
     @unreachable = unreachable
+    @slow_calls = FakeSlowCalls.new(timeout: 10)
     @received_credentials = []
   end
+
+  # Cenário: a API demora nas chamadas que começam com call_prefix ("GET /notes/2") até release_calls!.
+  def hold_calls!(call_prefix) = @slow_calls.hold(call_prefix)
+
+  def release_calls! = @slow_calls.release
 
   # Visão da mesma fake com a credencial de um cliente, como MarkuppApi.new(url, access_token:, tenant_id:).
   # Chamada direta, sem as, é de confiança e não confere token: é o que os testes de modelo usam.
@@ -49,6 +55,7 @@ class FakeMarkuppApi
   private
     def receive(verb, path, *body)
       call = "#{verb} #{path}"
+      @slow_calls.pass(call)
       raise MarkuppApi::Error, "fake API unreachable on #{call}" if @unreachable || (@notes_unreachable && path.start_with?("/notes"))
 
       @received_credentials << @credentials.merge(call:) if @credentials
