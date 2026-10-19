@@ -41,7 +41,7 @@
     <% end %>
     <% if writer && @note.persisted? %>
       <%# Fora do form de salvar (form não aninha): o botão aponta para o form de excluir pelo atributo form. %>
-      <%= tag.button form: "delete_note", data: { turbo_confirm: t(".confirm_delete") }, class: "btn border-danger text-danger" do %>
+      <%= tag.button form: "delete_note", data: { turbo_confirm: t(".confirm_delete") }, class: "btn btn-danger" do %>
         <%= icon("trash") %><%= t(".delete") %>
       <% end %>
     <% end %>
@@ -67,7 +67,7 @@
       <p class="flex-1 text-danger"><%= t(".conflict") %></p>
       <%= link_to t(".reload"), note_path(@note), data: { action: "note-form#allowLeaving" },
                   class: "btn" %>
-      <%= form.button t(".overwrite"), name: "force", value: "true", class: "btn border-danger text-danger" %>
+      <%= form.button t(".overwrite"), name: "force", value: "true", class: "btn btn-danger" %>
     </div>
   <% end %>
 

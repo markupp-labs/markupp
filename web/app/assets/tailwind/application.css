@@ -66,6 +66,11 @@
     @apply inline-flex items-center gap-1.5 rounded-md border border-line px-3 py-1 hover:bg-accent-soft;
   }
 
+  /* Ação destrutiva: o hover enche de danger em vez do accent-soft, que derrubava o texto abaixo do AA. */
+  .btn-danger {
+    @apply border-danger text-danger hover:bg-danger hover:text-surface;
+  }
+
   /* Botão só de ícone: quadrado, sem borda, com o mesmo realce das linhas da árvore. */
   .btn-icon {
     @apply inline-flex items-center rounded-md px-1.5 py-1 text-ink-muted hover:bg-accent-soft hover:text-ink;
