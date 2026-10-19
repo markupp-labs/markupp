@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"strings"
 	"time"
+	"unicode"
 )
 
 var (
@@ -180,10 +181,31 @@ func HashOpaqueToken(token string) string {
 	return hex.EncodeToString(h[:])
 }
 
-// errScopedTokenPending marca a emissão de token com escopo ainda sem implementação.
-var errScopedTokenPending = errors.New("auth: token com escopo ainda não implementado")
+// IssueScopedToken emite o token da API com escopo que a troca de token OAuth entrega:
+// o mesmo JWT do login, com validade ttl e os escopos separados por espaço na claim scope.
+func (c *TokenCodec) IssueScopedToken(userID string, scopes []string, ttl time.Duration) (string, error) {
+	if ttl <= 0 {
+		return "", fmt.Errorf("auth: validade %s do token com escopo invalida; esperado maior que zero", ttl)
+	}
+	if err := checkTokenScopes(scopes); err != nil {
+		return "", err
+	}
+	now := c.clock()
+	return c.encodeClaims(Claims{
+		Subject: userID, IssuedAt: now.Unix(), ExpiresAt: now.Add(ttl).Unix(), Scope: strings.Join(scopes, " "),
+	})
+}
 
-// IssueScopedToken emite o token da API com escopo que a troca de token OAuth entrega.
-func (c *TokenCodec) IssueScopedToken(_ string, _ []string, _ time.Duration) (string, error) {
-	return "", errScopedTokenPending
+// checkTokenScopes barra lista vazia e escopo vazio ou com espaço, que fariam a claim
+// scope sumir ou mudar de sentido. Sem claim scope o token valeria como de login.
+func checkTokenScopes(scopes []string) error {
+	if len(scopes) == 0 {
+		return errors.New("auth: token com escopo sem nenhum escopo; esperado ao menos um")
+	}
+	for _, scope := range scopes {
+		if scope == "" || strings.ContainsFunc(scope, unicode.IsSpace) {
+			return fmt.Errorf("auth: escopo %q invalido; esperado texto sem espacos", scope)
+		}
+	}
+	return nil
 }
