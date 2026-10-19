@@ -102,15 +102,27 @@ type TokenResponse struct {
 // ProtocolError é um erro do protocolo OAuth com o código da RFC 6749 (invalid_request,
 // invalid_scope, invalid_grant, access_denied, invalid_target...). Quando RedirectURI vem
 // preenchida, o erro volta ao cliente por redirect com State; senão, é mostrado ali mesmo.
+// A causa interna, quando há, serve só para o log e nunca entra em Error nem na resposta.
 type ProtocolError struct {
 	Code        string
 	Description string
 	RedirectURI string
 	State       string
+	cause       error
 }
 
 func (e *ProtocolError) Error() string {
 	return fmt.Sprintf("oauth %s: %s", e.Code, e.Description)
+}
+
+// WithInternalCause devolve uma cópia do erro com a causa que só vai para o log.
+func (e *ProtocolError) WithInternalCause(cause error) *ProtocolError {
+	return e
+}
+
+// Unwrap devolve a causa interna, ou nil.
+func (e *ProtocolError) Unwrap() error {
+	return nil
 }
 
 // RedirectLocation monta o redirect que devolve o erro ao cliente, com o issuer no

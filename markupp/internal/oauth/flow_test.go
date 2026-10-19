@@ -1,6 +1,7 @@
 package oauth_test
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -20,4 +21,15 @@ func TestProtocolErrorRedirectLocation_ComState_LevaErroStateEIssuer(t *testing.
 	got := err.RedirectLocation("https://notas.markupp.dev")
 
 	assert.Equal(t, "https://app.dev/cb?error=invalid_scope&error_description=escopo+desconhecido&iss=https%3A%2F%2Fnotas.markupp.dev&state=s1", got)
+}
+
+func TestProtocolErrorWithInternalCause_GuardaACausaForaDaMensagem(t *testing.T) {
+	cause := errors.New("dial tcp 10.0.0.7:443: connection refused")
+	original := &oauth.ProtocolError{Code: "invalid_request", Description: "documento invalido"}
+
+	err := original.WithInternalCause(cause)
+
+	assert.ErrorIs(t, err, cause)
+	assert.Equal(t, "oauth invalid_request: documento invalido", err.Error())
+	assert.NoError(t, original.Unwrap(), "o original fica sem causa")
 }

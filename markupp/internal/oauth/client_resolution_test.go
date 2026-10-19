@@ -74,6 +74,7 @@ func TestStartAuthorization_CIMDBuscaFalha_RecusaSemRedirectNemDetalhe(t *testin
 			_, err := newTestServiceWithMetadata(repo, fetcher).StartAuthorization(context.Background(), validAuthorizeParams())
 
 			requireProtocolError(t, err, "invalid_request", "", "")
+			assert.ErrorIs(t, err, fetcher.err, "a causa segue para o log")
 			assert.NotContains(t, err.Error(), "10.0.0.7")
 			assert.NotContains(t, err.Error(), "connection refused")
 			assert.Empty(t, repo.savedCIMD)
