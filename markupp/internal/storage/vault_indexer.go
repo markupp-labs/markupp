@@ -57,20 +57,24 @@ func (x *PostgresVaultIndexer) indexVault(ctx context.Context, q *gen.Queries, v
 		return fmt.Errorf("listar notas pendentes do cofre %q: %w", vault.VaultID, err)
 	}
 	cs := toChangeset(vault, rows)
-	indexed := index(cs)
-	if err := x.saveDocuments(ctx, q, cs, indexed); err != nil {
-		return err
-	}
-	if err := saveTerms(ctx, q, cs, indexed); err != nil {
-		return err
-	}
-	if err := saveGraphMarkingChange(ctx, q, cs, indexed); err != nil {
+	if err := x.applyBatch(ctx, q, cs, index(cs)); err != nil {
 		return err
 	}
 	if err := dequeue(ctx, q, vault.VaultID, rows); err != nil {
 		return err
 	}
 	return runSecondStage(ctx, q, vault.VaultID)
+}
+
+// applyBatch grava as linhas derivadas do lote: documentos, termos e grafo.
+func (x *PostgresVaultIndexer) applyBatch(ctx context.Context, q *gen.Queries, cs indexing.Changeset, indexed []indexing.IndexedNote) error {
+	if err := x.saveDocuments(ctx, q, cs, indexed); err != nil {
+		return err
+	}
+	if err := saveTerms(ctx, q, cs, indexed); err != nil {
+		return err
+	}
+	return saveGraphMarkingChange(ctx, q, cs, indexed)
 }
 
 func toChangeset(vault gen.ReservePendingVaultRow, rows []gen.ListPendingNotesRow) indexing.Changeset {
