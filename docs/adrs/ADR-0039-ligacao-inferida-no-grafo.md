@@ -15,14 +15,15 @@ grafo ou fica só para quem navega
 ## Decisão
 
 A ligação inferida é gravada em note_links com o tipo inferred e entra em tudo que lê o
-grafo: backlinks, vizinhança, nota órfã, menção não ligada, sugestão, PageRank e
-comunidades, com o mesmo peso da ligação escrita. Backlinks e vizinhança a marcam em
-inferred. Ela vive só no plano de recuperação (ADR-0013) e é refeita a cada segundo estágio,
-antes do PageRank e das comunidades
+grafo: ligações de saída e de entrada, nota órfã, menção não ligada, sugestão, PageRank e
+comunidades, com o mesmo peso da ligação escrita. As listas de ligações a mostram com o
+tipo inferred, e a ligação não resolvida que a originou traz o palpite. Ela vive só no
+plano de recuperação (ADR-0013) e é refeita a cada segundo estágio, antes do PageRank e das
+comunidades
 
 ## Alternativas consideradas
 
-- Só navegação: backlinks e vizinhança mostram a inferida, as medidas ficam só com as
+- Só navegação: as listas de ligações mostram a inferida, as medidas ficam só com as
   escritas; o erro não se espalha, mas o erro de digitação continua deixando a nota fora da
   comunidade dela
 - Peso menor nas medidas: atenua o palpite, mas pede um peso que só uma avaliação
