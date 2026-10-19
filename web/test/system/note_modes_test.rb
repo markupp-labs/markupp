@@ -85,6 +85,24 @@ class NoteModesTest < ApplicationSystemTestCase
     assert_not_equal "note_title", evaluate_script("document.activeElement.id")
   end
 
+  test "form controls in the markdown never join the note form" do
+    content = <<~MARKDOWN
+      # Plan
+
+      <input type="hidden" name="_method" value="delete"><input type="hidden" name="note[content]" value="">
+    MARKDOWN
+    api = use_fake_api(notes: [ { id: "1", path: "plan.md", content: } ])
+    sign_in_through_form
+
+    visit note_path("1")
+    click_on "Side by side"
+    find(".cm-content").send_keys([ :control, :end ], "Kept.", [ :control, "s" ])
+
+    assert_text "Saved"
+    assert_equal "#{content}Kept.", api.put_requests.sole[:content]
+    assert_no_selector ".note-preview input, .note-preview button", visible: :all
+  end
+
   test "side by side is not offered at phone width" do
     use_fake_api(notes: [ { id: "1", path: "plan.md", content: "# Plan\n" } ])
     sign_in_through_form
