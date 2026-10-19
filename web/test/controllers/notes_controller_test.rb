@@ -199,6 +199,15 @@ class NotesControllerTest < ActionDispatch::IntegrationTest
     assert_select "title", "New note"
   end
 
+  test "the content of a new note is labelled Content, not by its unfinished path" do
+    use_fake_api(notes: [])
+    sign_in_as
+
+    get new_note_path(folder: "work")
+
+    assert_select "main textarea[aria-label=?]", "Content"
+  end
+
   test "root opens a blank note at the top folder for a writer" do
     use_fake_api(notes: [ { id: "1", path: "work/plan.md", content: "" } ])
     sign_in_as
