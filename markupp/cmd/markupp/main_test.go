@@ -242,6 +242,7 @@ func TestCIMDLimitsFrom_ConverteAConfigEmDuracoesEBytes(t *testing.T) {
 type fakeCIMDServer struct {
 	*httptest.Server
 	status int
+	delay  time.Duration
 }
 
 func newFakeCIMDServer(t *testing.T, status int) *fakeCIMDServer {
@@ -259,7 +260,12 @@ func (s *fakeCIMDServer) roots() *x509.CertPool {
 	return pool
 }
 
-func (s *fakeCIMDServer) serveDocument(w http.ResponseWriter, _ *http.Request) {
+func (s *fakeCIMDServer) serveDocument(w http.ResponseWriter, r *http.Request) {
+	select {
+	case <-time.After(s.delay):
+	case <-r.Context().Done():
+		return
+	}
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "max-age=60")
 	w.WriteHeader(s.status)
@@ -319,4 +325,32 @@ func TestNewCIMDClientMetadataFetcher_LimitesInvalidos_RetornaErro(t *testing.T)
 	_, err := newCIMDClientMetadataFetcher(cimdLimits{Timeout: time.Second, MaxBodyBytes: 1, MinTTL: time.Hour, MaxTTL: time.Minute})
 
 	require.ErrorIs(t, err, cimd.ErrInvalidOption)
+}
+
+func TestNewCIMDClientMetadataFetcher_LimiteDeCorpo_ChegaAoFetcher(t *testing.T) {
+	srv := newFakeCIMDServer(t, http.StatusOK)
+	limits := testCIMDLimits
+	limits.MaxBodyBytes = 16
+	fetcher, err := newCIMDClientMetadataFetcher(limits, cimd.WithRootCAs(srv.roots()), cimd.WithIPPolicy(allowLoopback))
+	require.NoError(t, err)
+
+	_, err = fetcher.FetchClientMetadata(context.Background(), srv.clientID())
+
+	require.ErrorIs(t, err, cimd.ErrFetchFailed)
+	assert.Contains(t, err.Error(), "mais de 16 bytes")
+}
+
+func TestNewCIMDClientMetadataFetcher_Timeout_ChegaAoFetcher(t *testing.T) {
+	srv := newFakeCIMDServer(t, http.StatusOK)
+	srv.delay = 2 * time.Second
+	limits := testCIMDLimits
+	limits.Timeout = 100 * time.Millisecond
+	fetcher, err := newCIMDClientMetadataFetcher(limits, cimd.WithRootCAs(srv.roots()), cimd.WithIPPolicy(allowLoopback))
+	require.NoError(t, err)
+	inicio := time.Now()
+
+	_, err = fetcher.FetchClientMetadata(context.Background(), srv.clientID())
+
+	require.ErrorIs(t, err, cimd.ErrFetchFailed)
+	assert.Less(t, time.Since(inicio), time.Second, "o timeout dos limites encerra a busca antes do atraso")
 }
