@@ -1,4 +1,4 @@
-# Escolher ou criar tenant: é o onboarding de quem entra sem nenhum.
+# Lista de tenants em cards, com o tenant novo num dialog; para quem entra sem nenhum, é o onboarding.
 class TenantsController < ApplicationController
   helper_method :pending_invites
 
@@ -7,6 +7,7 @@ class TenantsController < ApplicationController
 
   # A lista com o formulário do tenant novo aberto: é para onde o New tenant do seletor e da paleta leva.
   def new
+    @open_new_tenant = true
     render :index
   end
 
@@ -18,6 +19,7 @@ class TenantsController < ApplicationController
     redirect_to root_path, notice: t(".created", name: tenant.name)
   rescue MarkuppApi::InvalidRequest
     @name_error = t(".invalid_name")
+    @open_new_tenant = true
     render :index, status: :unprocessable_content
   end
 

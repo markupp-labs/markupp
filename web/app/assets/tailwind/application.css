@@ -250,6 +250,16 @@
   outline-offset: 1px;
 }
 
+/* Card de tenant (tenants/_card): o botão do nome cobre o card, então o contorno do foco vai no card inteiro. */
+.tenant-card:has(.tenant-card-open:focus-visible) {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.tenant-card-open:focus-visible {
+  outline: none;
+}
+
 /* A barra de progresso do Turbo dá lugar ao .busy-spinner-page. Fora de @layer: o <style> que o Turbo injeta não tem
    camada e venceria qualquer regra dentro de uma. */
 .turbo-progress-bar {

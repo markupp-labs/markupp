@@ -27,7 +27,7 @@ module ShortcutsHelper
       Shortcut.of(:dark_theme, run: { form: { url: :theme_path, params: { theme: "dark" }, turbo: false } }),
       Shortcut.of(:editor_style_plain, run: { form: { url: :editor_style_path, params: { editor_style: "plain" }, turbo: false } }),
       Shortcut.of(:editor_style_styled, run: { form: { url: :editor_style_path, params: { editor_style: "styled" }, turbo: false } }),
-      Shortcut.of(:tenants, run: { href: :tenants_path }),
+      Shortcut.of(:tenants, "g t", run: { href: :tenants_path }),
       Shortcut.of(:switch_tenant, run: { click: "button[popovertarget=tenant_switcher]" }),
       Shortcut.of(:log_out, run: { form: { url: :session_path, method: :delete } })
     ],
@@ -60,6 +60,12 @@ module ShortcutsHelper
       Shortcut.of(:menu_move, "j", "k"),
       Shortcut.of(:list_choose, "Enter"),
       Shortcut.of(:list_close, "Esc")
+    ],
+    tenants: [
+      Shortcut.of(:filter_tenants, "/"),
+      Shortcut.of(:new_tenant, "Alt+N", run: { href: :new_tenant_path }),
+      Shortcut.of(:move_tenants, "hjkl", "←↓↑→"),
+      Shortcut.of(:open_tenant, "Enter")
     ]
   }.freeze
 

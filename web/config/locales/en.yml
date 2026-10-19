@@ -42,6 +42,8 @@ en:
     tenant_switcher:
       switch: "Switch tenant"
       new_tenant: "New tenant"
+      all_tenants: "All tenants"
+      all_tenants_title: "All tenants (g t)"
     sidebar_footer:
       account_menu: "Account menu"
       signed_in_as: "Signed in as"
@@ -62,6 +64,7 @@ en:
       note: "Note"
       tree: "Tree"
       lists: "Menus and lists"
+      tenants: "Tenants"
     names:
       command_palette: "Command palette"
       shortcuts_help: "Keyboard shortcuts"
@@ -75,7 +78,7 @@ en:
       dark_theme: "Dark theme"
       editor_style_plain: "Editor style: plain"
       editor_style_styled: "Editor style: styled"
-      tenants: "Tenants"
+      tenants: "All tenants"
       switch_tenant: "Switch tenant"
       log_out: "Log out"
       new_note: "New note"
@@ -102,6 +105,10 @@ en:
       menu_move: "Move in menus"
       list_choose: "Run the selected item"
       list_close: "Close"
+      filter_tenants: "Filter tenants"
+      new_tenant: "New tenant"
+      move_tenants: "Move between tenants"
+      open_tenant: "Enter the tenant"
   markupp_api:
     errors:
       session_expired: "Your session expired. Log in again."
@@ -127,16 +134,30 @@ en:
       member: "member"
       viewer: "viewer"
     index:
-      choose: "Choose a tenant"
+      title: "Tenants"
       first: "Create your first tenant"
       sidebar_label: "Tenants"
       first_hint: "A tenant holds the notes you share with other people."
-      new_tenant: "New tenant"
       pending_invites: "Pending invites"
       no_invites: "No pending invites. Invites show up here once your email is confirmed."
       confirm_email: "Confirm your email"
+      filter: "Filter tenants"
+      filter_title: "Filter tenants (/)"
+      new_tenant_title: "New tenant (Alt+N)"
+      no_match: "No tenant matches the filter."
+    new_tenant_form:
+      new_tenant: "New tenant"
       create: "Create"
       creating: "Creating"
+      cancel: "Cancel"
+    card:
+      members: "Members of %{name}"
+      settings: "Settings of %{name}"
+      no_notes: "No notes yet"
+      notes:
+        one: "%{count} note"
+        other: "%{count} notes"
+      last_edit: "last edit %{time} ago"
     create:
       created: "Created %{name}."
       invalid_name: "Use 1 to 100 characters."
@@ -185,6 +206,42 @@ en:
       submitting: "Confirming"
     create:
       confirmed: "Email confirmed. Pending invites now show up in your tenant list."
+  # Tempo curto para os cards de tenant ("2h ago"), pelo time_ago_in_words com este scope.
+  datetime_short:
+    half_a_minute: "1m"
+    less_than_x_seconds:
+      one: "1s"
+      other: "%{count}s"
+    x_seconds:
+      one: "1s"
+      other: "%{count}s"
+    less_than_x_minutes:
+      one: "1m"
+      other: "%{count}m"
+    x_minutes:
+      one: "1m"
+      other: "%{count}m"
+    about_x_hours:
+      one: "1h"
+      other: "%{count}h"
+    x_days:
+      one: "1d"
+      other: "%{count}d"
+    about_x_months:
+      one: "1mo"
+      other: "%{count}mo"
+    x_months:
+      one: "1mo"
+      other: "%{count}mo"
+    about_x_years:
+      one: "1y"
+      other: "%{count}y"
+    over_x_years:
+      one: "1y"
+      other: "%{count}y"
+    almost_x_years:
+      one: "1y"
+      other: "%{count}y"
   my_invites:
     invite:
       join: "Join %{tenant} as %{role}"
