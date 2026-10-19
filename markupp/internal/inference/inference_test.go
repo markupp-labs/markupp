@@ -48,6 +48,8 @@ func TestCandidates_SoAteUmQuintoDoTamanhoSemCaixaNemAcento(t *testing.T) {
 	assert.Equal(t, []inference.Candidate{{NoteID: "p", TitleKey: "postgresql", Distance: 0.1}}, idx.Candidates("x", "postgresq"),
 		"a nota entra uma vez, pelo titulo mais proximo")
 	assert.Empty(t, idx.Candidates("x", "kub"), "distancia acima de 0,2 do tamanho do titulo")
+	assert.Equal(t, []inference.Candidate{{NoteID: "k", TitleKey: "kubernetes", Distance: 0.1}, {NoteID: "o", TitleKey: "kubernetes", Distance: 0.1}},
+		idx.Candidates("x", "kubrenetes"), "transposicao nao muda as letras e conta 1")
 }
 
 func TestChoose_FundeDistanciaProbabilidadeEParentescoPorRRF(t *testing.T) {
