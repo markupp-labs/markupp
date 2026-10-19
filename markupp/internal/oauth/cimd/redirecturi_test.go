@@ -18,6 +18,9 @@ func TestFetcher_RedirectURIPermitida_Aceita(t *testing.T) {
 		"http://[::1]:8080/callback",
 		"com.exemplo.app:/oauth2redirect",
 		"com.exemplo.app://callback",
+		"meuapp://callback",
+		"cursor://anysphere.cursor-retrieval/oauth/callback",
+		"vscode://vscode.github-authentication/did-authenticate",
 	}
 	for _, uri := range permitidas {
 		t.Run(uri, func(t *testing.T) {
@@ -38,7 +41,8 @@ func TestFetcher_RedirectURIProibida_RecusaComValor(t *testing.T) {
 		"data":                  "data:text/html,oi",
 		"vbscript":              "vbscript:msgbox(1)",
 		"file":                  "file:///etc/passwd",
-		"esquema sem ponto":     "meuapp://callback",
+		"javascript maiusculo":  "JavaScript:alert(1)",
+		"file maiusculo":        "FILE:///etc/passwd",
 		"https opaca":           "https:agente.example.com/cb",
 		"https sem host":        "https:///cb",
 		"http opaca":            "http:127.0.0.1/cb",
