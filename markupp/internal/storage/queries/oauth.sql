@@ -38,18 +38,15 @@ SELECT pg_advisory_xact_lock_shared(hashtextextended('markupp.oauth_dcr_registra
 FROM oauth_requests r JOIN oauth_clients c ON c.id = r.client_id
 WHERE r.id = $1 AND c.source = 'dcr';
 
--- Pendente é o cliente DCR que nunca ganhou Autorização, revogada ou não. Os pedidos
--- dele saem junto, pelo ON DELETE CASCADE.
+-- Os pedidos do pendente saem junto, pelo ON DELETE CASCADE.
 -- name: DeleteExpiredPendingDCRClients :exec
-DELETE FROM oauth_clients c
-WHERE c.source = 'dcr' AND c.created_at <= sqlc.arg(cutoff)::TIMESTAMPTZ
-  AND NOT EXISTS (SELECT 1 FROM oauth_authorizations a WHERE a.client_id = c.id);
+DELETE FROM oauth_clients
+WHERE id IN (SELECT p.id FROM oauth_pending_dcr_clients p WHERE p.created_at <= sqlc.arg(cutoff)::TIMESTAMPTZ);
 
 -- name: CountPendingDCRClients :one
 SELECT count(*) AS pending,
-    COALESCE(min(c.created_at), sqlc.arg(now)::TIMESTAMPTZ)::TIMESTAMPTZ AS oldest_created_at
-FROM oauth_clients c
-WHERE c.source = 'dcr' AND NOT EXISTS (SELECT 1 FROM oauth_authorizations a WHERE a.client_id = c.id);
+    COALESCE(min(p.created_at), sqlc.arg(now)::TIMESTAMPTZ)::TIMESTAMPTZ AS oldest_created_at
+FROM oauth_pending_dcr_clients p;
 
 -- name: CreateDCRClient :exec
 INSERT INTO oauth_clients (id, source, name, redirect_uris, created_at)

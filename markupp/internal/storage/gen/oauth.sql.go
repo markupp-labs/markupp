@@ -90,9 +90,8 @@ func (q *Queries) ConsumeOAuthRefreshToken(ctx context.Context, arg ConsumeOAuth
 
 const countPendingDCRClients = `-- name: CountPendingDCRClients :one
 SELECT count(*) AS pending,
-    COALESCE(min(c.created_at), $1::TIMESTAMPTZ)::TIMESTAMPTZ AS oldest_created_at
-FROM oauth_clients c
-WHERE c.source = 'dcr' AND NOT EXISTS (SELECT 1 FROM oauth_authorizations a WHERE a.client_id = c.id)
+    COALESCE(min(p.created_at), $1::TIMESTAMPTZ)::TIMESTAMPTZ AS oldest_created_at
+FROM oauth_pending_dcr_clients p
 `
 
 type CountPendingDCRClientsRow struct {
@@ -162,13 +161,11 @@ func (q *Queries) CreateOAuthRequest(ctx context.Context, arg CreateOAuthRequest
 }
 
 const deleteExpiredPendingDCRClients = `-- name: DeleteExpiredPendingDCRClients :exec
-DELETE FROM oauth_clients c
-WHERE c.source = 'dcr' AND c.created_at <= $1::TIMESTAMPTZ
-  AND NOT EXISTS (SELECT 1 FROM oauth_authorizations a WHERE a.client_id = c.id)
+DELETE FROM oauth_clients
+WHERE id IN (SELECT p.id FROM oauth_pending_dcr_clients p WHERE p.created_at <= $1::TIMESTAMPTZ)
 `
 
-// Pendente é o cliente DCR que nunca ganhou Autorização, revogada ou não. Os pedidos
-// dele saem junto, pelo ON DELETE CASCADE.
+// Os pedidos do pendente saem junto, pelo ON DELETE CASCADE.
 func (q *Queries) DeleteExpiredPendingDCRClients(ctx context.Context, cutoff time.Time) error {
 	_, err := q.db.Exec(ctx, deleteExpiredPendingDCRClients, cutoff)
 	return err

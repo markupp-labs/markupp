@@ -75,7 +75,7 @@ func TestMigracao00016_TabelasOAuth_SemPrivilegioParaPapeis(t *testing.T) {
 	pool := bancoComOAuthSobDefaultPrivileges(t)
 
 	for _, papel := range papeisSemAcessoOAuth {
-		for _, tabela := range tabelasOAuth {
+		for _, tabela := range append(tabelasOAuth, "oauth_pending_dcr_clients") {
 			assert.Equal(t, 0, privilegiosOAuth(t, pool, papel, tabela), "%s não pode tocar em %s", papel, tabela)
 		}
 	}

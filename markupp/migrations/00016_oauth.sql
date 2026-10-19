@@ -73,12 +73,19 @@ CREATE TABLE oauth_tokens (
 CREATE INDEX oauth_tokens_authorization_id_idx ON oauth_tokens (authorization_id);
 CREATE INDEX oauth_tokens_expires_at_idx ON oauth_tokens (expires_at);
 
+-- Pendente é o cliente DCR que nunca ganhou Autorização, revogada ou não: é o que o
+-- registro dinâmico conta no teto e apaga depois do prazo.
+CREATE VIEW oauth_pending_dcr_clients AS
+SELECT c.* FROM oauth_clients c
+WHERE c.source = 'dcr' AND NOT EXISTS (SELECT 1 FROM oauth_authorizations a WHERE a.client_id = c.id);
+
 -- Garante o isolamento mesmo se o banco tiver DEFAULT PRIVILEGES concedendo a PUBLIC ou a
 -- qualquer papel criado pelas migrações.
-REVOKE ALL ON oauth_clients, oauth_authorizations, oauth_requests, oauth_tokens
+REVOKE ALL ON oauth_clients, oauth_authorizations, oauth_requests, oauth_tokens, oauth_pending_dcr_clients
     FROM PUBLIC, markupp_app, markupp_scaler, markupp_indexer, markupp_notifier;
 
 -- +goose Down
+DROP VIEW IF EXISTS oauth_pending_dcr_clients;
 DROP TABLE IF EXISTS oauth_tokens;
 DROP TABLE IF EXISTS oauth_requests;
 DROP TABLE IF EXISTS oauth_authorizations;
