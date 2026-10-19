@@ -192,3 +192,23 @@ func TestRLS_PapelDoIndexador_NaoGravaIndiceDeOutroCofre(t *testing.T) {
 	require.ErrorAs(t, err, &pgErr)
 	assert.Equal(t, "42501", pgErr.Code, "recebido %v", err)
 }
+
+func TestRLS_PapelDoIndexador_SoReenfileiraOCofreDaSessao(t *testing.T) {
+	db := setupTestDB(t)
+	repo := storage.NewPostgresNotesRepository(db, "simple")
+	ator := identity.Actor{UserID: "ua", TenantID: "t1", Role: "member"}
+	storagetest.SeedMember(t, db, ator, "va")
+	ctx := storagetest.SeedMember(t, db, ator, "vb")
+	storagetest.SaveNote(ctx, t, repo, notaComConteudo("n1", "va", "um"))
+	storagetest.SaveNote(ctx, t, repo, notaComConteudo("n2", "vb", "dois"))
+	indexaTodosOsCofres(t, db, "simple")
+
+	n, err := comoIndexador(t, db, "t1", "va", "WITH i AS (INSERT INTO note_index_queue (note_id) VALUES ('n1') RETURNING 1) SELECT count(*) FROM i")
+	require.NoError(t, err, "o indexador reenfileira as notas do cofre da sessao")
+	assert.Equal(t, int64(1), n)
+
+	_, err = comoIndexador(t, db, "t1", "va", "WITH i AS (INSERT INTO note_index_queue (note_id) VALUES ('n2') RETURNING 1) SELECT count(*) FROM i")
+	var pgErr *pgconn.PgError
+	require.ErrorAs(t, err, &pgErr)
+	assert.Equal(t, "42501", pgErr.Code, "recebido %v", err)
+}

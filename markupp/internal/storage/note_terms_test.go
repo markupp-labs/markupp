@@ -73,7 +73,7 @@ func TestVaultIndexer_SemDf_GravaOs50TermosDeMaiorTf(t *testing.T) {
 	repo := storage.NewPostgresNotesRepository(db, "simple")
 	storagetest.SaveNote(ctxDeTeste, t, repo, notaComCaminho("n1", "n1.md", "comum comum comum "+palavrasDistintas("w", 60)))
 
-	indexaTodosOsCofres(t, db, "simple")
+	indexaProximo(t, novoIndexador(t, db, "simple"))
 
 	termos := termosDaNota(t, db, "n1")
 	assert.Len(t, termos, 50)
@@ -81,21 +81,58 @@ func TestVaultIndexer_SemDf_GravaOs50TermosDeMaiorTf(t *testing.T) {
 	assert.InDelta(t, 1.0, termos["w00"], 1e-9)
 }
 
-func TestVaultIndexer_ComDf_TermoDeTodasAsNotasPerdeLugar(t *testing.T) {
+// indexaContandoJobs roda o indexador até não sobrar cofre pendente e devolve quantas
+// execuções acharam cofre. Passar de 10 só acontece num laço entre lote e segundo
+// estágio.
+func indexaContandoJobs(t *testing.T, db *pgxpool.Pool, config string) int {
+	t.Helper()
+	idx := novoIndexador(t, db, config)
+	for jobs := range 10 {
+		if found, _ := indexaProximo(t, idx); !found {
+			return jobs
+		}
+	}
+	t.Fatalf("cofre pendente em 10 execucoes seguidas do indexador, esperado que lote e segundo estagio terminem")
+	return 0
+}
+
+// cofreComTermoComum salva n1 com o texto termo e n2 com termo repetido três vezes e
+// mais 60 palavras distintas, de modo que só o idf tira termo dos 50 de n2.
+func cofreComTermoComum(t *testing.T, termo string) (*pgxpool.Pool, *storage.PostgresNotesRepository) {
+	t.Helper()
 	db := setupNotesDB(t)
 	repo := storage.NewPostgresNotesRepository(db, "simple")
-	storagetest.SaveNote(ctxDeTeste, t, repo, notaComCaminho("n1", "n1.md", "comum"))
-	storagetest.SaveNote(ctxDeTeste, t, repo, notaComCaminho("n2", "n2.md", "comum comum comum "+palavrasDistintas("w", 60)))
-	indexaTodosOsCofres(t, db, "simple")
-	require.Contains(t, termosDaNota(t, db, "n2"), "comum", "sem df o tf puro escolhe o termo repetido")
+	storagetest.SaveNote(ctxDeTeste, t, repo, notaComCaminho("n1", "n1.md", termo))
+	storagetest.SaveNote(ctxDeTeste, t, repo, notaComCaminho("n2", "n2.md", strings.Repeat(termo+" ", 3)+palavrasDistintas("w", 60)))
+	return db, repo
+}
 
-	_, err := repo.Update(ctxDeTeste, "n2", "n2.md", "comum comum comum "+palavrasDistintas("w", 61), time.Now(), time.Time{}, true)
-	require.NoError(t, err)
-	indexaTodosOsCofres(t, db, "simple")
+func TestVaultIndexer_PrimeiroDf_ReescolheOsTermosComIdfSemLaco(t *testing.T) {
+	db, _ := cofreComTermoComum(t, "comum")
+
+	jobs := indexaContandoJobs(t, db, "simple")
 
 	termos := termosDaNota(t, db, "n2")
 	assert.Len(t, termos, 50)
 	assert.NotContains(t, termos, "comum", "idf zero: o termo esta em todas as notas do cofre")
+	assert.Equal(t, 2, jobs, "lote e segundo estagio, depois o lote das notas reenfileiradas, que nao marca o cofre")
+	assert.Zero(t, countRows(t, db, consultaDoScaler))
+}
+
+func TestVaultIndexer_Reindex_ReescolheOsTermosComODfDoAnalisadorNovo(t *testing.T) {
+	db, _ := cofreComTermoComum(t, "correndo")
+	indexaTodosOsCofres(t, db, "simple")
+	var radical string
+	require.NoError(t, db.QueryRow(context.Background(),
+		"SELECT lexeme FROM unnest(to_tsvector('pg_catalog.portuguese', 'correndo'))").Scan(&radical))
+
+	_, err := storage.RequeueNotes(context.Background(), db, cofreDeTeste)
+	require.NoError(t, err)
+	jobs := indexaContandoJobs(t, db, "pg_catalog.portuguese")
+
+	assert.NotContains(t, termosDaNota(t, db, "n2"), radical, "o radical esta nas duas notas; o df do analisador antigo nao o conhece")
+	assert.Equal(t, 2, jobs, "reindex, segundo estagio e o lote das notas reenfileiradas")
+	assert.Zero(t, countRows(t, db, consultaDoScaler))
 }
 
 func TestSegundoEstagio_GravaONEOsPesosENormasComODfNovo(t *testing.T) {
