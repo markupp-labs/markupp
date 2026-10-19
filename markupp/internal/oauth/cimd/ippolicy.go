@@ -14,17 +14,24 @@ var ErrBlockedAddress = errors.New("endereco bloqueado")
 // Devolve nil para permitir ou um erro que embrulha ErrBlockedAddress.
 type IPPolicy func(ip netip.Addr) error
 
-var cgnatPrefix = netip.MustParsePrefix("100.64.0.0/10")
+// blockedPrefixes cobre o que o netip não classifica: CGNAT e os prefixos de tradução
+// NAT64 e 6to4, que embutem um IPv4 qualquer (inclusive interno) no endereço IPv6.
+var blockedPrefixes = []netip.Prefix{
+	netip.MustParsePrefix("100.64.0.0/10"),
+	netip.MustParsePrefix("64:ff9b::/96"),
+	netip.MustParsePrefix("2002::/16"),
+}
 
 // PublicOnly é a política padrão: recusa loopback, privados (RFC 1918 e fc00::/7),
-// link-local, unspecified, multicast e CGNAT (100.64.0.0/10).
+// link-local, unspecified, multicast, CGNAT (100.64.0.0/10), NAT64 (64:ff9b::/96) e
+// 6to4 (2002::/16).
 func PublicOnly(ip netip.Addr) error {
 	ip = ip.Unmap()
 	if isPublicIP(ip) {
 		return nil
 	}
-	return fmt.Errorf("%w: %s; esperado IP publico (fora de loopback, privado, link-local, unspecified, multicast e CGNAT)",
-		ErrBlockedAddress, ip)
+	return fmt.Errorf("%w: %s; esperado IP publico (fora de loopback, privado, link-local, unspecified, "+
+		"multicast, CGNAT, NAT64 e 6to4)", ErrBlockedAddress, ip)
 }
 
 func isPublicIP(ip netip.Addr) bool {
@@ -34,7 +41,16 @@ func isPublicIP(ip netip.Addr) bool {
 		!ip.IsLinkLocalUnicast() &&
 		!ip.IsUnspecified() &&
 		!ip.IsMulticast() &&
-		!cgnatPrefix.Contains(ip)
+		!inBlockedPrefix(ip)
+}
+
+func inBlockedPrefix(ip netip.Addr) bool {
+	for _, prefix := range blockedPrefixes {
+		if prefix.Contains(ip) {
+			return true
+		}
+	}
+	return false
 }
 
 // dialControl aplica a política no Control do Dialer, que recebe o IP já resolvido;
