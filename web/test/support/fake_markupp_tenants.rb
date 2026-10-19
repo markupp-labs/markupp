@@ -9,10 +9,13 @@ class FakeMarkuppTenants
 
   INVITE_ANSWER = %r{\A/me/invites/(?<id>[^/]+)/(?<answer>accept|decline)\z}
 
-  # tenants: [{ id:, name:, members: { email => papel } }]
+  # tenants: [{ id:, name:, members: { email => papel }, notes_count:, last_note_at: }]; as estatísticas são opcionais,
+  # como no servidor que ainda não as manda, e só aparecem em /me/tenants quando o tenant as tem.
   # invites: [{ id:, tenant_id:, email:, role:, token:, expires_at:, accepted_at: }]; sem accepted_at e no prazo, pendente.
   def initialize(tenants, invites = [])
-    @tenants = tenants.map { |tenant| { "id" => tenant[:id], "name" => tenant[:name], "members" => tenant[:members].dup } }
+    @tenants = tenants.map do |tenant|
+      { "id" => tenant[:id], "name" => tenant[:name], "members" => tenant[:members].dup, "stats" => tenant.slice(:notes_count, :last_note_at).stringify_keys }
+    end
     @invites = invites.map { it.stringify_keys.reverse_merge("expires_at" => 7.days.from_now.utc.iso8601, "created_at" => Time.current.utc.iso8601) }
     @notes_denied = []
   end
@@ -114,7 +117,9 @@ class FakeMarkuppTenants
       @tenants.select { it["members"].key?(account["email"]) }.map { membership(it, account) }
     end
 
-    def membership(tenant, account) = { "id" => tenant["id"], "name" => tenant["name"], "role" => tenant["members"].fetch(account["email"]) }
+    def membership(tenant, account)
+      { "id" => tenant["id"], "name" => tenant["name"], "role" => tenant["members"].fetch(account["email"]), **tenant.fetch("stats", {}) }
+    end
 
     def requested_membership(account, requested, call)
       memberships(account).find { it["id"] == requested } or

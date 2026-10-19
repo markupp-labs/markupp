@@ -15,6 +15,25 @@ class TenantTest < ActiveSupport::TestCase
                  Tenant.mine(@api)
   end
 
+  test "mine keeps the note stats of each tenant when the API sends them" do
+    email = FakeMarkuppAccounts::DEFAULT_EMAIL
+    fake_api = FakeMarkuppApi.new(tenants: [
+      { id: "tenant-1", name: "Acme research", members: { email => "owner" }, notes_count: 12, last_note_at: "2026-10-19T10:00:00Z" },
+      { id: "tenant-2", name: "Home lab", members: { email => "viewer" }, notes_count: 0, last_note_at: nil }
+    ])
+    pair = fake_api.post("/auth/login", email:, password: FakeMarkuppAccounts::DEFAULT_PASSWORD)
+
+    assert_equal [ { id: "tenant-1", name: "Acme research", role: "owner", notes_count: 12, last_note_at: Time.zone.parse("2026-10-19T10:00:00Z") },
+                   { id: "tenant-2", name: "Home lab", role: "viewer", notes_count: 0, last_note_at: nil } ],
+                 Tenant.mine(fake_api.as(access_token: pair.fetch("access_token"))).map(&:to_h)
+  end
+
+  test "a tenant without the stats from the API has neither a count nor a last edit" do
+    assert_equal [ { id: "tenant-1", name: "Acme research", role: "owner", notes_count: nil, last_note_at: nil },
+                   { id: "tenant-2", name: "Home lab", role: "viewer", notes_count: nil, last_note_at: nil } ],
+                 Tenant.mine(@api).map(&:to_h)
+  end
+
   test "pick answers the tenant of the session while it is still in the list" do
     assert_equal "tenant-2", Tenant.pick(Tenant.mine(@api), "tenant-2").id
   end
