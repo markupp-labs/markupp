@@ -57,10 +57,45 @@ func validateRedirectURIs(uris []string) error {
 		return fmt.Errorf("%w: redirect_uris vazio; esperado lista com ao menos uma URL absoluta", ErrInvalidDocument)
 	}
 	for _, raw := range uris {
-		parsed, err := url.Parse(raw)
-		if err != nil || !parsed.IsAbs() || strings.Contains(raw, "#") {
-			return fmt.Errorf("%w: redirect_uri %q; esperado URL absoluta sem fragmento", ErrInvalidDocument, raw)
+		if reason := redirectURIProblem(raw); reason != "" {
+			return fmt.Errorf("%w: redirect_uri %q %s; esperado %s", ErrInvalidDocument, raw, reason, redirectURIShape)
 		}
 	}
 	return nil
+}
+
+const redirectURIShape = "https com host, http em 127.0.0.1 ou [::1], ou esquema privado em dominio reverso " +
+	"com ponto (RFC 8252, secao 7.1), sem fragmento e sem credenciais"
+
+func redirectURIProblem(raw string) string {
+	parsed, err := url.Parse(raw)
+	switch {
+	case err != nil:
+		return "nao e uma URL"
+	case strings.Contains(raw, "#"):
+		return "contem fragmento"
+	case parsed.User != nil:
+		return "contem credenciais"
+	}
+	return redirectSchemeProblem(parsed)
+}
+
+// redirectSchemeProblem exige ponto no esquema privado, o que já recusa javascript,
+// data, vbscript, file e URL relativa. URL opaca de http/https sai sem host.
+func redirectSchemeProblem(parsed *url.URL) string {
+	switch parsed.Scheme {
+	case "https":
+		if parsed.Hostname() == "" {
+			return "https sem host"
+		}
+	case "http":
+		if host := parsed.Hostname(); host != "127.0.0.1" && host != "::1" {
+			return "http fora de 127.0.0.1 e [::1]"
+		}
+	default:
+		if !strings.Contains(parsed.Scheme, ".") {
+			return "esquema sem ponto de dominio reverso"
+		}
+	}
+	return ""
 }
