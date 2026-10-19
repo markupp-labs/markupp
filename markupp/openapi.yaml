@@ -768,115 +768,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-  /notes/{id}/backlinks:
-    get:
-      summary: Lista as notas que ligam a esta
-      description: |
-        Notas do mesmo cofre com ligação para esta, ordenadas por caminho, sem o
-        conteúdo. O viewer também lê.
-
-        Uma ligação é um wikilink ([[Título]], [[Título|apelido]], [[Título#Seção]],
-        [[Título^bloco]]), um embed (![[...]], anexos inclusive) ou um link markdown para
-        um arquivo .md, escritos fora de bloco e de trecho de código. Âncora de seção e
-        de bloco é descartada, e [[#Seção]] não é ligação. A ligação cita um título e
-        liga a todas as notas do mesmo cofre com esse título: o último segmento do
-        caminho sem .md, ou um dos aliases do frontmatter, sem diferença de caixa nem de
-        forma Unicode, mas com diferença de acento. O link markdown resolve pelo
-        caminho, relativo à pasta da nota ou à raiz do cofre se começar com /; sem nota
-        nesse caminho, vale o título do último segmento. A nota que cita a si mesma não
-        conta. A resolução é feita na leitura, então renomear ou apagar uma nota muda as
-        ligações das outras na hora; o que a própria nota cita só muda quando o
-        indexador processa o cofre dela. Ligação para outro cofre é sempre não
-        resolvida.
-
-        Também é ligação a tipada: a chave do frontmatter cujo valor é um wikilink
-        inteiro, como o Obsidian grava entre aspas (autor: "[[Fulana]]"), ou uma lista
-        com wikilinks. A chave é o predicado, como escrita, e o alvo resolve como o
-        wikilink do corpo. Valor literal (texto, número, data, tag) e a chave aliases
-        não viram ligação. Cada nota aparece uma vez, com os predicados das ligações
-        tipadas que faz para esta em predicates.
-
-        Também conta a ligação inferida: para cada ligação não resolvida, o indexador
-        escolhe a nota cujo título está a no máximo 0,2 de distância de edição do
-        título citado, sem caixa e sem acento, desempatando por probabilidade a priori
-        e parentesco no grafo. Ela nunca é escrita na nota e vem marcada em inferred
-        quando é a única ligação da nota para esta.
-      parameters:
-        - $ref: '#/components/parameters/TenantHeader'
-        - $ref: '#/components/parameters/NoteID'
-        - $ref: '#/components/parameters/PageOffset'
-        - $ref: '#/components/parameters/PageLimit'
-      responses:
-        '200':
-          description: Lista, vazia quando não há nenhum item
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/BacklinkResponse'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '400':
-          description: offset ou limit não inteiros
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
-          description: Nota inexistente ou fora dos cofres do usuário (not_found)
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: Erro interno do servidor
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-  /notes/{id}/neighbors:
-    get:
-      summary: Lista as notas ligadas a esta em qualquer sentido
-      description: |
-        Vizinhança de raio 1: as notas que ligam a esta e as notas a que esta liga, uma
-        vez cada, ordenadas por caminho, com o sentido da ligação e os predicados das
-        ligações tipadas em cada sentido. A resolução segue as regras de GET
-        /notes/{id}/backlinks, ligação inferida incluída e marcada. O viewer também lê.
-      parameters:
-        - $ref: '#/components/parameters/TenantHeader'
-        - $ref: '#/components/parameters/NoteID'
-        - $ref: '#/components/parameters/PageOffset'
-        - $ref: '#/components/parameters/PageLimit'
-      responses:
-        '200':
-          description: Lista, vazia quando não há nenhum item
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/NeighborResponse'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '400':
-          description: offset ou limit não inteiros
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
-          description: Nota inexistente ou fora dos cofres do usuário (not_found)
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: Erro interno do servidor
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
   /notes/{id}/mentions:
     get:
       summary: Lista as menções não ligadas desta nota nos dois sentidos
@@ -975,48 +866,6 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: Nota inexistente ou fora dos cofres do usuário (not_found)
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: Erro interno do servidor
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-  /vaults/{id}/unresolved-links:
-    get:
-      summary: Lista as ligações não resolvidas do cofre
-      description: |
-        Ligações para títulos que nenhuma nota do cofre tem, ordenadas pelo caminho da
-        nota que liga, com o título como escrito. Embed de anexo sem nota com aquele
-        título entra aqui, como escrita, mesmo quando o indexador inferiu uma nota para
-        ela. A resolução segue as regras de GET /notes/{id}/backlinks. O viewer também lê.
-      parameters:
-        - $ref: '#/components/parameters/TenantHeader'
-        - $ref: '#/components/parameters/VaultID'
-        - $ref: '#/components/parameters/PageOffset'
-        - $ref: '#/components/parameters/PageLimit'
-      responses:
-        '200':
-          description: Lista, vazia quando não há nenhum item
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/UnresolvedLinkResponse'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '400':
-          description: offset ou limit não inteiros
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '403':
-          description: Cofre inexistente ou de que o usuário não é membro (vault_forbidden)
           content:
             application/json:
               schema:
@@ -1178,6 +1027,165 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: Nota inexistente ou fora dos cofres do usuário (not_found)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Erro interno do servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/notes/{id}/links:
+    get:
+      summary: Lista as ligações que esta nota faz
+      description: |
+        Um item por ligação, ordenados pelo título citado, depois por tipo, predicado
+        e caminho da nota a que ligam. A ligação ambígua aparece uma vez para cada nota
+        com o título, e a não resolvida uma vez, com target null. A mesma ligação
+        escrita de novo na nota, ainda que em outra caixa, conta uma vez, com a
+        primeira grafia. O viewer também lê.
+
+        Uma ligação é um wikilink ([[Título]], [[Título|apelido]], [[Título#Seção]],
+        [[Título^bloco]]), um embed (![[...]], anexos inclusive) ou um link markdown para
+        um arquivo .md, escritos fora de bloco e de trecho de código. Âncora de seção e
+        de bloco é descartada, e [[#Seção]] não é ligação. A ligação cita um título e
+        liga a todas as notas do mesmo cofre com esse título: o último segmento do
+        caminho sem .md, ou um dos aliases do frontmatter, sem diferença de caixa nem de
+        forma Unicode, mas com diferença de acento. O link markdown resolve pelo
+        caminho, relativo à pasta da nota ou à raiz do cofre se começar com /; sem nota
+        nesse caminho, vale o título do último segmento. A nota que cita a si mesma não
+        conta. A resolução é feita na leitura, então renomear ou apagar uma nota muda as
+        ligações das outras na hora; o que a própria nota cita só muda quando o
+        indexador processa o cofre dela. Ligação para outro cofre é sempre não
+        resolvida.
+
+        Também é ligação a tipada: a chave do frontmatter cujo valor é um wikilink
+        inteiro, como o Obsidian grava entre aspas (autor: "[[Fulana]]"), ou uma lista
+        com wikilinks. A chave é o predicado, como escrita, e o alvo resolve como o
+        wikilink do corpo. Valor literal (texto, número, data, tag) e a chave aliases
+        não viram ligação.
+
+        Também conta a ligação inferida: para cada ligação não resolvida, o indexador
+        escolhe a nota cujo título está a no máximo 0,2 de distância de edição do
+        título citado, sem caixa e sem acento, desempatando por probabilidade a priori
+        e parentesco no grafo. Ela nunca é escrita na nota, aparece como item próprio
+        de type inferred e é o inferred_target da ligação não resolvida que a originou.
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+        - $ref: '#/components/parameters/NoteID'
+        - $ref: '#/components/parameters/LinkType'
+        - $ref: '#/components/parameters/PageOffset'
+        - $ref: '#/components/parameters/PageLimit'
+      responses:
+        '200':
+          description: Lista, vazia quando não há nenhum item
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LinkResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '400':
+          description: Parâmetro de consulta inválido (invalid_request), com o parâmetro e o valor na mensagem
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Nota inexistente ou fora dos cofres do usuário (not_found)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Erro interno do servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/notes/{id}/backlinks:
+    get:
+      summary: Lista as ligações para esta nota
+      description: |
+        As ligações resolvidas de outras notas do cofre para esta, um item por ligação,
+        ordenados pelo caminho da nota que liga, depois por título citado, tipo e
+        predicado. A resolução segue as regras de GET /v1/notes/{id}/links. O viewer
+        também lê.
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+        - $ref: '#/components/parameters/NoteID'
+        - $ref: '#/components/parameters/LinkType'
+        - $ref: '#/components/parameters/PageOffset'
+        - $ref: '#/components/parameters/PageLimit'
+      responses:
+        '200':
+          description: Lista, vazia quando não há nenhum item
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LinkResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '400':
+          description: Parâmetro de consulta inválido (invalid_request), com o parâmetro e o valor na mensagem
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Nota inexistente ou fora dos cofres do usuário (not_found)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Erro interno do servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/vaults/{id}/links:
+    get:
+      summary: Lista as ligações das notas do cofre
+      description: |
+        Todas as ligações das notas do cofre, um item por ligação, ordenados pelo
+        caminho da nota que liga, depois por título citado, tipo, predicado e caminho
+        da nota a que ligam. status=unresolved lista as ligações não resolvidas, como
+        escritas, inclusive embed de anexo sem nota com aquele título, cada uma com o
+        palpite do indexador em inferred_target quando há. A resolução segue as regras
+        de GET /v1/notes/{id}/links. O viewer também lê.
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+        - $ref: '#/components/parameters/VaultID'
+        - $ref: '#/components/parameters/LinkStatus'
+        - $ref: '#/components/parameters/LinkType'
+        - $ref: '#/components/parameters/PageOffset'
+        - $ref: '#/components/parameters/PageLimit'
+      responses:
+        '200':
+          description: Lista, vazia quando não há nenhum item
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LinkResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '400':
+          description: Parâmetro de consulta inválido (invalid_request), com o parâmetro e o valor na mensagem
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Cofre inexistente ou de que o usuário não é membro (vault_forbidden)
           content:
             application/json:
               schema:
@@ -1377,6 +1385,25 @@ components:
         type: string
         enum: [asc, desc]
         default: desc
+    LinkType:
+      name: type
+      in: query
+      required: false
+      description: |
+        Só as ligações do tipo: explicit para wikilink e link markdown, embed para
+        ![[...]], typed para a ligação tipada do frontmatter e inferred para a ligação
+        inferida
+      schema:
+        type: string
+        enum: [explicit, embed, typed, inferred]
+    LinkStatus:
+      name: status
+      in: query
+      required: false
+      description: Só as ligações resolvidas, com target, ou só as não resolvidas, com target null
+      schema:
+        type: string
+        enum: [resolved, unresolved]
     TenantHeader:
       name: X-Markupp-Tenant
       in: header
@@ -1720,6 +1747,52 @@ components:
                 Id da comunidade da nota, null antes do segundo estágio e para a nota sem
                 ligação
               example: 7
+    NoteSummary:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Identificador único da nota
+        title:
+          type: string
+          description: Título da nota, o último segmento do caminho sem .md
+          example: "meeting"
+        path:
+          type: string
+          description: Caminho da nota
+          example: "notas/meeting.md"
+    LinkResponse:
+      type: object
+      properties:
+        source:
+          $ref: '#/components/schemas/NoteSummary'
+        target:
+          allOf:
+            - $ref: '#/components/schemas/NoteSummary'
+          nullable: true
+          description: Nota a que a ligação liga; null quando não resolvida
+        cited_title:
+          type: string
+          description: Título citado, como escrito na nota que liga
+          example: "Reunião Semanal"
+        type:
+          type: string
+          enum: [explicit, embed, typed, inferred]
+          description: |
+            explicit para wikilink e link markdown, embed para ![[...]], typed para a
+            ligação tipada do frontmatter, inferred para a ligação inferida
+        predicate:
+          type: string
+          nullable: true
+          description: Chave do frontmatter da ligação tipada, como escrita; null nos outros tipos
+          example: "autor"
+        inferred_target:
+          allOf:
+            - $ref: '#/components/schemas/NoteSummary'
+          nullable: true
+          description: |
+            Na ligação não resolvida, a nota que o indexador inferiu para ela; null
+            quando não há palpite e na ligação resolvida
     SearchResultResponse:
       type: object
       properties:
@@ -1765,48 +1838,6 @@ components:
           type: string
           format: date-time
           description: Data da última atualização da nota
-    BacklinkResponse:
-      allOf:
-        - $ref: '#/components/schemas/LinkedNoteResponse'
-        - type: object
-          properties:
-            predicates:
-              type: array
-              items:
-                type: string
-              description: |
-                Chaves do frontmatter pelas quais a nota liga a esta, sem repetir e em
-                ordem alfabética; vazio quando ela liga só pelo corpo.
-              example: ["autor", "revisor"]
-            inferred:
-              type: boolean
-              description: A nota liga a esta só por ligação inferida
-    NeighborResponse:
-      allOf:
-        - $ref: '#/components/schemas/LinkedNoteResponse'
-        - type: object
-          properties:
-            incoming:
-              type: boolean
-              description: A vizinha liga a esta nota
-            outgoing:
-              type: boolean
-              description: Esta nota liga à vizinha
-            incoming_predicates:
-              type: array
-              items:
-                type: string
-              description: Chaves do frontmatter pelas quais a vizinha liga a esta nota, sem repetir
-              example: ["autor"]
-            outgoing_predicates:
-              type: array
-              items:
-                type: string
-              description: Chaves do frontmatter pelas quais esta nota liga à vizinha, sem repetir
-              example: []
-            inferred:
-              type: boolean
-              description: As duas notas se ligam só por ligação inferida, em qualquer sentido
     UnlinkedMentionResponse:
       allOf:
         - $ref: '#/components/schemas/LinkedNoteResponse'
@@ -1861,25 +1892,6 @@ components:
               type: integer
               description: Número de notas da comunidade
               example: 42
-    UnresolvedLinkResponse:
-      type: object
-      properties:
-        note_id:
-          type: string
-          description: Nota que faz a ligação
-        path:
-          type: string
-          description: Caminho da nota que faz a ligação
-        title:
-          type: string
-          description: Título citado, como escrito na nota
-          example: "Reunião Semanal"
-        kind:
-          type: string
-          enum: [explicit, embed, typed]
-          description: |
-            explicit para wikilink e link markdown, embed para ![[...]] e typed para
-            ligação tipada do frontmatter
     HealthResponse:
       type: object
       properties:
