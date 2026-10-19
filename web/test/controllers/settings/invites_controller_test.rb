@@ -34,7 +34,7 @@ module Settings
       emails = css_select("main li[data-invite-status]").map { it.text[/\S+@markupp\.dev/] }
       assert_equal %w[dani@markupp.dev eva@markupp.dev fabi@markupp.dev], emails
       assert_select "main li[data-invite-status=pending]", text: /dani@markupp\.dev.*admin.*Expires Oct 23/m do
-        assert_select "form[action=?] button[data-turbo-confirm=?]", settings_invite_path("invite-3"), "Revoke the invite for dani@markupp.dev?", text: "Revoke"
+        assert_select "form[action=?] button.btn-danger[data-turbo-confirm=?]", settings_invite_path("invite-3"), "Revoke the invite for dani@markupp.dev?", text: "Revoke"
       end
       assert_select "main li[data-invite-status=accepted].text-ink-muted", text: /Accepted/ do
         assert_select "form", count: 0

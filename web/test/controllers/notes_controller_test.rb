@@ -274,7 +274,7 @@ class NotesControllerTest < ActionDispatch::IntegrationTest
     get note_path("1")
 
     assert_select "form[action=?] input[name=_method][value=delete]", note_path("1")
-    assert_select "header button[data-turbo-confirm]", text: "Delete"
+    assert_select "header button.btn-danger[data-turbo-confirm]", text: "Delete"
   end
 
   test "destroy deletes the note and redirects home with a notice" do

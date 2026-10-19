@@ -127,4 +127,34 @@ class SidebarTest < ActionDispatch::IntegrationTest
     assert_select "html[style=?]", "--sidebar-width: 320px"
     assert_select "nav#sidebar [role=separator][aria-valuenow='320']"
   end
+
+  test "the phone menu button and the sidebar are named after the notes on note pages" do
+    use_fake_api(notes: [])
+    sign_in_as
+
+    get root_path
+
+    assert_select "button[popovertarget=sidebar]", text: "Notes"
+    assert_select "nav#sidebar[aria-label=?]", "Notes"
+  end
+
+  test "the phone menu button and the sidebar are named after the settings on settings pages" do
+    use_fake_api(notes: [])
+    sign_in_as
+
+    get settings_account_path
+
+    assert_select "button[popovertarget=sidebar]", text: "Settings"
+    assert_select "nav#sidebar[aria-label=?]", "Settings"
+  end
+
+  test "the phone menu button and the sidebar are named after the tenants on the onboarding" do
+    use_fake_api(notes: [], tenants: [])
+    sign_in_as
+
+    get tenants_path
+
+    assert_select "button[popovertarget=sidebar]", text: "Tenants"
+    assert_select "nav#sidebar[aria-label=?]", "Tenants"
+  end
 end
