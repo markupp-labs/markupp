@@ -86,6 +86,7 @@ func TestIntegration_Auth_FluxoCompleto(t *testing.T) {
 	meBody := decodeJSON(t, meResp.Body)
 	assert.Equal(t, "admin@markupp.dev", meBody["email"])
 	assert.Equal(t, true, meBody["email_verified"], "o primeiro acesso nasce com email verificado")
+	assert.Equal(t, true, meBody["password_login"], "login local ligado e conta com senha")
 
 	tenantsResp := getWithAuth(t, server.URL+"/me/tenants", accessToken)
 	defer func() { _ = tenantsResp.Body.Close() }()
