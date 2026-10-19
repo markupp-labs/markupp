@@ -211,7 +211,7 @@ func exchangeGrantFrom(r *http.Request, form url.Values) (oauth.ExchangeGrant, *
 // application/x-www-form-urlencoded (RFC 6749, seção 2.3.1), sem ecoar nenhum dos dois.
 func resourceCredentials(r *http.Request) (resourceID, secret string, protoErr *oauth.ProtocolError) {
 	user, password, ok := r.BasicAuth()
-	if !ok {
+	if !ok || user == "" || password == "" {
 		return "", "", invalidClient("autenticacao HTTP Basic obrigatoria, esperado usuario = URL do resource e senha = segredo dele")
 	}
 	resourceID, errID := url.QueryUnescape(user)
