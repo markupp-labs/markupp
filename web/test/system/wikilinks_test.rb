@@ -137,6 +137,23 @@ class WikilinksTest < ApplicationSystemTestCase
     assert_heading_in_view "bottom-part"
   end
 
+  test "an anchor link with a malformed hash raises no error in the reading" do
+    use_fake_api(notes: [ { id: "1", path: "plan.md", content: "<a href=\"#%\">broken anchor</a>\n" } ])
+    sign_in_through_form
+
+    visit note_path("1")
+    click_on "Read"
+    execute_script(<<~JS)
+      window.reportedErrors = []
+      const original = console.error
+      console.error = (...args) => { reportedErrors.push(String(args[0])); original(...args) }
+      addEventListener("error", ({ message }) => reportedErrors.push(message))
+    JS
+    click_on "broken anchor"
+
+    assert_equal [], evaluate_script("window.reportedErrors")
+  end
+
   private
     # O id leva o prefixo do DOMPurify (SANITIZE_NAMED_PROPS), que impede o markdown de clobberar o DOM da página.
     # Dentro da janela inteira: perto do fim da nota o título não chega ao topo.
