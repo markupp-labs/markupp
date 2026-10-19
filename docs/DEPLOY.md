@@ -206,6 +206,9 @@ tem limites próprios, também opcionais e lidos só com o OAuth ligado:
 O tempo de cache vem do max-age do Cache-Control da resposta, limitado ao intervalo acima;
 sem o cabeçalho, o documento fica uma hora em cache. O mínimo não pode passar do máximo.
 
+A busca do documento ignora HTTP_PROXY e HTTPS_PROXY e recusa destinos fora da internet
+pública, então o servidor precisa de saída direta para a internet.
+
 ## Aviso
 
 Com o banco vazio, quem fizer o primeiro login vira owner do tenant inicial
