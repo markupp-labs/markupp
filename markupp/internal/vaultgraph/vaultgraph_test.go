@@ -1,6 +1,7 @@
 package vaultgraph_test
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -62,6 +63,28 @@ func doisTriangulos() *vaultgraph.Graph {
 
 func TestCommunities_LouvainSeparaOsTriangulosESemNotaSozinha(t *testing.T) {
 	assert.Equal(t, [][]string{{"a", "b", "c"}, {"d", "e", "f"}}, doisTriangulos().Communities())
+}
+
+func TestCommunities_AnelDeCliquesSaiUmaComunidadePorClique(t *testing.T) {
+	var ids []string
+	var edges []vaultgraph.Edge
+	var esperado [][]string
+	for c := range 6 {
+		var clique []string
+		for i := range 5 {
+			clique = append(clique, fmt.Sprintf("c%d-%d", c, i))
+		}
+		for i := range clique {
+			for j := i + 1; j < len(clique); j++ {
+				edges = append(edges, vaultgraph.Edge{Source: clique[i], Target: clique[j]})
+			}
+		}
+		edges = append(edges, vaultgraph.Edge{Source: clique[0], Target: fmt.Sprintf("c%d-1", (c+1)%6)})
+		ids = append(ids, clique...)
+		esperado = append(esperado, clique)
+	}
+
+	assert.Equal(t, esperado, vaultgraph.New(ids, edges).Communities())
 }
 
 func TestCommunities_Deterministicas(t *testing.T) {
