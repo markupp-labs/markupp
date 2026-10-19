@@ -123,6 +123,16 @@ func TestFetcher_DocumentoValido_DevolveMetadadosComTTLPadrao(t *testing.T) {
 	assert.Equal(t, time.Hour, meta.TTL)
 }
 
+func TestFetcher_ClientNameComControleEFormatacao_DevolveSaneado(t *testing.T) {
+	srv := novoServidorDeMetadados(t)
+	srv.documento.ClientName = new("  Agente\u202e de\n\tTeste\x00 ")
+
+	meta, err := srv.buscar()
+
+	require.NoError(t, err)
+	assert.Equal(t, "Agente de Teste", meta.Name)
+}
+
 func TestFetcher_AuthMethodNone_Aceita(t *testing.T) {
 	srv := novoServidorDeMetadados(t)
 	srv.documento.TokenEndpointAuthMethod = new("none")
@@ -250,6 +260,9 @@ func TestFetcher_DocumentoInvalido_Recusa(t *testing.T) {
 		"redirect_uri com fragmento": func(d *documentoDeTeste) { d.RedirectURIs = new([]string{"https://a.example.com/cb#x"}) },
 		"client_name ausente":        func(d *documentoDeTeste) { d.ClientName = nil },
 		"client_name em branco":      func(d *documentoDeTeste) { d.ClientName = new("   ") },
+		"client_name invisivel":      func(d *documentoDeTeste) { d.ClientName = new("\u200b\u202e") },
+		"client_name zalgo":          func(d *documentoDeTeste) { d.ClientName = new("Z\u0351\u0352\u0353algo") },
+		"client_name longo":          func(d *documentoDeTeste) { d.ClientName = new(strings.Repeat("a", 101)) },
 		"auth method com segredo":    func(d *documentoDeTeste) { d.TokenEndpointAuthMethod = new("client_secret_basic") },
 		"auth method vazio":          func(d *documentoDeTeste) { d.TokenEndpointAuthMethod = new("") },
 	}

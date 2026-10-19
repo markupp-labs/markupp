@@ -105,6 +105,7 @@ func TestRegisterClient_MetadadoInvalido_RecusaSemGravar(t *testing.T) {
 		"nome em branco":            func(r *oauth.RegistrationRequest) { r.ClientName = " \t\n\u200b " },
 		"nome com 101 caracteres":   func(r *oauth.RegistrationRequest) { r.ClientName = strings.Repeat("a", 101) },
 		"nome com UTF-8 invalido":   func(r *oauth.RegistrationRequest) { r.ClientName = "Agente \xff" },
+		"nome zalgo":                func(r *oauth.RegistrationRequest) { r.ClientName = "Z\u0351\u0352\u0353algo" },
 	}
 	for nome, alterar := range casos {
 		t.Run(nome, func(t *testing.T) {
