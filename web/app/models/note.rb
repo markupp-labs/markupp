@@ -83,6 +83,12 @@ class Note
 
   def folder_names = path_segments[...-1]
 
+  # Caminho digitado no campo da nota, com a pasta desta nota como diretório atual.
+  def resolve(typed) = Note.compose_path(folder:, title: typed, markdown: markdown?)
+
+  # O caminho como o campo mostra.
+  def location = path.to_s
+
   private
     # A barra no fim fica como nome vazio ("work/" é título em branco na pasta work).
     def path_segments = path.to_s.squeeze("/").delete_prefix("/").split("/", -1)
