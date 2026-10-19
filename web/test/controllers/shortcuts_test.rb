@@ -20,12 +20,13 @@ class ShortcutsTest < ActionDispatch::IntegrationTest
 
     assert_select "dialog#shortcut_help[aria-labelledby=shortcut_help_title]" do
       assert_select "#shortcut_help_title", "Keyboard shortcuts"
-      [ "General", "Note", "Tree", "Menus and lists" ].each { assert_select "h3", text: it }
+      [ "General", "Note", "Tree", "Menus and lists", "Tenants" ].each { assert_select "h3", text: it }
     end
     rows = css_select("#shortcut_help dt").to_h { |keys| [ keys.next_element.text.strip, keys.css("kbd").map(&:text) ] }
     { "Command palette" => [ "Ctrl+Shift+P" ], "Keyboard shortcuts" => [ "?" ], "New note" => [ "Alt+N" ], "Save" => [ "Ctrl+S" ],
       "Rename / move" => [ "F2" ], "Copy wikilink" => [ "Alt+Shift+W" ], "Focus the note tree" => [ "Ctrl+Shift+E" ],
-      "Next row" => [ "j", "↓" ] }.each do |name, keys|
+      "Next row" => [ "j", "↓" ], "All tenants" => [ "g t" ], "Filter tenants" => [ "/" ], "New tenant" => [ "Alt+N" ],
+      "Move between tenants" => [ "hjkl", "←↓↑→" ] }.each do |name, keys|
       assert_equal keys, rows[name], "expected #{name} with #{keys.inspect} in the help"
     end
   end

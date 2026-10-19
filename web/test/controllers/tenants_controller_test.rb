@@ -77,6 +77,16 @@ class TenantsControllerTest < ActionDispatch::IntegrationTest
     assert_select "#tenant_name_error", "Use 1 to 100 characters."
   end
 
+  test "create with a blank name next to other tenants reopens the dialog with the rule" do
+    use_fake_api
+    sign_in_as
+
+    post tenants_path, params: { tenant: { name: "   " } }
+
+    assert_response :unprocessable_content
+    assert_select "[data-tenant-grid-open-new-value=true] dialog#new_tenant #tenant_name_error", "Use 1 to 100 characters."
+  end
+
   test "create answers bad gateway when the API is unreachable" do
     api = use_fake_api(tenants: [])
     sign_in_as

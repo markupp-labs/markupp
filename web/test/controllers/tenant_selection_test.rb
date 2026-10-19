@@ -39,6 +39,120 @@ class TenantSelectionTest < ActionDispatch::IntegrationTest
     end
   end
 
+  test "the active tenant card is marked, like the current branch in git branch" do
+    use_fake_api(tenants: TWO_TENANTS)
+    sign_in_as
+    patch current_tenant_path, params: { tenant_id: "tenant-2" }
+
+    get tenants_path
+
+    assert_select "#tenant_cards button[aria-current=true]", count: 1, text: /Home lab/
+  end
+
+  test "owner and admin cards lead to the members and the settings of their tenant, the others don't" do
+    use_fake_api(tenants: TWO_TENANTS)
+    sign_in_as
+
+    get tenants_path
+
+    assert_select "#tenant_cards > li", text: /Acme research/ do
+      assert_select "form:has(input[name=to][value=members]) button[aria-label=?]", "Members of Acme research"
+      assert_select "form:has(input[name=to][value=settings]) button[aria-label=?]", "Settings of Acme research"
+    end
+    assert_select "#tenant_cards > li", text: /Home lab/ do
+      assert_select "input[name=to]", count: 0
+    end
+  end
+
+  test "entering a tenant from the settings of its card opens that page of the settings" do
+    use_fake_api(tenants: TWO_TENANTS)
+    sign_in_as
+
+    patch current_tenant_path, params: { tenant_id: "tenant-1", to: "members" }
+    assert_redirected_to settings_members_path
+    patch current_tenant_path, params: { tenant_id: "tenant-1", to: "settings" }
+    assert_redirected_to settings_invites_path
+    patch current_tenant_path, params: { tenant_id: "tenant-1", to: "https://evil.example" }
+    assert_redirected_to root_path
+  end
+
+  test "cards show the note stats when the API sends them" do
+    use_fake_api(tenants: [
+      { id: "tenant-1", name: "Acme research", members: { EMAIL => "owner" }, notes_count: 12, last_note_at: 2.hours.ago.utc.iso8601 },
+      { id: "tenant-2", name: "Home lab", members: { EMAIL => "member" }, notes_count: 1, last_note_at: 3.days.ago.utc.iso8601 },
+      { id: "tenant-3", name: "Field notes", members: { EMAIL => "viewer" }, notes_count: 0, last_note_at: nil }
+    ])
+    sign_in_as
+
+    get tenants_path
+
+    assert_select "#tenant_cards > li", text: /Acme research.*12 notes, last edit 2h ago/m
+    assert_select "#tenant_cards > li", text: /Home lab.*1 note, last edit 3d ago/m
+    assert_select "#tenant_cards > li", text: /Field notes.*No notes yet/m
+  end
+
+  test "cards skip the stats line when the API sends no stats" do
+    use_fake_api(tenants: TWO_TENANTS)
+    sign_in_as
+
+    get tenants_path
+
+    assert_select "#tenant_cards > li", count: 2
+    assert_select "#tenant_cards", text: /notes?\b/, count: 0
+  end
+
+  test "pending invites come in a block above the cards, to accept or decline" do
+    use_fake_api(tenants: TWO_TENANTS + [ { id: "tenant-3", name: "Field notes", members: { "bia@markupp.dev" => "owner" } } ],
+                 invites: [ { id: "invite-1", tenant_id: "tenant-3", email: EMAIL, role: "member" } ])
+    sign_in_as
+
+    get tenants_path
+
+    assert_select "main section#pending_invites ~ #tenant_cards"
+    assert_select "#pending_invites", text: /Join Field notes as member/ do
+      assert_select "form[action=?] button", my_invite_path("invite-1"), text: "Accept"
+      assert_select "form[action=?] button", my_invite_path("invite-1"), text: "Decline"
+    end
+  end
+
+  test "without pending invites the tenant list has no invites block" do
+    use_fake_api(tenants: TWO_TENANTS)
+    sign_in_as
+
+    get tenants_path
+
+    assert_select "#pending_invites", count: 0
+  end
+
+  test "the header of the tenant list has the filter and the new tenant button, each with its key" do
+    use_fake_api(tenants: TWO_TENANTS)
+    sign_in_as
+
+    get tenants_path
+
+    assert_select "main input[type=search][aria-label=?][aria-keyshortcuts=?][title=?]", "Filter tenants", "/", "Filter tenants (/)"
+    assert_select "main button[aria-keyshortcuts=?][aria-haspopup=dialog][title=?]", "Alt+N", "New tenant (Alt+N)", text: /New tenant/
+  end
+
+  test "the new tenant address opens the tenant list with its dialog open" do
+    use_fake_api(tenants: TWO_TENANTS)
+    sign_in_as
+
+    get new_tenant_path
+
+    assert_response :success
+    assert_select "[data-tenant-grid-open-new-value=true] dialog#new_tenant"
+  end
+
+  test "the switcher ends with all the tenants, with its key" do
+    use_fake_api
+    sign_in_as
+
+    get root_path
+
+    assert_select "#tenant_switcher > :last-child a[href=?][title=?]", tenants_path, "All tenants (g t)", text: "All tenants"
+  end
+
   test "choosing a tenant opens its notes with its header" do
     api = use_fake_api(tenants: TWO_TENANTS)
     sign_in_as
