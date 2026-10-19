@@ -54,13 +54,29 @@ class MotionTest < ApplicationSystemTestCase
     assert_equal [ LAYER_OUT ], motions_after("document.querySelector('dialog').close()", "dialog")
   end
 
-  test "the phone drawer comes in as a layer from the left edge" do
+  # Gaveta do celular: desliza da borda esquerda (translateX de -100%, sem popin nem fade) sobre o fundo escurecido e
+  # sai rápida.
+  test "the phone drawer slides in from the left edge over a darkened backdrop and leaves fast" do
     visit root_path
     page.current_window.resize_to(390, 844)
     wait_until_still "nav#sidebar"
 
-    assert_equal [ LAYER_IN ], motions_after("document.querySelector('[popovertarget=sidebar]').click()", "nav#sidebar")
-    assert_match(/\A0px /, find("nav#sidebar").evaluate_script("getComputedStyle(this).transformOrigin"))
+    opening = evaluate_script(<<~JS)
+      (() => {
+        const drawer = document.querySelector("nav#sidebar")
+        document.querySelector("[popovertarget=sidebar]").click()
+        const [ slide ] = drawer.getAnimations()
+        return [ drawer.getAnimations().map((motion) => motion.transitionProperty), slide.effect.getComputedTiming().duration,
+                 slide.effect.getKeyframes()[0].transform ]
+      })()
+    JS
+    assert_equal [ [ "transform" ], 380, "translate(-100%)" ], opening
+
+    wait_until_still "nav#sidebar"
+    backdrop = find("nav#sidebar").evaluate_script("getComputedStyle(this, '::backdrop').backgroundColor")
+    assert_match(/\Argba?\(\d+, \d+, \d+, 0\.[1-9]/, backdrop)
+    assert_equal [ { "display" => "150 linear", "overlay" => "150 linear", "transform" => "150 linear" } ],
+                 motions_after("document.querySelector('nav#sidebar').hidePopover()", "nav#sidebar")
   ensure
     page.current_window.resize_to(1400, 900)
   end
