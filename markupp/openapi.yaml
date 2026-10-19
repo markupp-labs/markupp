@@ -1022,7 +1022,7 @@ components:
           description: Se a conta já confirmou o email. Lido do estado atual da conta.
         password_login:
           type: boolean
-          description: Se a conta pode entrar por email e senha, isto é, o login local está ligado no servidor e a conta tem identidade local.
+          description: true quando o login local (email e senha) está ligado no servidor; não consulta a identidade da conta, porque toda conta nasce com identidade local.
     NoteRequest:
       type: object
       required:
