@@ -187,6 +187,18 @@ class NotesControllerTest < ActionDispatch::IntegrationTest
     assert_equal "", css_select("main textarea").sole.text
   end
 
+  test "a new note is named New note in the browser tab until it is saved" do
+    use_fake_api(notes: [ { id: "1", path: "plan.md", content: "" } ])
+    sign_in_as
+
+    get new_note_path
+    assert_select "title", "New note"
+
+    post notes_path, params: { note: { folder: "", title: "plan", content: "mine" } }
+    assert_response :conflict
+    assert_select "title", "New note"
+  end
+
   test "root opens a blank note at the top folder for a writer" do
     use_fake_api(notes: [ { id: "1", path: "work/plan.md", content: "" } ])
     sign_in_as
