@@ -116,6 +116,19 @@ func TestV1Graph_IfNoneMatchDeOutraVersao_Retorna200(t *testing.T) {
 	assert.Equal(t, `W/"43"`, rec.Header().Get("ETag"))
 }
 
+func TestV1Graph_CacheControlPrivadoQueRevalida(t *testing.T) {
+	for _, alvo := range []string{"/v1/vaults/va/graph", "/v1/notes/n1/graph"} {
+		for _, pedido := range []string{"", `W/"42"`} {
+			graph := &fakeNoteGraph{drawn: grafoDeTeste, version: 42}
+
+			rec := getGrafoDesenhado(t, graph, alvo, map[string]string{"If-None-Match": pedido})
+
+			assert.Equal(t, "private, no-cache", rec.Header().Get("Cache-Control"),
+				"%s com If-None-Match %q: so o navegador do usuario guarda, e revalida pelo ETag", alvo, pedido)
+		}
+	}
+}
+
 func TestV1Graph_ComGzip_RespondeComprimido(t *testing.T) {
 	graph := &fakeNoteGraph{drawn: grafoDeTeste, version: 42}
 
