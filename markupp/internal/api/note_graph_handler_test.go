@@ -21,6 +21,8 @@ type fakeNoteGraph struct {
 	mentions  []notes.Mention
 	suggested []notes.LinkSuggestion
 	groups    []notes.Community
+	drawn     notes.Graph
+	version   int64
 	err       error
 
 	method string

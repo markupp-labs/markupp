@@ -37,3 +37,16 @@ func TestQueryReader_LeOsValoresAceitos(t *testing.T) {
 	assert.Equal(t, "degree", qr.oneOf("sort", "pagerank", "degree"))
 	assert.NoError(t, qr.err)
 }
+
+func TestQueryReader_InteiroNoIntervalo(t *testing.T) {
+	ausente := queryReader{values: url.Values{}}
+	dentro := queryReader{values: url.Values{"depth": {"3"}}}
+	fora := queryReader{values: url.Values{"depth": {"-1"}}}
+
+	assert.Equal(t, 1, ausente.intBetween("depth", 1, 1, 3))
+	assert.Equal(t, 3, dentro.intBetween("depth", 1, 1, 3))
+	assert.Zero(t, fora.intBetween("depth", 1, 1, 3))
+	require.ErrorIs(t, fora.err, errInvalidQuery)
+	assert.Contains(t, fora.err.Error(), `depth "-1", esperado inteiro de 1 a 3`)
+	assert.NoError(t, ausente.err)
+}
