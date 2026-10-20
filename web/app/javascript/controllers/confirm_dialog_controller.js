@@ -18,7 +18,9 @@ export default class extends Controller {
     await new Promise((resolve) => setTimeout(resolve))
     this.opener = document.activeElement
     this.messageTarget.textContent = message
-    this.confirmTarget.textContent = submitter?.dataset.confirmButton || this.defaultButtonValue
+    const label = submitter?.dataset.confirmButton || this.defaultButtonValue
+    this.confirmTarget.textContent = label
+    this.element.setAttribute("aria-label", label)
     this.element.returnValue = ""
     this.element.showModal()
     return new Promise((resolve) => (this.resolve = resolve))
