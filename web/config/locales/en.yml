@@ -448,4 +448,5 @@ en:
         hint: "Go back and try again."
   searches:
     show:
-      empty: "No matches"
+      empty: "No matches for \"%{query}\""
+      empty_hint: "Try fewer words, or quotes for an exact phrase."

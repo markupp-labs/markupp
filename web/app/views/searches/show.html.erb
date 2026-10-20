@@ -1,18 +1,23 @@
+<%# Cada resultado: título, pasta apagada e o trecho com os termos casados em <mark> (SearchSnippetHelper escapa o texto).
+    Só o selecionado entra no Tab (search_controller.js anda pelas setas e j/k e move a seleção junto). %>
 <%= turbo_frame_tag "search_results" do %>
-  <% if @notes.any? %>
-    <ul id="search_options" role="listbox" aria-label="<%= t("layouts.application.search_notes") %>" class="max-h-[50dvh] overflow-y-auto p-1">
-      <% @notes.each_with_index do |note, index| %>
-        <li>
-          <%= link_to note_path(note), role: "option", aria: { selected: index.zero? },
-                      data: { turbo_frame: "_top", search_target: "result" },
-                      class: "tree-row flex items-baseline gap-2 aria-selected:bg-accent-soft aria-selected:text-ink" do %>
-            <span class="shrink-0"><%= note.name %></span>
-            <span class="truncate text-ink-muted"><%= note.folder_names.join("/") %></span>
+  <% if @hits.any? %>
+    <ul id="search_options" role="listbox" aria-label="<%= t("layouts.application.search_notes") %>"
+        data-action="keydown->search#navigateResults" class="scrollbar-theme max-h-[50dvh] overflow-y-auto p-1">
+      <% @hits.each_with_index do |hit, index| %>
+        <li role="none">
+          <%= link_to note_path(hit.note), role: "option", tabindex: index.zero? ? 0 : -1, aria: { selected: index.zero? },
+                      data: { turbo_frame: "_top", search_target: "result" }, class: "search-hit tree-row block" do %>
+            <span class="flex items-baseline gap-2">
+              <span class="search-hit-title truncate text-ink"><%= hit.note.title %></span>
+              <span class="search-hit-folder truncate text-xs text-ink-muted"><%= hit.note.folder %></span>
+            </span>
+            <span class="search-hit-snippet block truncate text-xs text-ink-muted"><%= highlighted_snippet(hit.snippet) %></span>
           <% end %>
         </li>
       <% end %>
     </ul>
   <% elsif params[:q].present? %>
-    <p class="px-3 py-2 text-ink-muted"><%= t(".empty") %></p>
+    <%= render "layouts/empty_state", title: t(".empty", query: params[:q]), hint: t(".empty_hint") %>
   <% end %>
 <% end %>

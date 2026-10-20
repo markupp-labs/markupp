@@ -91,3 +91,11 @@
     content: "- " / "";
   }
 }
+
+/* Resultado da busca (searches/show): o termo casado no trecho vem em <mark>, no accent-soft com o ink por cima (o
+   amarelo do navegador sumia no lotus), com um sublinhado no accent para não depender só da cor. */
+@layer components {
+  .search-hit-snippet mark {
+    @apply rounded-sm bg-accent-soft px-px text-ink underline decoration-accent underline-offset-2;
+  }
+}
