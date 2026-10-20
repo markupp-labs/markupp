@@ -234,6 +234,12 @@ class NoteTest < ActiveSupport::TestCase
     assert_empty api.post_requests
   end
 
+  # Uma regra de caminho só no model, a do vim_normalized: o "." da pasta some também na nota em branco e nas pastas.
+  test "blank and the folder drop the . of the path like the vim normalization" do
+    assert_equal "a/b/", Note.blank("a/./b").path
+    assert_equal "a/b", Note.new(path: "a/./b/c.md").folder
+  end
+
   test "resolve in a blank note starts from the folder it came from, or the root" do
     assert_equal "work/Idea.md", Note.blank("work").resolve("Idea")
     assert_equal "Plan.md", Note.blank(nil).resolve("Plan")
