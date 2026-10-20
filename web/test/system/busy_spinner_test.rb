@@ -184,6 +184,16 @@ class BusySpinnerTest < ApplicationSystemTestCase
     assert_glyph_centered_on save
   end
 
+  # Parado (reduced-motion), o glifo é "..." na linha de base: a tinta dos pontos também fica no meio do botão.
+  test "with reduced motion the still dots sit in the middle of the button" do
+    visit note_path("1")
+    fill_in "Path", with: "/work/plan"
+    @api.hold_calls!("PUT /notes/1")
+
+    assert_spinner_after_threshold(".note-form button[aria-busy=true]") { click_on "Save" }
+    assert_glyph_centered_on find(".note-form button[aria-busy=true]"), axes: [ 1 ], ink: "..."
+  end
+
   test "the glyph spinning on a tree row is centered on the row" do
     emulate_motion_preference("no-preference")
     visit note_path("1")
@@ -235,10 +245,11 @@ class BusySpinnerTest < ApplicationSystemTestCase
     def assert_no_spinner = assert_no_selector(".busy-spinner-glyph", visible: :all)
 
     # Centro da tinta do glifo contra o centro do container, até meio pixel. A tinta é a do "⠿" (os seis pontos que os
-    # quadros usam) na fonte do glifo, medida pelo canvas a partir da linha de base, que um marcador vazio dá.
-    def assert_glyph_centered_on(container, axes: [ 0, 1 ])
+    # quadros usam) ou a do "..." parado, na fonte do glifo, medida pelo canvas a partir da linha de base, que um
+    # marcador vazio dá.
+    def assert_glyph_centered_on(container, axes: [ 0, 1 ], ink: "⠿")
       box = container.evaluate_script("(({ left, top, width, height }) => [ left + width / 2, top + height / 2 ])(this.getBoundingClientRect())")
-      ink = container.find(".busy-spinner-glyph").evaluate_script(<<~JS)
+      ink = container.find(".busy-spinner-glyph").evaluate_script(<<~JS, ink)
         (() => {
           const marker = Object.assign(document.createElement("span"), { style: "display: inline-block; width: 0; height: 0" })
           this.append(marker)
@@ -246,7 +257,7 @@ class BusySpinnerTest < ApplicationSystemTestCase
           marker.remove()
           const context = document.createElement("canvas").getContext("2d")
           context.font = getComputedStyle(this).font
-          const dots = context.measureText("⠿")
+          const dots = context.measureText(arguments[0])
           const { left, width } = this.getBoundingClientRect()
           return [ left + width / 2, baseline + (dots.actualBoundingBoxDescent - dots.actualBoundingBoxAscent) / 2 ]
         })()
