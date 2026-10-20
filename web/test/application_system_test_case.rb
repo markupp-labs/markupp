@@ -6,6 +6,11 @@ ENV["SE_BROWSER_PATH"] ||= File.expand_path("~/.cache/ms-playwright/chromium-124
 # Campos sem <label> visível (como a busca) são achados pelo aria-label, como um leitor de tela acharia.
 Capybara.enable_aria_label = true
 
+# Espera por condição até 6s, não os 2s padrão: com um Chrome por núcleo em paralelo, uma visita do Turbo leva mais de
+# 2s entre a tecla e o render (Alt+N medido em 2,1s; o apagar da nota idem), e o teste olhava a página velha. O foco e o
+# resto já estavam certos quando o render chegava. Passando, nada espera a mais: o Capybara para assim que acha.
+Capybara.default_max_wait_time = 6
+
 class ApplicationSystemTestCase < ActionDispatch::SystemTestCase
   # HEADED=1 abre a janela do navegador para acompanhar o teste.
   driven_by :selenium, using: ENV["HEADED"] ? :chrome : :headless_chrome, screen_size: [ 1400, 900 ]
