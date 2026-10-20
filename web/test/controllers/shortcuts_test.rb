@@ -23,7 +23,7 @@ class ShortcutsTest < ActionDispatch::IntegrationTest
       [ "General", "Note", "Tree", "Menus and lists", "Tenants" ].each { assert_select "h3", text: it }
     end
     rows = css_select("#shortcut_help dt").to_h { |keys| [ keys.next_element.text.strip, keys.css("kbd").map(&:text) ] }
-    { "Command palette" => [ "Ctrl+Shift+P" ], "Keyboard shortcuts" => [ "?" ], "New note" => [ "Alt+N" ], "Save" => [ "Ctrl+S" ],
+    { "Command palette" => [ "Ctrl+Shift+P", "F1", ":" ], "Keyboard shortcuts" => [ "?" ], "New note" => [ "Alt+N" ], "Save" => [ "Ctrl+S" ],
       "Rename / move" => [ "F2" ], "Copy wikilink" => [ "Alt+Shift+W" ], "Focus the note tree" => [ "Ctrl+Shift+E" ],
       "Next row" => [ "j", "↓" ], "All tenants" => [ "g t" ], "Filter tenants" => [ "/" ], "New tenant" => [ "Alt+N" ],
       "Move between tenants" => [ "hjkl", "←↓↑→" ] }.each do |name, keys|

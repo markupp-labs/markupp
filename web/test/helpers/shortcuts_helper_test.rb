@@ -8,7 +8,7 @@ class ShortcutsHelperTest < ActionView::TestCase
   end
 
   test "help_keys_width is the length of the longest keys line of the help" do
-    assert_equal "Shift+F10 / Menu".length, help_keys_width
+    assert_equal "Ctrl+Shift+P / F1 / :".length, help_keys_width
   end
 
   test "shortcut_keys reads the keys of a shortcut by its name, one name per shortcut" do
