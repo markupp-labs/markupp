@@ -39,9 +39,9 @@ class VimExCommandsTest < ApplicationSystemTestCase
   test ":q with changes asks before leaving and stays when refused" do
     send_keys "A", "!", :escape
 
-    dismiss_confirm("You have unsaved changes. Leave anyway?") { ex ":q" }
+    dismiss_panel_confirm("You have unsaved changes. Leave anyway?", button: "Stay") { ex ":q" }
     assert_current_path note_path("1")
-    accept_confirm("You have unsaved changes. Leave anyway?") { ex ":q" }
+    accept_panel_confirm("You have unsaved changes. Leave anyway?", button: "Leave") { ex ":q" }
 
     assert_current_path root_path
     assert_empty @api.put_requests
