@@ -30,7 +30,6 @@ module ShortcutsHelper
       Shortcut.of(:focus_tree, "Ctrl+Shift+E", run: SIDEBAR_VIEW_PRESS.("explorer", "E")),
       Shortcut.of(:focus_links, "Ctrl+Shift+L", run: SIDEBAR_VIEW_PRESS.("links", "L")),
       Shortcut.of(:focus_graph, "Ctrl+Shift+G", run: SIDEBAR_VIEW_PRESS.("graph", "G")),
-      Shortcut.of(:focus_search, "Ctrl+Shift+F", run: SIDEBAR_VIEW_PRESS.("search", "F")),
       # Região vizinha pela geometria (region_nav_controller.js); a paleta repete a tecla a partir do foco devolvido.
       Shortcut.of(:focus_region_left, "Alt+H", run: { press: { key: "h", code: "KeyH", altKey: true } }),
       Shortcut.of(:focus_region_below, "Alt+J", run: { press: { key: "j", code: "KeyJ", altKey: true } }),

@@ -3,12 +3,12 @@ import { playOnce } from "motion/play_once"
 import { inVimEditor } from "controllers/typing"
 
 // Barra lateral estilo VS Code. No desktop recolhe/expande (Ctrl+B ou Cmd+B) e redimensiona pela alça na borda;
-// a barra de atividades troca a visão dela (Explorer, Links, Graph, Search). Estado, largura e visão vão para cookies
+// a barra de atividades troca a visão dela (Explorer, Links, Graph). Estado, largura e visão vão para cookies
 // que o servidor lê no próximo render (SidebarHelper). No celular é a gaveta popover, com a barra de atividades no topo.
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 365
 const KEY_STEP = 16
 // Atalho de cada visão, como no VS Code (Ctrl+Shift+E e F); Links e Graph pegam L e G, livres no navegador e no editor.
-const VIEW_KEYS = { KeyE: "explorer", KeyL: "links", KeyG: "graph", KeyF: "search" }
+const VIEW_KEYS = { KeyE: "explorer", KeyL: "links", KeyG: "graph" }
 // Setas e j/k (h/l na linha da gaveta) andam entre os ícones da barra de atividades, dando a volta nas pontas.
 const TAB_STEPS = { ArrowDown: 1, ArrowRight: 1, j: 1, l: 1, ArrowUp: -1, ArrowLeft: -1, k: -1, h: -1 }
 const desktop = window.matchMedia("(width >= 48rem)")

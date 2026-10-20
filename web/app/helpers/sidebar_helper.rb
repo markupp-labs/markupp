@@ -7,8 +7,7 @@ module SidebarHelper
   SIDEBAR_VIEWS = {
     "explorer" => { icon: "files", shortcut: :focus_tree },
     "links" => { icon: "link", shortcut: :focus_links },
-    "graph" => { icon: "graph", shortcut: :focus_graph },
-    "search" => { icon: "magnifying-glass", shortcut: :focus_search }
+    "graph" => { icon: "graph", shortcut: :focus_graph }
   }.freeze
 
   # Onde o atalho da visão põe o foco (sidebar_controller.js): no Explorer, a linha da árvore; nas outras, o primeiro
