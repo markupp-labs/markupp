@@ -182,5 +182,11 @@ func convertRows[R, T any](rows []R, convert func(R) T) []T {
 
 // toInt32 satura n no intervalo de int32; a API já limita offset e limit bem abaixo.
 func toInt32(n int) int32 {
-	return int32(min(max(n, math.MinInt32), math.MaxInt32))
+	if n > math.MaxInt32 {
+		return math.MaxInt32
+	}
+	if n < math.MinInt32 {
+		return math.MinInt32
+	}
+	return int32(n)
 }
