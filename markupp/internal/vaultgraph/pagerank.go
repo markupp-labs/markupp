@@ -5,8 +5,9 @@ import (
 	"gonum.org/v1/gonum/graph"
 )
 
-// pageRankMaxIterations é o teto de iterações do PageRank: com d=0,85 a diferença
-// cai a 0,85 por iteração, e em 100 ela já está abaixo de 1e-7 da inicial.
+// pageRankMaxIterations é o teto de iterações do PageRank: com d=0,85 a diferença em
+// norma 1 cai a 0,85 por iteração, a partir de no máximo 2, e fica abaixo de 1e-6 em
+// menos de 100. O teto só segura um erro de ponto flutuante.
 const pageRankMaxIterations = 100
 
 // Convergence diz em quantas rodadas um cálculo iterativo parou e se parou no teto
@@ -20,17 +21,18 @@ type Convergence struct {
 
 // pageRank é a iteração de potência de Page et al. (1998) sobre as listas de saída
 // out, a partir do vetor uniforme: a massa da nota sem saída se espalha por todas, e
-// o teleporte dá (1-d)/n a cada uma. Para quando a norma 2 da diferença entre duas
-// iterações fica abaixo de tol, ou em maxIterations.
+// o teleporte dá (1-d)/n a cada uma. Para quando a norma 1 da diferença entre duas
+// iterações fica abaixo de n x tol, ou em maxIterations.
 func pageRank(out [][]graph.Node, d, tol float64, maxIterations int) ([]float64, Convergence) {
 	rank, next := make([]float64, len(out)), make([]float64, len(out))
 	for i := range rank {
 		rank[i] = 1 / float64(len(out))
 	}
+	limit := float64(len(out)) * tol
 	for i := 1; i <= maxIterations; i++ {
 		powerStep(out, rank, next, d)
 		rank, next = next, rank
-		if floats.Distance(rank, next, 2) < tol {
+		if floats.Distance(rank, next, 1) < limit {
 			return rank, Convergence{Iterations: i}
 		}
 	}

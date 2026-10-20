@@ -8,8 +8,9 @@ import "slices"
 const (
 	// damping é o fator de amortecimento do PageRank, o valor canônico de Page et al. (1998).
 	damping = 0.85
-	// pageRankTolerance é a norma 2 da diferença entre iterações que encerra o PageRank.
-	pageRankTolerance = 1e-10
+	// pageRankTolerance é o erro por nota que encerra o PageRank: a norma 1 da
+	// diferença entre duas iterações abaixo de N x 1e-6, o critério usual.
+	pageRankTolerance = 1e-6
 	// louvainSeed fixa a ordem de visita do Louvain: o mesmo grafo dá a mesma partição.
 	louvainSeed = 20261016
 )
