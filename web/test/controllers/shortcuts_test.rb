@@ -6,6 +6,7 @@ class ShortcutsTest < ActionDispatch::IntegrationTest
   PALETTE = [
     [ "New note", "Alt N" ], [ "Edit mode", "Ctrl E" ], [ "Read mode", "Ctrl E" ], [ "Side by side", "Ctrl \\" ],
     [ "Keyboard shortcuts", "?" ], [ "Search notes", "Ctrl K" ], [ "Settings", "Ctrl ," ], [ "Toggle sidebar", "Ctrl B" ],
+    [ "Focus region left", "Alt H" ], [ "Focus region below", "Alt J" ], [ "Focus region above", "Alt K" ], [ "Focus region right", "Alt L" ],
     [ "Light theme", "" ], [ "Dark theme", "" ], [ "Editor style: plain", "" ], [ "Editor style: styled", "" ],
     [ "Vim keys: on", "" ], [ "Vim keys: off", "" ],
     [ "All tenants", "g t" ], [ "Switch tenant", "" ], [ "Log out", "" ], [ "New tenant", "Alt N" ]
@@ -26,6 +27,7 @@ class ShortcutsTest < ActionDispatch::IntegrationTest
     rows = css_select("#shortcut_help dt").to_h { |keys| [ keys.next_element.text.strip, keys.css("kbd").map(&:text) ] }
     { "Command palette" => [ "Ctrl+Shift+P", "F1", ":" ], "Keyboard shortcuts" => [ "?" ], "New note" => [ "Alt+N" ], "Save" => [ "Ctrl+S" ],
       "Rename / move" => [ "F2" ], "Copy wikilink" => [ "Alt+Shift+W" ], "Focus the note tree" => [ "Ctrl+Shift+E" ],
+      "Focus region left" => [ "Alt+H" ], "Focus region right" => [ "Alt+L" ],
       "Next row" => [ "j", "↓" ], "All tenants" => [ "g t" ], "Filter tenants" => [ "/" ], "New tenant" => [ "Alt+N" ],
       "Move between tenants" => [ "hjkl", "←↓↑→" ], "Indent and outdent in the content" => [ "Tab", "Shift+Tab" ],
       "From the content back to the path (Esc first)" => [ "Esc Shift+Tab" ] }.each do |name, keys|
