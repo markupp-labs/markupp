@@ -25,7 +25,8 @@ postagens tf-idf e a norma de cada nota
 Quando o cofre ganha df, na primeira vez, depois do reindex ou depois de um df de N zero, o
 segundo estágio reenfileira as notas do cofre, para o lote reescolher os 50 termos de cada
 uma com o idf calculado. O df de N zero não reenfileira: nenhuma nota tem documento nem
-termo para reescolher, e a que ainda não tem documento já está na fila. O reenfileiramento não marca o cofre, e o lote que regrava as mesmas notas sem
+termo para reescolher, e a que ainda não tem documento já está na fila. O df e o N saem com
+o cofre, em cascata. O reenfileiramento não marca o cofre, e o lote que regrava as mesmas notas sem
 mudar título, caminho nem ligação também não, então o ciclo acaba no lote seguinte
 
 A reserva do cofre acaba no commit do lote. O segundo estágio roda sob uma trava consultiva
