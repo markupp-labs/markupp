@@ -33,7 +33,7 @@ de cada ferramenta, e as notas também são expostas como resources
 
 ## Consequências
 
-- O CI passa a rodar três toolchains: Go, Ruby e Node
+- O CI passa a rodar Go e Node, e Ruby também quando o painel do ADR-0031 entrar
 - Os testes usam um fake nomeado do cliente da API, e um teste ponta a ponta contra o Go real
   no compose pega quebra de contrato no mesmo CI
 - A edição por trecho lê e grava em duas chamadas, e manda no PUT o `lastModifiedAt` lido para
