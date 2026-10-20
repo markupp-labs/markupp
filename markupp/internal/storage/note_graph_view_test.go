@@ -70,6 +70,16 @@ func TestVaultGraph_FiltrosEscondemOrfasSemNotaEInferidas(t *testing.T) {
 	}, arestasDoGrafo(g))
 }
 
+func TestVaultGraph_SemOrfas_MantemANotaQueOSegundoEstagioNaoViu(t *testing.T) {
+	_, repo, graph := cofreComDoisGrupos(t)
+	storagetest.SaveNote(ctxDeTeste, t, repo, notaComCaminho("nova", "nova.md", "sem indexar"))
+
+	g, err := graph.VaultGraph(ctxDeTeste, cofreDeTeste, notes.GraphFilter{HideOrphans: true, HideUnresolved: true})
+
+	require.NoError(t, err)
+	assert.Equal(t, []string{"a", "b", "c", "d", "e", "f", "indice", "nova"}, nosDoGrafo(g), "como orphan=false na lista do cofre")
+}
+
 func TestVaultGraph_RecortaPelaComunidade(t *testing.T) {
 	_, repo, graph := cofreComDoisGrupos(t)
 	comunidade := idDaComunidade(comunidadesLidas(t, repo, graph), "d")

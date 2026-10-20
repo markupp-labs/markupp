@@ -86,7 +86,7 @@ func TestListVaultNotes_OrdenaPorGrauEAtualizacaoNosDoisSentidos(t *testing.T) {
 	assert.Equal(t, "e", antigas[len(antigas)-1].ID)
 }
 
-func TestListVaultNotes_Orfas_GrauZeroGravadoPeloSegundoEstagio(t *testing.T) {
+func TestListVaultNotes_Orfas_GrauZeroGravadoPeloSegundoEstagioENotaNovaForaDelas(t *testing.T) {
 	_, repo, _ := cofreLigado(t)
 	storagetest.SaveNote(ctxDeTeste, t, repo, notaComCaminho("nova", "nova.md", "sem indexar"))
 
@@ -95,7 +95,7 @@ func TestListVaultNotes_Orfas_GrauZeroGravadoPeloSegundoEstagio(t *testing.T) {
 	todas := notasDoCofre(ctxDeTeste, t, repo, notes.VaultNotesQuery{Limit: 100})
 
 	assert.Equal(t, []string{"e", "g"}, idsDasNotas(orfas), "ligacao para si mesma nao conta; a nota nova so entra depois do segundo estagio")
-	assert.Equal(t, []string{"a", "c", "d", "f", "c2", "b"}, idsDasNotas(ligadas))
+	assert.Equal(t, []string{"a", "c", "d", "f", "nova", "c2", "b"}, idsDasNotas(ligadas), "a nota que o segundo estagio nao viu nao e orfa")
 	nova := todas[slices.IndexFunc(todas, func(n notes.Note) bool { return n.ID == "nova" })]
 	assert.Equal(t, notes.NoteRank{}, nova.Rank, "sem segundo estagio, sem organizacao derivada")
 }
