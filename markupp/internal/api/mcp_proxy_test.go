@@ -52,7 +52,7 @@ func TestMCPProxy_EncaminhaAMetadataDoRecursoProtegido(t *testing.T) {
 	routerWithMCP(upstream.server.URL).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/.well-known/oauth-protected-resource/mcp", nil))
 
 	require.Equal(t, http.StatusAccepted, rec.Code)
-	assert.Equal(t, "GET /.well-known/oauth-protected-resource/mcp ", rec.Header().Get("X-Recebido"))
+	assert.Equal(t, "GET /.well-known/oauth-protected-resource/mcp", rec.Header().Get("X-Recebido"))
 }
 
 func TestMCPProxy_SemUpstream_NaoMontaARota(t *testing.T) {
