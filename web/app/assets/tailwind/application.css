@@ -27,6 +27,9 @@
   --danger: light-dark(#a8344a, #e46876);
   /* Fundo escurecido atrás da gaveta do celular: o ink do lotus no claro, o fundo mais escuro do wave no escuro. */
   --scrim: light-dark(rgb(84 84 100 / 0.4), rgb(22 22 29 / 0.7));
+  /* Fundo atrás dos diálogos modais (paleta, busca, ajuda, confirmação): no claro o mesmo ink, mais leve que o da gaveta;
+     no escuro igual a ela. */
+  --modal-scrim: light-dark(rgb(84 84 100 / 0.35), rgb(22 22 29 / 0.7));
   /* Sombra das camadas (.layer-panel), tingida da paleta e nunca o preto puro: o ink do lotus no claro e o dragonBlack0
      do Kanagawa no escuro, mais escuro que o fundo da barra, onde os menus abrem. */
   --shadow: light-dark(rgb(84 84 100 / 0.22), rgb(13 12 12 / 0.6));
@@ -121,14 +124,14 @@
 
   /* Camada flutuante (menus, seletor de tenant e diálogos), como as layers do Hyprland: o surface, mais claro que a
      barra lateral (surface-sunken), a borda line e a sombra tingida. Atrás dos diálogos modais o fundo escurece com o
-     --scrim, o mesmo da gaveta do celular. */
+     --modal-scrim. */
   .layer-panel {
     @apply rounded-md border border-line bg-surface text-ink;
     box-shadow: 0 12px 32px -8px var(--shadow), 0 2px 8px -2px var(--shadow);
   }
 
   dialog.layer-panel::backdrop {
-    background: var(--scrim);
+    background: var(--modal-scrim);
   }
 
   /* Barra de rolagem fina nos tokens do tema, sem o trilho cinza padrão no claro (lista da paleta, ajuda de atalhos). */
