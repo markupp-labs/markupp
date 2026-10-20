@@ -145,6 +145,31 @@ class MotionTest < ApplicationSystemTestCase
     assert_equal AREA_BACK, area_motions_of_visit(note_path("1"))
   end
 
+  # Áreas em ordem fixa, como os workspaces 1, 2 e 3 do Hyprland: notas, tenants, configurações. Ir a uma de número
+  # maior desliza para um lado e a uma menor para o outro, também pelo voltar e avançar do navegador.
+  test "the areas go in a fixed order, notes, tenants, settings, and the slide follows it, through the history too" do
+    visit note_path("1")
+
+    assert_equal AREA_MOVE, area_motions_of_visit(tenants_path)
+    assert_equal AREA_MOVE, area_motions_of_visit(settings_account_path)
+    assert_equal AREA_BACK, area_motions_of_visit(tenants_path)
+    assert_equal AREA_MOVE, area_motions_while("history.back()")
+    assert_equal AREA_BACK, area_motions_while("history.back()")
+    assert_equal AREA_MOVE, area_motions_while("history.forward()")
+  end
+
+  # As telas públicas ficam fora da ordem: entrar e sair delas desliza sempre do mesmo jeito, sem lado especial.
+  test "logging in slides like any move from the public screens" do
+    visit note_path("1")
+    click_on FakeMarkuppAccounts::DEFAULT_EMAIL
+    click_on "Log out"
+    fill_in "Email", with: FakeMarkuppAccounts::DEFAULT_EMAIL
+    fill_in "Password", with: FakeMarkuppAccounts::DEFAULT_PASSWORD
+
+    motions = area_motions_while(%(document.querySelector("form[action='#{session_path}'] button").click()))
+    assert_equal AREA_MOVE, motions & AREA_MOVE + AREA_BACK
+  end
+
   test "going from a note to a note swaps at once" do
     visit note_path("1")
 
