@@ -8,6 +8,12 @@
   <!-- Página estática do painel: responde quando o app não consegue. Autocontida (só a fonte de /FiraCode-VF.woff2),
        no visual do layout público, com os tokens Kanagawa (lotus no claro, wave no escuro). As cinco páginas de
        public/ compartilham este molde; mudou uma, mude as outras. -->
+  <!-- O tema escolhido no painel (cookie theme, ThemesController) vale aqui também; sem cookie, ou sem JS, segue o
+       sistema. Antes do <style> para a página já pintar no tema certo. -->
+  <script>
+    var theme = document.cookie.match(/(?:^|; )theme=(light|dark)(?:;|$)/);
+    if (theme) document.documentElement.setAttribute("data-theme", theme[1]);
+  </script>
   <style>
     @font-face {
       font-family: "Fira Code";
@@ -25,7 +31,7 @@
       --accent-soft: #c7d7e0;
     }
     @media (prefers-color-scheme: dark) {
-      :root {
+      :root:not([data-theme="light"]) {
         --surface: #1f1f28;
         --line: #2a2a37;
         --ink: #dcd7ba;
@@ -34,6 +40,16 @@
         --accent-soft: #223249;
       }
     }
+    :root[data-theme="dark"] {
+      color-scheme: dark;
+      --surface: #1f1f28;
+      --line: #2a2a37;
+      --ink: #dcd7ba;
+      --ink-muted: #a6a69c;
+      --danger: #e46876;
+      --accent-soft: #223249;
+    }
+    :root[data-theme="light"] { color-scheme: light; }
     *, *::before, *::after { box-sizing: border-box; margin: 0; }
     body {
       display: grid;
