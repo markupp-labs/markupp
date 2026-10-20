@@ -155,7 +155,8 @@ export default class extends Controller {
   async copy(text) {
     try {
       await navigator.clipboard.writeText(text)
-      this.statusTarget.textContent = this.copiedValue.replace("%{text}", text)
+      // Função no replace: o caminho entra como texto, sem $& ou $$ virarem padrão de substituição.
+      this.statusTarget.textContent = this.copiedValue.replace("%{text}", () => text)
     } catch {
       this.statusTarget.textContent = this.copyFailedValue
     }
