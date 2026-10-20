@@ -3,6 +3,7 @@ Rails.application.routes.draw do
 
   resources :notes, only: [ :index, :show, :new, :create, :update, :destroy ]
   resource :search, only: :show
+  resource :explorer, only: :show
 
   root "notes#index"
   resource :theme, only: :update

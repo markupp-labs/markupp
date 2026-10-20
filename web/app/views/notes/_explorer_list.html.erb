@@ -1,0 +1,9 @@
+<%# Conteúdo do Explorer, num frame que a troca de visão recarrega sozinho (explorers/show). Ctrl+Shift+E (Cmd+Shift+E)
+    traz o foco para cá de qualquer lugar, como o explorador do VS Code (sidebar_controller.js). Botão direito, Shift+F10
+    ou a tecla Menu numa linha abrem o menu de contexto dela. %>
+<%= turbo_frame_tag "explorer_list" do %>
+  <ul role="tree" aria-label="<%= t("notes.sidebar.tree") %>" aria-keyshortcuts="Control+Shift+E Meta+Shift+E" class="note-tree"
+      data-action="keydown->note-tree#navigate keydown->note-tree#rowShortcut focusin->note-tree#roveToFocused contextmenu->note-tree#openMenuAtPointer">
+    <%= render "notes/folder", folder: tree, path: "", guide: "", current:, open_folders: current&.folder_names || [] %>
+  </ul>
+<% end %>
