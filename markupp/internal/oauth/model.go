@@ -200,10 +200,15 @@ type ClientMetadata struct {
 	TTL          time.Duration
 }
 
+// ErrInvalidMetadataClientID é o erro que o ClientMetadataFetcher embrulha quando o
+// client_id não serve como URL de documento e a busca nem sai para a rede.
+var ErrInvalidMetadataClientID = errors.New("client_id não serve como URL de documento de metadados")
+
 // ClientMetadataFetcher busca e valida o documento de metadados de um client_id que é
 // URL (draft-ietf-oauth-client-id-metadata-document). Erro de busca ou de validação
 // volta com o detalhe (rede, IP resolvido, corpo), que serve só para o log: o serviço
 // responde ao cliente com um invalid_request genérico e guarda o erro como causa interna.
+// O client_id recusado antes da busca volta embrulhando ErrInvalidMetadataClientID.
 type ClientMetadataFetcher interface {
 	FetchClientMetadata(ctx context.Context, clientID string) (ClientMetadata, error)
 }
