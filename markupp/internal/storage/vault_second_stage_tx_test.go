@@ -139,3 +139,14 @@ func TestVaultIndexer_LotePequeno_NaoAnalisa(t *testing.T) {
 
 	assert.Zero(t, analisadas(t, db))
 }
+
+func TestVaultIndexer_LoteFrenteAoNDoDf_NaoAnalisa(t *testing.T) {
+	db := setupNotesDB(t)
+	salvaNotas(t, storage.NewPostgresNotesRepository(db, "simple"), 60)
+	_, err := db.Exec(context.Background(), "INSERT INTO vault_term_stats (vault_id, note_count) VALUES ($1, 1000)", cofreDeTeste)
+	require.NoError(t, err)
+
+	indexaTodosOsCofres(t, db, "simple")
+
+	assert.Zero(t, analisadas(t, db), "60 notas nao passam de 50 + 10% do N do df, sem contar as notas do cofre a cada lote")
+}
