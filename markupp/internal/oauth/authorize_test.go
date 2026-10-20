@@ -185,7 +185,7 @@ func TestStartAuthorization_ValorRecebidoNaDescricao_FicaNoConjuntoDaRFC6749(t *
 	}
 }
 
-func TestStartAuthorization_SemResourcesConfigurados_DescricaoCompleta(t *testing.T) {
+func TestStartAuthorization_SemResourcesConfigurados_ListaAAPI(t *testing.T) {
 	cfg := testServiceConfig()
 	cfg.Resources = nil
 	service := oauth.NewService(testRepositoryWithClient(), cfg, nil, nil, func() time.Time { return testNow }, nil, nil)
@@ -195,6 +195,5 @@ func TestStartAuthorization_SemResourcesConfigurados_DescricaoCompleta(t *testin
 	var protocolErr *oauth.ProtocolError
 	require.True(t, errors.As(err, &protocolErr))
 	assert.Equal(t, "invalid_target", protocolErr.Code)
-	assert.NotContains(t, protocolErr.Description, "um de ")
-	assert.Contains(t, protocolErr.Description, "nenhum servidor protegido configurado")
+	assert.Contains(t, protocolErr.Description, "um de '"+testIssuer+"'", "a API, pelo issuer, segue aceita como resource")
 }
