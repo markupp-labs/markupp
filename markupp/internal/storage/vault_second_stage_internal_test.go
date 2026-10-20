@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"log/slog"
 	"testing"
 	"time"
 
@@ -20,7 +21,7 @@ func revisaoNaFila(t *testing.T, pool *pgxpool.Pool, noteID string) int64 {
 	return revisao
 }
 
-// refazDfNoCofreInterno roda a troca do df de cofre-interno no papel do indexador.
+// refazDfNoCofreInterno roda o segundo estágio de cofre-interno no papel do indexador.
 func refazDfNoCofreInterno(t *testing.T, pool *pgxpool.Pool) {
 	t.Helper()
 	cofre := gen.ReservePendingVaultRow{VaultID: "cofre-interno", TenantID: "default"}
@@ -28,7 +29,7 @@ func refazDfNoCofreInterno(t *testing.T, pool *pgxpool.Pool) {
 		if err := enterVault(context.Background(), q, cofre); err != nil {
 			return err
 		}
-		return refreshTerms(context.Background(), q, cofre.VaultID)
+		return refreshVault(context.Background(), q, cofre.VaultID, "simple", slog.New(slog.DiscardHandler))
 	}))
 }
 

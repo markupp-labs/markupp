@@ -37,8 +37,7 @@ func saveGraphMarkingChange(ctx context.Context, q *gen.Queries, cs indexing.Cha
 // runSecondStage recalcula o que depende do cofre inteiro, se ele estiver marcado, e
 // desmarca só a revisão lida, que vira a versão do grafo do cofre: a marcação de um
 // lote concorrente fica para o próximo Job. searchConfig é a configuração de texto do
-// índice léxico, e logger recebe o aviso de cálculo parado no teto. As postagens vêm por último, porque a repesagem trava as linhas de note_terms até o commit, e um lote
-// concorrente que regrava essas notas espera por elas.
+// índice léxico, e logger recebe o aviso de cálculo parado no teto.
 func runSecondStage(ctx context.Context, q *gen.Queries, vaultID, searchConfig string, logger *slog.Logger) error {
 	revision, err := q.SecondStageRevision(ctx, vaultID)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -47,10 +46,7 @@ func runSecondStage(ctx context.Context, q *gen.Queries, vaultID, searchConfig s
 	if err != nil {
 		return fmt.Errorf("ler a marcacao do segundo estagio do cofre %q: %w", vaultID, err)
 	}
-	if err := refreshVaultGraph(ctx, q, vaultID, searchConfig, logger); err != nil {
-		return err
-	}
-	if err := refreshTerms(ctx, q, vaultID); err != nil {
+	if err := refreshVault(ctx, q, vaultID, searchConfig, logger); err != nil {
 		return err
 	}
 	if err := q.SaveGraphVersion(ctx, gen.SaveGraphVersionParams{VaultID: vaultID, Version: revision}); err != nil {
@@ -62,21 +58,40 @@ func runSecondStage(ctx context.Context, q *gen.Queries, vaultID, searchConfig s
 	return nil
 }
 
-// refreshTerms recalcula o df do cofre e, quando ele ganha df pela primeira vez
-// (primeira vez, depois do reindex ou depois de um df de N zero), reenfileira as
-// notas do cofre para o lote reescolher os termos com o idf de verdade. Df de N zero
-// não reenfileira: nenhuma nota tem documento, nem termo para reescolher, e a nota
-// ainda sem documento já está na fila. Reenfileirar não marca o cofre, e o lote que
-// só regrava as mesmas notas também não, então o segundo estágio não volta por isso.
-func refreshTerms(ctx context.Context, q *gen.Queries, vaultID string) error {
+// refreshVault grava o df e o N do cofre antes do grafo, para o filtro de título
+// comum da ligação inferida valer já no primeiro Job, e refaz depois as ligações
+// inferidas, o PageRank e as comunidades. As postagens vêm por último, porque a
+// repesagem trava as linhas de note_terms até o commit, e um lote concorrente que
+// regrava essas notas espera por elas.
+func refreshVault(ctx context.Context, q *gen.Queries, vaultID, searchConfig string, logger *slog.Logger) error {
 	known, err := vaultTermStatsKnown(ctx, q, vaultID)
 	if err != nil {
 		return err
 	}
-	if err := refreshTermFrequencies(ctx, q, vaultID); err != nil || known {
+	if err := saveTermFrequencies(ctx, q, vaultID); err != nil {
 		return err
 	}
-	if known, err = vaultTermStatsKnown(ctx, q, vaultID); err != nil || !known {
+	if err := refreshVaultGraph(ctx, q, vaultID, searchConfig, logger); err != nil {
+		return err
+	}
+	if err := q.ReweightVaultNoteTerms(ctx, vaultID); err != nil {
+		return fmt.Errorf("repesar as postagens do cofre %q: %w", vaultID, err)
+	}
+	return requeueOnFirstTermStats(ctx, q, vaultID, known)
+}
+
+// requeueOnFirstTermStats reenfileira as notas do cofre quando ele ganha df agora
+// (primeira vez, depois do reindex ou depois de um df de N zero), para o lote
+// reescolher os termos com o idf de verdade; wasKnown diz se ele já tinha df antes.
+// Df de N zero não reenfileira: nenhuma nota tem documento, nem termo para
+// reescolher, e a nota ainda sem documento já está na fila. Reenfileirar não marca o
+// cofre, e o lote que só regrava as mesmas notas também não, então o segundo estágio
+// não volta por isso.
+func requeueOnFirstTermStats(ctx context.Context, q *gen.Queries, vaultID string, wasKnown bool) error {
+	if wasKnown {
+		return nil
+	}
+	if known, err := vaultTermStatsKnown(ctx, q, vaultID); err != nil || !known {
 		return err
 	}
 	if err := q.RequeueVaultNotes(ctx, vaultID); err != nil {
@@ -94,9 +109,8 @@ func vaultTermStatsKnown(ctx context.Context, q *gen.Queries, vaultID string) (b
 	return known, nil
 }
 
-// refreshTermFrequencies troca o df e o N do cofre pelos do índice léxico atual e
-// repesa as postagens das notas com eles.
-func refreshTermFrequencies(ctx context.Context, q *gen.Queries, vaultID string) error {
+// saveTermFrequencies troca o df e o N do cofre pelos do índice léxico atual.
+func saveTermFrequencies(ctx context.Context, q *gen.Queries, vaultID string) error {
 	if err := q.DeleteVaultTermFrequencies(ctx, vaultID); err != nil {
 		return fmt.Errorf("apagar o df do cofre %q: %w", vaultID, err)
 	}
@@ -105,9 +119,6 @@ func refreshTermFrequencies(ctx context.Context, q *gen.Queries, vaultID string)
 	}
 	if err := q.SaveVaultTermStats(ctx, vaultID); err != nil {
 		return fmt.Errorf("gravar o N do df do cofre %q: %w", vaultID, err)
-	}
-	if err := q.ReweightVaultNoteTerms(ctx, vaultID); err != nil {
-		return fmt.Errorf("repesar as postagens do cofre %q: %w", vaultID, err)
 	}
 	return nil
 }
