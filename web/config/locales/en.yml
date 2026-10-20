@@ -36,6 +36,9 @@ en:
     area_back:
       label: "Back"
       title: "Back (Esc)"
+    confirm_dialog:
+      cancel: "Cancel"
+      delete: "Delete"
     application:
       notes: "Notes"
       light_theme: "Light theme"
