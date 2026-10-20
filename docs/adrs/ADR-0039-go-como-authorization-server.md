@@ -20,9 +20,8 @@ administrar) que a conta vê ao consentir. O token que o agente recebe é opaco,
 hash, e tem o servidor MCP como audiência. O servidor MCP o troca por um token curto da API pela
 troca de token da RFC 8693, autenticando-se com um segredo próprio, e o token da API leva os
 escopos que a API aplica por rota. O servidor MCP não valida o token por conta própria: se a
-troca falhar, responde 401. Na versão stdio, um
-comando de login faz o mesmo fluxo no navegador com redirect para loopback e guarda o refresh
-token na máquina
+troca falhar, responde 401. Na versão stdio, um comando de login faz o mesmo fluxo no
+navegador com redirect para loopback e guarda o refresh token na máquina
 
 ## Alternativas consideradas
 
@@ -44,5 +43,12 @@ token na máquina
 - Tokens de login continuam sem escopo e com o acesso inteiro da conta
 - Outros clientes, como o plugin, passam a poder usar o mesmo fluxo em vez de email e senha
 - Cada requisição ao servidor MCP sem token trocado em cache custa uma chamada de troca ao Go
-- O DCR abre registro anônimo de clientes, que precisa de limite de taxa e expiração
+- O DCR abre registro anônimo de clientes, contido por um teto global de registros pendentes e
+  pela expiração deles, sem limite por origem. Um anônimo consegue lotar o teto e negar novos
+  registros enquanto insistir; CIMD e clientes já autorizados seguem funcionando, e o operador
+  pode desligar o DCR. Limite por origem fica para quando houver identificação confiável dela
+- O token da API entregue pela troca continua valendo até expirar (5 minutos por padrão, no
+  máximo 15) mesmo depois de a Autorização ser revogada
+- O /oauth/revoke responde 200 sem revogar quando o token é de outro cliente, em vez do erro da
+  RFC 7009, para não confirmar a quem tem um token alheio que ele existe
 - O JWT continua HMAC com segredo do Go, porque nenhum outro serviço valida token
