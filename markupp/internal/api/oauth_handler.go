@@ -91,7 +91,7 @@ func (h *oauthHandler) authorize(w http.ResponseWriter, r *http.Request) {
 func readAuthorizeQuery(r *http.Request) (url.Values, *oauth.ProtocolError) {
 	query, err := url.ParseQuery(r.URL.RawQuery)
 	if err != nil {
-		return nil, invalidRequest(fmt.Sprintf("query malformada (%v), esperado %s valido", err, formURLEncoded))
+		return nil, invalidRequest(fmt.Sprintf("query malformada (%s), esperado %s valido", oauth.ClientValue(err.Error()), formURLEncoded))
 	}
 	if protoErr := rejectRepeatedParam(query); protoErr != nil {
 		return nil, protoErr
@@ -150,7 +150,7 @@ func (h *oauthHandler) token(w http.ResponseWriter, r *http.Request) {
 func readTokenForm(w http.ResponseWriter, r *http.Request) (url.Values, *oauth.ProtocolError) {
 	contentType := r.Header.Get("Content-Type")
 	if mediaType, _, _ := mime.ParseMediaType(contentType); mediaType != formURLEncoded {
-		return nil, invalidRequest(fmt.Sprintf("corpo deve ser %s, recebido Content-Type %q", formURLEncoded, contentType))
+		return nil, invalidRequest(fmt.Sprintf("corpo deve ser %s, recebido Content-Type %s", formURLEncoded, oauth.ClientValue(contentType)))
 	}
 	r.Body = http.MaxBytesReader(w, r.Body, maxAuthBodyBytes)
 	if err := r.ParseForm(); err != nil {
@@ -160,7 +160,7 @@ func readTokenForm(w http.ResponseWriter, r *http.Request) (url.Values, *oauth.P
 		return nil, protoErr
 	}
 	if grantType := r.PostForm.Get("grant_type"); grantType != grantTypeAuthorizationCode {
-		return nil, &oauth.ProtocolError{Code: "unsupported_grant_type", Description: fmt.Sprintf("grant_type deve ser %s, recebido %q", grantTypeAuthorizationCode, grantType)}
+		return nil, &oauth.ProtocolError{Code: "unsupported_grant_type", Description: fmt.Sprintf("grant_type deve ser %s, recebido %s", grantTypeAuthorizationCode, oauth.ClientValue(grantType))}
 	}
 	return r.PostForm, nil
 }
@@ -190,7 +190,7 @@ func writeTokenError(w http.ResponseWriter, err error) {
 func rejectRepeatedParam(values url.Values) *oauth.ProtocolError {
 	for _, name := range slices.Sorted(maps.Keys(values)) {
 		if count := len(values[name]); count > 1 {
-			return invalidRequest(fmt.Sprintf("parametro %q deve aparecer uma vez, recebido %d vezes", name, count))
+			return invalidRequest(fmt.Sprintf("parametro %s deve aparecer uma vez, recebido %d vezes", oauth.ClientValue(name), count))
 		}
 	}
 	return nil
