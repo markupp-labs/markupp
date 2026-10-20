@@ -5,8 +5,8 @@ import { Prec } from "@codemirror/state"
 // config/importmap.rb). Os comandos Ex do markupp viram eventos no editor (vim:write, vim:quit, vim:open, vim:mode),
 // que o formulário da nota trata; o editor não sabe salvar nem navegar.
 // Sair pelo teclado: Esc vai ao modo normal, e um Esc já no normal deixa o próximo Tab ou Shift+Tab sair do editor,
-// pelo mesmo tab-focus do CodeMirror que o Esc sem Vim usa (e pelo mesmo prazo). Fora do insert o Tab não escreve.
-const TAB_RELEASE_MS = 2000
+// pelo mesmo tab-focus do CodeMirror que o Esc sem Vim usa, mas sem o prazo de 2s dele: vale até a próxima tecla, que o
+// CodeMirror já desliga. Fora do insert o Tab não escreve.
 
 // [nome, abreviação, o que fazer com os argumentos]. :e sem caminho e :edit trocam para o modo de edição.
 const EX_COMMANDS = [
@@ -46,10 +46,15 @@ function tabLeavesAfterNormalEscape(getCM) {
     keydown(event, view) {
       const state = getCM(view)?.state.vim
       if (!state || state.insertMode) return false
-      if (event.key == "Escape" && !state.visualMode) view.setTabFocusMode(TAB_RELEASE_MS)
+      if (event.key == "Escape" && !state.visualMode) releaseTabUntilNextKey(view)
       return event.key == "Tab"
     },
   }))
+}
+
+// O Esc sem Vim do próprio CodeMirror roda depois deste e põe o prazo de 2s; a microtask vem depois do evento todo.
+function releaseTabUntilNextKey(view) {
+  queueMicrotask(() => view.setTabFocusMode(Infinity))
 }
 
 // Rodapé do modo (--NORMAL--, --INSERT--, --VISUAL--) e linha de comando do : como a do terminal, nos tokens do tema;
