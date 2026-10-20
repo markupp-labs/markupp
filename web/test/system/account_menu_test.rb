@@ -21,10 +21,15 @@ class AccountMenuTest < ApplicationSystemTestCase
     assert_equal 1, tops.uniq.size, "expected one line, got middles at #{tops.inspect}"
   end
 
-  test "the email opens the menu with the focus on log out and esc gives the focus back" do
+  # Aberto pelo mouse, nenhum item ganha o foco: um Enter logo depois não sai da conta. As setas entram no menu.
+  test "a click on the email opens the menu without focusing log out and esc gives the focus back" do
     click_on EMAIL
 
     assert_selector "#account_menu:popover-open [role=menu]"
+    assert_no_selector "[role=menuitem]:focus"
+    send_keys :enter
+    assert_selector "#account_menu:popover-open"
+    send_keys :down
     assert_selector "[role=menuitem]:focus", text: "Log out"
     send_keys :escape
 
@@ -64,6 +69,7 @@ class AccountMenuTest < ApplicationSystemTestCase
   test "log out from the keyboard" do
     assert_selector "button[popovertarget=account_menu]"
     find("button[popovertarget=account_menu]").send_keys(:enter)
+    assert_selector "[role=menuitem]:focus", text: "Log out"
     send_keys :end, :enter
 
     assert_text "Logged out."

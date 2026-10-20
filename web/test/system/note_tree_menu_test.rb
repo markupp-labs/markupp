@@ -12,11 +12,17 @@ class NoteTreeMenuTest < ApplicationSystemTestCase
     sign_in_through_form
   end
 
-  test "a right click on a note opens its menu, the arrows move, esc closes and the focus goes back to the row" do
+  # Aberto pelo mouse, nenhum item ganha o foco (Enter logo depois não roda nada); a seta para baixo vai ao primeiro e
+  # a para cima ao último.
+  test "a right click on a note opens its menu with no item focused, the arrows move, esc closes and the focus goes back to the row" do
     visit note_path("1")
     row("plan").right_click
 
     assert_equal NOTE_ITEMS, menu_items
+    assert_no_selector "[role=menuitem]:focus"
+    send_keys :enter
+    assert_selector "[role=menu]"
+    send_keys :down
     assert_focused_item "New note here"
     send_keys :down
     assert_focused_item "Rename / move"
@@ -45,6 +51,7 @@ class NoteTreeMenuTest < ApplicationSystemTestCase
     focus_row "plan"
     send_keys [ :shift, :f10 ]
     assert_equal NOTE_ITEMS, menu_items
+    assert_focused_item "New note here"
     send_keys :escape
     assert_no_selector "[role=menu]"
 
