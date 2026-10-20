@@ -80,6 +80,8 @@ class ActivityBarTest < ApplicationSystemTestCase
     assert_operator edge(account, "bottom"), :<=, edge(settings, "top")
     assert_operator edge(theme, "bottom"), :<=, edge(account, "top")
 
+    assert_equal [ [ 0, 32 ] ] * 3, [ settings, account, theme ].map { [ edge(it, "left"), edge(it, "right") ].map(&:round) }
+
     account.click
     within("#account_menu") { assert_text FakeMarkuppAccounts::DEFAULT_EMAIL }
     assert_operator edge(find("#account_menu"), "left"), :>=, 32
