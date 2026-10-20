@@ -1,24 +1,13 @@
 require "application_system_test_case"
 
-# Rodapé da barra lateral numa linha: o email abre o menu da conta (quem está logado e o sair), à direita só os ícones
-# de tema e configurações, que é a única entrada das configurações. O menu anda pelo teclado como o da árvore.
+# Menu da conta, aberto pelo ícone de conta no pé da barra de atividades (title com o email): quem está logado e o sair;
+# a engrenagem ao lado é a única entrada das configurações. O menu anda pelo teclado como o da árvore.
 class AccountMenuTest < ApplicationSystemTestCase
   EMAIL = FakeMarkuppAccounts::DEFAULT_EMAIL
 
   setup do
     use_fake_api(notes: [])
     sign_in_through_form
-  end
-
-  test "the footer fits in a single line" do
-    tops = evaluate_script(<<~JS)
-      [...document.querySelectorAll("nav > footer :is(button[popovertarget=account_menu], form[class^=theme-to] button, a[aria-label=Settings])")]
-        .filter((item) => item.checkVisibility())
-        .map((item) => Math.round(item.getBoundingClientRect().top + item.offsetHeight / 2))
-    JS
-
-    assert_equal 3, tops.size, "expected the email, one theme icon and the gear, got #{tops.size} items"
-    assert_equal 1, tops.uniq.size, "expected one line, got middles at #{tops.inspect}"
   end
 
   # Aberto pelo mouse, nenhum item ganha o foco: um Enter logo depois não sai da conta. As setas entram no menu.
