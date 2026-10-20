@@ -1,10 +1,28 @@
-<%# Barra de atividades, como a do VS Code: um ícone por visão da barra lateral. No desktop (placement "side") é a coluna
-    à esquerda dela, à vista também com a barra recolhida; na gaveta do celular ("drawer"), a linha do topo. Setas e j/k
-    andam entre os ícones, Enter mostra a visão (sidebar_controller.js). %>
-<div role="tablist" aria-label="<%= t(".label") %>" aria-orientation="<%= placement == "side" ? "vertical" : "horizontal" %>"
-     data-focus-region="activity" data-focus-region-target="[role=tab][tabindex='0']"
+<%# Barra de atividades, como a do VS Code: um ícone por visão da barra lateral e, no pé, de baixo para cima, as
+    configurações, a conta (abre layouts/_account_menu) e o tema. No desktop (placement "side") é a coluna à esquerda da
+    barra lateral, à vista também com ela recolhida; na gaveta do celular ("drawer"), a linha do topo, com o pé à
+    direita. Sem tenant não há visões, só o pé. Setas e j/k andam entre as visões, Enter mostra a visão
+    (sidebar_controller.js). %>
+<% settings_label = t(".settings") %>
+<div data-focus-region="activity" data-focus-region-target="[role=tab][tabindex='0']; a, button"
      class="activity-bar activity-bar-<%= placement %>">
-  <% SidebarHelper::SIDEBAR_VIEWS.each_key do |view| %>
-    <%= sidebar_view_tab(view) %>
+  <% if current_tenant %>
+    <div role="tablist" aria-label="<%= t(".label") %>" aria-orientation="<%= placement == "side" ? "vertical" : "horizontal" %>" class="activity-views">
+      <% SidebarHelper::SIDEBAR_VIEWS.each_key do |view| %>
+        <%= sidebar_view_tab(view) %>
+      <% end %>
+    </div>
   <% end %>
+  <div class="activity-bar-actions">
+    <%= render "layouts/theme_buttons", button_class: "activity-tab" %>
+    <button type="button" popovertarget="account_menu" aria-haspopup="menu" aria-label="<%= t(".account") %>"
+            title="<%= credential.account_email %>" class="activity-tab [anchor-name:--account-menu]">
+      <%= icon("user-circle") %>
+    </button>
+    <%= link_to settings_path, title: t(".settings_shortcut", keys: shortcut_key(:settings)),
+                aria: { label: settings_label, keyshortcuts: "Control+, Meta+,", current: ("page" if request.path.start_with?("/settings/")) },
+                class: "activity-tab" do %>
+      <%= icon("gear-six") %>
+    <% end %>
+  </div>
 </div>

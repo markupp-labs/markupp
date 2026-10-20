@@ -23,14 +23,14 @@
       <%= icon("list") %><%= sidebar_label %>
     </button>
 
-    <%= render "layouts/activity_bar", placement: "side" if current_tenant %>
-    <%# A lista rola dentro de .sidebar-scroll; o rodape com conta, configuracoes, tema e sair fica sempre no fundo.
+    <%= render "layouts/activity_bar", placement: "side" %>
+    <%# A lista rola dentro de .sidebar-scroll; conta, tema e configurações ficam no pé da barra de atividades.
         Alt+h/j/k/l entram pela linha da árvore e, nas outras visões, pelo primeiro botão ou pela própria visão. %>
     <nav id="sidebar" popover aria-label="<%= sidebar_label %>"
          data-sidebar-target="panel" data-focus-region="tree"
          data-focus-region-target="[role=treeitem][tabindex='0']; [role=tabpanel] :is(a[href], button); [role=tabpanel][tabindex]"
          class="sidebar layer m-0 h-dvh w-72 max-w-[85vw] flex-col border-0 border-r border-line bg-surface-sunken p-0 text-ink open:flex md:max-w-none">
-      <%= render "layouts/activity_bar", placement: "drawer" if current_tenant %>
+      <%= render "layouts/activity_bar", placement: "drawer" %>
       <div class="sidebar-scroll min-h-0 flex-1 overflow-y-auto p-3">
         <% if current_tenant %>
           <%= render "layouts/tenant_switcher" %>
@@ -53,8 +53,6 @@
         <% end %>
       </div>
 
-      <%= render "layouts/sidebar_footer" %>
-
       <%# Alça na borda: arrastar com o ponteiro ou setas com o foco. Só no desktop; no celular é gaveta. %>
       <div role="separator" aria-orientation="vertical" tabindex="0" aria-label="<%= t(".resize_sidebar") %>"
            aria-valuemin="<%= SidebarHelper::SIDEBAR_WIDTH_RANGE.min %>" aria-valuemax="<%= SidebarHelper::SIDEBAR_WIDTH_RANGE.max %>"
@@ -66,6 +64,7 @@
 
     <%# Lombada: aba colada na borda da barra, ponta dela quando fechada; um botão só nos dois estados. No celular a gaveta tem o seu. %>
     <%= sidebar_toggle_button(t(sidebar_closed? ? ".show_sidebar" : ".hide_sidebar")) %>
+    <%= render "layouts/account_menu" %>
 
     <% if current_tenant %>
       <dialog data-search-target="dialog" aria-label="<%= t(".search_notes") %>"

@@ -1,0 +1,17 @@
+<%# Menu da conta, aberto pelo ícone de conta da barra de atividades (layouts/_activity_bar). A engrenagem é a única
+    entrada das configurações (Conta inclusive), então o menu só diz quem está logado, com o email inteiro, e oferece o
+    sair, como o "Signed in as" do GitHub. Anda pelo teclado como o da árvore (context_menu_controller.js). Uma cópia só
+    para os dois ícones (a coluna do desktop e a linha da gaveta): ancora no que está à vista, ao lado da coluna, abrindo
+    para cima, ou abaixo da linha da gaveta (sem suporte a âncora, fica no canto).
+    O role=menu fica só em volta do item: pelo ARIA, menu só contém menuitem, group e separator. O "Signed in as" fica
+    fora e descreve o menu (aria-describedby). %>
+<div id="account_menu" popover="manual" data-controller="context-menu"
+     data-action="keydown->context-menu#navigate toggle->context-menu#returnFocus toggle->context-menu#focusFirst pointerdown@document->context-menu#closeOutside click@document->context-menu#rememberInvokerClick"
+     class="layer m-0 mt-1 w-64 origin-top-right layer-panel p-1 text-[13px] [inset:auto] [position-anchor:--account-menu] [position-area:bottom_span-left] md:mt-0 md:ml-1 md:origin-bottom-left md:[position-area:right_span-top]">
+  <p id="account_menu_signed_in" class="border-b border-line px-2 pb-1.5 pt-1 text-ink-muted">
+    <%= t(".signed_in_as") %><br><span class="break-all text-ink"><%= credential.account_email %></span>
+  </p>
+  <div role="menu" tabindex="-1" aria-label="<%= t(".label") %>" aria-describedby="account_menu_signed_in">
+    <%= button_to t(".log_out"), session_path, method: :delete, role: "menuitem", tabindex: -1, class: "tree-row context-menu-item" %>
+  </div>
+</div>

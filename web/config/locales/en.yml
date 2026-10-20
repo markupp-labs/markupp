@@ -55,6 +55,9 @@ en:
       links: "Links"
       graph: "Graph"
       search: "Search"
+      account: "Account"
+      settings: "Settings"
+      settings_shortcut: "Settings (%{keys})"
     sidebar_view_empty:
       links:
         title: "Open a note to see its links"
@@ -70,11 +73,9 @@ en:
       new_tenant: "New tenant"
       all_tenants: "All tenants"
       all_tenants_title: "All tenants (g t)"
-    sidebar_footer:
-      account_menu: "Account menu"
+    account_menu:
+      label: "Account menu"
       signed_in_as: "Signed in as"
-      settings: "Settings"
-      settings_shortcut: "Settings (%{keys})"
       log_out: "Log out"
   shortcuts:
     help:

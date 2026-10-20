@@ -5,7 +5,7 @@ import { Controller } from "@hotwired/stimulus"
 // j/k andam em volta, Home e End vão às pontas, Esc, Tab e clicar fora fecham. Fechado, o foco volta a quem abriu se ainda estava no
 // menu; quem foi para outro lugar (o campo do caminho no Rename) fica onde está. O popover é manual: no auto, o
 // pointerup do próprio botão direito (o contextmenu vem no pointerdown no Linux e no Mac) fechava o menu recém-aberto.
-// Também abre por um botão com popovertarget (menu da conta no rodapé): o toggle leva o foco para dentro (o detail do click
+// Também abre por um botão com popovertarget (menu da conta na barra de atividades): o toggle leva o foco para dentro (o detail do click
 // no botão diz se foi o mouse), e o botão passa a ser quem abriu; clicar nele de novo fecha. Aberto pelo open(), quem abriu ganha data-menu-open até o menu fechar,
 // para a linha da árvore mostrar sobre quem o menu age (tree.css).
 const STEPS = { ArrowDown: 1, j: 1, ArrowUp: -1, k: -1 }
@@ -80,8 +80,9 @@ export default class extends Controller {
     this.element.style.top = `${Math.max(EDGE_GAP, Math.min(y, innerHeight - height - EDGE_GAP))}px`
   }
 
+  // O menu da conta tem dois botões (a coluna do desktop e a linha da gaveta); quem abriu é o que está à vista.
   get invoker() {
-    return document.querySelector(`[popovertarget="${this.element.id}"]`)
+    return [ ...document.querySelectorAll(`[popovertarget="${this.element.id}"]`) ].find((button) => button.checkVisibility())
   }
 
   get menu() {
