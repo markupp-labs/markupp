@@ -160,6 +160,20 @@ class NoteTreeMenuTest < ApplicationSystemTestCase
     assert_field "Path", with: "/work/2026/", focused: true
   end
 
+  # A entrada .layer começa menor (popin): medido no meio dela, o menu achava que cabia e vazava da tela do celular.
+  test "on a phone with motion the menu opened near the right edge ends inside the screen" do
+    emulate_motion_preference("no-preference")
+    visit note_path("1")
+    page.current_window.resize_to(390, 844)
+    find("[popovertarget=sidebar]").click
+    row("plan").execute_script("this.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: 380, clientY: 200 }))")
+    assert_selector("#tree_menu:popover-open") { |menu| menu.evaluate_script("this.getAnimations().length == 0") }
+
+    assert_operator evaluate_script("document.querySelector('#tree_menu').getBoundingClientRect().right"), :<=, 390 - 4
+  ensure
+    page.current_window.resize_to(1400, 900)
+  end
+
   private
     def row(name)
       find("[role=treeitem]", text: name)
