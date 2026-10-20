@@ -39,7 +39,7 @@ class ApplicationSystemTestCase < ActionDispatch::SystemTestCase
   # no data-turbo-confirm: a ação roda, o diálogo abre com a pergunta, o botão escolhido responde e o diálogo fecha.
   def accept_panel_confirm(message, button: "Delete", &) = answer_panel_confirm(message, button, &)
 
-  def dismiss_panel_confirm(message, &) = answer_panel_confirm(message, "Cancel", &)
+  def dismiss_panel_confirm(message, button: "Cancel", &) = answer_panel_confirm(message, button, &)
 
   def answer_panel_confirm(message, button)
     yield

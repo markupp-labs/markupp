@@ -67,4 +67,33 @@ class ConfirmDialogTest < ApplicationSystemTestCase
     assert_selector "dialog#confirm_dialog[open]"
     assert_equal "0.38s", find("dialog#confirm_dialog[open]").evaluate_script("getComputedStyle(this).transitionDuration.split(', ')[0]")
   end
+
+  test "leaving with unsaved changes asks in the panel dialog, stay is focused and keeps the note" do
+    find(".cm-content").send_keys([ :control, :end ], "draft")
+    assert_text "Unsaved changes"
+    within("nav#sidebar") { click_on "plan" }
+
+    within("dialog#confirm_dialog[open][aria-label=Leave]") do
+      assert_text "You have unsaved changes. Leave anyway?"
+      assert_selector "button.btn-danger", text: "Leave"
+      assert_selector "button:focus", text: "Stay"
+    end
+    send_keys :enter
+
+    assert_no_selector "dialog#confirm_dialog[open]"
+    assert_current_path note_path("1")
+    assert_text "Unsaved changes"
+  end
+
+  test "leave goes on to the note that was clicked and a later delete asks with cancel again" do
+    find(".cm-content").send_keys([ :control, :end ], "draft")
+    assert_text "Unsaved changes"
+    within("nav#sidebar") { click_on "plan" }
+    within("dialog#confirm_dialog[open]") { click_on "Leave" }
+
+    assert_current_path note_path("2")
+    assert_field "Path", with: "/plan"
+    click_on "Delete"
+    within("dialog#confirm_dialog[open]") { assert_selector "button:focus", text: "Cancel" }
+  end
 end
