@@ -36,3 +36,20 @@ describe("list_tenants", () => {
     });
   });
 });
+
+describe("create_tenant", () => {
+  it("cria o tenant com a conta como owner e devolve o id", async () => {
+    const api = new FakeMarkuppApi();
+    client = await MarkuppToolClient.connect(api);
+    const result = await client.call("create_tenant", { name: "  Time  " });
+    const created = JSON.parse(result.text);
+    expect(created).toMatchObject({ name: "Time", role: "owner" });
+    expect(await api.listTenants()).toEqual([created]);
+  });
+
+  it("recusa nome acima de 100 caracteres antes de chamar a API", async () => {
+    client = await MarkuppToolClient.connect(new FakeMarkuppApi());
+    const call = client.call("create_tenant", { name: "x".repeat(101) });
+    await expect(call).rejects.toThrow(/name: Too big/);
+  });
+});
