@@ -167,10 +167,10 @@ type Repository interface {
 	// GetFreshCIMDClient devolve o cliente registrado por CIMD cujo documento em cache
 	// ainda vale em relação a now, ou ErrClientNotFound.
 	GetFreshCIMDClient(ctx context.Context, id string, now time.Time) (Client, error)
-	// SaveCIMDClient cria ou atualiza o cliente de origem CIMD com o documento buscado,
-	// válido até expiresAt. Nunca sobrescreve um cliente de outra origem: nesse caso
+	// SaveCIMDClient cria ou atualiza o cliente de origem CIMD com o documento buscado em
+	// now, válido até expiresAt. Nunca sobrescreve um cliente de outra origem: nesse caso
 	// devolve ErrClientSourceConflict embrulhado.
-	SaveCIMDClient(ctx context.Context, client Client, expiresAt time.Time) error
+	SaveCIMDClient(ctx context.Context, client Client, expiresAt, now time.Time) error
 	// RecordAuditEvent grava um evento avulso do authorization server.
 	RecordAuditEvent(ctx context.Context, event AuditEvent) error
 	// RevokeAuthorization trava a Autorização, confere que ela é da conta e segue ativa

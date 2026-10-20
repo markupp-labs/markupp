@@ -96,7 +96,7 @@ func (s *Service) fetchMetadata(ctx context.Context, clientID string, now time.T
 // outra origem vira a mesma recusa genérica.
 func (s *Service) saveCIMDClient(ctx context.Context, clientID string, metadata ClientMetadata, now time.Time) (Client, error) {
 	client := Client{ID: clientID, Name: metadata.Name, RedirectURIs: metadata.RedirectURIs}
-	err := s.repo.SaveCIMDClient(ctx, client, now.Add(metadata.TTL))
+	err := s.repo.SaveCIMDClient(ctx, client, now.Add(metadata.TTL), now)
 	if errors.Is(err, ErrClientSourceConflict) {
 		return Client{}, unusableMetadataError(clientID, err)
 	}

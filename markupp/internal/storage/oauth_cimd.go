@@ -25,9 +25,9 @@ func (r *PostgresOAuthRepository) GetFreshCIMDClient(ctx context.Context, id str
 	return oauth.Client{ID: row.ID, Name: row.Name, RedirectURIs: row.RedirectUris}, nil
 }
 
-// SaveCIMDClient cria ou atualiza o cliente CIMD com o documento válido até expiresAt.
-// Recusa, sem gravar, o id já registrado por outra origem.
-func (r *PostgresOAuthRepository) SaveCIMDClient(ctx context.Context, client oauth.Client, expiresAt time.Time) error {
+// SaveCIMDClient cria ou atualiza o cliente CIMD com o documento buscado em now e válido
+// até expiresAt. Recusa, sem gravar, o id já registrado por outra origem.
+func (r *PostgresOAuthRepository) SaveCIMDClient(ctx context.Context, client oauth.Client, expiresAt, _ time.Time) error {
 	rows, err := r.q.UpsertCIMDClient(ctx, gen.UpsertCIMDClientParams{
 		ID: client.ID, Name: client.Name, RedirectUris: client.RedirectURIs, ExpiresAt: expiresAt,
 	})

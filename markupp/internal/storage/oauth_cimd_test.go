@@ -22,7 +22,7 @@ func TestPostgresOAuthRepo_SaveCIMDClient_CriaCliente(t *testing.T) {
 	ctx := context.Background()
 	cliente := documentoCIMD("Agente CIMD", "https://agente.example/cb")
 
-	require.NoError(t, repo.SaveCIMDClient(ctx, cliente, instanteOAuth.Add(time.Hour)))
+	require.NoError(t, repo.SaveCIMDClient(ctx, cliente, instanteOAuth.Add(time.Hour), instanteOAuth))
 
 	got, err := repo.GetFreshCIMDClient(ctx, clienteCIMD, instanteOAuth)
 	require.NoError(t, err)
@@ -32,10 +32,10 @@ func TestPostgresOAuthRepo_SaveCIMDClient_CriaCliente(t *testing.T) {
 func TestPostgresOAuthRepo_SaveCIMDClient_AtualizaDocumento(t *testing.T) {
 	repo, _ := repoOAuth(t)
 	ctx := context.Background()
-	require.NoError(t, repo.SaveCIMDClient(ctx, documentoCIMD("Antigo", "https://agente.example/cb"), instanteOAuth.Add(time.Minute)))
+	require.NoError(t, repo.SaveCIMDClient(ctx, documentoCIMD("Antigo", "https://agente.example/cb"), instanteOAuth.Add(time.Minute), instanteOAuth))
 	novo := documentoCIMD("Novo", "https://agente.example/cb2", "http://127.0.0.1/cb")
 
-	require.NoError(t, repo.SaveCIMDClient(ctx, novo, instanteOAuth.Add(2*time.Hour)))
+	require.NoError(t, repo.SaveCIMDClient(ctx, novo, instanteOAuth.Add(2*time.Hour), instanteOAuth))
 
 	got, err := repo.GetFreshCIMDClient(ctx, clienteCIMD, instanteOAuth.Add(time.Hour))
 	require.NoError(t, err)
@@ -47,7 +47,7 @@ func TestPostgresOAuthRepo_SaveCIMDClient_NaoSobrescreveClienteDCR(t *testing.T)
 	ctx := context.Background()
 	intruso := oauth.Client{ID: "c1", Name: "Intruso", RedirectURIs: []string{"https://intruso.example/cb"}}
 
-	err := repo.SaveCIMDClient(ctx, intruso, instanteOAuth.Add(time.Hour))
+	err := repo.SaveCIMDClient(ctx, intruso, instanteOAuth.Add(time.Hour), instanteOAuth)
 
 	require.ErrorIs(t, err, oauth.ErrClientSourceConflict)
 	assert.ErrorContains(t, err, `esperado source "cimd"`)
@@ -62,7 +62,7 @@ func TestPostgresOAuthRepo_GetFreshCIMDClient_IgnoraVencido(t *testing.T) {
 	repo, _ := repoOAuth(t)
 	ctx := context.Background()
 	expira := instanteOAuth.Add(time.Hour)
-	require.NoError(t, repo.SaveCIMDClient(ctx, documentoCIMD("Agente CIMD", "https://agente.example/cb"), expira))
+	require.NoError(t, repo.SaveCIMDClient(ctx, documentoCIMD("Agente CIMD", "https://agente.example/cb"), expira, instanteOAuth))
 
 	_, err := repo.GetFreshCIMDClient(ctx, clienteCIMD, expira)
 

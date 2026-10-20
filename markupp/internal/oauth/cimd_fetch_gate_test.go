@@ -36,10 +36,10 @@ func (r *lockedOAuthRepository) GetFreshCIMDClient(ctx context.Context, id strin
 	return r.fakeOAuthRepository.GetFreshCIMDClient(ctx, id, now)
 }
 
-func (r *lockedOAuthRepository) SaveCIMDClient(ctx context.Context, client oauth.Client, expiresAt time.Time) error {
+func (r *lockedOAuthRepository) SaveCIMDClient(ctx context.Context, client oauth.Client, expiresAt, now time.Time) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	return r.fakeOAuthRepository.SaveCIMDClient(ctx, client, expiresAt)
+	return r.fakeOAuthRepository.SaveCIMDClient(ctx, client, expiresAt, now)
 }
 
 func (r *lockedOAuthRepository) CreateRequest(ctx context.Context, req oauth.AuthorizationRequest) error {

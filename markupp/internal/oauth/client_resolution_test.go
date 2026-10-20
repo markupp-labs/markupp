@@ -58,7 +58,7 @@ func TestStartAuthorization_CIMDSemCache_BuscaEGravaComExpiracao(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Equal(t, []string{testClientID}, fetcher.calls)
-	assert.Equal(t, []savedCIMDClient{{Client: testClient(), ExpiresAt: testNow.Add(testMetadataTTL)}}, repo.savedCIMD)
+	assert.Equal(t, []savedCIMDClient{{Client: testClient(), ExpiresAt: testNow.Add(testMetadataTTL), Now: testNow}}, repo.savedCIMD)
 	assert.Empty(t, repo.getClientCalls)
 	assert.Len(t, repo.created, 1)
 }
@@ -156,7 +156,7 @@ func TestStartAuthorization_CIMDBuscadoSemARedirect_RecusaSemRedirect(t *testing
 
 	requireProtocolError(t, err, "invalid_request", "", "")
 	assert.Equal(t, []string{testClientID}, fetcher.calls)
-	assert.Equal(t, []savedCIMDClient{{Client: testClient(), ExpiresAt: testNow.Add(testMetadataTTL)}}, repo.savedCIMD,
+	assert.Equal(t, []savedCIMDClient{{Client: testClient(), ExpiresAt: testNow.Add(testMetadataTTL), Now: testNow}}, repo.savedCIMD,
 		"o documento válido fica em cache mesmo sem a redirect_uri pedida")
 	assert.Empty(t, repo.created)
 }

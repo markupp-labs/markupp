@@ -62,6 +62,7 @@ type freshCIMDLookup struct {
 type savedCIMDClient struct {
 	Client    oauth.Client
 	ExpiresAt time.Time
+	Now       time.Time
 }
 
 // auditedRevoke é uma chamada a RevokeAuthorizationTokensAudited.
@@ -219,7 +220,7 @@ func (f *fakeOAuthRepository) GetFreshCIMDClient(_ context.Context, id string, n
 	return client, nil
 }
 
-func (f *fakeOAuthRepository) SaveCIMDClient(_ context.Context, client oauth.Client, expiresAt time.Time) error {
-	f.savedCIMD = append(f.savedCIMD, savedCIMDClient{Client: client, ExpiresAt: expiresAt})
+func (f *fakeOAuthRepository) SaveCIMDClient(_ context.Context, client oauth.Client, expiresAt, now time.Time) error {
+	f.savedCIMD = append(f.savedCIMD, savedCIMDClient{Client: client, ExpiresAt: expiresAt, Now: now})
 	return f.saveCIMDErr
 }
