@@ -37,6 +37,12 @@ func TestPublicOnly_FaixasNaoPublicas_Recusa(t *testing.T) {
 		"v4 compativel":       "::a00:1",
 		"v4 compativel pub":   "::808:808",
 		"teredo":              "2001:0:4136:e378:8000:63bf:3fff:fdd2",
+		"benchmark inicio":    "198.18.0.1",
+		"benchmark fim":       "198.19.255.254",
+		"reservado 240/4":     "240.0.0.1",
+		"broadcast":           "255.255.255.255",
+		"site-local v6":       "fec0::1",
+		"site-local v6 fim":   "feff:ffff::1",
 	}
 	for nome, ip := range bloqueados {
 		t.Run(nome, func(t *testing.T) {
@@ -49,7 +55,7 @@ func TestPublicOnly_FaixasNaoPublicas_Recusa(t *testing.T) {
 }
 
 func TestPublicOnly_IPsPublicos_Permite(t *testing.T) {
-	publicos := []string{"8.8.8.8", "100.128.0.1", "172.32.0.1", "2001:4860:4860::8888", "64:ff9c::1", "64:ff9b:2::1", "2001:1::1", "2003::1"}
+	publicos := []string{"8.8.8.8", "100.128.0.1", "172.32.0.1", "2001:4860:4860::8888", "64:ff9c::1", "64:ff9b:2::1", "2001:1::1", "2003::1", "198.17.255.254", "198.20.0.1", "223.255.255.254", "fe00::1"}
 	for _, ip := range publicos {
 		t.Run(ip, func(t *testing.T) {
 			assert.NoError(t, cimd.PublicOnly(netip.MustParseAddr(ip)))
