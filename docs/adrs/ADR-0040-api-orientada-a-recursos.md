@@ -48,3 +48,11 @@ A API é orientada a recursos, com interface uniforme:
 - A nota carrega campos derivados (grau, PageRank, comunidade) que só existem depois do indexador
 - Plugin e painel migram para /v1 no ritmo deles, porque as rotas antigas continuam respondendo
 - Manter as duas superfícies durante a transição custa código e teste, como o ADR-0026 já previa
+
+## Emenda
+
+Durante a transição, a coleção antiga do ADR-0026 (/v1/notes, /v1/notes/search e POST /v1/notes),
+servida sob /v1 pelo prefixo de versão e usada pelo servidor MCP, convive sob /v1 com os recursos
+deste ADR. /v1/notes/{id} usa a representação nova, superset da antiga. As notas do cofre, a
+busca, as ligações e o grafo aceitam também o token OAuth com o escopo de leitura de notas
+(notas:leitura, ADR-0046)
