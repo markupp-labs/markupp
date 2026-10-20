@@ -246,6 +246,6 @@ func accountAuthorizationNotFound(userID, authorizationID string) error {
 func toIssuedToken(row gen.OauthToken) oauth.IssuedToken {
 	return oauth.IssuedToken{
 		Hash: row.TokenHash, AuthorizationID: row.AuthorizationID, Kind: row.Kind,
-		Resource: row.Resource, Scopes: row.Scopes, ExpiresAt: row.ExpiresAt, Revoked: row.Revoked,
+		Resource: row.Resource, Scopes: row.Scopes, ExpiresAt: row.ExpiresAt, Revoked: row.Revoked, Rotated: row.RotatedAt.Valid,
 	}
 }
