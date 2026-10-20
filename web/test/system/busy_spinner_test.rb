@@ -194,6 +194,21 @@ class BusySpinnerTest < ApplicationSystemTestCase
     assert_glyph_centered_on find(".note-form button[aria-busy=true]"), axes: [ 1 ], ink: "..."
   end
 
+  # No celular o Save é só o ícone, com o ponto de mudança não salva no canto; na espera o glifo toma o lugar do ícone
+  # e o ponto sai junto.
+  test "on a phone the unsaved dot of the save button leaves while the spinner shows" do
+    page.current_window.resize_to(390, 844)
+    visit note_path("1")
+    fill_in "Path", with: "/work/plan"
+    assert unsaved_dot_shown?
+    @api.hold_calls!("PUT /notes/1")
+
+    assert_spinner_after_threshold(".note-form button[aria-busy=true]") { find(".note-form button[data-note-form-target=save]").click }
+    assert_not unsaved_dot_shown?
+  ensure
+    page.current_window.resize_to(1400, 900)
+  end
+
   test "the glyph spinning on a tree row is centered on the row" do
     emulate_motion_preference("no-preference")
     visit note_path("1")
@@ -243,6 +258,8 @@ class BusySpinnerTest < ApplicationSystemTestCase
     end
 
     def assert_no_spinner = assert_no_selector(".busy-spinner-glyph", visible: :all)
+
+    def unsaved_dot_shown? = find(".note-form [data-unsaved-dot]", visible: :all).evaluate_script("this.checkVisibility()")
 
     # Centro da tinta do glifo contra o centro do container, até meio pixel. A tinta é a do "⠿" (os seis pontos que os
     # quadros usam) ou a do "..." parado, na fonte do glifo, medida pelo canvas a partir da linha de base, que um
