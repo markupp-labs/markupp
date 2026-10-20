@@ -37,6 +37,8 @@ class MarkuppApi
   class TenantUnavailable < Forbidden; end
   # Conceder papel acima do próprio, ou mexer em quem está acima.
   class RoleAboveOwn < Forbidden; end
+  # Pedido de autorização OAuth inexistente, vencido ou já decidido: a API não distingue.
+  class OAuthRequestNotFound < NotFound; end
   # Cofre inexistente ou de que a conta não é membro.
   class VaultUnavailable < Forbidden; end
 
@@ -58,7 +60,7 @@ class MarkuppApi
     "member_not_found" => MemberNotFound, "last_owner" => LastOwner, "role_above_own" => RoleAboveOwn,
     "invalid_invite" => InvalidToken, "invalid_token" => InvalidToken, "already_exists" => AccountExists,
     "email_unavailable" => EmailUnavailable, "email_already_verified" => EmailAlreadyVerified,
-    "vault_forbidden" => VaultUnavailable
+    "vault_forbidden" => VaultUnavailable, "request_not_found" => OAuthRequestNotFound
   }.freeze
   # Para o status cujo corpo não traz código conhecido.
   ERRORS_BY_STATUS = { "401" => Unauthorized, "403" => Forbidden, "404" => NotFound }.freeze

@@ -21,6 +21,14 @@ Rails.application.routes.draw do
   resource :current_tenant, only: :update
   resources :my_invites, only: [ :index, :update, :destroy ]
 
+  # Consentimento OAuth: o servidor manda o navegador para cá com o id do pedido.
+  resources :oauth_authorizations, path: "oauth/authorize", only: :show do
+    member do
+      post :approve
+      post :deny
+    end
+  end
+
   get "settings" => redirect("/settings/account"), as: :settings
   namespace :settings do
     resource :account, only: :show

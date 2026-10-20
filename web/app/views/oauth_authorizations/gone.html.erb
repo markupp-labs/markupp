@@ -1,0 +1,2 @@
+<% content_for :title, t(".title") %>
+<%= render "application/error_page", code: 404, title: t(".title"), hint: t(".hint"), back: [ t("errors.show.back_to_notes"), root_path ] %>
