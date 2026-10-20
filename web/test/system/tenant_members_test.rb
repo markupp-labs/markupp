@@ -23,7 +23,7 @@ class TenantMembersTest < ApplicationSystemTestCase
   test "an owner removes a member after confirming" do
     visit settings_members_path
 
-    accept_confirm("Remove caio@markupp.dev from Acme research?") do
+    accept_panel_confirm("Remove caio@markupp.dev from Acme research?", button: "Remove") do
       within("li", text: "caio@markupp.dev") { click_on "Remove" }
     end
 

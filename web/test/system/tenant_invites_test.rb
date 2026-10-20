@@ -23,7 +23,7 @@ class TenantInvitesTest < ApplicationSystemTestCase
     sign_in_through_form
 
     visit settings_invites_path
-    accept_confirm("Revoke the invite for dani@markupp.dev?") { click_on "Revoke" }
+    accept_panel_confirm("Revoke the invite for dani@markupp.dev?", button: "Revoke") { click_on "Revoke" }
 
     assert_text "Invite revoked."
     assert_no_text "dani@markupp.dev"

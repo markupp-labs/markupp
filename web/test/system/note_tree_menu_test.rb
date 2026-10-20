@@ -96,11 +96,11 @@ class NoteTreeMenuTest < ApplicationSystemTestCase
     visit note_path("1")
     row("ideas").right_click
     assert_selector "[role=menuitem].btn-danger", text: "Delete"
-    dismiss_confirm("Delete /ideas? This cannot be undone.") { find("[role=menuitem]", text: "Delete").click }
+    dismiss_panel_confirm("Delete /ideas? This cannot be undone.") { find("[role=menuitem]", text: "Delete").click }
     assert_selector "[role=treeitem]", text: "ideas"
 
     row("ideas").right_click
-    accept_confirm("Delete /ideas? This cannot be undone.") { find("[role=menuitem]", text: "Delete").click }
+    accept_panel_confirm("Delete /ideas? This cannot be undone.") { find("[role=menuitem]", text: "Delete").click }
 
     assert_text "Deleted"
     assert_no_selector "[role=treeitem]", text: "ideas"
@@ -149,7 +149,7 @@ class NoteTreeMenuTest < ApplicationSystemTestCase
     assert_path_selected "/work/plan"
 
     focus_row "ideas"
-    accept_confirm("Delete /ideas? This cannot be undone.") { send_keys :delete }
+    accept_panel_confirm("Delete /ideas? This cannot be undone.") { send_keys :delete }
     assert_no_selector "[role=treeitem]", text: "ideas"
   end
 
