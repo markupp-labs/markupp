@@ -9,9 +9,9 @@
 <% content_for :main do %>
   <div class="max-w-5xl">
     <div class="flex items-center gap-2 border-b border-line pb-2">
-      <%= link_to settings_origin_path, class: "btn-icon", title: t("settings.nav.back_title"),
+      <%= link_to area_origin_path, class: "btn-icon", title: t("settings.nav.back_title"),
                   aria: { label: t("settings.nav.back"), keyshortcuts: "Escape" },
-                  data: { controller: "settings-back", action: "keydown.esc@window->settings-back#go" } do %>
+                  data: { controller: "area-back", action: "keydown.esc@window->area-back#go" } do %>
         <%= icon("arrow-left") %>
       <% end %>
       <p class="flex-1 font-semibold"><%= t("settings.nav.title") %></p>
