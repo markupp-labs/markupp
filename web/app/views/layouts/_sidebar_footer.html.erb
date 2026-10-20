@@ -16,12 +16,16 @@
     <%= icon("gear-six") %>
   <% end %>
 
-  <div id="account_menu" popover="manual" role="menu" aria-label="<%= t(".account_menu") %>" data-controller="context-menu"
+  <%# O role=menu fica só em volta do item: pelo ARIA, menu só contém menuitem, group e separator. O "Signed in as" fica
+      fora e descreve o menu (aria-describedby). %>
+  <div id="account_menu" popover="manual" data-controller="context-menu"
        data-action="keydown->context-menu#navigate toggle->context-menu#returnFocus toggle->context-menu#focusFirst pointerdown@document->context-menu#closeOutside"
        class="layer m-0 mb-1 ml-2 w-64 origin-bottom-left rounded-md border border-line bg-surface-sunken p-1 text-[13px] text-ink [inset:auto] [position-anchor:--account-menu] [position-area:top_span-right]">
-    <p class="border-b border-line px-2 pb-1.5 pt-1 text-ink-muted">
+    <p id="account_menu_signed_in" class="border-b border-line px-2 pb-1.5 pt-1 text-ink-muted">
       <%= t(".signed_in_as") %><br><span class="break-all text-ink"><%= credential.account_email %></span>
     </p>
-    <%= button_to t(".log_out"), session_path, method: :delete, role: "menuitem", tabindex: -1, class: "tree-row context-menu-item" %>
+    <div role="menu" aria-label="<%= t(".account_menu") %>" aria-describedby="account_menu_signed_in">
+      <%= button_to t(".log_out"), session_path, method: :delete, role: "menuitem", tabindex: -1, class: "tree-row context-menu-item" %>
+    </div>
   </div>
 </footer>
