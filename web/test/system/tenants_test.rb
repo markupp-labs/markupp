@@ -127,7 +127,7 @@ class TenantsTest < ApplicationSystemTestCase
     assert_no_selector "dialog#new_tenant[open]"
   end
 
-  test "the members icon of a card enters that tenant on its members" do
+  test "the gear of a card enters that tenant on its members and the envelope on its invites" do
     use_fake_api(tenants: THREE_TENANTS)
     sign_in_through_form
     assert_selector "button[aria-label='Members of Acme research']"
@@ -135,6 +135,10 @@ class TenantsTest < ApplicationSystemTestCase
 
     assert_selector "main h1", text: "Members"
     assert_selector "nav #current_tenant", text: /Acme research.*owner/m
+    send_keys "g", "t"
+    click_on "Invites of Acme research"
+
+    assert_selector "main h1", text: "Invites"
   end
 
   test "g then t opens the tenants from a note, and so does all tenants in the switcher" do
