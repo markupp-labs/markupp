@@ -3,6 +3,9 @@ require "application_system_test_case"
 # Paleta de comandos à moda do VS Code: Ctrl+Shift+P abre, a busca fuzzy filtra, setas ou Ctrl+J e Ctrl+K andam, Enter
 # roda a ação e Esc fecha.
 class CommandPaletteTest < ApplicationSystemTestCase
+  MODES = [ "Edit mode", "Read mode", "Side by side" ].freeze
+  THEMES = [ "Light theme", "Dark theme" ].freeze
+
   setup do
     use_fake_api(notes: [ { id: "1", path: "work/plan.md", content: "# Plan\n" } ])
     sign_in_through_form
@@ -72,6 +75,28 @@ class CommandPaletteTest < ApplicationSystemTestCase
     assert_selector "main h1", text: "Account"
   end
 
+  # Só oferece trocar: o tema ativo (inclusive quando segue o sistema, claro no Chromium headless) e o modo da nota ativo
+  # ficam de fora.
+  test "the theme and the note mode in use are left out" do
+    assert_equal [ "Dark theme" ], switch_labels(THEMES)
+    assert_equal [ "Read mode", "Side by side" ], switch_labels
+
+    send_keys :escape
+    run_command "read mode"
+    assert_selector "button[aria-label=Read][aria-pressed=true]"
+    assert_equal [ "Edit mode", "Side by side" ], switch_labels
+
+    send_keys :escape
+    run_command "side by side"
+    assert_selector "button[aria-label='Side by side'][aria-pressed=true]"
+    assert_equal [ "Edit mode", "Read mode" ], switch_labels
+
+    send_keys :escape
+    run_command "dark theme"
+    assert_selector "html[data-theme=dark]"
+    assert_equal [ "Light theme" ], switch_labels(THEMES)
+  end
+
   test "new note from the palette opens in the folder of the open note" do
     run_command "new note"
 
@@ -118,6 +143,11 @@ class CommandPaletteTest < ApplicationSystemTestCase
 
     def rgb(hex)
       evaluate_script("(() => { const probe = document.createElement('i'); probe.style.color = '#{hex.strip}'; document.body.append(probe); const color = getComputedStyle(probe).color; probe.remove(); return color })()")
+    end
+
+    def switch_labels(among = MODES)
+      open_palette
+      option_labels & among
     end
 
     def option_labels
