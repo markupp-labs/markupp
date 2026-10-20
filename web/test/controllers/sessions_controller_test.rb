@@ -46,14 +46,15 @@ class SessionsControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to note_path("1")
   end
 
-  test "create does not go back to an address outside the panel" do
+  # //notes seria outro site para o navegador; a volta fica no caminho do painel.
+  test "create goes back to a path of the panel even when asked with a double slash" do
     use_fake_api
     get "/", env: { "PATH_INFO" => "//notes" }
     assert_redirected_to new_session_path
 
     sign_in_as
 
-    assert_equal "http://www.example.com/", response.location
+    assert_equal "http://www.example.com/notes", response.location
   end
 
   test "create does not go back to a form submitted before login" do
