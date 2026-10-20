@@ -2,6 +2,7 @@ package vaultgraph_test
 
 import (
 	"fmt"
+	"math"
 	"math/rand/v2"
 	"testing"
 
@@ -74,9 +75,11 @@ func TestPageRank_ConfereComOGonum(t *testing.T) {
 	rank, _ := vaultgraph.New(ids, edges).PageRank()
 
 	esperado := network.PageRankSparse(referencia, 0.85, 1e-10)
+	erro := 0.0
 	for i, id := range ids {
-		assert.InDelta(t, esperado[int64(i)], rank[id], 1e-6, "nota %s", id)
+		erro += math.Abs(esperado[int64(i)] - rank[id])
 	}
+	assert.Less(t, erro, 300*1e-6*0.85/0.15, "parado em N x 1e-6 na norma 1, o erro fica abaixo de N x 1e-6 x d/(1-d)")
 }
 
 func TestPageRank_CicloPequenoConvergeAntesDoTeto(t *testing.T) {
