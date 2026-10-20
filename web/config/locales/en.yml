@@ -154,7 +154,7 @@ en:
       cancel: "Cancel"
     card:
       members: "Members of %{name}"
-      settings: "Settings of %{name}"
+      invites: "Invites of %{name}"
       no_notes: "No notes yet"
       notes:
         one: "%{count} note"
