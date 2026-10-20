@@ -27,6 +27,6 @@ sugestão nem menção é gravada
 - O lote do indexador paga só as postagens das notas dele, com o df vigente
 - A resposta reflete os títulos e as ligações do momento, sem esperar reindexação
 - O custo vai para a leitura
-- Título em mais de 5% das notas do cofre é palavra comum e não vira menção (keyphraseness,
-  Mihalcea e Csomai, 2007); o de uma palavra é julgado pelo df gravado, e cofre ainda sem df
-  não filtra
+- Título em mais de max(5% das notas do cofre, 5) notas é palavra comum e não vira menção
+  (keyphraseness, Mihalcea e Csomai, 2007); o piso de cinco notas preserva as menções do
+  cofre pequeno, e cofre ainda sem df não filtra
