@@ -164,10 +164,18 @@ func postarFormOAuth(t *testing.T, server *httptest.Server, path string, form ur
 
 func renovar(t *testing.T, server *httptest.Server, refresh any) (int, map[string]any) {
 	t.Helper()
+	return renovarCom(t, server, refresh, url.Values{})
+}
+
+// renovarCom renova o refresh com os parâmetros extras do formulário.
+func renovarCom(t *testing.T, server *httptest.Server, refresh any, extras url.Values) (int, map[string]any) {
+	t.Helper()
 	refreshToken, _ := refresh.(string)
-	resp := postarFormOAuth(t, server, "/oauth/token", url.Values{
-		"grant_type": {"refresh_token"}, "refresh_token": {refreshToken}, "client_id": {"agente"},
-	})
+	form := url.Values{"grant_type": {"refresh_token"}, "refresh_token": {refreshToken}, "client_id": {"agente"}}
+	for name, values := range extras {
+		form[name] = values
+	}
+	resp := postarFormOAuth(t, server, "/oauth/token", form)
 	defer func() { _ = resp.Body.Close() }()
 	return resp.StatusCode, decodeJSON(t, resp.Body)
 }
@@ -201,6 +209,21 @@ func TestIntegration_OAuth_RefreshRotaciona_ReusoDerrubaOsTokens(t *testing.T) {
 	assert.Zero(t, tokensAtivos(t, pool), "o reuso derruba os tokens da Autorização")
 	status, body = renovar(t, server, terceiro["refresh_token"])
 	requireInvalidGrant(t, status, body)
+}
+
+func TestIntegration_OAuth_RefreshRecusadoPorScopeOuResource_ContinuaValido(t *testing.T) {
+	server, _ := setupOAuthIntegrationServer(t)
+	_, tokens := autorizarAgente(t, server)
+
+	status, body := renovarCom(t, server, tokens["refresh_token"], url.Values{"scope": {"administracao"}})
+	require.Equal(t, http.StatusBadRequest, status)
+	assert.Equal(t, "invalid_scope", body["error"])
+	status, body = renovarCom(t, server, tokens["refresh_token"], url.Values{"resource": {"https://outro.dev/mcp"}})
+	require.Equal(t, http.StatusBadRequest, status)
+	assert.Equal(t, "invalid_target", body["error"])
+
+	status, _ = renovar(t, server, tokens["refresh_token"])
+	assert.Equal(t, http.StatusOK, status, "o refresh recusado por scope ou resource não foi consumido")
 }
 
 func TestIntegration_OAuth_Revoke_DerrubaOsTokensEORefreshSeguinte(t *testing.T) {

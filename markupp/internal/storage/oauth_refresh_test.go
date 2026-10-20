@@ -297,6 +297,20 @@ func TestPostgresOAuthRepo_FindToken_TokenVigente(t *testing.T) {
 	assert.False(t, got.Authorization.Revoked)
 }
 
+func TestPostgresOAuthRepo_FindToken_MarcaORefreshRotacionado(t *testing.T) {
+	repo, _ := repoComTokens(t)
+	antes, err := repo.FindToken(context.Background(), "t-refresh")
+	require.NoError(t, err)
+	_, err = repo.ConsumeRefreshToken(context.Background(), "t-refresh", instanteOAuth)
+	require.NoError(t, err)
+
+	depois, err := repo.FindToken(context.Background(), "t-refresh")
+
+	require.NoError(t, err)
+	assert.False(t, antes.Token.Rotated)
+	assert.True(t, depois.Token.Rotated)
+}
+
 func TestPostgresOAuthRepo_FindToken_RefreshExpirado(t *testing.T) {
 	repo, pool := repoComTokens(t)
 	_, err := pool.Exec(context.Background(), "UPDATE oauth_tokens SET expires_at = now() - interval '1 day'")

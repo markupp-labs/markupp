@@ -33,8 +33,10 @@ func testTokenGrant() oauth.TokenGrant {
 	}
 }
 
+// testRepositoryWithRefreshableToken lê e consome o refresh vigente de testTokenGrant.
 func testRepositoryWithRefreshableToken() *fakeOAuthRepository {
 	repo := newFakeOAuthRepository()
+	repo.found = testTokenGrant()
 	repo.consumed = testTokenGrant()
 	return repo
 }
@@ -206,7 +208,7 @@ func TestRefreshToken_ClientIDDiferente_InvalidGrantComRefreshConsumido(t *testi
 	assert.Empty(t, repo.auditedRevokes)
 }
 
-func TestRefreshToken_ResourceQueNaoBateComOToken_InvalidTarget(t *testing.T) {
+func TestRefreshToken_ResourceQueNaoBateComOToken_InvalidTargetSemConsumir(t *testing.T) {
 	casos := map[string]string{
 		"resource diferente":      "https://outro.dev/mcp",
 		"resource ilegivel":       "http://[::1",
@@ -221,13 +223,14 @@ func TestRefreshToken_ResourceQueNaoBateComOToken_InvalidTarget(t *testing.T) {
 			_, err := newTestService(repo).RefreshToken(context.Background(), grant)
 
 			requireProtocolError(t, err, "invalid_target", "", "")
-			assert.Len(t, repo.consumeCalls, 1, "o refresh é consumido antes das conferências")
+			assert.Equal(t, []string{auth.HashOpaqueToken(testRefreshToken)}, repo.findCalls)
+			assert.Empty(t, repo.consumeCalls, "o resource é conferido antes de consumir o refresh")
 			assert.Empty(t, repo.refreshed)
 		})
 	}
 }
 
-func TestRefreshToken_EscopoAlemDoToken_InvalidScope(t *testing.T) {
+func TestRefreshToken_EscopoAlemDoToken_InvalidScopeSemConsumir(t *testing.T) {
 	casos := map[string]string{
 		"escopo suportado nao concedido": oauth.ScopeAdmin,
 		"escopo desconhecido":            "notas:tudo",
@@ -242,13 +245,54 @@ func TestRefreshToken_EscopoAlemDoToken_InvalidScope(t *testing.T) {
 			_, err := newTestService(repo).RefreshToken(context.Background(), grant)
 
 			requireProtocolError(t, err, "invalid_scope", "", "")
+			assert.Empty(t, repo.consumeCalls, "o scope é conferido antes de consumir o refresh")
 			assert.Empty(t, repo.refreshed)
 		})
 	}
 }
 
+// TestRefreshToken_RefreshQueJaNaoVale_ConsomeSemConferirAntes cobre o refresh lido que
+// já não vale: a conferência antecipada não se aplica e o consumo decide, para o reuso
+// de um refresh rotacionado ainda derrubar os tokens mesmo com scope ou resource errado.
+func TestRefreshToken_RefreshQueJaNaoVale_ConsomeSemConferirAntes(t *testing.T) {
+	casos := map[string]func(*oauth.TokenGrant){
+		"rotacionado":          func(g *oauth.TokenGrant) { g.Token.Rotated = true },
+		"revogado":             func(g *oauth.TokenGrant) { g.Token.Revoked = true },
+		"expirado":             func(g *oauth.TokenGrant) { g.Token.ExpiresAt = testNow },
+		"autorizacao revogada": func(g *oauth.TokenGrant) { g.Authorization.Revoked = true },
+		"access token":         func(g *oauth.TokenGrant) { g.Token.Kind = oauth.TokenKindAccess },
+	}
+	for nome, altera := range casos {
+		t.Run(nome, func(t *testing.T) {
+			repo := testRepositoryWithRefreshableToken()
+			altera(&repo.found)
+			repo.consumeErr = oauth.ErrRefreshReused
+			grant := validRefreshGrant()
+			grant.Scope, grant.Resource = oauth.ScopeAdmin, "https://outro.dev/mcp"
+
+			_, err := newTestService(repo).RefreshToken(context.Background(), grant)
+
+			requireProtocolError(t, err, "invalid_grant", "", "")
+			assert.Len(t, repo.consumeCalls, 1)
+			assert.Len(t, repo.auditedRevokes, 1, "o reuso segue derrubando os tokens")
+		})
+	}
+}
+
+func TestRefreshToken_ClientIDDiferenteComEscopoAlem_ConsomeEQueima(t *testing.T) {
+	repo := testRepositoryWithRefreshableToken()
+	grant := validRefreshGrant()
+	grant.ClientID, grant.Scope = "https://outro.dev/oauth.json", oauth.ScopeAdmin
+
+	_, err := newTestService(repo).RefreshToken(context.Background(), grant)
+
+	requireProtocolError(t, err, "invalid_grant", "", "")
+	assert.Len(t, repo.consumeCalls, 1, "client_id errado queima o refresh")
+}
+
 func TestRefreshToken_FalhaDoRepositorio_DevolveErroEmbrulhado(t *testing.T) {
 	casos := map[string]func(*fakeOAuthRepository) error{
+		"ao ler":      func(r *fakeOAuthRepository) error { r.findErr = errors.New("banco fora do ar"); return r.findErr },
 		"ao consumir": func(r *fakeOAuthRepository) error { r.consumeErr = errors.New("banco fora do ar"); return r.consumeErr },
 		"ao salvar": func(r *fakeOAuthRepository) error {
 			r.saveRefreshedErr = errors.New("banco fora do ar")

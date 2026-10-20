@@ -15,8 +15,8 @@ import (
 
 func TestRefreshToken_QualquerFalha_NaoVazaRefreshNemHash(t *testing.T) {
 	casos := map[string]struct {
-		consumeErr, saveErr, revokeErr error
-		altera                         func(*oauth.RefreshGrant)
+		findErr, consumeErr, saveErr, revokeErr error
+		altera                                  func(*oauth.RefreshGrant)
 	}{
 		"client_id diferente":       {altera: func(g *oauth.RefreshGrant) { g.ClientID = "outro" }},
 		"resource diferente":        {altera: func(g *oauth.RefreshGrant) { g.Resource = "https://outro.dev/mcp" }},
@@ -24,6 +24,7 @@ func TestRefreshToken_QualquerFalha_NaoVazaRefreshNemHash(t *testing.T) {
 		"refresh inexistente":       {consumeErr: oauth.ErrTokenNotFound},
 		"autorizacao revogada":      {consumeErr: oauth.ErrAuthorizationNotFound},
 		"refresh reusado":           {consumeErr: oauth.ErrRefreshReused},
+		"falha ao ler":              {findErr: errors.New("banco fora do ar")},
 		"falha ao consumir":         {consumeErr: errors.New("banco fora do ar")},
 		"falha ao revogar no reuso": {consumeErr: oauth.ErrRefreshReused, revokeErr: errors.New("banco fora do ar")},
 		"falha ao salvar":           {saveErr: errors.New("banco fora do ar")},
@@ -31,7 +32,7 @@ func TestRefreshToken_QualquerFalha_NaoVazaRefreshNemHash(t *testing.T) {
 	for nome, caso := range casos {
 		t.Run(nome, func(t *testing.T) {
 			repo := testRepositoryWithRefreshableToken()
-			repo.consumeErr, repo.saveRefreshedErr, repo.revokeAuditedErr = caso.consumeErr, caso.saveErr, caso.revokeErr
+			repo.findErr, repo.consumeErr, repo.saveRefreshedErr, repo.revokeAuditedErr = caso.findErr, caso.consumeErr, caso.saveErr, caso.revokeErr
 			grant := validRefreshGrant()
 			if caso.altera != nil {
 				caso.altera(&grant)

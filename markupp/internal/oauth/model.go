@@ -60,6 +60,8 @@ type IssuedToken struct {
 	ExpiresAt       time.Time
 	// Revoked é preenchido por FindToken, que devolve o token mesmo revogado.
 	Revoked bool
+	// Rotated é preenchido por FindToken: o refresh já foi trocado por um par novo.
+	Rotated bool
 }
 
 // Approval registra a aprovação de um pedido: o código emitido e a conta que aprovou.
