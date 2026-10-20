@@ -47,7 +47,8 @@ estatística da carga nova o planejador trata as tabelas como se tivessem o tama
 O primeiro lote de um cofre importado é o caso típico; o lote incremental não passa do
 limiar
 
-O PageRank para na tolerância ou em 100 iterações, e o Louvain em 10 níveis e 100 passadas
+O PageRank para quando a norma 1 da diferença entre duas iterações fica abaixo de N × 1e-6,
+o critério usual, ou em 100 iterações, e o Louvain em 10 níveis e 100 passadas
 de movimentos locais por nível. O cálculo que para no teto grava o resultado que tem e vira
 um aviso no log JSON do Job, com o algoritmo, o cofre, as iterações (níveis, no Louvain) e as
 passadas. O PageRank é uma iteração de potência própria, a partir do vetor uniforme, porque
@@ -80,8 +81,9 @@ gonum
   pula a nota que um lote concorrente está regravando, que fica com o df anterior
 - A versão do grafo só muda no segundo estágio: entre o commit de um lote que muda ligações
   e o segundo estágio seguinte, o cliente que revalida recebe 304 com o grafo anterior
-- Com a tolerância de 1e-10 da norma 2, o PageRank de um cofre grande pode chegar ao teto;
-  a diferença que sobra fica perto de 0,85^100 da inicial, abaixo da precisão que a
-  ordenação por PageRank usa
+- A diferença em norma 1 cai a 0,85 por iteração a partir de no máximo 2, então o PageRank
+  converge em menos de 100 iterações em qualquer cofre; o teto só segura erro de ponto
+  flutuante. O erro que sobra fica abaixo de N × 1e-6 × 0,85/0,15 na norma 1, abaixo da
+  precisão que a ordenação por PageRank usa
 - Quem precisar de mais dado do cofre inteiro acrescenta um passo ao segundo estágio, sem
   novo disparo
