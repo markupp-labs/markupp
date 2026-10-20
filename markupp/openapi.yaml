@@ -1525,8 +1525,9 @@ paths:
         A organização derivada é recalculada pelo indexador no segundo estágio do
         cofre, quando ligações ou títulos mudam, então acompanha as notas com atraso.
         A nota que o segundo estágio ainda não viu tem degree, pagerank e community
-        null, fica fora dos filtros orphan e community e vai para o fim das ordens por
-        pagerank e por degree. O viewer também lê.
+        null, entra em orphan=false e nunca em orphan=true, como no grafo, fica fora do
+        filtro community e vai para o fim das ordens por pagerank e por degree. O viewer
+        também lê.
       parameters:
         - $ref: '#/components/parameters/TenantHeader'
         - $ref: '#/components/parameters/VaultID'
@@ -1709,8 +1710,8 @@ components:
       required: false
       description: |
         true lista só as notas órfãs, de grau zero, sem ligação em sentido algum,
-        ligação inferida e tipada incluídas; false, só as de grau positivo. Ligação
-        não resolvida não conta.
+        ligação inferida e tipada incluídas; false, as de grau positivo e as que o
+        segundo estágio ainda não viu. Ligação não resolvida não conta.
       schema:
         type: boolean
     Community:
