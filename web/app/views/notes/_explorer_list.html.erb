@@ -4,7 +4,8 @@
     Menu numa linha abrem o menu de contexto dela. %>
 <% folders = mode == "folders" %>
 <% groups = explorer_groups(tree, current, mode) unless folders %>
-<%= turbo_frame_tag "explorer_list" do %>
+<%# target _top: as linhas abrem a nota na página inteira; só o form do seletor mira o frame. %>
+<%= turbo_frame_tag "explorer_list", target: "_top" do %>
   <% if groups.nil? && !folders %>
     <%= render "layouts/empty_state", title: t("notes.unreachable.title"), hint: t("notes.unreachable.hint"), tone: "danger" %>
   <% elsif !folders && groups.all? { it.notes.empty? } %>
