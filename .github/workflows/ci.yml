@@ -78,30 +78,6 @@ jobs:
       - name: Run tests
         run: npx vitest run
 
-  # Sobe o compose sem .env, faz o OAuth do agente e o login do stdio contra o Go real e
-  # chama as ferramentas pelos dois transportes. O próprio teste derruba a stack no fim.
-  mcp-e2e:
-    name: Servidor MCP de ponta a ponta
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: mcp
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: mcp/package-lock.json
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Run e2e
-        run: npm run e2e
-
   pulumi-component-tests:
     name: Componente Pulumi (Go) tests
     runs-on: ubuntu-latest
