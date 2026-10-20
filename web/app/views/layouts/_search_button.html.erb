@@ -1,0 +1,6 @@
+<%# Botão que abre a busca (Ctrl+K), com a tecla à direita no desktop. %>
+<button type="button" data-action="search#open" title="<%= shortcut_key(:search) %>" aria-keyshortcuts="Control+K Meta+K"
+        class="tree-row mb-2 flex w-full items-center gap-2 border border-line text-left text-ink-muted">
+  <%= icon("magnifying-glass") %><%= label %>
+  <kbd aria-hidden="true" class="ml-auto hidden text-xs md:inline"><%= shortcut_label(shortcut_key(:search)) %></kbd>
+</button>
