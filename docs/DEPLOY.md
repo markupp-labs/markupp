@@ -211,16 +211,18 @@ pública, então o servidor precisa de saída direta para a internet.
 
 Clientes sem documento publicado podem se registrar sozinhos em `POST /oauth/register`
 (registro dinâmico, RFC 7591), sem login. O registro só aceita clientes públicos, sem
-client_secret, e as mesmas redirect_uris do documento. Um cliente registrado que ainda não
-recebeu nenhuma autorização conta como pendente: o servidor apaga os pendentes mais antigos
-que o prazo e, com o teto atingido, recusa novos registros com 429 até abrir vaga. As
+client_secret, e as mesmas redirect_uris do documento. Um cliente registrado sem nenhuma
+autorização ativa conta como pendente, com o prazo contado desde o registro ou desde a
+última revogação de autorização dele, o que vier depois: o servidor apaga os pendentes com
+o prazo cumprido, junto com as autorizações revogadas deles (a auditoria fica), e, com o
+teto atingido, recusa novos registros com 429 até abrir vaga. As
 variáveis são opcionais e lidas só com o OAuth ligado:
 
 | Variável | Padrão | Faixa | O que controla |
 |---|---|---|---|
 | `MARKUPP_OAUTH_DCR_ENABLED` | true | true ou false | liga o registro dinâmico; desligado, `/oauth/register` responde 404 e a metadata não o anuncia |
 | `MARKUPP_OAUTH_DCR_MAX_PENDING` | 1000 | 1 a 100000 | teto de clientes pendentes |
-| `MARKUPP_OAUTH_DCR_PENDING_HOURS` | 24 | 1 a 168 | prazo, desde o registro, para o cliente pendente receber uma autorização antes de ser apagado |
+| `MARKUPP_OAUTH_DCR_PENDING_HOURS` | 24 | 1 a 168 | prazo, desde o registro ou a última revogação, para o cliente pendente receber uma autorização antes de ser apagado |
 
 ## Aviso
 
