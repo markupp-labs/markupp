@@ -108,7 +108,10 @@ com o indexador e o notificador em laço e o Mailpit, que recebe todo email de d
 make run
 ```
 
-Servidor em `http://localhost:8080` e caixa de email em `http://localhost:8025`. Os testes rodam no host e precisam de Go e de Docker:
+Servidor em `http://localhost:8080`, servidor MCP em `http://localhost:3000/mcp` e caixa de
+email em `http://localhost:8025`. O compose liga o OAuth com o servidor MCP como resource e manda
+o consentimento para o painel em `http://localhost:3999`, que roda fora dele. Os testes rodam no
+host e precisam de Go e de Docker:
 
 ```sh
 make test
@@ -223,6 +226,22 @@ variáveis são opcionais e lidas só com o OAuth ligado:
 | `MARKUPP_OAUTH_DCR_ENABLED` | true | true ou false | liga o registro dinâmico; desligado, `/oauth/register` responde 404 e a metadata não o anuncia |
 | `MARKUPP_OAUTH_DCR_MAX_PENDING` | 1000 | 1 a 100000 | teto de clientes pendentes |
 | `MARKUPP_OAUTH_DCR_PENDING_HOURS` | 24 | 1 a 168 | prazo, desde o registro ou a última revogação, para o cliente pendente receber uma autorização antes de ser apagado |
+
+## Servidor MCP
+
+O servidor MCP sobe com `markupp-mcp http` (a imagem já começa assim) e lê as variáveis abaixo.
+Uma inválida impede a subida, com a mensagem dizendo qual e o formato esperado:
+
+| Variável | Padrão | O que é |
+|---|---|---|
+| `MARKUPP_MCP_API_URL` | obrigatória | endereço do servidor Go visto pelo servidor MCP, interno ao cluster ou ao compose; aceita http em qualquer host |
+| `MARKUPP_MCP_ISSUER_URL` | obrigatória | o `MARKUPP_PUBLIC_URL` do Go, anunciado aos agentes na metadata do recurso protegido |
+| `MARKUPP_MCP_RESOURCE_URL` | obrigatória | URL pública do servidor MCP com o caminho do endpoint, como `https://mcp.exemplo.com/mcp`; é a URL do par em `MARKUPP_OAUTH_RESOURCES`, e o caminho vira a rota |
+| `MARKUPP_MCP_RESOURCE_SECRET` | obrigatória | o segredo desse mesmo par, com ao menos 32 bytes |
+| `MARKUPP_MCP_PORT` | 3000 | porta em que o servidor escuta, em todas as interfaces |
+
+O issuer e o resource seguem a regra de URL do OAuth acima. A troca de token vai para
+`MARKUPP_MCP_API_URL`, então o servidor MCP não precisa alcançar a URL pública do Go.
 
 ## Aviso
 
