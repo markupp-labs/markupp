@@ -11,7 +11,7 @@
     <%= icon("user-circle") %><span class="truncate"><%= credential.account_email %></span>
   </button>
   <%= render "layouts/theme_buttons" %>
-  <%= link_to settings_path, title: t(".settings_shortcut"), aria: { label: settings_label, keyshortcuts: "Control+, Meta+,", current: ("page" if on_settings) },
+  <%= link_to settings_path, title: t(".settings_shortcut", keys: shortcut_key(:settings)), aria: { label: settings_label, keyshortcuts: "Control+, Meta+,", current: ("page" if on_settings) },
               class: "btn-icon #{current_class}" do %>
     <%= icon("gear-six") %>
   <% end %>

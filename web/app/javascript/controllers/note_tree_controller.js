@@ -13,6 +13,7 @@ const MOVES = {
   ArrowRight: "expand", l: "expand", ArrowLeft: "collapse", h: "collapse", Home: "first", End: "last"
 }
 
+// Espelho das teclas do ShortcutsHelper (grupo tree); o shortcuts_helper_test confere que batem.
 const ROW_SHORTCUTS = { F2: "rename", Delete: "delete", "alt+shift+KeyC": "copyPath", "alt+shift+KeyW": "copyWikilink" }
 const STATUS_TIMEOUT = 2000
 

@@ -69,6 +69,14 @@ module ShortcutsHelper
     ]
   }.freeze
 
+  SHORTCUTS_BY_NAME = SHORTCUT_GROUPS.values.flatten.index_by(&:name).freeze
+
+  # Teclas de um atalho pelo nome, a fonte única para os title, os kbd e os aria-keyshortcuts fora da ajuda e da paleta.
+  def shortcut_keys(name) = SHORTCUTS_BY_NAME.fetch(name).keys
+
+  # Primeira tecla do atalho, a que os title e os kbd mostram.
+  def shortcut_key(name) = shortcut_keys(name).first
+
   # Rótulo curto da tecla para o <kbd>, como no menu do VS Code: Alt+Shift+C vira "Alt Shift C", Delete vira "Del".
   def shortcut_label(keys) = keys.gsub(/\+|Delete/, KEY_LABELS)
 

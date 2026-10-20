@@ -12,15 +12,15 @@
     <label class="relative order-last flex w-full items-center sm:order-none sm:w-56">
       <%= icon("magnifying-glass", class: "pointer-events-none absolute left-2 size-4 text-ink-muted") %>
       <input type="search" autocomplete="off" spellcheck="false" placeholder="<%= t("tenants.index.filter") %>"
-             aria-label="<%= t("tenants.index.filter") %>" aria-keyshortcuts="/" title="<%= t("tenants.index.filter_title") %>"
+             aria-label="<%= t("tenants.index.filter") %>" aria-keyshortcuts="<%= shortcut_key(:filter_tenants) %>" title="<%= t("tenants.index.filter_title", keys: shortcut_key(:filter_tenants)) %>"
              data-tenant-grid-target="filter" data-action="input->tenant-grid#filter keydown->tenant-grid#leaveFilter"
              class="peer w-full rounded-md border border-line bg-surface py-1 pr-7 pl-7">
-      <kbd aria-hidden="true" class="pointer-events-none absolute right-2 hidden text-xs text-ink-muted sm:peer-placeholder-shown:block sm:peer-focus:hidden">/</kbd>
+      <kbd aria-hidden="true" class="pointer-events-none absolute right-2 hidden text-xs text-ink-muted sm:peer-placeholder-shown:block sm:peer-focus:hidden"><%= shortcut_key(:filter_tenants) %></kbd>
     </label>
-    <button type="button" class="btn" aria-haspopup="dialog" aria-keyshortcuts="Alt+N" title="<%= t("tenants.index.new_tenant_title") %>"
+    <button type="button" class="btn" aria-haspopup="dialog" aria-keyshortcuts="<%= shortcut_key(:new_tenant) %>" title="<%= t("tenants.index.new_tenant_title", keys: shortcut_key(:new_tenant)) %>"
             data-action="tenant-grid#openNew">
       <%= icon("plus") %><%= t("tenants.new_tenant_form.new_tenant") %>
-      <kbd aria-hidden="true" class="hidden text-xs text-ink-muted sm:inline"><%= shortcut_label("Alt+N") %></kbd>
+      <kbd aria-hidden="true" class="hidden text-xs text-ink-muted sm:inline"><%= shortcut_label(shortcut_key(:new_tenant)) %></kbd>
     </button>
   </header>
 

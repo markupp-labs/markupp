@@ -52,7 +52,7 @@ en:
       account_menu: "Account menu"
       signed_in_as: "Signed in as"
       settings: "Settings"
-      settings_shortcut: "Settings (Ctrl+,)"
+      settings_shortcut: "Settings (%{keys})"
       log_out: "Log out"
   shortcuts:
     help:
@@ -145,8 +145,8 @@ en:
       no_invites: "No pending invites. Invites show up here once your email is confirmed."
       confirm_email: "Confirm your email"
       filter: "Filter tenants"
-      filter_title: "Filter tenants (/)"
-      new_tenant_title: "New tenant (Alt+N)"
+      filter_title: "Filter tenants (%{keys})"
+      new_tenant_title: "New tenant (%{keys})"
       no_match: "No tenant matches the filter."
     new_tenant_form:
       new_tenant: "New tenant"

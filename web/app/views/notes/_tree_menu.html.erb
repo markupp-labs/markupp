@@ -5,13 +5,13 @@
      data-action="keydown->context-menu#navigate toggle->context-menu#returnFocus pointerdown@document->context-menu#closeOutside"
      class="layer fixed m-0 w-64 rounded-md border border-line bg-surface-sunken p-1 text-[13px] text-ink [inset:auto]">
   <% if writer %>
-    <%= tree_menu_item(:new_here, "Alt+N") %>
-    <%= tree_menu_item(:rename, "F2", note_only: true) %>
+    <%= tree_menu_item(:new_here, shortcut: :new_note) %>
+    <%= tree_menu_item(:rename, note_only: true) %>
     <%# Apagar pede confirmação antes (data-turbo-confirm do form), com o mesmo texto do Delete da nota. %>
-    <%= tree_menu_item(:delete, "Delete", note_only: true, danger: true, type: "submit", form: "tree_delete_note") %>
+    <%= tree_menu_item(:delete, note_only: true, danger: true, type: "submit", form: "tree_delete_note") %>
   <% end %>
-  <%= tree_menu_item(:copy_path, "Alt+Shift+C") %>
-  <%= tree_menu_item(:copy_wikilink, "Alt+Shift+W", note_only: true) %>
+  <%= tree_menu_item(:copy_path) %>
+  <%= tree_menu_item(:copy_wikilink, note_only: true) %>
 </div>
 <% if writer %>
   <%# O destino é a nota da linha, que o note_tree_controller.js põe no action antes de enviar. %>
