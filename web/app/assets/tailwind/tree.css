@@ -74,6 +74,13 @@
     }
   }
 
+  /* Linha em que o menu de contexto abriu, enquanto ele está aberto: contorno do accent por dentro, como no explorador
+     do VS Code, para não confundir com a nota aberta (o fundo do aria-current). */
+  .note-tree .tree-row[data-menu-open] {
+    outline: 1px solid var(--accent);
+    outline-offset: -1px;
+  }
+
   /* Marcador da pasta no lugar do ícone: + fechada, - aberta, à moda do NERDTree em ASCII; o aria-expanded já diz o estado. */
   .tree-marker::before {
     content: "+ " / "";

@@ -5,13 +5,15 @@ import { Controller } from "@hotwired/stimulus"
 // menu; quem foi para outro lugar (o campo do caminho no Rename) fica onde está. O popover é manual: no auto, o
 // pointerup do próprio botão direito (o contextmenu vem no pointerdown no Linux e no Mac) fechava o menu recém-aberto.
 // Também abre por um botão com popovertarget (menu da conta no rodapé): o toggle leva o foco ao primeiro item, e o botão
-// passa a ser quem abriu; clicar nele de novo fecha.
+// passa a ser quem abriu; clicar nele de novo fecha. Aberto pelo open(), quem abriu ganha data-menu-open até o menu fechar,
+// para a linha da árvore mostrar sobre quem o menu age (tree.css).
 const STEPS = { ArrowDown: 1, j: 1, ArrowUp: -1, k: -1 }
 const EDGE_GAP = 4
 
 export default class extends Controller {
   open({ x, y, opener }) {
     this.opener = opener
+    opener.toggleAttribute("data-menu-open", true)
     if (this.element.matches(":popover-open")) this.element.hidePopover()
     this.element.showPopover()
     this.placeAt(x, y)
@@ -51,7 +53,9 @@ export default class extends Controller {
   }
 
   returnFocus({ newState }) {
-    if (newState != "closed" || !this.opener?.isConnected) return
+    if (newState != "closed") return
+    this.opener?.removeAttribute("data-menu-open")
+    if (!this.opener?.isConnected) return
     if (this.element.contains(document.activeElement) || document.activeElement == document.body) this.opener.focus()
   }
 
