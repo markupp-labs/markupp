@@ -1,95 +1,73 @@
 import { describe, expect, it } from "vitest";
-import { loadHttpConfig, type McpEnvironment } from "./config.js";
+import { loadHttpEnv, type McpEnvironment } from "./config.js";
 
 const SECRET = "s".repeat(32);
 
 function environment(overrides: McpEnvironment = {}): McpEnvironment {
-  return {
-    MARKUPP_MCP_API_URL: "http://markupp:8080",
-    MARKUPP_MCP_ISSUER_URL: "https://markupp.exemplo",
-    MARKUPP_MCP_RESOURCE_URL: "https://mcp.exemplo/mcp",
-    MARKUPP_MCP_RESOURCE_SECRET: SECRET,
-    ...overrides,
-  };
+  return { MARKUPP_MCP_RESOURCE_SECRET: SECRET, ...overrides };
 }
 
-describe("loadHttpConfig", () => {
-  it("lê as variáveis e usa a porta 3000 quando ela falta", () => {
-    expect(loadHttpConfig(environment())).toEqual({
-      apiUrl: "http://markupp:8080",
-      issuerUrl: "https://markupp.exemplo",
-      resourceUrl: "https://mcp.exemplo/mcp",
-      resourceSecret: SECRET,
-      endpoint: "/mcp",
+describe("loadHttpEnv", () => {
+  it("usa a API em localhost:8080 e a porta 3000 quando elas faltam", () => {
+    expect(loadHttpEnv(environment())).toEqual({
+      apiUrl: "http://localhost:8080",
+      resourceUrl: undefined,
+      secret: { kind: "value", value: SECRET },
       port: 3000,
     });
   });
 
   it("lê a porta dada", () => {
-    const config = loadHttpConfig(environment({ MARKUPP_MCP_PORT: "8443" }));
+    const config = loadHttpEnv(environment({ MARKUPP_MCP_PORT: "8443" }));
     expect(config.port).toBe(8443);
   });
 
   it.each(["0", "65536", "80a", "-1"])("recusa a porta %s", (port) => {
-    expect(() =>
-      loadHttpConfig(environment({ MARKUPP_MCP_PORT: port })),
-    ).toThrow(`MARKUPP_MCP_PORT="${port}", esperado inteiro de 1 a 65535`);
-  });
-
-  it.each([
-    "MARKUPP_MCP_API_URL",
-    "MARKUPP_MCP_ISSUER_URL",
-    "MARKUPP_MCP_RESOURCE_URL",
-    "MARKUPP_MCP_RESOURCE_SECRET",
-  ])("exige %s", (key) => {
-    expect(() => loadHttpConfig(environment({ [key]: "" }))).toThrow(
-      `${key} vazia`,
+    expect(() => loadHttpEnv(environment({ MARKUPP_MCP_PORT: port }))).toThrow(
+      `MARKUPP_MCP_PORT="${port}", esperado inteiro de 1 a 65535`,
     );
   });
 
   it("aceita http em qualquer host na API, que é endereço interno", () => {
-    const config = loadHttpConfig(
-      environment({ MARKUPP_MCP_API_URL: "http://markupp.svc.cluster.local" }),
+    const config = loadHttpEnv(
+      environment({ MARKUPP_MCP_API_URL: "http://markupp.svc.cluster.local/" }),
     );
     expect(config.apiUrl).toBe("http://markupp.svc.cluster.local");
   });
 
   it("recusa a API fora de http ou https", () => {
     expect(() =>
-      loadHttpConfig(environment({ MARKUPP_MCP_API_URL: "ftp://markupp" })),
+      loadHttpEnv(environment({ MARKUPP_MCP_API_URL: "ftp://markupp" })),
     ).toThrow('MARKUPP_MCP_API_URL="ftp://markupp", esperado http(s)://host');
   });
 
-  it.each(["MARKUPP_MCP_ISSUER_URL", "MARKUPP_MCP_RESOURCE_URL"])(
-    "recusa http fora de loopback em %s",
-    (key) => {
-      expect(() =>
-        loadHttpConfig(environment({ [key]: "http://exemplo/mcp" })),
-      ).toThrow(`${key}="http://exemplo/mcp", esperado https://`);
-    },
-  );
+  it("lê o resource dado", () => {
+    const config = loadHttpEnv(
+      environment({ MARKUPP_MCP_RESOURCE_URL: "https://mcp.exemplo/mcp" }),
+    );
+    expect(config.resourceUrl).toBe("https://mcp.exemplo/mcp");
+  });
 
-  it("aceita http em loopback no issuer e no resource", () => {
-    const config = loadHttpConfig(
-      environment({
-        MARKUPP_MCP_ISSUER_URL: "http://localhost:8080",
-        MARKUPP_MCP_RESOURCE_URL: "http://127.0.0.1:3000/mcp",
-      }),
+  it("recusa http fora de loopback no resource", () => {
+    expect(() =>
+      loadHttpEnv(
+        environment({ MARKUPP_MCP_RESOURCE_URL: "http://exemplo/mcp" }),
+      ),
+    ).toThrow(
+      'MARKUPP_MCP_RESOURCE_URL="http://exemplo/mcp", esperado https://',
+    );
+  });
+
+  it("aceita http em loopback no resource", () => {
+    const config = loadHttpEnv(
+      environment({ MARKUPP_MCP_RESOURCE_URL: "http://127.0.0.1:3000/mcp" }),
     );
     expect(config.resourceUrl).toBe("http://127.0.0.1:3000/mcp");
   });
 
-  it("recusa o issuer com caminho, como o Go", () => {
-    expect(() =>
-      loadHttpConfig(
-        environment({ MARKUPP_MCP_ISSUER_URL: "https://markupp.exemplo/x" }),
-      ),
-    ).toThrow("sem caminho");
-  });
-
   it("exige caminho no resource, que vira a rota do endpoint", () => {
     expect(() =>
-      loadHttpConfig(
+      loadHttpEnv(
         environment({ MARKUPP_MCP_RESOURCE_URL: "https://mcp.exemplo" }),
       ),
     ).toThrow(
@@ -99,7 +77,7 @@ describe("loadHttpConfig", () => {
 
   it("recusa query no resource", () => {
     expect(() =>
-      loadHttpConfig(
+      loadHttpEnv(
         environment({
           MARKUPP_MCP_RESOURCE_URL: "https://mcp.exemplo/mcp?a=1",
         }),
@@ -109,12 +87,30 @@ describe("loadHttpConfig", () => {
 
   it("recusa segredo curto citando o tamanho e nunca o valor", () => {
     const attempt = () =>
-      loadHttpConfig(
+      loadHttpEnv(
         environment({ MARKUPP_MCP_RESOURCE_SECRET: "segredo-curto" }),
       );
     expect(attempt).toThrow(
       "MARKUPP_MCP_RESOURCE_SECRET com 13 bytes, esperado ao menos 32 bytes aleatorios",
     );
     expect(attempt).not.toThrow("segredo-curto");
+  });
+
+  it("lê o caminho do segredo quando falta o segredo na variável", () => {
+    const config = loadHttpEnv({ MARKUPP_MCP_SECRET_PATH: "/run/s" });
+    expect(config.secret).toEqual({ kind: "file", path: "/run/s" });
+  });
+
+  it("prefere o segredo na variável ao caminho do arquivo", () => {
+    const config = loadHttpEnv(
+      environment({ MARKUPP_MCP_SECRET_PATH: "/run/s" }),
+    );
+    expect(config.secret).toEqual({ kind: "value", value: SECRET });
+  });
+
+  it("sem segredo nem caminho, cita as duas formas de fornecer", () => {
+    expect(() => loadHttpEnv({})).toThrow(
+      /MARKUPP_MCP_RESOURCE_SECRET e MARKUPP_MCP_SECRET_PATH vazias/,
+    );
   });
 });
