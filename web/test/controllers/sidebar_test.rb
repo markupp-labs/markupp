@@ -191,11 +191,12 @@ class SidebarTest < ActionDispatch::IntegrationTest
     end
     assert_equal [ [ "Explorer", "Explorer (Ctrl+Shift+E)", "Control+Shift+E Meta+Shift+E", "sidebar_view_explorer", "true", "files" ],
                    [ "Links", "Links (Ctrl+Shift+L)", "Control+Shift+L Meta+Shift+L", "sidebar_view_links", "false", "link" ],
-                   [ "Graph", "Graph (Ctrl+Shift+G)", "Control+Shift+G Meta+Shift+G", "sidebar_view_graph", "false", "graph" ],
-                   [ "Search", "Search (Ctrl+Shift+F)", "Control+Shift+F Meta+Shift+F", "sidebar_view_search", "false", "magnifying-glass" ] ], tabs
+                   [ "Graph", "Graph (Ctrl+Shift+G)", "Control+Shift+G Meta+Shift+G", "sidebar_view_graph", "false", "graph" ] ], tabs
     assert_select ".activity-bar-side [role=tab][tabindex='0']", count: 1
     assert_select "nav #sidebar_view_explorer[role=tabpanel]:not([hidden]) [role=treeitem]", text: "└── plan"
-    %w[links graph search].each { assert_select "nav #sidebar_view_#{it}[role=tabpanel][hidden]" }
+    %w[links graph].each { assert_select "nav #sidebar_view_#{it}[role=tabpanel][hidden]" }
+    # A busca fica no Ctrl+K e no botao do topo da barra lateral, sem visao propria.
+    assert_select "#sidebar_view_search", count: 0
   end
 
   test "the chosen view comes back from its cookie, without the tree" do
@@ -219,7 +220,6 @@ class SidebarTest < ActionDispatch::IntegrationTest
 
     assert_select "#sidebar_view_links", text: /Open a note to see its links/
     assert_select "#sidebar_view_graph", text: /Open a note to see its graph/
-    assert_select "#sidebar_view_search button[data-action='search#open']", text: /Search notes/
   end
 
   test "the phone drawer carries the same views in a row on its top" do
@@ -229,7 +229,7 @@ class SidebarTest < ActionDispatch::IntegrationTest
     get root_path
 
     assert_select "nav#sidebar > .activity-bar-drawer:first-child" do
-      assert_select "[role=tablist][aria-orientation=horizontal] [role=tab]", count: 4
+      assert_select "[role=tablist][aria-orientation=horizontal] [role=tab]", count: 3
       assert_select "button[popovertarget=account_menu][aria-label=Account]"
       assert_select "a[href=?][aria-label=Settings]", settings_path
     end

@@ -1,7 +1,7 @@
 require "application_system_test_case"
 
 # Barra de atividades como a do VS Code: uma coluna de ícones à esquerda da barra lateral troca a visão dela (Explorer,
-# Links, Graph, Search). Clicar na visão ativa recolhe a barra; com ela recolhida, clicar num ícone a abre naquela visão.
+# Links, Graph); a busca fica no Ctrl+K. Clicar na visão ativa recolhe a barra; com ela recolhida, clicar num ícone a abre naquela visão.
 class ActivityBarTest < ApplicationSystemTestCase
   setup do
     use_fake_api(notes: [ { id: "1", path: "plan.md", content: "# Plan\n" } ])
@@ -85,7 +85,7 @@ class ActivityBarTest < ApplicationSystemTestCase
     assert_operator edge(find("#account_menu"), "left"), :>=, 32
   end
 
-  test "ctrl+shift+l, g and f show their views and ctrl+shift+e goes back to the tree" do
+  test "ctrl+shift+l and g show their views and ctrl+shift+e goes back to the tree" do
     visit note_path("1")
     assert_selector "[role=tab][aria-label=Explorer][aria-selected=true]"
 
@@ -94,8 +94,6 @@ class ActivityBarTest < ApplicationSystemTestCase
     assert_selector "#sidebar_view_links:focus"
     send_keys [ :control, :shift, "g" ]
     assert_selector "#sidebar_view_graph:focus"
-    send_keys [ :control, :shift, "f" ]
-    assert_selector "#sidebar_view_search button:focus", text: "Search notes"
     send_keys [ :control, :shift, "e" ]
 
     assert_selector "[role=treeitem][aria-current=page]:focus"
@@ -122,7 +120,7 @@ class ActivityBarTest < ApplicationSystemTestCase
     send_keys "j"
     assert_selector "[role=tab][aria-label=Links]:focus"
     send_keys :down, :down
-    assert_selector "[role=tab][aria-label=Search]:focus"
+    assert_selector "[role=tab][aria-label=Explorer]:focus"
     send_keys "k", :up
     assert_selector "[role=tab][aria-label=Links]:focus"
     send_keys :enter
@@ -157,7 +155,7 @@ class ActivityBarTest < ApplicationSystemTestCase
     page.current_window.resize_to(390, 844)
     visit root_path
     click_on "Notes"
-    assert_selector "nav#sidebar .activity-bar-drawer [role=tab]", count: 4
+    assert_selector "nav#sidebar .activity-bar-drawer [role=tab]", count: 3
     assert_no_selector ".activity-bar-side"
 
     find(".activity-bar-drawer [role=tab][aria-label=Graph]").click

@@ -7,7 +7,7 @@ class ShortcutsTest < ActionDispatch::IntegrationTest
   PALETTE = [
     [ "New note", "Alt N" ], [ "Edit mode", "Ctrl E" ], [ "Read mode", "Ctrl E" ], [ "Side by side", "Ctrl \\" ],
     [ "Keyboard shortcuts", "?" ], [ "Search notes", "Ctrl K" ], [ "Settings", "Ctrl ," ], [ "Toggle sidebar", "Ctrl B" ],
-    [ "Focus the note tree", "Ctrl Shift E" ], [ "Links view", "Ctrl Shift L" ], [ "Graph view", "Ctrl Shift G" ], [ "Search view", "Ctrl Shift F" ],
+    [ "Focus the note tree", "Ctrl Shift E" ], [ "Links view", "Ctrl Shift L" ], [ "Graph view", "Ctrl Shift G" ],
     [ "Focus region left", "Alt H" ], [ "Focus region below", "Alt J" ], [ "Focus region above", "Alt K" ], [ "Focus region right", "Alt L" ],
     [ "Light theme", "" ], [ "Dark theme", "" ], [ "Editor style: plain", "" ], [ "Editor style: styled", "" ],
     [ "Vim key bindings: on", "" ], [ "Vim key bindings: off", "" ],
@@ -29,7 +29,7 @@ class ShortcutsTest < ActionDispatch::IntegrationTest
     rows = css_select("#shortcut_help dt").to_h { |keys| [ keys.next_element.text.strip, keys.css("kbd").map(&:text) ] }
     { "Command palette" => [ "Ctrl+Shift+P", "F1", ":" ], "Keyboard shortcuts" => [ "?" ], "New note" => [ "Alt+N" ], "Save" => [ "Ctrl+S" ],
       "Rename / move" => [ "F2" ], "Copy wikilink" => [ "Alt+Shift+W" ], "Focus the note tree" => [ "Ctrl+Shift+E" ],
-      "Links view" => [ "Ctrl+Shift+L" ], "Graph view" => [ "Ctrl+Shift+G" ], "Search view" => [ "Ctrl+Shift+F" ],
+      "Links view" => [ "Ctrl+Shift+L" ], "Graph view" => [ "Ctrl+Shift+G" ],
       "Focus region left" => [ "Alt+H" ], "Focus region right" => [ "Alt+L" ],
       "Next row" => [ "j", "↓" ], "All tenants" => [ "g t" ], "Filter tenants" => [ "/" ],
       "Move between tenants" => [ "hjkl", "←↓↑→" ], "Indent and outdent in the content" => [ "Tab", "Shift+Tab" ],
@@ -37,6 +37,7 @@ class ShortcutsTest < ActionDispatch::IntegrationTest
       assert_equal keys, rows[name], "expected #{name} with #{keys.inspect} in the help"
     end
     assert_nil rows["New tenant"], "the new tenant shares Alt+N with the new note and belongs to the tenants"
+    assert_nil rows["Search view"], "the search lives in Ctrl+K, not in a view of the sidebar"
   end
 
   test "the palette offers every action with its shortcut, from the same list as the help" do
