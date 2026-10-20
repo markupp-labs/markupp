@@ -36,6 +36,17 @@ class ErrorPagesTest < ApplicationSystemTestCase
     assert_selector "nav#sidebar", text: "plan"
   end
 
+  # Mascote e mensagem no meio da área de conteúdo, como nas telas públicas, e a mensagem na altura do meio do mascote.
+  test "the error sits in the middle of the content, the message beside the middle of the mascot" do
+    sign_in_through_form
+    visit note_path("missing")
+
+    main, mascot, heading = [ "main", "main pre[data-mascot=large]", "main h1" ].map { find(it) }
+    block_middle = (edge(mascot, "top") + edge(mascot, "bottom")) / 2
+    assert_in_delta (edge(main, "top") + edge(main, "bottom")) / 2, block_middle, 32
+    assert_in_delta block_middle, edge(heading, "top"), 80
+  end
+
   test "the static 500 page draws in the panel font without the app" do
     visit "/500.html"
 
@@ -53,4 +64,7 @@ class ErrorPagesTest < ApplicationSystemTestCase
     assert_selector "html[data-theme=dark]", visible: :all
     assert_equal "rgb(31, 31, 40)", evaluate_script("getComputedStyle(document.body).backgroundColor")
   end
+
+  private
+    def edge(element, side) = evaluate_script("arguments[0].getBoundingClientRect().#{side}", element)
 end

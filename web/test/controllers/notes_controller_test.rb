@@ -405,6 +405,9 @@ class NotesControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :bad_gateway
     assert_select "main h1", "502: Can't reach the markupp server"
+    # Para quem usa, o efeito e o que fazer; a causa técnica fica no log.
+    assert_select "main p", "Try again in a moment."
+    assert_no_match(/MARKUPP_|API_URL/, response.body)
   end
 
   test "show as json answers bad gateway without the page when the API is unreachable" do
