@@ -23,9 +23,9 @@ class TenantMembersTest < ApplicationSystemTestCase
   test "an owner removes a member after confirming" do
     visit settings_members_path
 
-    accept_panel_confirm("Remove caio@markupp.dev from Acme research?", button: "Remove") do
-      within("li", text: "caio@markupp.dev") { click_on "Remove" }
-    end
+    within("li", text: "caio@markupp.dev") { click_on "Remove" }
+    assert_selector "dialog#confirm_dialog[open][aria-label=Remove]"
+    accept_panel_confirm("Remove caio@markupp.dev from Acme research?", button: "Remove") { nil }
 
     assert_text "Member removed."
     assert_no_text "caio@markupp.dev"
