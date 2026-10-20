@@ -1,5 +1,7 @@
 import type { FastMCP } from "fastmcp";
 import type { MarkuppSession } from "../session.js";
+import { addInviteTools } from "./invite-tools.js";
+import { addMemberTools } from "./member-tools.js";
 import { addNoteReadTools } from "./note-read-tools.js";
 import { addNoteResource } from "./note-resource.js";
 import { addNoteWriteTools } from "./note-write-tools.js";
@@ -19,4 +21,6 @@ export function registerMarkuppTools(
   addNoteReadTools(server, factory);
   addNoteWriteTools(server, factory);
   addNoteResource(server, factory);
+  addMemberTools(server, factory);
+  addInviteTools(server, factory);
 }

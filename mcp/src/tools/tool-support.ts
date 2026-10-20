@@ -16,6 +16,17 @@ export const tenantParameter = z
   .min(1)
   .describe("Tenant id from list_tenants.");
 
+// adminTenantParameter é o tenant das ferramentas de administração, que pedem papel
+// owner ou admin nele.
+export const adminTenantParameter = z
+  .string()
+  .min(1)
+  .describe("Tenant id from list_tenants where your role is owner or admin.");
+
+export const roleParameter = z
+  .enum(["owner", "admin", "member", "viewer"])
+  .describe("Role to grant, up to your own: owner > admin > member > viewer.");
+
 // readOnlyAnnotations marca as ferramentas que só leem; writeAnnotations é a base das
 // escritas, que cada ferramenta ajusta.
 export const readOnlyAnnotations = { readOnlyHint: true, openWorldHint: false };
