@@ -24,7 +24,12 @@ export default class extends Controller {
   static values = { newNoteUrl: String, copied: String, copyFailed: String, confirmDelete: String }
 
   connect() {
-    this.rove(this.element.querySelector("[aria-current=page]") ?? this.rows[0])
+    this.roveToCurrent()
+  }
+
+  // A parada do Tab na nota aberta ou na primeira linha; também quando o frame do Explorer volta com outra visão.
+  roveToCurrent() {
+    this.rove(this.element.querySelector("[role=treeitem][aria-current=page]") ?? this.rows[0])
   }
 
   // Clicar fecha ou abre e deixa a parada do Tab na pasta: a linha que tinha a parada pode ter sumido no grupo fechado.
