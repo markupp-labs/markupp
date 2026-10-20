@@ -159,6 +159,46 @@ class TenantsTest < ApplicationSystemTestCase
     assert_selector "h1", text: "Tenants"
   end
 
+  test "esc goes back to the note the tenants were opened from, but not from the filter" do
+    use_fake_api(tenants: THREE_TENANTS, notes: [ { id: "1", path: "plan.md", content: "# Plan\n" } ])
+    sign_in_through_form
+    click_on "Acme research"
+    visit note_path("1")
+    assert_field "Path", with: "/plan"
+    execute_script("document.activeElement.blur()")
+    send_keys "g", "t"
+    assert_selector "h1", text: "Tenants"
+
+    find("input[aria-label='Filter tenants']").send_keys("lab", :escape)
+    assert_selector "h1", text: "Tenants"
+    execute_script("document.activeElement.blur()")
+    send_keys :escape
+
+    assert_current_path note_path("1")
+  end
+
+  # Com tenant ativo a barra é a das notas, mas Alt+N nesta tela continua sendo o New tenant, e a paleta não oferece a
+  # nota nova, que cairia no mesmo Alt+N.
+  test "with an active tenant the tenants show the notes tree and alt+n still opens the new tenant" do
+    use_fake_api(tenants: THREE_TENANTS, notes: [ { id: "1", path: "plan.md", content: "# Plan\n" } ])
+    sign_in_through_form
+    click_on "Acme research"
+    assert_field "Path", with: "/"
+    execute_script("document.activeElement.blur()")
+    send_keys "g", "t"
+    assert_selector "h1", text: "Tenants"
+
+    assert_selector "nav#sidebar [role=treeitem]", text: "plan"
+    send_keys [ :control, :shift, "p" ]
+    assert_selector "dialog#command_palette[open] input:focus"
+    assert_no_selector "#command_palette [role=option]", text: "New note"
+    send_keys :escape
+    send_keys [ :alt, "n" ]
+
+    assert_selector "dialog#new_tenant[open]"
+    assert_current_path tenants_path
+  end
+
   private
     def assert_card_focused(name)
       assert_selector "#tenant_cards .tenant-card-open:focus", text: name
