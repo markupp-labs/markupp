@@ -16,6 +16,8 @@ class SearchesTest < ApplicationSystemTestCase
 
     assert_equal %w[list plan], all("[role=option] .search-hit-title").map(&:text)
     assert_selector "[role=option][aria-selected=true] .search-hit-snippet mark", text: "ship", count: 2
+    selected = find("[role=option][aria-selected=true]")
+    assert_equal css_color("var(--accent-soft)"), selected.style("background-color")["background-color"]
     find_field("Search notes").send_keys([ :control, "j" ])
     assert_selector "[role=option][aria-selected=true]", text: "plan"
     find_field("Search notes").send_keys([ :control, "k" ], [ :control, "j" ], :enter)
