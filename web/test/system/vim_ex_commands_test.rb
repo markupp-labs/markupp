@@ -80,9 +80,10 @@ class VimExCommandsTest < ApplicationSystemTestCase
   end
 
   private
-    # O : abre a linha de comando do Vim no rodape do editor; Enter roda o comando.
+    # O : abre a linha de comando do Vim no rodape do editor; Enter roda o comando. O : vai pelo CDP: o chromedriver
+    # manda a pontuacao com key vazio, e o Vim leria outra tecla.
     def ex(command)
-      send_keys ":"
+      press_through_cdp(":", "Semicolon", keycode: 186, modifiers: 8)
       assert_selector ".cm-vim-panel input:focus"
       send_keys command.delete_prefix(":"), :enter
     end
