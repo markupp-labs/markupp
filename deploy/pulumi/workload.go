@@ -50,11 +50,18 @@ func declareAPI(ctx *pulumi.Context, names resourceNames, args MarkuppArgs, opts
 
 func apiDeploymentArgs(names resourceNames, args MarkuppArgs) *appsv1.DeploymentArgs {
 	container := serverContainer(args, names)
-	container.Env = append(databaseURLEnv(names), inviteByEmailEnv(args)...)
+	env := append(databaseURLEnv(names), inviteByEmailEnv(args)...)
+	container.Env = append(env, publicURLEnv(args))
 	container.Ports = corev1.ContainerPortArray{corev1.ContainerPortArgs{ContainerPort: pulumi.Int(apiPort)}}
 	container.ReadinessProbe = healthzProbe()
 	container.LivenessProbe = processProbe()
 	return serverDeploymentArgs(names.api, args, pulumi.Int(*args.APIReplicas), container)
+}
+
+// publicURLEnv dá à API o issuer do OAuth: o host que o Gateway publica com TLS. Sem
+// ela, o servidor anunciaria localhost (ADR-0041).
+func publicURLEnv(args MarkuppArgs) corev1.EnvVarArgs {
+	return corev1.EnvVarArgs{Name: pulumi.String("MARKUPP_PUBLIC_URL"), Value: pulumi.Sprintf("https://%s", args.Host)}
 }
 
 // serverDeploymentArgs é o Deployment de um contêiner só do servidor, sem root. Sem
