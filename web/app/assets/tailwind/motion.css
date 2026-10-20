@@ -208,8 +208,9 @@
   animation: area-in var(--motion-window-in) var(--ease-out-quint) both;
 }
 
-/* Voltar às notas (data-area-moved="back") é o workspace anterior: o mesmo deslize, para o lado oposto. Os
-   pseudo-elementos da view transition herdam o --area-shift do :root. */
+/* Ir a uma área anterior na ordem fixa (notas, tenants, configurações; data-area-moved="back") é o workspace de
+   número menor: o mesmo deslize, para o lado oposto. Os pseudo-elementos da view transition herdam o --area-shift do
+   :root. */
 :root[data-area-moved="back"] {
   --area-shift: -1.5rem;
 }
