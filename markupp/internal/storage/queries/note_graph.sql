@@ -22,27 +22,40 @@ WHERE target_id = sqlc.arg(note_id)::text
 ORDER BY source_path, source_id, title_key, kind, predicate NULLS FIRST, target_path NULLS FIRST, target_id
 LIMIT sqlc.arg(page_limit) OFFSET sqlc.arg(page_offset);
 
+-- As ligações do cofre andam pelas notas na ordem do caminho, pelo índice único de
+-- (cofre, caminho), e buscam as ligações de cada uma pelo índice da nota; o OFFSET 0
+-- impede o planejador de achatar a subconsulta numa junção do cofre inteiro, e a
+-- leitura para quando a página enche.
 -- name: ListVaultLinks :many
-SELECT * FROM note_link_items
-WHERE vault_id = sqlc.arg(vault_id)
-  AND (sqlc.arg(kind)::text = '' OR kind = sqlc.arg(kind)::text)
-ORDER BY source_path, source_id, title_key, kind, predicate NULLS FIRST, target_path NULLS FIRST, target_id
+SELECT i.* FROM notes s
+CROSS JOIN LATERAL (
+    SELECT * FROM note_link_items
+    WHERE source_id = s.id AND (sqlc.arg(kind)::text = '' OR kind = sqlc.arg(kind)::text)
+    OFFSET 0
+) i
+WHERE s.vault_id = sqlc.arg(vault_id)
+ORDER BY s.path, s.id, i.title_key, i.kind, i.predicate NULLS FIRST, i.target_path NULLS FIRST, i.target_id
 LIMIT sqlc.arg(page_limit) OFFSET sqlc.arg(page_offset);
 
 -- O destino nulo das não resolvidas é constante, então o filtro descarta a parte
 -- delas já no plano.
 -- name: ListVaultResolvedLinks :many
-SELECT * FROM note_link_items
-WHERE vault_id = sqlc.arg(vault_id)
-  AND target_id IS NOT NULL
-  AND (sqlc.arg(kind)::text = '' OR kind = sqlc.arg(kind)::text)
-ORDER BY source_path, source_id, title_key, kind, predicate NULLS FIRST, target_path NULLS FIRST, target_id
+SELECT i.* FROM notes s
+CROSS JOIN LATERAL (
+    SELECT * FROM note_link_items
+    WHERE source_id = s.id AND target_id IS NOT NULL AND (sqlc.arg(kind)::text = '' OR kind = sqlc.arg(kind)::text)
+    OFFSET 0
+) i
+WHERE s.vault_id = sqlc.arg(vault_id)
+ORDER BY s.path, s.id, i.title_key, i.kind, i.predicate NULLS FIRST, i.target_path NULLS FIRST, i.target_id
 LIMIT sqlc.arg(page_limit) OFFSET sqlc.arg(page_offset);
 
+-- As não resolvidas são poucas: a anti-junção acha todas e ordena só elas, sem andar
+-- pelas notas que não têm nenhuma.
 -- name: ListVaultUnresolvedLinks :many
 SELECT * FROM note_unresolved_link_items
-WHERE vault_id = sqlc.arg(vault_id)
-  AND (sqlc.arg(kind)::text = '' OR kind = sqlc.arg(kind)::text)
+WHERE (sqlc.arg(kind)::text = '' OR kind = sqlc.arg(kind)::text)
+  AND vault_id = sqlc.arg(vault_id)
 ORDER BY source_path, source_id, title_key, kind, predicate NULLS FIRST
 LIMIT sqlc.arg(page_limit) OFFSET sqlc.arg(page_offset);
 

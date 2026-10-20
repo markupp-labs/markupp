@@ -411,24 +411,32 @@ func (q *Queries) ListStructuralSuggestions(ctx context.Context, noteID string) 
 }
 
 const listVaultLinks = `-- name: ListVaultLinks :many
-SELECT source_id, source_path, vault_id, target_id, target_path, cited_title, title_key, kind, predicate, inferred_target_id, inferred_target_path FROM note_link_items
-WHERE vault_id = $1
-  AND ($2::text = '' OR kind = $2::text)
-ORDER BY source_path, source_id, title_key, kind, predicate NULLS FIRST, target_path NULLS FIRST, target_id
+SELECT i.source_id, i.source_path, i.vault_id, i.target_id, i.target_path, i.cited_title, i.title_key, i.kind, i.predicate, i.inferred_target_id, i.inferred_target_path FROM notes s
+CROSS JOIN LATERAL (
+    SELECT source_id, source_path, vault_id, target_id, target_path, cited_title, title_key, kind, predicate, inferred_target_id, inferred_target_path FROM note_link_items
+    WHERE source_id = s.id AND ($1::text = '' OR kind = $1::text)
+    OFFSET 0
+) i
+WHERE s.vault_id = $2
+ORDER BY s.path, s.id, i.title_key, i.kind, i.predicate NULLS FIRST, i.target_path NULLS FIRST, i.target_id
 LIMIT $4 OFFSET $3
 `
 
 type ListVaultLinksParams struct {
-	VaultID    string
 	Kind       string
+	VaultID    string
 	PageOffset int32
 	PageLimit  int32
 }
 
+// As ligações do cofre andam pelas notas na ordem do caminho, pelo índice único de
+// (cofre, caminho), e buscam as ligações de cada uma pelo índice da nota; o OFFSET 0
+// impede o planejador de achatar a subconsulta numa junção do cofre inteiro, e a
+// leitura para quando a página enche.
 func (q *Queries) ListVaultLinks(ctx context.Context, arg ListVaultLinksParams) ([]NoteLinkItem, error) {
 	rows, err := q.db.Query(ctx, listVaultLinks,
-		arg.VaultID,
 		arg.Kind,
+		arg.VaultID,
 		arg.PageOffset,
 		arg.PageLimit,
 	)
@@ -463,17 +471,20 @@ func (q *Queries) ListVaultLinks(ctx context.Context, arg ListVaultLinksParams) 
 }
 
 const listVaultResolvedLinks = `-- name: ListVaultResolvedLinks :many
-SELECT source_id, source_path, vault_id, target_id, target_path, cited_title, title_key, kind, predicate, inferred_target_id, inferred_target_path FROM note_link_items
-WHERE vault_id = $1
-  AND target_id IS NOT NULL
-  AND ($2::text = '' OR kind = $2::text)
-ORDER BY source_path, source_id, title_key, kind, predicate NULLS FIRST, target_path NULLS FIRST, target_id
+SELECT i.source_id, i.source_path, i.vault_id, i.target_id, i.target_path, i.cited_title, i.title_key, i.kind, i.predicate, i.inferred_target_id, i.inferred_target_path FROM notes s
+CROSS JOIN LATERAL (
+    SELECT source_id, source_path, vault_id, target_id, target_path, cited_title, title_key, kind, predicate, inferred_target_id, inferred_target_path FROM note_link_items
+    WHERE source_id = s.id AND target_id IS NOT NULL AND ($1::text = '' OR kind = $1::text)
+    OFFSET 0
+) i
+WHERE s.vault_id = $2
+ORDER BY s.path, s.id, i.title_key, i.kind, i.predicate NULLS FIRST, i.target_path NULLS FIRST, i.target_id
 LIMIT $4 OFFSET $3
 `
 
 type ListVaultResolvedLinksParams struct {
-	VaultID    string
 	Kind       string
+	VaultID    string
 	PageOffset int32
 	PageLimit  int32
 }
@@ -482,8 +493,8 @@ type ListVaultResolvedLinksParams struct {
 // delas já no plano.
 func (q *Queries) ListVaultResolvedLinks(ctx context.Context, arg ListVaultResolvedLinksParams) ([]NoteLinkItem, error) {
 	rows, err := q.db.Query(ctx, listVaultResolvedLinks,
-		arg.VaultID,
 		arg.Kind,
+		arg.VaultID,
 		arg.PageOffset,
 		arg.PageLimit,
 	)
@@ -519,23 +530,25 @@ func (q *Queries) ListVaultResolvedLinks(ctx context.Context, arg ListVaultResol
 
 const listVaultUnresolvedLinks = `-- name: ListVaultUnresolvedLinks :many
 SELECT source_id, source_path, vault_id, target_id, target_path, cited_title, title_key, kind, predicate, inferred_target_id, inferred_target_path FROM note_unresolved_link_items
-WHERE vault_id = $1
-  AND ($2::text = '' OR kind = $2::text)
+WHERE ($1::text = '' OR kind = $1::text)
+  AND vault_id = $2
 ORDER BY source_path, source_id, title_key, kind, predicate NULLS FIRST
 LIMIT $4 OFFSET $3
 `
 
 type ListVaultUnresolvedLinksParams struct {
-	VaultID    string
 	Kind       string
+	VaultID    string
 	PageOffset int32
 	PageLimit  int32
 }
 
+// As não resolvidas são poucas: a anti-junção acha todas e ordena só elas, sem andar
+// pelas notas que não têm nenhuma.
 func (q *Queries) ListVaultUnresolvedLinks(ctx context.Context, arg ListVaultUnresolvedLinksParams) ([]NoteUnresolvedLinkItem, error) {
 	rows, err := q.db.Query(ctx, listVaultUnresolvedLinks,
-		arg.VaultID,
 		arg.Kind,
+		arg.VaultID,
 		arg.PageOffset,
 		arg.PageLimit,
 	)
