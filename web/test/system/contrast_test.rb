@@ -64,6 +64,19 @@ class ContrastTest < ApplicationSystemTestCase
     end
   end
 
+  # O placeholder é o único rótulo visível da paleta e da busca de tenants: o padrão do Tailwind (ink a 50%) não chega ao AA.
+  test "the placeholders of the palette and the tenant filter read clearly in the light and the dark theme" do
+    %w[Light Dark].each do |theme|
+      visit settings_appearance_path
+      within("main") { click_on theme }
+      assert_selector "main button[aria-pressed=true]", text: theme
+      visit tenants_path
+      assert_readable find("input[type=search][aria-label='Filter tenants']"), pseudo: "::placeholder"
+      send_keys [ :control, :shift, "p" ]
+      assert_readable find("dialog#command_palette[open] input"), pseudo: "::placeholder"
+    end
+  end
+
   private
     def assert_code_tokens_readable
       assert_selector ".note-preview pre code"
