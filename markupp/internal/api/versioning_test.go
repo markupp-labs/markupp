@@ -72,6 +72,21 @@ func TestSemPrefixo_RotaComParametro_SucessoraMantemOCaminho(t *testing.T) {
 	assert.Equal(t, `</v1/notes/nota-1>; rel="successor-version"`, rec.Header().Get("Link"))
 }
 
+func TestSemPrefixo_CaminhoInexistente_Responde404SemObsolescencia(t *testing.T) {
+	rec := versionedRequest(t, http.MethodGet, "/nao-existe")
+
+	assert.Equal(t, http.StatusNotFound, rec.Code)
+	assert.Empty(t, rec.Header().Get("Deprecation"))
+	assert.Empty(t, rec.Header().Get("Link"))
+}
+
+func TestSemPrefixo_MetodoSemRota_NaoMarcaObsoleta(t *testing.T) {
+	rec := versionedRequest(t, http.MethodDelete, "/healthz")
+
+	assert.Equal(t, http.StatusMethodNotAllowed, rec.Code)
+	assert.Empty(t, rec.Header().Get("Deprecation"))
+}
+
 func TestV1_PostLogin_AlcancaOHandler(t *testing.T) {
 	rec := versionedRequestWithBody(t, http.MethodPost, "/v1/auth/login", `{"email":"a@b.c","password":"senha"}`)
 
