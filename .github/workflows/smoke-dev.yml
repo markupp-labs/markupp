@@ -26,10 +26,10 @@ jobs:
     name: Smoke da stack dev num kind
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v7
         with:
           go-version-file: deploy/pulumi/go.mod
           cache-dependency-path: deploy/pulumi/go.sum

@@ -13,10 +13,10 @@ jobs:
       run:
         working-directory: markupp
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v7
         with:
           go-version-file: markupp/go.mod
           cache-dependency-path: markupp/go.sum
@@ -57,10 +57,10 @@ jobs:
       run:
         working-directory: deploy/pulumi
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v7
         with:
           go-version-file: deploy/pulumi/go.mod
           cache-dependency-path: deploy/pulumi/go.sum
@@ -78,7 +78,7 @@ jobs:
     name: Convencoes de commit
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
