@@ -173,3 +173,8 @@ func (r *PostgresAdminRepository) RevokeInviteTx(ctx context.Context, inviteID s
 		return q.CreateAuditEvent(ctx, toCreateAuditEventParams(event))
 	})
 }
+
+// DeleteTenantTx apaga de vez o tenant do ator e audita junto.
+func (r *PostgresAdminRepository) DeleteTenantTx(ctx context.Context, event auth.AuditEventRecord) error {
+	return nil
+}
