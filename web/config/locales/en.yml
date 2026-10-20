@@ -91,6 +91,7 @@ en:
       vim: "Vim, in the editor"
       tenants: "Tenants"
       links: "Links view"
+      graph: "Graph"
     names:
       command_palette: "Command palette"
       shortcuts_help: "Keyboard shortcuts"
@@ -100,6 +101,7 @@ en:
       focus_tree: "Focus the note tree"
       focus_links: "Links view"
       focus_graph: "Graph view"
+      full_graph: "Full graph"
       explorer_mode: "Explorer view"
       focus_region_left: "Focus region left"
       focus_region_below: "Focus region below"
@@ -158,6 +160,11 @@ en:
       links_move: "Move through the sections and the notes"
       links_open: "Open the note, or fold the section"
       links_copy_wikilink: "Copy the wikilink of a suggestion"
+      graph_move: "Next and previous note in the graph"
+      graph_open: "Open the note"
+      graph_zoom: "Zoom the graph in and out"
+      graph_fit: "Fit the graph"
+      graph_back: "Back from the full graph"
   markupp_api:
     errors:
       session_expired: "Your session expired. Log in again."
@@ -453,6 +460,24 @@ en:
       other:
         title: "Request failed"
         hint: "Go back and try again."
+  graphs:
+    show:
+      title: "Graph"
+      keys: "j k move  ↵ open  + - zoom  0 fit  esc back"
+    local:
+      depth: "Depth"
+      depth_prompt: "depth"
+      full: "Full graph"
+    canvas_label: "Graph of the notes. j and k move between the notes, Enter opens one, plus and minus zoom, 0 fits."
+    roledescription: "graph"
+    status: "%{nodes} nodes  %{links} links"
+    capped: "%{shown} of %{total} nodes, the most central  %{links} links"
+    empty:
+      title: "No notes to draw yet"
+      hint: "Notes and the links between them show up here."
+    refused:
+      title: "Can't open this graph"
+      hint: "You may no longer have access to these notes."
   note_links:
     sections:
       backlinks: "Backlinks"

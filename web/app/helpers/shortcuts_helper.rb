@@ -30,6 +30,8 @@ module ShortcutsHelper
       Shortcut.of(:focus_tree, "Ctrl+Shift+E", run: SIDEBAR_VIEW_PRESS.("explorer", "E")),
       Shortcut.of(:focus_links, "Ctrl+Shift+L", run: SIDEBAR_VIEW_PRESS.("links", "L")),
       Shortcut.of(:focus_graph, "Ctrl+Shift+G", run: SIDEBAR_VIEW_PRESS.("graph", "G")),
+      # Grafo do cofre em tela cheia, a partir da nota aberta (full_graph_shortcut_controller.js).
+      Shortcut.of(:full_graph, "Alt+G", run: { press: { key: "g", code: "KeyG", altKey: true } }),
       # Visão do Explorer (pastas, centrais, ligadas, recentes, órfãs, comunidades): abre o seletor (explorer_mode_controller.js).
       Shortcut.of(:explorer_mode, "Alt+O", run: { press: { key: "o", code: "KeyO", altKey: true }, when: "#explorer_mode" }),
       # Região vizinha pela geometria (region_nav_controller.js); a paleta repete a tecla a partir do foco devolvido.
@@ -105,6 +107,14 @@ module ShortcutsHelper
       Shortcut.of(:links_move, "j", "k", "↓", "↑"),
       Shortcut.of(:links_open, "Enter"),
       Shortcut.of(:links_copy_wikilink, "y")
+    ],
+    # Canvas do grafo, na visão Graph e na tela cheia (graph_view_controller.js), com o foco nele.
+    graph: [
+      Shortcut.of(:graph_move, "j", "k", "↓", "↑"),
+      Shortcut.of(:graph_open, "Enter"),
+      Shortcut.of(:graph_zoom, "+", "-"),
+      Shortcut.of(:graph_fit, "0"),
+      Shortcut.of(:graph_back, "Esc")
     ]
   }.freeze
 

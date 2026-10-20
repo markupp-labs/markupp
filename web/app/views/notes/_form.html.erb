@@ -4,6 +4,7 @@
 <% content_for :head, tag.meta(name: "turbo-cache-control", content: "no-cache") %>
 <% content_for :sidebar, render("notes/sidebar", tree: @tree, current: @note) %>
 <% content_for :note_links, note_links_frame(@note) if @note.persisted? %>
+<% content_for :note_graph, render("graphs/local", note: @note) if @note.persisted? %>
 <%# viewer só lê: caminho e texto readonly, sem salvar nem apagar; o editor lê o readonly do textarea. %>
 <% writer = current_tenant.writer? %>
 <% mode = current_note_mode(@note) %>

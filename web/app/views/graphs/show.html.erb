@@ -1,1 +1,17 @@
-<%# Tela cheia do grafo do cofre. %>
+<%# Grafo do cofre inteiro em tela cheia, ainda na área das notas (sem deslize de área): a árvore segue na barra lateral,
+    o canvas toma o main e o Esc (ou o voltar) leva à nota de onde a tela foi aberta. %>
+<% content_for :title, t(".title") %>
+<% content_for :sidebar, render("notes/sidebar", tree: @tree, current: @origin) %>
+<div class="graph-page">
+  <header class="flex items-center gap-3">
+    <%= render "layouts/area_back", path: @origin ? note_path(@origin) : root_path %>
+    <h1 class="font-semibold"><%= t(".title") %></h1>
+    <span aria-hidden="true" class="ml-auto hidden truncate text-xs text-ink-muted md:inline"><%= t(".keys") %></span>
+  </header>
+  <% if @vault_id %>
+    <%= render "graphs/canvas", id: "vault_graph", url: graph_path(format: :json, vault: @vault_id, note: @origin&.id), region: "graph",
+                                autofocus: true, class: "graph-view-full" %>
+  <% else %>
+    <%= render "layouts/empty_state", title: t("graphs.empty.title"), hint: t("graphs.empty.hint") %>
+  <% end %>
+</div>

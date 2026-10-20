@@ -9,12 +9,13 @@
   <%# Ctrl+, e Cmd+, abrem as configurações; o Stimulus não tem filtro para a vírgula, o controller confere a tecla. %>
   <%# Ctrl+Shift+E, L e G (Cmd no Mac) mostram a visão da barra lateral e levam o foco a ela (sidebar_controller.js); g e depois t abre a lista de tenants. %>
   <%# Alt+h/j/k/l levam o foco à região vizinha pela geometria (region_nav_controller.js); na captura, antes do editor e do Vim. %>
+  <%# Alt+G abre o grafo do cofre em tela cheia (full_graph_shortcut_controller.js), a partir da nota aberta. %>
   <% shortcuts = "keydown.ctrl+b@window->sidebar#toggleFromShortcut keydown.meta+b@window->sidebar#toggleFromShortcut keydown@window->settings-shortcut#open keydown@window->sidebar#focusView keydown@window->tenants-shortcut#open keydown@window->region-nav#navigate:capture turbo:before-render@document->area-transition#mark" %>
-  <% shortcuts += " keydown.ctrl+k@window->search#open:prevent keydown.meta+k@window->search#open:prevent" if current_tenant %>
+  <% shortcuts += " keydown.ctrl+k@window->search#open:prevent keydown.meta+k@window->search#open:prevent keydown@window->full-graph-shortcut#open" if current_tenant %>
   <body class="app-shell min-h-dvh bg-surface font-mono text-sm text-ink"
-        <%= tag.attributes(data: { controller: [ "sidebar", "settings-shortcut", "region-nav", "tenants-shortcut", "area-transition", ("search" if current_tenant) ].compact.join(" "), action: shortcuts,
+        <%= tag.attributes(data: { controller: [ "sidebar", "settings-shortcut", "region-nav", "tenants-shortcut", "area-transition", ("search" if current_tenant), ("full-graph-shortcut" if current_tenant) ].compact.join(" "), action: shortcuts,
                                   area: current_area,
-                                  settings_shortcut_url_value: settings_path, tenants_shortcut_url_value: tenants_path,
+                                  settings_shortcut_url_value: settings_path, tenants_shortcut_url_value: tenants_path, full_graph_shortcut_url_value: graph_path,
                                   sidebar_hide_label_value: t(".hide_sidebar"), sidebar_show_label_value: t(".show_sidebar") }) %>>
     <%= busy_origin_spinner_template %>
     <%# Cada página nomeia a barra lateral pelo que ela mostra ali; sem nome, são as notas. %>
@@ -28,7 +29,7 @@
         Alt+h/j/k/l entram pela linha da árvore e, nas outras visões, pelo primeiro botão ou pela própria visão. %>
     <nav id="sidebar" popover aria-label="<%= sidebar_label %>"
          data-sidebar-target="panel" data-focus-region="tree"
-         data-focus-region-target="[role=treeitem][tabindex='0']; [role=tabpanel] :is(summary, a[href], button); [role=tabpanel][tabindex]"
+         data-focus-region-target="[role=treeitem][tabindex='0']; [role=tabpanel] [data-graph-canvas]; [role=tabpanel] :is(summary, a[href], button); [role=tabpanel][tabindex]"
          class="sidebar layer m-0 h-dvh w-72 max-w-[85vw] flex-col border-0 border-r border-line bg-surface-sunken p-0 text-ink open:flex md:max-w-none">
       <%= render "layouts/activity_bar", placement: "drawer" %>
       <div class="sidebar-scroll min-h-0 flex-1 overflow-y-auto p-3">
@@ -42,7 +43,10 @@
           <%= sidebar_view_panel("links") do %>
             <%= content_for?(:note_links) ? yield(:note_links) : render("layouts/empty_state", title: t(".links_empty.title"), hint: t(".links_empty.hint")) %>
           <% end %>
-          <%= sidebar_view_panel("graph") { render "layouts/empty_state", title: t(".graph_empty.title"), hint: t(".graph_empty.hint") } %>
+          <%# A página da nota aberta põe o grafo local dela (content_for :note_graph, graphs/_local). %>
+          <%= sidebar_view_panel("graph") do %>
+            <%= content_for?(:note_graph) ? yield(:note_graph) : render("layouts/empty_state", title: t(".graph_empty.title"), hint: t(".graph_empty.hint")) %>
+          <% end %>
         <% else %>
           <%# Sem tenant (onboarding, ou a API caiu antes de carregá-lo) a marca fica, com o nome do produto no lugar. %>
           <%= link_to root_path, class: "tree-row mb-2 flex items-center gap-2" do %>

@@ -1,0 +1,30 @@
+<%# Canvas do grafo (graph_view_controller.js), na visão Graph e na tela cheia: o controller só baixa o módulo do grafo
+    e pede o json (url) quando o canvas aparece. O canvas recebe o foco (j/k andam pelas notas, Enter abre, + e - dão
+    zoom, 0 enquadra); o status diz quantos nós e ligações estão desenhados, e o aviso falado diz a nota com o foco.
+    Vazio, recusado ou sem servidor, o estado vazio de cada caso toma o lugar do canvas. region: a região do Alt+hjkl;
+    toolbar: os controles acima do canvas, dentro do controller (o seletor de saltos da visão Graph). %>
+<% region = local_assigns[:region] %>
+<%= tag.div id:, class: [ "graph-view", local_assigns[:class] ],
+            data: { controller: "graph-view", action: "keydown->graph-view#press",
+                    graph_view_url_value: url, graph_view_autofocus_value: local_assigns[:autofocus] == true,
+                    graph_view_labels_value: { status: t("graphs.status"), capped: t("graphs.capped") }.to_json,
+                    graph_depth: local_assigns[:depth], focus_region: region, focus_region_target: ("[data-graph-canvas]" if region) } do %>
+  <%= local_assigns[:toolbar] %>
+  <div class="graph-stage">
+    <%= tag.canvas tabindex: 0, role: "application", class: "graph-canvas",
+                   aria: { label: t("graphs.canvas_label"), roledescription: t("graphs.roledescription"), keyshortcuts: "J K Enter + - 0" },
+                   data: { graph_canvas: "", graph_view_target: "canvas" } %>
+    <%= busy_spinner(busy_when: "##{id}[aria-busy]", class: "graph-busy") %>
+    <div hidden data-graph-view-target="empty" class="graph-overlay">
+      <%= render "layouts/empty_state", title: t("graphs.empty.title"), hint: t("graphs.empty.hint") %>
+    </div>
+    <div hidden data-graph-view-target="refused" class="graph-overlay">
+      <%= render "layouts/empty_state", title: t("graphs.refused.title"), hint: t("graphs.refused.hint"), tone: "danger" %>
+    </div>
+    <div hidden data-graph-view-target="failure" class="graph-overlay">
+      <%= render "layouts/empty_state", title: t("notes.unreachable.title"), hint: t("notes.unreachable.hint"), tone: "danger" %>
+    </div>
+  </div>
+  <p role="status" data-graph-view-target="status" class="graph-status"></p>
+  <p aria-live="polite" data-graph-view-target="announce" class="sr-only"></p>
+<% end %>

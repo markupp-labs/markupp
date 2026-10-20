@@ -1,0 +1,19 @@
+<%# Visão Graph da nota aberta (content_for :note_graph, notes/_form): a nota e as vizinhas a um ou dois saltos, com o
+    seletor de saltos e o caminho para o grafo do cofre inteiro em tela cheia (Alt+G, full_graph_shortcut_controller.js). %>
+<% full_graph = t("graphs.local.full") %>
+<% toolbar = capture do %>
+<div class="graph-toolbar">
+  <div role="group" aria-label="<%= t("graphs.local.depth") %>" class="graph-depth">
+    <span aria-hidden="true"><%= t("graphs.local.depth_prompt") %></span>
+    <% NoteGraphsController::DEPTHS.each do |depth| %>
+      <%= tag.button depth, type: "button", class: "graph-depth-option", aria: { pressed: depth == 1 },
+                            data: { action: "graph-view#changeDepth", graph_view_depth_param: depth } %>
+    <% end %>
+  </div>
+  <%= link_to graph_path(note: note.id), class: "btn-icon", title: "#{full_graph} (#{shortcut_key(:full_graph)})",
+              aria: { label: full_graph, keyshortcuts: shortcut_key(:full_graph) }, data: { full_graph_link: "" } do %>
+    <%= icon("arrows-out-simple") %>
+  <% end %>
+</div>
+<% end %>
+<%= render "graphs/canvas", id: "note_graph", url: note_graph_path(note, format: :json), depth: 1, class: "graph-view-local", toolbar: %>
