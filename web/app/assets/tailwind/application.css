@@ -173,6 +173,26 @@
     @apply ml-1.5;
   }
 
+  /* No .btn a espera toma o lugar do rótulo, como no VS Code: o glifo fica no meio do botão, por cima, e o texto e o
+     ícone ficam transparentes, sem o botão mudar de largura nem empurrar o que está ao lado. Fora do fluxo desde o
+     aria-busy, antes de o glifo entrar aos 300ms. */
+  :is(.btn, .btn-icon):has(> .busy-spinner-origin) {
+    position: relative;
+  }
+
+  :is(.btn, .btn-icon) > .busy-spinner-origin {
+    @apply absolute inset-0 m-0 justify-center;
+  }
+
+  :is(.btn, .btn-icon):has(> .busy-spinner-origin:not(:empty)) {
+    color: transparent;
+  }
+
+  /* Na busca, o X nativo de limpar sai enquanto o glifo aparece: os dois no accent pareciam um par de controles. */
+  form:has(> .busy-spinner:not(:empty)) input[type="search"]::-webkit-search-cancel-button {
+    display: none;
+  }
+
   /* Mascote em braille (script/mascot.rb): linha de altura 1 para os pontos encostarem. O tamanho da fonte
      é o tamanho do desenho: o grande cabe ao lado do formulário, o pequeno (48x48px) na altura das duas linhas da marca,
      em negrito para os pontos encorparem. */
