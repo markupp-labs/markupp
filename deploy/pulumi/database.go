@@ -22,12 +22,12 @@ const (
 	scalerURIKey      = "scaler-uri"
 	scalerPasswordKey = "scaler-password"
 	scalerUser        = "markupp_scaler"
-	postgresImage     = "postgres:17.9-alpine3.23"
+	postgresImage     = "postgres:18.6-alpine3.24"
 	postgresPort      = 5432
 	postgresUser      = "markupp"
 	passwordLength    = 32
 	authSecretLength  = 64
-	postgresDataPath  = "/var/lib/postgresql/data"
+	postgresDataPath  = "/var/lib/postgresql"
 )
 
 // generatedSecrets são os valores aleatórios do Secret do banco.
@@ -154,8 +154,9 @@ func postgresStatefulSetArgs(names resourceNames, args MarkuppArgs, labels pulum
 	}
 }
 
-// postgresContainer aponta PGDATA para um subdiretório porque a raiz de um
-// volume ext4 tem lost+found, e o initdb recusa diretório não vazio.
+// postgresContainer monta o volume onde a imagem 18 espera. O PGDATA padrão dela,
+// /var/lib/postgresql/18/docker, já é subdiretório do volume, então o lost+found
+// da raiz de um volume ext4 não atrapalha o initdb.
 func postgresContainer(names resourceNames) corev1.ContainerArgs {
 	return corev1.ContainerArgs{
 		Name:  pulumi.String("postgres"),
@@ -163,7 +164,6 @@ func postgresContainer(names resourceNames) corev1.ContainerArgs {
 		Env: corev1.EnvVarArray{
 			corev1.EnvVarArgs{Name: pulumi.String("POSTGRES_USER"), Value: pulumi.String(postgresUser)},
 			corev1.EnvVarArgs{Name: pulumi.String("POSTGRES_DB"), Value: pulumi.String(postgresUser)},
-			corev1.EnvVarArgs{Name: pulumi.String("PGDATA"), Value: pulumi.String(postgresDataPath + "/pgdata")},
 			secretEnv("POSTGRES_PASSWORD", names.dbSecret, dbPasswordKey),
 		},
 		Ports:          corev1.ContainerPortArray{corev1.ContainerPortArgs{ContainerPort: pulumi.Int(postgresPort)}},

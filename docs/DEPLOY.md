@@ -108,6 +108,10 @@ com o indexador e o notificador em laço e o Mailpit, que recebe todo email de d
 make run
 ```
 
+O PostgreSQL 18 guarda o banco no volume postgres18_data: o volume postgres_data do 17 fica para
+trás, e um `.env` antigo precisa trocar POSTGRES_VOLUME para o nome novo. Para levar dados
+antigos, gere um `pg_dump` com o 17 ainda de pé e restaure no 18 com `psql` ou `pg_restore`.
+
 Servidor em `http://localhost:8080` e caixa de email em `http://localhost:8025`. Os testes rodam no host e precisam de Go e de Docker:
 
 ```sh

@@ -12,13 +12,13 @@ x-servidor: &servidor
 
 services:
   postgres:
-    image: postgres:17.9-alpine3.23
+    image: postgres:18.6-alpine3.24
     environment:
       POSTGRES_USER: markupp
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-markupp}
       POSTGRES_DB: markupp
     volumes:
-      - ${POSTGRES_VOLUME:-postgres_data}:/var/lib/postgresql/data
+      - ${POSTGRES_VOLUME:-postgres18_data}:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U markupp -d markupp"]
       interval: 2s
@@ -74,5 +74,5 @@ services:
         condition: service_completed_successfully
 
 volumes:
-  postgres_data:
+  postgres18_data:
   go_mod_cache:
