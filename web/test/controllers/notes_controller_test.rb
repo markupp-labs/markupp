@@ -467,4 +467,43 @@ class NotesControllerTest < ActionDispatch::IntegrationTest
     assert_equal "mine", css_select("main textarea").sole.text
     assert_select "#note_path_error", text: "Path can't contain .. or pass 1024 characters"
   end
+
+  # :e do modo Vim (editor/vim_mode.js): o caminho resolve como o campo de caminho, a partir da nota aberta.
+  test "index with a path opens the note at that path, relative to the folder of the origin" do
+    use_fake_api(notes: [ { id: "1", path: "work/plan.md", content: "" }, { id: "2", path: "ideas.md", content: "" } ])
+    sign_in_as
+
+    get notes_path(path: "plan", origin_path: "work/notes.md")
+    assert_redirected_to note_path("1")
+
+    get notes_path(path: "/ideas", origin_path: "work/notes.md")
+    assert_redirected_to note_path("2")
+  end
+
+  test "index with the path of no note opens a new note with that path, not saved yet" do
+    api = use_fake_api(notes: [ { id: "1", path: "work/plan.md", content: "" } ])
+    sign_in_as
+
+    get notes_path(path: "2026/goals", origin_path: "work/plan.md")
+
+    assert_response :success
+    assert_select "form[action=?][method=post]", notes_path do
+      assert_select "input[name=?][value=?]", "note[path]", "/work/2026/goals"
+      assert_select "input[type=hidden][name=origin_path][value=?]", "work/2026/goals.md"
+    end
+    assert_select "title", "New note"
+    assert_empty api.post_requests
+  end
+
+  # :wq salva e sai para a nota padrao.
+  test "create and update with quit go to the default note after saving" do
+    use_fake_api(notes: [ { id: "1", path: "plan.md", content: "" } ])
+    sign_in_as
+
+    post notes_path, params: { note: { path: "/idea", content: "x" }, origin_path: "", quit: "true" }
+    assert_redirected_to root_path
+
+    patch note_path("1"), params: { note: { path: "/plan", content: "y" }, origin_path: "plan.md", quit: "true" }
+    assert_redirected_to root_path
+  end
 end
