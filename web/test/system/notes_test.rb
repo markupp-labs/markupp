@@ -262,7 +262,7 @@ class NotesTest < ApplicationSystemTestCase
     visit note_path("1")
     find(".cm-content").send_keys([ :control, :end ], "draft")
     assert_text "Unsaved changes"
-    accept_confirm("Delete this note? This cannot be undone.") { click_on "Delete" }
+    accept_confirm("Delete /plan? This cannot be undone.") { click_on "Delete" }
 
     assert_text "Deleted"
     assert_current_path root_path
@@ -316,7 +316,7 @@ class NotesTest < ApplicationSystemTestCase
     sign_in_through_form
 
     visit note_path("1")
-    accept_confirm("Delete this note? This cannot be undone.") { click_on "Delete" }
+    accept_confirm("Delete /work/plan? This cannot be undone.") { click_on "Delete" }
 
     assert_text "Deleted"
     assert_field "Path", with: "/", focused: true
@@ -328,7 +328,7 @@ class NotesTest < ApplicationSystemTestCase
     sign_in_through_form
 
     visit note_path("1")
-    accept_confirm("Delete this note? This cannot be undone.") { click_on "Delete" }
+    accept_confirm("Delete /plan? This cannot be undone.") { click_on "Delete" }
 
     assert_text "Deleted"
     scroll, window = evaluate_script("[document.documentElement.scrollHeight, window.innerHeight]")
