@@ -69,8 +69,9 @@ export default class extends Controller {
   }
 
   // Abre para baixo e à direita do ponto, e encosta na borda quando não cabe (menu perto do fim da barra ou da tela).
+  // Mede sem o transform: no começo da entrada (.layer) o menu ainda está menor, e o getBoundingClientRect deixava vazar.
   placeAt(x, y) {
-    const { width, height } = this.element.getBoundingClientRect()
+    const { offsetWidth: width, offsetHeight: height } = this.element
     this.element.style.left = `${Math.max(EDGE_GAP, Math.min(x, innerWidth - width - EDGE_GAP))}px`
     this.element.style.top = `${Math.max(EDGE_GAP, Math.min(y, innerHeight - height - EDGE_GAP))}px`
   }
