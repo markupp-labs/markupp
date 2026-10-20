@@ -208,6 +208,19 @@
   animation: area-in var(--motion-window-in) var(--ease-out-quint) both;
 }
 
+/* Voltar às notas (data-area-moved="back") é o workspace anterior: o mesmo deslize, para o lado oposto. */
+:root[data-area-moved="back"]::view-transition-old(root),
+:root[data-area-moved="back"]::view-transition-old(sidebar):only-child,
+:root[data-area-moved="back"]::view-transition-old(sidebar-spine):only-child {
+  animation-name: area-out-back;
+}
+
+:root[data-area-moved="back"]::view-transition-new(root),
+:root[data-area-moved="back"]::view-transition-new(sidebar):only-child,
+:root[data-area-moved="back"]::view-transition-new(sidebar-spine):only-child {
+  animation-name: area-in-back;
+}
+
 @keyframes area-out {
   to {
     opacity: 0;
@@ -219,5 +232,19 @@
   from {
     opacity: 0;
     transform: translateX(var(--area-shift));
+  }
+}
+
+@keyframes area-out-back {
+  to {
+    opacity: 0;
+    transform: translateX(var(--area-shift));
+  }
+}
+
+@keyframes area-in-back {
+  from {
+    opacity: 0;
+    transform: translateX(calc(-1 * var(--area-shift)));
   }
 }
