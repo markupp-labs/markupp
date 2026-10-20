@@ -39,13 +39,24 @@ class ActivityBarTest < ApplicationSystemTestCase
     visit root_path
     assert_selector ".activity-bar-side"
     bar = find(".activity-bar-side")
-    assert_equal [ 0, 48 ], [ edge(bar, "left"), edge(bar, "right") ].map(&:round)
-    assert_in_delta 48, edge(find("nav#sidebar"), "left"), 0.5
+    assert_equal [ 0, 32 ], [ edge(bar, "left"), edge(bar, "right") ].map(&:round)
+    assert_in_delta 32, edge(find("nav#sidebar"), "left"), 0.5
 
     click_on "Hide sidebar"
     assert_no_selector "nav#sidebar"
     assert_in_delta 0, edge(bar, "left"), 0.5
-    assert_operator edge(find("main"), "left"), :>=, 48
+    assert_operator edge(find("main"), "left"), :>=, 32
+  end
+
+  # Compacta como a barra do Zed: ícone de 16px num quadrado de 32px, a marca da visão ativa de 2px na borda de fora.
+  test "the icons are 16px in 32px squares with the mark of the active view on the outer edge" do
+    visit root_path
+    assert_selector "[role=tab][aria-label=Explorer][aria-selected=true]"
+    explorer = tab("Explorer")
+
+    assert_equal [ 32, 32 ], [ explorer.evaluate_script("this.offsetWidth"), explorer.evaluate_script("this.offsetHeight") ]
+    assert_equal [ 16, 16 ], explorer.evaluate_script("[this.querySelector('svg').getBoundingClientRect().width, this.querySelector('svg').getBoundingClientRect().height]").map(&:round)
+    assert_equal [ "0px", "2px" ], explorer.evaluate_script("['left', 'width'].map((name) => getComputedStyle(this, '::before')[name])")
   end
 
   test "the active view is marked only while the sidebar shows it" do

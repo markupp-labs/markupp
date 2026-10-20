@@ -37,16 +37,16 @@ class MotionTest < ApplicationSystemTestCase
     assert_equal [ { "transform" => "480 #{QUINT}" }, { "grid-template-columns" => "480 #{QUINT}" }, { "transform" => "480 #{QUINT}" }, {} ], opening
   end
 
-  # A barra fechando para, e abrindo parte, com a borda dela sobre a linha da faixa da barra fechada: sem duas linhas no
+  # A barra fechando para, e abrindo parte, com a borda dela sobre a linha da barra de atividades: sem duas linhas no
   # fim do recolher nem salto da borda no começo do expandir.
-  test "the sidebar stops and starts with its edge on the line of the closed strip" do
+  test "the sidebar stops and starts with its edge on the line of the activity bar" do
     visit root_path
 
     closing = sidebar_edge_after_click(at: :end)
     assert_no_selector "nav#sidebar"
     opening = sidebar_edge_after_click(at: :start)
 
-    assert_equal [ strip_edge, strip_edge ], [ closing, opening ].map { it.round(1) }
+    assert_equal [ activity_bar_edge, activity_bar_edge ], [ closing, opening ].map { it.round(1) }
   end
 
   # O deslize leva a borda esquerda do main junto com a barra: o que encosta à direita no cabeçalho (o seletor de modo)
@@ -225,10 +225,8 @@ class MotionTest < ApplicationSystemTestCase
       JS
     end
 
-    def strip_edge
-      evaluate_script(<<~JS).round(1)
-        ["--activity-width", "--sidebar-strip"].reduce((sum, name) => sum + (parseFloat(getComputedStyle(document.documentElement).getPropertyValue(name)) || 0) * 16, 1)
-      JS
+    def activity_bar_edge
+      evaluate_script("document.querySelector('.activity-bar-side').getBoundingClientRect().right").round(1)
     end
 
     # A saída que interrompe uma entrada encurta (a transição revertida); a ação seguinte espera a anterior acabar.
