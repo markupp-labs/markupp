@@ -24,15 +24,17 @@ class CommandPaletteTest < ApplicationSystemTestCase
 
   test "the arrows and ctrl+j or ctrl+k move the selection without opening the search" do
     open_palette
-    send_keys "mode"
-    assert_equal [ "Edit mode", "Read mode" ], option_labels
+    send_keys "ode"
+    assert_equal [ "Read mode", "Toggle sidebar" ], option_labels
 
     send_keys [ :control, "j" ]
-    assert_selector "[role=option][aria-selected=true]", text: "Read mode"
+    assert_selector "[role=option][aria-selected=true]", text: "Toggle sidebar"
     send_keys [ :control, "k" ]
-    assert_selector "[role=option][aria-selected=true]", text: "Edit mode"
+    assert_selector "[role=option][aria-selected=true]", text: "Read mode"
     assert_no_selector "dialog[data-search-target=dialog][open]"
-    send_keys :up, :enter
+    send_keys :up
+    assert_selector "[role=option][aria-selected=true]", text: "Toggle sidebar"
+    send_keys :down, :enter
 
     assert_selector "button[aria-label=Read][aria-pressed=true]"
     assert_selector ".note-preview h1", text: "Plan"
@@ -63,8 +65,8 @@ class CommandPaletteTest < ApplicationSystemTestCase
     # A próxima tecla vai para quem tem o foco; com a ajuda ainda fechando, a suíte paralela deu element not interactable.
     assert_no_selector "dialog#shortcut_help[open]"
 
-    run_command "light theme"
-    assert_selector "html[data-theme=light]"
+    run_command "dark theme"
+    assert_selector "html[data-theme=dark]"
 
     run_command "settings"
     assert_selector "main h1", text: "Account"
