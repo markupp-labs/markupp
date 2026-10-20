@@ -184,6 +184,21 @@ class BusySpinnerTest < ApplicationSystemTestCase
     assert_glyph_centered_on save
   end
 
+  # A engrenagem da barra de atividades (e qualquer ícone dela) espera como os botões: o glifo por cima do ícone, sem
+  # o ícone sair do lugar. Antes o glifo entrava ao lado e o ícone dava um pulo ao clicar.
+  test "a slow page from an activity bar icon spins over the icon without moving it" do
+    emulate_motion_preference("no-preference")
+    visit note_path("1")
+    gear = find(".activity-bar-side a[aria-label=Settings]")
+    icon_box = gear.evaluate_script("JSON.stringify(this.querySelector('svg').getBoundingClientRect())")
+    @api.hold_calls!("GET /notes")
+
+    assert_spinner_after_threshold(".activity-bar-side a[aria-label=Settings][aria-busy=true]") { gear.click }
+    busy = find(".activity-bar-side a[aria-label=Settings][aria-busy=true]")
+    assert_equal icon_box, busy.evaluate_script("JSON.stringify(this.querySelector('svg').getBoundingClientRect())")
+    assert_glyph_centered_on busy
+  end
+
   # Parado (reduced-motion), o glifo é "..." na linha de base: a tinta dos pontos também fica no meio do botão.
   test "with reduced motion the still dots sit in the middle of the button" do
     visit note_path("1")
