@@ -55,7 +55,7 @@ func TestPageRank_NotaCitadaPorTodasLidera(t *testing.T) {
 }
 
 func TestPageRank_ConfereComOGonum(t *testing.T) {
-	rng := rand.New(rand.NewPCG(7, 7))
+	rng := rand.New(rand.NewPCG(7, 7)) //nolint:gosec // G404: o grafo do teste precisa ser reprodutivel, nao imprevisivel
 	ids := make([]string, 300)
 	referencia := simple.NewDirectedGraph()
 	for i := range ids {
