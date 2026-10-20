@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { isTyping } from "controllers/typing"
 
 // Esc nas configurações volta para a página de origem, como sair de um painel no VS Code. Esc dentro de campo,
 // diálogo ou popover aberto é deles (fechar, desfazer), então fica de fora.
@@ -10,7 +11,6 @@ export default class extends Controller {
   }
 
   claimedByOther(target) {
-    return target.closest("input, textarea, select, [contenteditable]") != null ||
-      document.querySelector("dialog[open], :popover-open") != null
+    return isTyping(target) || document.querySelector("dialog[open], :popover-open") != null
   }
 }
