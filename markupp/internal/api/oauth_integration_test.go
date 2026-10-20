@@ -83,8 +83,10 @@ func iniciarAutorizacao(t *testing.T, server *httptest.Server) string {
 	require.Equal(t, http.StatusFound, resp.StatusCode)
 	consent, err := url.Parse(resp.Header.Get("Location"))
 	require.NoError(t, err)
-	assert.Equal(t, painelDeIntegracao+"/oauth/consentimento", consent.Scheme+"://"+consent.Host+consent.Path)
-	return consent.Query().Get("pedido")
+	pedido, found := strings.CutPrefix(consent.Path, "/oauth/authorize/")
+	assert.True(t, found, "esperado o pedido no caminho /oauth/authorize/<id>, veio %q", consent.Path)
+	assert.Equal(t, painelDeIntegracao, consent.Scheme+"://"+consent.Host)
+	return pedido
 }
 
 func aprovarPedido(t *testing.T, server *httptest.Server, accountToken, requestID string) url.Values {
