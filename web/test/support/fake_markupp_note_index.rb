@@ -24,12 +24,13 @@ class FakeMarkuppNoteIndex
       notes
     end
 
-    # Sem sort, por caminho; a nota sem o valor vai para o fim nos dois sentidos.
+    # Sem sort, por caminho; a nota sem o valor vai para o fim nos dois sentidos. Empate segue pelo caminho crescente,
+    # nos dois sentidos, como a API.
     def sorted(notes, params)
       key = SORT_KEYS[params["sort"]] or return notes.sort_by { it["path"] }
       ranked, unranked = notes.partition { it[key] }
-      ranked = ranked.sort_by { [ it[key], it["path"] ] }
-      (params["direction"] == "asc" ? ranked : ranked.reverse) + unranked.sort_by { it["path"] }
+      sign = params["direction"] == "asc" ? 1 : -1
+      ranked.sort { |a, b| (sign * (a[key] <=> b[key])).nonzero? || a["path"] <=> b["path"] } + unranked.sort_by { it["path"] }
     end
 
     def list_item(note) = summary(note).merge(note.slice("updated_at", "degree", "pagerank", "community"))
