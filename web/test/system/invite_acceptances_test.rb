@@ -10,7 +10,7 @@ class InviteAcceptancesTest < ApplicationSystemTestCase
     fill_in "Password", with: "senha-nova"
     click_on "Create account"
 
-    assert_selector "nav", text: "caio@markupp.dev"
+    assert_selector ".activity-bar-side button[aria-label=Account][title='caio@markupp.dev']"
     assert_selector "nav #current_tenant", text: /Acme research.*member/m
   end
 end

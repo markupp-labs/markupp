@@ -26,19 +26,20 @@ class TenantsControllerTest < ActionDispatch::IntegrationTest
 
     get tenants_path
 
-    assert_select "nav", text: /#{FakeMarkuppAccounts::DEFAULT_EMAIL}/
+    assert_select ".activity-bar-side button[aria-label=Account][title=?]", FakeMarkuppAccounts::DEFAULT_EMAIL
     assert_select "nav button", text: "Search", count: 0
     assert_select "button[popovertarget=tenant_switcher]", count: 0
     assert_select "dialog[data-search-target]", count: 0
   end
 
-  test "the sidebar footer stays fixed at the bottom even without a tenant above it" do
+  test "the foot of the activity bar shows even without a tenant, with no view above it" do
     use_fake_api(tenants: [])
     sign_in_as
 
     get tenants_path
 
-    assert_select "nav > .sidebar-scroll + footer", text: /#{FakeMarkuppAccounts::DEFAULT_EMAIL}/
+    assert_select ".activity-bar-side .activity-bar-actions a[aria-label=Settings]"
+    assert_select ".activity-bar-side [role=tab]", count: 0
   end
 
   test "the tenant list also offers a form for a new tenant, in a dialog" do

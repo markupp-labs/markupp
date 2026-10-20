@@ -50,14 +50,14 @@ class ApplicationSystemTestCase < ActionDispatch::SystemTestCase
     assert_no_selector "dialog#confirm_dialog[open]"
   end
 
-  # Entra pelo formulário de login, contra a fake, e espera a barra lateral com o email.
+  # Entra pelo formulário de login, contra a fake, e espera o ícone da conta com o email (pé da barra de atividades).
   def sign_in_through_form(email = FakeMarkuppAccounts::DEFAULT_EMAIL, password: FakeMarkuppAccounts::DEFAULT_PASSWORD)
     visit new_session_path
     fill_in "Email", with: email
     fill_in "Password", with: password
     click_on "Log in"
     # O login cruza login, /auth/me e /me/tenants; com um Chrome por núcleo em paralelo passa dos 2s padrão.
-    assert_selector "nav", text: email, wait: 10
+    assert_selector "button[aria-label=Account][title='#{email}']", visible: :all, minimum: 1, wait: 10
   end
 
   def edge(element, side) = evaluate_script("arguments[0].getBoundingClientRect().#{side}", element)
