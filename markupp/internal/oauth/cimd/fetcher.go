@@ -26,6 +26,7 @@ const (
 	DefaultMaxBodyBytes = 64 << 10
 	DefaultMinTTL       = 5 * time.Minute
 	DefaultMaxTTL       = 24 * time.Hour
+	DefaultAllowedPort  = "443"
 )
 
 // Fetcher busca e valida Client ID Metadata Documents.
@@ -37,6 +38,7 @@ type Fetcher struct {
 	maxBody int64
 	minTTL  time.Duration
 	maxTTL  time.Duration
+	port    string
 }
 
 // Option ajusta um Fetcher em construção.
@@ -58,7 +60,7 @@ func WithIPPolicy(policy IPPolicy) Option { return func(f *Fetcher) { f.policy =
 
 // WithAllowedPort troca a única porta aceita no client_id, 443 por padrão; existe para o
 // teste alcançar um servidor local numa porta qualquer.
-func WithAllowedPort(port string) Option { return func(*Fetcher) {} }
+func WithAllowedPort(port string) Option { return func(f *Fetcher) { f.port = port } }
 
 // WithRootCAs troca as autoridades confiáveis; o padrão (nil) usa as do sistema.
 func WithRootCAs(pool *x509.CertPool) Option { return func(f *Fetcher) { f.rootCAs = pool } }
@@ -71,6 +73,7 @@ func NewFetcher(opts ...Option) (*Fetcher, error) {
 		maxBody: DefaultMaxBodyBytes,
 		minTTL:  DefaultMinTTL,
 		maxTTL:  DefaultMaxTTL,
+		port:    DefaultAllowedPort,
 	}
 	for _, opt := range opts {
 		opt(f)
@@ -125,7 +128,7 @@ func newGuardedClient(policy IPPolicy, roots *x509.CertPool, timeout time.Durati
 // interno) e ErrFetchFailed embrulha o erro de rede. O chamador não deve repassar a
 // mensagem ao cliente; responda só com base em errors.Is.
 func (f *Fetcher) Fetch(ctx context.Context, clientID string) (ClientMetadata, error) {
-	if _, err := ParseClientID(clientID); err != nil {
+	if err := f.checkClientID(clientID); err != nil {
 		return ClientMetadata{}, err
 	}
 	body, cacheControl, err := f.download(ctx, clientID)
@@ -138,6 +141,23 @@ func (f *Fetcher) Fetch(ctx context.Context, clientID string) (ClientMetadata, e
 	}
 	meta.TTL = cacheTTL(cacheControl, f.minTTL, f.maxTTL)
 	return meta, nil
+}
+
+// checkClientID valida o client_id e recusa porta explícita diferente da permitida; sem
+// porta, vale a 443 do https.
+func (f *Fetcher) checkClientID(clientID string) error {
+	parsed, err := ParseClientID(clientID)
+	if err != nil {
+		return err
+	}
+	port := parsed.Port()
+	if port == "" {
+		port = DefaultAllowedPort
+	}
+	if port != f.port {
+		return invalidClientID(clientID, "com porta "+port+" (aceita so a "+f.port+")")
+	}
+	return nil
 }
 
 func (f *Fetcher) download(ctx context.Context, target string) (body []byte, cacheControl string, err error) {

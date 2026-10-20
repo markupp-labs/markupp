@@ -13,7 +13,8 @@ var ErrInvalidClientID = errors.New("client_id invalido")
 const clientIDShape = "URL https com host e caminho, sem query, sem fragmento, sem credenciais e sem segmentos . ou .."
 
 // ParseClientID valida o client_id antes de qualquer busca e devolve a URL interpretada.
-// A porta é permitida; a query não, nem vazia, embora o draft só a desaconselhe.
+// A porta fica para o Fetcher, que só aceita a 443; a query não passa, nem vazia, embora
+// o draft só a desaconselhe.
 func ParseClientID(raw string) (*url.URL, error) {
 	parsed, err := url.Parse(raw)
 	if err != nil {
