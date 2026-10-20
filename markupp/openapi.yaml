@@ -1302,10 +1302,12 @@ paths:
       description: |
         Todas as ligações das notas do cofre, um item por ligação, ordenados pelo
         caminho da nota que liga, depois por título citado, tipo, predicado e caminho
-        da nota a que ligam. status=unresolved lista as ligações não resolvidas, como
-        escritas, inclusive embed de anexo sem nota com aquele título, cada uma com o
-        palpite do indexador em inferred_target quando há. A resolução segue as regras
-        de GET /v1/notes/{id}/links. O viewer também lê.
+        da nota a que ligam. A página vem de offset e limit, lida pelas notas na ordem
+        do caminho até encher, sem ordenar as ligações do cofre inteiro.
+        status=unresolved lista as ligações não resolvidas, como escritas, inclusive
+        embed de anexo sem nota com aquele título, cada uma com o palpite do
+        indexador em inferred_target quando há. A resolução segue as regras de
+        GET /v1/notes/{id}/links. O viewer também lê.
       parameters:
         - $ref: '#/components/parameters/TenantHeader'
         - $ref: '#/components/parameters/VaultID'
