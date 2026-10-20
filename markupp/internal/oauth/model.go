@@ -126,7 +126,7 @@ type Repository interface {
 	//     revogada: o código já foi consumido. Numa transação, o pedido fica marcado
 	//     como reusado (guardando o primeiro reuso em now) e os tokens daquela
 	//     Autorização são revogados com a trava dela (RFC 9700, 4.4.2).
-	RedeemCode(ctx context.Context, codeHash string, now time.Time) (RedeemedCode, error)
+	RedeemCode(ctx context.Context, codeHash string, now time.Time, reuseWindow time.Duration) (RedeemedCode, error)
 	// SaveCodeTokens trava a Autorização dos tokens e grava o par emitido pela troca do
 	// código do pedido requestID, numa transação. Sem gravar nada, devolve
 	// ErrAuthorizationNotFound se a Autorização foi revogada e ErrCodeAlreadyUsed se o

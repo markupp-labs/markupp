@@ -27,7 +27,7 @@ func (s *Service) ExchangeCode(ctx context.Context, g CodeGrant) (TokenResponse,
 // redeemCode consome o código. No reuso, o repositório já revogou os tokens da
 // Autorização do pedido (RFC 9700, 4.4.2).
 func (s *Service) redeemCode(ctx context.Context, code string, now time.Time) (RedeemedCode, error) {
-	redeemed, err := s.repo.RedeemCode(ctx, auth.HashOpaqueToken(code), now)
+	redeemed, err := s.repo.RedeemCode(ctx, auth.HashOpaqueToken(code), now, s.cfg.RequestTTL)
 	switch {
 	case err == nil:
 		return redeemed, nil

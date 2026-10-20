@@ -27,7 +27,9 @@ type fakeOAuthRepository struct {
 	denials     []oauth.Denial
 	redeemCalls []string
 	redeemNow   []time.Time
-	saved       [][]oauth.IssuedToken
+	// redeemWindows guarda a janela de reuso de cada chamada a RedeemCode.
+	redeemWindows []time.Duration
+	saved         [][]oauth.IssuedToken
 	// savedRequests guarda o pedido de cada chamada a SaveCodeTokens.
 	savedRequests []string
 
@@ -126,9 +128,10 @@ func (f *fakeOAuthRepository) ActiveAuthorization(_ context.Context, userID, cli
 	return authorization, nil
 }
 
-func (f *fakeOAuthRepository) RedeemCode(_ context.Context, codeHash string, now time.Time) (oauth.RedeemedCode, error) {
+func (f *fakeOAuthRepository) RedeemCode(_ context.Context, codeHash string, now time.Time, reuseWindow time.Duration) (oauth.RedeemedCode, error) {
 	f.redeemCalls = append(f.redeemCalls, codeHash)
 	f.redeemNow = append(f.redeemNow, now)
+	f.redeemWindows = append(f.redeemWindows, reuseWindow)
 	return f.redeemed, f.redeemErr
 }
 

@@ -28,14 +28,14 @@ func repoComCodigoDeA1(t *testing.T) (*storage.PostgresOAuthRepository, *pgxpool
 // trocarCodigo consome h1 como a primeira troca do código.
 func trocarCodigo(t *testing.T, repo *storage.PostgresOAuthRepository) oauth.RedeemedCode {
 	t.Helper()
-	redeemed, err := repo.RedeemCode(context.Background(), "h1", instanteOAuth.Add(90*time.Second))
+	redeemed, err := repo.RedeemCode(context.Background(), "h1", instanteOAuth.Add(90*time.Second), janelaReusoCodigo)
 	require.NoError(t, err)
 	return redeemed
 }
 
 // reusarCodigo reapresenta h1 depois da primeira troca.
 func reusarCodigo(repo *storage.PostgresOAuthRepository, at time.Time) (oauth.RedeemedCode, error) {
-	return repo.RedeemCode(context.Background(), "h1", at)
+	return repo.RedeemCode(context.Background(), "h1", at, janelaReusoCodigo)
 }
 
 func tokensAtivos(t *testing.T, pool *pgxpool.Pool) int {
@@ -52,7 +52,7 @@ func TestPostgresOAuthRepo_RedeemCode_LeAAutorizacaoDoPedidoENaoAAtivaDoPar(t *t
 	_, err := repo.ApproveRequest(ctx, aprovacao("r2", "h2", instanteOAuth.Add(time.Minute)))
 	require.NoError(t, err)
 
-	_, err = repo.RedeemCode(ctx, "h1", instanteOAuth.Add(90*time.Second))
+	_, err = repo.RedeemCode(ctx, "h1", instanteOAuth.Add(90*time.Second), janelaReusoCodigo)
 
 	require.ErrorIs(t, err, oauth.ErrAuthorizationNotFound, "o código antigo não serve à Autorização nova")
 }
@@ -173,7 +173,7 @@ func trocarEGravar(t *testing.T, repo *storage.PostgresOAuthRepository, requestI
 	require.NoError(t, repo.CreateRequest(ctx, pedidoOAuth(requestID, oauth.ScopeNotesRead)))
 	_, err := repo.ApproveRequest(ctx, aprovacao(requestID, codeHash, at))
 	require.NoError(t, err)
-	redeemed, err := repo.RedeemCode(ctx, codeHash, at.Add(30*time.Second))
+	redeemed, err := repo.RedeemCode(ctx, codeHash, at.Add(30*time.Second), janelaReusoCodigo)
 	require.NoError(t, err)
 	require.NoError(t, repo.SaveCodeTokens(ctx, requestID, tokensDe(redeemed.Authorization.ID, "-"+requestID)))
 	return redeemed
@@ -187,7 +187,7 @@ func TestPostgresOAuthRepo_RedeemCode_ReusoAntigoDepoisDeReconsentir_NaoTocaANov
 	require.NoError(t, repo.RevokeAuthorization(ctx, "u1", antiga.Authorization.ID, evento))
 	nova := trocarEGravar(t, repo, "r2", "h2", instanteOAuth.Add(2*time.Minute))
 
-	got, err := repo.RedeemCode(ctx, "h1", instanteOAuth.Add(4*time.Minute))
+	got, err := repo.RedeemCode(ctx, "h1", instanteOAuth.Add(4*time.Minute), janelaReusoCodigo)
 
 	require.ErrorIs(t, err, oauth.ErrCodeAlreadyUsed)
 	assert.Equal(t, antiga.Authorization.ID, got.Authorization.ID)

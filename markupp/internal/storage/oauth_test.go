@@ -16,6 +16,10 @@ import (
 
 var instanteOAuth = time.Date(2026, 10, 16, 12, 0, 0, 0, time.UTC)
 
+// janelaReusoCodigo é a janela, contada da decisão do pedido, em que o reuso do código
+// ainda revoga os tokens; os testes usam a duração padrão do pedido.
+const janelaReusoCodigo = 10 * time.Minute
+
 // repoOAuth sobe o banco com a conta u1 e o cliente c1 e devolve o repositório sobre ele.
 func repoOAuth(t *testing.T) (*storage.PostgresOAuthRepository, *pgxpool.Pool) {
 	t.Helper()
@@ -314,7 +318,7 @@ func TestPostgresOAuthRepo_RedeemCode_DevolvePedidoEAutorizacao(t *testing.T) {
 	repo, _ := repoOAuth(t)
 	pedidoAprovado(t, repo, "r1", "h1", oauth.ScopeNotesRead)
 
-	got, err := repo.RedeemCode(context.Background(), "h1", instanteOAuth.Add(90*time.Second))
+	got, err := repo.RedeemCode(context.Background(), "h1", instanteOAuth.Add(90*time.Second), janelaReusoCodigo)
 
 	require.NoError(t, err)
 	assert.Equal(t, "r1", got.Request.ID)
@@ -329,10 +333,10 @@ func TestPostgresOAuthRepo_RedeemCode_ReusoDevolveOriginalComErro(t *testing.T) 
 	repo, _ := repoOAuth(t)
 	ctx := context.Background()
 	pedidoAprovado(t, repo, "r1", "h1", oauth.ScopeNotesRead)
-	primeiro, err := repo.RedeemCode(ctx, "h1", instanteOAuth.Add(90*time.Second))
+	primeiro, err := repo.RedeemCode(ctx, "h1", instanteOAuth.Add(90*time.Second), janelaReusoCodigo)
 	require.NoError(t, err)
 
-	got, err := repo.RedeemCode(ctx, "h1", instanteOAuth.Add(100*time.Second))
+	got, err := repo.RedeemCode(ctx, "h1", instanteOAuth.Add(100*time.Second), janelaReusoCodigo)
 
 	require.ErrorIs(t, err, oauth.ErrCodeAlreadyUsed)
 	assert.Equal(t, "r1", got.Request.ID)
@@ -343,10 +347,10 @@ func TestPostgresOAuthRepo_RedeemCode_ReusoDepoisDeExpirarContinuaJaUsado(t *tes
 	repo, _ := repoOAuth(t)
 	ctx := context.Background()
 	pedidoAprovado(t, repo, "r1", "h1", oauth.ScopeNotesRead)
-	_, err := repo.RedeemCode(ctx, "h1", instanteOAuth.Add(90*time.Second))
+	_, err := repo.RedeemCode(ctx, "h1", instanteOAuth.Add(90*time.Second), janelaReusoCodigo)
 	require.NoError(t, err)
 
-	got, err := repo.RedeemCode(ctx, "h1", instanteOAuth.Add(time.Hour))
+	got, err := repo.RedeemCode(ctx, "h1", instanteOAuth.Add(time.Hour), janelaReusoCodigo)
 
 	require.ErrorIs(t, err, oauth.ErrCodeAlreadyUsed)
 	assert.Equal(t, "r1", got.Request.ID)
@@ -356,12 +360,12 @@ func TestPostgresOAuthRepo_RedeemCode_ReusoComAutorizacaoRevogadaDevolveADoPedid
 	repo, pool := repoOAuth(t)
 	ctx := context.Background()
 	pedidoAprovado(t, repo, "r1", "h1", oauth.ScopeNotesRead)
-	primeiro, err := repo.RedeemCode(ctx, "h1", instanteOAuth.Add(90*time.Second))
+	primeiro, err := repo.RedeemCode(ctx, "h1", instanteOAuth.Add(90*time.Second), janelaReusoCodigo)
 	require.NoError(t, err)
 	_, err = pool.Exec(ctx, "UPDATE oauth_authorizations SET revoked_at = now()")
 	require.NoError(t, err)
 
-	got, err := repo.RedeemCode(ctx, "h1", instanteOAuth.Add(100*time.Second))
+	got, err := repo.RedeemCode(ctx, "h1", instanteOAuth.Add(100*time.Second), janelaReusoCodigo)
 
 	require.ErrorIs(t, err, oauth.ErrCodeAlreadyUsed)
 	assert.Equal(t, "r1", got.Request.ID)
@@ -375,7 +379,7 @@ func TestPostgresOAuthRepo_RedeemCode_ExpiradoNoInstanteExato(t *testing.T) {
 	pedidoAprovado(t, repo, "r1", "h1", oauth.ScopeNotesRead)
 	codeExpiresAt := instanteOAuth.Add(2 * time.Minute)
 
-	_, err := repo.RedeemCode(context.Background(), "h1", codeExpiresAt)
+	_, err := repo.RedeemCode(context.Background(), "h1", codeExpiresAt, janelaReusoCodigo)
 
 	require.ErrorIs(t, err, oauth.ErrCodeNotFound)
 }
@@ -383,7 +387,7 @@ func TestPostgresOAuthRepo_RedeemCode_ExpiradoNoInstanteExato(t *testing.T) {
 func TestPostgresOAuthRepo_RedeemCode_HashDesconhecido(t *testing.T) {
 	repo, _ := repoOAuth(t)
 
-	_, err := repo.RedeemCode(context.Background(), "h-nenhum", instanteOAuth)
+	_, err := repo.RedeemCode(context.Background(), "h-nenhum", instanteOAuth, janelaReusoCodigo)
 
 	require.ErrorIs(t, err, oauth.ErrCodeNotFound)
 }
@@ -394,10 +398,10 @@ func TestPostgresOAuthRepo_RedeemCode_SemAutorizacaoAtiva(t *testing.T) {
 	_, err := pool.Exec(context.Background(), "UPDATE oauth_authorizations SET revoked_at = now()")
 	require.NoError(t, err)
 
-	_, err = repo.RedeemCode(context.Background(), "h1", instanteOAuth.Add(90*time.Second))
+	_, err = repo.RedeemCode(context.Background(), "h1", instanteOAuth.Add(90*time.Second), janelaReusoCodigo)
 
 	require.ErrorIs(t, err, oauth.ErrAuthorizationNotFound)
-	_, err = repo.RedeemCode(context.Background(), "h1", instanteOAuth.Add(100*time.Second))
+	_, err = repo.RedeemCode(context.Background(), "h1", instanteOAuth.Add(100*time.Second), janelaReusoCodigo)
 	require.ErrorIs(t, err, oauth.ErrCodeAlreadyUsed, "o consumo fica gravado mesmo sem Autorização ativa")
 }
 

@@ -16,7 +16,7 @@ import (
 // Com ela revogada, o consumo fica gravado e oauth.ErrAuthorizationNotFound volta junto
 // com o pedido. No reuso, marca o pedido e revoga os tokens da Autorização dele, também
 // numa transação, e devolve o pedido com ela, mesmo revogada, e oauth.ErrCodeAlreadyUsed.
-func (r *PostgresOAuthRepository) RedeemCode(ctx context.Context, codeHash string, now time.Time) (oauth.RedeemedCode, error) {
+func (r *PostgresOAuthRepository) RedeemCode(ctx context.Context, codeHash string, now time.Time, _ time.Duration) (oauth.RedeemedCode, error) {
 	var redeemed oauth.RedeemedCode
 	var outcome error
 	err := inTx(ctx, r.pool, func(qtx *gen.Queries) error {
