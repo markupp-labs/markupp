@@ -39,7 +39,8 @@ module ShortcutsHelper
       Shortcut.of(:read_mode, "Ctrl+E", run: { click: ".note-mode-read" }, help: false),
       Shortcut.of(:side_by_side, "Ctrl+\\", run: { click: ".note-mode-split" }),
       Shortcut.of(:path_to_content, "Tab"),
-      Shortcut.of(:content_to_path, "Shift+Tab")
+      Shortcut.of(:indent_content, "Tab", "Shift+Tab"),
+      Shortcut.of(:content_to_path, "Esc Shift+Tab")
     ],
     tree: [
       Shortcut.of(:next_row, "j", "↓"),
