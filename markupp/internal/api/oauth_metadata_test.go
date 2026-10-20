@@ -30,6 +30,7 @@ func TestOAuthMetadata_Configurado_Retorna200ComOsCampos(t *testing.T) {
 		"issuer": "https://markupp.exemplo",
 		"authorization_endpoint": "https://markupp.exemplo/oauth/authorize",
 		"token_endpoint": "https://markupp.exemplo/oauth/token",
+		"registration_endpoint": "https://markupp.exemplo/oauth/register",
 		"revocation_endpoint": "https://markupp.exemplo/oauth/revoke",
 		"scopes_supported": ["notas:leitura", "notas:escrita", "administracao"],
 		"response_types_supported": ["code"],
