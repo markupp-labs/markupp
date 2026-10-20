@@ -183,6 +183,15 @@ inteiro dentro da faixa, e um valor fora dela impede o servidor de subir:
 | `MARKUPP_OAUTH_CODE_SECONDS` | 60 | 10 a 600 | validade do authorization code |
 | `MARKUPP_OAUTH_EXCHANGE_MINUTES` | 5 | 1 a 15 | validade do token da API entregue ao resource pela troca de token |
 
+Na troca de token, o servidor MCP se autentica em `POST /oauth/token` por HTTP Basic, com a URL
+do resource como usuário e o segredo dele como senha, os dois percent-encoded em
+application/x-www-form-urlencoded antes do Base64 (RFC 6749, seção 2.3.1). Sem essa codificação,
+os dois-pontos da URL quebram o par usuário e senha e a troca responde 401.
+
+O token da API entregue pela troca não passa pelo banco: revogar a Autorização ou os tokens
+OAuth não o derruba, e ele segue valendo até expirar (ADR-0039). Por isso a validade dele é
+curta.
+
 ## Aviso
 
 Com o banco vazio, quem fizer o primeiro login vira owner do tenant inicial
