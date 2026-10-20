@@ -13,7 +13,7 @@ test:
 	cd markupp && go test ./...
 
 # Testa o servidor MCP de ponta a ponta contra o Go no compose, num projeto à parte
-# (markupp-e2e) que é apagado no fim. Precisa de Node 22 com npm ci feito em mcp/ e de
+# (markupp-e2e) que é apagado no fim. Precisa de Node 26 com npm ci feito em mcp/ e de
 # Docker; MARKUPP_PORT e MAILPIT_PORT mudam as portas se a stack de dev ocupar as padrão
 e2e-mcp:
 	cd mcp && npm run e2e

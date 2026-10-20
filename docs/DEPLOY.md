@@ -119,7 +119,7 @@ make test
 ```
 
 O teste de ponta a ponta do servidor MCP sobe a stack num projeto do compose à parte, faz o
-OAuth e o login do stdio contra o Go real e apaga tudo no fim. Precisa de Node 22 com `npm ci`
+OAuth e o login do stdio contra o Go real e apaga tudo no fim. Precisa de Node 26 com `npm ci`
 feito em `mcp/`; com a stack de dev de pé, troque as portas por `MARKUPP_PORT` e `MAILPIT_PORT`:
 
 ```sh
