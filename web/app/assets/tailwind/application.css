@@ -353,6 +353,36 @@ body[data-area="tenants"] #command_new_note {
   display: none;
 }
 
+/* Modo Vim: a linha do modo (o rodapé do CodeMirror, sticky no fim do editor) fica no fim da janela, como a statusline
+   do Vim. O editor cresce até o fim da tela e o main perde o padding de baixo: na nota curta a linha cai no fim da
+   janela; na longa gruda embaixo e a nota termina acima dela, no espaço dela. Na leitura o editor some com ela. */
+main:has(.note-form:not([data-mode="read"]) .cm-vim-panel) {
+  padding-bottom: 0;
+}
+
+.note-form:where(:not([data-mode="read"])):has(.cm-vim-panel) .note-panes {
+  display: flex;
+  flex-direction: column;
+}
+
+.note-form:has(.cm-vim-panel) :is(.note-editor-pane, .cm-scroller) {
+  flex-grow: 1;
+}
+
+/* No celular o body não é grid: vira coluna para o main ir até o fim da tela, com o botão da gaveta do tamanho dele. */
+@media (width < 48rem) {
+  .app-shell:has(.note-form:not([data-mode="read"]) .cm-vim-panel) {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .app-shell:has(.note-form:not([data-mode="read"]) .cm-vim-panel) > main {
+    flex-grow: 1;
+    align-self: stretch;
+  }
+}
+
 /* O texto do título começa depois da borda e do padding do campo (px-1); o markdown renderizado começa ali também. */
 .note-preview {
   padding-left: calc(0.25rem + 1px);
