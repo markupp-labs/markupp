@@ -184,18 +184,18 @@
     @apply ml-1.5;
   }
 
-  /* No .btn a espera toma o lugar do rótulo, como no VS Code: o glifo fica no meio do botão, por cima, e o texto e o
+  /* No .btn (e nos ícones da barra de atividades) a espera toma o lugar do rótulo, como no VS Code: o glifo fica no meio do botão, por cima, e o texto e o
      ícone ficam transparentes, sem o botão mudar de largura nem empurrar o que está ao lado. Fora do fluxo desde o
      aria-busy, antes de o glifo entrar aos 300ms. */
-  :is(.btn, .btn-icon):has(> .busy-spinner-origin) {
+  :is(.btn, .btn-icon, .activity-tab):has(> .busy-spinner-origin) {
     position: relative;
   }
 
-  :is(.btn, .btn-icon) > .busy-spinner-origin {
+  :is(.btn, .btn-icon, .activity-tab) > .busy-spinner-origin {
     @apply absolute inset-0 m-0 justify-center;
   }
 
-  :is(.btn, .btn-icon):has(> .busy-spinner-origin:not(:empty)) {
+  :is(.btn, .btn-icon, .activity-tab):has(> .busy-spinner-origin:not(:empty)) {
     color: transparent;
   }
 
