@@ -15,7 +15,7 @@ module ShortcutsHelper
 
   SHORTCUT_GROUPS = {
     general: [
-      Shortcut.of(:command_palette, "Ctrl+Shift+P"),
+      Shortcut.of(:command_palette, "Ctrl+Shift+P", "F1", ":"),
       Shortcut.of(:shortcuts_help, "?", run: { press: { key: "?", code: "Slash", shiftKey: true } }),
       Shortcut.of(:search, "Ctrl+K", run: { click: "button[data-action='search#open']" }),
       Shortcut.of(:settings, "Ctrl+,", run: { href: :settings_path }),

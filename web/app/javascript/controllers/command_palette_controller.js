@@ -1,7 +1,9 @@
 import { Controller } from "@hotwired/stimulus"
 import { visitFrom } from "motion/busy_origin"
+import { isTyping } from "controllers/typing"
 
-// Paleta de comandos (layouts/_command_palette), como a do VS Code: Ctrl+Shift+P ou Cmd+Shift+P abre, a busca fuzzy
+// Paleta de comandos (layouts/_command_palette), como a do VS Code: Ctrl+Shift+P ou Cmd+Shift+P abre, F1 também (o
+// Firefox reserva o Ctrl+Shift+P), e ":" fora de campo de texto, como o modo de comando do Vim. A busca fuzzy
 // (as letras na ordem, com o que for entre elas) filtra, setas ou Ctrl+J e Ctrl+K (como no fzf; j e k sozinhos são
 // letras da busca) andam, Enter ou clique roda, Esc fecha. Ação sem o que fazer na página (o modo da nota fora da nota)
 // ou que o CSS esconde (o tema e o modo da nota já em uso, application.css) fica de fora. Cada item diz nos data-command-* como rodar (ShortcutsHelper).
@@ -10,9 +12,8 @@ const STEPS = { ArrowDown: 1, ArrowUp: -1, "ctrl+j": 1, "ctrl+k": -1 }
 export default class extends Controller {
   static targets = [ "input", "option", "empty" ]
 
-  // A tecla vem pelo code: com o Shift o key é "P", e em outro layout pode ser outra letra.
   openFromKey(event) {
-    if (event.code != "KeyP" || !(event.ctrlKey || event.metaKey) || !event.shiftKey || event.altKey || event.defaultPrevented) return
+    if (event.defaultPrevented || !opensPalette(event)) return
 
     event.preventDefault()
     this.open()
@@ -87,6 +88,15 @@ export default class extends Controller {
   get visibleOptions() {
     return this.optionTargets.filter((option) => !option.hidden)
   }
+}
+
+// O Ctrl+Shift+P vem pelo code: com o Shift o key é "P", e em outro layout pode ser outra letra.
+function opensPalette(event) {
+  const ctrl = event.ctrlKey || event.metaKey
+  if (event.altKey) return false
+  if (event.key == "F1") return !ctrl && !event.shiftKey
+  if (event.key == ":") return !ctrl && !isTyping(event.target)
+  return event.code == "KeyP" && ctrl && event.shiftKey
 }
 
 // O display vale com a paleta fechada: o computado do item não depende do dialog em volta.
