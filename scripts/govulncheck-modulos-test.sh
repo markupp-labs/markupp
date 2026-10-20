@@ -2,7 +2,7 @@
 set -uo pipefail
 
 VERIFICADOR="$(cd "$(dirname "$0")" && pwd)/govulncheck-modulos.sh"
-ESPERADO_GO='run golang.org/x/vuln/cmd/govulncheck@v1.8.0 ./...'
+ESPERADO_GO='run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...'
 falhas=0
 
 # repo_com_modulos monta um repositório git descartável com os módulos pedidos,

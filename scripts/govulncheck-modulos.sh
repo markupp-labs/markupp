@@ -4,7 +4,7 @@
 # antes de sair, para mostrar todas as falhas de uma vez.
 set -uo pipefail
 
-GOVULNCHECK=golang.org/x/vuln/cmd/govulncheck@v1.8.0
+GOVULNCHECK=golang.org/x/vuln/cmd/govulncheck@v1.9.0
 RAIZ="$(git rev-parse --show-toplevel)"
 verificados=0
 reprovados=0
