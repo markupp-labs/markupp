@@ -171,3 +171,88 @@ describe("HttpMarkuppApi", () => {
     });
   });
 });
+
+type AdminCall = (api: HttpMarkuppApi) => Promise<unknown>;
+
+describe("HttpMarkuppApi na administração do tenant", () => {
+  it.each<[string, AdminCall, string, unknown]>([
+    ["lista membros", (api) => api.listMembers("t1"), "GET /v1/users", null],
+    [
+      "troca o papel do membro",
+      (api) => api.changeMemberRole("t1", "u/1", "admin"),
+      "PATCH /v1/users/u%2F1",
+      { role: "admin" },
+    ],
+    [
+      "remove o membro",
+      (api) => api.removeMember("t1", "u1"),
+      "DELETE /v1/users/u1",
+      null,
+    ],
+    [
+      "lista convites",
+      (api) => api.listInvites("t1"),
+      "GET /v1/users/invites",
+      null,
+    ],
+    [
+      "convida",
+      (api) => api.inviteMember("t1", "a@x.dev", "member"),
+      "POST /v1/users/invites",
+      { email: "a@x.dev", role: "member" },
+    ],
+    [
+      "revoga o convite",
+      (api) => api.revokeInvite("t1", "i1"),
+      "DELETE /v1/users/invites/i1",
+      null,
+    ],
+  ])("%s com o tenant no cabeçalho", async (_name, call, line, body) => {
+    const fake = new FakeFetch().respondWith(200, []);
+    await call(apiWith(fake));
+    const request = onlyRequest(fake);
+    expect(`${request.method} ${request.url}`).toBe(
+      line.replace(" ", " http://api.test"),
+    );
+    expect(request.headers.get("x-markupp-tenant")).toBe("t1");
+    expect(body === null ? null : await request.json()).toEqual(body);
+  });
+});
+
+describe("HttpMarkuppApi na conta", () => {
+  it.each<[string, AdminCall, string, unknown]>([
+    [
+      "cria o tenant",
+      (api) => api.createTenant("Time"),
+      "POST /v1/tenants",
+      { name: "Time" },
+    ],
+    [
+      "lista os convites da conta",
+      (api) => api.listMyInvites(),
+      "GET /v1/me/invites",
+      null,
+    ],
+    [
+      "aceita o convite",
+      (api) => api.acceptInvite("i/1"),
+      "POST /v1/me/invites/i%2F1/accept",
+      null,
+    ],
+    [
+      "recusa o convite",
+      (api) => api.declineInvite("i1"),
+      "POST /v1/me/invites/i1/decline",
+      null,
+    ],
+  ])("%s sem cabeçalho de tenant", async (_name, call, line, body) => {
+    const fake = new FakeFetch().respondWith(200, {});
+    await call(apiWith(fake));
+    const request = onlyRequest(fake);
+    expect(`${request.method} ${request.url}`).toBe(
+      line.replace(" ", " http://api.test"),
+    );
+    expect(request.headers.has("x-markupp-tenant")).toBe(false);
+    expect(body === null ? null : await request.json()).toEqual(body);
+  });
+});

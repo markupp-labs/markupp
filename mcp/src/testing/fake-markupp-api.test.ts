@@ -35,3 +35,32 @@ describe("FakeMarkuppApi", () => {
     );
   });
 });
+
+describe("FakeMarkuppApi na administração", () => {
+  it("recusa com forbidden quem não é owner nem admin", async () => {
+    const api = new FakeMarkuppApi().withTenant("t1", "viewer");
+    await expect(api.listInvites("t1")).rejects.toMatchObject({
+      status: 403,
+      code: "forbidden",
+    });
+  });
+
+  it("recusa com already_member o convite aceito de tenant da conta", async () => {
+    const api = new FakeMarkuppApi().withTenant("t1");
+    const invite = api.withMyInvite("t1", "Casa", "member");
+    await expect(api.acceptInvite(invite.id)).rejects.toMatchObject({
+      status: 409,
+      code: "already_member",
+    });
+  });
+
+  it("recusa com invite_not_found o convite já recusado", async () => {
+    const api = new FakeMarkuppApi();
+    const invite = api.withMyInvite("t2", "Time", "member");
+    await api.declineInvite(invite.id);
+    await expect(api.declineInvite(invite.id)).rejects.toMatchObject({
+      status: 404,
+      code: "invite_not_found",
+    });
+  });
+});
