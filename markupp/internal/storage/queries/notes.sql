@@ -59,9 +59,9 @@ LEFT JOIN note_centrality c ON c.note_id = n.id
 LEFT JOIN note_communities m ON m.note_id = n.id
 WHERE n.id = sqlc.arg(note_id);
 
--- A nota sem organização derivada fica fora dos filtros de órfã e de comunidade e
--- vai para o fim das ordens por PageRank e por grau. orphan=true vai por
--- ListVaultOrphanNotes.
+-- A nota sem organização derivada ainda não passou pelo segundo estágio: entra em
+-- orphan=false, como no grafo, fica fora do filtro de comunidade e vai para o fim das
+-- ordens por PageRank e por grau. orphan=true vai por ListVaultOrphanNotes.
 -- name: ListVaultNotes :many
 SELECT n.id, n.vault_id, n.path, n.content, n.content_sha256, n.created_at, n.updated_at,
        c.pagerank, c.in_degree, c.out_degree, m.community_id
@@ -69,7 +69,7 @@ FROM notes n
 LEFT JOIN note_centrality c ON c.note_id = n.id
 LEFT JOIN note_communities m ON m.note_id = n.id
 WHERE n.vault_id = sqlc.arg(vault_id)
-  AND (sqlc.narg(orphan)::bool IS NULL OR (c.in_degree = 0 AND c.out_degree = 0) = sqlc.narg(orphan)::bool)
+  AND (sqlc.narg(orphan)::bool IS NULL OR COALESCE(c.in_degree + c.out_degree = 0, false) = sqlc.narg(orphan)::bool)
   AND (sqlc.narg(community_id)::bigint IS NULL OR m.community_id = sqlc.narg(community_id)::bigint)
 ORDER BY
     CASE WHEN sqlc.arg(sort)::text = 'pagerank' AND sqlc.arg(descending)::bool THEN c.pagerank END DESC NULLS LAST,

@@ -168,7 +168,7 @@ FROM notes n
 LEFT JOIN note_centrality c ON c.note_id = n.id
 LEFT JOIN note_communities m ON m.note_id = n.id
 WHERE n.vault_id = $1
-  AND ($2::bool IS NULL OR (c.in_degree = 0 AND c.out_degree = 0) = $2::bool)
+  AND ($2::bool IS NULL OR COALESCE(c.in_degree + c.out_degree = 0, false) = $2::bool)
   AND ($3::bigint IS NULL OR m.community_id = $3::bigint)
 ORDER BY
     CASE WHEN $4::text = 'pagerank' AND $5::bool THEN c.pagerank END DESC NULLS LAST,
@@ -205,9 +205,9 @@ type ListVaultNotesRow struct {
 	CommunityID   pgtype.Int8
 }
 
-// A nota sem organização derivada fica fora dos filtros de órfã e de comunidade e
-// vai para o fim das ordens por PageRank e por grau. orphan=true vai por
-// ListVaultOrphanNotes.
+// A nota sem organização derivada ainda não passou pelo segundo estágio: entra em
+// orphan=false, como no grafo, fica fora do filtro de comunidade e vai para o fim das
+// ordens por PageRank e por grau. orphan=true vai por ListVaultOrphanNotes.
 func (q *Queries) ListVaultNotes(ctx context.Context, arg ListVaultNotesParams) ([]ListVaultNotesRow, error) {
 	rows, err := q.db.Query(ctx, listVaultNotes,
 		arg.VaultID,
