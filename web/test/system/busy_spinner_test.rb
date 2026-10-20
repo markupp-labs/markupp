@@ -254,9 +254,17 @@ class BusySpinnerTest < ApplicationSystemTestCase
       axes.each { |axis| assert_in_delta box[axis], ink[axis], 0.5, "glyph ink #{ink} off the center #{box} of the container" }
     end
 
+    # O X nativo mora na shadow root do navegador, onde o getComputedStyle só vê o estilo padrão; o CDP vê o aplicado.
     def search_cancel_display
-      find_field("Search notes").evaluate_script('getComputedStyle(this, "::-webkit-search-cancel-button").display')
+      find_field("Search notes")
+      cdp = page.driver.browser.method(:execute_cdp)
+      cancel = dom_nodes(cdp.("DOM.getDocument", depth: -1, pierce: true)["root"])
+                 .find { |node| node["attributes"].to_a.each_slice(2).include?([ "pseudo", "-webkit-search-cancel-button" ]) }
+      cdp.("CSS.enable")
+      cdp.("CSS.getComputedStyleForNode", nodeId: cancel["nodeId"])["computedStyle"].find { |style| style["name"] == "display" }["value"]
     end
+
+    def dom_nodes(node) = [ node, *(node["children"].to_a + node["shadowRoots"].to_a).flat_map { |child| dom_nodes(child) } ]
 
     # Do glifo: as animações do ::before (nome e duração) e o quadro que ele mostra agora.
     def glyph_motion
