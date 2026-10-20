@@ -10,7 +10,7 @@
     <% end %>
   </div>
   <div class="flex gap-2">
-    <%= form.button t(".create"), class: "btn", data: { turbo_submits_with: t(".creating") } %>
+    <%= form.button t(".create"), class: "btn" %>
     <% if local_assigns[:cancel] %>
       <button type="submit" formmethod="dialog" formnovalidate class="btn text-ink-muted"><%= t(".cancel") %></button>
     <% end %>

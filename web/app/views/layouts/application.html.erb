@@ -15,7 +15,7 @@
                                   area: content_for(:area).presence || "notes",
                                   settings_shortcut_url_value: settings_path, tenants_shortcut_url_value: tenants_path,
                                   sidebar_hide_label_value: t(".hide_sidebar"), sidebar_show_label_value: t(".show_sidebar") }) %>>
-    <%= page_busy_spinner %>
+    <%= busy_origin_spinner_template %>
     <%# Cada página nomeia a barra lateral pelo que ela mostra ali; sem nome, são as notas. %>
     <% sidebar_label = content_for(:sidebar_label).presence || t(".notes") %>
     <button popovertarget="sidebar" class="btn m-2 text-ink-muted md:hidden">

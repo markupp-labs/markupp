@@ -114,24 +114,24 @@
     @apply inline-flex items-center gap-1.5 text-ink-muted;
   }
 
-  /* O braille vem da fonte de reserva, menor que a Fira Code: 1.4em deixa a célula do tamanho de uma letra. */
+  /* Parado (reduced-motion), o glifo é "...", como a espera de um terminal sem animação; o braille girando vem do
+     motion.css. */
   .busy-spinner-glyph {
-    font-size: 1.4em;
     line-height: 1;
     color: var(--accent);
   }
 
   .busy-spinner-glyph::before {
-    content: "⠋";
+    content: "...";
   }
 
   .busy-spinner-quiet .busy-spinner-label {
     @apply sr-only;
   }
 
-  /* No topo à direita, no lugar da barra de progresso do Turbo. */
-  .busy-spinner-page {
-    @apply pointer-events-none fixed top-2 right-3 z-10;
+  /* No fim do link ou botão que começou a espera (motion/busy_origin.js), com um respiro do texto. */
+  .busy-spinner-origin {
+    @apply ml-1.5;
   }
 
   .tree-row {
@@ -260,7 +260,7 @@
   outline: none;
 }
 
-/* A barra de progresso do Turbo dá lugar ao .busy-spinner-page. Fora de @layer: o <style> que o Turbo injeta não tem
+/* A barra de progresso do Turbo dá lugar à espera no lugar da ação (motion/busy_origin.js). Fora de @layer: o <style> que o Turbo injeta não tem
    camada e venceria qualquer regra dentro de uma. */
 .turbo-progress-bar {
   display: none;

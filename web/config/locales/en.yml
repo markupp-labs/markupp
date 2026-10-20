@@ -125,7 +125,6 @@ en:
     new:
       title: "Log in"
       submit: "Log in"
-      submitting: "Logging in"
       invite_hint: "Got an invite token?"
       accept_invite: "Accept it here."
       forgot_password: "Forgot password?"
@@ -152,7 +151,6 @@ en:
     new_tenant_form:
       new_tenant: "New tenant"
       create: "Create"
-      creating: "Creating"
       cancel: "Cancel"
     card:
       members: "Members of %{name}"
@@ -171,13 +169,11 @@ en:
       hint: "Paste the token from the invite email and choose a password for your new account."
       password: "Password"
       submit: "Create account"
-      submitting: "Creating account"
       log_in: "Log in"
   password_requests:
     new:
       title: "Reset your password"
       submit: "Send"
-      submitting: "Sending"
       token_hint: "Got the token already?"
       have_token: "I have a token"
     create:
@@ -191,7 +187,6 @@ en:
       hint: "Paste the token from the email and choose a new password."
       password: "New password"
       submit: "Reset password"
-      submitting: "Resetting"
     create:
       changed: "Password changed. Log in with the new one."
       changed_signed_out: "Password changed. Log in again."
@@ -207,7 +202,6 @@ en:
       title: "Confirm your email"
       hint: "Paste the token from the confirmation email."
       submit: "Confirm"
-      submitting: "Confirming"
     create:
       confirmed: "Email confirmed. Pending invites now show up in your tenant list."
   # Tempo curto para os cards de tenant ("2h ago"), pelo time_ago_in_words com este scope.
@@ -251,9 +245,7 @@ en:
       join: "Join %{tenant} as %{role}"
       expires: "Expires %{date}"
       accept: "Accept"
-      accepting: "Accepting"
       decline: "Decline"
-      declining: "Declining"
     update:
       joined: "Joined %{name} as %{role}."
     destroy:
@@ -280,7 +272,6 @@ en:
         confirmation: "Email confirmation"
         confirmation_hint: "Confirm your email to see the invites sent to it. The confirmation email brings a token."
         send: "Send confirmation email"
-        sending: "Sending"
         have_token: "I have a token"
         password: "Password"
         password_hint: "The server emails a token to %{email}; use it to choose the new password."
@@ -307,9 +298,7 @@ en:
         role_for: "Role for %{email}"
         joined: "Joined"
         save: "Save"
-        saving: "Saving"
         remove: "Remove"
-        removing: "Removing"
         confirm_remove: "Remove %{email} from %{tenant}?"
       update:
         updated: "Role updated."
@@ -334,7 +323,6 @@ en:
         accepted: "Accepted"
         expired: "Expired"
         revoke: "Revoke"
-        revoking: "Revoking"
         confirm_revoke: "Revoke the invite for %{email}?"
       create:
         sent: "Invite sent to %{email}."

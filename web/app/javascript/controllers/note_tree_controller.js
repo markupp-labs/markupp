@@ -1,5 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
-import { Turbo } from "@hotwired/turbo-rails"
+import { rememberSubmitOrigin, submitFrom, visitFrom } from "motion/busy_origin"
 
 // Árvore de notas da barra lateral (notes/_folder.html.erb), como o treeview de navegação da WAI: um Tab só para a
 // árvore (roving tabindex, na nota atual ou na primeira linha), setas ou j/k sobem e descem pelas linhas visíveis,
@@ -130,17 +130,18 @@ export default class extends Controller {
 
     const url = new URL(this.menuRow.href)
     url.searchParams.set("rename", "")
-    Turbo.visit(url)
+    visitFrom(this.menuRow, url)
   }
 
   // O item do menu é o submit do form; aqui só aponta o form para a nota. A confirmação é do Turbo (data-turbo-confirm).
   delete() {
     this.deleteFormTarget.action = this.menuRow.href
+    rememberSubmitOrigin(this.deleteFormTarget, this.menuRow)
   }
 
   deleteRow(row) {
     this.deleteFormTarget.action = row.href
-    this.deleteFormTarget.requestSubmit()
+    submitFrom(row, this.deleteFormTarget)
   }
 
   copyPath() {
@@ -169,7 +170,7 @@ export default class extends Controller {
       const folder = (isFolder(row) ? row.dataset.path : row.dataset.path.replace(/\/[^/]*$/, "")).slice(1)
       folder ? url.searchParams.set("folder", folder) : url.searchParams.delete("folder")
     }
-    Turbo.visit(url)
+    visitFrom(row, url)
   }
 
   // Quem só lê copia; renomear e apagar são de quem escreve, e só valem para nota, como o wikilink.

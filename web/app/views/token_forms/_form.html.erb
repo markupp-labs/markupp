@@ -1,4 +1,4 @@
-<%# locals: (token_form:, scope:, url:, submit:, submitting:, password: nil, base_link: nil) -%>
+<%# locals: (token_form:, scope:, url:, submit:, password: nil, base_link: nil) -%>
 <%# Formulário dos tokens que chegam por email. password é o rótulo do campo de senha (nil, sem senha); base_link acompanha o erro geral. %>
 <% token_error, password_error, base_error = [ :token, :password, :base ].map { token_form.errors[it].first } %>
 <% field_class = "w-full rounded-md border border-line bg-surface px-2 py-1 aria-invalid:border-danger" %>
@@ -28,5 +28,5 @@
       <%= base_link %>
     </p>
   <% end %>
-  <%= form.button submit, class: "btn self-start", data: { turbo_submits_with: submitting } %>
+  <%= form.button submit, class: "btn self-start" %>
 <% end %>

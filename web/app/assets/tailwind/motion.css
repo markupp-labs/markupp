@@ -145,9 +145,15 @@
 }
 
 /* Indicador de carregamento: os quadros braille de 80ms, como o spinner "dots" dos terminais. content muda de quadro
-   em quadro (step-end); com reduced-motion não há animação e fica o primeiro quadro, parado (application.css). */
+   em quadro (step-end); com reduced-motion não há animação e ficam os três pontos parados (application.css). O braille
+   vem da fonte de reserva, menor que a Fira Code: 1.4em deixa a célula do tamanho de uma letra. */
 @media (prefers-reduced-motion: no-preference) {
+  .busy-spinner-glyph {
+    font-size: 1.4em;
+  }
+
   .busy-spinner-glyph::before {
+    content: "⠋";
     animation: braille-spin 800ms step-end infinite;
   }
 }

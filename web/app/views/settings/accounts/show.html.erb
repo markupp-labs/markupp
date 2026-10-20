@@ -10,7 +10,7 @@
   <h2 class="mt-6 text-base font-semibold"><%= t(".confirmation") %></h2>
   <p class="mt-2 text-ink-muted"><%= t(".confirmation_hint") %></p>
   <div class="mt-3 flex flex-wrap items-center gap-3">
-    <%= button_to t(".send"), email_verification_path, class: "btn", data: { turbo_submits_with: t(".sending") } %>
+    <%= button_to t(".send"), email_verification_path, class: "btn" %>
     <%= link_to t(".have_token"), new_email_confirmation_path, class: "text-accent underline" %>
   </div>
 
@@ -18,7 +18,7 @@
   <p class="mt-2 text-ink-muted"><%= t(".password_hint", email: credential.account_email) %></p>
   <div class="mt-3 flex flex-wrap items-center gap-3">
     <% if credential.password_login? %>
-      <%= button_to t(".change_password"), password_change_path, class: "btn", data: { turbo_submits_with: t(".sending") } %>
+      <%= button_to t(".change_password"), password_change_path, class: "btn" %>
     <% end %>
     <%= link_to t(".have_reset_token"), new_password_reset_path, class: "text-accent underline" %>
   </div>

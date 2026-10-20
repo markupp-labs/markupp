@@ -5,8 +5,8 @@
   <p class="text-xs text-ink-muted"><%= t(".expires", date: l(invite.expires_at.to_date, format: :short)) %></p>
   <div class="mt-1 flex gap-2">
     <%= button_to t(".accept"), my_invite_path(invite.id), method: :patch, class: "btn px-2 py-0",
-                  aria: { describedby: sentence_id }, data: { turbo_submits_with: t(".accepting") } %>
+                  aria: { describedby: sentence_id } %>
     <%= button_to t(".decline"), my_invite_path(invite.id), method: :delete, class: "btn px-2 py-0 text-ink-muted",
-                  aria: { describedby: sentence_id }, data: { turbo_submits_with: t(".declining") } %>
+                  aria: { describedby: sentence_id } %>
   </div>
 </li>

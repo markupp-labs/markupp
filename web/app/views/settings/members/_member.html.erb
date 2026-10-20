@@ -19,10 +19,10 @@
   <div class="mt-1 flex gap-2 md:mt-0">
     <% if changeable %>
       <%= form_with url: settings_member_path(member.id), method: :patch, id: form_id do |form| %>
-        <%= form.button t(".save"), class: "btn", data: { turbo_submits_with: t(".saving") } %>
+        <%= form.button t(".save"), class: "btn" %>
       <% end %>
       <%= button_to t(".remove"), settings_member_path(member.id), method: :delete, class: "btn btn-danger",
-                    data: { turbo_confirm: t(".confirm_remove", email: member.email, tenant: current_tenant.name), turbo_submits_with: t(".removing") } %>
+                    data: { turbo_confirm: t(".confirm_remove", email: member.email, tenant: current_tenant.name) } %>
     <% end %>
   </div>
 </li>

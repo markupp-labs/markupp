@@ -6,7 +6,7 @@
   <%# No celular o mascote some e fica só a coluna. Os dois ficam no centro da tela em qualquer largura. %>
   <body class="grid min-h-dvh place-items-center bg-surface font-mono text-sm text-ink"
         data-area="public" data-controller="area-transition" data-action="turbo:before-render@document->area-transition#mark">
-    <%= page_busy_spinner %>
+    <%= busy_origin_spinner_template %>
     <main class="flex w-full max-w-3xl items-center justify-center gap-10 p-4 md:p-6">
       <%= mascot(:large, class: "hidden md:block") %>
       <div class="w-full max-w-sm">

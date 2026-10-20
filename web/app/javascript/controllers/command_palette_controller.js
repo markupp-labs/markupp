@@ -1,5 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
-import { Turbo } from "@hotwired/turbo-rails"
+import { visitFrom } from "motion/busy_origin"
 
 // Paleta de comandos (layouts/_command_palette), como a do VS Code: Ctrl+Shift+P ou Cmd+Shift+P abre, a busca fuzzy
 // (as letras na ordem, com o que for entre elas) filtra, setas ou Ctrl+J e Ctrl+K (como no fzf; j e k sozinhos são
@@ -59,13 +59,16 @@ export default class extends Controller {
     option?.scrollIntoView({ block: "nearest" })
   }
 
-  // Fecha antes de rodar: o foco volta para onde estava, e é dali que a ação segue (o modo foca o editor).
+  // A página escolhida carrega com a paleta aberta e a espera no item (motion/busy_origin.js); se a visita não começa
+  // (a nota com mudança perguntou e o usuário ficou), fecha. O resto fecha antes de rodar: o foco volta para onde
+  // estava, e é dali que a ação segue (o modo foca o editor).
   run(option) {
-    this.element.close()
     const { commandClick, commandPress, commandHref, commandForm } = option.dataset
+    if (commandHref) return visitFrom(option, commandHref) || this.element.close()
+
+    this.element.close()
     if (commandClick) return document.querySelector(commandClick)?.click()
     if (commandPress) return document.body.dispatchEvent(new KeyboardEvent("keydown", { ...JSON.parse(commandPress), bubbles: true }))
-    if (commandHref) return Turbo.visit(commandHref)
     document.getElementById(commandForm)?.requestSubmit()
   }
 
