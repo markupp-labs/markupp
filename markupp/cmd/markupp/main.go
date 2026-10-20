@@ -182,7 +182,7 @@ func indexVaults(ctx context.Context, logger *slog.Logger, cfg config.Config, cm
 		return fmt.Errorf("abrir banco: %w", err)
 	}
 	defer pool.Close()
-	indexer, err := storage.NewPostgresVaultIndexer(ctx, pool, cfg.SearchConfig)
+	indexer, err := storage.NewPostgresVaultIndexer(ctx, pool, cfg.SearchConfig, logger)
 	if err != nil {
 		return err
 	}

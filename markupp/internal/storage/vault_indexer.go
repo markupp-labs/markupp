@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
 
 	"github.com/jackc/pgx/v5"
@@ -18,15 +19,17 @@ import (
 type PostgresVaultIndexer struct {
 	pool         *pgxpool.Pool
 	searchConfig string
+	logger       *slog.Logger
 }
 
 // NewPostgresVaultIndexer monta o indexador com a configuração de texto
-// searchConfig, que o cast para regconfig precisa resolver.
-func NewPostgresVaultIndexer(ctx context.Context, pool *pgxpool.Pool, searchConfig string) (*PostgresVaultIndexer, error) {
+// searchConfig, que o cast para regconfig precisa resolver. O segundo estágio avisa
+// em logger o cálculo que parou no teto de iterações.
+func NewPostgresVaultIndexer(ctx context.Context, pool *pgxpool.Pool, searchConfig string, logger *slog.Logger) (*PostgresVaultIndexer, error) {
 	if _, err := gen.New(pool).ResolveSearchConfig(ctx, searchConfig); err != nil {
 		return nil, fmt.Errorf("configuracao de texto %q nao resolvida, esperado nome de pg_ts_config como simple ou pg_catalog.portuguese: %w", searchConfig, err)
 	}
-	return &PostgresVaultIndexer{pool: pool, searchConfig: searchConfig}, nil
+	return &PostgresVaultIndexer{pool: pool, searchConfig: searchConfig, logger: logger}, nil
 }
 
 // IndexNextVault reserva um cofre com nota pendente ou marcado para o segundo
@@ -148,7 +151,7 @@ func (x *PostgresVaultIndexer) secondStage(ctx context.Context, vault gen.Reserv
 		if err := enterVault(ctx, q, vault); err != nil {
 			return err
 		}
-		return runSecondStage(ctx, q, vault.VaultID, x.searchConfig)
+		return runSecondStage(ctx, q, vault.VaultID, x.searchConfig, x.logger)
 	})
 }
 

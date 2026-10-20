@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 
 	"github.com/jackc/pgx/v5"
 
@@ -36,9 +37,9 @@ func saveGraphMarkingChange(ctx context.Context, q *gen.Queries, cs indexing.Cha
 // runSecondStage recalcula o que depende do cofre inteiro, se ele estiver marcado, e
 // desmarca só a revisão lida, que vira a versão do grafo do cofre: a marcação de um
 // lote concorrente fica para o próximo Job. searchConfig é a configuração de texto do
-// índice léxico. As postagens vêm por último, porque a repesagem trava as linhas de note_terms até o commit, e um lote
+// índice léxico, e logger recebe o aviso de cálculo parado no teto. As postagens vêm por último, porque a repesagem trava as linhas de note_terms até o commit, e um lote
 // concorrente que regrava essas notas espera por elas.
-func runSecondStage(ctx context.Context, q *gen.Queries, vaultID, searchConfig string) error {
+func runSecondStage(ctx context.Context, q *gen.Queries, vaultID, searchConfig string, logger *slog.Logger) error {
 	revision, err := q.SecondStageRevision(ctx, vaultID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil
@@ -46,7 +47,7 @@ func runSecondStage(ctx context.Context, q *gen.Queries, vaultID, searchConfig s
 	if err != nil {
 		return fmt.Errorf("ler a marcacao do segundo estagio do cofre %q: %w", vaultID, err)
 	}
-	if err := refreshVaultGraph(ctx, q, vaultID, searchConfig); err != nil {
+	if err := refreshVaultGraph(ctx, q, vaultID, searchConfig, logger); err != nil {
 		return err
 	}
 	if err := refreshTerms(ctx, q, vaultID); err != nil {

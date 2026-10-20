@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/storage/gen"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/vaultgraph"
@@ -10,11 +11,12 @@ import (
 
 // saveCentrality troca o PageRank e os graus das notas noteIDs do cofre pelos do
 // grafo g.
-func saveCentrality(ctx context.Context, q *gen.Queries, vaultID string, noteIDs []string, g *vaultgraph.Graph) error {
+func saveCentrality(ctx context.Context, q *gen.Queries, vaultID string, noteIDs []string, g *vaultgraph.Graph, logger *slog.Logger) error {
 	if err := q.DeleteNoteCentrality(ctx, vaultID); err != nil {
 		return fmt.Errorf("apagar a centralidade do cofre %q: %w", vaultID, err)
 	}
-	ranks, _ := g.PageRank()
+	ranks, stop := g.PageRank()
+	logCapped(logger, vaultID, "pagerank", stop)
 	params := gen.SaveNoteCentralityParams{NoteIds: noteIDs, Pageranks: make([]float64, len(noteIDs)),
 		InDegrees: make([]int32, len(noteIDs)), OutDegrees: make([]int32, len(noteIDs))}
 	for i, id := range noteIDs {
@@ -30,12 +32,13 @@ func saveCentrality(ctx context.Context, q *gen.Queries, vaultID string, noteIDs
 // saveCommunities troca as comunidades do cofre pelas do grafo g. Cada comunidade
 // herda o id da anterior que mais se sobrepõe a ela, se o Jaccard for de pelo menos
 // 0,5, ou ganha um id novo da sequência.
-func saveCommunities(ctx context.Context, q *gen.Queries, vaultID string, g *vaultgraph.Graph) error {
+func saveCommunities(ctx context.Context, q *gen.Queries, vaultID string, g *vaultgraph.Graph, logger *slog.Logger) error {
 	previous, err := previousCommunities(ctx, q, vaultID)
 	if err != nil {
 		return err
 	}
-	communities, _ := g.Communities()
+	communities, stop := g.Communities()
+	logCapped(logger, vaultID, "louvain", stop)
 	ids, err := assignCommunityIDs(ctx, q, vaultID, vaultgraph.InheritCommunityIDs(communities, previous))
 	if err != nil {
 		return err
@@ -47,6 +50,16 @@ func saveCommunities(ctx context.Context, q *gen.Queries, vaultID string, g *vau
 		return fmt.Errorf("gravar as %d comunidades do cofre %q: %w", len(communities), vaultID, err)
 	}
 	return nil
+}
+
+// logCapped avisa em logger o cálculo algorithm do cofre vaultID que parou no teto
+// de iterações antes de convergir. O resultado é gravado assim mesmo.
+func logCapped(logger *slog.Logger, vaultID, algorithm string, stop vaultgraph.Convergence) {
+	if !stop.Capped {
+		return
+	}
+	logger.Warn("calculo do segundo estagio parou no teto", "algoritmo", algorithm, "cofre", vaultID,
+		"iteracoes", stop.Iterations, "passadas", stop.Passes)
 }
 
 func previousCommunities(ctx context.Context, q *gen.Queries, vaultID string) (map[string]int64, error) {
