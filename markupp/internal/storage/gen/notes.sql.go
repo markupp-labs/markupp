@@ -206,8 +206,8 @@ type ListVaultNotesRow struct {
 }
 
 // A nota sem organização derivada fica fora dos filtros de órfã e de comunidade e
-// vai para o fim das ordens por PageRank e por grau. A órfã é escrita como grau zero
-// nos dois sentidos para casar com o predicado do índice parcial.
+// vai para o fim das ordens por PageRank e por grau. orphan=true vai por
+// ListVaultOrphanNotes.
 func (q *Queries) ListVaultNotes(ctx context.Context, arg ListVaultNotesParams) ([]ListVaultNotesRow, error) {
 	rows, err := q.db.Query(ctx, listVaultNotes,
 		arg.VaultID,
@@ -225,6 +225,90 @@ func (q *Queries) ListVaultNotes(ctx context.Context, arg ListVaultNotesParams) 
 	var items []ListVaultNotesRow
 	for rows.Next() {
 		var i ListVaultNotesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.VaultID,
+			&i.Path,
+			&i.Content,
+			&i.ContentSha256,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Pagerank,
+			&i.InDegree,
+			&i.OutDegree,
+			&i.CommunityID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listVaultOrphanNotes = `-- name: ListVaultOrphanNotes :many
+SELECT n.id, n.vault_id, n.path, n.content, n.content_sha256, n.created_at, n.updated_at,
+       c.pagerank, c.in_degree, c.out_degree, m.community_id
+FROM notes n
+LEFT JOIN note_centrality c ON c.note_id = n.id
+LEFT JOIN note_communities m ON m.note_id = n.id
+WHERE c.vault_id = $1 AND c.in_degree = 0 AND c.out_degree = 0
+  AND ($2::bigint IS NULL OR m.community_id = $2::bigint)
+ORDER BY
+    CASE WHEN $3::text = 'pagerank' AND $4::bool THEN c.pagerank END DESC NULLS LAST,
+    CASE WHEN $3::text = 'pagerank' AND NOT $4::bool THEN c.pagerank END NULLS LAST,
+    CASE WHEN $3::text = 'degree' AND $4::bool THEN c.in_degree + c.out_degree END DESC NULLS LAST,
+    CASE WHEN $3::text = 'degree' AND NOT $4::bool THEN c.in_degree + c.out_degree END NULLS LAST,
+    CASE WHEN $3::text = 'updated' AND $4::bool THEN n.updated_at END DESC,
+    CASE WHEN $3::text = 'updated' AND NOT $4::bool THEN n.updated_at END,
+    n.path, n.id
+LIMIT $6 OFFSET $5
+`
+
+type ListVaultOrphanNotesParams struct {
+	VaultID     string
+	CommunityID pgtype.Int8
+	Sort        string
+	Descending  bool
+	PageOffset  int32
+	PageLimit   int32
+}
+
+type ListVaultOrphanNotesRow struct {
+	ID            string
+	VaultID       string
+	Path          string
+	Content       string
+	ContentSha256 []byte
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+	Pagerank      pgtype.Float8
+	InDegree      pgtype.Int4
+	OutDegree     pgtype.Int4
+	CommunityID   pgtype.Int8
+}
+
+// As órfãs do cofre com o predicado fixo do índice parcial, que o plano genérico de
+// ListVaultNotes não usa porque lá o filtro depende do parâmetro. O LEFT JOIN mantém
+// as colunas da linha iguais às de ListVaultNotes; o filtro em c o torna interno.
+func (q *Queries) ListVaultOrphanNotes(ctx context.Context, arg ListVaultOrphanNotesParams) ([]ListVaultOrphanNotesRow, error) {
+	rows, err := q.db.Query(ctx, listVaultOrphanNotes,
+		arg.VaultID,
+		arg.CommunityID,
+		arg.Sort,
+		arg.Descending,
+		arg.PageOffset,
+		arg.PageLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListVaultOrphanNotesRow
+	for rows.Next() {
+		var i ListVaultOrphanNotesRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.VaultID,
