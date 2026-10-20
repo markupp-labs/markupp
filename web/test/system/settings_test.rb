@@ -48,6 +48,26 @@ class SettingsTest < ApplicationSystemTestCase
     assert_selector "main button[aria-pressed=true]", text: "Dark"
   end
 
+  # Lista como as configuracoes do Obsidian: uma linha por configuracao, nome e dica a esquerda, controle a direita.
+  test "the editor settings are rows with the name and hint on the left and the control on the right" do
+    visit settings_editor_path
+
+    { "editor_style" => "[role=group][aria-labelledby=editor_style_heading]",
+      "vim_keys" => "[role=switch][aria-labelledby=vim_keys_heading]" }.each do |name, control|
+      hint, control_box = rect_of("##{name}_hint"), rect_of("main #{control}")
+      assert_operator control_box["left"], :>=, hint["right"], "#{name}: the control should sit right of the hint"
+      assert_operator control_box["top"], :<, hint["bottom"], "#{name}: the control should share the row of the hint"
+    end
+  end
+
+  test "the vim key bindings switch turns on with the keyboard and stays outside turbo" do
+    visit settings_editor_path
+    find("main [role=switch][aria-checked=false]").send_keys(:enter)
+
+    assert_selector "main [role=switch][aria-checked=true]"
+    assert_selector "html[data-vim-keys=on]", visible: :all
+  end
+
   test "change password emails the reset token and the token link opens the reset form" do
     visit settings_account_path
     within("main") { click_on "Change password" }
@@ -80,4 +100,7 @@ class SettingsTest < ApplicationSystemTestCase
 
     assert_current_path note_path("1")
   end
+
+  private
+    def rect_of(selector) = find(selector).evaluate_script("this.getBoundingClientRect().toJSON()")
 end
