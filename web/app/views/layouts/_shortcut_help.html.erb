@@ -2,7 +2,7 @@
     clicar fora fecha. A lista vem do ShortcutsHelper, a mesma da paleta de comandos. %>
 <dialog id="shortcut_help" aria-labelledby="shortcut_help_title" closedby="any" data-controller="shortcut-help"
         data-action="keydown@window->shortcut-help#openFromKey"
-        class="layer mx-auto mt-[8vh] max-h-[84dvh] w-[min(52rem,calc(100vw-2rem))] overflow-y-auto rounded-md border border-line bg-surface-sunken p-4 text-[13px] text-ink backdrop:bg-surface-sunken/70">
+        class="layer mx-auto mt-[8vh] max-h-[84dvh] w-[min(52rem,calc(100vw-2rem))] scrollbar-theme overflow-y-auto rounded-md border border-line bg-surface-sunken p-4 text-[13px] text-ink backdrop:bg-surface-sunken/70">
   <header class="mb-4 flex items-center justify-between gap-4">
     <div class="flex items-baseline gap-2"><span aria-hidden="true" class="text-accent">$</span><h2 id="shortcut_help_title" class="font-semibold"><%= t("shortcuts.help.title") %></h2></div>
     <form method="dialog">

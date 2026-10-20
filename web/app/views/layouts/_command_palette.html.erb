@@ -14,7 +14,7 @@
            data-command-palette-target="input" data-action="input->command-palette#filter keydown->command-palette#navigate"
            style="outline: none" class="w-full border-0 bg-transparent py-2 pr-3 pl-2">
   </div>
-  <ul id="command_palette_options" role="listbox" aria-label="<%= t("shortcuts.palette.label") %>" class="max-h-[50dvh] overflow-y-auto p-1">
+  <ul id="command_palette_options" role="listbox" aria-label="<%= t("shortcuts.palette.label") %>" class="scrollbar-theme max-h-[50dvh] overflow-y-auto p-1">
     <% commands.each do |command| %>
       <%= command_option(command) %>
     <% end %>

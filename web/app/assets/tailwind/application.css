@@ -102,6 +102,12 @@
     @apply inline-flex items-center rounded-md px-1.5 py-1 text-ink-muted hover:bg-accent-soft hover:text-ink;
   }
 
+  /* Barra de rolagem fina nos tokens do tema, sem o trilho cinza padrão no claro (lista da paleta, ajuda de atalhos). */
+  .scrollbar-theme {
+    scrollbar-color: var(--line) transparent;
+    scrollbar-width: thin;
+  }
+
   /* Toque de terminal: colchetes em volta, como [x], sem entrar no nome acessível (o aria-label manda). */
   .ascii-brackets::before {
     content: "[";
