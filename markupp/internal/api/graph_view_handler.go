@@ -53,7 +53,9 @@ func readLocalGraphQuery(qr *queryReader) localGraphQuery {
 
 // serveGraph responde com o grafo que load lê para o id da rota e a consulta que read
 // lê da query string. A versão vem antes do grafo e vira o ETag: o grafo lido depois
-// é no mínimo tão novo quanto ela, e com If-None-Match igual o grafo nem é lido.
+// é no mínimo tão novo quanto ela, e com If-None-Match igual o grafo nem é lido. O
+// grafo é do usuário e muda a cada segundo estágio: só o navegador dele guarda, e
+// revalida pelo ETag antes de usar.
 func serveGraph[Q any](read func(*queryReader) Q, version func(ctx context.Context, id string) (int64, error), load func(ctx context.Context, id string, q Q) (notes.Graph, error)) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		q, ok := readQuery(w, r, read)
@@ -66,6 +68,7 @@ func serveGraph[Q any](read func(*queryReader) Q, version func(ctx context.Conte
 			writeDomainError(w, err)
 			return
 		}
+		w.Header().Set("Cache-Control", "private, no-cache")
 		if notModified(w, r, v) {
 			return
 		}
