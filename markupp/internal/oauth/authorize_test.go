@@ -32,7 +32,7 @@ func TestStartAuthorization_PedidoValido_CriaPedidoEDevolveConsentimento(t *test
 	consentURL, err := newTestService(repo).StartAuthorization(context.Background(), validAuthorizeParams())
 
 	require.NoError(t, err)
-	assert.Equal(t, testPanelURL+"/oauth/consentimento?pedido=pedido-1", consentURL)
+	assert.Equal(t, testPanelURL+"/oauth/authorize/pedido-1", consentURL)
 	require.Len(t, repo.created, 1)
 	assert.Equal(t, oauth.AuthorizationRequest{
 		ID:            "pedido-1",
@@ -47,7 +47,7 @@ func TestStartAuthorization_PedidoValido_CriaPedidoEDevolveConsentimento(t *test
 	}, repo.created[0])
 }
 
-func TestStartAuthorization_IDComCaracteresEspeciais_EscapaNaQuery(t *testing.T) {
+func TestStartAuthorization_IDComCaracteresEspeciais_EscapaNoCaminho(t *testing.T) {
 	repo := testRepositoryWithClient()
 	clock := func() time.Time { return testNow }
 	service := oauth.NewService(repo, testServiceConfig(), nil, nil, clock, func() string { return "a b&c" }, func() string { return "t" })
@@ -55,7 +55,7 @@ func TestStartAuthorization_IDComCaracteresEspeciais_EscapaNaQuery(t *testing.T)
 	consentURL, err := service.StartAuthorization(context.Background(), validAuthorizeParams())
 
 	require.NoError(t, err)
-	assert.Equal(t, testPanelURL+"/oauth/consentimento?pedido=a+b%26c", consentURL)
+	assert.Equal(t, testPanelURL+"/oauth/authorize/a%20b&c", consentURL)
 }
 
 func TestStartAuthorization_Escopos_NormalizaPelaOrdemSuportada(t *testing.T) {
