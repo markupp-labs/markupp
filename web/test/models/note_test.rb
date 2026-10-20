@@ -24,34 +24,6 @@ class NoteTest < ActiveSupport::TestCase
     assert_raises(MarkuppApi::NotFound) { Note.find(api, "missing") }
   end
 
-  test "search builds notes from the matches without content" do
-    api = FakeMarkuppApi.new(notes: [ { id: "1", path: "work/plan.md", content: "Ship it", updated_at: "2026-09-30T12:00:00Z" },
-                          { id: "2", path: "inbox.md", content: "nothing" } ])
-
-    note = Note.search(api, "SHIP").sole
-    assert_equal [ "1", "work/plan.md", Time.utc(2026, 9, 30, 12) ], [ note.id, note.path, note.updated_at ]
-    assert_nil note.content
-  end
-
-  test "search encodes the query" do
-    api = FakeMarkuppApi.new(notes: [ { id: "1", path: "a.md", content: "a & b?" } ])
-
-    assert_equal [ "1" ], Note.search(api, "a & b?").map(&:id)
-  end
-
-  test "search asks for at most 20 matches" do
-    api = FakeMarkuppApi.new(notes: Array.new(21) { |index| { id: index.to_s, path: "#{index}.md", content: "match" } })
-
-    assert_equal 20, Note.search(api, "match").size
-  end
-
-  test "search with a blank query is empty without calling the API" do
-    api = FakeMarkuppApi.new(unreachable: true)
-
-    assert_empty Note.search(api, "")
-    assert_empty Note.search(api, nil)
-  end
-
   test "persisted only with an id, so routes use the id" do
     assert Note.new(id: "7").persisted?
     assert_equal "7", Note.new(id: "7").to_param

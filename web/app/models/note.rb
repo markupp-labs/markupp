@@ -15,21 +15,12 @@ class Note
   attribute :pagerank, :float
   attribute :community, :integer
 
-  SEARCH_LIMIT = 20
-
   # ponytail: GET /notes traz o conteúdo de todas as notas, paginar quando a API paginar
   def self.all(api)
     api.get("/notes").map { from_api(it) }
   end
 
   def self.find(api, id) = from_api(api.get(api_path(id)))
-
-  # Os resultados não trazem o conteúdo, só id, path e updated_at.
-  def self.search(api, query)
-    return [] if query.blank?
-
-    api.get("/notes/search?#{{ query:, limit: SEARCH_LIMIT }.to_query}").map { from_api(it) }
-  end
 
   # Notas do cofre sem o conteúdo, com a organização derivada; a query filtra (orphan, community) e ordena (sort, direction).
   def self.in_vault(api, vault_id, **query) = list_from(api, "vaults", vault_id, "notes", **query)

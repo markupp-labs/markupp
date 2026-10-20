@@ -15,7 +15,6 @@ class FakeMarkuppNotes
 
   def get(path, **)
     return @notes if path == "/notes"
-    return search(URI(path).query) if path.start_with?("/notes/search?")
 
     note_at("GET", path)
   end
@@ -55,12 +54,6 @@ class FakeMarkuppNotes
     end
 
     # Como a API: substring do conteúdo sem diferenciar caixa, até limit itens, sem o conteúdo.
-    def search(query_string)
-      params = URI.decode_www_form(query_string).to_h
-      matches = @notes.select { |note| note["content"].to_s.downcase.include?(params.fetch("query").downcase) }
-      matches.first(Integer(params.fetch("limit"))).map { |note| note.slice("id", "path", "updated_at") }
-    end
-
     # Caminho vazio ou com .. como o servidor; o limite de tamanho fica com ele.
     def refuse_path(new_path, note)
       if new_path.to_s.strip.empty? || new_path.include?("..")
