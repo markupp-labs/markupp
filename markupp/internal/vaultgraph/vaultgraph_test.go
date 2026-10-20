@@ -107,7 +107,10 @@ func doisTriangulos() *vaultgraph.Graph {
 }
 
 func TestCommunities_LouvainSeparaOsTriangulosESemNotaSozinha(t *testing.T) {
-	assert.Equal(t, [][]string{{"a", "b", "c"}, {"d", "e", "f"}}, doisTriangulos().Communities())
+	comunidades, parada := doisTriangulos().Communities()
+
+	assert.Equal(t, [][]string{{"a", "b", "c"}, {"d", "e", "f"}}, comunidades)
+	assert.False(t, parada.Capped, "parada: %+v", parada)
 }
 
 func TestCommunities_AnelDeCliquesSaiUmaComunidadePorClique(t *testing.T) {
@@ -129,7 +132,8 @@ func TestCommunities_AnelDeCliquesSaiUmaComunidadePorClique(t *testing.T) {
 		esperado = append(esperado, clique)
 	}
 
-	assert.Equal(t, esperado, vaultgraph.New(ids, edges).Communities())
+	comunidades, _ := vaultgraph.New(ids, edges).Communities()
+	assert.Equal(t, esperado, comunidades)
 }
 
 func TestCommunities_Deterministicas(t *testing.T) {
@@ -142,9 +146,10 @@ func TestCommunities_Deterministicas(t *testing.T) {
 		edges = append(edges, vaultgraph.Edge{Source: ids[i], Target: ids[(i*7+3)%60]}, vaultgraph.Edge{Source: ids[i], Target: ids[(i+1)%60]})
 	}
 
-	primeira := vaultgraph.New(ids, edges).Communities()
+	primeira, _ := vaultgraph.New(ids, edges).Communities()
 	for range 5 {
-		assert.Equal(t, primeira, vaultgraph.New(ids, edges).Communities())
+		outra, _ := vaultgraph.New(ids, edges).Communities()
+		assert.Equal(t, primeira, outra)
 	}
 }
 
