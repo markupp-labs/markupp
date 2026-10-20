@@ -36,12 +36,8 @@ compose-config:
 # Configura variáveis de ambiente no ambiente do Compose
 compose-env:
 	@if [ ! -f .env ]; then \
-		printf 'MARKUPP_PORT=8080\nPOSTGRES_VOLUME=postgres_data\nGO_MOD_CACHE=go_mod_cache\nMARKUPP_AUTH_SECRET=%s\n' "$$(openssl rand -hex 32)" > .env; \
-	elif ! grep -q '^MARKUPP_AUTH_SECRET=' .env; then \
-		printf 'MARKUPP_AUTH_SECRET=%s\n' "$$(openssl rand -hex 32)" >> .env; \
+		printf 'MARKUPP_PORT=8080\nPOSTGRES_VOLUME=postgres_data\nGO_MOD_CACHE=go_mod_cache\n' > .env; \
 	fi
-	@grep -q '^MARKUPP_MCP_RESOURCE_SECRET=' .env || \
-		printf 'MARKUPP_MCP_RESOURCE_SECRET=%s\n' "$$(openssl rand -hex 32)" >> .env
 	@echo ".env criado/atualizado com sucesso."
 
 # Sobe a stack do compose em modo destacado
