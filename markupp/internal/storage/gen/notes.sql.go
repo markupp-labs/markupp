@@ -162,7 +162,7 @@ func (q *Queries) ListNotes(ctx context.Context) ([]Note, error) {
 }
 
 const listVaultNotes = `-- name: ListVaultNotes :many
-SELECT n.id, n.vault_id, n.path, n.content, n.content_sha256, n.created_at, n.updated_at,
+SELECT n.id, n.vault_id, n.path, n.content_sha256, n.updated_at,
        c.pagerank, c.in_degree, c.out_degree, m.community_id
 FROM notes n
 LEFT JOIN note_centrality c ON c.note_id = n.id
@@ -195,9 +195,7 @@ type ListVaultNotesRow struct {
 	ID            string
 	VaultID       string
 	Path          string
-	Content       string
 	ContentSha256 []byte
-	CreatedAt     time.Time
 	UpdatedAt     time.Time
 	Pagerank      pgtype.Float8
 	InDegree      pgtype.Int4
@@ -205,6 +203,7 @@ type ListVaultNotesRow struct {
 	CommunityID   pgtype.Int8
 }
 
+// A coleção não lê o conteúdo, que só GetNoteByID devolve.
 // A nota sem organização derivada ainda não passou pelo segundo estágio: entra em
 // orphan=false, como no grafo, fica fora do filtro de comunidade e vai para o fim das
 // ordens por PageRank e por grau. orphan=true vai por ListVaultOrphanNotes.
@@ -229,9 +228,7 @@ func (q *Queries) ListVaultNotes(ctx context.Context, arg ListVaultNotesParams) 
 			&i.ID,
 			&i.VaultID,
 			&i.Path,
-			&i.Content,
 			&i.ContentSha256,
-			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.Pagerank,
 			&i.InDegree,
@@ -249,7 +246,7 @@ func (q *Queries) ListVaultNotes(ctx context.Context, arg ListVaultNotesParams) 
 }
 
 const listVaultOrphanNotes = `-- name: ListVaultOrphanNotes :many
-SELECT n.id, n.vault_id, n.path, n.content, n.content_sha256, n.created_at, n.updated_at,
+SELECT n.id, n.vault_id, n.path, n.content_sha256, n.updated_at,
        c.pagerank, c.in_degree, c.out_degree, m.community_id
 FROM notes n
 LEFT JOIN note_centrality c ON c.note_id = n.id
@@ -280,9 +277,7 @@ type ListVaultOrphanNotesRow struct {
 	ID            string
 	VaultID       string
 	Path          string
-	Content       string
 	ContentSha256 []byte
-	CreatedAt     time.Time
 	UpdatedAt     time.Time
 	Pagerank      pgtype.Float8
 	InDegree      pgtype.Int4
@@ -313,9 +308,7 @@ func (q *Queries) ListVaultOrphanNotes(ctx context.Context, arg ListVaultOrphanN
 			&i.ID,
 			&i.VaultID,
 			&i.Path,
-			&i.Content,
 			&i.ContentSha256,
-			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.Pagerank,
 			&i.InDegree,

@@ -59,11 +59,12 @@ LEFT JOIN note_centrality c ON c.note_id = n.id
 LEFT JOIN note_communities m ON m.note_id = n.id
 WHERE n.id = sqlc.arg(note_id);
 
+-- A coleção não lê o conteúdo, que só GetNoteByID devolve.
 -- A nota sem organização derivada ainda não passou pelo segundo estágio: entra em
 -- orphan=false, como no grafo, fica fora do filtro de comunidade e vai para o fim das
 -- ordens por PageRank e por grau. orphan=true vai por ListVaultOrphanNotes.
 -- name: ListVaultNotes :many
-SELECT n.id, n.vault_id, n.path, n.content, n.content_sha256, n.created_at, n.updated_at,
+SELECT n.id, n.vault_id, n.path, n.content_sha256, n.updated_at,
        c.pagerank, c.in_degree, c.out_degree, m.community_id
 FROM notes n
 LEFT JOIN note_centrality c ON c.note_id = n.id
@@ -85,7 +86,7 @@ LIMIT sqlc.arg(page_limit) OFFSET sqlc.arg(page_offset);
 -- ListVaultNotes não usa porque lá o filtro depende do parâmetro. O LEFT JOIN mantém
 -- as colunas da linha iguais às de ListVaultNotes; o filtro em c o torna interno.
 -- name: ListVaultOrphanNotes :many
-SELECT n.id, n.vault_id, n.path, n.content, n.content_sha256, n.created_at, n.updated_at,
+SELECT n.id, n.vault_id, n.path, n.content_sha256, n.updated_at,
        c.pagerank, c.in_degree, c.out_degree, m.community_id
 FROM notes n
 LEFT JOIN note_centrality c ON c.note_id = n.id

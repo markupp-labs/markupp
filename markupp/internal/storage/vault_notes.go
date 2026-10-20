@@ -9,8 +9,8 @@ import (
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/storage/gen"
 )
 
-// ListVaultNotes devolve a página das notas do cofre vaultID que vq pede, com a
-// organização derivada de cada uma, ou notes.ErrVaultForbidden quando o ator não
+// ListVaultNotes devolve a página das notas do cofre vaultID que vq pede, sem o
+// conteúdo nem a criação e com a organização derivada de cada uma, ou notes.ErrVaultForbidden quando o ator não
 // enxerga o cofre.
 func (r *PostgresNotesRepository) ListVaultNotes(ctx context.Context, vaultID string, vq notes.VaultNotesQuery) ([]notes.Note, error) {
 	var out []notes.Note
@@ -50,7 +50,7 @@ func vaultNotesParams(vaultID string, vq notes.VaultNotesQuery) gen.ListVaultNot
 }
 
 func toRankedNote(r gen.ListVaultNotesRow) notes.Note {
-	note := toNote(gen.Note{ID: r.ID, VaultID: r.VaultID, Path: r.Path, Content: r.Content, ContentSha256: r.ContentSha256, CreatedAt: r.CreatedAt, UpdatedAt: r.UpdatedAt})
+	note := toNote(gen.Note{ID: r.ID, VaultID: r.VaultID, Path: r.Path, ContentSha256: r.ContentSha256, UpdatedAt: r.UpdatedAt})
 	note.Rank = toNoteRank(gen.GetNoteRankRow{Pagerank: r.Pagerank, InDegree: r.InDegree, OutDegree: r.OutDegree, CommunityID: r.CommunityID})
 	return note
 }
