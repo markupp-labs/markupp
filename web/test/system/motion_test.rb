@@ -177,13 +177,13 @@ class MotionTest < ApplicationSystemTestCase
     assert_empty area_motions_of_visit(note_path("1"))
   end
 
-  test "logging out slides to the login, with the sidebar and its spine leaving along" do
+  test "logging out slides to the login, with the sidebar, its spine and the activity bar leaving along" do
     visit note_path("1")
     click_on FakeMarkuppAccounts::DEFAULT_EMAIL
 
     motions = area_motions_while(%(document.querySelector("form[action='#{session_path}'] button").click()))
-    assert_equal AREA_MOVE + [ "::view-transition-old(sidebar) area-out 150 linear 1.5rem", "::view-transition-old(sidebar-spine) area-out 150 linear 1.5rem" ],
-                 motions
+    leaving = %w[activity-bar sidebar sidebar-spine].map { "::view-transition-old(#{it}) area-out 150 linear 1.5rem" }
+    assert_equal (AREA_MOVE + leaving).sort, motions
   end
 
   test "reduced motion swaps the area at once" do
@@ -226,7 +226,9 @@ class MotionTest < ApplicationSystemTestCase
     end
 
     def strip_edge
-      evaluate_script("parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sidebar-strip')) * 16 + 1").round(1)
+      evaluate_script(<<~JS).round(1)
+        ["--activity-width", "--sidebar-strip"].reduce((sum, name) => sum + (parseFloat(getComputedStyle(document.documentElement).getPropertyValue(name)) || 0) * 16, 1)
+      JS
     end
 
     # A saída que interrompe uma entrada encurta (a transição revertida); a ação seguinte espera a anterior acabar.

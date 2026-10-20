@@ -83,11 +83,13 @@ class RegionNavigationTest < ApplicationSystemTestCase
     assert_selector "[role=treeitem][aria-current=page]:focus"
   end
 
-  test "with the sidebar closed alt+h stays in the editor" do
+  test "with the sidebar closed alt+h goes from the editor to the activity bar and writes nothing" do
     page.driver.browser.manage.add_cookie(name: "sidebar", value: "closed")
     open_note(mode: "edit")
 
-    send_keys [ :control, :end ], [ :alt, "h" ], "X"
+    send_keys [ :control, :end ], [ :alt, "h" ]
+    assert_selector ".activity-bar-side [role=tab][aria-label=Explorer]:focus"
+    send_keys [ :alt, "l" ], "X"
 
     assert_selector ".cm-content:focus"
     assert_equal "abcX", note_content
