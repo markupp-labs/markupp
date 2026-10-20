@@ -248,12 +248,15 @@ class NoteTest < ActiveSupport::TestCase
     assert_equal "docs/LEIAME.md", note.resolve("LEIAME")
   end
 
-  test "resolve sends dots and empty segments as typed, for the API to judge" do
+  # Como o :e do Vim: "." é a própria pasta e barras repetidas valem uma. ".." vai como veio, para a API recusar.
+  test "resolve drops dot segments and repeated slashes like vim, and leaves .. for the API to refuse" do
     note = Note.new(path: "work/plano.md")
 
+    assert_equal "work/plano.md", note.resolve("/work/./plano")
+    assert_equal "work/teste.md", note.resolve("./teste")
+    assert_equal "dev/teste.md", note.resolve("/dev//teste")
+    assert_equal "dev/teste.md", note.resolve("//dev/.//teste")
     assert_equal "work/../teste.md", note.resolve("../teste")
-    assert_equal "work/./teste.md", note.resolve("./teste")
-    assert_equal "dev//teste.md", note.resolve("/dev//teste")
   end
 
   test "a path the API refuses tells what a valid path looks like" do
