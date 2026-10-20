@@ -37,8 +37,9 @@ da tolerância de convergência do PageRank
 A revisão lida vira a versão do grafo do cofre, gravada na mesma transação do que o segundo
 estágio calcula. As leituras do grafo para desenhar usam essa versão como validador de cache
 
-Quando o lote passa de 50 notas mais 10% das notas do cofre, o Job roda ANALYZE das tabelas
-derivadas que o lote grava antes do segundo estágio. É o limiar padrão do autovacuum: o
+Quando o lote passa de 50 notas mais 10% das notas do cofre no último df, o Job roda ANALYZE
+das tabelas derivadas que o lote grava antes do segundo estágio. O N do df evita contar as
+notas do cofre a cada lote. É o limiar padrão do autovacuum: o
 segundo estágio roda logo depois do commit, antes de o autovacuum acordar, e sem a
 estatística da carga nova o planejador trata as tabelas como se tivessem o tamanho anterior.
 O primeiro lote de um cofre importado é o caso típico; o lote incremental não passa do
