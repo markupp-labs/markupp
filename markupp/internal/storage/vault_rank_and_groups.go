@@ -14,7 +14,7 @@ func saveCentrality(ctx context.Context, q *gen.Queries, vaultID string, noteIDs
 	if err := q.DeleteNoteCentrality(ctx, vaultID); err != nil {
 		return fmt.Errorf("apagar a centralidade do cofre %q: %w", vaultID, err)
 	}
-	ranks := g.PageRank()
+	ranks, _ := g.PageRank()
 	params := gen.SaveNoteCentralityParams{NoteIds: noteIDs, Pageranks: make([]float64, len(noteIDs)),
 		InDegrees: make([]int32, len(noteIDs)), OutDegrees: make([]int32, len(noteIDs))}
 	for i, id := range noteIDs {

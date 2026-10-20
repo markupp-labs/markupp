@@ -1,13 +1,9 @@
 // Package vaultgraph calcula as medidas do grafo de ligações de um cofre inteiro:
-// grau, alocação de recursos, PageRank e comunidades. O gonum, que calcula o
-// PageRank, fica atrás deste pacote; quem chama vê só ids de nota.
+// grau, alocação de recursos, PageRank e comunidades. O gonum, que dá a estrutura do
+// grafo, fica atrás deste pacote; quem chama vê só ids de nota.
 package vaultgraph
 
-import (
-	"slices"
-
-	"gonum.org/v1/gonum/graph/network"
-)
+import "slices"
 
 const (
 	// damping é o fator de amortecimento do PageRank, o valor canônico de Page et al. (1998).
@@ -78,15 +74,16 @@ func (g *Graph) ResourceAllocation(a, b string) float64 {
 	return score
 }
 
-// PageRank devolve o PageRank de cada nota com d=0,85; a massa de nota sem ligação
-// de saída se espalha por todas.
-func (g *Graph) PageRank() map[string]float64 {
-	ranks := network.PageRankSparse(g.directed, damping, pageRankTolerance)
+// PageRank devolve o PageRank de cada nota com d=0,85, e como a iteração parou: na
+// tolerância ou no teto de iterações. A massa de nota sem ligação de saída se espalha
+// por todas.
+func (g *Graph) PageRank() (map[string]float64, Convergence) {
+	ranks, stop := pageRank(g.directed.from, damping, pageRankTolerance, pageRankMaxIterations)
 	out := make(map[string]float64, len(ranks))
 	for i, r := range ranks {
 		out[g.ids[i]] = r
 	}
-	return out
+	return out, stop
 }
 
 // Communities devolve as comunidades do Louvain na projeção não dirigida, com
