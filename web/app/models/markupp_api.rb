@@ -37,6 +37,11 @@ class MarkuppApi
   class TenantUnavailable < Forbidden; end
   # Conceder papel acima do próprio, ou mexer em quem está acima.
   class RoleAboveOwn < Forbidden; end
+  # Cofre inexistente ou de que a conta não é membro.
+  class VaultUnavailable < Forbidden; end
+
+  # Corpo e ETag de uma leitura que pode voltar 304.
+  Revision = Data.define(:body, :etag)
 
   # Sem eles valem os 60s do Net::HTTP, e a trava de renovação do RefreshingMarkuppApi fica presa esse tempo todo.
   # Sem repetição (max_retries 0): o Net::HTTP repetiria GET, PUT e DELETE e dobraria a espera.
@@ -68,6 +73,9 @@ class MarkuppApi
   def self.path(*segments) = segments.map { "/#{ERB::Util.url_encode(it)}" }.join
 
   def get(path) = request(Net::HTTP::Get, path)
+
+  # GET que revalida a cópia guardada pela ETag dela: nil no 304, quando a cópia ainda vale.
+  def conditional_get(path, etag:) = Revision.new(body: get(path), etag: nil)
 
   def put(path, body) = request(Net::HTTP::Put, path, body)
 

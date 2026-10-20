@@ -24,8 +24,11 @@ class Note
     api.get("/notes/search?#{{ query:, limit: SEARCH_LIMIT }.to_query}").map { from_api(it) }
   end
 
+  # Notas do cofre sem o conteúdo, com a organização derivada; a query filtra (orphan, community) e ordena (sort, direction).
+  def self.in_vault(api, vault_id, **query) = []
+
+  # Também monta a nota resumida (id, título e caminho) que vem dentro de ligação, menção, comunidade e busca.
   def self.from_api(attributes) = new(attributes.slice(*attribute_names))
-  private_class_method :from_api
 
   def self.api_path(id) = MarkuppApi.path("notes", id)
 
