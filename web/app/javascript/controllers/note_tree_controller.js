@@ -111,13 +111,13 @@ export default class extends Controller {
   openMenuAtRow(event, row) {
     event.preventDefault()
     const { left, bottom } = row.getBoundingClientRect()
-    this.openMenu(row, left + 16, bottom)
+    this.openMenu(row, left + 16, bottom, true)
   }
 
-  openMenu(row, x, y) {
+  openMenu(row, x, y, fromKeyboard = false) {
     this.menuRow = row
     this.showMenuItems((item) => !(item.dataset.noteOnly == "true" && isFolder(row)))
-    this.contextMenuOutlet.open({ x, y, opener: row })
+    this.contextMenuOutlet.open({ x, y, opener: row, fromKeyboard })
   }
 
   // Botão direito no espaço vazio da barra lateral é a raiz: só a nota nova, em /. Em linha, botão, link ou campo fica o

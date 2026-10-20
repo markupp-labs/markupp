@@ -1,23 +1,24 @@
 import { Controller } from "@hotwired/stimulus"
 
-// Menu de contexto num popover (role=menu): abre num ponto da tela com o foco no primeiro item, setas ou j/k andam em
-// volta, Home e End vão às pontas, Esc, Tab e clicar fora fecham. Fechado, o foco volta a quem abriu se ainda estava no
+// Menu de contexto num popover (role=menu): abre num ponto da tela; pelo teclado o foco vai ao primeiro item, pelo mouse
+// fica no próprio menu, sem item (um Enter logo depois não roda nada, e as setas entram por uma das pontas). Setas ou
+// j/k andam em volta, Home e End vão às pontas, Esc, Tab e clicar fora fecham. Fechado, o foco volta a quem abriu se ainda estava no
 // menu; quem foi para outro lugar (o campo do caminho no Rename) fica onde está. O popover é manual: no auto, o
 // pointerup do próprio botão direito (o contextmenu vem no pointerdown no Linux e no Mac) fechava o menu recém-aberto.
-// Também abre por um botão com popovertarget (menu da conta no rodapé): o toggle leva o foco ao primeiro item, e o botão
-// passa a ser quem abriu; clicar nele de novo fecha. Aberto pelo open(), quem abriu ganha data-menu-open até o menu fechar,
+// Também abre por um botão com popovertarget (menu da conta no rodapé): o toggle leva o foco para dentro (o pointerdown
+// no botão diz se foi o mouse), e o botão passa a ser quem abriu; clicar nele de novo fecha. Aberto pelo open(), quem abriu ganha data-menu-open até o menu fechar,
 // para a linha da árvore mostrar sobre quem o menu age (tree.css).
 const STEPS = { ArrowDown: 1, j: 1, ArrowUp: -1, k: -1 }
 const EDGE_GAP = 4
 
 export default class extends Controller {
-  open({ x, y, opener }) {
+  open({ x, y, opener, fromKeyboard = false }) {
     this.opener = opener
     opener.toggleAttribute("data-menu-open", true)
     if (this.element.matches(":popover-open")) this.element.hidePopover()
     this.element.showPopover()
     this.placeAt(x, y)
-    this.items[0]?.focus()
+    this.focusInside(fromKeyboard)
   }
 
   close() {
@@ -25,15 +26,22 @@ export default class extends Controller {
   }
 
   closeOutside({ target }) {
-    if (!this.element.contains(target) && !this.invoker?.contains(target)) this.close()
+    this.pointerOnInvoker = this.invoker?.contains(target) ?? false
+    if (!this.element.contains(target) && !this.pointerOnInvoker) this.close()
   }
 
   // Aberto pelo popovertarget, sem passar pelo open(): o foco ainda está fora do menu.
   focusFirst({ newState }) {
+    const byPointer = this.pointerOnInvoker
+    this.pointerOnInvoker = false
     if (newState != "open" || this.element.contains(document.activeElement)) return
 
     this.opener = this.invoker
-    this.items[0]?.focus()
+    this.focusInside(!byPointer)
+  }
+
+  focusInside(onFirstItem) {
+    (onFirstItem ? this.items[0] : this.menu)?.focus()
   }
 
   navigate(event) {
@@ -43,8 +51,9 @@ export default class extends Controller {
     if ((step === undefined && edge === undefined) || event.ctrlKey || event.metaKey || event.altKey) return
 
     event.preventDefault()
-    const index = edge ?? (this.items.indexOf(document.activeElement) + step + this.items.length) % this.items.length
-    this.items[index].focus()
+    const current = this.items.indexOf(document.activeElement)
+    const from = current < 0 && step < 0 ? 0 : current
+    this.items[edge ?? (from + step + this.items.length) % this.items.length].focus()
   }
 
   closeFromKey(event) {
@@ -68,6 +77,10 @@ export default class extends Controller {
 
   get invoker() {
     return document.querySelector(`[popovertarget="${this.element.id}"]`)
+  }
+
+  get menu() {
+    return this.element.matches("[role=menu]") ? this.element : this.element.querySelector("[role=menu]")
   }
 
   get items() {

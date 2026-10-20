@@ -24,7 +24,7 @@
     <p id="account_menu_signed_in" class="border-b border-line px-2 pb-1.5 pt-1 text-ink-muted">
       <%= t(".signed_in_as") %><br><span class="break-all text-ink"><%= credential.account_email %></span>
     </p>
-    <div role="menu" aria-label="<%= t(".account_menu") %>" aria-describedby="account_menu_signed_in">
+    <div role="menu" tabindex="-1" aria-label="<%= t(".account_menu") %>" aria-describedby="account_menu_signed_in">
       <%= button_to t(".log_out"), session_path, method: :delete, role: "menuitem", tabindex: -1, class: "tree-row context-menu-item" %>
     </div>
   </div>
