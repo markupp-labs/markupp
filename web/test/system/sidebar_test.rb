@@ -77,12 +77,12 @@ class SidebarTest < ApplicationSystemTestCase
     top = edge(spine, "top")
     spine.click
     assert_no_selector "nav#sidebar"
-    assert_in_delta 7, edge(spine, "left"), 0.5
+    assert_in_delta 48 + 7, edge(spine, "left"), 0.5
     assert_in_delta top, edge(spine, "top"), 0.5
   end
 
   # Fechada, a barra deixa na borda esquerda uma faixa no fundo dela e com a linha dela, de onde a lombada sai, da
-  # largura da folga do ícone da lombada (7px); o conteúdo começa depois da faixa.
+  # largura da folga do ícone da lombada (7px), logo depois da barra de atividades (48px); o conteúdo começa depois da faixa.
   test "a closed sidebar leaves a thin strip in its colors on the left edge" do
     use_fake_api(notes: [])
     sign_in_through_form
@@ -94,10 +94,10 @@ class SidebarTest < ApplicationSystemTestCase
 
     click_on "Hide sidebar"
     assert_no_selector "nav#sidebar"
-    assert_equal [ "fixed", "0px", "7px", "1px" ], %w[position left width borderRightWidth].map { strip_style(it) }
+    assert_equal [ "fixed", "48px", "7px", "1px" ], %w[position left width borderRightWidth].map { strip_style(it) }
     assert_equal colors, [ strip_style("backgroundColor"), strip_style("borderRightColor") ]
     assert_equal evaluate_script("innerHeight"), strip_style("height").to_f.round
-    assert_in_delta 8, edge(find("main"), "left"), 0.5
+    assert_in_delta 48 + 8, edge(find("main"), "left"), 0.5
   end
 
   # Hover e foco não pintam o fundo (a aba segue sendo a borda puxada da barra); só o ícone sobe para o accent, que
