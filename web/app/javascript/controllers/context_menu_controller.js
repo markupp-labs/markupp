@@ -5,7 +5,7 @@ import { Controller } from "@hotwired/stimulus"
 // j/k andam em volta, Home e End vão às pontas, Esc, Tab e clicar fora fecham. Fechado, o foco volta a quem abriu se ainda estava no
 // menu; quem foi para outro lugar (o campo do caminho no Rename) fica onde está. O popover é manual: no auto, o
 // pointerup do próprio botão direito (o contextmenu vem no pointerdown no Linux e no Mac) fechava o menu recém-aberto.
-// Também abre por um botão com popovertarget (menu da conta no rodapé): o toggle leva o foco para dentro (o pointerdown
+// Também abre por um botão com popovertarget (menu da conta no rodapé): o toggle leva o foco para dentro (o detail do click
 // no botão diz se foi o mouse), e o botão passa a ser quem abriu; clicar nele de novo fecha. Aberto pelo open(), quem abriu ganha data-menu-open até o menu fechar,
 // para a linha da árvore mostrar sobre quem o menu age (tree.css).
 const STEPS = { ArrowDown: 1, j: 1, ArrowUp: -1, k: -1 }
@@ -26,14 +26,18 @@ export default class extends Controller {
   }
 
   closeOutside({ target }) {
-    this.pointerOnInvoker = this.invoker?.contains(target) ?? false
-    if (!this.element.contains(target) && !this.pointerOnInvoker) this.close()
+    if (!this.element.contains(target) && !this.invoker?.contains(target)) this.close()
+  }
+
+  // O click vem antes do toggle; detail 0 é o Enter ou o espaço. Um pointerdown sem click (arrastou para fora) não conta.
+  rememberInvokerClick({ target, detail }) {
+    this.clickedByPointer = detail > 0 && (this.invoker?.contains(target) ?? false)
   }
 
   // Aberto pelo popovertarget, sem passar pelo open(): o foco ainda está fora do menu.
   focusFirst({ newState }) {
-    const byPointer = this.pointerOnInvoker
-    this.pointerOnInvoker = false
+    const byPointer = this.clickedByPointer
+    this.clickedByPointer = false
     if (newState != "open" || this.element.contains(document.activeElement)) return
 
     this.opener = this.invoker
