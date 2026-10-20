@@ -62,6 +62,17 @@ const nextStepByCode = {
   insufficient_scope:
     "Ask the user to reconnect the server granting the scope this message names.",
   unauthorized: reconnect,
+  forbidden:
+    "Use a tenant where list_tenants shows role owner or admin, or ask an owner of this tenant.",
+  member_not_found: "Find the current user id with list_members.",
+  invite_not_found:
+    "Find the current invite id with list_invites for tenant invites or list_my_invites for your own.",
+  last_owner:
+    "Give another member the owner role with change_member_role first.",
+  role_above_own:
+    "Act only on members and roles up to your own role in list_tenants, or ask an owner.",
+  already_member:
+    "They already belong to the tenant: see list_members, or list_tenants for your own account.",
 } as const satisfies Record<string, string>;
 
 // apiFor devolve o cliente da API da sessão que chamou a ferramenta ou leu o resource.
