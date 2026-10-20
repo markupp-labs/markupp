@@ -64,6 +64,19 @@ module ShortcutsHelper
       Shortcut.of(:list_choose, "Enter"),
       Shortcut.of(:list_close, "Esc")
     ],
+    # Comandos Ex e teclas do modo Vim (editor/vim_mode.js), com o foco no editor; a ajuda só mostra com o modo ligado.
+    vim: [
+      Shortcut.of(:vim_write, ":w"),
+      Shortcut.of(:vim_write_quit, ":wq"),
+      Shortcut.of(:vim_quit, ":q"),
+      Shortcut.of(:vim_quit_force, ":q!"),
+      Shortcut.of(:vim_open, ":e path"),
+      Shortcut.of(:vim_edit, ":edit", ":e"),
+      Shortcut.of(:vim_read, ":read"),
+      Shortcut.of(:vim_split, ":split"),
+      Shortcut.of(:vim_leave_editor, "Esc Esc Tab"),
+      Shortcut.of(:vim_back_to_path, "Esc Esc Shift+Tab")
+    ],
     tenants: [
       Shortcut.of(:filter_tenants, "/"),
       Shortcut.of(:new_tenant, "Alt+N", run: { href: :new_tenant_path }),
@@ -85,9 +98,10 @@ module ShortcutsHelper
 
   def shortcut_name(shortcut) = t("shortcuts.names.#{shortcut.name}")
 
-  # Grupos da ajuda, cada um só com os atalhos que têm tecla.
+  # Grupos da ajuda, cada um só com os atalhos que têm tecla; o do Vim só com o modo Vim ligado.
   def help_shortcut_groups
-    SHORTCUT_GROUPS.transform_values { |shortcuts| shortcuts.select { it.help && it.keys.any? } }
+    groups = SHORTCUT_GROUPS.transform_values { |shortcuts| shortcuts.select { it.help && it.keys.any? } }
+    chosen_vim_keys == "on" ? groups : groups.except(:vim)
   end
 
   # Largura em caracteres da coluna das teclas na ajuda, a do atalho mais longo ("Shift+F10 / Menu"): todos os grupos usam
