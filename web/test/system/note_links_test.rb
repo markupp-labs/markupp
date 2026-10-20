@@ -8,9 +8,9 @@ class NoteLinksTest < ApplicationSystemTestCase
   IDEAS = { id: "ideas", title: "ideas", path: "ideas.md" }.freeze
   NOTES = [ PLAN, ROADMAP, IDEAS ].map { { id: it[:id], path: it[:path], content: "# #{it[:title]}\n" } }.freeze
   GRAPH = {
-    backlinks: { "plan" => [ { source: ROADMAP, target: PLAN, cited_title: "plan", type: "explicit" } ],
-                 "roadmap" => [ { source: IDEAS, target: ROADMAP, cited_title: "roadmap", type: "explicit" } ] },
-    links: { "plan" => [ { source: PLAN, target: nil, cited_title: "Ghost", type: "explicit" } ] },
+    backlinks: { "plan" => [ { source: ROADMAP, target: PLAN, cited_title: "plan", type: "explicit", predicate: nil, inferred_target: nil } ],
+                 "roadmap" => [ { source: IDEAS, target: ROADMAP, cited_title: "roadmap", type: "explicit", predicate: nil, inferred_target: nil } ] },
+    links: { "plan" => [ { source: PLAN, target: nil, cited_title: "Ghost", type: "explicit", predicate: nil, inferred_target: nil } ] },
     suggestions: { "plan" => [ { note: IDEAS, score: 0.03, resource_allocation: 0.5, cosine: 0.2 } ] }
   }.freeze
 

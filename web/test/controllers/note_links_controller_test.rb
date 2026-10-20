@@ -10,11 +10,11 @@ class NoteLinksControllerTest < ActionDispatch::IntegrationTest
   IDEAS = { id: "ideas", title: "ideas", path: "ideas.md" }.freeze
   NOTES = [ PLAN, ROADMAP, ALICE, DRAFT, IDEAS ].map { { id: it[:id], path: it[:path], content: "" } }.freeze
   GRAPH = {
-    backlinks: { "plan" => [ { source: ROADMAP, target: PLAN, cited_title: "plan", type: "explicit" },
-                             { source: ALICE, target: PLAN, cited_title: "plan", type: "typed", predicate: "owner" } ] },
-    links: { "plan" => [ { source: PLAN, target: ALICE, cited_title: "alice", type: "typed", predicate: "author" },
-                         { source: PLAN, target: nil, cited_title: "Ghost", type: "explicit" },
-                         { source: PLAN, target: ROADMAP, cited_title: "roadmap", type: "embed" } ] },
+    backlinks: { "plan" => [ { source: ROADMAP, target: PLAN, cited_title: "plan", type: "explicit", predicate: nil, inferred_target: nil },
+                             { source: ALICE, target: PLAN, cited_title: "plan", type: "typed", predicate: "owner", inferred_target: nil } ] },
+    links: { "plan" => [ { source: PLAN, target: ALICE, cited_title: "alice", type: "typed", predicate: "author", inferred_target: nil },
+                         { source: PLAN, target: nil, cited_title: "Ghost", type: "explicit", predicate: nil, inferred_target: nil },
+                         { source: PLAN, target: ROADMAP, cited_title: "roadmap", type: "embed", predicate: nil, inferred_target: nil } ] },
     backmentions: { "plan" => [ { note: DRAFT, cited_title: "plan", prior: 0.5 } ] },
     suggestions: { "plan" => [ { note: IDEAS, score: 0.03, resource_allocation: 0.5, cosine: 0.2 } ] }
   }.freeze
