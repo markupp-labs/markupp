@@ -94,7 +94,7 @@ class ActivityBarTest < ApplicationSystemTestCase
     find(".cm-content").send_keys([ :control, :shift, "l" ])
     assert_selector "#sidebar_view_links #links_backlinks summary:focus"
     send_keys [ :control, :shift, "g" ]
-    assert_selector "#sidebar_view_graph:focus"
+    assert_selector "#sidebar_view_graph canvas[data-graph-canvas]:focus"
     send_keys [ :control, :shift, "e" ]
 
     assert_selector "[role=treeitem][aria-current=page]:focus"
