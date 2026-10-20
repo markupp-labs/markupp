@@ -28,6 +28,18 @@ class NoteTreeMenuTest < ApplicationSystemTestCase
     assert_equal "plan", evaluate_script("document.activeElement.textContent.trim().split(' ').pop()")
   end
 
+  # Como o contorno do VS Code: a linha do menu se distingue da nota aberta enquanto o menu está aberto.
+  test "the row the menu acts on is outlined while the menu is open" do
+    visit note_path("2")
+    row("ideas").right_click
+
+    assert_selector "[role=treeitem][data-menu-open]", count: 1, text: "ideas"
+    assert_equal "solid", row("ideas").evaluate_script("getComputedStyle(this).outlineStyle")
+    send_keys :escape
+
+    assert_no_selector "[role=treeitem][data-menu-open]"
+  end
+
   test "shift+f10 and the menu key open the same menu on the focused row" do
     visit note_path("1")
     focus_row "plan"
