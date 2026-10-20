@@ -77,7 +77,7 @@ func checkResource(raw, granted string) error {
 // grant sem gravar nada.
 func (s *Service) issueTokens(ctx context.Context, redeemed RedeemedCode, now time.Time) (TokenResponse, error) {
 	base := IssuedToken{AuthorizationID: redeemed.Authorization.ID, Resource: redeemed.Request.Resource, Scopes: redeemed.Request.Scopes}
-	pair := s.newTokenPair(base, now)
+	pair := s.newTokenPair(base, base.Scopes, now)
 	err := s.repo.SaveCodeTokens(ctx, redeemed.Request.ID, pair.tokens)
 	switch {
 	case err == nil:
@@ -97,13 +97,16 @@ type tokenPair struct {
 	response TokenResponse
 }
 
-// newTokenPair gera access e refresh com a Autorização, o resource e os escopos de base.
-func (s *Service) newTokenPair(base IssuedToken, now time.Time) tokenPair {
+// newTokenPair gera access e refresh com a Autorização e o resource de base. O access e
+// a resposta levam os escopos de base; o refresh, refreshScopes.
+func (s *Service) newTokenPair(base IssuedToken, refreshScopes []string, now time.Time) tokenPair {
 	access, refresh := s.newToken(), s.newToken()
+	refreshBase := base
+	refreshBase.Scopes = refreshScopes
 	return tokenPair{
 		tokens: []IssuedToken{
 			withSecret(base, access, TokenKindAccess, now.Add(s.cfg.AccessTTL)),
-			withSecret(base, refresh, TokenKindRefresh, now.Add(s.cfg.RefreshTTL)),
+			withSecret(refreshBase, refresh, TokenKindRefresh, now.Add(s.cfg.RefreshTTL)),
 		},
 		response: TokenResponse{
 			AccessToken: access, TokenType: "Bearer", ExpiresIn: int64(s.cfg.AccessTTL / time.Second),
