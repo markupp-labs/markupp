@@ -95,3 +95,9 @@ pin_all_from "vendor/javascript/highlightjs-languages", under: "highlight.js/lan
 pin "@replit/codemirror-vim", to: "@replit--codemirror-vim.js", preload: false # @6.4.0
 pin "@replit/codemirror-vim-core", to: "@replit--codemirror-vim-core.js", preload: false # @0.1.0
 pin "@codemirror/search", to: "@codemirror--search.js", preload: false # @6.7.2
+# Grafo de forca (graph/force_layout.js): sem preload, baixa so quando a visao Graph ou a tela do grafo abre. Arquivos do
+# ga.jspm.io sem mudanca (cabecalho de cada um); licenca ISC em vendor/javascript/LICENSES.txt.
+pin "d3-force", preload: false # @3.0.0
+pin "d3-dispatch", preload: false # @3.0.1
+pin "d3-quadtree", preload: false # @3.0.1
+pin "d3-timer", preload: false # @3.0.1
