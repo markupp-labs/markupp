@@ -11,6 +11,6 @@ describe("exchangeConfig", () => {
     expect(config.fetch).toBe(fetcher.fetch);
     expect(config.clock()).toBe(5);
     expect(config.resourceSecret).toBe("outro");
-    expect(config.issuerUrl).toBe("https://markupp.exemplo");
+    expect(config.apiUrl).toBe("https://markupp.exemplo");
   });
 });

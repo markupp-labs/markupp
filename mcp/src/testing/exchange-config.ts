@@ -10,7 +10,7 @@ export function exchangeConfig(
   overrides: Partial<TokenExchangeConfig> = {},
 ): TokenExchangeConfig {
   return {
-    issuerUrl: "https://markupp.exemplo",
+    apiUrl: "https://markupp.exemplo",
     resourceUrl: "https://mcp.exemplo",
     resourceSecret: "segredo",
     fetch: fetcher.fetch,

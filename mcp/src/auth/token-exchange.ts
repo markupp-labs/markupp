@@ -9,9 +9,10 @@ export const ACCESS_TOKEN_TYPE =
   "urn:ietf:params:oauth:token-type:access_token";
 
 // TokenExchangeConfig é o servidor MCP como resource do Go: a URL dele, o segredo
-// configurado no Go para ela e o issuer que faz a troca.
+// configurado no Go para ela e o endereço do Go por onde a troca passa, que pode ser o
+// interno do cluster ou do compose em vez da URL pública do issuer.
 export type TokenExchangeConfig = {
-  issuerUrl: string;
+  apiUrl: string;
   resourceUrl: string;
   resourceSecret: string;
   fetch: typeof fetch;
@@ -67,7 +68,7 @@ export async function exchangeAgentToken(
   agentToken: string,
 ): Promise<ExchangedApiToken> {
   const response = await config.fetch(
-    new URL("/oauth/token", config.issuerUrl),
+    new URL("/oauth/token", config.apiUrl),
     exchangeRequestInit(config, agentToken),
   );
   if (!response.ok) {
