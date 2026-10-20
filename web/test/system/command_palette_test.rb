@@ -60,6 +60,8 @@ class CommandPaletteTest < ApplicationSystemTestCase
     run_command "keyboard shortcuts"
     assert_selector "dialog#shortcut_help[open]"
     send_keys :escape
+    # A próxima tecla vai para quem tem o foco; com a ajuda ainda fechando, a suíte paralela deu element not interactable.
+    assert_no_selector "dialog#shortcut_help[open]"
 
     run_command "light theme"
     assert_selector "html[data-theme=light]"
