@@ -97,8 +97,8 @@ func loadPanelURL(lookup LookupFunc, cfg *Config) error {
 	return err
 }
 
-// normalizeOAuthURL valida raw pela regra e a devolve com esquema e host em
-// minúsculas, sem a porta padrão do esquema e sem barra final. O erro mostra a URL com a senha mascarada.
+// normalizeOAuthURL valida raw pela regra e a devolve na forma canônica de
+// oauth.CanonicalURL. O erro mostra a URL com a senha mascarada.
 func normalizeOAuthURL(raw string, rule oauthURLRule) (string, error) {
 	parsed, err := url.Parse(raw)
 	if err != nil {
@@ -107,17 +107,7 @@ func normalizeOAuthURL(raw string, rule oauthURLRule) (string, error) {
 	if !oauthURLAllowed(parsed, rule) || strings.Contains(raw, "#") {
 		return "", fmt.Errorf("%s=%q, esperado %s", rule.key, parsed.Redacted(), rule.expected)
 	}
-	parsed.Host = withoutDefaultPort(parsed.Host, parsed.Scheme)
 	return oauth.CanonicalURL(parsed), nil
-}
-
-// defaultPorts é a porta implícita de cada esquema aceito, que a normalização remove.
-var defaultPorts = map[string]string{"https": "443", "http": "80"}
-
-// withoutDefaultPort tira de host a porta padrão do esquema, para que
-// https://h:443 e https://h virem a mesma URL.
-func withoutDefaultPort(host, scheme string) string {
-	return strings.TrimSuffix(host, ":"+defaultPorts[scheme])
 }
 
 // oauthURLAllowed confere esquema, host e ausência de userinfo e de query e, conforme
