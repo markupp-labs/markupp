@@ -27,6 +27,18 @@ class ShortcutsHelperTest < ActionView::TestCase
     assert_raises(KeyError) { shortcut_keys(:missing) }
   end
 
+  # Alt+N é a nota nova nas notas e nas configurações (a árvore está na barra) e o New tenant na lista de tenants: a
+  # ajuda e a paleta só trazem o da tela, sem duas entradas com a mesma tecla.
+  test "alt+n is the new note outside the tenants and the new tenant on them, once in the help and the palette" do
+    { nil => :new_note, "settings" => :new_note, "tenants" => :new_tenant }.each do |area, name|
+      content_for(:area, area, flush: true) if area
+      in_help = help_shortcut_groups.values.flatten.select { it.keys.include?("Alt+N") }.map(&:name)
+      in_palette = palette_commands.select { it.keys.include?("Alt+N") }.map(&:name)
+
+      assert_equal [ [ name ], [ name ] ], [ in_help, in_palette ], "area #{area.inspect}"
+    end
+  end
+
   # O note_tree_controller.js trata as teclas das linhas sem passar pelo servidor: o espelho tem as mesmas teclas.
   test "the row shortcuts of the tree controller mirror the registry" do
     source = Rails.root.join("app/javascript/controllers/note_tree_controller.js").read

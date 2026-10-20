@@ -123,6 +123,15 @@ class CommandPaletteTest < ApplicationSystemTestCase
     assert_field "Path", with: "/work/"
   end
 
+  # Alt+N é a nota nova na nota e o New tenant na lista de tenants: a paleta e a ajuda só trazem o da tela.
+  test "alt+n shows once in the palette and the help, as the new note on a note and the new tenant on the tenants" do
+    assert_equal [ "New note" ], alt_n_entries
+
+    visit tenants_path
+    assert_selector "h1", text: "Tenants"
+    assert_equal [ "New tenant" ], alt_n_entries
+  end
+
   # A paleta fica aberta enquanto a página escolhida carrega; o Turbo guarda a página que sai no cache, e ela não pode
   # voltar pelo histórico com a paleta à mostra.
   test "going back after a page chosen in the palette restores the page without the palette" do
@@ -170,6 +179,18 @@ class CommandPaletteTest < ApplicationSystemTestCase
     def switch_labels(among = MODES)
       open_palette
       option_labels & among
+    end
+
+    # Nomes das entradas de Alt+N: as da paleta e as da ajuda, que tem de dar o mesmo.
+    def alt_n_entries
+      entries = evaluate_script(<<~JS)
+        [ [ ...document.querySelectorAll("#command_palette [role=option]") ].filter((option) => getComputedStyle(option).display != "none" && option.querySelector("kbd")?.textContent == "Alt N")
+            .map((option) => option.querySelector("[data-command-label]").textContent),
+          [ ...document.querySelectorAll("#shortcut_help dt") ].filter((keys) => keys.textContent == "Alt+N").map((keys) => keys.nextElementSibling.textContent) ]
+      JS
+      entries.first.zip(entries.last).each { |palette, help| assert_equal palette, help }
+      assert_equal entries.first.size, entries.last.size
+      entries.first
     end
 
     def option_labels
