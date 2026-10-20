@@ -40,7 +40,8 @@ class CodeHighlightTest < ApplicationSystemTestCase
 
   setup do
     use_fake_api(notes: [ { id: "1", path: "plan.md", content: NOTE_WITH_CODE }, { id: "2", path: "blank.md", content: "" },
-                          { id: "3", path: "langs.md", content: NOTE_WITH_ON_DEMAND_CODE } ])
+                          { id: "3", path: "langs.md", content: NOTE_WITH_ON_DEMAND_CODE },
+                          { id: "4", path: "ml.md", content: "```ml\nlet x = 1\n```\n" } ])
     sign_in_through_form
   end
 
@@ -104,6 +105,14 @@ class CodeHighlightTest < ApplicationSystemTestCase
 
     %w[public fn fun].each { |keyword| assert_selector ".note-preview pre code span.hljs-keyword", text: keyword, exact_text: true }
     assert_equal [ "Java", "Rust", "Kotlin" ], all(".note-preview pre .code-header .code-language", count: 3).map(&:text)
+  end
+
+  # ml é apelido do OCaml e do SML; o painel lê como OCaml, o mais usado, na leitura e no editor.
+  test "a block fenced as ml reads as ocaml" do
+    visit note_path("4")
+    click_on "Read"
+
+    assert_selector ".note-preview pre .code-header .code-language", text: "OCaml", exact_text: true
   end
 
   test "editing highlights java, rust by its rs alias and kotlin, loaded on demand" do
