@@ -21,8 +21,8 @@ type Settled<T> = { ok: true; value: T } | { ok: false; error: unknown };
 
 const RETRY_INTERVAL_MS = 1_000;
 const STARTUP_TIMEOUT_MS = 60_000;
-const REQUEST_TIMEOUT_MS = 5_000;
-const METADATA_PATH = "/.well-known/oauth-authorization-server";
+export const REQUEST_TIMEOUT_MS = 5_000;
+export const METADATA_PATH = "/.well-known/oauth-authorization-server";
 
 // resolveHttpConfig completa a config do ambiente com o que depende do Go: o issuer
 // da metadata RFC 8414 e, sem a variável, o segredo do arquivo que o Go escreve.

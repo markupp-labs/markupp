@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { oauthErrorIn, readBody } from "./oauth-response.js";
 
 // Clock devolve o instante atual em milissegundos desde a época.
 export type Clock = () => number;
@@ -56,11 +57,6 @@ const exchangeSuccessBody = z.object({
 const SUCCESS_SHAPE =
   "esperado {access_token: string, expires_in: inteiro positivo}";
 
-const oauthErrorBody = z.object({
-  error: z.string().min(1),
-  error_description: z.string().optional(),
-});
-
 // exchangeAgentToken troca o token opaco do agente pelo JWT da API (RFC 8693), com o
 // servidor MCP autenticado por HTTP Basic como resource.
 export async function exchangeAgentToken(
@@ -110,44 +106,11 @@ export function resourceBasicAuth(resourceUrl: string, secret: string): string {
   return `Basic ${btoa(credentials)}`;
 }
 
-// BODY_EXCERPT_CHARS limita o trecho do corpo citado nas mensagens de erro; as
-// respostas do issuer nunca repetem a credencial nem o subject_token.
-const BODY_EXCERPT_CHARS = 200;
-
-// ReadBody é o corpo lido uma vez: o trecho do texto cru, para citar no erro, e o JSON
-// (undefined quando o texto não é JSON válido).
-type ReadBody = { excerpt: string; json: unknown };
-
-// readBody lê o corpo como texto e tenta o JSON sem lançar: proxy na frente do issuer
-// pode devolver HTML.
-async function readBody(response: Response): Promise<ReadBody> {
-  const text = await response.text();
-  const excerpt = text.slice(0, BODY_EXCERPT_CHARS);
-  try {
-    return { excerpt, json: JSON.parse(text) as unknown };
-  } catch {
-    return { excerpt, json: undefined };
-  }
-}
-
 async function exchangeRefusal(
   response: Response,
 ): Promise<TokenExchangeError> {
-  const body = await readBody(response);
-  const parsed = oauthErrorBody.safeParse(body.json);
-  if (!parsed.success) {
-    return new TokenExchangeError(
-      response.status,
-      "sem_codigo_oauth",
-      `corpo fora do formato {error, error_description}: ${JSON.stringify(body.excerpt)}`,
-    );
-  }
-  const { error, error_description } = parsed.data;
-  return new TokenExchangeError(
-    response.status,
-    error,
-    error_description ?? "",
-  );
+  const { code, description } = oauthErrorIn(await readBody(response));
+  return new TokenExchangeError(response.status, code, description);
 }
 
 async function readExchangedToken(
