@@ -60,7 +60,7 @@ const nextStepByCode = {
   invalid_path: "Use a non-empty path up to 1024 characters without '..'.",
   invalid_content: "Split the content into smaller notes.",
   insufficient_scope:
-    "Ask the user to reconnect the server granting the notas:escrita scope.",
+    "Ask the user to reconnect the server granting the scope this message names.",
   unauthorized: reconnect,
 } as const satisfies Record<string, string>;
 
