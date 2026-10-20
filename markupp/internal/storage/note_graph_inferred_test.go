@@ -109,3 +109,29 @@ func TestLigacaoInferida_SobreviveAoLoteQueNaoMudaLigacoes(t *testing.T) {
 	assert.NotContains(t, frequenciasDoCofre(t, db, cofreDeTeste), "texto", "o lote nao mudou titulo nem ligacao escrita")
 	assert.Equal(t, []string{"a"}, backlinks(ctxDeTeste, t, graph, "k"))
 }
+
+// TestLigacaoInferida_TituloComumNaoEntraNoPrior: s cita "postgresqk", mais perto
+// do título de p; x é parente de s pelo hub e, citada por sete notas de 111, teria o
+// maior prior, mas o título dela passa de 5% do cofre. O segundo Job já tem o df.
+func TestLigacaoInferida_TituloComumNaoEntraNoPrior(t *testing.T) {
+	db := setupNotesDB(t)
+	repo := storage.NewPostgresNotesRepository(db, "simple")
+	for _, nota := range []notes.Note{
+		notaComCaminho("p", "postgresql.md", "banco"),
+		notaComCaminho("x", "postgresqlx.md", "driver"),
+		notaComCaminho("m", "m.md", "postgresql sem ligar"),
+		notaComCaminho("hub", "hub.md", "[[postgresqlx]]"),
+		notaComCaminho("s", "s.md", "[[postgresqk]] [[hub]]"),
+	} {
+		storagetest.SaveNote(ctxDeTeste, t, repo, nota)
+	}
+	semeiaNotas(t, db, "c", "[[postgresqlx]]", 6)
+	semeiaNotas(t, db, "e", "enchimento", enchimento)
+	indexaTodosOsCofres(t, db, "simple")
+	storagetest.SaveNote(ctxDeTeste, t, repo, notaComCaminho("nova", "nova.md", "[[hub]]"))
+	indexaTodosOsCofres(t, db, "simple")
+	graph := storage.NewPostgresNoteGraph(db, "simple")
+
+	assert.Equal(t, []string{"s"}, backlinks(ctxDeTeste, t, graph, "p"), "sem o prior de x, distancia e prior ficam com p")
+	assert.NotContains(t, backlinks(ctxDeTeste, t, graph, "x"), "s")
+}
