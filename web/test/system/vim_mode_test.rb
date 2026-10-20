@@ -109,6 +109,25 @@ class VimModeTest < ApplicationSystemTestCase
     assert_equal "abc\ndef", note_content
   end
 
+  # Sem o prazo de 2s do CodeMirror: o relogio da pagina anda 10s entre o Esc e o Tab, e o Tab ainda sai.
+  test "the tab freed by esc esc waits for the next key, with no deadline" do
+    open_note_with_vim_keys
+
+    send_keys :escape, :escape
+    execute_script("const now = Date.now; Date.now = () => now() + 10000")
+    send_keys :tab
+
+    assert_no_selector ".cm-content:focus"
+  end
+
+  test "another key after esc esc takes the tab back" do
+    open_note_with_vim_keys
+
+    send_keys :escape, :escape, "l", :tab
+
+    assert_selector ".cm-content:focus"
+  end
+
   test "esc esc shift+tab goes back to the path" do
     open_note_with_vim_keys
 
