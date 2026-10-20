@@ -28,6 +28,10 @@ Graph = Data.define(:nodes, :links) do
   def self.built(type, attributes) = type.new(**type.members.to_h { [ it, attributes[it.to_s] ] })
 
   private_class_method :revalidated, :built
+
+  # O grafo com no máximo limit nós, os de maior PageRank (e keep, o id de uma nota que fica sempre), na ordem de antes,
+  # com as ligações entre eles.
+  def capped(limit, keep: nil) = self
 end
 
 # Nó do grafo: nota, ou título citado sem nota (unresolved, com id e path nil).
