@@ -16,7 +16,8 @@ tem
 A lista estrutural usa alocação de recursos na vizinhança de dois saltos (Zhou, Lü e Zhang,
 2009), a lista léxica usa cosseno tf-idf sobre os 50 termos de maior peso de cada nota, com
 candidatas só entre as notas que têm algum dos 10 termos de maior peso da nota, e as duas
-são fundidas por Reciprocal Rank Fusion com k=60 (Cormack, Clarke e Büttcher, 2009).
+são fundidas por Reciprocal Rank Fusion com k=60 (Cormack, Clarke e Büttcher, 2009), que
+recebe as 1000 primeiras da lista léxica, como o artigo funde cada lista.
 Os parâmetros são os canônicos dos artigos, fixos no código. Não há avaliação por Hits@k
 nem MRR
 
