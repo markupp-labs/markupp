@@ -116,8 +116,9 @@
 /* Visões planas do Explorer (notes/_explorer_groups): a linha da árvore sem as guias, título, pasta apagada e o número
    à direita; por comunidade, a marca quadrada e a borda na cor dela, como um bloco de código com a margem pintada. */
 @layer components {
+  /* Pela linha de base: a pasta e o número, menores, ficam na linha do título. */
   .note-tree .explorer-row {
-    @apply gap-2;
+    @apply items-baseline gap-2;
   }
 
   .community + .community {
