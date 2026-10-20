@@ -1517,7 +1517,8 @@ paths:
     get:
       summary: Lista as notas do cofre
       description: |
-        As notas do cofre com o conteúdo e a organização derivada, paginadas. Sem sort,
+        As notas do cofre na representação enxuta, sem o conteúdo, com a organização
+        derivada, paginadas. O conteúdo de cada uma vem de GET /v1/notes/{id}. Sem sort,
         a ordem é por caminho, crescente. As visões do grafo sobre as notas são
         parâmetros desta coleção: orphan=true lista as notas órfãs, sort=pagerank as
         notas centrais, community as notas de uma comunidade.
@@ -1545,7 +1546,7 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/NoteV1Response'
+                  $ref: '#/components/schemas/NoteListItem'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '400':
@@ -2099,29 +2100,52 @@ components:
     NoteV1Response:
       allOf:
         - $ref: '#/components/schemas/NoteResponse'
+        - $ref: '#/components/schemas/NoteRank'
+    NoteListItem:
+      description: |
+        A nota na coleção das notas do cofre, sem o conteúdo, que GET /v1/notes/{id}
+        devolve. content_sha256 e updated_at deixam o cliente saber se a cópia local
+        está em dia sem baixar o conteúdo.
+      allOf:
+        - $ref: '#/components/schemas/NoteSummary'
         - type: object
           properties:
-            degree:
-              type: integer
-              nullable: true
-              description: |
-                Notas distintas que ligam a esta mais as notas distintas a que esta liga,
-                ligação inferida incluída; null antes do segundo estágio
-              example: 15
-            pagerank:
-              type: number
-              format: double
-              nullable: true
-              description: PageRank (d=0,85) da nota; a soma no cofre é 1; null antes do segundo estágio
-              example: 0.0123
-            community:
-              type: integer
-              format: int64
-              nullable: true
-              description: |
-                Id da comunidade da nota, null antes do segundo estágio e para a nota sem
-                ligação
-              example: 7
+            updated_at:
+              type: string
+              format: date-time
+              description: Data da última atualização da nota
+              example: "2026-05-14T12:00:00Z"
+            content_sha256:
+              type: string
+              pattern: '^[0-9a-f]{64}$'
+              description: SHA-256 dos bytes UTF-8 do conteúdo, em hexadecimal minúsculo
+              example: "0664077f33cc3ebbaa4bbdacac0eb70e740983080f01dce29929e73b7785a7ad"
+        - $ref: '#/components/schemas/NoteRank'
+    NoteRank:
+      type: object
+      description: A organização derivada da nota, que o segundo estágio do indexador grava
+      properties:
+        degree:
+          type: integer
+          nullable: true
+          description: |
+            Notas distintas que ligam a esta mais as notas distintas a que esta liga,
+            ligação inferida incluída; null antes do segundo estágio
+          example: 15
+        pagerank:
+          type: number
+          format: double
+          nullable: true
+          description: PageRank (d=0,85) da nota; a soma no cofre é 1; null antes do segundo estágio
+          example: 0.0123
+        community:
+          type: integer
+          format: int64
+          nullable: true
+          description: |
+            Id da comunidade da nota, null antes do segundo estágio e para a nota sem
+            ligação
+          example: 7
     NoteSummary:
       type: object
       properties:
