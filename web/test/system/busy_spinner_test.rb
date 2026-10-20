@@ -93,7 +93,7 @@ class BusySpinnerTest < ApplicationSystemTestCase
     send_keys "tenants"
 
     assert_spinner_after_threshold("#command_palette [role=option][aria-busy=true]") { send_keys :enter }
-    assert_selector "dialog#command_palette[open] [role=option][aria-busy=true]", text: "Tenants"
+    assert_selector "dialog#command_palette[open] [role=option][aria-busy=true]", text: "All tenants"
 
     @api.release_calls!
     assert_selector "h1", text: "Tenants"
