@@ -154,7 +154,8 @@ export const ON_DEMAND_GRAMMARS = {
   scss: [],
   smali: [],
   smalltalk: [ "st" ],
-  sml: [ "ml" ],
+  // ml fica com o OCaml (ocaml acima), o mais usado, como no editor (code_languages.js).
+  sml: [],
   sqf: [],
   stan: [ "stanfuncs" ],
   stata: [ "do", "ado" ],
