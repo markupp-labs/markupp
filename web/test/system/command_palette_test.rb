@@ -25,6 +25,26 @@ class CommandPaletteTest < ApplicationSystemTestCase
     assert_selector "html[data-sidebar=closed]"
   end
 
+  # ":" como o modo de comando do Vim, fora de campo de texto (no editor e no caminho é texto); F1 como no VS Code, de
+  # qualquer lugar. O ":" vai pelo CDP: o chromedriver manda pontuação com key vazio.
+  test "colon outside a text field and f1 from anywhere open the palette" do
+    find("[role=treeitem]", text: "plan").execute_script("this.focus()")
+    press_colon
+    assert_selector "dialog#command_palette[open] input:focus"
+    send_keys :escape
+
+    find(".cm-content").send_keys([ :control, :end ], "a")
+    press_colon
+    find_field("Path").send_keys(:end)
+    press_colon
+    assert_no_selector "dialog#command_palette[open]"
+    assert_selector ".cm-content", text: "a:"
+    assert_field "Path", with: "/work/plan:"
+
+    find(".cm-content").send_keys(:f1)
+    assert_selector "dialog#command_palette[open] input:focus"
+  end
+
   test "the arrows and ctrl+j or ctrl+k move the selection without opening the search" do
     open_palette
     send_keys "ode"
@@ -133,6 +153,8 @@ class CommandPaletteTest < ApplicationSystemTestCase
       send_keys [ :control, :shift, "p" ]
       assert_selector "dialog#command_palette[open] input:focus"
     end
+
+    def press_colon = press_through_cdp(":", "Semicolon", keycode: 186, modifiers: 8)
 
     def run_command(query)
       open_palette
