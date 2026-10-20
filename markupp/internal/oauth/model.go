@@ -14,7 +14,8 @@ type Client struct {
 }
 
 // AuthorizationRequest é o Pedido de autorização: a solicitação de um cliente para agir
-// em nome de uma conta, que a conta aprova ou recusa antes de ExpiresAt.
+// em nome de uma conta. O ID funciona como portador (ADR-0040): qualquer conta logada que
+// o apresente aprova ou recusa o pedido antes de ExpiresAt.
 type AuthorizationRequest struct {
 	ID            string
 	ClientID      string

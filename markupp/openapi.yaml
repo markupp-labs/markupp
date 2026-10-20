@@ -499,7 +499,8 @@ paths:
     get:
       summary: Descreve um pedido de autorização OAuth para a tela de consentimento
       description: >
-        Rota do painel. Exige login, mas não o cabeçalho de tenant: o pedido é da conta.
+        Rota do painel. Exige login, mas não o cabeçalho de tenant. O id do pedido funciona
+        como portador (ADR-0040): qualquer conta logada que o tenha vê e decide o pedido.
         O pedido vale 10 minutos e é de uso único.
       parameters:
         - $ref: '#/components/parameters/OAuthRequestID'
