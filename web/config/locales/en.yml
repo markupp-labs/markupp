@@ -3,6 +3,10 @@ en:
     one: "Too many attempts. Try again in %{count} minute."
     other: "Too many attempts. Try again in %{count} minutes."
   activemodel:
+    # O título é o nome no fim do caminho: o erro de título em branco diz "Name", como o campo chama.
+    attributes:
+      note:
+        title: "Name"
     errors:
       models:
         note:
