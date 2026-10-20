@@ -32,6 +32,13 @@ class EditorStylesControllerTest < ActionDispatch::IntegrationTest
     end
   end
 
+  # O html, que o Turbo nao troca, guarda o estilo: o botao vai sem Turbo para a pagina recarregar inteira.
+  test "the style buttons of the appearance skip turbo" do
+    get settings_appearance_path
+
+    assert_select "main form[action=?][data-turbo=false]", editor_style_path, count: 2
+  end
+
   test "the layout tells the editor the style from the cookie" do
     cookies[:editor_style] = "styled"
 

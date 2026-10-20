@@ -48,6 +48,19 @@ class EditorStyleTest < ApplicationSystemTestCase
     assert_operator heading_size.to_f, :>, text_size.to_f
   end
 
+  # O estilo mora no data-editor-style do html, que uma visita do Turbo nao troca: o botao vai sem Turbo, como o tema.
+  test "styled from the appearance holds when going back to the note through the sidebar" do
+    visit settings_appearance_path
+    within("[aria-labelledby=editor_style_heading]") { click_on "Styled" }
+    assert_selector "html[data-editor-style=styled]"
+
+    within("nav#sidebar") { click_on "plan" }
+    assert_selector ".cm-content", text: "Plan"
+
+    heading_size, text_size = evaluate_script("(function() { #{FONT_SIZES_SCRIPT} })()")
+    assert_operator heading_size.to_f, :>, text_size.to_f
+  end
+
   # Fundo pintado por trecho de linha deixa o bloco cercado serrilhado: só o código inline leva fundo.
   test "the editor gives a background to inline code but not to a fenced block" do
     visit note_path("2")
