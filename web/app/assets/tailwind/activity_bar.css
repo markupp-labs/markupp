@@ -61,10 +61,12 @@
   margin-block-start: 0;
 }
 
+/* Largura inteira também dentro do form do tema: botão não estica sozinho como o link. */
 .activity-tab {
   position: relative;
   display: grid;
   place-items: center;
+  width: 100%;
   height: 2rem;
   color: var(--ink-muted);
 }
