@@ -80,22 +80,26 @@ func clientesComID(t *testing.T, pool *pgxpool.Pool, id string) int {
 	return countRows(t, pool, `SELECT count(*) FROM oauth_clients WHERE id = '`+id+`'`)
 }
 
-func TestPostgresOAuthRepo_SaveCIMDClient_ApagaVencidosSemAutorizacao(t *testing.T) {
+func TestPostgresOAuthRepo_SaveCIMDClient_ApagaVencidosSemAutorizacaoAtiva(t *testing.T) {
 	repo, pool := repoOAuth(t)
 	ctx := context.Background()
 	gravacao := instanteOAuth.Add(time.Hour)
-	vencido, autorizado, fresco := "https://vencido.example/c.json", "https://autorizado.example/c.json", "https://fresco.example/c.json"
+	vencido, revogado, ativo, fresco := "https://vencido.example/c.json", "https://revogado.example/c.json",
+		"https://ativo.example/c.json", "https://fresco.example/c.json"
 	require.NoError(t, repo.SaveCIMDClient(ctx, clienteCIMDDe(vencido), gravacao, instanteOAuth))
-	require.NoError(t, repo.SaveCIMDClient(ctx, clienteCIMDDe(autorizado), instanteOAuth.Add(time.Minute), instanteOAuth))
+	require.NoError(t, repo.SaveCIMDClient(ctx, clienteCIMDDe(revogado), instanteOAuth.Add(time.Minute), instanteOAuth))
+	require.NoError(t, repo.SaveCIMDClient(ctx, clienteCIMDDe(ativo), instanteOAuth.Add(time.Minute), instanteOAuth))
 	require.NoError(t, repo.SaveCIMDClient(ctx, clienteCIMDDe(fresco), gravacao.Add(time.Second), instanteOAuth))
 	_, err := pool.Exec(ctx, `INSERT INTO oauth_authorizations (id, user_id, client_id, scopes, revoked_at)
-		VALUES ('a-revogada', 'u1', $1, ARRAY['notas:leitura'], $2)`, autorizado, instanteOAuth)
+		VALUES ('a-revogada', 'u1', $1, ARRAY['notas:leitura'], $2), ('a-ativa', 'u1', $3, ARRAY['notas:leitura'], NULL)`,
+		revogado, instanteOAuth, ativo)
 	require.NoError(t, err)
 
 	require.NoError(t, repo.SaveCIMDClient(ctx, documentoCIMD("Agente CIMD", "https://agente.example/cb"), gravacao.Add(time.Hour), gravacao))
 
 	assert.Zero(t, clientesComID(t, pool, vencido), "vencido no instante da gravação e sem Autorização")
-	assert.Equal(t, 1, clientesComID(t, pool, autorizado), "com Autorização, mesmo revogada")
+	assert.Zero(t, clientesComID(t, pool, revogado), "só com Autorização revogada, como no DCR")
+	assert.Equal(t, 1, clientesComID(t, pool, ativo), "com Autorização ativa")
 	assert.Equal(t, 1, clientesComID(t, pool, fresco))
 	assert.Equal(t, 1, clientesComID(t, pool, clienteCIMD), "o recém-gravado fica")
 	assert.Equal(t, 1, clientesComID(t, pool, "c1"), "o cliente DCR não é tocado")
