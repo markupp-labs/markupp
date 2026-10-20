@@ -403,7 +403,7 @@ en:
       hint: "It may have been renamed or deleted. Pick another one from the sidebar."
     unreachable:
       title: "Can't reach the markupp server"
-      hint: "Check that it is running and that MARKUPP_API_URL points to it."
+      hint: "Try again in a moment."
   errors:
     show:
       back_to_notes: "Back to your notes"
