@@ -82,9 +82,12 @@
     <main class="@container min-w-0 p-4 has-[>.note-form]:flex has-[>.note-form]:flex-col md:p-6 md:pl-10">
       <%= render "layouts/flash" %>
       <% page = content_for?(:main) ? yield(:main) : yield %>
-      <%# Páginas de erro pedem o mascote ao lado da mensagem (content_for :mascot). %>
+      <%# Páginas de erro pedem o mascote ao lado da mensagem (content_for :mascot): os dois no meio do conteúdo, como nas
+          telas públicas, a mensagem na altura do meio do mascote. A altura é a da tela menos o padding do main. %>
       <% if content_for?(:mascot) %>
-        <div class="flex items-start gap-10"><%= yield :mascot %><div class="min-w-0 flex-1"><%= page %></div></div>
+        <div class="flex min-h-[calc(100dvh-2rem)] items-center justify-center gap-10 md:min-h-[calc(100dvh-3rem)]">
+          <%= yield :mascot %><div class="min-w-0 max-w-[65ch]"><%= page %></div>
+        </div>
       <% else %>
         <%= page %>
       <% end %>

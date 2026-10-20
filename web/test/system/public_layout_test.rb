@@ -33,7 +33,12 @@ class PublicLayoutTest < ApplicationSystemTestCase
     assert_text "Logged out."
 
     execute_script("window.confirm = () => { window.nativeConfirmCalls = 1; return false }")
-    execute_script("Turbo.config.forms.confirm('Delete?', document.createElement('form'))")
+    execute_script(<<~JS)
+      const form = Object.assign(document.createElement("form"), { method: "post", action: "/session" })
+      form.dataset.turboConfirm = "Delete?"
+      document.body.append(form)
+      form.requestSubmit()
+    JS
 
     assert_equal 1, evaluate_script("window.nativeConfirmCalls")
   end
