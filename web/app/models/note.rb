@@ -43,7 +43,7 @@ class Note
   def crlf? = content.to_s.include?("\r\n")
 
   # Nota em branco no editor: nome vazio na pasta (folder vem como a barra lateral manda, com ou sem barras em volta).
-  def self.blank(folder) = new(path: [ *folder.to_s.split("/").compact_blank, "" ].join("/"), content: "")
+  def self.blank(folder) = new(path: vim_normalized("#{folder}/"), content: "")
 
   # Não existe nome automático: título em branco recusa sem chamar a API.
   def save(api)
@@ -100,7 +100,7 @@ class Note
 
   private
     # A barra no fim fica como nome vazio ("work/" é título em branco na pasta work).
-    def path_segments = path.to_s.squeeze("/").delete_prefix("/").split("/", -1)
+    def path_segments = Note.vim_normalized(path.to_s).split("/", -1)
 
     def post(api) = api.post("/notes", path:, content:)
 
