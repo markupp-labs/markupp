@@ -10,29 +10,30 @@ import (
 )
 
 const countTitleOccurrences = `-- name: CountTitleOccurrences :many
-SELECT k.title_key::text AS title_key,
-       (SELECT count(*) FROM note_search_index s
-        JOIN notes n ON n.id = s.note_id
-        CROSS JOIN phraseto_tsquery($1::text::regconfig, k.title_key) AS q (query)
-        WHERE n.vault_id = $2 AND s.document @@ q.query AND ts_filter(s.document, '{d}') @@ q.query)::int AS occurrences
-FROM unnest($3::text[]) AS k (title_key)
+SELECT k.title_key::text AS title_key, (o.occurrences IS NULL)::bool AS common,
+       coalesce(o.occurrences, 0)::int AS occurrences
+FROM unnest($1::text[]) AS k (title_key)
+CROSS JOIN LATERAL (
+    SELECT markupp_title_occurrences($2, $3::text::regconfig, k.title_key) AS occurrences
+) o
 `
 
 type CountTitleOccurrencesParams struct {
-	SearchConfig string
-	VaultID      string
 	TitleKeys    []string
+	VaultID      string
+	SearchConfig string
 }
 
 type CountTitleOccurrencesRow struct {
 	TitleKey    string
+	Common      bool
 	Occurrences int32
 }
 
 // Para cada título, as notas do cofre que o têm no corpo (peso D), como a menção não
-// ligada conta as ocorrências da âncora.
+// ligada conta as ocorrências da âncora, e se ele é comum, em mais de 5% das notas.
 func (q *Queries) CountTitleOccurrences(ctx context.Context, arg CountTitleOccurrencesParams) ([]CountTitleOccurrencesRow, error) {
-	rows, err := q.db.Query(ctx, countTitleOccurrences, arg.SearchConfig, arg.VaultID, arg.TitleKeys)
+	rows, err := q.db.Query(ctx, countTitleOccurrences, arg.TitleKeys, arg.VaultID, arg.SearchConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -40,7 +41,7 @@ func (q *Queries) CountTitleOccurrences(ctx context.Context, arg CountTitleOccur
 	var items []CountTitleOccurrencesRow
 	for rows.Next() {
 		var i CountTitleOccurrencesRow
-		if err := rows.Scan(&i.TitleKey, &i.Occurrences); err != nil {
+		if err := rows.Scan(&i.TitleKey, &i.Common, &i.Occurrences); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

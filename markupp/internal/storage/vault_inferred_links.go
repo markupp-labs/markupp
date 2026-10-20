@@ -21,6 +21,14 @@ type vaultCitations struct {
 	unresolved []gen.ListVaultCitationsRow
 }
 
+// titleOccurrence é quantas notas do cofre têm o título no corpo, ou common quando o
+// título está em mais de 5% delas e é palavra comum, sem prior (Mihalcea e Csomai,
+// 2007).
+type titleOccurrence struct {
+	count  int
+	common bool
+}
+
 // inferLinks grava uma ligação inferida para cada título sem nota citado no cofre,
 // quando há candidata, e devolve as arestas gravadas. O grafo g é o das ligações
 // resolvidas, sem inferidas, e dá o parentesco entre a nota que cita e a candidata.
@@ -93,9 +101,10 @@ func (vc *vaultCitations) candidates() [][]inference.Candidate {
 	return out
 }
 
-// countOccurrences conta as notas com cada título candidato no corpo. Só as citações
-// com mais de uma candidata precisam da probabilidade a priori, e com ela da conta.
-func countOccurrences(ctx context.Context, q *gen.Queries, vaultID, searchConfig string, candidates [][]inference.Candidate) (map[string]int, error) {
+// countOccurrences conta as notas com cada título candidato no corpo, ou o marca
+// comum. Só as citações com mais de uma candidata precisam da probabilidade a priori,
+// e com ela da conta.
+func countOccurrences(ctx context.Context, q *gen.Queries, vaultID, searchConfig string, candidates [][]inference.Candidate) (map[string]titleOccurrence, error) {
 	params := gen.CountTitleOccurrencesParams{SearchConfig: searchConfig, VaultID: vaultID}
 	seen := make(map[string]bool)
 	for _, cs := range candidates {
@@ -106,20 +115,20 @@ func countOccurrences(ctx context.Context, q *gen.Queries, vaultID, searchConfig
 			}
 		}
 	}
-	occurrences := make(map[string]int, len(params.TitleKeys))
+	occurrences := make(map[string]titleOccurrence, len(params.TitleKeys))
 	if len(params.TitleKeys) == 0 {
 		return occurrences, nil
 	}
 	rows, err := q.CountTitleOccurrences(ctx, params)
 	for _, r := range rows {
-		occurrences[r.TitleKey] = int(r.Occurrences)
+		occurrences[r.TitleKey] = titleOccurrence{count: int(r.Occurrences), common: r.Common}
 	}
 	return occurrences, wrapVault(err, fmt.Sprintf("contar as ocorrencias de %d titulos candidatos", len(params.TitleKeys)), vaultID)
 }
 
 // chooseTargets escolhe a nota de cada citação sem nota e monta as linhas e as
 // arestas das ligações inferidas.
-func (vc *vaultCitations) chooseTargets(candidates [][]inference.Candidate, occurrences map[string]int,
+func (vc *vaultCitations) chooseTargets(candidates [][]inference.Candidate, occurrences map[string]titleOccurrence,
 	g *vaultgraph.Graph) (gen.SaveInferredLinksParams, []vaultgraph.Edge) {
 	var params gen.SaveInferredLinksParams
 	var edges []vaultgraph.Edge
@@ -137,18 +146,25 @@ func (vc *vaultCitations) chooseTargets(candidates [][]inference.Candidate, occu
 }
 
 // scoreCandidates preenche a probabilidade a priori, com Laplace, de o título de cada
-// candidata apontar para ela, e o parentesco dela com a nota sourceID. As ligações
-// da âncora são as notas que citam o título, fora a própria candidata.
-func (vc *vaultCitations) scoreCandidates(sourceID string, candidates []inference.Candidate, occurrences map[string]int, g *vaultgraph.Graph) {
+// candidata apontar para ela, e o parentesco dela com a nota sourceID. Título comum
+// fica com prior zero, o último no sinal.
+func (vc *vaultCitations) scoreCandidates(sourceID string, candidates []inference.Candidate, occurrences map[string]titleOccurrence, g *vaultgraph.Graph) {
 	for i := range candidates {
 		k := &candidates[i]
-		anchorLinks := len(vc.citers[k.TitleKey])
-		if vc.citers[k.TitleKey][k.NoteID] {
-			anchorLinks--
+		if o := occurrences[k.TitleKey]; !o.common {
+			k.Prior = mention.Prior(vc.anchorLinks(k.TitleKey, k.NoteID), o.count, vc.titleNotes[k.TitleKey])
 		}
-		k.Prior = mention.Prior(anchorLinks, occurrences[k.TitleKey], vc.titleNotes[k.TitleKey])
 		k.Relatedness = g.ResourceAllocation(sourceID, k.NoteID)
 	}
+}
+
+// anchorLinks são as notas que citam titleKey, fora a própria nota noteID.
+func (vc *vaultCitations) anchorLinks(titleKey, noteID string) int {
+	links := len(vc.citers[titleKey])
+	if vc.citers[titleKey][noteID] {
+		links--
+	}
+	return links
 }
 
 // wrapVault descreve o erro da operação no cofre vaultID, ou devolve nil.

@@ -591,45 +591,52 @@ func (q *Queries) ListVaultUnresolvedLinks(ctx context.Context, arg ListVaultUnr
 }
 
 const mentionAnchorStats = `-- name: MentionAnchorStats :many
-SELECT a.title_key::text AS title_key, a.target_id::text AS target_id,
-       (to_tsvector('pg_catalog.portuguese', a.title_key) = ''::tsvector
-        OR to_tsvector('pg_catalog.english', a.title_key) = ''::tsvector)::bool AS stopword,
-       (SELECT count(*) FROM note_search_index s
-        JOIN notes n ON n.id = s.note_id
-        CROSS JOIN phraseto_tsquery($1::text::regconfig, a.title_key) AS q (query)
-        WHERE n.vault_id = $2 AND s.document @@ q.query AND ts_filter(s.document, '{d}') @@ q.query)::int AS occurrences,
+SELECT a.title_key::text AS title_key, a.target_id::text AS target_id, w.stopword::bool AS stopword,
+       (NOT w.stopword AND o.occurrences IS NULL)::bool AS common,
+       coalesce(o.occurrences, 0)::int AS occurrences,
        (SELECT count(DISTINCT e.source_id) FROM note_edges e
         WHERE e.target_id = a.target_id AND e.title_key = a.title_key)::int AS anchor_links,
        (SELECT count(*) FROM note_titles t
-        WHERE t.vault_id = $2 AND t.title_key = a.title_key)::int AS candidates
-FROM (SELECT unnest($3::text[]) AS title_key, unnest($4::text[]) AS target_id) a
+        WHERE t.vault_id = $1 AND t.title_key = a.title_key)::int AS candidates
+FROM (SELECT unnest($2::text[]) AS title_key, unnest($3::text[]) AS target_id) a
+CROSS JOIN LATERAL (
+    SELECT to_tsvector('pg_catalog.portuguese', a.title_key) = ''::tsvector
+           OR to_tsvector('pg_catalog.english', a.title_key) = ''::tsvector AS stopword
+) w
+CROSS JOIN LATERAL (
+    SELECT CASE WHEN NOT w.stopword
+                THEN markupp_title_occurrences($1, $4::text::regconfig, a.title_key)
+           END AS occurrences
+) o
 `
 
 type MentionAnchorStatsParams struct {
-	SearchConfig string
 	VaultID      string
 	TitleKeys    []string
 	TargetIds    []string
+	SearchConfig string
 }
 
 type MentionAnchorStatsRow struct {
 	TitleKey    string
 	TargetID    string
 	Stopword    bool
+	Common      bool
 	Occurrences int32
 	AnchorLinks int32
 	Candidates  int32
 }
 
 // Para cada par (título, nota com o título): se o título é stopword em português ou
-// inglês, as notas do cofre com o título no corpo (ocorrências), as notas que ligam à
-// nota por esse título e as notas do cofre com o título (candidatas).
+// inglês, se é comum (em mais de 5% das notas do cofre), as notas do cofre com o
+// título no corpo (ocorrências), as notas que ligam à nota por esse título e as notas
+// do cofre com o título (candidatas). Stopword não paga a contagem.
 func (q *Queries) MentionAnchorStats(ctx context.Context, arg MentionAnchorStatsParams) ([]MentionAnchorStatsRow, error) {
 	rows, err := q.db.Query(ctx, mentionAnchorStats,
-		arg.SearchConfig,
 		arg.VaultID,
 		arg.TitleKeys,
 		arg.TargetIds,
+		arg.SearchConfig,
 	)
 	if err != nil {
 		return nil, err
@@ -642,6 +649,7 @@ func (q *Queries) MentionAnchorStats(ctx context.Context, arg MentionAnchorStats
 			&i.TitleKey,
 			&i.TargetID,
 			&i.Stopword,
+			&i.Common,
 			&i.Occurrences,
 			&i.AnchorLinks,
 			&i.Candidates,

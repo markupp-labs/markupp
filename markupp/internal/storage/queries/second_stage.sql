@@ -21,14 +21,14 @@ WHERE vault_id = sqlc.arg(vault_id) AND kind <> 'inferred'
 ORDER BY note_id, title_key, cited_title;
 
 -- Para cada título, as notas do cofre que o têm no corpo (peso D), como a menção não
--- ligada conta as ocorrências da âncora.
+-- ligada conta as ocorrências da âncora, e se ele é comum, em mais de 5% das notas.
 -- name: CountTitleOccurrences :many
-SELECT k.title_key::text AS title_key,
-       (SELECT count(*) FROM note_search_index s
-        JOIN notes n ON n.id = s.note_id
-        CROSS JOIN phraseto_tsquery(sqlc.arg(search_config)::text::regconfig, k.title_key) AS q (query)
-        WHERE n.vault_id = sqlc.arg(vault_id) AND s.document @@ q.query AND ts_filter(s.document, '{d}') @@ q.query)::int AS occurrences
-FROM unnest(sqlc.arg(title_keys)::text[]) AS k (title_key);
+SELECT k.title_key::text AS title_key, (o.occurrences IS NULL)::bool AS common,
+       coalesce(o.occurrences, 0)::int AS occurrences
+FROM unnest(sqlc.arg(title_keys)::text[]) AS k (title_key)
+CROSS JOIN LATERAL (
+    SELECT markupp_title_occurrences(sqlc.arg(vault_id), sqlc.arg(search_config)::text::regconfig, k.title_key) AS occurrences
+) o;
 
 -- A ligação inferida guarda o título citado como escrito, a chave do título da nota
 -- escolhida e o caminho dela, que a faz ligar só àquela nota. Nota apagada some no JOIN.

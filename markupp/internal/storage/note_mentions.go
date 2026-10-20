@@ -25,13 +25,15 @@ type anchorPair struct {
 	targetID string
 }
 
-// findMentions acha as menções de um sentido no texto, para a nota lida.
-type findMentions func(ctx context.Context, q *gen.Queries, note gen.Note) ([]mentionCandidate, error)
+// findMentions acha as menções de um sentido no texto, para a nota lida, com a
+// probabilidade a priori de cada par título e nota achado; o par sem probabilidade
+// tem título stopword ou comum e não conta.
+type findMentions func(ctx context.Context, q *gen.Queries, note gen.Note) ([]mentionCandidate, map[anchorPair]float64, error)
 
 // Mentions devolve os títulos de outras notas que a nota noteID cita sem ligar, uma
 // menção por nota citada, ou notes.ErrNotFound quando o ator não enxerga a nota.
 func (g *PostgresNoteGraph) Mentions(ctx context.Context, noteID string, p notes.Page) ([]notes.Mention, error) {
-	return g.readMentions(ctx, noteID, p, mentionsOf)
+	return g.readMentions(ctx, noteID, p, g.mentionsOf)
 }
 
 // Backmentions devolve as notas que citam um título da nota noteID sem ligar, uma
@@ -49,32 +51,40 @@ func (g *PostgresNoteGraph) readMentions(ctx context.Context, noteID string, p n
 		if err != nil {
 			return err
 		}
-		found, err := find(ctx, q, note)
-		if err != nil {
-			return err
-		}
-		ranked, err := g.rankMentions(ctx, q, note.VaultID, found)
-		out = pageOf(ranked, p.Offset, p.Limit)
+		found, priors, err := find(ctx, q, note)
+		out = pageOf(rankMentions(found, priors), p.Offset, p.Limit)
 		return err
 	})
 	return out, err
 }
 
-// mentionedBy acha as notas que citam um título de note: o índice léxico dá as
-// candidatas pelo título e pela forma sem acento, e o Matcher confere cada uma.
-func (g *PostgresNoteGraph) mentionedBy(ctx context.Context, q *gen.Queries, note gen.Note) ([]mentionCandidate, error) {
-	keys, err := q.ListNoteTitleKeys(ctx, note.ID)
-	keys = slices.DeleteFunc(keys, func(k string) bool { return !mention.Eligible(k) })
+// mentionedBy acha as notas que citam um título de note que vale como menção: o
+// índice léxico dá as candidatas pelo título e pela forma sem acento, e o Matcher
+// confere cada uma.
+func (g *PostgresNoteGraph) mentionedBy(ctx context.Context, q *gen.Queries, note gen.Note) ([]mentionCandidate, map[anchorPair]float64, error) {
+	keys, priors, err := g.mentionableKeys(ctx, q, note)
 	if err != nil || len(keys) == 0 {
-		return nil, err
+		return nil, nil, err
 	}
 	// ponytail: o GIN não tira acento, então o corpo acentuado não acha título sem
 	// acento; resolve com unaccent na configuração de texto da instalação.
-	phrases := append(slices.Clone(keys), convertRows(keys, mention.Fold)...)
 	rows, err := q.ListMentioningNotes(ctx, gen.ListMentioningNotesParams{
-		VaultID: note.VaultID, NoteID: note.ID, SearchConfig: g.searchConfig, Phrases: phrases,
+		VaultID: note.VaultID, NoteID: note.ID, SearchConfig: g.searchConfig, Phrases: append(slices.Clone(keys), convertRows(keys, mention.Fold)...),
 	})
-	return matchMentioningNotes(rows, keys, note.ID), err
+	return matchMentioningNotes(rows, keys, note.ID), priors, err
+}
+
+// mentionableKeys devolve os títulos de note que valem como menção, com a
+// probabilidade de cada um: fora os curtos, os stopword e os comuns, que nem chegam
+// à busca no índice léxico.
+func (g *PostgresNoteGraph) mentionableKeys(ctx context.Context, q *gen.Queries, note gen.Note) ([]string, map[anchorPair]float64, error) {
+	keys, err := q.ListNoteTitleKeys(ctx, note.ID)
+	keys = slices.DeleteFunc(keys, func(k string) bool { return !mention.Eligible(k) })
+	if err != nil || len(keys) == 0 {
+		return nil, nil, err
+	}
+	priors, err := g.anchorPriors(ctx, q, note.VaultID, convertRows(keys, func(k string) anchorPair { return anchorPair{k, note.ID} }))
+	return slices.DeleteFunc(keys, func(k string) bool { _, ok := priors[anchorPair{k, note.ID}]; return !ok }), priors, err
 }
 
 // matchMentioningNotes confere em cada candidata do índice quais títulos de targetID
@@ -92,10 +102,10 @@ func matchMentioningNotes(rows []gen.ListMentioningNotesRow, keys []string, targ
 }
 
 // mentionsOf acha os títulos das outras notas do cofre que note cita no texto.
-func mentionsOf(ctx context.Context, q *gen.Queries, note gen.Note) ([]mentionCandidate, error) {
+func (g *PostgresNoteGraph) mentionsOf(ctx context.Context, q *gen.Queries, note gen.Note) ([]mentionCandidate, map[anchorPair]float64, error) {
 	rows, err := q.ListMentionableTitles(ctx, gen.ListMentionableTitlesParams{VaultID: note.VaultID, NoteID: note.ID})
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	cited := make(map[string]bool)
 	for _, key := range mention.NewMatcher(eligibleUniqueKeys(rows)).Find(note.Content) {
@@ -107,7 +117,8 @@ func mentionsOf(ctx context.Context, q *gen.Queries, note gen.Note) ([]mentionCa
 			found = append(found, mentionCandidate{other: notes.Summarize(row.ID, row.Path), titleKey: row.TitleKey, targetID: row.ID})
 		}
 	}
-	return found, nil
+	priors, err := g.anchorPriors(ctx, q, note.VaultID, convertRows(found, func(c mentionCandidate) anchorPair { return anchorPair{c.titleKey, c.targetID} }))
+	return found, priors, err
 }
 
 func eligibleUniqueKeys(rows []gen.ListMentionableTitlesRow) []string {
@@ -116,13 +127,9 @@ func eligibleUniqueKeys(rows []gen.ListMentionableTitlesRow) []string {
 	return slices.DeleteFunc(slices.Compact(keys), func(k string) bool { return !mention.Eligible(k) })
 }
 
-// rankMentions descarta os títulos stopword, fica com a menção de maior
-// probabilidade por nota e ordena pela probabilidade, depois pelo caminho.
-func (g *PostgresNoteGraph) rankMentions(ctx context.Context, q *gen.Queries, vaultID string, found []mentionCandidate) ([]notes.Mention, error) {
-	priors, err := g.anchorPriors(ctx, q, vaultID, found)
-	if err != nil {
-		return nil, err
-	}
+// rankMentions fica com a menção de maior probabilidade por nota, descartando os
+// pares sem probabilidade, e ordena pela probabilidade, depois pelo caminho.
+func rankMentions(found []mentionCandidate, priors map[anchorPair]float64) []notes.Mention {
 	best := make(map[string]notes.Mention)
 	for _, c := range found {
 		prior, ok := priors[anchorPair{c.titleKey, c.targetID}]
@@ -132,34 +139,40 @@ func (g *PostgresNoteGraph) rankMentions(ctx context.Context, q *gen.Queries, va
 	}
 	ranked := slices.Collect(maps.Values(best))
 	slices.SortFunc(ranked, compareMentions)
-	return ranked, nil
+	return ranked
 }
 
 func compareMentions(a, b notes.Mention) int {
 	return cmp.Or(cmp.Compare(b.Prior, a.Prior), cmp.Compare(a.Note.Path, b.Note.Path), cmp.Compare(a.Note.ID, b.Note.ID))
 }
 
-// anchorPriors calcula, num comando, a probabilidade de cada par título e nota
-// achado; o par cujo título é stopword fica de fora.
-func (g *PostgresNoteGraph) anchorPriors(ctx context.Context, q *gen.Queries, vaultID string, found []mentionCandidate) (map[anchorPair]float64, error) {
+// anchorPriors calcula, num comando, a probabilidade de cada par título e nota; o
+// par cujo título é stopword ou comum, em mais de 5% das notas do cofre (Mihalcea e
+// Csomai, 2007), fica de fora.
+func (g *PostgresNoteGraph) anchorPriors(ctx context.Context, q *gen.Queries, vaultID string, pairs []anchorPair) (map[anchorPair]float64, error) {
 	params := gen.MentionAnchorStatsParams{SearchConfig: g.searchConfig, VaultID: vaultID}
-	seen := make(map[anchorPair]bool)
-	for _, c := range found {
-		pair := anchorPair{c.titleKey, c.targetID}
-		if !seen[pair] {
-			seen[pair] = true
-			params.TitleKeys, params.TargetIds = append(params.TitleKeys, pair.titleKey), append(params.TargetIds, pair.targetID)
-		}
+	for _, pair := range uniquePairs(pairs) {
+		params.TitleKeys, params.TargetIds = append(params.TitleKeys, pair.titleKey), append(params.TargetIds, pair.targetID)
 	}
-	if len(seen) == 0 {
+	if len(params.TitleKeys) == 0 {
 		return nil, nil
 	}
 	rows, err := q.MentionAnchorStats(ctx, params)
 	priors := make(map[anchorPair]float64, len(rows))
 	for _, r := range rows {
-		if !r.Stopword {
+		if !r.Stopword && !r.Common {
 			priors[anchorPair{r.TitleKey, r.TargetID}] = mention.Prior(int(r.AnchorLinks), int(r.Occurrences), int(r.Candidates))
 		}
 	}
 	return priors, err
+}
+
+// uniquePairs devolve os pares sem repetição, na ordem em que aparecem.
+func uniquePairs(pairs []anchorPair) []anchorPair {
+	seen := make(map[anchorPair]bool, len(pairs))
+	return slices.DeleteFunc(slices.Clone(pairs), func(p anchorPair) bool {
+		dup := seen[p]
+		seen[p] = true
+		return dup
+	})
 }
