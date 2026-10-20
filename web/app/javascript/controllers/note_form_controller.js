@@ -132,8 +132,20 @@ export default class extends Controller {
     if (this.changed) event.preventDefault()
   }
 
+  // O diálogo do painel (confirm_dialog_controller.js) responde depois: a visita para aqui e, com Leave, segue para onde ia.
+  // O form leva os rótulos Leave e Stay. Fechar a aba fica com o aviso do navegador (warnBeforeUnload), que não muda.
   confirmVisit(event) {
-    if (this.changed && !confirm(this.leaveMessageValue)) event.preventDefault()
+    if (!this.changed) return
+
+    event.preventDefault()
+    this.leaveAfterConfirm(event.detail.url)
+  }
+
+  async leaveAfterConfirm(url) {
+    if (!(await Turbo.config.forms.confirm(this.leaveMessageValue, this.element, this.element))) return
+
+    this.allowLeaving()
+    Turbo.visit(url)
   }
 
   get fields() {

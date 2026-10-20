@@ -1,12 +1,13 @@
 <%# Confirmação de ação destrutiva no lugar do confirm() do navegador: o data-turbo-confirm de um form ou botão abre
     esta camada com a pergunta (confirm_dialog_controller.js). O foco começa no Cancel; Enter responde com o botão
-    focado, Esc ou clicar fora cancela. O botão da ação e o nome do diálogo levam o data-confirm-button de quem pediu (Remove, Revoke) ou Delete. %>
+    focado, Esc ou clicar fora cancela. O botão da ação e o nome do diálogo levam o data-confirm-button de quem pediu (Remove, Revoke) ou Delete; o Cancel, o data-confirm-cancel (Stay) ou Cancel. %>
 <dialog id="confirm_dialog" role="alertdialog" closedby="any" aria-describedby="confirm_dialog_message"
         data-controller="confirm-dialog" data-action="close->confirm-dialog#answer" data-confirm-dialog-default-button-value="<%= t(".delete") %>"
+        data-confirm-dialog-default-cancel-value="<%= t(".cancel") %>"
         class="layer mx-auto mt-[20vh] w-[min(28rem,calc(100vw-2rem))] layer-panel p-4">
   <p id="confirm_dialog_message" data-confirm-dialog-target="message"></p>
   <form method="dialog" class="mt-4 flex justify-end gap-2">
-    <button value="cancel" class="btn" autofocus><%= t(".cancel") %></button>
+    <button value="cancel" class="btn" autofocus data-confirm-dialog-target="cancel"><%= t(".cancel") %></button>
     <%# Vazio até a pergunta: o controller põe o rótulo de quem pediu, e a página não ganha um Delete fora de contexto. %>
     <button value="confirm" class="btn btn-danger" data-confirm-dialog-target="confirm"></button>
   </form>
