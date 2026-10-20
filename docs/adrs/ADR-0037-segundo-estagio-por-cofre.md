@@ -22,9 +22,10 @@ deles. Hoje o segundo estágio recalcula as
 ligações inferidas, o PageRank, as comunidades, o df e o N do cofre, e repesa com eles as
 postagens tf-idf e a norma de cada nota
 
-Quando o cofre ainda não tinha df, na primeira vez ou depois do reindex, o segundo estágio
-reenfileira as notas do cofre, para o lote reescolher os 50 termos de cada uma com o idf
-calculado. O reenfileiramento não marca o cofre, e o lote que regrava as mesmas notas sem
+Quando o cofre ganha df, na primeira vez, depois do reindex ou depois de um df de N zero, o
+segundo estágio reenfileira as notas do cofre, para o lote reescolher os 50 termos de cada
+uma com o idf calculado. O df de N zero não reenfileira: nenhuma nota tem documento nem
+termo para reescolher, e a que ainda não tem documento já está na fila. O reenfileiramento não marca o cofre, e o lote que regrava as mesmas notas sem
 mudar título, caminho nem ligação também não, então o ciclo acaba no lote seguinte
 
 A reserva do cofre acaba no commit do lote. O segundo estágio roda sob uma trava consultiva
