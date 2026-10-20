@@ -34,3 +34,5 @@ comunidades
 - O erro de digitação deixa de isolar a nota no PageRank e nas comunidades
 - O palpite errado também entra nas medidas, e a taxa de erro não é medida
 - A ligação não resolvida continua listada como foi escrita, e o cliente vê o palpite marcado
+- Título de candidata em mais de 5% das notas do cofre é palavra comum e fica sem prior
+  (Mihalcea e Csomai, 2007), com o df do segundo estágio anterior
