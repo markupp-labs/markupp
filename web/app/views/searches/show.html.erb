@@ -18,6 +18,6 @@
       <% end %>
     </ul>
   <% elsif params[:q].present? %>
-    <%= render "layouts/empty_state", title: t(".empty", query: params[:q]), hint: t(".empty_hint") %>
+    <div class="px-2 py-1"><%= render "layouts/empty_state", title: t(".empty", query: params[:q]), hint: t(".empty_hint") %></div>
   <% end %>
 <% end %>
