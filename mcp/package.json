@@ -17,6 +17,7 @@
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "e2e": "tsc -p e2e && npm run build && vitest run --config e2e/vitest.config.ts",
     "start": "node dist/bin.js http",
     "format": "prettier --write ."
   },
