@@ -149,7 +149,7 @@ func TestMigracao00032_EscopoDoToken_RestritoAosSuportados(t *testing.T) {
 	assert.Error(t, emitirToken(pool, "t3", "{}"), "lista vazia de escopos")
 }
 
-func TestMigracao00016_TokenRotacionado_GuardaQuandoFoiTrocado(t *testing.T) {
+func TestMigracao00032_TokenRotacionado_GuardaQuandoFoiTrocado(t *testing.T) {
 	pool := bancoComOAuth(t)
 	require.NoError(t, autorizar(pool, "a1", "{notas:leitura}", false))
 	require.NoError(t, emitirToken(pool, "t1", "{notas:leitura}"))
@@ -168,7 +168,7 @@ func pedidoDaAutorizacao(pool *pgxpool.Pool, authorizationID string) error {
 	return err
 }
 
-func TestMigracao00016_PedidoLigadoAAutorizacao_SaiComEla(t *testing.T) {
+func TestMigracao00032_PedidoLigadoAAutorizacao_SaiComEla(t *testing.T) {
 	pool := bancoComOAuth(t)
 	require.NoError(t, autorizar(pool, "a1", "{notas:leitura}", false))
 	require.NoError(t, pedidoDaAutorizacao(pool, "a1"))
@@ -180,7 +180,7 @@ func TestMigracao00016_PedidoLigadoAAutorizacao_SaiComEla(t *testing.T) {
 	assert.Error(t, pedidoDaAutorizacao(pool, "a-nenhuma"), "o pedido só aponta para Autorização existente")
 }
 
-func TestMigracao00016_PedidoGuardaQuandoOCodigoFoiReusado(t *testing.T) {
+func TestMigracao00032_PedidoGuardaQuandoOCodigoFoiReusado(t *testing.T) {
 	pool := bancoComOAuth(t)
 	require.NoError(t, autorizar(pool, "a1", "{notas:leitura}", false))
 	require.NoError(t, pedidoDaAutorizacao(pool, "a1"))
