@@ -7,13 +7,14 @@ import { inVimInsert } from "editor/vim_mode"
 // editor, preview, lista de tenants, navegação das configurações). data-focus-region-target diz onde o foco cai, em
 // seletores separados por ";" na ordem de preferência; sem ele, a própria região. Sem região naquela direção, nada.
 // A tecla vem pelo code: no Mac o Option muda a letra (Option+h é o ˙). Campo de formulário, menu aberto e o insert do Vim ficam
-// com a tecla. A origem é o foco, não o alvo do evento: a paleta repete o atalho no body depois de devolver o foco.
+// com a tecla, salvo as direções que o campo solta em data-focus-region-exits (o caminho solta a de baixo e a da direita).
+// Um campo de texto recebe o foco com o cursor no fim, como o Shift+Tab do editor deixa o caminho. A origem é o foco, não o alvo do evento: a paleta repete o atalho no body depois de devolver o foco.
 const DIRECTIONS = { KeyH: "left", KeyJ: "down", KeyK: "up", KeyL: "right" }
 
 export default class extends Controller {
   navigate(event) {
     const direction = directionOf(event)
-    if (!direction || keepsKeys(event.target)) return
+    if (!direction || keepsKeys(event.target, direction)) return
 
     event.preventDefault()
     event.stopPropagation()
@@ -27,7 +28,8 @@ function directionOf(event) {
   return DIRECTIONS[event.code]
 }
 
-function keepsKeys(target) {
+function keepsKeys(target, direction) {
+  if (target.dataset?.focusRegionExits?.split(" ").includes(direction)) return false
   return target.closest?.("input, textarea, select, dialog, [role=menu]") != null || inVimInsert(target)
 }
 
@@ -36,7 +38,10 @@ function enter(region) {
   const target = region && focusTarget(region)
   if (!target) return
 
-  target.matches(".cm-content") ? EditorView.findFromDOM(target)?.focus() : target.focus()
+  if (target.matches(".cm-content")) return EditorView.findFromDOM(target)?.focus()
+
+  target.focus()
+  if (target.matches("input[type=text]")) target.setSelectionRange(target.value.length, target.value.length)
 }
 
 function focusTarget(region) {

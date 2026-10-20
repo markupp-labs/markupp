@@ -34,7 +34,7 @@
       <%= form.text_field :path, value: @typed_path || @note.location, autofocus: writer && !@note.persisted?,
                           spellcheck: false, autocomplete: "off", readonly: !writer,
                           aria: { invalid: path_error.present?, describedby: ("note_path_error" if path_error) },
-                          data: { focus_region: "path", note_form_target: "path", action: "input->note-form#syncHeading input->note-form#clearBlankName keydown.tab->editor#focusEnd" },
+                          data: { focus_region: "path", focus_region_exits: "down right", note_form_target: "path", action: "input->note-form#syncHeading input->note-form#clearBlankName keydown.tab->editor#focusEnd" },
                           class: "w-full rounded-md border border-transparent bg-transparent px-1 py-0.5 text-2xl font-semibold text-ink " \
                                  "hover:border-line focus:border-accent focus-visible:outline-none aria-invalid:border-danger" %>
       <%= hidden_field_tag :origin_path, @origin_path || @note.path, id: nil %>
