@@ -255,6 +255,55 @@ class MarkuppApiTest < ActiveSupport::TestCase
     assert_equal "local_auth_disabled", MarkuppApi::LocalAuthDisabled.new.reason
   end
 
+  test "conditional_get sends the stored ETag and answers the body with the new ETag" do
+    server = FakeHttpServer.new(status: "200 OK", body: '{"nodes":[],"links":[]}', headers: { "ETag" => 'W/"8"' })
+    thread = server.serve_once
+
+    revision = MarkuppApi.new(server.url).conditional_get("/v1/vaults/v/graph", etag: 'W/"7"')
+    thread.join
+    assert_equal MarkuppApi::Revision.new(body: { "nodes" => [], "links" => [] }, etag: 'W/"8"'), revision
+    assert_equal 'W/"7"', server.requested_headers["if-none-match"]
+  ensure
+    server.close
+  end
+
+  test "conditional_get without a stored ETag sends no If-None-Match" do
+    server = FakeHttpServer.new(status: "200 OK", body: '{"nodes":[],"links":[]}')
+    thread = server.serve_once
+
+    assert_nil MarkuppApi.new(server.url).conditional_get("/v1/vaults/v/graph", etag: nil).etag
+    thread.join
+    assert_not server.requested_headers.key?("if-none-match")
+  ensure
+    server.close
+  end
+
+  test "conditional_get answers nil when the API answers 304" do
+    server = FakeHttpServer.new(status: "304 Not Modified", body: "", headers: { "ETag" => 'W/"7"' })
+    thread = server.serve_once
+
+    answer = begin
+      MarkuppApi.new(server.url).conditional_get("/v1/vaults/v/graph", etag: 'W/"7"')
+    rescue MarkuppApi::Error => error
+      error
+    end
+    thread.join
+    assert_nil answer
+  ensure
+    server.close
+  end
+
+  test "maps vault_forbidden to VaultUnavailable, a kind of Forbidden" do
+    assert_answer_raises(MarkuppApi::VaultUnavailable, '{"error":"vault_forbidden","message":"cofre"}', "403 Forbidden") do
+      it.get("/v1/vaults/v/communities")
+    end
+    assert_operator MarkuppApi::VaultUnavailable, :<, MarkuppApi::Forbidden
+  end
+
+  test "path appends the query, leaving out the parameters without value" do
+    assert_equal "/v1/vaults/a%20b/notes?limit=5&orphan=false", MarkuppApi.path("v1", "vaults", "a b", "notes", orphan: false, limit: 5, sort: nil)
+  end
+
   test "path joins the segments, encoding each one" do
     assert_equal "/me/invites/a%2Fb%20c/accept", MarkuppApi.path("me", "invites", "a/b c", "accept")
   end

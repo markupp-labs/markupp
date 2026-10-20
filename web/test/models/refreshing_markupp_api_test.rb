@@ -15,6 +15,15 @@ class RefreshingMarkuppApiTest < ActiveSupport::TestCase
     assert_equal [ "access-1" ], access_tokens_sent("GET /notes")
   end
 
+  test "conditional_get passes the ETag on with the current access token" do
+    @fake_api.change_graph!("vault-1", { nodes: [], links: [] }, etag: 'W/"3"')
+
+    assert_nil @api.conditional_get("/v1/vaults/vault-1/graph", etag: 'W/"3"')
+
+    assert_equal [ 'W/"3"' ], @fake_api.received_etags
+    assert_equal [ "access-1" ], access_tokens_sent("GET /v1/vaults/vault-1/graph")
+  end
+
   test "renews the token before calling once it has expired" do
     travel 901.seconds
 
