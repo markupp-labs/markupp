@@ -32,7 +32,7 @@
           <button type="button" data-action="search#open" title="Ctrl+K" aria-keyshortcuts="Control+K Meta+K"
                   class="tree-row mb-2 flex w-full items-center gap-2 border border-line text-left text-ink-muted">
             <%= icon("magnifying-glass") %><%= t(".search") %>
-            <kbd aria-hidden="true" class="ml-auto text-xs">Ctrl K</kbd>
+            <kbd aria-hidden="true" class="ml-auto hidden text-xs md:inline">Ctrl K</kbd>
           </button>
         <% else %>
           <%# Sem tenant (onboarding, ou a API caiu antes de carregá-lo) a marca fica, com o nome do produto no lugar. %>
