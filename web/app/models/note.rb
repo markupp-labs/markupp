@@ -80,13 +80,19 @@ class Note
 
   # Caminho digitado no campo da nota, como o :e do Vim com a pasta desta nota como diretório atual: barra no começo
   # parte da raiz. O .md final digitado é absorvido e volta uma vez só; outra extensão fica no nome (teste.pdf.md).
-  # Nota sem .md continua sem enquanto o nome não muda. Barra no fim deixa o nome vazio (save e update recusam);
-  # ".", ".." e barras repetidas vão como vieram, a API decide.
+  # Nota sem .md continua sem enquanto o nome não muda. Barra no fim deixa o nome vazio (save e update recusam).
   def resolve(typed)
     typed = typed.to_s.strip
-    base = (typed.start_with?("/") ? typed.delete_prefix("/") : [ folder.presence, typed ].compact.join("/")).delete_suffix(MARKDOWN_EXTENSION)
+    base = Note.vim_normalized(typed.start_with?("/") ? typed : [ folder.presence, typed ].compact.join("/")).delete_suffix(MARKDOWN_EXTENSION)
     new_name = base.split("/", -1).last.to_s
     new_name.empty? || (!markdown? && new_name == name) ? base : "#{base}#{MARKDOWN_EXTENSION}"
+  end
+
+  # Como o Vim lê o caminho: "." é a pasta em que está e some, barras repetidas (e a do começo) valem uma. O nome no
+  # fim fica, vazio com a barra ou o "." no fim. ".." vai como veio, para a API recusar com a mensagem dela.
+  def self.vim_normalized(path)
+    *folders, name = path.split("/", -1)
+    [ *folders.reject { it.empty? || it == "." }, name == "." ? "" : name ].join("/")
   end
 
   # O caminho como o campo mostra: absoluto, sem .md.
