@@ -40,6 +40,8 @@ compose-env:
 	elif ! grep -q '^MARKUPP_AUTH_SECRET=' .env; then \
 		printf 'MARKUPP_AUTH_SECRET=%s\n' "$$(openssl rand -hex 32)" >> .env; \
 	fi
+	@grep -q '^MARKUPP_MCP_RESOURCE_SECRET=' .env || \
+		printf 'MARKUPP_MCP_RESOURCE_SECRET=%s\n' "$$(openssl rand -hex 32)" >> .env
 	@echo ".env criado/atualizado com sucesso."
 
 # Sobe a stack do compose em modo destacado

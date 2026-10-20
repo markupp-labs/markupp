@@ -67,11 +67,32 @@ services:
     environment:
       <<: *ambiente
       MARKUPP_INVITE_BY_EMAIL: "true"
+      # Authorization server OAuth (ADR-0039), com o servidor MCP abaixo como resource. O
+      # consentimento abre no painel, que roda fora do compose na porta 3999.
+      MARKUPP_PUBLIC_URL: http://localhost:${MARKUPP_PORT:-8080}
+      MARKUPP_PANEL_URL: http://localhost:3999
+      MARKUPP_OAUTH_RESOURCES: http://localhost:${MARKUPP_MCP_PORT:-3000}/mcp=${MARKUPP_MCP_RESOURCE_SECRET:?MARKUPP_MCP_RESOURCE_SECRET obrigatoria, execute make compose-env}
     ports:
       - "${MARKUPP_PORT:-8080}:8080"
     depends_on:
       migrate:
         condition: service_completed_successfully
+
+  # Servidor MCP (ADR-0038): fala com o Go pelo nome do serviço e se anuncia aos agentes
+  # pelo localhost do host, que é a URL registrada como resource no Go.
+  mcp:
+    build:
+      context: ./mcp
+    environment:
+      MARKUPP_MCP_API_URL: http://markupp:8080
+      MARKUPP_MCP_ISSUER_URL: http://localhost:${MARKUPP_PORT:-8080}
+      MARKUPP_MCP_RESOURCE_URL: http://localhost:${MARKUPP_MCP_PORT:-3000}/mcp
+      MARKUPP_MCP_RESOURCE_SECRET: ${MARKUPP_MCP_RESOURCE_SECRET:?MARKUPP_MCP_RESOURCE_SECRET obrigatoria, execute make compose-env}
+    ports:
+      - "${MARKUPP_MCP_PORT:-3000}:3000"
+    depends_on:
+      markupp:
+        condition: service_started
 
 volumes:
   postgres_data:
