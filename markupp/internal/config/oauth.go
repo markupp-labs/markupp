@@ -38,6 +38,20 @@ func (c Config) OAuthEnabled() bool {
 	return c.PublicURL != ""
 }
 
+// setOAuthDefaults preenche as durações e os limites do OAuth usados nas variáveis não
+// definidas.
+func setOAuthDefaults(cfg *Config) {
+	cfg.OAuthAccessMinutes = 60
+	cfg.OAuthRefreshDays = 30
+	cfg.OAuthRequestMinutes = 10
+	cfg.OAuthCodeSeconds = 60
+	cfg.OAuthExchangeMinutes = 5
+	cfg.OAuthCIMDTimeoutSeconds = 5
+	cfg.OAuthCIMDMaxKB = 64
+	cfg.OAuthCIMDCacheMinMinutes = 5
+	cfg.OAuthCIMDCacheMaxHours = 24
+}
+
 // loadOAuthSettings lê o authorization server (ADR-0039). Sem MARKUPP_PUBLIC_URL ele
 // fica desligado e as demais variáveis nem são lidas.
 func loadOAuthSettings(lookup LookupFunc, cfg *Config) error {
