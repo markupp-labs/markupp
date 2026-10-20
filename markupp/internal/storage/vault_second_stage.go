@@ -49,11 +49,29 @@ func runSecondStage(ctx context.Context, q *gen.Queries, vaultID, searchConfig s
 	if err := refreshVaultGraph(ctx, q, vaultID, searchConfig); err != nil {
 		return err
 	}
-	if err := refreshTermFrequencies(ctx, q, vaultID); err != nil {
+	if err := refreshTerms(ctx, q, vaultID); err != nil {
 		return err
 	}
 	if err := q.UnmarkSecondStage(ctx, gen.UnmarkSecondStageParams{VaultID: vaultID, Revision: revision}); err != nil {
 		return fmt.Errorf("desmarcar a revisao %d do segundo estagio do cofre %q: %w", revision, vaultID, err)
+	}
+	return nil
+}
+
+// refreshTerms recalcula o df do cofre e, quando ele ainda não tinha df (primeira vez
+// ou depois do reindex), reenfileira as notas do cofre para o lote reescolher os
+// termos com o idf de verdade. Reenfileirar não marca o cofre, e o lote que só regrava
+// as mesmas notas também não, então o segundo estágio não volta por isso.
+func refreshTerms(ctx context.Context, q *gen.Queries, vaultID string) error {
+	known, err := q.VaultTermStatsKnown(ctx, vaultID)
+	if err != nil {
+		return fmt.Errorf("ler se o cofre %q ja tem df: %w", vaultID, err)
+	}
+	if err := refreshTermFrequencies(ctx, q, vaultID); err != nil || known {
+		return err
+	}
+	if err := q.RequeueVaultNotes(ctx, vaultID); err != nil {
+		return fmt.Errorf("reenfileirar as notas do cofre %q para reescolher os termos com o df novo: %w", vaultID, err)
 	}
 	return nil
 }

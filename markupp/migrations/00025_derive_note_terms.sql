@@ -25,6 +25,11 @@ LANGUAGE sql IMMUTABLE PARALLEL SAFE
 RETURN CASE WHEN df_known THEN greatest(log(greatest(note_count, 1)::double precision / coalesce(df, 1)), 0) ELSE 1 END;
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON note_terms TO markupp_indexer;
+-- Quando o cofre ganha df, o segundo estágio reenfileira as notas dele para o lote
+-- reescolher os termos com o idf de verdade. A política note_index_queue_indexer o
+-- prende às notas do cofre da sessão.
+GRANT INSERT, UPDATE ON note_index_queue TO markupp_indexer;
+GRANT USAGE ON SEQUENCE note_revision_seq TO markupp_indexer;
 GRANT SELECT ON note_terms TO markupp_app;
 
 ALTER TABLE note_terms ENABLE ROW LEVEL SECURITY;
@@ -38,5 +43,7 @@ CREATE POLICY note_terms_read ON note_terms FOR SELECT TO markupp_app
 SELECT markupp_requeue_notes(NULL);
 
 -- +goose Down
+REVOKE USAGE ON SEQUENCE note_revision_seq FROM markupp_indexer;
+REVOKE INSERT, UPDATE ON note_index_queue FROM markupp_indexer;
 DROP FUNCTION IF EXISTS markupp_term_idf(BIGINT, INTEGER, BOOLEAN);
 DROP TABLE IF EXISTS note_terms;

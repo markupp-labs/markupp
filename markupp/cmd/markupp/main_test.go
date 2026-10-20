@@ -108,8 +108,10 @@ func TestRun_Index_IndexaOCofrePendenteESai(t *testing.T) {
 	t.Setenv("MARKUPP_DATABASE_URL", url)
 	t.Setenv("MARKUPP_AUTH_SECRET", "")
 
-	require.NoError(t, run(context.Background(), slog.New(slog.DiscardHandler), []string{"markupp", "index"}),
-		"o Job do indexador nao recebe o segredo dos JWT")
+	for range 2 {
+		require.NoError(t, run(context.Background(), slog.New(slog.DiscardHandler), []string{"markupp", "index"}),
+			"o Job do indexador nao recebe o segredo dos JWT; o segundo reescolhe os termos com o df do primeiro")
+	}
 
 	var pendentes int
 	require.NoError(t, pool.QueryRow(context.Background(), "SELECT markupp_pending_vaults()").Scan(&pendentes))

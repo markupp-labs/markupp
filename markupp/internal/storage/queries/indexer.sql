@@ -155,6 +155,17 @@ CROSS JOIN LATERAL (
 ) top
 WHERE s.note_id = ANY (sqlc.arg(note_ids)::text[]) AND top.terms IS NOT NULL;
 
+-- Se o cofre já tem df, pelo mesmo critério com que SaveNoteTerms usa o idf.
+-- name: VaultTermStatsKnown :one
+SELECT coalesce((SELECT k.note_count > 0 FROM vault_term_stats k WHERE k.vault_id = sqlc.arg(vault_id)), false)::bool AS known;
+
+-- Põe as notas do cofre de volta na fila, com revisão nova para o lote que já as leu
+-- deixá-las pendentes.
+-- name: RequeueVaultNotes :exec
+INSERT INTO note_index_queue (note_id)
+SELECT id FROM notes WHERE vault_id = sqlc.arg(vault_id)
+ON CONFLICT (note_id) DO UPDATE SET revision = nextval('note_revision_seq');
+
 -- N do idf: as notas do cofre com documento, as mesmas que o df conta.
 -- name: SaveVaultTermStats :exec
 INSERT INTO vault_term_stats (vault_id, note_count)

@@ -94,10 +94,9 @@ func TestVaultIndexer_CofreJaIndexado_NaoFicaPendente(t *testing.T) {
 	db := setupTestDB(t)
 	ctx := storagetest.SeedMember(t, db, identity.Actor{UserID: "ua", TenantID: "t1", Role: "member"}, "va")
 	storagetest.SaveNote(ctx, t, storage.NewPostgresNotesRepository(db, "simple"), notaComConteudo("n1", "va", "oi"))
-	idx := novoIndexador(t, db, "simple")
-	indexaProximo(t, idx)
+	indexaTodosOsCofres(t, db, "simple")
 
-	found, lotes := indexaProximo(t, idx)
+	found, lotes := indexaProximo(t, novoIndexador(t, db, "simple"))
 
 	assert.False(t, found, "a fila do cofre esvazia na mesma transação da indexação")
 	assert.Empty(t, lotes.lotes)
@@ -109,8 +108,8 @@ func TestVaultIndexer_NotaEditada_ReindexaSoElaComOConteudoNovo(t *testing.T) {
 	ctx := storagetest.SeedMember(t, db, identity.Actor{UserID: "ua", TenantID: "t1", Role: "member"}, "va")
 	storagetest.SaveNote(ctx, t, repo, notaComConteudo("n1", "va", "palavra antiga"))
 	storagetest.SaveNote(ctx, t, repo, notaComConteudo("n2", "va", "intocada"))
+	indexaTodosOsCofres(t, db, "simple")
 	idx := novoIndexador(t, db, "simple")
-	indexaProximo(t, idx)
 	_, err := repo.Update(ctx, "n1", "n1.md", "palavra nova", time.Now(), time.Time{}, true)
 	require.NoError(t, err)
 
@@ -187,6 +186,7 @@ func TestVaultIndexer_CofreReservado_OutroIndexadorPulaParaOProximo(t *testing.T
 	ctxB := storagetest.SeedMember(t, db, identity.Actor{UserID: "ub", TenantID: "t2", Role: "member"}, "vb")
 	storagetest.SaveNote(ctxA, t, repo, notaComConteudo("n1", "va", "um"))
 	storagetest.SaveNote(ctxB, t, repo, notaComConteudo("n2", "vb", "dois"))
+	editaJaComDf(ctxA, ctxB, t, db, repo)
 	idx := novoIndexador(t, db, "simple")
 	primeiro, libera, terminou := reservaPresa(t, idx)
 
@@ -212,8 +212,21 @@ func TestVaultIndexer_PendentesDoKEDA_ContaCofresComMudanca(t *testing.T) {
 	storagetest.SaveNote(ctxB, t, repo, notaComConteudo("n2", "vb", "dois"))
 	assert.Equal(t, 2, countRows(t, db, consultaDoScaler))
 
+	editaJaComDf(ctxA, ctxB, t, db, repo)
+	assert.Equal(t, 2, countRows(t, db, consultaDoScaler))
 	indexaProximo(t, novoIndexador(t, db, "simple"))
 	assert.Equal(t, 1, countRows(t, db, consultaDoScaler))
+}
+
+// editaJaComDf indexa os cofres até o fim, para cada um ter df e não reenfileirar as
+// notas no próximo Job, e então edita n1, de ctxA, e n2, de ctxB.
+func editaJaComDf(ctxA, ctxB context.Context, t *testing.T, db *pgxpool.Pool, repo *storage.PostgresNotesRepository) {
+	t.Helper()
+	indexaTodosOsCofres(t, db, "simple")
+	_, err := repo.Update(ctxA, "n1", "n1.md", "um editada", time.Now(), time.Time{}, true)
+	require.NoError(t, err)
+	_, err = repo.Update(ctxB, "n2", "n2.md", "dois editada", time.Now(), time.Time{}, true)
+	require.NoError(t, err)
 }
 
 func TestNewPostgresVaultIndexer_ConfiguracaoInexistente_RetornaErroComOValor(t *testing.T) {

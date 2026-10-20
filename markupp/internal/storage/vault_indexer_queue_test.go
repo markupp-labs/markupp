@@ -32,9 +32,9 @@ func TestVaultIndexer_NotaAcimaDoTetoDoTsvector_IndexaOComecoSemTravarOCofre(t *
 	ctx := storagetest.SeedMember(t, db, identity.Actor{UserID: "ua", TenantID: "t1", Role: "member"}, "va")
 	storagetest.SaveNote(ctx, t, storage.NewPostgresNotesRepository(db, "simple"), notaComConteudo("n1", "va", textoSemRepeticao()))
 
-	found, _ := indexaProximo(t, novoIndexador(t, db, "simple"))
+	jobs := indexaContandoJobs(t, db, "simple")
 
-	assert.True(t, found)
+	assert.Positive(t, jobs)
 	assert.Equal(t, 1, casaNoIndice(t, db, "n1", "simple", "palavra0"))
 	assert.Zero(t, countRows(t, db, consultaDoScaler))
 }
@@ -54,7 +54,8 @@ func TestVaultIndexer_NotaApagadaDuranteAIndexacao_GravaAsOutras(t *testing.T) {
 	require.NoError(t, err, "nota apagada no meio da indexacao nao derruba o lote")
 	assert.True(t, found)
 	assert.Equal(t, 1, casaNoIndice(t, db, "n2", "simple", "dois"))
-	assert.Zero(t, countRows(t, db, consultaDoScaler))
+	indexaContandoJobs(t, db, "simple")
+	assert.Zero(t, countRows(t, db, consultaDoScaler), "o cofre nao fica preso na nota apagada")
 }
 
 func TestVaultIndexer_EscritaDuranteAIndexacao_DeixaANotaPendente(t *testing.T) {

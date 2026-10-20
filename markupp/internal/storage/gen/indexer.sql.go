@@ -169,6 +169,19 @@ func (q *Queries) RequeueNotes(ctx context.Context, vaultID pgtype.Text) (int64,
 	return requeued, err
 }
 
+const requeueVaultNotes = `-- name: RequeueVaultNotes :exec
+INSERT INTO note_index_queue (note_id)
+SELECT id FROM notes WHERE vault_id = $1
+ON CONFLICT (note_id) DO UPDATE SET revision = nextval('note_revision_seq')
+`
+
+// Põe as notas do cofre de volta na fila, com revisão nova para o lote que já as leu
+// deixá-las pendentes.
+func (q *Queries) RequeueVaultNotes(ctx context.Context, vaultID string) error {
+	_, err := q.db.Exec(ctx, requeueVaultNotes, vaultID)
+	return err
+}
+
 const reservePendingVault = `-- name: ReservePendingVault :one
 
 SELECT v.id AS vault_id, v.tenant_id
@@ -429,4 +442,16 @@ type UnmarkSecondStageParams struct {
 func (q *Queries) UnmarkSecondStage(ctx context.Context, arg UnmarkSecondStageParams) error {
 	_, err := q.db.Exec(ctx, unmarkSecondStage, arg.VaultID, arg.Revision)
 	return err
+}
+
+const vaultTermStatsKnown = `-- name: VaultTermStatsKnown :one
+SELECT coalesce((SELECT k.note_count > 0 FROM vault_term_stats k WHERE k.vault_id = $1), false)::bool AS known
+`
+
+// Se o cofre já tem df, pelo mesmo critério com que SaveNoteTerms usa o idf.
+func (q *Queries) VaultTermStatsKnown(ctx context.Context, vaultID string) (bool, error) {
+	row := q.db.QueryRow(ctx, vaultTermStatsKnown, vaultID)
+	var known bool
+	err := row.Scan(&known)
+	return known, err
 }

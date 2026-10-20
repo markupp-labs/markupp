@@ -95,7 +95,7 @@ func TestVaultIndexer_NotaReescritaComOMesmoConteudo_NaoVoltaParaAFila(t *testin
 	repo := storage.NewPostgresNotesRepository(db, "simple")
 	ctx := storagetest.SeedMember(t, db, identity.Actor{UserID: "ua", TenantID: "t1", Role: "member"}, "va")
 	storagetest.SaveNote(ctx, t, repo, notaComConteudo("n1", "va", "ação"))
-	indexaProximo(t, novoIndexador(t, db, "simple"))
+	indexaTodosOsCofres(t, db, "simple")
 
 	_, err := repo.Update(ctx, "n1", "n1.md", "ação", time.Now(), time.Time{}, true)
 
@@ -108,7 +108,7 @@ func TestVaultIndexer_ConteudoNovo_VoltaParaAFila(t *testing.T) {
 	repo := storage.NewPostgresNotesRepository(db, "simple")
 	ctx := storagetest.SeedMember(t, db, identity.Actor{UserID: "ua", TenantID: "t1", Role: "member"}, "va")
 	storagetest.SaveNote(ctx, t, repo, notaComConteudo("n1", "va", "ação"))
-	indexaProximo(t, novoIndexador(t, db, "simple"))
+	indexaTodosOsCofres(t, db, "simple")
 
 	_, err := repo.Update(ctx, "n1", "n1.md", "acao", time.Now(), time.Time{}, true)
 

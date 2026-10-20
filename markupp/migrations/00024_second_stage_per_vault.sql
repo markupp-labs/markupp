@@ -79,7 +79,8 @@ $$;
 -- +goose StatementEnd
 
 -- Reindexar pode trocar a configuração de texto, e com ela os termos do df: o cofre
--- reenfileirado também fica marcado.
+-- reenfileirado também fica marcado e perde o df, que o segundo estágio refaz com o
+-- analisador novo e então reenfileira as notas para reescolher os termos.
 -- +goose StatementBegin
 CREATE OR REPLACE FUNCTION markupp_requeue_notes(target_vault TEXT) RETURNS BIGINT
 LANGUAGE plpgsql VOLATILE SET search_path = pg_catalog, public, pg_temp AS $$
@@ -93,6 +94,7 @@ BEGIN
     SELECT id FROM notes WHERE target_vault IS NULL OR vault_id = target_vault
     ON CONFLICT (note_id) DO UPDATE SET revision = nextval('note_revision_seq');
     GET DIAGNOSTICS requeued = ROW_COUNT;
+    DELETE FROM vault_term_stats WHERE target_vault IS NULL OR vault_id = target_vault;
     INSERT INTO vault_second_stage_queue (vault_id)
     SELECT id FROM vaults WHERE target_vault IS NULL OR id = target_vault
     ON CONFLICT (vault_id) DO UPDATE SET revision = nextval('vault_second_stage_revision_seq');
