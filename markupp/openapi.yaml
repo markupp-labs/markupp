@@ -1178,7 +1178,8 @@ paths:
         e ligações inferidas, ou recortam por comunidade; ligação com ponta escondida
         também sai. A resposta vem com gzip quando o cliente aceita e com ETag fraco
         pela versão do grafo do cofre, que muda quando o segundo estágio do indexador
-        roda; antes do primeiro segundo estágio não há ETag. O viewer também lê.
+        roda; antes do primeiro segundo estágio não há ETag. Cache-Control private,
+        no-cache: só o navegador guarda, e revalida antes de usar. O viewer também lê.
       parameters:
         - $ref: '#/components/parameters/TenantHeader'
         - $ref: '#/components/parameters/VaultID'
@@ -1193,6 +1194,8 @@ paths:
           headers:
             ETag:
               $ref: '#/components/headers/GraphETag'
+            Cache-Control:
+              $ref: '#/components/headers/GraphCacheControl'
             Content-Encoding:
               $ref: '#/components/headers/GraphContentEncoding'
           content:
@@ -1204,6 +1207,8 @@ paths:
           headers:
             ETag:
               $ref: '#/components/headers/GraphETag'
+            Cache-Control:
+              $ref: '#/components/headers/GraphCacheControl'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '400':
@@ -1230,8 +1235,9 @@ paths:
       description: |
         As notas a até depth saltos da nota, seguindo as ligações nos dois sentidos,
         com as ligações entre elas e os nós sem nota que as notas a menos de depth
-        saltos citam. Mesmo formato, filtros, gzip e ETag de GET /v1/vaults/{id}/graph;
-        o filtro vale também no caminho, e a nota lida sempre fica. O viewer também lê.
+        saltos citam. Mesmo formato, filtros, gzip, ETag e Cache-Control de
+        GET /v1/vaults/{id}/graph; o filtro vale também no caminho, e a nota lida
+        sempre fica. O viewer também lê.
       parameters:
         - $ref: '#/components/parameters/TenantHeader'
         - $ref: '#/components/parameters/NoteID'
@@ -1255,6 +1261,8 @@ paths:
           headers:
             ETag:
               $ref: '#/components/headers/GraphETag'
+            Cache-Control:
+              $ref: '#/components/headers/GraphCacheControl'
             Content-Encoding:
               $ref: '#/components/headers/GraphContentEncoding'
           content:
@@ -1266,6 +1274,8 @@ paths:
           headers:
             ETag:
               $ref: '#/components/headers/GraphETag'
+            Cache-Control:
+              $ref: '#/components/headers/GraphCacheControl'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '400':
@@ -1779,6 +1789,13 @@ components:
       schema:
         type: string
         example: 'W/"42"'
+    GraphCacheControl:
+      description: |
+        private, no-cache: só o navegador do usuário guarda o grafo, e revalida pelo
+        ETag antes de usar
+      schema:
+        type: string
+        example: private, no-cache
     GraphContentEncoding:
       description: gzip quando o pedido traz Accept-Encoding com gzip
       schema:
