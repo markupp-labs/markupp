@@ -12,8 +12,9 @@ CREATE POLICY vault_term_stats_read ON vault_term_stats FOR SELECT TO markupp_ap
 -- Notas do cofre com o título no corpo (peso D), como a menção conta as ocorrências
 -- da âncora, ou NULL quando o título é comum. O teto é 5% do N gravado pelo segundo
 -- estágio. Título de um lexema é julgado antes pelo df gravado, em O(1): o df conta o
--- documento inteiro, título incluído, então desconta as notas que têm o título, e só
--- passa de 5% quando o corpo com certeza passa. Os outros títulos, e os de um lexema
+-- documento inteiro, título incluído, então desconta as notas que têm esse título. A
+-- palavra no título de outras notas (o título "projeto alfa" para "projeto") continua
+-- no df, e conta como presença na nota. Os outros títulos, e os de um lexema
 -- que passam, pagam a contagem no GIN, que para no teto. Cofre sem N ainda não tem
 -- como julgar e conta tudo, sem filtro. Roda com os direitos de quem chama.
 -- +goose StatementBegin
