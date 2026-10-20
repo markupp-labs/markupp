@@ -32,6 +32,11 @@ class ConfirmDialogTest < ApplicationSystemTestCase
     assert_field "Path", with: "/work/ideas"
   end
 
+  test "closed, the dialog has no action label, so the page has no stray delete" do
+    assert_equal "", find("dialog#confirm_dialog button[value=confirm]", visible: :all).text(:all)
+    assert_nil find("dialog#confirm_dialog", visible: :all)["aria-label"]
+  end
+
   test "tab to delete and enter removes the note" do
     click_on "Delete"
     assert_selector "dialog#confirm_dialog[open] button:focus", text: "Cancel"
