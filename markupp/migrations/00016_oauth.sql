@@ -1,5 +1,5 @@
 -- +goose Up
--- Authorization server OAuth 2.1 (ADR-0038). As tabelas são da instância, como a conta
+-- Authorization server OAuth 2.1 (ADR-0039). As tabelas são da instância, como a conta
 -- (ADR-0035): sem tenant, sem RLS e fora do alcance dos papéis da aplicação. Códigos e
 -- tokens ficam só como hash.
 CREATE TABLE oauth_clients (

@@ -36,7 +36,7 @@ func (c Config) OAuthEnabled() bool {
 	return c.PublicURL != ""
 }
 
-// loadOAuthSettings lê o authorization server (ADR-0038). Sem MARKUPP_PUBLIC_URL ele
+// loadOAuthSettings lê o authorization server (ADR-0039). Sem MARKUPP_PUBLIC_URL ele
 // fica desligado e as demais variáveis nem são lidas.
 func loadOAuthSettings(lookup LookupFunc, cfg *Config) error {
 	var public string

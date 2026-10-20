@@ -43,7 +43,7 @@ type Config struct {
 	// SMTPFrom é o remetente dos emails, obrigatório com SMTPURL.
 	SMTPFrom string
 	// PublicURL é o issuer do authorization server, sem caminho nem barra final.
-	// Vazia desliga o OAuth (ADR-0038).
+	// Vazia desliga o OAuth (ADR-0039).
 	PublicURL string
 	// PanelURL é o painel que faz o login e o consentimento do OAuth, sem barra final.
 	PanelURL string

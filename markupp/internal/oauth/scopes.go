@@ -1,4 +1,4 @@
-// Package oauth reúne o vocabulário do authorization server OAuth 2.1 (ADR-0038).
+// Package oauth reúne o vocabulário do authorization server OAuth 2.1 (ADR-0039).
 package oauth
 
 // Escopos que um agente pode pedir ao authorization server.
