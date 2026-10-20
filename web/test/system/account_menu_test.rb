@@ -74,4 +74,13 @@ class AccountMenuTest < ApplicationSystemTestCase
 
     assert_text "Logged out."
   end
+
+  # Um pointerdown no email sem clique (arrastou para fora antes de soltar) não pode fazer o Enter seguinte parecer mouse.
+  test "a press on the email without a click still opens from the keyboard on the first item" do
+    email = find("button[popovertarget=account_menu]")
+    email.execute_script("this.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))")
+    email.send_keys(:enter)
+
+    assert_selector "[role=menuitem]:focus", text: "Log out"
+  end
 end
