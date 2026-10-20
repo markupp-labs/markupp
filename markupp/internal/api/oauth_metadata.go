@@ -36,10 +36,12 @@ type oauthMetadataResponse struct {
 	CodeChallengeMethodsSupported          []string `json:"code_challenge_methods_supported"`
 	TokenEndpointAuthMethodsSupported      []string `json:"token_endpoint_auth_methods_supported"`
 	RevocationEndpointAuthMethodsSupported []string `json:"revocation_endpoint_auth_methods_supported"`
+	ClientIDMetadataDocumentSupported      bool     `json:"client_id_metadata_document_supported"`
 }
 
 // newOAuthMetadataResponse anuncia o fluxo de código com PKCE S256, o refresh e a
-// revogação, todos com cliente público, sem segredo nos endpoints.
+// revogação, todos com cliente público, sem segredo nos endpoints, e o client_id como URL
+// de Client ID Metadata Document.
 func newOAuthMetadataResponse(issuer string) oauthMetadataResponse {
 	return oauthMetadataResponse{
 		Issuer:                                 issuer,
@@ -52,6 +54,7 @@ func newOAuthMetadataResponse(issuer string) oauthMetadataResponse {
 		CodeChallengeMethodsSupported:          []string{"S256"},
 		TokenEndpointAuthMethodsSupported:      []string{"none"},
 		RevocationEndpointAuthMethodsSupported: []string{"none"},
+		ClientIDMetadataDocumentSupported:      true,
 	}
 }
 
