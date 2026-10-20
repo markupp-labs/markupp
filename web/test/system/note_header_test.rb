@@ -30,7 +30,7 @@ class NoteHeaderTest < ApplicationSystemTestCase
     page.current_window.resize_to(390, 844)
     visit new_note_path
     send_keys :tab, "Fresh idea.", [ :control, "s" ]
-    assert_selector "#note_path_error", text: "Title can't be blank"
+    assert_selector "#note_path_error", text: "Name can't be blank"
 
     gap = evaluate_script(<<~JS)
       document.querySelector("#note_path_error").getBoundingClientRect().top - document.querySelector("#note_path").getBoundingClientRect().bottom

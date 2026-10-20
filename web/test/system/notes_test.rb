@@ -116,7 +116,7 @@ class NotesTest < ApplicationSystemTestCase
     visit root_path
     send_keys "trail/", :tab, "Body."
     send_keys [ :control, "s" ]
-    assert_text "Title can't be blank"
+    assert_text "Name can't be blank"
     assert_field "Path", with: "/trail/"
     find_field("Path").send_keys("Plan")
 
@@ -180,7 +180,7 @@ class NotesTest < ApplicationSystemTestCase
 
     visit new_note_path
     send_keys :tab, "Fresh idea.", [ :control, "s" ]
-    assert_selector "#note_path_error", text: "Title can't be blank"
+    assert_selector "#note_path_error", text: "Name can't be blank"
     send_keys "Plan"
 
     assert_no_selector "#note_path_error"
@@ -195,7 +195,7 @@ class NotesTest < ApplicationSystemTestCase
     visit new_note_path
     send_keys :tab, "Fresh idea.", [ :shift, :tab ], [ :control, "s" ]
 
-    assert_selector "#note_path_error[role=alert]", text: "Title can't be blank"
+    assert_selector "#note_path_error[role=alert]", text: "Name can't be blank"
   end
 
   test "saving a note with its path cleared asks for a name in place" do
@@ -337,7 +337,7 @@ class NotesTest < ApplicationSystemTestCase
   private
     # Recusado no navegador: a página não recarregou e o foco voltou ao caminho.
     def assert_blank_title_refused_in_place
-      assert_selector "#note_path_error", text: "Title can't be blank"
+      assert_selector "#note_path_error", text: "Name can't be blank"
       assert_selector "#note_path[aria-invalid=true][aria-describedby=note_path_error]"
       assert_equal "note_path", evaluate_script("document.activeElement.id")
       assert evaluate_script("window.stayedOnPage"), "expected the page to stay, got a reload from the server"

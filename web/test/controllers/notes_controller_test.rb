@@ -284,7 +284,7 @@ class NotesControllerTest < ActionDispatch::IntegrationTest
     assert_empty api.post_requests
     assert_select "input[name=?][value=?][aria-invalid=true][aria-describedby=note_path_error]", "note[path]", "/dev/teste/"
     assert_select "input[type=hidden][name=origin_path][value=?]", "work/"
-    assert_select "#note_path_error", text: "Title can't be blank"
+    assert_select "#note_path_error", text: "Name can't be blank"
     assert_equal "Ship it.", css_select("main textarea").sole.text
   end
 
@@ -336,7 +336,7 @@ class NotesControllerTest < ActionDispatch::IntegrationTest
     assert_empty api.put_requests
     assert_select "input[name=?][value=?][aria-invalid=true][aria-describedby=note_path_error]", "note[path]", "/dev/teste/"
     assert_select "input[type=hidden][name=origin_path][value=?]", "work/a.md"
-    assert_select "#note_path_error", text: "Title can't be blank"
+    assert_select "#note_path_error", text: "Name can't be blank"
     assert_equal "mine", css_select("main textarea").sole.text
     assert_select "button:not([hidden])", text: "Save"
   end
