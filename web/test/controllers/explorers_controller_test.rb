@@ -21,7 +21,7 @@ class ExplorersControllerTest < ActionDispatch::IntegrationTest
     get root_path
 
     assert_select "form[action=?][method=get][data-turbo-frame=explorer_list]", explorer_path do
-      assert_select "select#explorer_mode[name=mode][aria-keyshortcuts=Alt+O][title=?]", "Explorer view (Alt+O)"
+      assert_select "select#explorer_mode[name=mode][aria-keyshortcuts='Alt+O'][title=?]", "Explorer view (Alt+O)"
       assert_equal MODES, css_select("select#explorer_mode option").map { [ it["value"], it.text ] }
       assert_select "option[selected]", text: "Folders"
     end
