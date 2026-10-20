@@ -64,10 +64,10 @@ const nextStepByCode = {
   unauthorized: reconnect,
 } as const satisfies Record<string, string>;
 
-// apiFor devolve o cliente da API da sessão que chamou a ferramenta.
+// apiFor devolve o cliente da API da sessão que chamou a ferramenta ou leu o resource.
 export function apiFor(
   factory: MarkuppApiFactory,
-  context: Context<MarkuppSession>,
+  context: Pick<Context<MarkuppSession>, "session">,
 ): MarkuppApi {
   if (!context.session) {
     throw unauthenticated("this MCP session carries no markupp login");
