@@ -34,7 +34,7 @@ func autorizar(pool *pgxpool.Pool, id, escopos string, revogada bool) error {
 	return err
 }
 
-func TestMigracao00016_TabelasOAuth_ExistemSemRLS(t *testing.T) {
+func TestMigracao00032_TabelasOAuth_ExistemSemRLS(t *testing.T) {
 	pool := bancoComOAuth(t)
 
 	for _, tabela := range tabelasOAuth {
@@ -47,13 +47,13 @@ func TestMigracao00016_TabelasOAuth_ExistemSemRLS(t *testing.T) {
 // papeisSemAcessoOAuth são PUBLIC e todos os papéis criados pelas migrações.
 var papeisSemAcessoOAuth = []string{"public", "markupp_app", "markupp_scaler", "markupp_indexer", "markupp_notifier"}
 
-// bancoComOAuthSobDefaultPrivileges sobe até a 00015, concede DEFAULT PRIVILEGES a todos os
-// papéis e só então aplica a 00016, simulando um banco que entrega tabelas novas a eles.
+// bancoComOAuthSobDefaultPrivileges sobe até a 00031, concede DEFAULT PRIVILEGES a todos os
+// papéis e só então aplica a 00032, simulando um banco que entrega tabelas novas a eles.
 func bancoComOAuthSobDefaultPrivileges(t *testing.T) *pgxpool.Pool {
 	t.Helper()
 	pool := storagetest.EmptyPool(t)
 	provider := gooseProvider(t, pool)
-	_, err := provider.UpTo(context.Background(), 15)
+	_, err := provider.UpTo(context.Background(), 31)
 	require.NoError(t, err)
 	_, err = pool.Exec(context.Background(), `ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES
 		TO PUBLIC, markupp_app, markupp_scaler, markupp_indexer, markupp_notifier`)
@@ -71,7 +71,7 @@ func privilegiosOAuth(t *testing.T, pool *pgxpool.Pool, papel, tabela string) in
 		OR (p IN ('SELECT','INSERT','UPDATE','REFERENCES') AND has_any_column_privilege('`+papel+`', '`+tabela+`', p))`)
 }
 
-func TestMigracao00016_TabelasOAuth_SemPrivilegioParaPapeis(t *testing.T) {
+func TestMigracao00032_TabelasOAuth_SemPrivilegioParaPapeis(t *testing.T) {
 	pool := bancoComOAuthSobDefaultPrivileges(t)
 
 	for _, papel := range papeisSemAcessoOAuth {
@@ -81,7 +81,7 @@ func TestMigracao00016_TabelasOAuth_SemPrivilegioParaPapeis(t *testing.T) {
 	}
 }
 
-func TestMigracao00016_ChavesEstrangeiras_Indexadas(t *testing.T) {
+func TestMigracao00032_ChavesEstrangeiras_Indexadas(t *testing.T) {
 	pool := bancoComOAuth(t)
 
 	for _, fk := range [][2]string{{"oauth_requests", "user_id"}, {"oauth_requests", "client_id"}, {"oauth_requests", "authorization_id"},
@@ -91,7 +91,7 @@ func TestMigracao00016_ChavesEstrangeiras_Indexadas(t *testing.T) {
 	}
 }
 
-func TestMigracao00016_EscopoInvalido_Rejeitado(t *testing.T) {
+func TestMigracao00032_EscopoInvalido_Rejeitado(t *testing.T) {
 	pool := bancoComOAuth(t)
 
 	assert.Error(t, autorizar(pool, "a1", "{notas:tudo}", false))
@@ -99,7 +99,7 @@ func TestMigracao00016_EscopoInvalido_Rejeitado(t *testing.T) {
 	assert.NoError(t, autorizar(pool, "a3", "{notas:leitura,notas:escrita,administracao}", false))
 }
 
-func TestMigracao00016_SourceInvalido_Rejeitado(t *testing.T) {
+func TestMigracao00032_SourceInvalido_Rejeitado(t *testing.T) {
 	pool := bancoComOAuth(t)
 
 	_, err := pool.Exec(context.Background(), `INSERT INTO oauth_clients (id, source, name, redirect_uris)
@@ -108,25 +108,25 @@ func TestMigracao00016_SourceInvalido_Rejeitado(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestMigracao00016_DuasAutorizacoesAtivasDoMesmoPar_Rejeitadas(t *testing.T) {
+func TestMigracao00032_DuasAutorizacoesAtivasDoMesmoPar_Rejeitadas(t *testing.T) {
 	pool := bancoComOAuth(t)
 	require.NoError(t, autorizar(pool, "a1", "{notas:leitura}", false))
 
 	assert.Error(t, autorizar(pool, "a2", "{notas:leitura}", false))
 }
 
-func TestMigracao00016_AtivaMaisRevogadaDoMesmoPar_Aceitas(t *testing.T) {
+func TestMigracao00032_AtivaMaisRevogadaDoMesmoPar_Aceitas(t *testing.T) {
 	pool := bancoComOAuth(t)
 	require.NoError(t, autorizar(pool, "a1", "{notas:leitura}", true))
 
 	assert.NoError(t, autorizar(pool, "a2", "{notas:leitura}", false))
 }
 
-func TestMigracao00016_Down_RemoveTabelasOAuth(t *testing.T) {
+func TestMigracao00032_Down_RemoveTabelasOAuth(t *testing.T) {
 	pool := bancoComOAuth(t)
 	provider := gooseProvider(t, pool)
 
-	_, err := provider.DownTo(context.Background(), 15)
+	_, err := provider.DownTo(context.Background(), 31)
 
 	require.NoError(t, err)
 	assert.Equal(t, 0, countRows(t, pool, "SELECT count(*) FROM pg_class WHERE relname LIKE 'oauth\\_%'"))
@@ -140,7 +140,7 @@ func emitirToken(pool *pgxpool.Pool, hash, escopos string) error {
 	return err
 }
 
-func TestMigracao00016_EscopoDoToken_RestritoAosSuportados(t *testing.T) {
+func TestMigracao00032_EscopoDoToken_RestritoAosSuportados(t *testing.T) {
 	pool := bancoComOAuth(t)
 	require.NoError(t, autorizar(pool, "a1", "{notas:leitura,administracao}", false))
 
