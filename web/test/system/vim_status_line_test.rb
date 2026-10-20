@@ -39,6 +39,23 @@ class VimStatusLineTest < ApplicationSystemTestCase
     page.current_window.resize_to(1400, 900)
   end
 
+  test "side by side the focus ring of the preview fits in the window" do
+    open_note("1")
+    find(".note-mode-split").click
+    find(".cm-content").click
+    send_keys "l", [ :alt, "l" ]
+    assert_selector ".note-preview:focus-visible"
+
+    ring_bottom = evaluate_script(<<~JS)
+      (() => {
+        const preview = document.querySelector(".note-preview")
+        const style = getComputedStyle(preview)
+        return preview.getBoundingClientRect().bottom + parseFloat(style.outlineOffset) + parseFloat(style.outlineWidth)
+      })()
+    JS
+    assert_operator ring_bottom, :<=, status_line_box["viewport"], "expected the preview focus ring inside the window"
+  end
+
   test "the read mode has no mode line" do
     open_note("1")
     find(".note-mode-read").click
