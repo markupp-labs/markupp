@@ -3,12 +3,13 @@
 -- ligações ou os títulos do cofre mudaram. Nesta versão ele recalcula a frequência de
 -- documento (df) de cada termo do cofre, que a similaridade léxica usa no idf.
 
--- Cofres marcados para o segundo estágio. Sem chave estrangeira para vaults: apagar o
--- cofre apaga as notas em cascata, e o trigger de exclusão não pode marcar um cofre que
--- já sumiu. A revisão faz o Job que já leu o cofre deixar marcada a mudança posterior.
+-- Cofres marcados para o segundo estágio. A marcação sai com o cofre, em cascata; o
+-- trigger de exclusão de notas, que a cascata do cofre também dispara, só marca cofre
+-- que ainda existe. A revisão faz o Job que já leu o cofre deixar marcada a mudança
+-- posterior.
 CREATE SEQUENCE vault_second_stage_revision_seq;
 CREATE TABLE vault_second_stage_queue (
-    vault_id TEXT PRIMARY KEY,
+    vault_id TEXT PRIMARY KEY REFERENCES vaults (id) ON DELETE CASCADE,
     revision BIGINT NOT NULL DEFAULT nextval('vault_second_stage_revision_seq')
 );
 ALTER SEQUENCE vault_second_stage_revision_seq OWNED BY vault_second_stage_queue.revision;
