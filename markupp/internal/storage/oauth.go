@@ -47,13 +47,18 @@ func (r *PostgresOAuthRepository) GetClient(ctx context.Context, id string, dcrP
 	return oauth.Client{ID: row.ID, Name: row.Name, RedirectURIs: row.RedirectUris, Source: row.Source}, nil
 }
 
-// CreateRequest grava o Pedido de autorização ainda sem conta nem código.
+// CreateRequest grava o Pedido de autorização ainda sem conta nem código. O cliente
+// apagado depois da busca dele viola a chave estrangeira e sai como
+// oauth.ErrClientNotFound.
 func (r *PostgresOAuthRepository) CreateRequest(ctx context.Context, req oauth.AuthorizationRequest) error {
 	err := r.q.CreateOAuthRequest(ctx, gen.CreateOAuthRequestParams{
 		ID: req.ID, ClientID: req.ClientID, RedirectUri: req.RedirectURI, Scopes: req.Scopes,
 		Resource: req.Resource, State: pgtype.Text{String: req.State, Valid: req.State != ""},
 		CodeChallenge: req.CodeChallenge, CreatedAt: req.CreatedAt, ExpiresAt: req.ExpiresAt,
 	})
+	if pgErrorCode(err) == foreignKeyViolationCode {
+		return fmt.Errorf("%w: client_id %s apagado antes de gravar o pedido", oauth.ErrClientNotFound, oauth.ClientValue(req.ClientID))
+	}
 	if err != nil {
 		return fmt.Errorf("gravar pedido de autorização do cliente %s: %w", oauth.ClientValue(req.ClientID), err)
 	}

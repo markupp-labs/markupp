@@ -2,6 +2,7 @@ package oauth
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/url"
 	"slices"
@@ -11,6 +12,8 @@ import (
 // StartAuthorization valida o GET /oauth/authorize, grava o Pedido de autorização e
 // devolve a URL da tela de consentimento no painel. Enquanto cliente e redirect_uri não
 // estão confirmados, o erro não leva RedirectURI; depois, volta ao cliente por redirect.
+// O cliente apagado entre a busca e a gravação do pedido recebe a mesma recusa do cliente
+// não registrado.
 func (s *Service) StartAuthorization(ctx context.Context, p AuthorizeParams) (string, error) {
 	if err := s.checkClientRedirect(ctx, p); err != nil {
 		return "", err
@@ -19,7 +22,11 @@ func (s *Service) StartAuthorization(ctx context.Context, p AuthorizeParams) (st
 	if err != nil {
 		return "", err
 	}
-	if err := s.repo.CreateRequest(ctx, req); err != nil {
+	err = s.repo.CreateRequest(ctx, req)
+	if errors.Is(err, ErrClientNotFound) {
+		return "", unregisteredClientError(p.ClientID)
+	}
+	if err != nil {
 		return "", fmt.Errorf("oauth: gravando o pedido de autorização do cliente %s: %w", ClientValue(p.ClientID), err)
 	}
 	return s.cfg.PanelURL + "/oauth/consentimento?pedido=" + url.QueryEscape(req.ID), nil

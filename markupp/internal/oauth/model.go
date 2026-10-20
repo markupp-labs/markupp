@@ -119,6 +119,7 @@ type Repository interface {
 	// GetClient devolve ErrClientNotFound se o cliente não existe ou é DCR pendente
 	// criado em dcrPendingCutoff ou antes, mesmo que ainda não tenha sido apagado.
 	GetClient(ctx context.Context, id string, dcrPendingCutoff time.Time) (Client, error)
+	// CreateRequest devolve ErrClientNotFound embrulhado se o cliente não existe mais.
 	CreateRequest(ctx context.Context, req AuthorizationRequest) error
 	// GetPendingRequest devolve ErrRequestNotFound se o pedido não existe, expirou em
 	// relação a now ou já foi decidido.
