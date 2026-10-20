@@ -113,6 +113,17 @@ func TestSegundoEstagio_CofreApagado_NaoDeixaPendencia(t *testing.T) {
 	assert.Zero(t, countRows(t, db, consultaDoScaler))
 }
 
+func TestSegundoEstagio_CofreMarcadoApagado_SaiDaFila(t *testing.T) {
+	db, _ := cofreComDf(t)
+	_, err := storage.RequeueNotes(context.Background(), db, cofreDeTeste)
+	require.NoError(t, err)
+
+	_, err = db.Exec(context.Background(), "DELETE FROM vaults WHERE id = $1", cofreDeTeste)
+
+	require.NoError(t, err)
+	assert.Zero(t, countRows(t, db, cofresMarcados), "a marcacao sai com o cofre, em cascata")
+}
+
 func TestSegundoEstagio_Reindex_MarcaOCofre(t *testing.T) {
 	db, _ := cofreComDf(t)
 
