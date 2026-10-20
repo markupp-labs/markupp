@@ -47,7 +47,7 @@ type Config struct {
 	// link da rota do painel que recebe o token; vazia, só o token.
 	PanelURL string
 	// RateLimitPerMinute é quantas tentativas por minuto cada IP e cada email têm nas
-	// rotas de conta (ADR-0037).
+	// rotas de conta (ADR-0044).
 	RateLimitPerMinute int
 	// TrustedProxies são as redes dos proxies cujo X-Forwarded-For o limite de
 	// tentativas aceita. Vazia, o limite usa só o IP da conexão.

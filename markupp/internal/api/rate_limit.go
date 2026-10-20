@@ -14,7 +14,7 @@ import (
 )
 
 // AccountRateLimiter conta tentativas por chave numa janela fixa, em memória do processo
-// (ADR-0037): com várias réplicas, o limite vale por réplica.
+// (ADR-0044): com várias réplicas, o limite vale por réplica.
 type AccountRateLimiter struct {
 	limit     int
 	window    time.Duration

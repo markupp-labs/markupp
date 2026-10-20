@@ -4,10 +4,10 @@
 
 Aceita, com escopo limitado ao MVP
 
-Revisto em parte pelo ADR-0037 (rate limit).
+Revisto em parte pelo ADR-0044 (rate limit).
 
 Os três itens excluídos entraram depois: autenticação pelo ADR-0020, TLS pelo ADR-0023 e rate
-limit pelo ADR-0037
+limit pelo ADR-0044
 
 ## Contexto
 

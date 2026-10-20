@@ -17,7 +17,7 @@ type RouterDeps struct {
 	Tenants        TenantResolver
 	Probe          StorageProbe
 	AllowedOrigins []string
-	// AccountRateLimiter limita as rotas de conta (ADR-0037). Nil deixa as rotas livres.
+	// AccountRateLimiter limita as rotas de conta (ADR-0044). Nil deixa as rotas livres.
 	AccountRateLimiter *AccountRateLimiter
 }
 

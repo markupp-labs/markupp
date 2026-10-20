@@ -72,7 +72,7 @@ token em texto para quem não conseguir abrir o link. Sem ela, o email leva só 
 componente, ela vem de `email.panelUrl`.
 
 A API limita login, refresh, aceite de convite, pedido de verificação de email e pedido e troca
-de senha a 5 tentativas por minuto por IP e, quando o corpo traz email, por email (ADR-0037).
+de senha a 5 tentativas por minuto por IP e, quando o corpo traz email, por email (ADR-0044).
 Acima disso responde 429 com Retry-After. A variável `MARKUPP_RATE_LIMIT_PER_MINUTE`, de 1 a
 10000, troca o 5. A contagem fica na memória de cada réplica, então com N réplicas o limite
 efetivo chega a N vezes o configurado. O IP é o da conexão, e endereços IPv6 do mesmo prefixo
