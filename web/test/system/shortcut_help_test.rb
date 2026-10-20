@@ -23,6 +23,16 @@ class ShortcutHelpTest < ApplicationSystemTestCase
     assert_no_selector "dialog#shortcut_help[open]"
   end
 
+  # Como num --help de terminal: em cada coluna da ajuda, as descrições começam no mesmo x em todos os grupos.
+  test "the descriptions line up in one column per help column" do
+    find("[role=treeitem]", text: "plan").execute_script("this.focus()")
+    press_question_mark
+    assert_selector "dialog#shortcut_help[open]"
+
+    columns = evaluate_script("[ ...document.querySelectorAll('#shortcut_help dd') ].map((dd) => Math.round(dd.getBoundingClientRect().left))").uniq
+    assert_equal 2, columns.size, "expected one description column per help column, found x = #{columns.sort}"
+  end
+
   test "? typed in the content or the path stays text" do
     find(".cm-content").send_keys([ :control, :end ], "Why")
     press_question_mark
