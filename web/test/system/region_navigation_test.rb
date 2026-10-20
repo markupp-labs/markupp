@@ -32,6 +32,18 @@ class RegionNavigationTest < ApplicationSystemTestCase
     send_keys [ :alt, "k" ]
 
     assert_selector "input[name='note[path]']:focus"
+    assert_equal [ 10, 10 ], path_selection, "the caret should be at the end of /work/plan"
+  end
+
+  test "from the path field alt+j goes down to the content and alt+l to the region on the right" do
+    open_note(mode: "edit")
+    add_region_right_of_the_path
+
+    send_keys [ :alt, "k" ], [ :alt, "j" ]
+    assert_selector ".cm-content:focus"
+    send_keys [ :alt, "k" ], [ :alt, "l" ]
+
+    assert_selector "#region_on_the_right:focus"
   end
 
   test "alt+j goes down from the editor to the preview when they stack" do
@@ -83,12 +95,13 @@ class RegionNavigationTest < ApplicationSystemTestCase
 
   # O chromedriver manda o Alt+h com o texto h, que o navegador num teclado de verdade nao escreve: o teste so exige
   # que o foco fique e o que vem depois caia no campo.
-  test "the path field keeps alt+h and does not move" do
+  test "the path field keeps alt+h and alt+k and does not move" do
     open_note(mode: "edit")
 
     find_field("Path").click
-    send_keys :end, [ :alt, "h" ], "x"
+    send_keys :end, [ :alt, "h" ], [ :alt, "k" ], "x"
 
+    assert_selector "input[name='note[path]']:focus"
     assert_field "Path", with: %r{\A/work/plan.*x\z}
   end
 
@@ -138,6 +151,19 @@ class RegionNavigationTest < ApplicationSystemTestCase
   end
 
   private
+    def path_selection = evaluate_script("(f => [ f.selectionStart, f.selectionEnd ])(document.querySelector('input[name=\"note[path]\"]'))")
+
+    # Nenhuma tela tem hoje regiao a direita do caminho: o teste poe uma na altura dele, no canto direito.
+    def add_region_right_of_the_path
+      execute_script(<<~JS)
+        const field = document.querySelector("input[name='note[path]']").getBoundingClientRect()
+        const region = Object.assign(document.createElement("div"), { id: "region_on_the_right", tabIndex: -1 })
+        region.dataset.focusRegion = "test"
+        Object.assign(region.style, { position: "fixed", top: `${field.top}px`, left: `${innerWidth - 20}px`, width: "10px", height: "10px" })
+        document.body.append(region)
+      JS
+    end
+
     def note_content = evaluate_script("document.querySelector('textarea[name=\"note[content]\"]').value")
 
     def open_note(mode:)
