@@ -76,6 +76,18 @@ class CommandPaletteTest < ApplicationSystemTestCase
     assert_field "Path", with: "/work/"
   end
 
+  # A paleta fica aberta enquanto a página escolhida carrega; o Turbo guarda a página que sai no cache, e ela não pode
+  # voltar pelo histórico com a paleta à mostra.
+  test "going back after a page chosen in the palette restores the page without the palette" do
+    visit settings_appearance_path
+    run_command "all tenants"
+    assert_selector "h1", text: "Tenants"
+    page.go_back
+
+    assert_selector "main h1", text: "Appearance"
+    assert_no_selector "dialog#command_palette[open]"
+  end
+
   # Barra de rolagem fina nos tokens do tema, como nos painéis que rolam, na lista da paleta e na ajuda de atalhos.
   test "the palette list and the shortcut help scroll with the thin theme scrollbar" do
     styles = evaluate_script(<<~JS)
