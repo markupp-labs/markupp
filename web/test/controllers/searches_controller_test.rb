@@ -6,7 +6,7 @@ class SearchesControllerTest < ActionDispatch::IntegrationTest
   TWO_TENANTS = [ { id: "tenant-1", name: "Acme research", members: { EMAIL => "owner" } },
                   { id: "tenant-2", name: "Home lab", members: { EMAIL => "member" } } ].freeze
 
-  test "show lists the matching notes in the results frame, linking out of it" do
+  test "show lists the ranked hits with the title, the folder and the snippet, linking out of the frame" do
     use_fake_api(notes: [ { id: "1", path: "work/plan.md", content: "Ship it" }, { id: "2", path: "inbox.md", content: "later" } ])
     sign_in_as
 
@@ -14,19 +14,41 @@ class SearchesControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select "turbo-frame#search_results a", count: 1
-    assert_select "turbo-frame#search_results a[href=?][data-turbo-frame=_top]", note_path("1"), text: /plan\.md/ do
-      assert_select ".text-ink-muted", text: "work"
+    assert_select "turbo-frame#search_results a[href=?][data-turbo-frame=_top]", note_path("1") do
+      assert_select ".search-hit-title", text: "plan"
+      assert_select ".search-hit-folder", text: "work"
+      assert_select ".search-hit-snippet mark", text: "Ship"
     end
   end
 
-  test "show selects the first result so Enter opens it" do
-    use_fake_api(notes: [ { id: "1", path: "a.md", content: "x" }, { id: "2", path: "b.md", content: "x" } ])
+  test "show keeps the order of the server ranking" do
+    use_fake_api(notes: [ { id: "1", path: "once.md", content: "ship" }, { id: "2", path: "thrice.md", content: "ship ship ship" } ])
+    sign_in_as
+
+    get search_path(q: "ship")
+
+    assert_equal %w[thrice once], css_select("[role=option] .search-hit-title").map(&:text)
+  end
+
+  test "show escapes the note text of the snippet and only marks the matched term" do
+    use_fake_api(notes: [ { id: "1", path: "x.md", content: "<b>ship</b> & co" } ])
+    sign_in_as
+
+    get search_path(q: "ship")
+
+    assert_select ".search-hit-snippet b", count: 0
+    assert_select ".search-hit-snippet mark", count: 1, text: "ship"
+    assert_includes css_select(".search-hit-snippet").first.text, "<b>"
+  end
+
+  test "show selects the first result so Enter opens it, the only one in the Tab order" do
+    use_fake_api(notes: [ { id: "1", path: "a.md", content: "x x" }, { id: "2", path: "b.md", content: "x" } ])
     sign_in_as
 
     get search_path(q: "x")
 
-    assert_select "[role=option][aria-selected=true]", count: 1, text: "a.md"
-    assert_select "[role=option][aria-selected=false]", count: 1, text: "b.md"
+    assert_select "[role=option][aria-selected=true][tabindex='0'] .search-hit-title", count: 1, text: "a"
+    assert_select "[role=option][aria-selected=false][tabindex='-1'] .search-hit-title", count: 1, text: "b"
   end
 
   test "show says there are no matches" do
@@ -36,7 +58,8 @@ class SearchesControllerTest < ActionDispatch::IntegrationTest
     get search_path(q: "nothing")
 
     assert_response :success
-    assert_select "turbo-frame#search_results", text: /No matches/
+    assert_select "turbo-frame#search_results", text: /No matches for "nothing"/
+    assert_select "turbo-frame#search_results", text: /Try fewer words/
     assert_select "turbo-frame#search_results a", count: 0
   end
 
