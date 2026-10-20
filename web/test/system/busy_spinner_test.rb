@@ -130,13 +130,24 @@ class BusySpinnerTest < ApplicationSystemTestCase
 
   test "a slow search shows the spinner in the search box" do
     visit root_path
-    @api.hold_calls!("GET /notes/search")
+    @api.hold_calls!("GET /v1/search/notes")
     find("body").send_keys([ :control, "k" ])
 
     assert_spinner_after_threshold("dialog .busy-spinner") { fill_in "Search notes", with: "Big" }
 
     @api.release_calls!
     assert_selector "[role=option]", count: 1
+    assert_no_spinner
+  end
+
+  test "a slow explorer view shows the spinner by the view select" do
+    visit root_path
+    @api.hold_calls!("GET /v1/vaults/vault-1/notes")
+
+    assert_spinner_after_threshold(".explorer-mode .busy-spinner") { select "Most linked", from: "Explorer view" }
+
+    @api.release_calls!
+    assert_selector "[data-explorer-mode=linked]"
     assert_no_spinner
   end
 
@@ -240,7 +251,7 @@ class BusySpinnerTest < ApplicationSystemTestCase
     fill_in "Search notes", with: "Big"
     assert_selector "[role=option]", count: 1
     refute_equal "none", search_cancel_display
-    @api.hold_calls!("GET /notes/search")
+    @api.hold_calls!("GET /v1/search/notes")
 
     assert_spinner_after_threshold("dialog .busy-spinner") { fill_in "Search notes", with: "Bi" }
     assert_equal "none", search_cancel_display
