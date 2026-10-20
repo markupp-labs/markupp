@@ -10,9 +10,9 @@ module SidebarHelper
     "graph" => { icon: "graph", shortcut: :focus_graph }
   }.freeze
 
-  # Onde o atalho da visão põe o foco (sidebar_controller.js): no Explorer, a linha da árvore; nas outras, o primeiro
-  # link ou botão e, sem nenhum, a própria visão.
-  SIDEBAR_VIEW_FOCUS = { "explorer" => "[role=tree] [role=treeitem][tabindex='0']" }.freeze
+  # Onde o atalho da visão põe o foco (sidebar_controller.js): no Explorer, a linha da árvore; em Links, a primeira
+  # seção; nas outras, o primeiro link ou botão e, sem nenhum, a própria visão.
+  SIDEBAR_VIEW_FOCUS = { "explorer" => "[role=tree] [role=treeitem][tabindex='0']", "links" => "summary, a[href], button" }.freeze
 
   # Visão escolhida (cookie sidebar_view, gravado pelo sidebar_controller.js); sem uma conhecida, a padrão.
   def current_sidebar_view

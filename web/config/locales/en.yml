@@ -90,6 +90,7 @@ en:
       lists: "Menus and lists"
       vim: "Vim, in the editor"
       tenants: "Tenants"
+      links: "Links view"
     names:
       command_palette: "Command palette"
       shortcuts_help: "Keyboard shortcuts"
@@ -154,6 +155,9 @@ en:
       new_tenant: "New tenant"
       move_tenants: "Move between tenants"
       open_tenant: "Enter the tenant"
+      links_move: "Move through the sections and the notes"
+      links_open: "Open the note, or fold the section"
+      links_copy_wikilink: "Copy the wikilink of a suggestion"
   markupp_api:
     errors:
       session_expired: "Your session expired. Log in again."
@@ -449,6 +453,20 @@ en:
       other:
         title: "Request failed"
         hint: "Go back and try again."
+  note_links:
+    sections:
+      backlinks: "Backlinks"
+      outgoing: "Outgoing links"
+      mentions: "Unlinked mentions"
+      suggestions: "Suggestions"
+    none:
+      backlinks: "No backlinks yet"
+      outgoing: "No outgoing links"
+      mentions: "No unlinked mentions"
+      suggestions: "No suggestions"
+    unresolved: "No note named %{title}"
+    copy: "Copy %{wikilink}"
+    copy_title: "Copy wikilink (%{keys})"
   explorer:
     mode_label: "Explorer view"
     now: "now"

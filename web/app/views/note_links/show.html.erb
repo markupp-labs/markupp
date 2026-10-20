@@ -1,1 +1,35 @@
-<%= turbo_frame_tag "note_links", target: "_top" %>
+<%# Ligações da nota aberta, como os painéis do Obsidian, em seções recolhíveis (details) com a contagem: quem liga para
+    ela, para onde ela liga (a não resolvida com o sublinhado tracejado dos wikilinks), quem cita o título dela sem ligar
+    e as sugestões de ligação. j/k e setas andam pelas seções e linhas visíveis, Enter abre ou dobra (note_links_controller.js). %>
+<%= turbo_frame_tag "note_links", target: "_top" do %>
+  <%= links_section("backlinks", @backlinks) do %>
+    <% @backlinks.each do |link| %>
+      <%= render "note_links/row", note: link.source, kind: link_kind(link) %>
+    <% end %>
+  <% end %>
+  <%= links_section("outgoing", @outgoing) do %>
+    <% @outgoing.each do |link| %>
+      <% if link.unresolved? %>
+        <% reason = t("note_links.unresolved", title: link.cited_title) %>
+        <li class="links-item">
+          <span tabindex="-1" title="<%= reason %>" data-links-item class="tree-row links-row link-unresolved">
+            <span class="links-row-title truncate"><%= link.cited_title %></span><span class="sr-only"> (<%= reason %>)</span>
+          </span>
+        </li>
+      <% else %>
+        <%= render "note_links/row", note: link.target, kind: link_kind(link) %>
+      <% end %>
+    <% end %>
+  <% end %>
+  <%= links_section("mentions", @mentions) do %>
+    <% @mentions.each do |mention| %>
+      <%= render "note_links/row", note: mention.note, kind: "\"#{mention.cited_title}\"" %>
+    <% end %>
+  <% end %>
+  <%= links_section("suggestions", @suggestions) do %>
+    <% @suggestions.each do |suggestion| %>
+      <%= render "note_links/row", note: suggestion.note, wikilink: "[[#{suggestion.note.title}]]" %>
+    <% end %>
+  <% end %>
+  <p role="status" data-note-links-target="status" class="truncate px-2 text-xs text-ink-muted"></p>
+<% end %>

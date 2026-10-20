@@ -99,6 +99,12 @@ module ShortcutsHelper
       Shortcut.of(:new_tenant, "Alt+N", run: { href: :new_tenant_path }, areas: %w[tenants]),
       Shortcut.of(:move_tenants, "hjkl", "←↓↑→"),
       Shortcut.of(:open_tenant, "Enter")
+    ],
+    # Visão Links da nota aberta (note_links_controller.js), com o foco nela.
+    links: [
+      Shortcut.of(:links_move, "j", "k", "↓", "↑"),
+      Shortcut.of(:links_open, "Enter"),
+      Shortcut.of(:links_copy_wikilink, "y")
     ]
   }.freeze
 

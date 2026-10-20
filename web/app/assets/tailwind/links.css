@@ -1,0 +1,80 @@
+/* Visão Links da nota aberta (note_links/show): seções recolhíveis como as dobras do Vim, com a seta ASCII que gira, e
+   linhas na medida das da árvore (13px). */
+@layer components {
+  .links-section {
+    font-size: 13px;
+  }
+
+  .links-section + .links-section {
+    @apply mt-2;
+  }
+
+  /* Sem o marcador do navegador: a seta é texto (▸ dobrada, gira para ▾ aberta, como no NERDTree), e a contagem fica à
+     direita, apagada. */
+  .links-section-heading {
+    @apply flex cursor-pointer list-none items-center gap-2 leading-6 text-ink-muted select-none hover:text-ink focus-visible:text-ink;
+
+    &::-webkit-details-marker {
+      display: none;
+    }
+
+    &::before {
+      content: "▸";
+      display: inline-block;
+      transition: rotate 120ms ease-out;
+    }
+
+    [open] > &::before {
+      rotate: 90deg;
+    }
+  }
+
+  .links-section-title {
+    @apply text-xs tracking-wide uppercase;
+  }
+
+  .links-section-count {
+    @apply ml-auto text-xs tabular-nums;
+  }
+
+  .links-none {
+    @apply py-0.5 pl-6 text-xs/6 text-ink-muted;
+  }
+
+  .links-item {
+    @apply flex items-center;
+  }
+
+  /* Linha como a do Explorer plano: título, pasta apagada e, à direita, o tipo da ligação. Recuada sob a seta da seção. */
+  .links-row {
+    @apply flex min-w-0 flex-1 items-baseline gap-2 py-0 pl-6 leading-6;
+  }
+
+  .links-row-folder {
+    @apply text-xs text-ink-muted;
+  }
+
+  .links-row-kind {
+    @apply ml-auto shrink-0 pl-2 text-xs text-ink-muted;
+  }
+
+  /* Ligação não resolvida: o mesmo sublinhado tracejado do wikilink sem nota (markdown.css), na cor do texto. */
+  .link-unresolved {
+    @apply cursor-help;
+
+    & .links-row-title {
+      text-decoration: underline dashed;
+      text-underline-offset: 2px;
+    }
+  }
+
+  .links-copy {
+    @apply shrink-0 rounded-md p-1 text-ink-muted hover:bg-accent-soft hover:text-ink focus-visible:text-ink;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .links-section-heading::before {
+    transition: none;
+  }
+}
