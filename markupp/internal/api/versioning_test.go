@@ -72,6 +72,12 @@ func TestSemPrefixo_RotaComParametro_SucessoraMantemOCaminho(t *testing.T) {
 	assert.Equal(t, `</v1/notes/nota-1>; rel="successor-version"`, rec.Header().Get("Link"))
 }
 
+func TestSemPrefixo_ComQuery_SucessoraPreservaAQuery(t *testing.T) {
+	rec := versionedRequest(t, http.MethodGet, "/notes/search?query=x")
+
+	assert.Equal(t, `</v1/notes/search?query=x>; rel="successor-version"`, rec.Header().Get("Link"))
+}
+
 func TestSemPrefixo_CaminhoInexistente_Responde404SemObsolescencia(t *testing.T) {
 	rec := versionedRequest(t, http.MethodGet, "/nao-existe")
 
