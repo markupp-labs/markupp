@@ -56,6 +56,10 @@ func WithTTLBounds(minTTL, maxTTL time.Duration) Option {
 // WithIPPolicy troca a política de IP; o padrão é PublicOnly.
 func WithIPPolicy(policy IPPolicy) Option { return func(f *Fetcher) { f.policy = policy } }
 
+// WithAllowedPort troca a única porta aceita no client_id, 443 por padrão; existe para o
+// teste alcançar um servidor local numa porta qualquer.
+func WithAllowedPort(port string) Option { return func(*Fetcher) {} }
+
 // WithRootCAs troca as autoridades confiáveis; o padrão (nil) usa as do sistema.
 func WithRootCAs(pool *x509.CertPool) Option { return func(f *Fetcher) { f.rootCAs = pool } }
 

@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/netip"
+	"net/url"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -48,6 +49,13 @@ func novoServidorDeMetadados(t *testing.T) *servidorDeMetadados {
 
 func (s *servidorDeMetadados) clientID() string { return s.URL + caminhoDoDocumento }
 
+// porta é a porta aleatória do servidor de teste, que o fetcher só aceita se liberada.
+func (s *servidorDeMetadados) porta() string {
+	u, err := url.Parse(s.URL)
+	require.NoError(s.t, err)
+	return u.Port()
+}
+
 func (s *servidorDeMetadados) servir(w http.ResponseWriter, r *http.Request) {
 	s.requisicoes.Add(1)
 	if s.substituto != nil {
@@ -76,7 +84,7 @@ func (s *servidorDeMetadados) confiaveis() *x509.CertPool {
 }
 
 func (s *servidorDeMetadados) fetcher(opts ...cimd.Option) *cimd.Fetcher {
-	base := []cimd.Option{cimd.WithRootCAs(s.confiaveis()), cimd.WithIPPolicy(permitirQualquerIP)}
+	base := []cimd.Option{cimd.WithRootCAs(s.confiaveis()), cimd.WithIPPolicy(permitirQualquerIP), cimd.WithAllowedPort(s.porta())}
 	fetcher, err := cimd.NewFetcher(append(base, opts...)...)
 	require.NoError(s.t, err)
 	return fetcher
@@ -126,7 +134,7 @@ func TestFetcher_AuthMethodNone_Aceita(t *testing.T) {
 
 func TestFetcher_PoliticaPadrao_RecusaLoopbackSemEnviarRequisicao(t *testing.T) {
 	srv := novoServidorDeMetadados(t)
-	fetcher, err := cimd.NewFetcher(cimd.WithRootCAs(srv.confiaveis()))
+	fetcher, err := cimd.NewFetcher(cimd.WithRootCAs(srv.confiaveis()), cimd.WithAllowedPort(srv.porta()))
 	require.NoError(t, err)
 
 	_, err = fetcher.Fetch(context.Background(), srv.clientID())
@@ -137,7 +145,7 @@ func TestFetcher_PoliticaPadrao_RecusaLoopbackSemEnviarRequisicao(t *testing.T) 
 
 func TestFetcher_CertificadoNaoConfiavel_Recusa(t *testing.T) {
 	srv := novoServidorDeMetadados(t)
-	fetcher, err := cimd.NewFetcher(cimd.WithIPPolicy(permitirQualquerIP))
+	fetcher, err := cimd.NewFetcher(cimd.WithIPPolicy(permitirQualquerIP), cimd.WithAllowedPort(srv.porta()))
 	require.NoError(t, err)
 
 	_, err = fetcher.Fetch(context.Background(), srv.clientID())
@@ -153,6 +161,34 @@ func TestFetcher_ClientIDInvalido_RecusaSemBuscar(t *testing.T) {
 
 	require.ErrorIs(t, err, cimd.ErrInvalidClientID)
 	assert.Zero(t, srv.requisicoes.Load())
+}
+
+func TestFetcher_PortaDiferenteDe443_RecusaSemBuscar(t *testing.T) {
+	srv := novoServidorDeMetadados(t)
+	fetcher, err := cimd.NewFetcher(cimd.WithRootCAs(srv.confiaveis()), cimd.WithIPPolicy(permitirQualquerIP))
+	require.NoError(t, err)
+
+	_, err = fetcher.Fetch(context.Background(), srv.clientID())
+
+	require.ErrorIs(t, err, cimd.ErrInvalidClientID)
+	assert.Contains(t, err.Error(), "porta "+srv.porta())
+	assert.Zero(t, srv.requisicoes.Load())
+}
+
+// O 443 explícito ou implícito passa da validação e chega à conexão, recusada no
+// loopback sem servidor nessa porta.
+func TestFetcher_Porta443_PassaDaValidacao(t *testing.T) {
+	for _, clientID := range []string{"https://127.0.0.1/c.json", "https://127.0.0.1:443/c.json"} {
+		t.Run(clientID, func(t *testing.T) {
+			fetcher, err := cimd.NewFetcher(cimd.WithIPPolicy(permitirQualquerIP), cimd.WithTimeout(time.Second))
+			require.NoError(t, err)
+
+			_, err = fetcher.Fetch(context.Background(), clientID)
+
+			require.ErrorIs(t, err, cimd.ErrFetchFailed)
+			assert.NotErrorIs(t, err, cimd.ErrInvalidClientID)
+		})
+	}
 }
 
 func TestFetcher_RespostaRecusada_DevolveErroDeBusca(t *testing.T) {

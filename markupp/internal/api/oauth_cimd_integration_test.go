@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/netip"
+	"net/url"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -39,6 +40,13 @@ func novoPublicadorCIMD(t *testing.T) *publicadorCIMD {
 
 func (p *publicadorCIMD) clienteBom() string      { return p.URL + "/bom.json" }
 func (p *publicadorCIMD) clienteQuebrado() string { return p.URL + "/quebrado.json" }
+
+// porta é a porta aleatória do publicador, que o fetcher só aceita se liberada.
+func (p *publicadorCIMD) porta(t *testing.T) string {
+	u, err := url.Parse(p.URL)
+	require.NoError(t, err)
+	return u.Port()
+}
 
 func (p *publicadorCIMD) servir(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/bom.json" {
@@ -84,7 +92,7 @@ func (f fetcherCIMDDeTeste) FetchClientMetadata(ctx context.Context, clientID st
 func setupCIMDIntegrationServer(t *testing.T) (*httptest.Server, *publicadorCIMD) {
 	t.Helper()
 	pub := novoPublicadorCIMD(t)
-	fetcher, err := cimd.NewFetcher(cimd.WithRootCAs(pub.confiaveis()), cimd.WithIPPolicy(liberarLoopback))
+	fetcher, err := cimd.NewFetcher(cimd.WithRootCAs(pub.confiaveis()), cimd.WithIPPolicy(liberarLoopback), cimd.WithAllowedPort(pub.porta(t)))
 	require.NoError(t, err)
 	server, _ := setupOAuthIntegrationServerWith(t, fetcherCIMDDeTeste{fetcher: fetcher}, cacheNegativoDeIntegracao)
 	return server, pub

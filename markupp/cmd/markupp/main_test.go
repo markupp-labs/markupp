@@ -254,6 +254,13 @@ func newFakeCIMDServer(t *testing.T, status int) *fakeCIMDServer {
 
 func (s *fakeCIMDServer) clientID() string { return s.URL + "/cliente.json" }
 
+// allowedPort libera no fetcher a porta aleatória do servidor de teste.
+func (s *fakeCIMDServer) allowedPort(t *testing.T) cimd.Option {
+	u, err := url.Parse(s.URL)
+	require.NoError(t, err)
+	return cimd.WithAllowedPort(u.Port())
+}
+
 func (s *fakeCIMDServer) roots() *x509.CertPool {
 	pool := x509.NewCertPool()
 	pool.AddCert(s.Certificate())
@@ -288,7 +295,7 @@ var testCIMDLimits = cimdLimits{Timeout: 5 * time.Second, MaxBodyBytes: 64 << 10
 
 func TestCIMDClientMetadataFetcher_DocumentoValido_ConverteOsMetadadosComOsLimites(t *testing.T) {
 	srv := newFakeCIMDServer(t, http.StatusOK)
-	fetcher, err := newCIMDClientMetadataFetcher(testCIMDLimits, cimd.WithRootCAs(srv.roots()), cimd.WithIPPolicy(allowLoopback))
+	fetcher, err := newCIMDClientMetadataFetcher(testCIMDLimits, cimd.WithRootCAs(srv.roots()), srv.allowedPort(t), cimd.WithIPPolicy(allowLoopback))
 	require.NoError(t, err)
 
 	meta, err := fetcher.FetchClientMetadata(context.Background(), srv.clientID())
@@ -302,7 +309,7 @@ func TestCIMDClientMetadataFetcher_DocumentoValido_ConverteOsMetadadosComOsLimit
 
 func TestCIMDClientMetadataFetcher_BuscaFalha_EmbrulhaOErroComOClientID(t *testing.T) {
 	srv := newFakeCIMDServer(t, http.StatusNotFound)
-	fetcher, err := newCIMDClientMetadataFetcher(testCIMDLimits, cimd.WithRootCAs(srv.roots()), cimd.WithIPPolicy(allowLoopback))
+	fetcher, err := newCIMDClientMetadataFetcher(testCIMDLimits, cimd.WithRootCAs(srv.roots()), srv.allowedPort(t), cimd.WithIPPolicy(allowLoopback))
 	require.NoError(t, err)
 
 	_, err = fetcher.FetchClientMetadata(context.Background(), srv.clientID())
@@ -313,7 +320,7 @@ func TestCIMDClientMetadataFetcher_BuscaFalha_EmbrulhaOErroComOClientID(t *testi
 
 func TestNewCIMDClientMetadataFetcher_SemTrocarAPolitica_RecusaLoopback(t *testing.T) {
 	srv := newFakeCIMDServer(t, http.StatusOK)
-	fetcher, err := newCIMDClientMetadataFetcher(testCIMDLimits, cimd.WithRootCAs(srv.roots()))
+	fetcher, err := newCIMDClientMetadataFetcher(testCIMDLimits, cimd.WithRootCAs(srv.roots()), srv.allowedPort(t))
 	require.NoError(t, err)
 
 	_, err = fetcher.FetchClientMetadata(context.Background(), srv.clientID())
@@ -331,7 +338,7 @@ func TestNewCIMDClientMetadataFetcher_LimiteDeCorpo_ChegaAoFetcher(t *testing.T)
 	srv := newFakeCIMDServer(t, http.StatusOK)
 	limits := testCIMDLimits
 	limits.MaxBodyBytes = 16
-	fetcher, err := newCIMDClientMetadataFetcher(limits, cimd.WithRootCAs(srv.roots()), cimd.WithIPPolicy(allowLoopback))
+	fetcher, err := newCIMDClientMetadataFetcher(limits, cimd.WithRootCAs(srv.roots()), srv.allowedPort(t), cimd.WithIPPolicy(allowLoopback))
 	require.NoError(t, err)
 
 	_, err = fetcher.FetchClientMetadata(context.Background(), srv.clientID())
@@ -345,7 +352,7 @@ func TestNewCIMDClientMetadataFetcher_Timeout_ChegaAoFetcher(t *testing.T) {
 	srv.delay = 2 * time.Second
 	limits := testCIMDLimits
 	limits.Timeout = 100 * time.Millisecond
-	fetcher, err := newCIMDClientMetadataFetcher(limits, cimd.WithRootCAs(srv.roots()), cimd.WithIPPolicy(allowLoopback))
+	fetcher, err := newCIMDClientMetadataFetcher(limits, cimd.WithRootCAs(srv.roots()), srv.allowedPort(t), cimd.WithIPPolicy(allowLoopback))
 	require.NoError(t, err)
 	inicio := time.Now()
 
