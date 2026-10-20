@@ -44,6 +44,21 @@ func notaRanqueada() notes.Note {
 const notaRanqueadaJSON = `{"id":"n1","vault_id":"va","path":"a.md","content":"x","content_sha256":"abc",
 	"created_at":"2026-10-16T12:00:00Z","updated_at":"2026-10-16T12:00:00Z","degree":3,"pagerank":0.25,"community":7}`
 
+// notaRanqueadaResumidaJSON é notaRanqueada na representação enxuta da coleção, sem
+// o conteúdo.
+const notaRanqueadaResumidaJSON = `{"id":"n1","title":"a","path":"a.md","updated_at":"2026-10-16T12:00:00Z",
+	"content_sha256":"abc","degree":3,"pagerank":0.25,"community":7}`
+
+func TestV1ListVaultNotes_AntesDoSegundoEstagio_RepresentacaoEnxutaComDerivadosNulos(t *testing.T) {
+	nota := notes.Note{ID: "n1", VaultID: "va", Path: "pasta/b.md", ContentSHA256: "abc", UpdatedAt: momentoDeTeste}
+
+	rec := requisicaoV1(&fakeService{listResult: []notes.Note{nota}}, nil, "member", http.MethodGet, "/v1/vaults/va/notes", "")
+
+	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+	assert.JSONEq(t, `[{"id":"n1","title":"b","path":"pasta/b.md","updated_at":"2026-10-16T12:00:00Z",
+		"content_sha256":"abc","degree":null,"pagerank":null,"community":null}]`, rec.Body.String())
+}
+
 func TestV1GetNote_TrazAOrganizacaoDerivada(t *testing.T) {
 	rec := requisicaoV1(&fakeService{note: notaRanqueada()}, nil, "viewer", http.MethodGet, "/v1/notes/n1", "")
 
@@ -96,7 +111,7 @@ func TestV1ListVaultNotes_RepassaFiltroOrdemEPagina(t *testing.T) {
 	rec := requisicaoV1(svc, nil, "viewer", http.MethodGet, "/v1/vaults/va/notes?orphan=true&community=7&sort=pagerank&direction=asc&offset=2&limit=5", "")
 
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
-	assert.JSONEq(t, "["+notaRanqueadaJSON+"]", rec.Body.String())
+	assert.JSONEq(t, "["+notaRanqueadaResumidaJSON+"]", rec.Body.String())
 	orfa, comunidade := true, int64(7)
 	assert.Equal(t, "va", svc.vaultListArgs.vaultID)
 	assert.Equal(t, notes.VaultNotesQuery{Orphan: &orfa, Community: &comunidade, Sort: notes.SortByPageRank, Offset: 2, Limit: 5}, svc.vaultListArgs.query)
