@@ -6,11 +6,15 @@
 #   href: abre a página pelo Turbo (a nota com mudança pergunta antes de sair);
 #   form: envia um form escondido na paleta (url, method, params; turbo: false quando muda o html, que o Turbo não troca).
 # help: false deixa a ação só na paleta, quando a ajuda já tem a tecla numa linha mais geral (Ctrl+E alterna os dois modos).
+# areas: as áreas (data-area do body) onde o atalho vale; sem areas, todas. A mesma tecla em áreas diferentes (Alt+N) aparece
+#   na ajuda e na paleta só na área dela.
 module ShortcutsHelper
   KEY_LABELS = { "+" => " ", "Delete" => "Del" }.freeze
 
-  Shortcut = Data.define(:name, :keys, :run, :help) do
-    def self.of(name, *keys, run: nil, help: true) = new(name:, keys:, run:, help:)
+  Shortcut = Data.define(:name, :keys, :run, :help, :areas) do
+    def self.of(name, *keys, run: nil, help: true, areas: nil) = new(name:, keys:, run:, help:, areas:)
+
+    def in_area?(area) = areas.nil? || areas.include?(area)
   end
 
   SHORTCUT_GROUPS = {
@@ -39,7 +43,8 @@ module ShortcutsHelper
       Shortcut.of(:log_out, run: { form: { url: :session_path, method: :delete } })
     ],
     note: [
-      Shortcut.of(:new_note, "Alt+N", run: { press: { key: "n", code: "KeyN", altKey: true }, when: "[data-note-tree-new-note-url-value]" }),
+      Shortcut.of(:new_note, "Alt+N", run: { press: { key: "n", code: "KeyN", altKey: true }, when: "[data-note-tree-new-note-url-value]" },
+                                         areas: %w[notes settings]),
       Shortcut.of(:save, "Ctrl+S"),
       Shortcut.of(:switch_edit_read, "Ctrl+E"),
       Shortcut.of(:edit_mode, "Ctrl+E", run: { click: ".note-mode-edit" }, help: false),
@@ -84,13 +89,17 @@ module ShortcutsHelper
     ],
     tenants: [
       Shortcut.of(:filter_tenants, "/"),
-      Shortcut.of(:new_tenant, "Alt+N", run: { href: :new_tenant_path }),
+      Shortcut.of(:new_tenant, "Alt+N", run: { href: :new_tenant_path }, areas: %w[tenants]),
       Shortcut.of(:move_tenants, "hjkl", "←↓↑→"),
       Shortcut.of(:open_tenant, "Enter")
     ]
   }.freeze
 
   SHORTCUTS_BY_NAME = SHORTCUT_GROUPS.values.flatten.index_by(&:name).freeze
+
+  # Área da página (notas, configurações, tenants), que a view diz com content_for :area; sem ela, são as notas. O layout
+  # a põe no data-area do body.
+  def current_area = content_for(:area).presence || "notes"
 
   # Teclas de um atalho pelo nome, a fonte única para os title, os kbd e os aria-keyshortcuts fora da ajuda e da paleta.
   def shortcut_keys(name) = SHORTCUTS_BY_NAME.fetch(name).keys
@@ -103,9 +112,9 @@ module ShortcutsHelper
 
   def shortcut_name(shortcut) = t("shortcuts.names.#{shortcut.name}")
 
-  # Grupos da ajuda, cada um só com os atalhos que têm tecla; o do Vim só com o modo Vim ligado.
+  # Grupos da ajuda, cada um só com os atalhos que têm tecla e valem na área; o do Vim só com o modo Vim ligado.
   def help_shortcut_groups
-    groups = SHORTCUT_GROUPS.transform_values { |shortcuts| shortcuts.select { it.help && it.keys.any? } }
+    groups = SHORTCUT_GROUPS.transform_values { |shortcuts| shortcuts.select { it.help && it.keys.any? && it.in_area?(current_area) } }
     chosen_vim_keys == "on" ? groups : groups.except(:vim)
   end
 
@@ -114,7 +123,7 @@ module ShortcutsHelper
   def help_keys_width = help_shortcut_groups.values.flatten.map { it.keys.join(" / ").length }.max
 
   # As ações da nota primeiro: é sobre a nota que a paleta mais abre.
-  def palette_commands = [ :note, *SHORTCUT_GROUPS.keys ].uniq.flat_map { SHORTCUT_GROUPS[it] }.select(&:run)
+  def palette_commands = [ :note, *SHORTCUT_GROUPS.keys ].uniq.flat_map { SHORTCUT_GROUPS[it] }.select { it.run && it.in_area?(current_area) }
 
   # Item da paleta: o nome, a tecla e, nos data-command-*, como rodar a ação (command_palette_controller.js).
   def command_option(command)

@@ -71,11 +71,6 @@
   }
 }
 
-/* Na lista de tenants o Alt+N é o New tenant (tenant_grid_controller.js): a nota nova sai da paleta, que cairia nele. */
-body[data-area="tenants"] #command_new_note {
-  display: none;
-}
-
 /* Na paleta, o modo Vim já em uso fica de fora: só se oferece trocar. */
 :root[data-vim-keys="on"] #command_vim_keys_on,
 :root[data-vim-keys="off"] #command_vim_keys_off {

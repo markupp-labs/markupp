@@ -13,7 +13,7 @@
   <% shortcuts += " keydown.ctrl+k@window->search#open:prevent keydown.meta+k@window->search#open:prevent" if current_tenant %>
   <body class="app-shell min-h-dvh bg-surface font-mono text-sm text-ink"
         <%= tag.attributes(data: { controller: [ "sidebar", "settings-shortcut", "region-nav", "tenants-shortcut", "area-transition", ("search" if current_tenant) ].compact.join(" "), action: shortcuts,
-                                  area: content_for(:area).presence || "notes",
+                                  area: current_area,
                                   settings_shortcut_url_value: settings_path, tenants_shortcut_url_value: tenants_path,
                                   sidebar_hide_label_value: t(".hide_sidebar"), sidebar_show_label_value: t(".show_sidebar") }) %>>
     <%= busy_origin_spinner_template %>
