@@ -28,7 +28,13 @@ func TestOAuthMetadata_Configurado_Retorna200ComOsCampos(t *testing.T) {
 	assert.Equal(t, "application/json", rec.Header().Get("Content-Type"))
 	assert.JSONEq(t, `{
 		"issuer": "https://markupp.exemplo",
-		"scopes_supported": ["notas:leitura", "notas:escrita", "administracao"]
+		"authorization_endpoint": "https://markupp.exemplo/oauth/authorize",
+		"token_endpoint": "https://markupp.exemplo/oauth/token",
+		"scopes_supported": ["notas:leitura", "notas:escrita", "administracao"],
+		"response_types_supported": ["code"],
+		"grant_types_supported": ["authorization_code"],
+		"code_challenge_methods_supported": ["S256"],
+		"token_endpoint_auth_methods_supported": ["none"]
 	}`, rec.Body.String())
 }
 
