@@ -51,7 +51,8 @@ func declareAPI(ctx *pulumi.Context, names resourceNames, args MarkuppArgs, opts
 func apiDeploymentArgs(names resourceNames, args MarkuppArgs) *appsv1.DeploymentArgs {
 	container := serverContainer(args, names)
 	env := append(databaseURLEnv(names), inviteByEmailEnv(args)...)
-	container.Env = append(env, publicURLEnv(args))
+	env = append(env, publicURLEnv(args))
+	container.Env = env
 	container.Ports = corev1.ContainerPortArray{corev1.ContainerPortArgs{ContainerPort: pulumi.Int(apiPort)}}
 	container.ReadinessProbe = healthzProbe()
 	container.LivenessProbe = processProbe()
