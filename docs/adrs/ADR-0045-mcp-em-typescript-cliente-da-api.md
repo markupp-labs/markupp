@@ -1,4 +1,4 @@
-# ADR-0038: Servidor MCP em TypeScript, cliente da API
+# ADR-0045: Servidor MCP em TypeScript, cliente da API
 
 ## Status
 
