@@ -122,6 +122,19 @@ class WikilinksTest < ApplicationSystemTestCase
     assert_heading_in_view "deep-section"
   end
 
+  # Endereço colado na barra: carregamento inteiro, sem visita do Turbo, e o título também tem de chegar à tela.
+  test "a note address with a heading opened straight from the address bar scrolls to that heading" do
+    use_fake_api(notes: [ { id: "2", path: "deep.md", content: "# Top\n\n#{FILLER}\n\n## Deep Section\n\nThe end.\n" } ])
+    sign_in_through_form
+    visit note_path("2")
+    click_on "Read"
+
+    visit root_path
+    visit note_path("2", anchor: "deep-section")
+
+    assert_heading_in_view "deep-section"
+  end
+
   test "a wikilink with only a heading scrolls within the note and repeated headings get their own ids" do
     use_fake_api(notes: [ { id: "1", path: "plan.md", content: "[[#Bottom part]]\n\n## Same\n\n#{FILLER}\n\n## Bottom part\n\n## Same\n" } ])
     sign_in_through_form
