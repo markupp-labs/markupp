@@ -7,10 +7,17 @@
   "engines": {
     "node": ">=22"
   },
+  "bin": {
+    "markupp-mcp": "dist/bin.js"
+  },
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "start": "node dist/bin.js http",
     "format": "prettier --write ."
   },
   "dependencies": {
