@@ -92,7 +92,7 @@ class SidebarTest < ApplicationSystemTestCase
     assert_no_selector "nav#sidebar"
 
     assert_equal "none", strip_style("content")
-    assert_in_delta 32, edge(find("main"), "left"), 0.5
+    assert_in_delta 48, edge(find("main"), "left"), 0.5
   end
 
   # Hover e foco não pintam o fundo (a aba segue sendo a borda puxada da barra); só o ícone sobe para o accent, que
