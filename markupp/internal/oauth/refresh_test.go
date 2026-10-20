@@ -65,7 +65,9 @@ func TestRefreshToken_RefreshValido_RotacionaOParEAudita(t *testing.T) {
 	assert.Empty(t, repo.saved, "o refresh grava pelo SaveRefreshedTokens, que audita, não pelo SaveCodeTokens")
 }
 
-func TestRefreshToken_Escopo_MantemOuEstreita(t *testing.T) {
+// TestRefreshToken_Escopo_EstreitaSoOAccess segue a RFC 6749, seção 6: o access novo
+// leva os escopos pedidos e o refresh novo mantém os do refresh apresentado.
+func TestRefreshToken_Escopo_EstreitaSoOAccess(t *testing.T) {
 	casos := map[string]struct {
 		scope string
 		want  []string
@@ -85,8 +87,8 @@ func TestRefreshToken_Escopo_MantemOuEstreita(t *testing.T) {
 
 			require.NoError(t, err)
 			require.Len(t, repo.refreshed, 1)
-			assert.Equal(t, caso.want, repo.refreshed[0][0].Scopes)
-			assert.Equal(t, caso.want, repo.refreshed[0][1].Scopes)
+			assert.Equal(t, caso.want, repo.refreshed[0][0].Scopes, "access")
+			assert.Equal(t, testTokenGrant().Token.Scopes, repo.refreshed[0][1].Scopes, "refresh")
 			assert.Equal(t, strings.Join(caso.want, " "), response.Scope)
 		})
 	}
