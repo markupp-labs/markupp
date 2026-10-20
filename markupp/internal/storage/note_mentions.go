@@ -147,8 +147,8 @@ func compareMentions(a, b notes.Mention) int {
 }
 
 // anchorPriors calcula, num comando, a probabilidade de cada par título e nota; o
-// par cujo título é stopword ou comum, em mais de 5% das notas do cofre (Mihalcea e
-// Csomai, 2007), fica de fora.
+// par cujo título é stopword ou comum, em mais de max(5% das notas do cofre, 5)
+// (Mihalcea e Csomai, 2007), fica de fora.
 func (g *PostgresNoteGraph) anchorPriors(ctx context.Context, q *gen.Queries, vaultID string, pairs []anchorPair) (map[anchorPair]float64, error) {
 	params := gen.MentionAnchorStatsParams{SearchConfig: g.searchConfig, VaultID: vaultID}
 	for _, pair := range uniquePairs(pairs) {

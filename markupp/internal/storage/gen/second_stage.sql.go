@@ -31,7 +31,8 @@ type CountTitleOccurrencesRow struct {
 }
 
 // Para cada título, as notas do cofre que o têm no corpo (peso D), como a menção não
-// ligada conta as ocorrências da âncora, e se ele é comum, em mais de 5% das notas.
+// ligada conta as ocorrências da âncora, e se ele é comum, em mais de max(5% das
+// notas, 5).
 func (q *Queries) CountTitleOccurrences(ctx context.Context, arg CountTitleOccurrencesParams) ([]CountTitleOccurrencesRow, error) {
 	rows, err := q.db.Query(ctx, countTitleOccurrences, arg.TitleKeys, arg.VaultID, arg.SearchConfig)
 	if err != nil {

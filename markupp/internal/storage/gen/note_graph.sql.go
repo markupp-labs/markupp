@@ -628,7 +628,7 @@ type MentionAnchorStatsRow struct {
 }
 
 // Para cada par (título, nota com o título): se o título é stopword em português ou
-// inglês, se é comum (em mais de 5% das notas do cofre), as notas do cofre com o
+// inglês, se é comum (em mais de max(5% das notas do cofre, 5)), as notas do cofre com o
 // título no corpo (ocorrências), as notas que ligam à nota por esse título e as notas
 // do cofre com o título (candidatas). Stopword não paga a contagem.
 func (q *Queries) MentionAnchorStats(ctx context.Context, arg MentionAnchorStatsParams) ([]MentionAnchorStatsRow, error) {

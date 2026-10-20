@@ -15,7 +15,7 @@ import (
 )
 
 // enchimento é quantas notas sem título citado completam os cofres de menção: com
-// elas, 5% do cofre passa de cinco notas, e os títulos dos testes não são comuns.
+// elas o cofre passa de cem notas, e o teto do título comum sai dos 5% do cofre.
 const enchimento = 100
 
 // cofreComMencoes monta um cofre indexado com menções não ligadas e os casos que

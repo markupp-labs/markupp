@@ -22,8 +22,8 @@ type vaultCitations struct {
 }
 
 // titleOccurrence é quantas notas do cofre têm o título no corpo, ou common quando o
-// título está em mais de 5% delas e é palavra comum, sem prior (Mihalcea e Csomai,
-// 2007).
+// título está em mais de max(5% delas, 5) e é palavra comum, sem prior (Mihalcea e
+// Csomai, 2007).
 type titleOccurrence struct {
 	count  int
 	common bool

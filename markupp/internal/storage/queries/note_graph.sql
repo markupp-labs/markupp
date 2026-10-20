@@ -92,7 +92,7 @@ WHERE t.vault_id = sqlc.arg(vault_id)
   AND t.note_id NOT IN (SELECT markupp_linked_notes(sqlc.arg(note_id)));
 
 -- Para cada par (título, nota com o título): se o título é stopword em português ou
--- inglês, se é comum (em mais de 5% das notas do cofre), as notas do cofre com o
+-- inglês, se é comum (em mais de max(5% das notas do cofre, 5)), as notas do cofre com o
 -- título no corpo (ocorrências), as notas que ligam à nota por esse título e as notas
 -- do cofre com o título (candidatas). Stopword não paga a contagem.
 -- name: MentionAnchorStats :many

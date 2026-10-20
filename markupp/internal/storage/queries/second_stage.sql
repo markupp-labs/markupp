@@ -21,7 +21,8 @@ WHERE vault_id = sqlc.arg(vault_id) AND kind <> 'inferred'
 ORDER BY note_id, title_key, cited_title;
 
 -- Para cada título, as notas do cofre que o têm no corpo (peso D), como a menção não
--- ligada conta as ocorrências da âncora, e se ele é comum, em mais de 5% das notas.
+-- ligada conta as ocorrências da âncora, e se ele é comum, em mais de max(5% das
+-- notas, 5).
 -- name: CountTitleOccurrences :many
 SELECT k.title_key::text AS title_key, (o.occurrences IS NULL)::bool AS common,
        coalesce(o.occurrences, 0)::int AS occurrences
