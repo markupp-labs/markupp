@@ -195,6 +195,11 @@
     color: transparent;
   }
 
+  /* O ponto de mudança não salva do Save no celular é fundo, não texto: sai junto com o rótulo. */
+  .btn:has(> .busy-spinner-origin:not(:empty)) [data-unsaved-dot] {
+    display: none;
+  }
+
   /* Na busca, o X nativo de limpar sai enquanto o glifo aparece: os dois no accent pareciam um par de controles. */
   form:has(> .busy-spinner:not(:empty)) input[type="search"]::-webkit-search-cancel-button {
     display: none;
