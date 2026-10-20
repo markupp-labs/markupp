@@ -1,5 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
-import { EditorState } from "@codemirror/state"
+import { Compartment, EditorState } from "@codemirror/state"
 import { EditorView, keymap } from "@codemirror/view"
 import { defaultKeymap, history, historyKeymap, indentLess, insertTab } from "@codemirror/commands"
 import { indentUnit } from "@codemirror/language"
@@ -7,10 +7,14 @@ import { markdown, markdownLanguage } from "@codemirror/lang-markdown"
 import { wikilinkMarks } from "editor/wikilink_marks"
 import { inlineCodeTag, kanagawaTheme } from "editor/kanagawa_theme"
 import { codeLanguages } from "editor/code_languages"
+import { vimModeExtensions } from "editor/vim_mode"
 
 // Tab escreve o caractere de tab (com seleção, indenta as linhas) e Shift+Tab tira um nível, como no VS Code. Para
-// sair do editor pelo teclado, Esc e então Tab ou Shift+Tab: o CodeMirror deixa o próximo Tab mover o foco.
+// sair do editor pelo teclado, Esc e então Tab ou Shift+Tab: o CodeMirror deixa o próximo Tab mover o foco. Com o modo
+// Vim, Esc até o modo normal e mais um Esc (editor/vim_mode.js).
 const TAB_INDENTS = { key: "Tab", run: insertTab, shift: indentLess }
+// O modo Vim entra aqui depois de baixar, antes dos outros atalhos, para ganhar deles.
+const vimSlot = new Compartment()
 
 // Monta o CodeMirror sobre o textarea, que segue como fonte do formulário: cada edição volta para ele
 // e dispara input, como se o usuário tivesse digitado no textarea.
@@ -20,6 +24,13 @@ export default class extends Controller {
   connect() {
     this.view = new EditorView({ doc: this.sourceTarget.value, extensions: this.extensions(), parent: this.sourceTarget.parentElement })
     this.sourceTarget.hidden = true
+    if (document.documentElement.dataset.vimKeys == "on") this.loadVimMode()
+  }
+
+  // Liga o Vim quando a biblioteca chega, se o editor ainda está na página.
+  async loadVimMode() {
+    const extensions = await vimModeExtensions()
+    if (this.view.dom.isConnected) this.view.dispatch({ effects: vimSlot.reconfigure(extensions) })
   }
 
   disconnect() {
@@ -31,7 +42,7 @@ export default class extends Controller {
   extensions() {
     const readOnly = this.sourceTarget.readOnly
     return [
-      EditorState.readOnly.of(readOnly), EditorView.editable.of(!readOnly),
+      vimSlot.of([]), EditorState.readOnly.of(readOnly), EditorView.editable.of(!readOnly),
       history(), keymap.of([ TAB_INDENTS, ...defaultKeymap, ...historyKeymap ]), indentUnit.of("\t"), EditorView.lineWrapping,
       markdown({ base: markdownLanguage, extensions: inlineCodeTag, codeLanguages }), wikilinkMarks, kanagawaTheme(document.documentElement.dataset.editorStyle),
       EditorView.updateListener.of((update) => this.syncSource(update)),

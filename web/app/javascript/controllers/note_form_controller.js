@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { Turbo } from "@hotwired/turbo-rails"
 
 // Salvar explícito: Ctrl+S ou Cmd+S submete, marca alterações não salvas e avisa antes de sair com elas.
 // Com aviso de conflito ou erro de caminho na tela, o que o usuário digitou ainda não está no servidor.
@@ -8,7 +9,7 @@ import { Controller } from "@hotwired/stimulus"
 // A resolução do caminho (relativo, absoluto, .md) é só do servidor (Note#resolve); aqui só o nome vazio.
 export default class extends Controller {
   static targets = [ "source", "path", "unsaved", "save", "pending", "pathError" ]
-  static values = { leaveMessage: String, new: Boolean, blankTitle: String }
+  static values = { leaveMessage: String, new: Boolean, blankTitle: String, rootUrl: String, notesUrl: String }
 
   connect() {
     this.originals = this.fields.map((field) => field.defaultValue)
@@ -30,6 +31,36 @@ export default class extends Controller {
     if (this.sourceTarget.readOnly || !this.changed) return
 
     this.element.requestSubmit()
+  }
+
+  // Comandos Ex do modo Vim (editor/vim_mode.js). :w salva como o Ctrl+S; :wq salva e sai para a nota padrão, ou só sai
+  // quando não há o que salvar.
+  writeFromVim({ detail }) {
+    if (!detail?.quit) return this.save()
+    if (!this.changed) return Turbo.visit(this.rootUrlValue)
+
+    this.saveAndQuit()
+  }
+
+  // O servidor lê o quit e volta para a nota padrão (NotesController). O Turbo monta o corpo do envio na hora do
+  // requestSubmit, então o campo sai logo depois: um envio recusado aqui (nome em branco) não leva o quit no próximo.
+  saveAndQuit() {
+    const quit = Object.assign(document.createElement("input"), { type: "hidden", name: "quit", value: "true" })
+    this.element.append(quit)
+    this.save()
+    quit.remove()
+  }
+
+  // :q sai para a nota padrão e, com mudança, pergunta antes (confirmVisit); :q! sai descartando.
+  quitFromVim({ detail }) {
+    if (detail.force) this.allowLeaving()
+    Turbo.visit(this.rootUrlValue)
+  }
+
+  // :e caminho: o servidor resolve como o campo de caminho, a partir desta nota, e abre a que existe ou uma nova.
+  openFromVim({ detail }) {
+    const origin = this.element.querySelector("[name=origin_path]").value
+    Turbo.visit(`${this.notesUrlValue}?${new URLSearchParams({ path: detail.path, origin_path: origin })}`)
   }
 
   track() {

@@ -33,6 +33,11 @@ export default class extends Controller {
     this.apply(params.mode)
   }
 
+  // :read, :split, :edit e :e sem caminho do modo Vim (editor/vim_mode.js).
+  chooseFromVim({ detail }) {
+    this.apply(detail.mode)
+  }
+
   // Respeita quem já tratou a tecla (no Mac o CodeMirror liga Ctrl+E ao fim da linha; ali vale Cmd+E).
   shortcut(event) {
     const target = SHORTCUTS[event.key]
