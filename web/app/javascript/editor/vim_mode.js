@@ -19,15 +19,25 @@ const EX_COMMANDS = [
 ]
 
 let library
+// O getCM da biblioteca, depois que ela baixa; antes disso nenhum editor tem o Vim.
+let loadedGetCM
 
 // Extensões do modo Vim; a primeira chamada baixa a biblioteca e registra os comandos Ex (o registro do Vim é global).
 export async function vimModeExtensions() {
   library ??= import("@replit/codemirror-vim").then((vimLibrary) => defineExCommands(vimLibrary))
   const { vim, getCM } = await library
+  loadedGetCM = getCM
   return [
     tabLeavesAfterNormalEscape(getCM), vim({ status: true }), vimTheme,
     EditorView.editorAttributes.of({ "data-vim-editor": "" }),
   ]
+}
+
+// O elemento está num editor do Vim no modo insert: ali as teclas são texto (o Alt+h/j/k/l das regiões fica com ele).
+export function inVimInsert(element) {
+  const editor = element.closest?.("[data-vim-editor]")
+  if (!editor || !loadedGetCM) return false
+  return loadedGetCM(EditorView.findFromDOM(editor))?.state.vim?.insertMode == true
 }
 
 function defineExCommands(vimLibrary) {

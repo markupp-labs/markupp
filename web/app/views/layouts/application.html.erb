@@ -8,10 +8,11 @@
   <%# Ctrl+B/Cmd+B recolhe a barra lateral como no VS Code; o grid e o fechado vêm do CSS (.app-shell). %>
   <%# Ctrl+, e Cmd+, abrem as configurações; o Stimulus não tem filtro para a vírgula, o controller confere a tecla. %>
   <%# Ctrl+Shift+E e Cmd+Shift+E levam o foco à árvore de notas (sidebar_controller.js); g e depois t abre a lista de tenants. %>
-  <% shortcuts = "keydown.ctrl+b@window->sidebar#toggleFromShortcut keydown.meta+b@window->sidebar#toggleFromShortcut keydown@window->settings-shortcut#open keydown@window->sidebar#focusTree keydown@window->tenants-shortcut#open turbo:before-render@document->area-transition#mark" %>
+  <%# Alt+h/j/k/l levam o foco à região vizinha pela geometria (region_nav_controller.js); na captura, antes do editor e do Vim. %>
+  <% shortcuts = "keydown.ctrl+b@window->sidebar#toggleFromShortcut keydown.meta+b@window->sidebar#toggleFromShortcut keydown@window->settings-shortcut#open keydown@window->sidebar#focusTree keydown@window->tenants-shortcut#open keydown@window->region-nav#navigate:capture turbo:before-render@document->area-transition#mark" %>
   <% shortcuts += " keydown.ctrl+k@window->search#open:prevent keydown.meta+k@window->search#open:prevent" if current_tenant %>
   <body class="app-shell min-h-dvh bg-surface font-mono text-sm text-ink"
-        <%= tag.attributes(data: { controller: [ "sidebar", "settings-shortcut", "tenants-shortcut", "area-transition", ("search" if current_tenant) ].compact.join(" "), action: shortcuts,
+        <%= tag.attributes(data: { controller: [ "sidebar", "settings-shortcut", "region-nav", "tenants-shortcut", "area-transition", ("search" if current_tenant) ].compact.join(" "), action: shortcuts,
                                   area: content_for(:area).presence || "notes",
                                   settings_shortcut_url_value: settings_path, tenants_shortcut_url_value: tenants_path,
                                   sidebar_hide_label_value: t(".hide_sidebar"), sidebar_show_label_value: t(".show_sidebar") }) %>>
@@ -24,7 +25,7 @@
 
     <%# A lista rola dentro de .sidebar-scroll; o rodape com conta, configuracoes, tema e sair fica sempre no fundo. %>
     <nav id="sidebar" popover aria-label="<%= sidebar_label %>"
-         data-sidebar-target="panel"
+         data-sidebar-target="panel" data-focus-region="tree" data-focus-region-target="[role=treeitem][tabindex='0']"
          class="sidebar layer m-0 h-dvh w-72 max-w-[85vw] flex-col border-0 border-r border-line bg-surface-sunken p-0 text-ink open:flex md:max-w-none">
       <div class="sidebar-scroll min-h-0 flex-1 overflow-y-auto p-3">
         <% if current_tenant %>

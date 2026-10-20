@@ -17,7 +17,7 @@
     </div>
 
     <div class="mt-4 grid gap-4 md:grid-cols-[12rem_minmax(0,1fr)] md:gap-8">
-      <nav aria-label="<%= t("settings.nav.title") %>" class="flex flex-wrap gap-1 md:flex-col md:flex-nowrap">
+      <nav aria-label="<%= t("settings.nav.title") %>" data-focus-region="settings" data-focus-region-target="[aria-current=page]; a" class="flex flex-wrap gap-1 md:flex-col md:flex-nowrap">
         <%= settings_nav_link("accounts", settings_account_path) %>
         <%= settings_nav_link("appearances", settings_appearance_path) %>
         <% if current_tenant&.admin? %>

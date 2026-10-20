@@ -35,7 +35,8 @@
     </section>
   <% end %>
 
-  <ul id="tenant_cards" class="mt-4 grid grid-cols-[repeat(auto-fill,minmax(17rem,1fr))] gap-3" data-action="keydown->tenant-grid#navigate">
+  <ul id="tenant_cards" class="mt-4 grid grid-cols-[repeat(auto-fill,minmax(17rem,1fr))] gap-3" data-action="keydown->tenant-grid#navigate"
+      data-focus-region="tenants" data-focus-region-target="[aria-current=true]; .tenant-card-open">
     <%= render partial: "tenants/card", collection: current_tenants, as: :tenant %>
   </ul>
   <p hidden data-tenant-grid-target="empty" class="mt-4 text-ink-muted"><%= t("tenants.index.no_match") %></p>

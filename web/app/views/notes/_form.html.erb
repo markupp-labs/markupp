@@ -34,7 +34,7 @@
       <%= form.text_field :path, value: @typed_path || @note.location, autofocus: writer && !@note.persisted?,
                           spellcheck: false, autocomplete: "off", readonly: !writer,
                           aria: { invalid: path_error.present?, describedby: ("note_path_error" if path_error) },
-                          data: { note_form_target: "path", action: "input->note-form#syncHeading input->note-form#clearBlankName keydown.tab->editor#focusEnd" },
+                          data: { focus_region: "path", note_form_target: "path", action: "input->note-form#syncHeading input->note-form#clearBlankName keydown.tab->editor#focusEnd" },
                           class: "w-full rounded-md border border-transparent bg-transparent px-1 py-0.5 text-2xl font-semibold text-ink " \
                                  "hover:border-line focus:border-accent focus-visible:outline-none aria-invalid:border-danger" %>
       <%= hidden_field_tag :origin_path, @origin_path || @note.path, id: nil %>
@@ -83,11 +83,12 @@
   <%= hidden_field_tag :crlf, @note.crlf?, id: nil %>
   <div class="note-panes min-h-0 flex-1 gap-6">
     <%# O editor monta o CodeMirror aqui, ao lado do textarea. Na nota nova o caminho ainda não existe: rótulo Content. %>
-    <div class="note-editor-pane flex min-w-0 flex-col">
+    <div class="note-editor-pane flex min-w-0 flex-col" data-focus-region="editor" data-focus-region-target=".cm-content">
       <%= form.text_area :content, data: { editor_target: "source", note_form_target: "source", note_mode_target: "source" }, aria: { label: @note.persisted? ? @note.path : Note.human_attribute_name(:content) },
                          readonly: !writer, class: "min-h-[60dvh] w-full flex-1 rounded-md border border-line bg-surface p-2" %>
     </div>
-    <%# Markdown renderizado e sanitizado no navegador (editor/render_markdown.js). %>
+    <%# Markdown renderizado e sanitizado no navegador (editor/render_markdown.js). Fora do Tab (tabindex -1): o foco chega
+        pelo Alt+h/j/k/l e aí as setas rolam o painel. %>
     <%# Cabeçalho de cada bloco de código da leitura (linguagem e copiar), clonado depois do render (editor/code_blocks.js). %>
     <template data-note-mode-target="codeTools">
       <div class="code-header">
@@ -101,7 +102,7 @@
     </template>
     <%# Indicador de carregamento de cada ![[nota]] enquanto o conteúdo não chega, clonado pelo editor/note_embeds.js. %>
     <template data-note-mode-target="embedSpinner"><%= busy_spinner %></template>
-    <article data-note-mode-target="preview" aria-label="<%= t(".preview") %>" class="note-preview markdown-body min-w-0"></article>
+    <article data-note-mode-target="preview" data-focus-region="preview" tabindex="-1" aria-label="<%= t(".preview") %>" class="note-preview markdown-body min-w-0"></article>
   </div>
 <% end %>
 
