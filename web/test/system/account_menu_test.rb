@@ -50,6 +50,17 @@ class AccountMenuTest < ApplicationSystemTestCase
     end
   end
 
+  # Pelo ARIA, menu só contém menuitem, group e separator: o "Signed in as" fica fora dele e o descreve.
+  test "the signed in text sits outside the menu and describes it" do
+    click_on EMAIL
+    assert_selector "#account_menu:popover-open"
+
+    assert_no_selector "[role=menu] p", visible: :all
+    menu = find("#account_menu [role=menu]")
+    assert_equal [ "menuitem" ], menu.all("*").filter_map { it[:role] }.uniq
+    assert_includes find_by_id(menu["aria-describedby"]).text, EMAIL
+  end
+
   test "log out from the keyboard" do
     assert_selector "button[popovertarget=account_menu]"
     find("button[popovertarget=account_menu]").send_keys(:enter)
