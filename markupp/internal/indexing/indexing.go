@@ -6,11 +6,16 @@ package indexing
 import (
 	"context"
 	"log/slog"
+	"path"
+	"strings"
+
+	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/markdown"
 )
 
 // NoteChange é uma nota que mudou desde a última indexação do cofre.
 type NoteChange struct {
 	NoteID  string
+	Path    string
 	Content string
 }
 
@@ -21,14 +26,26 @@ type Changeset struct {
 	Notes    []NoteChange
 }
 
-// SearchDocument é o texto que o banco converte em tsvector para a busca léxica.
+// SearchDocument é o texto que o banco converte em tsvector para a busca léxica: o
+// título e os aliases com peso A e o corpo com peso D.
 type SearchDocument struct {
-	NoteID string
-	Text   string
+	NoteID  string
+	Title   string
+	Aliases []string
+	Text    string
 }
 
-// IndexFunc transforma um lote de mudanças nas linhas derivadas dele.
-type IndexFunc func(Changeset) []SearchDocument
+// IndexedNote são as linhas derivadas de uma nota do lote: o documento de busca, as
+// chaves dos títulos dela (TitleKey) e as ligações que ela faz.
+type IndexedNote struct {
+	Search    SearchDocument
+	TitleKeys []string
+	Links     []Link
+}
+
+// IndexFunc transforma um lote de mudanças nas linhas derivadas dele, uma
+// IndexedNote por nota.
+type IndexFunc func(Changeset) []IndexedNote
 
 // VaultIndexer reserva o próximo cofre pendente, entrega o lote dele a index e grava
 // o resultado. Devolve false quando não há cofre pendente livre.
@@ -36,13 +53,34 @@ type VaultIndexer interface {
 	IndexNextVault(ctx context.Context, index IndexFunc) (bool, error)
 }
 
-// Index devolve um documento de busca por nota mudada, com o conteúdo dela.
-func Index(cs Changeset) []SearchDocument {
-	docs := make([]SearchDocument, 0, len(cs.Notes))
+// Index devolve as linhas derivadas de cada nota mudada. Depende só da nota: quem
+// ela cita é resolvido na leitura, contra os títulos do cofre naquele momento.
+func Index(cs Changeset) []IndexedNote {
+	indexed := make([]IndexedNote, 0, len(cs.Notes))
 	for _, note := range cs.Notes {
-		docs = append(docs, SearchDocument{NoteID: note.NoteID, Text: note.Content})
+		indexed = append(indexed, indexNote(note))
 	}
-	return docs
+	return indexed
+}
+
+func indexNote(note NoteChange) IndexedNote {
+	doc := markdown.Parse(note.Content)
+	title := Title(note.Path)
+	return IndexedNote{
+		Search:    SearchDocument{NoteID: note.NoteID, Title: title, Aliases: doc.Aliases, Text: note.Content},
+		TitleKeys: titleKeys(title, doc.Aliases),
+		Links:     extractLinks(note.Path, doc),
+	}
+}
+
+// Title é o título da nota: o último segmento do caminho, sem a extensão .md em
+// qualquer caixa. Outra extensão fica, porque faz parte do nome.
+func Title(notePath string) string {
+	base := path.Base(notePath)
+	if !strings.EqualFold(path.Ext(base), ".md") {
+		return base
+	}
+	return base[:len(base)-len(".md")]
 }
 
 // RunLoop indexa os cofres pendentes até não sobrar nenhum, chama wait e recomeça.

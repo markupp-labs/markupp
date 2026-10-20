@@ -29,7 +29,7 @@ func setupIntegrationServer(t *testing.T) (*httptest.Server, *pgxpool.Pool) {
 	require.NoError(t, storage.Migrate(context.Background(), pool))
 	storagetest.SeedMember(t, pool, identity.Actor{UserID: "integracao", TenantID: "default", Role: "admin"}, "cofre-integracao")
 
-	repo := storage.NewPostgresNotesRepository(pool)
+	repo := storage.NewPostgresNotesRepository(pool, "simple")
 	svc := notes.NewService(repo, integrationMaxNoteSize)
 	validator := &fakeTokenValidator{claims: auth.Claims{Subject: "integracao"}}
 	router := api.NewRouter(api.RouterDeps{Notes: svc, Tenants: &fakeTenantResolver{membership: auth.Membership{TenantID: "default", Role: "admin"}}, Tokens: validator, Probe: pool})
@@ -314,4 +314,24 @@ func TestIntegration_ListNotes_RetornaArrayOrdenadoPorPath(t *testing.T) {
 	assert.Equal(t, "a", arr[0]["content"])
 	assert.Equal(t, "m", arr[1]["content"])
 	assert.Equal(t, "z", arr[2]["content"])
+}
+
+func TestIntegration_ContentSHA256_IgualNoPostNoPutENoGet(t *testing.T) {
+	server, _ := setupIntegrationServer(t)
+	const sha256DeAcao = "0664077f33cc3ebbaa4bbdacac0eb70e740983080f01dce29929e73b7785a7ad"
+	const sha256DeV2 = "fb04dcb6970e4c3d1873de51fd5a50d7bb46b3383113602665c350ec40b5f990"
+
+	created := postNotes(t, server.URL, `{"path":"hash.md","content":"ação"}`)
+	createdBody := decodeJSON(t, created.Body)
+	_ = created.Body.Close()
+	assert.Equal(t, sha256DeAcao, createdBody["content_sha256"])
+	id, _ := createdBody["id"].(string)
+
+	got := getNotes(t, server.URL+"/notes/"+id)
+	defer func() { _ = got.Body.Close() }()
+	assert.Equal(t, createdBody["content_sha256"], decodeJSON(t, got.Body)["content_sha256"], "POST devolve o hash lido do banco, igual ao do GET")
+
+	updated := putNote(t, server.URL, id, `{"path":"hash.md","content":"v2","force":true}`)
+	defer func() { _ = updated.Body.Close() }()
+	assert.Equal(t, sha256DeV2, decodeJSON(t, updated.Body)["content_sha256"])
 }
