@@ -12,7 +12,7 @@ info:
 
     Os endpoints do protocolo OAuth (/oauth/authorize, /oauth/token, /oauth/revoke e a
     metadata em /.well-known/oauth-authorization-server) ficam na raiz, fora de /v1, e
-    seguem as RFCs, com um desvio intencional da RFC 7009 (ADR-0039): /oauth/revoke
+    seguem as RFCs, com um desvio intencional da RFC 7009 (ADR-0046): /oauth/revoke
     responde 200 sem revogar nada quando o token é de outro cliente, em vez de recusar o
     pedido, para não revelar a quem o token pertence.
   version: 0.1.0
