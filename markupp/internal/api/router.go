@@ -105,8 +105,7 @@ func mountProtectedNotesRoutes(r chi.Router, svc NoteService, tokenValidator Tok
 		mountNoteItemRoutes(read, write, legacy)
 		return
 	}
-	mountNoteItemRoutes(read, write, &notesHandler{svc: svc, render: toV1Response})
-	mountV1NotesRoutes(r.With(RequireAuth(tokenValidator), RequireTenant(tenants)), svc)
+	mountV1NotesRoutes(read, write, svc)
 }
 
 // mountNoteItemRoutes monta a leitura, a edição e a remoção da nota de id global.
@@ -117,9 +116,9 @@ func mountNoteItemRoutes(read, write chi.Router, h *notesHandler) {
 }
 
 // mountProtectedGraphRoutes monta o grafo, que nasceu depois da transição e existe só
-// sob /v1; sem escopo OAuth declarado, aceita só o token de login.
+// sob /v1, lido com o escopo de leitura das notas (emenda do ADR-0040).
 func mountProtectedGraphRoutes(r chi.Router, graph NoteGraph, tokenValidator TokenValidator, tenants TenantResolver) {
-	mountNoteGraphRoutes(r.With(RequireAuth(tokenValidator), RequireTenant(tenants)), graph)
+	mountNoteGraphRoutes(r.With(acceptOAuthScope(oauth.ScopeNotesRead), RequireAuth(tokenValidator), RequireTenant(tenants)), graph)
 }
 
 func mountAuthRoutes(r chi.Router, authSvc AuthService, tokenValidator TokenValidator) {
