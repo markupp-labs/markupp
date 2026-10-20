@@ -26,8 +26,8 @@ func poolDeUmaConexao(t *testing.T, db *pgxpool.Pool) *pgxpool.Pool {
 }
 
 // planoGenerico devolve as linhas do plano genérico, o que o servidor reusa entre
-// execuções, da consulta nomeada que a leitura já preparou na única conexão de
-// pool. Varredura sequencial e ordenação inteira ficam desligadas: o plano só as usa
+// execuções, da consulta cujo nome casa com o padrão LIKE consulta e que a leitura
+// já preparou na única conexão de pool. Varredura sequencial e ordenação inteira ficam desligadas: o plano só as usa
 // quando a consulta não tem outro caminho.
 func planoGenerico(t *testing.T, pool *pgxpool.Pool, consulta string) []string {
 	t.Helper()
@@ -61,4 +61,17 @@ func TestNoteGraph_VaultLinks_PlanoLeSoAPaginaNaOrdemDoCaminho(t *testing.T) {
 	require.GreaterOrEqual(t, len(plano), 2, "plano: %v", plano)
 	assert.Equal(t, "->  Incremental Sort", plano[1],
 		"as notas saem do indice na ordem do caminho e a leitura para na pagina, sem ordenar todas as ligacoes: %s", strings.Join(plano, "\n"))
+}
+
+func TestListVaultNotes_Orfas_PlanoGenericoUsaOIndiceParcial(t *testing.T) {
+	db, _, _ := cofreLigado(t)
+	pool := poolDeUmaConexao(t, db)
+	_, err := storage.NewPostgresNotesRepository(pool, "simple").ListVaultNotes(ctxDeTeste, cofreDeTeste,
+		notes.VaultNotesQuery{Orphan: ptr(true), Limit: 10})
+	require.NoError(t, err)
+
+	plano := strings.Join(planoGenerico(t, pool, "ListVault%Notes"), "\n")
+
+	assert.Contains(t, plano, "note_centrality_vault_orphan_idx",
+		"o plano reusado entre execucoes tambem le so as notas de grau zero do cofre")
 }
