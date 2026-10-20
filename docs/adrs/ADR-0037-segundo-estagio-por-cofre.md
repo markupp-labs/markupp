@@ -15,11 +15,17 @@ notas que não estão no lote
 
 O indexador ganha um segundo estágio, a única exceção ao ADR-0033. Ele roda no mesmo Job do
 cofre, depois do commit do lote, em transação própria, e só quando ligações ou títulos do
-cofre mudaram: o lote que cria, renomeia ou muda as ligações de uma nota marca o cofre, e um
-trigger de exclusão em notes também marca. O scaler do KEDA conta o cofre marcado como
-pendente, e o reindex marca os cofres que reenfileira. Hoje o segundo estágio recalcula as
+cofre mudaram: o lote que cria, renomeia, move de pasta ou muda as ligações de uma nota
+marca o cofre, e um trigger de exclusão em notes também marca. O scaler do KEDA conta o
+cofre marcado como pendente, e o reindex marca os cofres que reenfileira e descarta o df
+deles. Hoje o segundo estágio recalcula as
 ligações inferidas, o PageRank, as comunidades, o df e o N do cofre, e repesa com eles as
 postagens tf-idf e a norma de cada nota
+
+Quando o cofre ainda não tinha df, na primeira vez ou depois do reindex, o segundo estágio
+reenfileira as notas do cofre, para o lote reescolher os 50 termos de cada uma com o idf
+calculado. O reenfileiramento não marca o cofre, e o lote que regrava as mesmas notas sem
+mudar título, caminho nem ligação também não, então o ciclo acaba no lote seguinte
 
 A reserva do cofre acaba no commit do lote. O segundo estágio roda sob uma trava consultiva
 da transação, por cofre: outro Job no segundo estágio do mesmo cofre faz o seguinte pular, e
@@ -51,6 +57,8 @@ limiar
 ## Consequências
 
 - Edição que não muda ligação nem título não paga o custo do cofre inteiro
+- O cofre novo e o cofre reindexado passam pelo lote duas vezes: a primeira escolhe os
+  termos só pelo tf, a segunda com o idf do cofre
 - O df fica levemente defasado entre uma mudança de ligação ou título e outra; o lote pesa
   as postagens das notas dele com o df e o N vigentes
 - Lote e segundo estágio do mesmo cofre podem rodar ao mesmo tempo em Jobs diferentes, e a
