@@ -1,7 +1,10 @@
 package storage_test
 
 import (
+	"context"
 	"testing"
+
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -112,4 +115,28 @@ func TestNoteGraph_Suggestions_ViewerLeEEstranhoNaoVe(t *testing.T) {
 	assert.Equal(t, []string{"b.md"}, caminhosDasSugestoes(lidas))
 	_, err = graph.Suggestions(ctxFora, "a", notes.Page{Limit: 10})
 	require.ErrorIs(t, err, notes.ErrNotFound)
+}
+
+// semeiaNotas grava, com o papel dono do banco e num comando só, n notas em
+// cofreDeTeste com o mesmo conteúdo, de ids prefixo0001 em diante e caminhos
+// prefixo0001.md em diante. Os triggers as põem na fila do indexador.
+func semeiaNotas(t *testing.T, db *pgxpool.Pool, prefixo, conteudo string, n int) {
+	t.Helper()
+	_, err := db.Exec(context.Background(), `INSERT INTO notes (id, tenant_id, vault_id, path, content, created_at, updated_at)
+SELECT $1 || lpad(i::text, 4, '0'), $2, $3, $1 || lpad(i::text, 4, '0') || '.md', $4, now(), now()
+FROM generate_series(1, $5::int) AS i`, prefixo, membroDeTeste.TenantID, cofreDeTeste, conteudo, n)
+	require.NoError(t, err, "semear %d notas %q no cofre %q", n, prefixo, cofreDeTeste)
+}
+
+func TestNoteGraph_Suggestions_ListaLexicaAteAsMilPrimeiras(t *testing.T) {
+	db := setupNotesDB(t)
+	repo := storage.NewPostgresNotesRepository(db, "simple")
+	storagetest.SaveNote(ctxDeTeste, t, repo, notaComCaminho("x", "x.md", "alfa"))
+	semeiaNotas(t, db, "c", "alfa", 1001)
+	semeiaNotas(t, db, "o", "beta", 200) // alfa fora de algumas notas, para ter idf
+	indexaTodosOsCofres(t, db, "simple")
+	graph := storage.NewPostgresNoteGraph(db, "simple")
+
+	assert.Equal(t, []string{"c1000.md"}, caminhosDasSugestoes(sugestoes(t, graph, "x", 999, 100)),
+		"o RRF funde as mil primeiras de cada lista, como Cormack, Clarke e Buttcher (2009); a 1001a fica de fora")
 }
