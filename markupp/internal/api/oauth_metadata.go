@@ -13,41 +13,18 @@ import (
 const oauthMetadataPath = "/.well-known/oauth-authorization-server"
 
 // OAuthMetadata configura o documento de metadados do authorization server. Issuer é
-// a URL pública do servidor, sem caminho, base de todos os endpoints anunciados.
+// a URL pública do servidor, sem caminho, base dos endpoints que as próximas fatias anunciarem.
 type OAuthMetadata struct {
 	Issuer string
 }
 
 type oauthMetadataResponse struct {
-	Issuer                                 string   `json:"issuer"`
-	AuthorizationEndpoint                  string   `json:"authorization_endpoint"`
-	TokenEndpoint                          string   `json:"token_endpoint"`
-	RegistrationEndpoint                   string   `json:"registration_endpoint"`
-	RevocationEndpoint                     string   `json:"revocation_endpoint"`
-	ResponseTypesSupported                 []string `json:"response_types_supported"`
-	GrantTypesSupported                    []string `json:"grant_types_supported"`
-	CodeChallengeMethodsSupported          []string `json:"code_challenge_methods_supported"`
-	TokenEndpointAuthMethodsSupported      []string `json:"token_endpoint_auth_methods_supported"`
-	RevocationEndpointAuthMethodsSupported []string `json:"revocation_endpoint_auth_methods_supported"`
-	ScopesSupported                        []string `json:"scopes_supported"`
-	ClientIDMetadataDocumentSupported      bool     `json:"client_id_metadata_document_supported"`
+	Issuer          string   `json:"issuer"`
+	ScopesSupported []string `json:"scopes_supported"`
 }
 
 func newOAuthMetadataResponse(issuer string) oauthMetadataResponse {
-	return oauthMetadataResponse{
-		Issuer:                                 issuer,
-		AuthorizationEndpoint:                  issuer + "/oauth/authorize",
-		TokenEndpoint:                          issuer + "/oauth/token",
-		RegistrationEndpoint:                   issuer + "/oauth/register",
-		RevocationEndpoint:                     issuer + "/oauth/revoke",
-		ResponseTypesSupported:                 []string{"code"},
-		GrantTypesSupported:                    []string{"authorization_code", "refresh_token", "urn:ietf:params:oauth:grant-type:token-exchange"},
-		CodeChallengeMethodsSupported:          []string{"S256"},
-		TokenEndpointAuthMethodsSupported:      []string{"none", "client_secret_basic"},
-		RevocationEndpointAuthMethodsSupported: []string{"none"},
-		ScopesSupported:                        oauth.SupportedScopes(),
-		ClientIDMetadataDocumentSupported:      true,
-	}
+	return oauthMetadataResponse{Issuer: issuer, ScopesSupported: oauth.SupportedScopes()}
 }
 
 // oauthMetadataHandler serve o documento de metadados, montado uma vez e reaproveitado.
