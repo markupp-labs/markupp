@@ -2,6 +2,7 @@ package storage_test
 
 import (
 	"context"
+	"log/slog"
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -103,7 +104,7 @@ func cofreIndexado(b *testing.B, vault []benchfixture.Note) (*pgxpool.Pool, *sto
 	require.NoError(b, storage.Migrate(context.Background(), pool))
 	ator := identity.Actor{UserID: "u-bench", TenantID: "t-bench", Role: "member"}
 	storagetest.SeedVault(b, pool, ator, "cofre-bench", vault)
-	idx, err := storage.NewPostgresVaultIndexer(context.Background(), pool, "simple")
+	idx, err := storage.NewPostgresVaultIndexer(context.Background(), pool, "simple", slog.New(slog.DiscardHandler))
 	require.NoError(b, err)
 	indexaLote(b, idx)
 	return pool, idx

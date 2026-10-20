@@ -2,6 +2,7 @@ package api_test
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -51,7 +52,7 @@ func benchBusca(b *testing.B, router http.Handler, termo string) {
 // indexaCofreSintetico esvazia a fila do indexador, porque a busca lê só o índice.
 func indexaCofreSintetico(b *testing.B, pool *pgxpool.Pool) {
 	b.Helper()
-	indexer, err := storage.NewPostgresVaultIndexer(context.Background(), pool, "simple")
+	indexer, err := storage.NewPostgresVaultIndexer(context.Background(), pool, "simple", slog.New(slog.DiscardHandler))
 	require.NoError(b, err)
 	for {
 		found, err := indexer.IndexNextVault(context.Background(), indexing.Index)

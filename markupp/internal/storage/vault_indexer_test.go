@@ -2,6 +2,7 @@ package storage_test
 
 import (
 	"context"
+	"log/slog"
 	"sync"
 	"testing"
 	"time"
@@ -20,7 +21,7 @@ import (
 
 func novoIndexador(t *testing.T, db *pgxpool.Pool, searchConfig string) *storage.PostgresVaultIndexer {
 	t.Helper()
-	idx, err := storage.NewPostgresVaultIndexer(context.Background(), db, searchConfig)
+	idx, err := storage.NewPostgresVaultIndexer(context.Background(), db, searchConfig, slog.New(slog.DiscardHandler))
 	require.NoError(t, err)
 	return idx
 }
@@ -230,7 +231,7 @@ func editaJaComDf(ctxA, ctxB context.Context, t *testing.T, db *pgxpool.Pool, re
 }
 
 func TestNewPostgresVaultIndexer_ConfiguracaoInexistente_RetornaErroComOValor(t *testing.T) {
-	_, err := storage.NewPostgresVaultIndexer(context.Background(), setupTestDB(t), "klingon")
+	_, err := storage.NewPostgresVaultIndexer(context.Background(), setupTestDB(t), "klingon", slog.New(slog.DiscardHandler))
 
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "klingon")
@@ -238,7 +239,7 @@ func TestNewPostgresVaultIndexer_ConfiguracaoInexistente_RetornaErroComOValor(t 
 }
 
 func TestNewPostgresVaultIndexer_ConfiguracaoComSchema_Aceita(t *testing.T) {
-	_, err := storage.NewPostgresVaultIndexer(context.Background(), setupTestDB(t), "pg_catalog.portuguese")
+	_, err := storage.NewPostgresVaultIndexer(context.Background(), setupTestDB(t), "pg_catalog.portuguese", slog.New(slog.DiscardHandler))
 
 	assert.NoError(t, err, "a validacao resolve o nome como o cast para regconfig resolve")
 }
