@@ -110,11 +110,17 @@ func (g *PostgresNoteGraph) Community(ctx context.Context, vaultID string, commu
 
 // inNote roda read depois de conferir que o ator enxerga a nota noteID.
 func (g *PostgresNoteGraph) inNote(ctx context.Context, noteID string, read func(q *gen.Queries) error) error {
+	return g.withNote(ctx, noteID, func(q *gen.Queries, _ gen.Note) error { return read(q) })
+}
+
+// withNote roda read com a nota noteID, se o ator a enxerga.
+func (g *PostgresNoteGraph) withNote(ctx context.Context, noteID string, read func(q *gen.Queries, note gen.Note) error) error {
 	return inActorTx(ctx, g.pool, func(q *gen.Queries) error {
-		if _, err := q.GetNoteByID(ctx, noteID); err != nil {
+		note, err := q.GetNoteByID(ctx, noteID)
+		if err != nil {
 			return notFoundOnNoRows(err)
 		}
-		return read(q)
+		return read(q, note)
 	})
 }
 
