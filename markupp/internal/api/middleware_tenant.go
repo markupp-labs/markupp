@@ -21,12 +21,22 @@ type TenantResolver interface {
 // RequireTenant completa o ator autenticado com o tenant e o papel que o banco
 // registra para ele. O cabeçalho só escolhe entre os tenants da pessoa.
 func RequireTenant(resolver TenantResolver) func(http.Handler) http.Handler {
+	return resolveTenantBy(resolver, tenantFromHeader, writeTenantError)
+}
+
+func tenantFromHeader(r *http.Request) string {
+	return r.Header.Get(TenantHeader)
+}
+
+// resolveTenantBy completa o ator com o vínculo do tenant que requested lê da
+// requisição, e responde com writeErr quando o vínculo falta.
+func resolveTenantBy(resolver TenantResolver, requested func(*http.Request) string, writeErr func(http.ResponseWriter, error)) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			actor, _ := identity.ActorFrom(r.Context())
-			m, err := resolver.ResolveTenant(r.Context(), actor.UserID, r.Header.Get(TenantHeader))
+			m, err := resolver.ResolveTenant(r.Context(), actor.UserID, requested(r))
 			if err != nil {
-				writeTenantError(w, err)
+				writeErr(w, err)
 				return
 			}
 			actor.TenantID, actor.Role = m.TenantID, m.Role
