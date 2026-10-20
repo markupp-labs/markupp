@@ -25,6 +25,11 @@ export default class extends Controller {
     if (!this.element.open) this.element.showModal()
   }
 
+  // Antes de o Turbo guardar a página que sai no cache: aberta, ela voltaria pelo histórico com a paleta à mostra.
+  close() {
+    this.element.close()
+  }
+
   filter() {
     const query = this.inputTarget.value.toLowerCase()
     this.optionTargets.forEach((option) => (option.hidden = option.dataset.available != "true" || !fuzzyMatch(query, option.textContent)))

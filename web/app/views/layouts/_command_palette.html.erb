@@ -5,7 +5,7 @@
     então só o style inline o tira. %>
 <% commands = palette_commands %>
 <dialog id="command_palette" aria-label="<%= t("shortcuts.palette.label") %>" closedby="any" data-controller="command-palette"
-        data-action="keydown@window->command-palette#openFromKey"
+        data-action="keydown@window->command-palette#openFromKey turbo:before-cache@document->command-palette#close"
         class="layer mx-auto mt-[15vh] w-[min(36rem,calc(100vw-2rem))] rounded-md border border-line bg-surface text-ink backdrop:bg-surface-sunken/70">
   <div class="flex items-center border-b border-line has-focus-visible:border-accent">
     <span aria-hidden="true" class="pl-3 text-accent">&gt;</span>
