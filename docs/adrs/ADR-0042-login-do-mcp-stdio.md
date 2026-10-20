@@ -6,7 +6,7 @@ Aceita
 
 ## Contexto
 
-O ADR-0039 previa que o servidor MCP em stdio fizesse o mesmo fluxo do HTTP, trocando o token
+O ADR-0046 previa que o servidor MCP em stdio fizesse o mesmo fluxo do HTTP, trocando o token
 do agente pelo da API. A troca exige o segredo do resource, e um pacote npm instalado na máquina
 da pessoa não tem como guardar segredo. O registro dinâmico, que um CLI usaria para se
 registrar, vem desligado (ADR-0041), e o Client ID Metadata Document exigiria que o servidor

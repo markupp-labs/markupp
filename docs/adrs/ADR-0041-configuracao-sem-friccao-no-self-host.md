@@ -39,5 +39,5 @@ MCP num arquivo de volume compartilhado, e o servidor MCP descobre o issuer pela
 - A rota `/mcp` dispensa o prazo de escrita do servidor, porque o Streamable HTTP mantém
   streams abertos
 - Quem usa o registro dinâmico precisa ligá-lo; Claude, Cursor e VS Code usam CIMD
-- O cluster continua com o servidor MCP em subdomínio próprio (ADR-0038), definindo as
+- O cluster continua com o servidor MCP em subdomínio próprio (ADR-0045), definindo as
   variáveis por Secret

@@ -81,7 +81,7 @@ services:
       migrate:
         condition: service_completed_successfully
 
-  # Servidor MCP (ADR-0038): descobre o issuer pelo Go e lê o segredo que o Go escreve no
+  # Servidor MCP (ADR-0045): descobre o issuer pelo Go e lê o segredo que o Go escreve no
   # volume compartilhado. Os agentes chegam a ele pelo /mcp do Go.
   mcp:
     build:

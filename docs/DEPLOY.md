@@ -258,7 +258,7 @@ pontas:
 | `MARKUPP_MCP_PORT` | MCP | 3000 | porta em que o MCP escuta, em todas as interfaces |
 
 O servidor MCP sobe com `markupp-mcp http` (a imagem já começa assim) e espera até 60 segundos
-pelo Go e pelo arquivo do segredo. No cluster, com o MCP em subdomínio próprio (ADR-0038), o
+pelo Go e pelo arquivo do segredo. No cluster, com o MCP em subdomínio próprio (ADR-0045), o
 `MARKUPP_OAUTH_RESOURCES` do Go e o `MARKUPP_MCP_RESOURCE_URL` e o `MARKUPP_MCP_RESOURCE_SECRET`
 do MCP vêm do Secret.
 
