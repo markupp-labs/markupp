@@ -128,11 +128,21 @@ func TestNewMarkupp_SemBancoExterno_CriaPostgresNoNamespaceComVolume(t *testing.
 	db := monitor.single(t, "kubernetes:apps/v1:StatefulSet")
 	assert.Equal(t, "markupp", at(t, db, "metadata", "namespace").StringValue())
 	assert.Equal(t, 1.0, at(t, db, "spec", "replicas").NumberValue())
-	assert.Equal(t, "postgres:17.9-alpine3.23", firstContainer(t, db)["image"].StringValue(),
+	assert.Equal(t, "postgres:18.6-alpine3.24", firstContainer(t, db)["image"].StringValue(),
 		"mesma versão fixa do compose e do testcontainers")
 	claim := at(t, db, "spec", "volumeClaimTemplates").ArrayValue()[0].ObjectValue()
 	assert.Equal(t, "longhorn-fast", at(t, claim, "spec", "storageClassName").StringValue())
 	assert.Equal(t, "10Gi", at(t, claim, "spec", "resources", "requests", "storage").StringValue())
+}
+
+func TestNewMarkupp_SemBancoExterno_MontaOVolumeOndeOPostgres18Espera(t *testing.T) {
+	monitor := deploy(t, argsDeTeste())
+
+	container := firstContainer(t, monitor.single(t, "kubernetes:apps/v1:StatefulSet"))
+	mount := container["volumeMounts"].ArrayValue()[0].ObjectValue()
+	assert.Equal(t, "/var/lib/postgresql", mount["mountPath"].StringValue(),
+		"a imagem 18 guarda os dados em /var/lib/postgresql/18/docker e recusa o volume em /var/lib/postgresql/data")
+	assert.NotContains(t, nomesDoEnv(container), "PGDATA", "o PGDATA padrão da imagem 18 já é subdiretório do volume")
 }
 
 func TestNewMarkupp_SemBancoExterno_GuardaSenhaGeradaEURLNoSecret(t *testing.T) {
