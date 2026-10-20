@@ -168,8 +168,9 @@ outras duas variáveis passam a ser obrigatórias:
   `openssl rand -hex 32`) e cada URL uma vez só, sem query nem fragmento
 
 As URLs exigem https e um host, sem usuário nem senha; http só vale para localhost, 127.0.0.1
-e [::1]. O servidor guarda cada URL com esquema e host em minúsculas e sem barra final, então
-`https://MCP.exemplo.com/mcp/` e `https://mcp.exemplo.com/mcp` contam como o mesmo recurso.
+e [::1]. O servidor guarda cada URL com esquema e host em minúsculas, sem a porta padrão do
+esquema (443 em https, 80 em http) e sem barra final, então `https://MCP.exemplo.com:443/mcp/` e
+`https://mcp.exemplo.com/mcp` contam como o mesmo recurso.
 
 ## Aviso
 
