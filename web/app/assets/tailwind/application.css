@@ -160,10 +160,11 @@
   }
 
   /* Parado (reduced-motion), o glifo é "...", como a espera de um terminal sem animação; o braille girando vem do
-     motion.css. */
+     motion.css. Os pontos ficam na linha de base, abaixo do meio da linha: o translate os sobe até o centro. */
   .busy-spinner-glyph {
     line-height: 1;
     color: var(--accent);
+    translate: 0 -0.18em;
   }
 
   .busy-spinner-glyph::before {
