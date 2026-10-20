@@ -24,6 +24,20 @@ class PublicLayoutTest < ApplicationSystemTestCase
     page.current_window.resize_to(1400, 900)
   end
 
+  # O dialogo de confirmacao do painel some com o layout dele: a tela publica volta ao confirm() do navegador, sem
+  # chamar o showModal() de um dialogo fora da pagina.
+  test "after logging out a turbo confirm goes back to the browser confirm" do
+    sign_in_through_form
+    click_on FakeMarkuppAccounts::DEFAULT_EMAIL
+    click_on "Log out"
+    assert_text "Logged out."
+
+    execute_script("window.confirm = () => { window.nativeConfirmCalls = 1; return false }")
+    execute_script("Turbo.config.forms.confirm('Delete?', document.createElement('form'))")
+
+    assert_equal 1, evaluate_script("window.nativeConfirmCalls")
+  end
+
   private
     def assert_centered(element, axes:, tolerance: 24)
       horizontal, vertical = evaluate_script("(function() { #{CENTER_SCRIPT} }).apply(null, arguments)", element)
