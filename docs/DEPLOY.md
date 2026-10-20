@@ -206,7 +206,7 @@ application/x-www-form-urlencoded antes do Base64 (RFC 6749, seção 2.3.1). Sem
 os dois-pontos da URL quebram o par usuário e senha e a troca responde 401.
 
 O token da API entregue pela troca não passa pelo banco: revogar a Autorização ou os tokens
-OAuth não o derruba, e ele segue valendo até expirar (ADR-0039). Por isso a validade dele é
+OAuth não o derruba, e ele segue valendo até expirar (ADR-0046). Por isso a validade dele é
 curta.
 
 Os clientes também podem se identificar por um Client ID Metadata Document: o client_id é

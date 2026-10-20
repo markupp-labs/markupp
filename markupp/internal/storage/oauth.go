@@ -20,7 +20,7 @@ import (
 const auditActionOAuthAuthorize = "oauth.authorize"
 
 // PostgresOAuthRepository persiste clientes, pedidos, Autorizações e tokens do
-// authorization server OAuth. As tabelas são da instância (ADR-0039): sem ator nem RLS.
+// authorization server OAuth. As tabelas são da instância (ADR-0046): sem ator nem RLS.
 // Códigos, tokens e o ID do pedido ficam fora das mensagens de erro.
 type PostgresOAuthRepository struct {
 	pool *pgxpool.Pool

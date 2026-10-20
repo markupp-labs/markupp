@@ -59,7 +59,7 @@ func setOAuthDefaults(cfg *Config) {
 	cfg.OAuthDCRPendingHours = 24
 }
 
-// loadOAuthSettings lê o authorization server (ADR-0039). Sem MARKUPP_PUBLIC_URL, o
+// loadOAuthSettings lê o authorization server (ADR-0046). Sem MARKUPP_PUBLIC_URL, o
 // issuer é o próprio servidor em localhost (ADR-0041).
 func loadOAuthSettings(lookup LookupFunc, cfg *Config) error {
 	public := fmt.Sprintf("http://localhost:%d", cfg.Port)

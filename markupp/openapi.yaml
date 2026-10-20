@@ -12,7 +12,7 @@ info:
 
     Os endpoints do protocolo OAuth (/oauth/authorize, /oauth/token, /oauth/revoke e a
     metadata em /.well-known/oauth-authorization-server) ficam na raiz, fora de /v1, e
-    seguem as RFCs, com um desvio intencional da RFC 7009 (ADR-0039): /oauth/revoke
+    seguem as RFCs, com um desvio intencional da RFC 7009 (ADR-0046): /oauth/revoke
     responde 200 sem revogar nada quando o token é de outro cliente, em vez de recusar o
     pedido, para não revelar a quem o token pertence.
   version: 0.1.0
@@ -548,7 +548,7 @@ paths:
       summary: Descreve um pedido de autorização OAuth para a tela de consentimento
       description: >
         Rota do painel. Exige login, mas não o cabeçalho de tenant. O id do pedido funciona
-        como portador (ADR-0040): qualquer conta logada que o tenha vê e decide o pedido.
+        como portador (ADR-0047): qualquer conta logada que o tenha vê e decide o pedido.
         O pedido vale 10 minutos e é de uso único.
       parameters:
         - $ref: '#/components/parameters/OAuthRequestID'
