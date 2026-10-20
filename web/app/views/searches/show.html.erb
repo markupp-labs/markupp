@@ -7,7 +7,7 @@
       <% @hits.each_with_index do |hit, index| %>
         <li role="none">
           <%= link_to note_path(hit.note), role: "option", tabindex: index.zero? ? 0 : -1, aria: { selected: index.zero? },
-                      data: { turbo_frame: "_top", search_target: "result" }, class: "search-hit tree-row block" do %>
+                      data: { turbo_frame: "_top", search_target: "result" }, class: "search-hit tree-row block aria-selected:bg-accent-soft aria-selected:text-ink" do %>
             <span class="flex items-baseline gap-2">
               <span class="search-hit-title truncate text-ink"><%= hit.note.title %></span>
               <span class="search-hit-folder truncate text-xs text-ink-muted"><%= hit.note.folder %></span>
