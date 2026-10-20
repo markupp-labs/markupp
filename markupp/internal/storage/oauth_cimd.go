@@ -26,8 +26,9 @@ func (r *PostgresOAuthRepository) GetFreshCIMDClient(ctx context.Context, id str
 }
 
 // SaveCIMDClient cria ou atualiza o cliente CIMD com o documento buscado em now e válido
-// até expiresAt e, na mesma transação, apaga os clientes CIMD vencidos em now sem nenhuma
-// Autorização. Recusa, sem gravar nem apagar, o id já registrado por outra origem.
+// até expiresAt e, na mesma transação, apaga os clientes CIMD vencidos em now sem
+// Autorização ativa, a mesma regra do DCR; as revogadas vão junto em cascata. Recusa, sem
+// gravar nem apagar, o id já registrado por outra origem.
 func (r *PostgresOAuthRepository) SaveCIMDClient(ctx context.Context, client oauth.Client, expiresAt, now time.Time) error {
 	return inTx(ctx, r.pool, func(qtx *gen.Queries) error {
 		if err := upsertCIMDClientInTx(ctx, qtx, client, expiresAt); err != nil {

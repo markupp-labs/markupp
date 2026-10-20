@@ -123,7 +123,7 @@ func (q *Queries) CreateOAuthRequest(ctx context.Context, arg CreateOAuthRequest
 const deleteStaleCIMDClients = `-- name: DeleteStaleCIMDClients :exec
 DELETE FROM oauth_clients c
 WHERE c.source = 'cimd' AND c.metadata_expires_at <= $1::TIMESTAMPTZ
-  AND NOT EXISTS (SELECT 1 FROM oauth_authorizations a WHERE a.client_id = c.id)
+  AND NOT EXISTS (SELECT 1 FROM oauth_authorizations a WHERE a.client_id = c.id AND a.revoked_at IS NULL)
 `
 
 // Apaga os clientes CIMD cujo documento venceu em now e que nunca ganharam uma

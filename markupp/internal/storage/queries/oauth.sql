@@ -23,7 +23,7 @@ WHERE oauth_clients.source = 'cimd';
 -- name: DeleteStaleCIMDClients :exec
 DELETE FROM oauth_clients c
 WHERE c.source = 'cimd' AND c.metadata_expires_at <= sqlc.arg(now)::TIMESTAMPTZ
-  AND NOT EXISTS (SELECT 1 FROM oauth_authorizations a WHERE a.client_id = c.id);
+  AND NOT EXISTS (SELECT 1 FROM oauth_authorizations a WHERE a.client_id = c.id AND a.revoked_at IS NULL);
 
 -- name: CreateOAuthRequest :exec
 INSERT INTO oauth_requests (id, client_id, redirect_uri, scopes, resource, state, code_challenge, created_at, expires_at)
