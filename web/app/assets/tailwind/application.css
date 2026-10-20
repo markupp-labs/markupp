@@ -373,6 +373,11 @@ main:has(.note-form:not([data-mode="read"]) .cm-vim-panel) {
   flex-grow: 1;
 }
 
+/* Sem o padding de baixo o preview vai até o fim da janela: o contorno do foco entra nele para não perder a borda de baixo. */
+main:has(.note-form:not([data-mode="read"]) .cm-vim-panel) .note-preview:focus-visible {
+  outline-offset: -2px;
+}
+
 /* No celular o body não é grid: vira coluna para o main ir até o fim da tela, com o botão da gaveta do tamanho dele. */
 @media (width < 48rem) {
   .app-shell:has(.note-form:not([data-mode="read"]) .cm-vim-panel) {
