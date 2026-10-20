@@ -62,7 +62,7 @@ func mountOAuthServerRoutes(r chi.Router, d RouterDeps) {
 // mountOAuthProtocolRoutes deixa o authorize, aberto por navegação, sem CORS, e o resto
 // de /oauth com CORS aberto, inclusive no 404 e no 405.
 func mountOAuthProtocolRoutes(r chi.Router, h *oauthHandler) {
-	r.Route("/oauth/authorize", func(a chi.Router) {
+	r.Route(oauthAuthorizePath, func(a chi.Router) {
 		a.Get("/", h.authorize)
 	})
 	r.Route("/oauth", func(p chi.Router) {
