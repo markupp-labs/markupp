@@ -1,7 +1,8 @@
 require "test_helper"
 
 # Ajuda de atalhos (?) e paleta de comandos (Ctrl+Shift+P) saem do mesmo registro: a paleta mostra cada ação com a
-# tecla que a ajuda lista para ela, as da nota primeiro.
+# tecla que a ajuda lista para ela, as da nota primeiro. Na nota o Alt+N é a nota nova: o New tenant fica para a lista de
+# tenants.
 class ShortcutsTest < ActionDispatch::IntegrationTest
   PALETTE = [
     [ "New note", "Alt N" ], [ "Edit mode", "Ctrl E" ], [ "Read mode", "Ctrl E" ], [ "Side by side", "Ctrl \\" ],
@@ -9,7 +10,7 @@ class ShortcutsTest < ActionDispatch::IntegrationTest
     [ "Focus region left", "Alt H" ], [ "Focus region below", "Alt J" ], [ "Focus region above", "Alt K" ], [ "Focus region right", "Alt L" ],
     [ "Light theme", "" ], [ "Dark theme", "" ], [ "Editor style: plain", "" ], [ "Editor style: styled", "" ],
     [ "Vim keys: on", "" ], [ "Vim keys: off", "" ],
-    [ "All tenants", "g t" ], [ "Switch tenant", "" ], [ "Log out", "" ], [ "New tenant", "Alt N" ]
+    [ "All tenants", "g t" ], [ "Switch tenant", "" ], [ "Log out", "" ]
   ].freeze
 
   setup do
@@ -28,11 +29,12 @@ class ShortcutsTest < ActionDispatch::IntegrationTest
     { "Command palette" => [ "Ctrl+Shift+P", "F1", ":" ], "Keyboard shortcuts" => [ "?" ], "New note" => [ "Alt+N" ], "Save" => [ "Ctrl+S" ],
       "Rename / move" => [ "F2" ], "Copy wikilink" => [ "Alt+Shift+W" ], "Focus the note tree" => [ "Ctrl+Shift+E" ],
       "Focus region left" => [ "Alt+H" ], "Focus region right" => [ "Alt+L" ],
-      "Next row" => [ "j", "↓" ], "All tenants" => [ "g t" ], "Filter tenants" => [ "/" ], "New tenant" => [ "Alt+N" ],
+      "Next row" => [ "j", "↓" ], "All tenants" => [ "g t" ], "Filter tenants" => [ "/" ],
       "Move between tenants" => [ "hjkl", "←↓↑→" ], "Indent and outdent in the content" => [ "Tab", "Shift+Tab" ],
       "From the content back to the path (Esc first)" => [ "Esc Shift+Tab" ] }.each do |name, keys|
       assert_equal keys, rows[name], "expected #{name} with #{keys.inspect} in the help"
     end
+    assert_nil rows["New tenant"], "the new tenant shares Alt+N with the new note and belongs to the tenants"
   end
 
   test "the palette offers every action with its shortcut, from the same list as the help" do
