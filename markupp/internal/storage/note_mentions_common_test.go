@@ -54,3 +54,27 @@ func TestNoteGraph_Mentions_CofreSemDfNaoFiltraTituloComum(t *testing.T) {
 		"sem o N do cofre nao ha como julgar a frequencia: na duvida, a mencao fica")
 	assert.Len(t, mencoes(t, graph, "backmentions", "proj", 0, 100), 7)
 }
+
+// TestNoteGraph_Mentions_CofrePequenoUsaOPisoDeCincoNotas: em 13 notas, 5% não chega
+// a uma nota, e o piso de cinco decide. "kubernetes" está em cinco corpos e continua
+// menção; "projeto", de uma palavra, e "plano diretor", de duas, estão em seis.
+func TestNoteGraph_Mentions_CofrePequenoUsaOPisoDeCincoNotas(t *testing.T) {
+	db := setupNotesDB(t)
+	repo := storage.NewPostgresNotesRepository(db, "simple")
+	for _, nota := range []notes.Note{
+		notaComCaminho("proj", "Projeto.md", "x"),
+		notaComCaminho("pd", "Plano Diretor.md", "x"),
+		notaComCaminho("k", "Kubernetes.md", "x"),
+		notaComCaminho("m", "m.md", "o projeto segue o plano diretor no kubernetes"),
+	} {
+		storagetest.SaveNote(ctxDeTeste, t, repo, nota)
+	}
+	semeiaNotas(t, db, "u", "o projeto segue o plano diretor", 5)
+	semeiaNotas(t, db, "kb", "kubernetes", 4)
+	indexaTodosOsCofres(t, db, "simple")
+	graph := storage.NewPostgresNoteGraph(db, "simple")
+
+	assert.Equal(t, []string{"Kubernetes.md kubernetes"}, resumoDasMencoes(mencoes(t, graph, "mentions", "m", 0, 100)),
+		"comum em mais de max(5% de N, 5) notas")
+	assert.Len(t, mencoes(t, graph, "backmentions", "k", 0, 100), 5, "cinco notas nao passam do piso")
+}
