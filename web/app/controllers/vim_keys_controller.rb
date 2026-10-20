@@ -1,4 +1,4 @@
-# Modo Vim do editor (editor/vim_mode.js), ligado ou desligado em Configuracoes > Aparencia > Editor.
+# Modo Vim do editor (editor/vim_mode.js), ligado ou desligado em Configuracoes > Editor.
 class VimKeysController < ApplicationController
   CHOICES = %w[on off].freeze
 
@@ -7,6 +7,6 @@ class VimKeysController < ApplicationController
     return render(plain: "Unknown vim keys choice #{choice.inspect}, expected on or off", status: :bad_request) unless CHOICES.include?(choice)
 
     cookies.permanent[:vim_keys] = choice
-    redirect_back_or_to settings_appearance_path
+    redirect_back_or_to settings_editor_path
   end
 end

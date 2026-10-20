@@ -7,6 +7,6 @@ class EditorStylesController < ApplicationController
     return render(plain: "Unknown editor style #{style.inspect}, expected plain or styled", status: :bad_request) unless STYLES.include?(style)
 
     cookies.permanent[:editor_style] = style
-    redirect_back_or_to settings_appearance_path
+    redirect_back_or_to settings_editor_path
   end
 end

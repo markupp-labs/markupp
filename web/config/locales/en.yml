@@ -283,6 +283,7 @@ en:
       close: "Close settings"
       accounts: "Account"
       appearances: "Appearance"
+      editors: "Editor"
       tenant: "Tenant"
       members: "Members"
       invites: "Invites"
@@ -306,10 +307,14 @@ en:
         light: "Light"
         dark: "Dark"
         follows_system: "Follows your system theme until you pick one."
-        editor_style: "Editor"
+    editors:
+      show:
+        title: "Editor"
+        editor_style: "Style"
         plain: "Plain"
         styled: "Styled"
         editor_style_hint: "Plain shows the markdown at one size, like VS Code. Styled makes headings larger, like the Obsidian source mode."
+        keys: "Keys"
         vim_keys: "Vim keys"
         vim_keys_hint: "Vim keys give the editor the normal, insert and visual modes of Vim, with :w, :q and :e. Esc twice, then Tab, leaves the editor."
     members:

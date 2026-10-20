@@ -24,6 +24,7 @@ Rails.application.routes.draw do
   namespace :settings do
     resource :account, only: :show
     resource :appearance, only: :show
+    resource :editor, only: :show
     resources :members, only: [ :index, :update, :destroy ]
     resources :invites, only: [ :index, :create, :destroy ]
   end
