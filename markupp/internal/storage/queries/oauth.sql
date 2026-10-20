@@ -1,4 +1,4 @@
--- Authorization server OAuth 2.1 (ADR-0039). As tabelas são da instância, sem tenant nem
+-- Authorization server OAuth 2.1 (ADR-0046). As tabelas são da instância, sem tenant nem
 -- RLS: as queries rodam no papel da conexão. Códigos e tokens só passam como hash.
 
 -- O cliente DCR pendente desde o limite ou antes conta como inexistente, mesmo antes de

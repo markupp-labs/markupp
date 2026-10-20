@@ -13,7 +13,7 @@ import (
 // Autorização do token, que continua ativa. Token desconhecido, de outro cliente ou que
 // já não vale (revogado, expirado ou de Autorização revogada) não revoga nada e não é
 // erro, para não revelar ao cliente se o token existe. Para o token de outro cliente, é
-// um desvio intencional da RFC 7009, seção 2.1, que manda recusar o pedido (ADR-0039).
+// um desvio intencional da RFC 7009, seção 2.1, que manda recusar o pedido (ADR-0046).
 func (s *Service) RevokeToken(ctx context.Context, r RevokeRequest) error {
 	if err := checkRevokeParams(r); err != nil {
 		return err

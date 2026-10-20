@@ -55,7 +55,7 @@ func setOAuthDefaults(cfg *Config) {
 	cfg.OAuthDCRPendingHours = 24
 }
 
-// loadOAuthSettings lê o authorization server (ADR-0039). Sem MARKUPP_PUBLIC_URL ele
+// loadOAuthSettings lê o authorization server (ADR-0046). Sem MARKUPP_PUBLIC_URL ele
 // fica desligado e as demais variáveis nem são lidas.
 func loadOAuthSettings(lookup LookupFunc, cfg *Config) error {
 	var public string
