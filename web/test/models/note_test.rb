@@ -259,6 +259,14 @@ class NoteTest < ActiveSupport::TestCase
     assert_equal "work/../teste.md", note.resolve("../teste")
   end
 
+  test "resolve keeps a trailing slash or dot as an empty name, so saving asks for one" do
+    note = Note.new(path: "work/plano.md")
+
+    assert_equal "dev/", note.resolve("/dev//")
+    assert_equal "work/", note.resolve(".")
+    assert_equal "dev/", note.resolve("/dev/.")
+  end
+
   test "a path the API refuses tells what a valid path looks like" do
     api = FakeMarkuppApi.new(notes: [ { id: "1", path: "work/a.md", content: "x" } ])
     note = Note.new(id: "1", path: "work/a.md")
