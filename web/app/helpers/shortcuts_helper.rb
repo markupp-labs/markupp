@@ -21,6 +21,11 @@ module ShortcutsHelper
       Shortcut.of(:settings, "Ctrl+,", run: { href: :settings_path }),
       Shortcut.of(:toggle_sidebar, "Ctrl+B", run: { click: ".sidebar-spine" }),
       Shortcut.of(:focus_tree, "Ctrl+Shift+E"),
+      # Região vizinha pela geometria (region_nav_controller.js); a paleta repete a tecla a partir do foco devolvido.
+      Shortcut.of(:focus_region_left, "Alt+H", run: { press: { key: "h", code: "KeyH", altKey: true } }),
+      Shortcut.of(:focus_region_below, "Alt+J", run: { press: { key: "j", code: "KeyJ", altKey: true } }),
+      Shortcut.of(:focus_region_above, "Alt+K", run: { press: { key: "k", code: "KeyK", altKey: true } }),
+      Shortcut.of(:focus_region_right, "Alt+L", run: { press: { key: "l", code: "KeyL", altKey: true } }),
       Shortcut.of(:resize_sidebar, "←", "→"),
       Shortcut.of(:back_from_settings, "Esc"),
       Shortcut.of(:light_theme, run: { form: { url: :theme_path, params: { theme: "light" }, turbo: false } }),
