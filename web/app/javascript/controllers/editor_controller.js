@@ -1,11 +1,16 @@
 import { Controller } from "@hotwired/stimulus"
 import { EditorState } from "@codemirror/state"
 import { EditorView, keymap } from "@codemirror/view"
-import { defaultKeymap, history, historyKeymap } from "@codemirror/commands"
+import { defaultKeymap, history, historyKeymap, indentLess, insertTab } from "@codemirror/commands"
+import { indentUnit } from "@codemirror/language"
 import { markdown, markdownLanguage } from "@codemirror/lang-markdown"
 import { wikilinkMarks } from "editor/wikilink_marks"
 import { inlineCodeTag, kanagawaTheme } from "editor/kanagawa_theme"
 import { codeLanguages } from "editor/code_languages"
+
+// Tab escreve o caractere de tab (com seleção, indenta as linhas) e Shift+Tab tira um nível, como no VS Code. Para
+// sair do editor pelo teclado, Esc e então Tab ou Shift+Tab: o CodeMirror deixa o próximo Tab mover o foco.
+const TAB_INDENTS = { key: "Tab", run: insertTab, shift: indentLess }
 
 // Monta o CodeMirror sobre o textarea, que segue como fonte do formulário: cada edição volta para ele
 // e dispara input, como se o usuário tivesse digitado no textarea.
@@ -27,7 +32,7 @@ export default class extends Controller {
     const readOnly = this.sourceTarget.readOnly
     return [
       EditorState.readOnly.of(readOnly), EditorView.editable.of(!readOnly),
-      history(), keymap.of([ ...defaultKeymap, ...historyKeymap ]), EditorView.lineWrapping,
+      history(), keymap.of([ TAB_INDENTS, ...defaultKeymap, ...historyKeymap ]), indentUnit.of("\t"), EditorView.lineWrapping,
       markdown({ base: markdownLanguage, extensions: inlineCodeTag, codeLanguages }), wikilinkMarks, kanagawaTheme(document.documentElement.dataset.editorStyle),
       EditorView.updateListener.of((update) => this.syncSource(update)),
     ]

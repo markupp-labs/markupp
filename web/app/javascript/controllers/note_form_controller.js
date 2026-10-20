@@ -47,9 +47,10 @@ export default class extends Controller {
     if (detail.applied) this.heading = next
   }
 
-  // Shift+Tab no conteúdo volta ao caminho, com o cursor no fim dele.
+  // Shift+Tab no conteúdo, depois do Esc que libera o teclado do editor, volta ao caminho com o cursor no fim dele. Sem o
+  // Esc o editor já usou a tecla para desindentar (defaultPrevented).
   focusPath(event) {
-    if (!event.target.closest(".cm-editor")) return
+    if (event.defaultPrevented || !event.target.closest(".cm-editor")) return
 
     event.preventDefault()
     this.pathTarget.focus()
