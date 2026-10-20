@@ -150,7 +150,14 @@ func (s *AdminService) RevokeInvite(ctx context.Context, actor identity.Actor, i
 	})
 }
 
-// DeleteTenant apaga de vez o tenant do ator. Só o owner apaga.
+// DeleteTenant apaga de vez o tenant do ator, com cofres, notas, vínculos e convites,
+// auditado na mesma transação. Só o owner apaga; as contas continuam.
 func (s *AdminService) DeleteTenant(ctx context.Context, actor identity.Actor) error {
-	return nil
+	if actor.Role != identity.RoleOwner {
+		return fmt.Errorf("%w: papel %q, esperado %q", ErrNotOwner, actor.Role, identity.RoleOwner)
+	}
+	return s.repo.DeleteTenantTx(ctx, AuditEventRecord{
+		ID: s.newID(), TenantID: actor.TenantID, ActorID: actor.UserID, Action: "tenants.delete",
+		Target: actor.TenantID, Result: "success", OccurredAt: s.clock(),
+	})
 }
