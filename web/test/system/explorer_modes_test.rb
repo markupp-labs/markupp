@@ -55,7 +55,9 @@ class ExplorerModesTest < ApplicationSystemTestCase
   test "alt+o opens the view select and alt+h reaches the flat list from the editor" do
     find(".cm-content").click
     send_keys [ :alt, "o" ]
-    assert_selector "select#explorer_mode:focus"
+    # Com a lista de visões aberta, o foco fica na opção escolhida, dentro do select.
+    assert_selector "select#explorer_mode option:focus", visible: :all
+    send_keys :escape
 
     select "Most linked", from: "Explorer view"
     assert_selector "[data-explorer-mode=linked]"
