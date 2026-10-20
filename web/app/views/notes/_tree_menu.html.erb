@@ -3,7 +3,7 @@
     Quem só lê fica com os itens de copiar. %>
 <div id="tree_menu" popover="manual" role="menu" aria-label="<%= t(".label") %>" data-controller="context-menu"
      data-action="keydown->context-menu#navigate toggle->context-menu#returnFocus pointerdown@document->context-menu#closeOutside"
-     class="layer fixed m-0 w-64 rounded-md border border-line bg-surface-sunken p-1 text-[13px] text-ink [inset:auto]">
+     class="layer fixed m-0 w-64 layer-panel p-1 text-[13px] [inset:auto]">
   <% if writer %>
     <%= tree_menu_item(:new_here, shortcut: :new_note) %>
     <%= tree_menu_item(:rename, note_only: true) %>

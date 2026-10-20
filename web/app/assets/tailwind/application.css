@@ -27,6 +27,9 @@
   --danger: light-dark(#a8344a, #e46876);
   /* Fundo escurecido atrás da gaveta do celular: o ink do lotus no claro, o fundo mais escuro do wave no escuro. */
   --scrim: light-dark(rgb(84 84 100 / 0.4), rgb(22 22 29 / 0.7));
+  /* Sombra das camadas (.layer-panel), tingida da paleta e nunca o preto puro: o ink do lotus no claro e o dragonBlack0
+     do Kanagawa no escuro, mais escuro que o fundo da barra, onde os menus abrem. */
+  --shadow: light-dark(rgb(84 84 100 / 0.22), rgb(13 12 12 / 0.6));
   /* Sintaxe dos blocos de código (hljs-*), nas cores de sintaxe do Kanagawa. As do lotus foram escurecidas
      no mesmo matiz até 4.6:1 sobre o surface-sunken do pre (#e7dba0; davam de 2.5 a 4:1); as do wave já passam
      de 5:1 sobre #16161d. O comentário usa o ink-muted (o fujiGray dava 3.7:1 no escuro). */
@@ -100,6 +103,18 @@
   /* Botão só de ícone: quadrado, sem borda, com o mesmo realce das linhas da árvore. */
   .btn-icon {
     @apply inline-flex items-center rounded-md px-1.5 py-1 text-ink-muted hover:bg-accent-soft hover:text-ink;
+  }
+
+  /* Camada flutuante (menus, seletor de tenant e diálogos), como as layers do Hyprland: o surface, mais claro que a
+     barra lateral (surface-sunken), a borda line e a sombra tingida. Atrás dos diálogos modais o fundo escurece com o
+     --scrim, o mesmo da gaveta do celular. */
+  .layer-panel {
+    @apply rounded-md border border-line bg-surface text-ink;
+    box-shadow: 0 12px 32px -8px var(--shadow), 0 2px 8px -2px var(--shadow);
+  }
+
+  dialog.layer-panel::backdrop {
+    background: var(--scrim);
   }
 
   /* Barra de rolagem fina nos tokens do tema, sem o trilho cinza padrão no claro (lista da paleta, ajuda de atalhos). */

@@ -39,7 +39,7 @@
   <p hidden data-tenant-grid-target="empty" class="mt-4 text-ink-muted"><%= t("tenants.index.no_match") %></p>
 
   <dialog id="new_tenant" closedby="any" aria-labelledby="new_tenant_title" data-tenant-grid-target="newTenant"
-          class="layer mx-auto mt-[15vh] w-[min(28rem,calc(100vw-2rem))] rounded-md border border-line bg-surface p-4 text-ink backdrop:bg-surface-sunken/70">
+          class="layer mx-auto mt-[15vh] w-[min(28rem,calc(100vw-2rem))] layer-panel p-4">
     <h2 id="new_tenant_title" class="font-semibold"><%= t("tenants.new_tenant_form.new_tenant") %></h2>
     <%= render "tenants/new_tenant_form", cancel: true, class: "mt-3" %>
   </dialog>

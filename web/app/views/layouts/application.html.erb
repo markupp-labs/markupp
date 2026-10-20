@@ -59,7 +59,7 @@
 
     <% if current_tenant %>
       <dialog data-search-target="dialog" aria-label="<%= t(".search_notes") %>"
-              class="layer mx-auto mt-[15vh] w-[min(36rem,calc(100vw-2rem))] rounded-md border border-line bg-surface text-ink backdrop:bg-surface-sunken/70">
+              class="layer mx-auto mt-[15vh] w-[min(36rem,calc(100vw-2rem))] layer-panel">
         <%= form_with url: search_path, method: :get, class: "relative", data: { turbo_frame: "search_results", search_target: "form" } do |form| %>
           <%= form.search_field :q, placeholder: t(".search_placeholder"), autocomplete: "off", role: "combobox",
                                 aria: { label: t(".search_notes"), controls: "search_options", expanded: true },

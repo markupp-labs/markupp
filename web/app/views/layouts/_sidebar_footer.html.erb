@@ -20,7 +20,7 @@
       fora e descreve o menu (aria-describedby). %>
   <div id="account_menu" popover="manual" data-controller="context-menu"
        data-action="keydown->context-menu#navigate toggle->context-menu#returnFocus toggle->context-menu#focusFirst pointerdown@document->context-menu#closeOutside"
-       class="layer m-0 mb-1 ml-2 w-64 origin-bottom-left rounded-md border border-line bg-surface-sunken p-1 text-[13px] text-ink [inset:auto] [position-anchor:--account-menu] [position-area:top_span-right]">
+       class="layer m-0 mb-1 ml-2 w-64 origin-bottom-left layer-panel p-1 text-[13px] [inset:auto] [position-anchor:--account-menu] [position-area:top_span-right]">
     <p id="account_menu_signed_in" class="border-b border-line px-2 pb-1.5 pt-1 text-ink-muted">
       <%= t(".signed_in_as") %><br><span class="break-all text-ink"><%= credential.account_email %></span>
     </p>
