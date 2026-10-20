@@ -47,7 +47,7 @@ func carregar(t *testing.T, env fakeEnv) config.Config {
 }
 
 func TestLoad_LeOUpstreamEOArquivoDoSegredoDoMCP(t *testing.T) {
-	cfg := carregar(t, fakeEnv{
+	cfg := carregar(t, fakeEnv{ // #nosec G101 -- caminho fictício de teste, nao o segredo
 		"MARKUPP_DATABASE_URL":     urlDeTeste,
 		"MARKUPP_MCP_UPSTREAM_URL": "http://mcp:3000/",
 		"MARKUPP_MCP_SECRET_PATH":  "/run/markupp-mcp/secret",
@@ -77,7 +77,7 @@ func TestWithInstanceSecrets_SemVariaveis_GeraOSegredoDoJWTEODoMCP(t *testing.T)
 
 	require.NoError(t, err)
 	assert.Equal(t, "segredo-gerado-com-mais-de-32-bytes!", resolved.AuthSecret)
-	assert.Equal(t, []config.OAuthResource{{URL: "http://localhost:8080/mcp", Secret: "segredo-gerado-com-mais-de-32-bytes!"}}, resolved.OAuthResources)
+	assert.Equal(t, []config.OAuthResource{{URL: "http://localhost:8080/mcp", Secret: "segredo-gerado-com-mais-de-32-bytes!"}}, resolved.OAuthResources) // #nosec G101 -- valor fictício de teste
 	assert.ElementsMatch(t, []string{"auth_secret", "mcp_resource_secret"}, secrets.generated)
 }
 
@@ -126,7 +126,7 @@ func TestWriteMCPSecret_GravaSoOSegredoESubstituiOAnterior(t *testing.T) {
 	require.NoError(t, config.WriteMCPSecret(path, "primeiro"))
 	require.NoError(t, config.WriteMCPSecret(path, "segundo"))
 
-	content, err := os.ReadFile(path)
+	content, err := os.ReadFile(path) // #nosec G304 -- arquivo do t.TempDir do proprio teste
 	require.NoError(t, err)
 	assert.Equal(t, "segundo", string(content))
 	entries, err := os.ReadDir(filepath.Dir(path))

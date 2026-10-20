@@ -37,14 +37,14 @@ func configSoComOBanco(t *testing.T, extra map[string]string) config.Config {
 
 func TestPrepareInstance_EscreveOSegredoDoMCPDaMesmaOrigem(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "secret")
-	secrets := fakeInstanceSecrets{"mcp_resource_secret": "segredo-do-mcp-com-mais-de-32-bytes"}
+	secrets := fakeInstanceSecrets{"mcp_resource_secret": "segredo-do-mcp-com-mais-de-32-bytes"} // #nosec G101 -- valor fictício de teste
 	cfg := configSoComOBanco(t, map[string]string{"MARKUPP_MCP_SECRET_PATH": path})
 
 	prepared, err := prepareInstance(context.Background(), cfg, secrets)
 
 	require.NoError(t, err)
 	assert.NotEmpty(t, prepared.AuthSecret)
-	content, err := os.ReadFile(path)
+	content, err := os.ReadFile(path) // #nosec G304 -- arquivo do t.TempDir do proprio teste
 	require.NoError(t, err)
 	assert.Equal(t, "segredo-do-mcp-com-mais-de-32-bytes", string(content))
 }

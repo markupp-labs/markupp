@@ -11,7 +11,7 @@ import (
 
 const (
 	authSecretName        = "auth_secret"
-	mcpResourceSecretName = "mcp_resource_secret"
+	mcpResourceSecretName = "mcp_resource_secret" // #nosec G101 -- nome da linha no banco, nao o segredo
 	mcpUpstreamExpected   = "http(s)://host[:porta] do servidor MCP, sem caminho, query nem fragmento"
 )
 
@@ -88,6 +88,7 @@ func (c Config) WithInstanceSecrets(ctx context.Context, secrets InstanceSecrets
 // segredo.
 func WriteMCPSecret(path, secret string) error {
 	dir := filepath.Dir(path)
+	// #nosec G301 -- o servidor MCP roda com outro usuario e precisa atravessar o diretorio
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return fmt.Errorf("criar o diretorio %s do segredo do MCP: %w", dir, err)
 	}
