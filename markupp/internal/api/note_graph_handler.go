@@ -43,10 +43,8 @@ func mountNoteGraphRoutes(r chi.Router, graph NoteGraph) {
 // que read lê da query string, sempre como array JSON; consulta inválida é 400.
 func serveList[Q, T any](read func(*queryReader) Q, list func(ctx context.Context, id string, q Q) ([]T, error)) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		qr := queryReader{values: r.URL.Query()}
-		q := read(&qr)
-		if qr.err != nil {
-			writeDomainError(w, qr.err)
+		q, ok := readQuery(w, r, read)
+		if !ok {
 			return
 		}
 		page, err := list(r.Context(), chi.URLParam(r, "id"), q)
