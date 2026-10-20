@@ -35,4 +35,5 @@ comunidades
 - O palpite errado também entra nas medidas, e a taxa de erro não é medida
 - A ligação não resolvida continua listada como foi escrita, e o cliente vê o palpite marcado
 - Título de candidata em mais de max(5% das notas do cofre, 5) notas é palavra comum e
-  fica sem prior (Mihalcea e Csomai, 2007), com o df do segundo estágio anterior
+  fica sem prior (Mihalcea e Csomai, 2007), com o df que o mesmo segundo estágio grava antes
+  de inferir
