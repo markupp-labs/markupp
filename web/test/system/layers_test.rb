@@ -2,7 +2,8 @@ require "application_system_test_case"
 
 # Camadas como as layers do Hyprland: menus e diálogos no surface (mais claro que a barra lateral, surface-sunken), com
 # a borda line e uma sombra tingida da paleta (nunca o preto puro); atrás dos diálogos modais o fundo escurece de
-# verdade (--scrim, o mesmo da gaveta do celular). O texto de cada camada passa do AA nos dois temas.
+# verdade (--modal-scrim: o ink do lotus a 35% no claro, o --scrim da gaveta do celular no escuro). O texto de cada
+# camada passa do AA nos dois temas.
 class LayersTest < ApplicationSystemTestCase
   include ContrastAssertions
 
@@ -29,6 +30,7 @@ class LayersTest < ApplicationSystemTestCase
 
   test "menus and dialogs float on the surface with a tinted shadow, over a darkened backdrop, readable in both themes" do
     %w[Light Dark].each do |theme|
+      @theme = theme
       choose_theme theme
       visit note_path("1")
       assert_field "Path", with: "/plan"
@@ -38,6 +40,7 @@ class LayersTest < ApplicationSystemTestCase
       assert_layer("dialog#command_palette", modal: true) { send_keys [ :control, :shift, "p" ] }
       assert_layer("dialog[data-search-target=dialog]", modal: true) { send_keys [ :control, "k" ] }
       assert_layer("dialog#shortcut_help", modal: true) { open_help }
+      assert_layer("dialog#confirm_dialog", modal: true) { click_on "Delete" }
       visit new_tenant_path
       assert_layer("dialog#new_tenant", modal: true)
     end
@@ -84,6 +87,9 @@ class LayersTest < ApplicationSystemTestCase
       assert_equal token_color("--line"), border, "#{layer[:id]} should have the line border"
       assert_match(/rgba\(/, shadow, "#{layer[:id]} should have a soft shadow")
       assert_no_match(/rgba?\(0, 0, 0[,)]/, shadow, "#{layer[:id]} shadow should be tinted, not pure black")
-      assert_equal token_color("--scrim"), backdrop, "#{layer[:id]} should darken what is behind it" if modal
+      assert_equal modal_scrim, backdrop, "#{layer[:id]} should darken what is behind it" if modal
     end
+
+    # O ink do lotus a 35% no claro; no escuro, o mesmo fundo da gaveta do celular.
+    def modal_scrim = @theme == "Light" ? "rgba(84, 84, 100, 0.35)" : token_color("--scrim")
 end
