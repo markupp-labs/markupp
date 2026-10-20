@@ -24,6 +24,9 @@ A API é orientada a recursos, com interface uniforme:
   (?orphan=true, ?sort=pagerank&direction=desc), com os valores derivados como campos do recurso
 - Busca é recurso próprio em /search, porque a representação do resultado (relevância e trecho)
   difere da representação do item
+- O grafo para desenhar é representação própria do cofre (/vaults/{id}/graph) e da nota
+  (/notes/{id}/graph): nós e ligações como pares de índices nos nós, sem paginação, recortado
+  por parâmetros, comprimido quando o cliente aceita e validado pela versão do grafo do cofre
 - Os nomes das rotas são os termos do glossário do domínio (CONTEXT.md)
 - A superfície nova nasce sob /v1, e as rotas sem prefixo seguem servidas e marcadas obsoletas
   durante a transição do ADR-0026

@@ -34,6 +34,9 @@ durante o segundo estágio; a marcação dele aumenta a revisão, o segundo est�
 a revisão que leu, e o próximo Job recalcula. Recalcular sem mudança grava o mesmo, a menos
 da tolerância de convergência do PageRank
 
+A revisão lida vira a versão do grafo do cofre, gravada na mesma transação do que o segundo
+estágio calcula. As leituras do grafo para desenhar usam essa versão como validador de cache
+
 Quando o lote passa de 50 notas mais 10% das notas do cofre, o Job roda ANALYZE das tabelas
 derivadas que o lote grava antes do segundo estágio. É o limiar padrão do autovacuum: o
 segundo estágio roda logo depois do commit, antes de o autovacuum acordar, e sem a
@@ -64,5 +67,7 @@ limiar
 - Lote e segundo estágio do mesmo cofre podem rodar ao mesmo tempo em Jobs diferentes, e a
   edição não espera o cálculo do cofre inteiro. A repesagem das postagens vem por último e
   pula a nota que um lote concorrente está regravando, que fica com o df anterior
+- A versão do grafo só muda no segundo estágio: entre o commit de um lote que muda ligações
+  e o segundo estágio seguinte, o cliente que revalida recebe 304 com o grafo anterior
 - Quem precisar de mais dado do cofre inteiro acrescenta um passo ao segundo estágio, sem
   novo disparo
