@@ -11,4 +11,9 @@ export class FakeClock {
   }
 
   readonly now = (): number => this.nowMs;
+
+  // sleep troca a espera real: anda o relógio e volta na hora.
+  readonly sleep = async (ms: number): Promise<void> => {
+    this.advance(ms);
+  };
 }
