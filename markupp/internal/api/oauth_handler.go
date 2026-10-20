@@ -194,13 +194,11 @@ func codeGrantFrom(form url.Values) oauth.CodeGrant {
 }
 
 // revoke atende a revogação (RFC 7009): token desconhecido também responde 200, sem
-// corpo, para não revelar quais tokens existem; token_type_hint é ignorado.
+// corpo, para não revelar quais tokens existem; token_type_hint é ignorado. O serviço
+// recusa token ou client_id ausente.
 func (h *oauthHandler) revoke(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-store")
 	form, protoErr := readOAuthForm(w, r)
-	if protoErr == nil && form.Get("token") == "" {
-		protoErr = invalidRequest(`parametro "token" obrigatorio, esperado o access ou refresh token a revogar`)
-	}
 	if protoErr != nil {
 		writeOAuthError(w, protoErr)
 		return

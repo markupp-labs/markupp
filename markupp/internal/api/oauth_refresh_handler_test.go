@@ -98,14 +98,16 @@ func TestRevoke_Sucesso_Retorna200SemCorpoESemCache(t *testing.T) {
 	assert.Equal(t, "*", rec.Header().Get("Access-Control-Allow-Origin"))
 }
 
-func TestRevoke_SemToken_Retorna400InvalidRequestSemChamarServico(t *testing.T) {
-	svc := &fakeOAuthService{}
+// TestRevoke_SemToken_DeixaAConferenciaParaOServico cobre o token ausente, que o serviço
+// recusa com invalid_request.
+func TestRevoke_SemToken_DeixaAConferenciaParaOServico(t *testing.T) {
+	svc := &fakeOAuthService{err: &oauth.ProtocolError{Code: "invalid_request", Description: "token ausente"}}
 
 	rec := revokeRequest(svc, url.Values{"client_id": {"c1"}})
 
+	assert.Equal(t, oauth.RevokeRequest{ClientID: "c1"}, svc.gotRevoke)
 	assert.Equal(t, http.StatusBadRequest, rec.Code)
 	assert.Contains(t, rec.Body.String(), `"error":"invalid_request"`)
-	assert.Empty(t, svc.gotRevoke.ClientID)
 }
 
 func TestRevoke_ParametroRepetido_Retorna400InvalidRequest(t *testing.T) {
