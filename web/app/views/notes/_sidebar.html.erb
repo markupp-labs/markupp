@@ -9,11 +9,13 @@
                       note_tree_new_note_url_value: (new_note_path(folder: current&.folder.presence) if writer),
                       note_tree_copied_value: t(".copied"), note_tree_copy_failed_value: t("notes.form.copy_failed"),
                       note_tree_confirm_delete_value: t("notes.form.confirm_delete", path: "%{path}"),
-                      action: "keydown@window->note-tree#newNote contextmenu@window->note-tree#openRootMenu" } do %>
+                      action: "keydown@window->note-tree#newNote contextmenu@window->note-tree#openRootMenu turbo:frame-load->note-tree#roveToCurrent" } do %>
     <% if tree.folders.empty? && tree.notes.empty? %>
       <p class="px-2 py-1 text-ink-muted"><%= t(".empty") %></p>
     <% else %>
-      <%= render "notes/explorer_list", tree:, current: %>
+      <% mode = current_explorer_mode %>
+      <%= render "notes/explorer_mode_picker", mode:, current: %>
+      <%= render "notes/explorer_list", tree:, current:, mode: %>
     <% end %>
     <%= render "notes/tree_menu", writer: %>
     <p role="status" data-note-tree-target="status" class="truncate px-2 text-xs text-ink-muted"></p>

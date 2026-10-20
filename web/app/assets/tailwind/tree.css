@@ -99,3 +99,77 @@
     @apply rounded-sm bg-accent-soft px-px text-ink underline decoration-accent underline-offset-2;
   }
 }
+
+/* Matizes das comunidades (ExplorerHelper#community_hue, id da comunidade módulo 8): as cores de sintaxe do Kanagawa,
+   já com contraste sobre o fundo nos dois temas. O grafo pinta as comunidades com as mesmas. */
+:root {
+  --community-0: var(--code-function);
+  --community-1: var(--code-string);
+  --community-2: var(--code-constant);
+  --community-3: var(--code-keyword);
+  --community-4: var(--code-type);
+  --community-5: var(--code-number);
+  --community-6: var(--code-identifier);
+  --community-7: var(--code-builtin);
+}
+
+/* Visões planas do Explorer (notes/_explorer_groups): a linha da árvore sem as guias, título, pasta apagada e o número
+   à direita; por comunidade, a marca quadrada e a borda na cor dela, como um bloco de código com a margem pintada. */
+@layer components {
+  .note-tree .explorer-row {
+    @apply gap-2;
+  }
+
+  .community + .community {
+    @apply mt-1;
+  }
+
+  .community-heading {
+    @apply flex items-center gap-2 px-2 pt-1 text-xs leading-5 text-ink-muted;
+  }
+
+  .community-swatch {
+    @apply size-2 shrink-0;
+    background: var(--community, var(--ink-muted));
+  }
+
+  .community-notes {
+    margin-left: calc(0.5rem + 3px);
+    border-left: 2px solid var(--community, var(--line));
+  }
+
+  /* Seletor da visão: o select nativo com a cara de uma linha da árvore. Onde há o select personalizável
+     (appearance: base-select), a lista abre como as camadas do painel, com o > do prompt na opção escolhida. */
+  .explorer-mode-select {
+    @apply min-w-0 cursor-pointer rounded-md border border-line bg-transparent px-2 py-0.5 text-[13px] text-ink hover:bg-accent-soft;
+  }
+
+  @supports (appearance: base-select) {
+    .explorer-mode-select,
+    .explorer-mode-select::picker(select) {
+      appearance: base-select;
+    }
+
+    .explorer-mode-select::picker-icon {
+      content: "▾" / "";
+      @apply text-ink-muted;
+    }
+
+    .explorer-mode-select::picker(select) {
+      @apply mt-1 rounded-md border border-line bg-surface p-1 text-ink;
+      box-shadow: 0 12px 32px -8px var(--shadow), 0 2px 8px -2px var(--shadow);
+    }
+
+    .explorer-mode-select option {
+      @apply rounded-md px-2 py-0.5 text-[13px] hover:bg-accent-soft focus-visible:bg-accent-soft focus-visible:outline-none;
+    }
+
+    .explorer-mode-select option:checked {
+      @apply text-accent;
+    }
+
+    .explorer-mode-select option::checkmark {
+      content: ">" / "";
+    }
+  }
+}

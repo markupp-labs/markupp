@@ -1,9 +1,24 @@
-<%# Conteúdo do Explorer, num frame que a troca de visão recarrega sozinho (explorers/show). Ctrl+Shift+E (Cmd+Shift+E)
-    traz o foco para cá de qualquer lugar, como o explorador do VS Code (sidebar_controller.js). Botão direito, Shift+F10
-    ou a tecla Menu numa linha abrem o menu de contexto dela. %>
+<%# Conteúdo do Explorer, num frame que a troca de visão recarrega sozinho (explorers/show): a árvore de pastas ou uma
+    lista plana do cofre (ExplorerListing), com o mesmo treeview e o mesmo menu. Ctrl+Shift+E (Cmd+Shift+E) traz o foco
+    para cá de qualquer lugar, como o explorador do VS Code (sidebar_controller.js). Botão direito, Shift+F10 ou a tecla
+    Menu numa linha abrem o menu de contexto dela. %>
+<% folders = mode == "folders" %>
+<% groups = explorer_groups(tree, current, mode) unless folders %>
 <%= turbo_frame_tag "explorer_list" do %>
-  <ul role="tree" aria-label="<%= t("notes.sidebar.tree") %>" aria-keyshortcuts="Control+Shift+E Meta+Shift+E" class="note-tree"
-      data-action="keydown->note-tree#navigate keydown->note-tree#rowShortcut focusin->note-tree#roveToFocused contextmenu->note-tree#openMenuAtPointer">
-    <%= render "notes/folder", folder: tree, path: "", guide: "", current:, open_folders: current&.folder_names || [] %>
-  </ul>
+  <% if groups.nil? && !folders %>
+    <%= render "layouts/empty_state", title: t("notes.unreachable.title"), hint: t("notes.unreachable.hint"), tone: "danger" %>
+  <% elsif !folders && groups.all? { it.notes.empty? } %>
+    <%= render "layouts/empty_state", title: t("explorer.empty.#{mode}.title", default: :"explorer.empty.ranked.title"),
+                                      hint: t("explorer.empty.#{mode}.hint", default: :"explorer.empty.ranked.hint") %>
+  <% else %>
+    <ul role="tree" aria-label="<%= t("notes.sidebar.tree") %>" aria-keyshortcuts="Control+Shift+E Meta+Shift+E"
+        class="note-tree" data-explorer-mode="<%= mode %>"
+        data-action="keydown->note-tree#navigate keydown->note-tree#rowShortcut focusin->note-tree#roveToFocused contextmenu->note-tree#openMenuAtPointer">
+      <% if folders %>
+        <%= render "notes/folder", folder: tree, path: "", guide: "", current:, open_folders: current&.folder_names || [] %>
+      <% else %>
+        <%= render "notes/explorer_groups", groups:, current:, mode: %>
+      <% end %>
+    </ul>
+  <% end %>
 <% end %>

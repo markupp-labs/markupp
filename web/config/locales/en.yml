@@ -99,6 +99,7 @@ en:
       focus_tree: "Focus the note tree"
       focus_links: "Links view"
       focus_graph: "Graph view"
+      explorer_mode: "Explorer view"
       focus_region_left: "Focus region left"
       focus_region_below: "Focus region below"
       focus_region_above: "Focus region above"
@@ -448,6 +449,30 @@ en:
       other:
         title: "Request failed"
         hint: "Go back and try again."
+  explorer:
+    mode_label: "Explorer view"
+    now: "now"
+    modes:
+      folders: "Folders"
+      central: "Most central"
+      linked: "Most linked"
+      recent: "Recently updated"
+      orphans: "Orphans"
+      communities: "By community"
+    community:
+      one: "Community around %{hub}, 1 note"
+      other: "Community around %{hub}, %{count} notes"
+    no_community:
+      one: "No community, 1 note"
+      other: "No community, %{count} notes"
+    no_community_heading: "No community"
+    empty:
+      ranked:
+        title: "Nothing ranked yet"
+        hint: "Links between notes are worked out a moment after saving."
+      orphans:
+        title: "No orphan notes"
+        hint: "Every note links to another or is linked from one."
   searches:
     show:
       empty: "No matches for \"%{query}\""

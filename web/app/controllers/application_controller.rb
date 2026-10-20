@@ -9,7 +9,7 @@ class ApplicationController < ActionController::Base
   class_attribute :markupp_api_factory
 
   before_action :require_login
-  helper_method :credential, :current_tenant, :current_tenants
+  helper_method :credential, :current_tenant, :current_tenants, :explorer_groups
 
   # O Rails procura do último para o primeiro: os específicos vêm depois do genérico.
   rescue_from MarkuppApi::Error, with: :render_unreachable
@@ -83,6 +83,19 @@ class ApplicationController < ActionController::Base
 
     # Árvore da barra lateral, das notas do tenant ativo: as páginas de notas e as configurações desenham a mesma.
     def load_note_tree = Note::Tree.build(Note.all(credential.api))
+
+    # Notas de uma visão plana do Explorer, no cofre da nota aberta ou, sem ela, no da primeira nota da árvore. nil quando
+    # a API não responde ou recusa o cofre: a barra mostra a falha no lugar da lista e a página segue.
+    # ponytail: o cofre ativo é o da nota; seletor de cofre quando um tenant tiver mais de um.
+    def explorer_groups(tree, current, mode)
+      vault_id = (current || tree.notes_within.first)&.vault_id
+      vault_id ? ExplorerListing.load(credential.api, vault_id, mode) : []
+    rescue MarkuppApi::Error => error
+      raise unless error.instance_of?(MarkuppApi::Error) || error.is_a?(MarkuppApi::VaultUnavailable)
+
+      log_api_event("markupp_explorer_unreachable", error, level: :error, mode:)
+      nil
+    end
 
     # O tenant some entre a lista e a chamada de notas (vínculo removido no meio): esquece e manda escolher outro.
     def forget_tenant(error)

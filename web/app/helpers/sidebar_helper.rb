@@ -43,6 +43,9 @@ module SidebarHelper
   # "Ctrl+Shift+E" vira "Control+Shift+E Meta+Shift+E", a tecla do Linux e do Windows e a do Mac.
   def aria_keyshortcuts(keys) = %w[Control Meta].map { keys.sub("Ctrl", it) }.join(" ")
 
+  # Visão do Explorer escolhida (cookie explorer_mode, gravado pelo ExplorersController); sem uma conhecida, as pastas.
+  def current_explorer_mode = ExplorerListing.mode(cookies[:explorer_mode])
+
   def sidebar_closed?
     cookies[:sidebar] == "closed"
   end
