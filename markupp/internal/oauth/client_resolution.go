@@ -77,13 +77,16 @@ func (s *Service) fetchCIMDClient(ctx context.Context, clientID string, now time
 	return s.saveCIMDClient(ctx, clientID, metadata, now)
 }
 
-// fetchMetadata busca o documento e lembra por CIMDFailureTTL a falha que passou pela
-// rede. A busca não herda o cancelamento do pedido, só o timeout do próprio fetcher:
+// fetchMetadata busca o documento pelo cimdFetchGate e lembra por CIMDFailureTTL a falha
+// que passou pela rede: nem o client_id recusado antes da busca nem a falta de vaga
+// entram no cache negativo. A busca não herda o cancelamento do pedido, só o timeout do próprio fetcher:
 // senão quem derruba a conexão faria a busca de um cliente legítimo falhar e cair no
 // cache negativo.
 func (s *Service) fetchMetadata(ctx context.Context, clientID string, now time.Time) (ClientMetadata, error) {
-	metadata, err := s.metadata.FetchClientMetadata(context.WithoutCancel(ctx), clientID)
-	if err != nil && !errors.Is(err, ErrInvalidMetadataClientID) {
+	metadata, err := s.fetches.fetch(clientID, func() (ClientMetadata, error) {
+		return s.metadata.FetchClientMetadata(context.WithoutCancel(ctx), clientID)
+	})
+	if err != nil && !errors.Is(err, ErrInvalidMetadataClientID) && !errors.Is(err, errCIMDFetchBusy) {
 		s.failures.remember(clientID, now.Add(s.cfg.CIMDFailureTTL), now)
 	}
 	return metadata, err

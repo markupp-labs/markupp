@@ -47,6 +47,7 @@ type Service struct {
 	scoped   ScopedTokenIssuer
 	metadata ClientMetadataFetcher
 	failures *cimdFailureMemory
+	fetches  *cimdFetchGate
 	clock    func() time.Time
 	newID    func() string
 	newToken func() string
@@ -57,7 +58,8 @@ type Service struct {
 // tokens opacos, que só chegam ao repositório pelo hash.
 func NewService(repo Repository, cfg ServiceConfig, scoped ScopedTokenIssuer, metadata ClientMetadataFetcher, clock func() time.Time, newID func() string, newToken func() string) *Service {
 	return &Service{
-		repo: repo, cfg: cfg, scoped: scoped, metadata: metadata, failures: newCIMDFailureMemory(),
+		repo: repo, cfg: cfg, scoped: scoped, metadata: metadata,
+		failures: newCIMDFailureMemory(), fetches: newCIMDFetchGate(),
 		clock: clock, newID: newID, newToken: newToken,
 	}
 }
