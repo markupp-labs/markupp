@@ -19,13 +19,22 @@ import (
 
 const prazoDosPendentes = 24 * time.Hour
 
-// repoDCR sobe o banco do repoOAuth com o cliente c1 já autorizado (e revogado), para
-// ele não contar como pendente.
+// repoDCR sobe o banco do repoOAuth com o cliente c1 com Autorização ativa, para ele
+// não contar como pendente.
 func repoDCR(t *testing.T) (*storage.PostgresOAuthRepository, *pgxpool.Pool) {
 	t.Helper()
 	repo, pool := repoOAuth(t)
-	require.NoError(t, autorizar(pool, "a1", "{notas:leitura}", true))
+	require.NoError(t, autorizar(pool, "a1", "{notas:leitura}", false))
 	return repo, pool
+}
+
+// autorizarCliente grava a Autorização id de u1 para o cliente, revogada em revogadaEm
+// ou ativa quando revogadaEm é nil.
+func autorizarCliente(t *testing.T, pool *pgxpool.Pool, id, clientID string, revogadaEm *time.Time) {
+	t.Helper()
+	_, err := pool.Exec(context.Background(), `INSERT INTO oauth_authorizations (id, user_id, client_id, scopes, revoked_at)
+		VALUES ($1, 'u1', $2, '{notas:leitura}', $3)`, id, clientID, revogadaEm)
+	require.NoError(t, err)
 }
 
 func registroDCR(id string, emitidoEm time.Time, teto int) oauth.DCRRegistration {
@@ -58,19 +67,25 @@ func TestPostgresOAuthRepo_RegisterDCRClient_GravaClienteDCR(t *testing.T) {
 		AND source = 'dcr' AND metadata_expires_at IS NULL AND created_at = '2026-10-16T12:00:00Z'`))
 }
 
-// clientesEmVoltaDoLimite grava, para instanteOAuth, o pendente vencido dcr-vencido, o
-// pendente ainda no prazo dcr-quase e os antigos que não são pendentes, dcr-autorizado
-// (com Autorização revogada) e cimd-antigo.
+// clientesEmVoltaDoLimite grava, para instanteOAuth, os pendentes vencidos dcr-vencido
+// (criado no limite) e dcr-revogado-vencido (antigo, com a última Autorização revogada no
+// limite), os pendentes ainda no prazo dcr-quase (criado depois do limite) e
+// dcr-revogado-quase (antigo, com a última revogação depois do limite) e os antigos que
+// não são pendentes, dcr-autorizado (com Autorização ativa) e cimd-antigo.
 func clientesEmVoltaDoLimite(t *testing.T, pool *pgxpool.Pool) {
 	t.Helper()
 	limite := instanteOAuth.Add(-prazoDosPendentes)
+	antes, depois := limite.Add(-time.Hour), limite.Add(time.Second)
 	clienteAntigo(t, pool, "dcr-vencido", "dcr", limite)
-	clienteAntigo(t, pool, "dcr-quase", "dcr", limite.Add(time.Second))
-	clienteAntigo(t, pool, "dcr-autorizado", "dcr", limite.Add(-time.Hour))
-	clienteAntigo(t, pool, "cimd-antigo", "cimd", limite.Add(-time.Hour))
-	_, err := pool.Exec(context.Background(), `INSERT INTO oauth_authorizations (id, user_id, client_id, scopes, revoked_at)
-		VALUES ('a-antiga', 'u1', 'dcr-autorizado', '{notas:leitura}', now())`)
-	require.NoError(t, err)
+	clienteAntigo(t, pool, "dcr-quase", "dcr", depois)
+	clienteAntigo(t, pool, "dcr-autorizado", "dcr", antes)
+	clienteAntigo(t, pool, "dcr-revogado-vencido", "dcr", antes)
+	clienteAntigo(t, pool, "dcr-revogado-quase", "dcr", antes)
+	clienteAntigo(t, pool, "cimd-antigo", "cimd", antes)
+	autorizarCliente(t, pool, "a-ativa", "dcr-autorizado", nil)
+	autorizarCliente(t, pool, "a-revogada-no-limite", "dcr-revogado-vencido", &limite)
+	autorizarCliente(t, pool, "a-revogada-antes", "dcr-revogado-quase", &antes)
+	autorizarCliente(t, pool, "a-revogada-depois", "dcr-revogado-quase", &depois)
 }
 
 func TestPostgresOAuthRepo_RegisterDCRClient_ApagaSoOsPendentesVencidos(t *testing.T) {
@@ -79,10 +94,36 @@ func TestPostgresOAuthRepo_RegisterDCRClient_ApagaSoOsPendentesVencidos(t *testi
 
 	require.NoError(t, repo.RegisterDCRClient(context.Background(), registroDCR("dcr-novo", instanteOAuth, 10)))
 
-	assert.Zero(t, clientesComID(t, pool, "dcr-vencido"), "pendente com o prazo cumprido sai")
-	for _, id := range []string{"dcr-quase", "dcr-autorizado", "cimd-antigo", "c1", "dcr-novo"} {
+	for _, id := range []string{"dcr-vencido", "dcr-revogado-vencido"} {
+		assert.Zero(t, clientesComID(t, pool, id), "pendente com o prazo cumprido sai: %s", id)
+	}
+	assert.Zero(t, countRows(t, pool, "SELECT count(*) FROM oauth_authorizations WHERE client_id = 'dcr-revogado-vencido'"),
+		"as Autorizações revogadas do pendente saem junto")
+	for _, id := range []string{"dcr-quase", "dcr-autorizado", "dcr-revogado-quase", "cimd-antigo", "c1", "dcr-novo"} {
 		assert.Equal(t, 1, clientesComID(t, pool, id), id)
 	}
+}
+
+// TestPostgresOAuthRepo_RegisterDCRClient_TudoRevogadoVoltaAoTetoEExpira prova que o
+// cliente com todas as Autorizações revogadas volta a ocupar vaga do teto, com o prazo
+// contado da revogação, e sai depois dele levando a Autorização, mas não a auditoria.
+func TestPostgresOAuthRepo_RegisterDCRClient_TudoRevogadoVoltaAoTetoEExpira(t *testing.T) {
+	repo, pool := repoDCR(t)
+	ctx := context.Background()
+	require.NoError(t, repo.RegisterDCRClient(ctx, registroDCR("dcr-1", instanteOAuth, 1)))
+	autorizarCliente(t, pool, "a-dcr", "dcr-1", nil)
+	revogacao := oauth.AuditEvent{Action: oauth.AuditActionRevoke, Result: oauth.AuditResultSuccess, UserID: "u1", ClientID: "dcr-1", OccurredAt: instanteOAuth.Add(time.Hour)}
+	require.NoError(t, repo.RevokeAuthorization(ctx, "u1", "a-dcr", revogacao))
+
+	err := repo.RegisterDCRClient(ctx, registroDCR("dcr-2", instanteOAuth.Add(2*time.Hour), 1))
+
+	var teto *oauth.PendingClientLimitError
+	require.ErrorAs(t, err, &teto)
+	assert.True(t, revogacao.OccurredAt.Add(prazoDosPendentes).Equal(teto.FreesAt), teto.FreesAt)
+	require.NoError(t, repo.RegisterDCRClient(ctx, registroDCR("dcr-2", teto.FreesAt, 1)))
+	assert.Zero(t, clientesComID(t, pool, "dcr-1"))
+	assert.Zero(t, countRows(t, pool, "SELECT count(*) FROM oauth_authorizations WHERE id = 'a-dcr'"))
+	assert.Equal(t, 1, countRows(t, pool, "SELECT count(*) FROM audit_events WHERE target = 'dcr-1'"), "a auditoria fica")
 }
 
 func TestPostgresOAuthRepo_RegisterDCRClient_TetoAtingido_RecusaSemGravar(t *testing.T) {

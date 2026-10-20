@@ -15,10 +15,11 @@ func TestPostgresOAuthRepo_GetClient_PendenteVencidoContaComoInexistente(t *test
 	clientesEmVoltaDoLimite(t, pool)
 	limite := instanteOAuth.Add(-prazoDosPendentes)
 
-	_, err := repo.GetClient(context.Background(), "dcr-vencido", limite)
-
-	require.ErrorIs(t, err, oauth.ErrClientNotFound)
-	for _, id := range []string{"dcr-quase", "dcr-autorizado", "cimd-antigo"} {
+	for _, id := range []string{"dcr-vencido", "dcr-revogado-vencido"} {
+		_, err := repo.GetClient(context.Background(), id, limite)
+		require.ErrorIs(t, err, oauth.ErrClientNotFound, id)
+	}
+	for _, id := range []string{"dcr-quase", "dcr-autorizado", "dcr-revogado-quase", "cimd-antigo"} {
 		_, err := repo.GetClient(context.Background(), id, limite)
 		assert.NoError(t, err, id)
 	}
