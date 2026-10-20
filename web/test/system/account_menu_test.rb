@@ -24,7 +24,7 @@ class AccountMenuTest < ApplicationSystemTestCase
   test "the email opens the menu with the focus on log out and esc gives the focus back" do
     click_on EMAIL
 
-    assert_selector "#account_menu[role=menu]:popover-open"
+    assert_selector "#account_menu:popover-open [role=menu]"
     assert_selector "[role=menuitem]:focus", text: "Log out"
     send_keys :escape
 
