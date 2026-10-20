@@ -33,6 +33,9 @@ en:
   busy_spinner:
     label: "Loading"
   layouts:
+    area_back:
+      label: "Back"
+      title: "Back (Esc)"
     application:
       notes: "Notes"
       light_theme: "Light theme"
@@ -256,8 +259,6 @@ en:
   settings:
     nav:
       title: "Settings"
-      back: "Back"
-      back_title: "Back (Esc)"
       close: "Close settings"
       accounts: "Account"
       appearances: "Appearance"
