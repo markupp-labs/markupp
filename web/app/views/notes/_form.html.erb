@@ -63,7 +63,7 @@
     <% end %>
     <% if writer && @note.persisted? %>
       <%# Fora do form de salvar (form não aninha): o botão aponta para o form de excluir pelo atributo form. %>
-      <%= tag.button form: "delete_note", title: t(".delete"), data: { turbo_confirm: t(".confirm_delete") }, class: "btn btn-danger max-md:px-1.5" do %>
+      <%= tag.button form: "delete_note", title: t(".delete"), data: { turbo_confirm: t(".confirm_delete", path: @note.location) }, class: "btn btn-danger max-md:px-1.5" do %>
         <%= icon("trash") %><span class="max-md:sr-only"><%= t(".delete") %></span>
       <% end %>
     <% end %>

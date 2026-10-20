@@ -344,7 +344,7 @@ en:
       reload: "Reload and discard my changes"
       overwrite: "Overwrite"
       delete: "Delete"
-      confirm_delete: "Delete this note? This cannot be undone."
+      confirm_delete: "Delete %{path}? This cannot be undone."
       read_only: "Read only: your role here is viewer."
       mode: "Note view"
       modes:

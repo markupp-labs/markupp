@@ -8,6 +8,7 @@
   <%= tag.div data: { controller: "note-tree", note_tree_context_menu_outlet: "#tree_menu",
                       note_tree_new_note_url_value: (new_note_path(folder: current&.folder.presence) if writer),
                       note_tree_copied_value: t(".copied"), note_tree_copy_failed_value: t("notes.form.copy_failed"),
+                      note_tree_confirm_delete_value: t("notes.form.confirm_delete", path: "%{path}"),
                       action: "keydown@window->note-tree#newNote contextmenu@window->note-tree#openRootMenu" } do %>
     <% if tree.folders.empty? && tree.notes.empty? %>
       <p class="px-2 py-1 text-ink-muted"><%= t(".empty") %></p>

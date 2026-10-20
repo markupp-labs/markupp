@@ -7,14 +7,14 @@
   <% if writer %>
     <%= tree_menu_item(:new_here, shortcut: :new_note) %>
     <%= tree_menu_item(:rename, note_only: true) %>
-    <%# Apagar pede confirmação antes (data-turbo-confirm do form), com o mesmo texto do Delete da nota. %>
+    <%# Apagar pede confirmação antes (data-turbo-confirm do form, com o caminho da linha), com o texto do Delete da nota. %>
     <%= tree_menu_item(:delete, note_only: true, danger: true, type: "submit", form: "tree_delete_note") %>
   <% end %>
   <%= tree_menu_item(:copy_path) %>
   <%= tree_menu_item(:copy_wikilink, note_only: true) %>
 </div>
 <% if writer %>
-  <%# O destino é a nota da linha, que o note_tree_controller.js põe no action antes de enviar. %>
+  <%# O destino e a pergunta são da nota da linha: o note_tree_controller.js põe o action e o data-turbo-confirm antes de enviar. %>
   <%= form_with url: notes_path, method: :delete, id: "tree_delete_note", hidden: true,
-                data: { note_tree_target: "deleteForm", turbo_confirm: t("notes.form.confirm_delete") } do %><% end %>
+                data: { note_tree_target: "deleteForm" } do %><% end %>
 <% end %>

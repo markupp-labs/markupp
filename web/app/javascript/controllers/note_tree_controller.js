@@ -21,7 +21,7 @@ const NEW_HERE_ITEM = "[data-action~='note-tree#newHere']"
 export default class extends Controller {
   static targets = [ "status", "deleteForm" ]
   static outlets = [ "context-menu" ]
-  static values = { newNoteUrl: String, copied: String, copyFailed: String }
+  static values = { newNoteUrl: String, copied: String, copyFailed: String, confirmDelete: String }
 
   connect() {
     this.rove(this.element.querySelector("[aria-current=page]") ?? this.rows[0])
@@ -152,13 +152,19 @@ export default class extends Controller {
 
   // O item do menu é o submit do form; aqui só aponta o form para a nota. A confirmação é do Turbo (data-turbo-confirm).
   delete() {
-    this.deleteFormTarget.action = this.menuRow.href
+    this.aimDeleteAt(this.menuRow)
     rememberSubmitOrigin(this.deleteFormTarget, this.menuRow)
   }
 
   deleteRow(row) {
-    this.deleteFormTarget.action = row.href
+    this.aimDeleteAt(row)
     submitFrom(row, this.deleteFormTarget)
+  }
+
+  // A pergunta diz o caminho da linha, que pode não ser a nota aberta. Função no replace, como no copy.
+  aimDeleteAt(row) {
+    this.deleteFormTarget.action = row.href
+    this.deleteFormTarget.dataset.turboConfirm = this.confirmDeleteValue.replace("%{path}", () => row.dataset.path)
   }
 
   copyPath() {
