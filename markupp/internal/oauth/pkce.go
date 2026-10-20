@@ -1,4 +1,4 @@
-// Package oauth reúne as peças do authorization server OAuth 2.1 (ADR-0039).
+// Package oauth reúne as peças do authorization server OAuth 2.1 (ADR-0046).
 package oauth
 
 import (
