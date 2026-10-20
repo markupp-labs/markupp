@@ -2,6 +2,7 @@ package api
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 
@@ -29,6 +30,22 @@ type noteV1Response struct {
 
 func toV1Response(n notes.Note) any {
 	return noteV1Response{noteResponse: toNoteResponse(n), noteRankResponse: toNoteRankResponse(n.Rank)}
+}
+
+// noteListItemResponse é a nota na coleção das notas do cofre: o resumo, a versão e
+// a organização derivada, sem o conteúdo, que GET /v1/notes/{id} devolve.
+type noteListItemResponse struct {
+	notes.NoteSummary
+	UpdatedAt     time.Time `json:"updated_at"`
+	ContentSHA256 string    `json:"content_sha256"`
+	noteRankResponse
+}
+
+func toListItemResponse(n notes.Note) any {
+	return noteListItemResponse{
+		NoteSummary: notes.Summarize(n.ID, n.Path), UpdatedAt: n.UpdatedAt,
+		ContentSHA256: n.ContentSHA256, noteRankResponse: toNoteRankResponse(n.Rank),
+	}
 }
 
 // mountV1NotesRoutes monta a nota como item de id global e a coleção das notas sob
@@ -94,7 +111,7 @@ func (h *notesHandler) listVault(w http.ResponseWriter, r *http.Request) {
 		writeDomainError(w, err)
 		return
 	}
-	h.writeNotes(w, list)
+	writeNotes(w, list, toListItemResponse)
 }
 
 // parseVaultNotesQuery lê filtro, ordem e página da lista das notas do cofre; a

@@ -135,14 +135,14 @@ func (h *notesHandler) list(w http.ResponseWriter, r *http.Request) {
 		writeDomainError(w, err)
 		return
 	}
-	h.writeNotes(w, list)
+	writeNotes(w, list, h.render)
 }
 
-// writeNotes responde com as notas na representação do handler, sempre como array.
-func (h *notesHandler) writeNotes(w http.ResponseWriter, list []notes.Note) {
+// writeNotes responde com as notas na representação render, sempre como array.
+func writeNotes(w http.ResponseWriter, list []notes.Note, render func(notes.Note) any) {
 	out := make([]any, 0, len(list))
 	for _, n := range list {
-		out = append(out, h.render(n))
+		out = append(out, render(n))
 	}
 	writeJSON(w, http.StatusOK, out)
 }
