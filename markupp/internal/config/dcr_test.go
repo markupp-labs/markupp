@@ -13,19 +13,19 @@ func TestLoad_OAuthSemVariaveisDoDCR_UsaOPadrao(t *testing.T) {
 	cfg, err := config.Load(envComOAuth().Lookup)
 
 	require.NoError(t, err)
-	assert.True(t, cfg.OAuthDCREnabled)
+	assert.False(t, cfg.OAuthDCREnabled, "o DCR vem desligado; Claude, Cursor e VS Code usam CIMD")
 	assert.Equal(t, 1000, cfg.OAuthDCRMaxPending)
 	assert.Equal(t, 24, cfg.OAuthDCRPendingHours)
 }
 
-func TestLoad_DCRDesligado_LeOBooleano(t *testing.T) {
+func TestLoad_DCRLigado_LeOBooleano(t *testing.T) {
 	env := envComOAuth()
-	env["MARKUPP_OAUTH_DCR_ENABLED"] = "false"
+	env["MARKUPP_OAUTH_DCR_ENABLED"] = "true"
 
 	cfg, err := config.Load(env.Lookup)
 
 	require.NoError(t, err)
-	assert.False(t, cfg.OAuthDCREnabled)
+	assert.True(t, cfg.OAuthDCREnabled)
 }
 
 func TestLoad_LimitesDoDCRNasBordas_Aceita(t *testing.T) {
@@ -64,14 +64,11 @@ func TestLoad_VariavelDoDCRInvalida_RetornaErroComVariavelEValor(t *testing.T) {
 	}
 }
 
-func TestLoad_SemPublicURL_IgnoraVariaveisDoDCR(t *testing.T) {
-	env := fakeEnv{
-		"MARKUPP_DATABASE_URL": urlDeTeste, "MARKUPP_AUTH_SECRET": segredoDeTesteValido,
-		"MARKUPP_OAUTH_DCR_ENABLED": "talvez", "MARKUPP_OAUTH_DCR_MAX_PENDING": "0",
-		"MARKUPP_OAUTH_DCR_PENDING_HOURS": "lixo",
-	}
+func TestLoad_SemPublicURL_AindaLeAsVariaveisDoDCR(t *testing.T) {
+	env := fakeEnv{"MARKUPP_DATABASE_URL": urlDeTeste, "MARKUPP_OAUTH_DCR_ENABLED": "talvez"}
 
 	_, err := config.Load(env.Lookup)
 
-	require.NoError(t, err, "sem MARKUPP_PUBLIC_URL as variaveis do DCR nem sao lidas")
+	require.Error(t, err, "o OAuth vem ligado pela URL publica padrao")
+	assert.Contains(t, err.Error(), "MARKUPP_OAUTH_DCR_ENABLED")
 }

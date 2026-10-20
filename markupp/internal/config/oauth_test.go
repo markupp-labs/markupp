@@ -35,18 +35,26 @@ func TestDefault_SemPublicURL_OAuthDesligado(t *testing.T) {
 	assert.Empty(t, cfg.OAuthResources)
 }
 
-func TestLoad_SemPublicURL_IgnoraPainelERecursos(t *testing.T) {
-	env := fakeEnv{
-		"MARKUPP_DATABASE_URL": urlDeTeste, "MARKUPP_AUTH_SECRET": segredoDeTesteValido,
-		"MARKUPP_PANEL_URL": "ftp://invalido", "MARKUPP_OAUTH_RESOURCES": "lixo",
-	}
+func TestLoad_SoComOBanco_LigaOOAuthComOsPadroesDoSelfHost(t *testing.T) {
+	env := fakeEnv{"MARKUPP_DATABASE_URL": urlDeTeste}
 
 	cfg, err := config.Load(env.Lookup)
 
-	require.NoError(t, err, "sem MARKUPP_PUBLIC_URL o OAuth fica desligado e o resto nem e lido")
-	assert.False(t, cfg.OAuthEnabled())
-	assert.Empty(t, cfg.PanelURL)
-	assert.Empty(t, cfg.OAuthResources)
+	require.NoError(t, err)
+	assert.True(t, cfg.OAuthEnabled())
+	assert.Equal(t, "http://localhost:8080", cfg.PublicURL)
+	assert.Equal(t, "http://localhost:3999", cfg.PanelURL)
+	assert.Empty(t, cfg.OAuthResources, "o resource padrao recebe o segredo do banco na subida")
+	assert.Equal(t, "http://localhost:8080/mcp", cfg.DefaultMCPResourceURL())
+}
+
+func TestLoad_SemPublicURL_UsaAPortaDoServidor(t *testing.T) {
+	env := fakeEnv{"MARKUPP_DATABASE_URL": urlDeTeste, "MARKUPP_PORT": "9000"}
+
+	cfg, err := config.Load(env.Lookup)
+
+	require.NoError(t, err)
+	assert.Equal(t, "http://localhost:9000", cfg.PublicURL)
 }
 
 func TestLoad_OAuthCompleto_LeOsTresCampos(t *testing.T) {
@@ -111,15 +119,14 @@ func TestLoad_PublicURLComSenha_RetornaErroSemVazarASenha(t *testing.T) {
 	assert.NotContains(t, err.Error(), "segredo")
 }
 
-func TestLoad_OAuthSemPainel_RetornaErroNomeandoAVariavel(t *testing.T) {
+func TestLoad_OAuthSemPainel_UsaOPainelLocal(t *testing.T) {
 	env := envComOAuth()
 	delete(env, "MARKUPP_PANEL_URL")
 
-	_, err := config.Load(env.Lookup)
+	cfg, err := config.Load(env.Lookup)
 
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "MARKUPP_PANEL_URL")
-	assert.Contains(t, err.Error(), "MARKUPP_PUBLIC_URL", "a mensagem diz por que o painel e obrigatorio")
+	require.NoError(t, err)
+	assert.Equal(t, "http://localhost:3999", cfg.PanelURL)
 }
 
 func TestLoad_PainelForaDoFormato_RetornaErroComOValor(t *testing.T) {
@@ -139,16 +146,15 @@ func TestLoad_PainelForaDoFormato_RetornaErroComOValor(t *testing.T) {
 	}
 }
 
-func TestLoad_OAuthSemRecursos_RetornaErroNomeandoAVariavel(t *testing.T) {
+func TestLoad_OAuthSemRecursos_DeixaOPadraoParaASubida(t *testing.T) {
 	for _, valor := range []string{"", " , "} {
 		env := envComOAuth()
 		env["MARKUPP_OAUTH_RESOURCES"] = valor
 
-		_, err := config.Load(env.Lookup)
+		cfg, err := config.Load(env.Lookup)
 
-		require.Error(t, err, valor)
-		assert.Contains(t, err.Error(), "MARKUPP_OAUTH_RESOURCES")
-		assert.Contains(t, err.Error(), "url=segredo")
+		require.NoError(t, err, valor)
+		assert.Empty(t, cfg.OAuthResources, valor)
 	}
 }
 
