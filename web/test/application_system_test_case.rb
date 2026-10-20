@@ -35,6 +35,21 @@ class ApplicationSystemTestCase < ActionDispatch::SystemTestCase
     end
   end
 
+  # Responde ao diálogo de confirmação do painel (layouts/_confirm_dialog), que toma o lugar do confirm() do navegador
+  # no data-turbo-confirm: a ação roda, o diálogo abre com a pergunta, o botão escolhido responde e o diálogo fecha.
+  def accept_panel_confirm(message, button: "Delete", &) = answer_panel_confirm(message, button, &)
+
+  def dismiss_panel_confirm(message, &) = answer_panel_confirm(message, "Cancel", &)
+
+  def answer_panel_confirm(message, button)
+    yield
+    within("dialog#confirm_dialog[open]") do
+      assert_text message
+      click_on button
+    end
+    assert_no_selector "dialog#confirm_dialog[open]"
+  end
+
   # Entra pelo formulário de login, contra a fake, e espera a barra lateral com o email.
   def sign_in_through_form(email = FakeMarkuppAccounts::DEFAULT_EMAIL, password: FakeMarkuppAccounts::DEFAULT_PASSWORD)
     visit new_session_path
