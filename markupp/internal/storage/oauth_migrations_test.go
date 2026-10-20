@@ -140,7 +140,7 @@ func emitirToken(pool *pgxpool.Pool, hash, escopos string) error {
 	return err
 }
 
-func TestMigracao00016_EscopoDoToken_RestritoAosSuportados(t *testing.T) {
+func TestMigracao00032_EscopoDoToken_RestritoAosSuportados(t *testing.T) {
 	pool := bancoComOAuth(t)
 	require.NoError(t, autorizar(pool, "a1", "{notas:leitura,administracao}", false))
 
