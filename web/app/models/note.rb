@@ -1,6 +1,7 @@
 class Note
   include ActiveModel::Model
   include ActiveModel::Attributes
+  extend V1Listing
 
   attribute :id, :string
   attribute :path, :string
@@ -31,9 +32,7 @@ class Note
   end
 
   # Notas do cofre sem o conteúdo, com a organização derivada; a query filtra (orphan, community) e ordena (sort, direction).
-  def self.in_vault(api, vault_id, **query)
-    api.get(MarkuppApi.path("v1", "vaults", vault_id, "notes", **query)).map { from_api(it) }
-  end
+  def self.in_vault(api, vault_id, **query) = list_from(api, "vaults", vault_id, "notes", **query)
 
   # Também monta a nota resumida (id, título e caminho) que vem dentro de ligação, menção, comunidade e busca.
   def self.from_api(attributes) = new(attributes.slice(*attribute_names))
