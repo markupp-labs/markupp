@@ -92,8 +92,7 @@ class ActivityBarTest < ApplicationSystemTestCase
     assert_selector "[role=tab][aria-label=Explorer][aria-selected=true]"
 
     find(".cm-content").send_keys([ :control, :shift, "l" ])
-    assert_text "Open a note to see its links"
-    assert_selector "#sidebar_view_links:focus"
+    assert_selector "#sidebar_view_links #links_backlinks summary:focus"
     send_keys [ :control, :shift, "g" ]
     assert_selector "#sidebar_view_graph:focus"
     send_keys [ :control, :shift, "e" ]
