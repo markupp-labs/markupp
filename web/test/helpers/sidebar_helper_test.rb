@@ -14,4 +14,17 @@ class SidebarHelperTest < ActionView::TestCase
     assert_nil sidebar_width(nil)
     assert_nil sidebar_width("wide")
   end
+
+  test "current_sidebar_view reads the view from its cookie" do
+    cookies[:sidebar_view] = "graph"
+
+    assert_equal "graph", current_sidebar_view
+  end
+
+  test "current_sidebar_view falls back to the explorer without a known view" do
+    assert_equal "explorer", current_sidebar_view
+
+    cookies[:sidebar_view] = "outline"
+    assert_equal "explorer", current_sidebar_view
+  end
 end

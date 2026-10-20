@@ -169,4 +169,65 @@ class SidebarTest < ActionDispatch::IntegrationTest
     assert_select "button[popovertarget=sidebar]", text: "Tenants"
     assert_select "nav#sidebar[aria-label=?]", "Tenants"
   end
+
+  test "the activity bar beside the sidebar switches its view, the explorer by default" do
+    use_fake_api(notes: [ { id: "1", path: "plan.md", content: "" } ])
+    sign_in_as
+
+    get root_path
+
+    assert_select "body > .activity-bar-side[role=tablist][aria-orientation=vertical][aria-label=?] + nav#sidebar", "Views"
+    tabs = css_select(".activity-bar-side [role=tab]").map do |tab|
+      [ tab["aria-label"], tab["title"], tab["aria-keyshortcuts"], tab["aria-controls"], tab["aria-selected"], tab.at_css("svg")["data-icon"] ]
+    end
+    assert_equal [ [ "Explorer", "Explorer (Ctrl+Shift+E)", "Control+Shift+E Meta+Shift+E", "sidebar_view_explorer", "true", "files" ],
+                   [ "Links", "Links (Ctrl+Shift+L)", "Control+Shift+L Meta+Shift+L", "sidebar_view_links", "false", "link" ],
+                   [ "Graph", "Graph (Ctrl+Shift+G)", "Control+Shift+G Meta+Shift+G", "sidebar_view_graph", "false", "graph" ],
+                   [ "Search", "Search (Ctrl+Shift+F)", "Control+Shift+F Meta+Shift+F", "sidebar_view_search", "false", "magnifying-glass" ] ], tabs
+    assert_select ".activity-bar-side [role=tab][tabindex='0']", count: 1
+    assert_select "nav #sidebar_view_explorer[role=tabpanel]:not([hidden]) [role=treeitem]", text: "└── plan"
+    %w[links graph search].each { assert_select "nav #sidebar_view_#{it}[role=tabpanel][hidden]" }
+  end
+
+  test "the chosen view comes back from its cookie, without the tree" do
+    use_fake_api(notes: [ { id: "1", path: "plan.md", content: "" } ])
+    sign_in_as
+    cookies[:sidebar_view] = "links"
+
+    get root_path
+
+    assert_select ".activity-bar-side [role=tab][aria-selected=true]", count: 1
+    assert_select ".activity-bar-side [role=tab][aria-label=Links][aria-selected=true][tabindex='0']"
+    assert_select "#sidebar_view_links:not([hidden])", text: /Open a note to see its links/
+    assert_select "#sidebar_view_explorer[hidden]"
+  end
+
+  test "the empty views say how to fill them" do
+    use_fake_api(notes: [])
+    sign_in_as
+
+    get root_path
+
+    assert_select "#sidebar_view_links", text: /Open a note to see its links/
+    assert_select "#sidebar_view_graph", text: /Open a note to see its graph/
+    assert_select "#sidebar_view_search button[data-action='search#open']", text: /Search notes/
+  end
+
+  test "the phone drawer carries the same views in a row on its top" do
+    use_fake_api(notes: [])
+    sign_in_as
+
+    get root_path
+
+    assert_select "nav#sidebar > .activity-bar-drawer[role=tablist][aria-orientation=horizontal]:first-child [role=tab]", count: 4
+  end
+
+  test "there is no activity bar without a tenant" do
+    use_fake_api(notes: [], tenants: [])
+    sign_in_as
+
+    get tenants_path
+
+    assert_select "[role=tablist]", count: 0
+  end
 end
