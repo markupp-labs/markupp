@@ -1,5 +1,7 @@
 # Fica no lugar do MarkuppApi nos testes, sem rede: repassa cada chamada à fake do assunto.
 class FakeMarkuppApi
+  OAUTH_REQUESTS = "/v1/oauth/requests/".freeze
+
   attr_reader :received_credentials
 
   delegate :put_requests, :post_requests, to: :@notes
@@ -8,11 +10,13 @@ class FakeMarkuppApi
   delegate :assign_role!, :deny_notes_in!, to: :@tenants
   delegate :sent_tokens, to: :@account_email
   delegate :received_etags, :graph_queries, :change_graph!, to: :@graph
+  delegate :decisions, to: :@oauth_requests, prefix: :oauth
 
   # email_enabled: false é o servidor sem SMTP, que devolve o token do convite emitido e recusa os fluxos de email da conta.
-  # graph é o cenário das ligações, comunidades e grafos sob /v1 (ver FakeMarkuppGraph).
+  # graph é o cenário das ligações, comunidades e grafos sob /v1 (ver FakeMarkuppGraph); oauth_requests, o dos pedidos
+  # de autorização OAuth (ver FakeMarkuppOAuthRequests).
   def initialize(notes: [], unreachable: false, conflict: false, accounts: FakeMarkuppAccounts::DEFAULT_ACCOUNTS,
-                 tenants: FakeMarkuppTenants::DEFAULT_TENANTS, invites: [], email_enabled: true, graph: {})
+                 tenants: FakeMarkuppTenants::DEFAULT_TENANTS, invites: [], email_enabled: true, graph: {}, oauth_requests: [])
     @accounts = FakeMarkuppAccounts.new(accounts)
     @tenants = FakeMarkuppTenants.new(tenants, invites)
     @auth = FakeMarkuppAuth.new(@accounts, @tenants)
@@ -21,6 +25,7 @@ class FakeMarkuppApi
     @notes = FakeMarkuppNotes.new(notes:, conflict:)
     @note_index = FakeMarkuppNoteIndex.new(@notes)
     @graph = FakeMarkuppGraph.new(graph)
+    @oauth_requests = FakeMarkuppOAuthRequests.new(oauth_requests)
     @unreachable = unreachable
     @slow_calls = FakeSlowCalls.new(timeout: 10)
     @received_credentials = []
@@ -74,9 +79,10 @@ class FakeMarkuppApi
       fake_for(call, path).public_send(method, path, *body, account:, role: membership["role"], tenant_id: membership["id"], **options)
     end
 
-    # Só notas, grafo e administração agem num tenant; chamada de confiança, sem conta, não tem papel.
+    # Só notas, grafo e administração agem num tenant; chamada de confiança, sem conta, não tem papel. Os pedidos OAuth
+    # são da conta, sem tenant.
     def tenant_membership(path, account, call)
-      return unless account && path.start_with?("/notes", "/users", "/v1/")
+      return unless account && path.start_with?("/notes", "/users", "/v1/") && !path.start_with?(OAUTH_REQUESTS)
 
       @tenants.membership_for(account, @credentials[:tenant_id], call)
     end
@@ -89,6 +95,7 @@ class FakeMarkuppApi
 
     def fake_for(call, path)
       return @notes if path.start_with?("/notes")
+      return @oauth_requests if path.start_with?(OAUTH_REQUESTS)
       return @note_index if path.start_with?("/v1/search/") || FakeMarkuppNoteIndex::VAULT_NOTES.match?(path)
       return @graph if path.start_with?("/v1/")
       return @account_email if path.start_with?("/auth/password/", "/auth/email/")

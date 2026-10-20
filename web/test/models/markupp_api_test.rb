@@ -185,6 +185,12 @@ class MarkuppApiTest < ActiveSupport::TestCase
     end
   end
 
+  test "maps the oauth request that is gone to OAuthRequestNotFound, a kind of NotFound" do
+    error = assert_answer_raises(MarkuppApi::NotFound, '{"error":"request_not_found","message":"recusado"}', "404 Not Found") { it.get("/v1/oauth/requests/r1") }
+
+    assert_equal "MarkuppApi::OAuthRequestNotFound", error.class.name
+  end
+
   test "an unknown 401 is Unauthorized and an unknown 403 is Forbidden" do
     assert_post_raises(MarkuppApi::Unauthorized, "not json", status: "401 Unauthorized")
     assert_post_raises(MarkuppApi::Forbidden, '{"error":"something_new"}', status: "403 Forbidden")
