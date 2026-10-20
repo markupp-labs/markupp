@@ -57,7 +57,8 @@ class MarkuppApi
     "invite_not_found" => InviteNotFound, "already_member" => AlreadyMember,
     "member_not_found" => MemberNotFound, "last_owner" => LastOwner, "role_above_own" => RoleAboveOwn,
     "invalid_invite" => InvalidToken, "invalid_token" => InvalidToken, "already_exists" => AccountExists,
-    "email_unavailable" => EmailUnavailable, "email_already_verified" => EmailAlreadyVerified
+    "email_unavailable" => EmailUnavailable, "email_already_verified" => EmailAlreadyVerified,
+    "vault_forbidden" => VaultUnavailable
   }.freeze
   # Para o status cujo corpo não traz código conhecido.
   ERRORS_BY_STATUS = { "401" => Unauthorized, "403" => Forbidden, "404" => NotFound }.freeze
@@ -70,12 +71,21 @@ class MarkuppApi
   end
 
   # Caminho da API a partir dos segmentos, cada um codificado: id com barra ou espaço não vira outra rota.
-  def self.path(*segments) = segments.map { "/#{ERB::Util.url_encode(it)}" }.join
+  # Os parâmetros com valor (false inclusive) vão na query.
+  def self.path(*segments, **params)
+    query = params.compact.to_query
+    segments.map { "/#{ERB::Util.url_encode(it)}" }.join + (query.empty? ? "" : "?#{query}")
+  end
 
   def get(path) = request(Net::HTTP::Get, path)
 
   # GET que revalida a cópia guardada pela ETag dela: nil no 304, quando a cópia ainda vale.
-  def conditional_get(path, etag:) = Revision.new(body: get(path), etag: nil)
+  def conditional_get(path, etag:)
+    response = exchange(Net::HTTP::Get, path, nil, { "If-None-Match" => etag }.compact)
+    return if response.is_a?(Net::HTTPNotModified)
+
+    Revision.new(body: parse_response(response, "GET #{path}"), etag: response["ETag"])
+  end
 
   def put(path, body) = request(Net::HTTP::Put, path, body)
 
@@ -86,19 +96,20 @@ class MarkuppApi
   def delete(path) = request(Net::HTTP::Delete, path)
 
   private
-    def request(verb, path, body = nil)
+    def request(verb, path, body = nil) = parse_response(exchange(verb, path, body), "#{verb::METHOD} #{path}")
+
+    def exchange(verb, path, body, headers = {})
       uri = URI.join(@base_url, path)
-      response = Net::HTTP.start(uri.host, uri.port, use_ssl: uri.scheme == "https",
-                                 open_timeout: OPEN_TIMEOUT, read_timeout: @read_timeout, max_retries: 0) do |http|
-        http.request(build_request(verb, uri, body))
+      Net::HTTP.start(uri.host, uri.port, use_ssl: uri.scheme == "https",
+                      open_timeout: OPEN_TIMEOUT, read_timeout: @read_timeout, max_retries: 0) do |http|
+        http.request(build_request(verb, uri, body, headers))
       end
-      parse_response(response, "#{verb::METHOD} #{path}")
     rescue *NETWORK_ERRORS => error
       raise Error, "#{verb::METHOD} #{path} could not reach #{@base_url}: #{error.message}"
     end
 
-    def build_request(verb, uri, body)
-      http_request = verb.new(uri)
+    def build_request(verb, uri, body, headers)
+      http_request = verb.new(uri, headers)
       http_request["Authorization"] = "Bearer #{@access_token}" if @access_token
       http_request["X-Markupp-Tenant"] = @tenant_id if @tenant_id
       return http_request if body.nil?

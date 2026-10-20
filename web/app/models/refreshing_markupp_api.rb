@@ -27,7 +27,7 @@ class RefreshingMarkuppApi
 
   def get(path) = with_fresh_token("GET #{path}") { it.get(path) }
 
-  def conditional_get(path, etag:) = MarkuppApi::Revision.new(body: get(path), etag: nil)
+  def conditional_get(path, etag:) = with_fresh_token("GET #{path}") { it.conditional_get(path, etag:) }
 
   def put(path, body) = with_fresh_token("PUT #{path}") { it.put(path, body) }
 
