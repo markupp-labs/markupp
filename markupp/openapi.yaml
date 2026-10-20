@@ -904,17 +904,18 @@ paths:
         liga a todas as notas do mesmo cofre com esse título: o último segmento do
         caminho sem .md, ou um dos aliases do frontmatter, sem diferença de caixa nem de
         forma Unicode, mas com diferença de acento. O link markdown resolve pelo
-        caminho, relativo à pasta da nota ou à raiz do cofre se começar com /; sem nota
-        nesse caminho, vale o título do último segmento. A nota que cita a si mesma não
-        conta. A resolução é feita na leitura, então renomear ou apagar uma nota muda as
-        ligações das outras na hora; o que a própria nota cita só muda quando o
+        caminho, relativo à pasta da nota ou à raiz do cofre se começar com /, e o
+        wikilink ou embed com pasta ([[pasta/Nota]]) pelo caminho a partir da raiz do
+        cofre, com .md quando falta; sem nota nesse caminho, vale o título do último
+        segmento. A nota que cita a si mesma não conta. A resolução é feita na leitura,
+        então renomear, mover ou apagar uma nota muda as ligações das outras na hora; o que a própria nota cita só muda quando o
         indexador processa o cofre dela. Ligação para outro cofre é sempre não
         resolvida.
 
         Também é ligação a tipada: a chave do frontmatter cujo valor é um wikilink
-        inteiro, como o Obsidian grava entre aspas (autor: "[[Fulana]]"), ou uma lista
-        com wikilinks. A chave é o predicado, como escrita, e o alvo resolve como o
-        wikilink do corpo. Valor literal (texto, número, data, tag) e a chave aliases
+        inteiro, entre aspas (autor: "[[Fulana]]") ou sem elas (autor: [[Fulana]]), ou
+        uma lista com wikilinks. A chave é o predicado, como escrita, e o alvo resolve
+        como o wikilink do corpo. Valor literal (texto, número, data, tag) e a chave aliases
         não viram ligação.
 
         Também conta a ligação inferida: para cada ligação não resolvida, o indexador
