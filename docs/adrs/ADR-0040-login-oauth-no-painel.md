@@ -29,5 +29,8 @@ O painel continua sem alcançar o banco
 - O OAuth só funciona de ponta a ponta depois do merge do painel, e o servidor MCP, nos dois
   transportes, herda esse prazo
 - O self-host precisa subir o painel para que qualquer cliente OAuth funcione
-- O endpoint de aprovação é parte do contrato da API e só aceita a conta autenticada dona do
-  pedido
+- O pedido nasce sem conta, no authorize, e o identificador dele funciona como portador: quem o
+  recebe no redirect e está autenticado no painel decide, e a decisão vincula o pedido à conta.
+  É o modelo usual do OAuth, em que a sessão do navegador que fez o authorize é a que aprova
+- O endpoint de aprovação é parte do contrato da API e só aceita token de login, nunca um token
+  vindo do próprio OAuth
