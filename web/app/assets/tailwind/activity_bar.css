@@ -1,7 +1,6 @@
-/* Barra de atividades (layouts/_activity_bar), como a do VS Code e compacta como a do Zed: ícones de 16px em quadrados
-   de 32px, e no pé, de baixo para cima, configurações, conta e tema. No desktop é a coluna colada à esquerda da barra lateral, no fundo e na linha dela, presa ao topo e à vista
+/* Barra de atividades (layouts/_activity_bar), no tamanho da do VS Code: ícones de 24px em quadrados de 48px, e no pé, de baixo para cima, configurações, conta e tema. No desktop é a coluna colada à esquerda da barra lateral, no fundo e na linha dela, presa ao topo e à vista
    também com a barra recolhida (a lombada sai da borda dela, application.css). A linha da borda é sombra por dentro,
-   não border, para os ícones terem os 32px inteiros. No celular é a linha do topo da gaveta. O ícone ativo leva a marca no accent na
+   não border, para os ícones terem os 48px inteiros. No celular é a linha do topo da gaveta. O ícone ativo leva a marca no accent na
    borda de fora (a esquerda na coluna, a de baixo na linha); com a barra recolhida nenhum fica marcado, como no VS Code.
    Hover e foco sobem o ícone para o accent, como na lombada: do ink-muted ao ink a diferença no claro não aparece. */
 .activity-bar {
@@ -15,7 +14,7 @@
 
 @media (width >= 48rem) {
   :root:has(.activity-bar-side) {
-    --activity-width: 2rem;
+    --activity-width: 3rem;
   }
 
   .app-shell > .activity-bar-side {
@@ -67,8 +66,13 @@
   display: grid;
   place-items: center;
   width: 100%;
-  height: 2rem;
+  height: 3rem;
   color: var(--ink-muted);
+}
+
+.activity-bar-side .activity-tab svg {
+  width: 1.5rem;
+  height: 1.5rem;
 }
 
 .activity-bar-drawer .activity-tab {
