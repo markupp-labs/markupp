@@ -4,7 +4,7 @@ import { visitFrom } from "motion/busy_origin"
 // Paleta de comandos (layouts/_command_palette), como a do VS Code: Ctrl+Shift+P ou Cmd+Shift+P abre, a busca fuzzy
 // (as letras na ordem, com o que for entre elas) filtra, setas ou Ctrl+J e Ctrl+K (como no fzf; j e k sozinhos são
 // letras da busca) andam, Enter ou clique roda, Esc fecha. Ação sem o que fazer na página (o modo da nota fora da nota)
-// fica de fora. Cada item diz nos data-command-* como rodar (ShortcutsHelper).
+// ou que o CSS esconde (o tema e o modo da nota já em uso, application.css) fica de fora. Cada item diz nos data-command-* como rodar (ShortcutsHelper).
 const STEPS = { ArrowDown: 1, ArrowUp: -1, "ctrl+j": 1, "ctrl+k": -1 }
 
 export default class extends Controller {
@@ -19,7 +19,10 @@ export default class extends Controller {
   }
 
   open() {
-    this.optionTargets.forEach((option) => (option.dataset.available = isAvailable(option)))
+    this.optionTargets.forEach((option) => {
+      option.hidden = false
+      option.dataset.available = isAvailable(option)
+    })
     this.inputTarget.value = ""
     this.filter()
     if (!this.element.open) this.element.showModal()
@@ -86,9 +89,10 @@ export default class extends Controller {
   }
 }
 
+// O display vale com a paleta fechada: o computado do item não depende do dialog em volta.
 function isAvailable(option) {
   const selector = option.dataset.commandWhen
-  return !selector || document.querySelector(selector) != null
+  return getComputedStyle(option).display != "none" && (!selector || document.querySelector(selector) != null)
 }
 
 // As letras da busca aparecem na ordem no nome (tgsd acha Toggle sidebar).

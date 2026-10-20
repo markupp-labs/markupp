@@ -52,22 +52,30 @@
   color-scheme: dark;
 }
 
-/* Esconde o botão do tema já ativo, inclusive quando segue o sistema. */
-:root[data-theme="light"] .theme-to-light,
-:root[data-theme="dark"] .theme-to-dark {
+/* Esconde o botão do tema já ativo, inclusive quando segue o sistema, e na paleta a ação dele: só se oferece trocar. A
+   paleta deixa de fora a ação que o CSS esconde (command_palette_controller.js). */
+:root[data-theme="light"] :is(.theme-to-light, #command_light_theme),
+:root[data-theme="dark"] :is(.theme-to-dark, #command_dark_theme) {
   display: none;
 }
 
 @media (prefers-color-scheme: light) {
-  :root:not([data-theme]) .theme-to-light {
+  :root:not([data-theme]) :is(.theme-to-light, #command_light_theme) {
     display: none;
   }
 }
 
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme]) .theme-to-dark {
+  :root:not([data-theme]) :is(.theme-to-dark, #command_dark_theme) {
     display: none;
   }
+}
+
+/* Na paleta, o modo da nota em uso também fica de fora. */
+:root:has(.note-form[data-mode="edit"]) #command_edit_mode,
+:root:has(.note-form[data-mode="read"]) #command_read_mode,
+:root:has(.note-form[data-mode="split"]) #command_side_by_side {
+  display: none;
 }
 
 @theme inline {
@@ -373,5 +381,9 @@
   .note-form[data-mode="split"] .note-mode-edit {
     background: var(--accent-soft);
     color: var(--ink);
+  }
+
+  :root:has(.note-form[data-mode="split"]) #command_edit_mode {
+    display: none;
   }
 }
