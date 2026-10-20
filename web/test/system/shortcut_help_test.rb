@@ -42,6 +42,9 @@ class ShortcutHelpTest < ApplicationSystemTestCase
     within("dialog#shortcut_help[open]") do
       assert_selector "h3", text: "Vim"
       assert_selector "kbd", text: ":wq"
+      [ "Save and quit", "Quit to the default note", "Quit, dropping the changes", "Open or start a note", "Back to the path" ].each do |name|
+        assert_selector "dd", exact_text: name
+      end
     end
   end
 
