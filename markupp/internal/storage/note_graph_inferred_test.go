@@ -112,8 +112,9 @@ func TestLigacaoInferida_SobreviveAoLoteQueNaoMudaLigacoes(t *testing.T) {
 
 // TestLigacaoInferida_TituloComumNaoEntraNoPrior: s cita "postgresqk", mais perto
 // do título de p; x é parente de s pelo hub e, citada por sete notas de 111, teria o
-// maior prior, mas o título dela passa de 5% do cofre. O segundo Job já tem o df.
-func TestLigacaoInferida_TituloComumNaoEntraNoPrior(t *testing.T) {
+// maior prior, mas o título dela passa de 5% do cofre. O primeiro segundo estágio do
+// cofre já grava o df antes de inferir.
+func TestLigacaoInferida_TituloComumNaoEntraNoPriorJaNoPrimeiroJob(t *testing.T) {
 	db := setupNotesDB(t)
 	repo := storage.NewPostgresNotesRepository(db, "simple")
 	for _, nota := range []notes.Note{
@@ -127,8 +128,6 @@ func TestLigacaoInferida_TituloComumNaoEntraNoPrior(t *testing.T) {
 	}
 	semeiaNotas(t, db, "c", "[[postgresqlx]]", 6)
 	semeiaNotas(t, db, "e", "enchimento", enchimento)
-	indexaTodosOsCofres(t, db, "simple")
-	storagetest.SaveNote(ctxDeTeste, t, repo, notaComCaminho("nova", "nova.md", "[[hub]]"))
 	indexaTodosOsCofres(t, db, "simple")
 	graph := storage.NewPostgresNoteGraph(db, "simple")
 
