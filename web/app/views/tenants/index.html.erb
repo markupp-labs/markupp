@@ -1,4 +1,9 @@
-<% content_for :sidebar_label, t(".sidebar_label") %>
+<%# Com tenant ativo a barra é a das notas, como nas configurações; sem ele, só a marca e o rodapé. %>
+<% if current_tenant %>
+  <% content_for :sidebar, render("notes/sidebar", tree: sidebar_note_tree, current: nil) %>
+<% else %>
+  <% content_for :sidebar_label, t(".sidebar_label") %>
+<% end %>
 <% content_for :area, "tenants" %>
 <%# Sem tenant é o onboarding (criar o primeiro e os convites); com tenants, a lista em cards. %>
 <%= render current_tenants.empty? ? "tenants/onboarding" : "tenants/grid" %>

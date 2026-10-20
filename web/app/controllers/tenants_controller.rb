@@ -1,5 +1,8 @@
-# Lista de tenants em cards, com o tenant novo num dialog; para quem entra sem nenhum, é o onboarding.
+# Lista de tenants em cards, com o tenant novo num dialog; para quem entra sem nenhum, é o onboarding. Com um tenant
+# ativo é área ao lado das notas, como as configurações: árvore na barra lateral e voltar com Esc (AsideArea).
 class TenantsController < ApplicationController
+  include AsideArea
+
   helper_method :pending_invites
 
   def index
@@ -24,5 +27,7 @@ class TenantsController < ApplicationController
   end
 
   private
+    def aside_area_path = "/tenants"
+
     def pending_invites = @pending_invites ||= PendingInvite.mine(credential.api)
 end

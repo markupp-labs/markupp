@@ -1,11 +1,13 @@
 <%# Tenants à moda das organizações do Langfuse: busca e New tenant no cabeçalho, convites pendentes acima, um card
     por tenant. Teclado (tenant_grid_controller.js): / vai à busca, Alt+N abre o tenant novo, setas ou h/j/k/l andam
-    entre os cards e Enter entra no tenant. %>
+    entre os cards e Enter entra no tenant. Com tenant ativo, o voltar (e o Esc) leva à página de onde a lista foi aberta;
+    sem ele não há para onde voltar, a raiz traria de novo para cá. Na captura, o Alt+N daqui passa à frente do da árvore. %>
 <% content_for :title, t("tenants.index.title") %>
 
 <div class="max-w-5xl" data-controller="tenant-grid" data-tenant-grid-open-new-value="<%= @open_new_tenant.present? %>"
-     data-action="keydown@window->tenant-grid#shortcut">
+     data-action="keydown@window->tenant-grid#shortcut:capture">
   <header class="flex flex-wrap items-center gap-2 border-b border-line pb-2">
+    <%= render "layouts/area_back" if current_tenant %>
     <div class="mr-auto flex items-baseline gap-2">
       <span aria-hidden="true" class="text-accent">$</span><h1 class="font-semibold"><%= t("tenants.index.title") %></h1>
     </div>

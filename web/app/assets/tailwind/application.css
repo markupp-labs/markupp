@@ -71,6 +71,11 @@
   }
 }
 
+/* Na lista de tenants o Alt+N é o New tenant (tenant_grid_controller.js): a nota nova sai da paleta, que cairia nele. */
+body[data-area="tenants"] #command_new_note {
+  display: none;
+}
+
 /* Na paleta, o modo da nota em uso também fica de fora. */
 :root:has(.note-form[data-mode="edit"]) #command_edit_mode,
 :root:has(.note-form[data-mode="read"]) #command_read_mode,

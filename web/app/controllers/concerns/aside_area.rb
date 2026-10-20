@@ -3,6 +3,9 @@
 module AsideArea
   extend ActiveSupport::Concern
 
+  # Caminhos das áreas: voltar de uma para a outra não muda a origem desta (returning_from_area?).
+  AREA_PATHS = %w[/settings /tenants].freeze
+
   included do
     before_action :pick_tenant, :remember_area_origin
     helper_method :sidebar_note_tree, :area_origin_path
@@ -17,12 +20,23 @@ module AsideArea
     # próprio painel (referer de outro site cai na raiz, sem redirecionar para fora).
     def remember_area_origin
       origin = same_site_path(request.referer)
-      session[area_origin_key] = origin if origin && !origin.start_with?(aside_area_path)
+      return if origin.nil? || origin.start_with?(aside_area_path) || returning_from_area?(origin)
+
+      session[area_origin_key] = origin
+    end
+
+    # Veio de outra área que foi aberta a partir desta: é o voltar de lá (tenants, Members pela engrenagem, Esc), e a
+    # origem daqui continua a de antes; senão o Esc seguinte voltaria para lá, em ciclo.
+    def returning_from_area?(origin)
+      area = AREA_PATHS.find { origin.start_with?(it) }
+      area.present? && session[origin_key_of(area)].to_s.start_with?(aside_area_path)
     end
 
     def area_origin_path = session[area_origin_key] || root_path
 
-    def area_origin_key = :"#{aside_area_path.delete_prefix("/")}_origin"
+    def area_origin_key = origin_key_of(aside_area_path)
+
+    def origin_key_of(path) = :"#{path.delete_prefix("/")}_origin"
 
     def same_site_path(url)
       uri = URI.parse(url.to_s)

@@ -80,7 +80,7 @@ en:
       toggle_sidebar: "Toggle sidebar"
       focus_tree: "Focus the note tree"
       resize_sidebar: "Resize the sidebar, on its edge"
-      back_from_settings: "Leave the settings"
+      back_from_settings: "Leave the settings or the tenants"
       light_theme: "Light theme"
       dark_theme: "Dark theme"
       editor_style_plain: "Editor style: plain"
