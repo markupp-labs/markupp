@@ -151,7 +151,7 @@ const getOAuthClient = `-- name: GetOAuthClient :one
 SELECT id, source, name, redirect_uris, metadata_expires_at, created_at FROM oauth_clients WHERE id = $1
 `
 
-// Authorization server OAuth 2.1 (ADR-0038). As tabelas são da instância, sem tenant nem
+// Authorization server OAuth 2.1 (ADR-0039). As tabelas são da instância, sem tenant nem
 // RLS: as queries rodam no papel da conexão. Códigos e tokens só passam como hash.
 func (q *Queries) GetOAuthClient(ctx context.Context, id string) (OauthClient, error) {
 	row := q.db.QueryRow(ctx, getOAuthClient, id)

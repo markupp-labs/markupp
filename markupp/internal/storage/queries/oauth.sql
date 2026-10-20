@@ -1,4 +1,4 @@
--- Authorization server OAuth 2.1 (ADR-0038). As tabelas são da instância, sem tenant nem
+-- Authorization server OAuth 2.1 (ADR-0039). As tabelas são da instância, sem tenant nem
 -- RLS: as queries rodam no papel da conexão. Códigos e tokens só passam como hash.
 
 -- name: GetOAuthClient :one
