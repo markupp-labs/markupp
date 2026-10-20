@@ -64,7 +64,4 @@ class ErrorPagesTest < ApplicationSystemTestCase
     assert_selector "html[data-theme=dark]", visible: :all
     assert_equal "rgb(31, 31, 40)", evaluate_script("getComputedStyle(document.body).backgroundColor")
   end
-
-  private
-    def edge(element, side) = evaluate_script("arguments[0].getBoundingClientRect().#{side}", element)
 end

@@ -110,12 +110,12 @@ class SidebarTest < ApplicationSystemTestCase
     spine = find("button[aria-controls=sidebar]")
     spine.hover
     assert_equal style(find("nav#sidebar"), "backgroundColor"), style(spine, "backgroundColor")
-    assert_equal accent_color, style(spine, "color")
+    assert_equal css_color("var(--accent)"), style(spine, "color")
 
     find("body").hover
     spine.evaluate_script("this.focus()")
     assert spine.evaluate_script("this.matches(':focus-visible')")
-    assert_equal accent_color, style(spine, "color")
+    assert_equal css_color("var(--accent)"), style(spine, "color")
   end
 
   test "the spine leaves room around its icon" do
@@ -200,27 +200,12 @@ class SidebarTest < ApplicationSystemTestCase
       page.driver.browser.action.click_and_hold(element.native).move_by(dx, 0).release.perform
     end
 
-    def edge(element, side)
-      element.evaluate_script("this.getBoundingClientRect().#{side}")
-    end
-
     def style(element, property)
       element.evaluate_script("getComputedStyle(this).#{property}")
     end
 
     def strip_style(property)
       evaluate_script("getComputedStyle(document.body, '::before').#{property}")
-    end
-
-    def accent_color
-      evaluate_script(<<~JS)
-        (() => {
-          const probe = document.body.appendChild(Object.assign(document.createElement("span"), { style: "color: var(--accent)" }))
-          const color = getComputedStyle(probe).color
-          probe.remove()
-          return color
-        })()
-      JS
     end
 
     def sidebar_width

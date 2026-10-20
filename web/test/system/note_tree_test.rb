@@ -81,17 +81,4 @@ class NoteTreeTest < ApplicationSystemTestCase
     def marker(row)
       row.evaluate_script("getComputedStyle(this.querySelector('.tree-marker'), '::before').content")
     end
-
-    def css_color(value)
-      evaluate_script(<<~JS)
-        (() => {
-          const probe = document.body.appendChild(Object.assign(document.createElement("span"), { style: "color: #{value}" }))
-          const color = getComputedStyle(probe).color
-          probe.remove()
-          return color
-        })()
-      JS
-    end
-
-    def edge(element, side) = evaluate_script("arguments[0].getBoundingClientRect().#{side}", element)
 end

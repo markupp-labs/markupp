@@ -59,4 +59,18 @@ class ApplicationSystemTestCase < ActionDispatch::SystemTestCase
     # O login cruza login, /auth/me e /me/tenants; com um Chrome por núcleo em paralelo passa dos 2s padrão.
     assert_selector "nav", text: email, wait: 10
   end
+
+  def edge(element, side) = evaluate_script("arguments[0].getBoundingClientRect().#{side}", element)
+
+  # Cor computada de um valor CSS (um token como var(--accent)), para comparar com a de um elemento.
+  def css_color(value)
+    evaluate_script(<<~JS)
+      (() => {
+        const probe = document.body.appendChild(Object.assign(document.createElement("span"), { style: "color: #{value}" }))
+        const color = getComputedStyle(probe).color
+        probe.remove()
+        return color
+      })()
+    JS
+  end
 end
