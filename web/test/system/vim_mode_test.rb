@@ -56,6 +56,48 @@ class VimModeTest < ApplicationSystemTestCase
     assert_selector "html[data-sidebar=closed]"
   end
 
+  # Como no VSCodeVim: so as teclas que o Vim usa ficam com ele; as do painel que ele nao usa valem dentro do editor.
+  test "ctrl+s in the editor saves" do
+    open_note_with_vim_keys
+
+    send_keys "gg", "A", "!", :escape, [ :control, "s" ]
+
+    assert_text "Saved"
+    assert_equal "abc!\ndef", @api.put_requests.sole[:content]
+  end
+
+  test "the palette, f1 and the search open from the editor" do
+    open_note_with_vim_keys
+
+    { [ :control, :shift, "p" ] => "dialog#command_palette[open]", :f1 => "dialog#command_palette[open]",
+      [ :control, "k" ] => "dialog[open][aria-label='Search notes']" }.each do |keys, dialog|
+      find(".cm-content").click
+      send_keys keys
+      assert_selector dialog
+      send_keys :escape
+      assert_no_selector "dialog[open]"
+    end
+  end
+
+  test "ctrl+shift+e from the editor goes to the tree and alt+n opens a new note" do
+    open_note_with_vim_keys
+
+    send_keys [ :control, :shift, "e" ]
+    assert_selector "[role=treeitem]:focus"
+    find(".cm-content").click
+    send_keys [ :alt, "n" ]
+
+    assert_field "Path", with: "/work/"
+  end
+
+  test "ctrl+comma from the editor opens the settings" do
+    open_note_with_vim_keys
+
+    send_keys [ :control, "," ]
+
+    assert_current_path settings_account_path
+  end
+
   test "esc in insert mode goes to normal, a second esc lets tab leave the editor" do
     open_note_with_vim_keys
 
