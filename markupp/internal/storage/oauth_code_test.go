@@ -209,3 +209,59 @@ func TestPostgresOAuthRepo_RedeemCode_ReusoAuditaComContaECliente(t *testing.T) 
 		AND result = 'failure' AND actor_id = 'u1' AND target = 'c1' AND tenant_id IS NULL
 		AND occurred_at = '2026-10-16T12:01:40Z'`))
 }
+
+// decisaoDeR1 é quando repoComCodigoDeA1 decide o pedido r1.
+var decisaoDeR1 = instanteOAuth.Add(time.Minute)
+
+func reusosDoCodigoAuditados(t *testing.T, pool *pgxpool.Pool) int {
+	t.Helper()
+	return countRows(t, pool, "SELECT count(*) FROM audit_events WHERE action = 'oauth.code_reuse'")
+}
+
+func TestPostgresOAuthRepo_RedeemCode_SegundoReuso_NaoRevogaNemAudita(t *testing.T) {
+	repo, pool := repoComCodigoDeA1(t)
+	trocarCodigo(t, repo)
+	_, err := reusarCodigo(repo, instanteOAuth.Add(100*time.Second))
+	require.ErrorIs(t, err, oauth.ErrCodeAlreadyUsed)
+	gravarTokens(t, pool, tokensDe("a1", "-novo"))
+
+	_, err = reusarCodigo(repo, instanteOAuth.Add(160*time.Second))
+
+	require.ErrorIs(t, err, oauth.ErrCodeAlreadyUsed)
+	assert.Equal(t, 2, tokensAtivos(t, pool), "só o primeiro reuso revoga")
+	assert.Equal(t, 1, reusosDoCodigoAuditados(t, pool), "só o primeiro reuso audita")
+}
+
+func TestPostgresOAuthRepo_RedeemCode_ReusoForaDaJanela_NaoRevogaNemAudita(t *testing.T) {
+	casos := map[string]time.Time{
+		"um segundo depois da janela": decisaoDeR1.Add(janelaReusoCodigo + time.Second),
+		"meses depois":                decisaoDeR1.AddDate(0, 6, 0),
+	}
+	for nome, instante := range casos {
+		t.Run(nome, func(t *testing.T) {
+			repo, pool := repoComCodigoDeA1(t)
+			trocarCodigo(t, repo)
+			gravarTokens(t, pool, tokensOAuth("a1"))
+
+			got, err := reusarCodigo(repo, instante)
+
+			require.ErrorIs(t, err, oauth.ErrCodeAlreadyUsed)
+			assert.Equal(t, "r1", got.Request.ID)
+			assert.Equal(t, 2, tokensAtivos(t, pool), "fora da janela o reuso não revoga")
+			assert.Zero(t, reusosDoCodigoAuditados(t, pool), "fora da janela o reuso não audita")
+			assert.Equal(t, 1, countRows(t, pool, "SELECT count(*) FROM oauth_requests WHERE id = 'r1' AND code_reused_at IS NULL"))
+		})
+	}
+}
+
+func TestPostgresOAuthRepo_RedeemCode_ReusoNoFimDaJanela_Revoga(t *testing.T) {
+	repo, pool := repoComCodigoDeA1(t)
+	trocarCodigo(t, repo)
+	gravarTokens(t, pool, tokensOAuth("a1"))
+
+	_, err := reusarCodigo(repo, decisaoDeR1.Add(janelaReusoCodigo))
+
+	require.ErrorIs(t, err, oauth.ErrCodeAlreadyUsed)
+	assert.Zero(t, tokensAtivos(t, pool))
+	assert.Equal(t, 1, reusosDoCodigoAuditados(t, pool))
+}

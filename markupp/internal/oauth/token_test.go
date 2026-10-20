@@ -150,6 +150,16 @@ func TestExchangeCode_CodigoReusado_InvalidGrantSemGravar(t *testing.T) {
 	assert.Empty(t, repo.saved)
 }
 
+func TestExchangeCode_JanelaDoReusoEADuracaoDoPedido(t *testing.T) {
+	repo := testRepositoryWithRedeemableCode()
+
+	_, err := newTestService(repo).ExchangeCode(context.Background(), validCodeGrant())
+
+	require.NoError(t, err)
+	assert.Equal(t, []time.Duration{testServiceConfig().RequestTTL}, repo.redeemWindows,
+		"o reuso só revoga até RequestTTL depois da decisão do pedido")
+}
+
 // TestExchangeCode_ParRecusadoNaGravacao_InvalidGrant cobre o reuso do código ou a
 // revogação pela conta que entra entre o consumo e a gravação do par.
 func TestExchangeCode_ParRecusadoNaGravacao_InvalidGrant(t *testing.T) {
