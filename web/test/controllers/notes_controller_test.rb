@@ -495,6 +495,16 @@ class NotesControllerTest < ActionDispatch::IntegrationTest
     assert_empty api.post_requests
   end
 
+  # Como o campo de caminho na nota nova: o conteudo comeca com o "# nome", sem pasta nem .md.
+  test "index with the path of no note starts the new note with the heading of its name" do
+    use_fake_api(notes: [])
+    sign_in_as
+
+    get notes_path(path: "/2026/goals.md", origin_path: "")
+
+    assert_equal "# goals\n\n", css_select("textarea[name='note[content]']").sole.text.delete_prefix("\n")
+  end
+
   # :wq salva e sai para a nota padrao.
   test "create and update with quit go to the default note after saving" do
     use_fake_api(notes: [ { id: "1", path: "plan.md", content: "" } ])

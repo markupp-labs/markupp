@@ -69,6 +69,14 @@ class VimExCommandsTest < ApplicationSystemTestCase
     assert_empty @api.post_requests
   end
 
+  test ":e with a new path starts the note with the heading of its name, which follows the path" do
+    ex ":e /2026/goals"
+    assert_selector ".cm-content", text: "# goals"
+    find_field("Path").send_keys(:end, "-q3")
+
+    assert_selector ".cm-content", text: "# goals-q3"
+  end
+
   test ":read, :split and :edit switch the mode of the note" do
     ex ":split"
     assert_selector ".note-form[data-mode=split]"
