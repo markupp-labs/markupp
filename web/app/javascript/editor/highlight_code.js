@@ -8,3 +8,6 @@ export function highlightCode(code, language) {
 
   return hljs.highlight(code, { language, ignoreIllegals: true }).value
 }
+
+// Nome da linguagem como o highlight.js a chama (js e javascript dão JavaScript); desconhecida fica como veio.
+export const languageName = (language) => hljs.getLanguage(language)?.name ?? language

@@ -1,3 +1,5 @@
+import { languageName } from "editor/highlight_code"
+
 // Bloco cercado na leitura: os números de linha numa coluna própria antes do code, aria-hidden e fora da seleção
 // (user-select no CSS), então copiar o bloco copia só o código.
 export function withLineNumbers(renderFence) {
@@ -18,8 +20,11 @@ export function addCodeTools(root, template) {
   })
 }
 
-// Linguagem da cerca (class language-x do markdown-it); sem ela, ou no bloco indentado, "text".
-const codeLanguage = (code) => code.className.match(/\blanguage-(\S+)/)?.[1] ?? "text"
+// Linguagem da cerca (class language-x do markdown-it) pelo nome do highlight.js; sem ela, ou no bloco indentado, "text".
+function codeLanguage(code) {
+  const language = code.className.match(/\blanguage-(\S+)/)?.[1]
+  return language ? languageName(language) : "text"
+}
 
 // Copia só o texto do code (os números moram fora dele) e diz o resultado no status do bloco por 2 segundos.
 export async function copyCode(button, { copied, failed }) {
