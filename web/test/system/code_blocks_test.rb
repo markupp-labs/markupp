@@ -22,10 +22,10 @@ class CodeBlocksTest < ApplicationSystemTestCase
     assert_equal RUBY, evaluate_async_script("navigator.clipboard.readText().then(arguments[0])")
   end
 
-  # Faixa de cabeçalho como a barra de título de um terminal: linguagem à esquerda ("text" sem linguagem), copiar à
-  # direita, acima do código e não por cima dele.
+  # Faixa de cabeçalho como a barra de título de um terminal: linguagem à esquerda pelo nome do highlight.js (js é
+  # JavaScript; "text" sem linguagem), copiar à direita, acima do código e não por cima dele.
   test "each block has a header strip above the code with the language on the left and copy on the right" do
-    assert_equal %w[ruby text js], all(".note-preview pre .code-header .code-language", count: 3).map(&:text)
+    assert_equal [ "Ruby", "text", "JavaScript" ], all(".note-preview pre .code-header .code-language", count: 3).map(&:text)
 
     all(".note-preview pre").each do |pre|
       layout = pre.evaluate_script(<<~JS)
