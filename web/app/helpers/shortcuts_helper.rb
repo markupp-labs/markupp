@@ -79,6 +79,10 @@ module ShortcutsHelper
     SHORTCUT_GROUPS.transform_values { |shortcuts| shortcuts.select { it.help && it.keys.any? } }
   end
 
+  # Largura em caracteres da coluna das teclas na ajuda, a do atalho mais longo ("Shift+F10 / Menu"): todos os grupos usam
+  # a mesma, e as descrições começam no mesmo x, como num --help.
+  def help_keys_width = help_shortcut_groups.values.flatten.map { it.keys.join(" / ").length }.max
+
   # As ações da nota primeiro: é sobre a nota que a paleta mais abre.
   def palette_commands = [ :note, *SHORTCUT_GROUPS.keys ].uniq.flat_map { SHORTCUT_GROUPS[it] }.select(&:run)
 
