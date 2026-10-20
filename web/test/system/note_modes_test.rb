@@ -83,7 +83,7 @@ class NoteModesTest < ApplicationSystemTestCase
       click_on mode
       find_field("Path").send_keys(:tab)
       assert_selector ".cm-content:focus"
-      send_keys [ :shift, :tab ]
+      send_keys :escape, [ :shift, :tab ]
       assert_field "Path", focused: true
     end
   end

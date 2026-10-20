@@ -74,16 +74,31 @@ class NotesTest < ApplicationSystemTestCase
     assert_equal({ path: "Plan.md", content: "# Plan\n\nShip it." }, api.post_requests.sole)
   end
 
-  test "shift+tab goes back from the content to the path" do
+  # Dentro do conteúdo Tab e Shift+Tab indentam, como no VS Code; Esc libera o teclado para sair do editor, o padrão
+  # de acessibilidade do CodeMirror.
+  test "escape then shift+tab goes back from the content to the path" do
     use_fake_api(notes: [])
     sign_in_through_form
 
     visit root_path
     send_keys "Plan", :tab
     assert_selector ".cm-content:focus"
-    send_keys [ :shift, :tab ]
+    send_keys :escape, [ :shift, :tab ]
 
     assert_field "Path", with: "/Plan", focused: true
+  end
+
+  test "tab in the content types a tab and shift+tab takes it back" do
+    use_fake_api(notes: [ { id: "1", path: "plan.md", content: "item\n" } ])
+    sign_in_through_form
+
+    visit note_path("1")
+    find(".cm-content").send_keys([ :control, :home ], :tab)
+    assert_equal "\titem\n", find("textarea", visible: :hidden).value
+    assert_selector ".cm-content:focus"
+
+    send_keys [ :shift, :tab ]
+    assert_equal "item\n", find("textarea", visible: :hidden).value
   end
 
   test "the heading follows the title while the note is new" do
@@ -91,7 +106,7 @@ class NotesTest < ApplicationSystemTestCase
     sign_in_through_form
 
     visit root_path
-    send_keys "Pla", :tab, "Body", [ :shift, :tab ], "n"
+    send_keys "Pla", :tab, "Body", :escape, [ :shift, :tab ], "n"
 
     assert_equal "# Plan\n\nBody", find("textarea", visible: :hidden).value
   end
@@ -193,7 +208,7 @@ class NotesTest < ApplicationSystemTestCase
     sign_in_through_form
 
     visit new_note_path
-    send_keys :tab, "Fresh idea.", [ :shift, :tab ], [ :control, "s" ]
+    send_keys :tab, "Fresh idea.", :escape, [ :shift, :tab ], [ :control, "s" ]
 
     assert_selector "#note_path_error[role=alert]", text: "Name can't be blank"
   end
