@@ -1,6 +1,7 @@
 require "test_helper"
 
-# Barra lateral: cabeçalho do tenant com o seletor à parte, ícones das ações e rodapé com conta, configurações, tema e sair.
+# Barra lateral: cabeçalho do tenant com o seletor à parte e ícones das ações; conta, tema e configurações ficam no pé da
+# barra de atividades, como no VS Code.
 class SidebarTest < ActionDispatch::IntegrationTest
   EMAIL = FakeMarkuppAccounts::DEFAULT_EMAIL
 
@@ -16,46 +17,53 @@ class SidebarTest < ActionDispatch::IntegrationTest
     end
   end
 
-  test "the footer is one line: the email opens the account menu, then the theme and the settings icons" do
+  # De baixo para cima, como no VS Code: a engrenagem, a conta e o tema. O CSS esconde o botão do tema já ativo.
+  test "the foot of the activity bar carries, bottom up, the settings, the account and the theme, without a sidebar footer" do
     use_fake_api(notes: [])
     sign_in_as
 
     get root_path
 
-    assert_select "nav > footer" do
-      assert_select "button[popovertarget=account_menu][aria-haspopup=menu][title=?]", EMAIL, text: EMAIL do
-        assert_select "svg[data-icon=user-circle]"
-      end
-      assert_select "a[href=?][aria-label=Settings][title=?][aria-keyshortcuts=?]", settings_path, "Settings (Ctrl+,)", "Control+, Meta+," do
-        assert_select "svg[data-icon=gear-six]"
-      end
-      # A engrenagem já leva às configurações: o menu da conta só mostra quem está logado e o sair.
-      assert_select "#account_menu[popover]:not([role])" do
-        assert_select "[role=menu] [role=menuitem]", count: 1
-        assert_select "form[action=?] button[role=menuitem]", session_path, text: "Log out"
-        assert_select "p", text: /Signed in as\s*#{Regexp.escape(EMAIL)}/
-      end
+    assert_select "nav#sidebar footer", count: 0
+    icons = css_select(".activity-bar-side .activity-bar-actions svg").map { it["data-icon"] }
+    assert_equal %w[sun moon user-circle gear-six], icons
+    assert_select ".activity-bar-side .activity-bar-actions" do
+      assert_select "button[popovertarget=account_menu][aria-haspopup=menu][aria-label=Account][title=?]", EMAIL
+      assert_select "a[href=?][aria-label=Settings][title=?][aria-keyshortcuts=?]", settings_path, "Settings (Ctrl+,)", "Control+, Meta+,"
     end
-    assert_select "nav > footer button", text: "Log out", count: 1
   end
 
-  test "the footer shows the settings to a member too" do
+  # A engrenagem já leva às configurações: o menu da conta só mostra quem está logado e o sair.
+  test "the account icon opens the menu with the email and the log out" do
+    use_fake_api(notes: [])
+    sign_in_as
+
+    get root_path
+
+    assert_select "body > #account_menu[popover]:not([role])" do
+      assert_select "[role=menu] [role=menuitem]", count: 1
+      assert_select "form[action=?] button[role=menuitem]", session_path, text: "Log out"
+      assert_select "p", text: /Signed in as\s*#{Regexp.escape(EMAIL)}/
+    end
+    assert_select "button", text: "Log out", count: 1
+  end
+
+  test "the activity bar shows the settings to a member too" do
     use_fake_api(notes: [], tenants: [ { id: "tenant-1", name: "Acme research", members: { EMAIL => "member" } } ])
     sign_in_as
 
     get root_path
 
-    assert_select "nav > footer a[href=?][aria-label=Settings]", settings_path
+    assert_select ".activity-bar-side a[href=?][aria-label=Settings]", settings_path
   end
 
-  test "the notes scroll apart from the fixed footer" do
+  test "the notes scroll in the sidebar" do
     use_fake_api(notes: [ { id: "1", path: "plan.md", content: "" } ])
     sign_in_as
 
     get root_path
 
     assert_select "nav > .sidebar-scroll [role=treeitem]", text: "└── plan"
-    assert_select "nav > .sidebar-scroll footer", count: 0
   end
 
   test "the theme toggle shows the sun or the moon of the theme it switches to" do
@@ -64,8 +72,8 @@ class SidebarTest < ActionDispatch::IntegrationTest
 
     get root_path
 
-    assert_select "nav footer form.theme-to-light button[aria-label=?][title=?] svg[data-icon=sun]", "Light theme", "Light theme"
-    assert_select "nav footer form.theme-to-dark button[aria-label=?][title=?] svg[data-icon=moon]", "Dark theme", "Dark theme"
+    assert_select ".activity-bar-side form.theme-to-light button[aria-label=?][title=?] svg[data-icon=sun]", "Light theme", "Light theme"
+    assert_select ".activity-bar-side form.theme-to-dark button[aria-label=?][title=?] svg[data-icon=moon]", "Dark theme", "Dark theme"
   end
 
   test "search carries its icon" do
@@ -176,7 +184,8 @@ class SidebarTest < ActionDispatch::IntegrationTest
 
     get root_path
 
-    assert_select "body > .activity-bar-side[role=tablist][aria-orientation=vertical][aria-label=?] + nav#sidebar", "Views"
+    assert_select "body > .activity-bar-side + nav#sidebar"
+    assert_select ".activity-bar-side > [role=tablist][aria-orientation=vertical][aria-label=?]", "Views"
     tabs = css_select(".activity-bar-side [role=tab]").map do |tab|
       [ tab["aria-label"], tab["title"], tab["aria-keyshortcuts"], tab["aria-controls"], tab["aria-selected"], tab.at_css("svg")["data-icon"] ]
     end
@@ -219,15 +228,21 @@ class SidebarTest < ActionDispatch::IntegrationTest
 
     get root_path
 
-    assert_select "nav#sidebar > .activity-bar-drawer[role=tablist][aria-orientation=horizontal]:first-child [role=tab]", count: 4
+    assert_select "nav#sidebar > .activity-bar-drawer:first-child" do
+      assert_select "[role=tablist][aria-orientation=horizontal] [role=tab]", count: 4
+      assert_select "button[popovertarget=account_menu][aria-label=Account]"
+      assert_select "a[href=?][aria-label=Settings]", settings_path
+    end
   end
 
-  test "there is no activity bar without a tenant" do
+  test "without a tenant the activity bar keeps only the theme, the account and the settings" do
     use_fake_api(notes: [], tenants: [])
     sign_in_as
 
     get tenants_path
 
     assert_select "[role=tablist]", count: 0
+    assert_select ".activity-bar-side button[aria-label=Account]"
+    assert_select ".activity-bar-side a[href=?][aria-label=Settings]", settings_path
   end
 end

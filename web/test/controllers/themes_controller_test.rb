@@ -41,7 +41,7 @@ class ThemesControllerTest < ActionDispatch::IntegrationTest
     get root_path
 
     assert_select "html:not([data-theme])"
-    assert_select "nav form.theme-to-light button[aria-label=?]", "Light theme"
-    assert_select "nav form.theme-to-dark button[aria-label=?]", "Dark theme"
+    assert_select ".activity-bar-side form.theme-to-light button[aria-label=?]", "Light theme"
+    assert_select ".activity-bar-side form.theme-to-dark button[aria-label=?]", "Dark theme"
   end
 end

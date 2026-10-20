@@ -172,13 +172,13 @@ module Settings
       assert_select "nav#sidebar .sidebar-scroll a[href^='/settings']", count: 0
     end
 
-    test "the account menu of the sidebar footer marks the account as current" do
+    test "the settings icon of the activity bar is marked as current" do
       use_fake_api
       sign_in_as
 
       get settings_account_path
 
-      assert_select "nav footer a[href=?][aria-label=Settings][aria-current=page]", settings_path
+      assert_select ".activity-bar-side a[href=?][aria-label=Settings][aria-current=page]", settings_path
     end
 
     test "show works for an account without tenant" do
@@ -189,7 +189,7 @@ module Settings
 
       assert_response :success
       assert_select "main nav a[href=?]", settings_appearance_path
-      assert_select "nav footer a[href=?][aria-label=Settings]", settings_path
+      assert_select ".activity-bar-side a[href=?][aria-label=Settings]", settings_path
     end
 
     test "the empty invite list of the onboarding points to the account" do

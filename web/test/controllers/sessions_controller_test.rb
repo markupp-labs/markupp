@@ -33,8 +33,8 @@ class SessionsControllerTest < ActionDispatch::IntegrationTest
     follow_redirect!
     assert_response :success
     assert_select "nav [role=treeitem]", text: "└── plan"
-    assert_select "nav footer", text: /#{FakeMarkuppAccounts::DEFAULT_EMAIL}/
-    assert_select "nav footer form[action=?] button", session_path, text: "Log out"
+    assert_select "#account_menu", text: /#{FakeMarkuppAccounts::DEFAULT_EMAIL}/
+    assert_select "#account_menu form[action=?] button", session_path, text: "Log out"
   end
 
   test "create goes back to the page asked before login" do

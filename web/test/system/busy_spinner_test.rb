@@ -69,7 +69,7 @@ class BusySpinnerTest < ApplicationSystemTestCase
     assert_selector "button[aria-busy=true]", text: "Log in"
 
     @api.release_calls!
-    assert_selector "nav", text: FakeMarkuppAccounts::DEFAULT_EMAIL, wait: 10
+    assert_selector "button[aria-label=Account][title='#{FakeMarkuppAccounts::DEFAULT_EMAIL}']", wait: 10
     assert_no_spinner
   end
 

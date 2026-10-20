@@ -26,12 +26,12 @@ class ContrastTest < ApplicationSystemTestCase
     sign_in_through_form
   end
 
-  test "the current item reads clearly in the tree, the settings and the sidebar footer" do
+  test "the current item reads clearly in the tree, the settings and the activity bar" do
     visit settings_appearance_path
     within("main") { click_on "Light" }
 
     assert_readable find("main nav a[aria-current=page]")
-    assert_readable find("footer a[aria-current=page]")
+    assert_readable find(".activity-bar-side a[aria-current=page]")
     assert_readable find("main button[aria-pressed=true]", text: "Light")
 
     visit note_path("1")

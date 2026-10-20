@@ -51,7 +51,7 @@ class InviteAcceptancesControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to root_path
     follow_redirect!
     assert_response :success
-    assert_select "nav footer", text: /#{NEW_EMAIL}/
+    assert_select "#account_menu", text: /#{NEW_EMAIL}/
     assert_select "nav #current_tenant", text: /Acme research.*member/m
     assert_equal "tenant-1", api.received_credentials.reverse.find { it[:call] == "GET /notes" }[:tenant_id]
   end

@@ -22,7 +22,7 @@ module Settings
       assert_select "main button svg[data-icon=sun]"
       assert_select "main button svg[data-icon=moon]"
       assert_select "main", text: /Follows your system theme until you pick one/
-      assert_select "nav > footer a[href=?][aria-label=Settings][aria-current=page]", settings_path
+      assert_select ".activity-bar-side a[href=?][aria-label=Settings][aria-current=page]", settings_path
     end
 
     test "show marks the theme in the cookie as pressed" do

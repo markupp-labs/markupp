@@ -1,15 +1,15 @@
 require "application_system_test_case"
 
 class SidebarTest < ApplicationSystemTestCase
-  test "the footer stays in view while a long note list scrolls" do
+  test "the settings at the foot of the activity bar stay in view while a long note list scrolls" do
     use_fake_api(notes: (1..80).map { { id: it.to_s, path: "note-#{it}.md", content: "" } })
     sign_in_through_form
 
     visit root_path
 
     assert find("nav > .sidebar-scroll").evaluate_script("this.scrollHeight > this.clientHeight")
-    footer_bottom = evaluate_script("document.querySelector('nav > footer').getBoundingClientRect().bottom")
-    assert_operator footer_bottom, :<=, evaluate_script("window.innerHeight")
+    settings_bottom = evaluate_script("document.querySelector('.activity-bar-side a[aria-label=Settings]').getBoundingClientRect().bottom")
+    assert_operator settings_bottom, :<=, evaluate_script("window.innerHeight")
   end
 
   test "the tenant name leads home from a note" do

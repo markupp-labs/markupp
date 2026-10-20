@@ -54,13 +54,13 @@ module Settings
       assert_equal "Your role in this tenant can't do that.", flash[:alert]
     end
 
-    test "the sidebar footer links to the settings for every role" do
+    test "the activity bar links to the settings for every role" do
       use_fake_api(tenants: [ ACME.merge(members: { ANA => "member" }) ])
       sign_in_as
 
       get root_path
 
-      assert_select "nav > footer a[href=?][aria-label=Settings]", settings_path
+      assert_select ".activity-bar-side a[href=?][aria-label=Settings]", settings_path
       assert_select "#tenant_switcher a[href=?]", settings_path, count: 0
     end
 

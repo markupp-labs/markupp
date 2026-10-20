@@ -8,8 +8,8 @@ class TenantMembersTest < ApplicationSystemTestCase
     sign_in_through_form
   end
 
-  test "an owner opens the settings from the sidebar footer and changes a role" do
-    within("nav > footer") { click_on "Settings" }
+  test "an owner opens the settings from the activity bar and changes a role" do
+    within(".activity-bar-side") { click_on "Settings" }
     within("main nav") { click_on "Members" }
 
     assert_selector "h1", text: "Members"
