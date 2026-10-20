@@ -1,6 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
 import { rememberSubmitOrigin, submitFrom, visitFrom } from "motion/busy_origin"
-import { inVimEditor } from "controllers/typing"
 
 // Árvore de notas da barra lateral (notes/_folder.html.erb), como o treeview de navegação da WAI: um Tab só para a
 // árvore (roving tabindex, na nota atual ou na primeira linha), setas ou j/k sobem e descem pelas linhas visíveis,
@@ -82,7 +81,7 @@ export default class extends Controller {
   // Só quem escreve tem o url da nota nova; com o foco numa linha, a nota nova vai para a pasta dela.
   newNote(event) {
     if (event.code != "KeyN" || !event.altKey || event.ctrlKey || event.metaKey || event.shiftKey || event.defaultPrevented) return
-    if (!this.hasNewNoteUrlValue || inVimEditor(event.target)) return
+    if (!this.hasNewNoteUrlValue) return
 
     event.preventDefault()
     this.visitNewNote(this.rowOf(event.target))

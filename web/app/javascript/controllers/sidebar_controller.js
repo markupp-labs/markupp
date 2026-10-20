@@ -25,7 +25,6 @@ export default class extends Controller {
   // fechada. A tecla vem pelo code: com o Shift o key é "E", e em outro layout pode ser outra letra.
   focusTree(event) {
     if (event.code != "KeyE" || !(event.ctrlKey || event.metaKey) || !event.shiftKey || event.altKey || event.defaultPrevented) return
-    if (inVimEditor(event.target)) return
 
     const row = this.panelTarget.querySelector("[role=tree] [role=treeitem][tabindex='0']")
     if (!row) return

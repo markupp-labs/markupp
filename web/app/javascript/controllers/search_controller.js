@@ -1,16 +1,10 @@
 import { Controller } from "@hotwired/stimulus"
-import { inVimEditor } from "controllers/typing"
 
 const DEBOUNCE_MS = 200
 
 // Paleta de busca: o <dialog> abre com Ctrl+K, o form mira o turbo frame e as setas movem a seleção.
 export default class extends Controller {
   static targets = [ "dialog", "form", "input", "result" ]
-
-  // Com o foco no editor do modo Vim a tecla é do Vim.
-  openFromShortcut(event) {
-    if (!inVimEditor(event.target)) this.open()
-  }
 
   open() {
     if (!this.dialogTarget.open) this.dialogTarget.showModal()

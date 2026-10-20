@@ -1,6 +1,6 @@
 import { Controller } from "@hotwired/stimulus"
 import { visitFrom } from "motion/busy_origin"
-import { inVimEditor, isTyping } from "controllers/typing"
+import { isTyping } from "controllers/typing"
 
 // Paleta de comandos (layouts/_command_palette), como a do VS Code: Ctrl+Shift+P ou Cmd+Shift+P abre, F1 também (o
 // Firefox reserva o Ctrl+Shift+P), e ":" fora de campo de texto, como o modo de comando do Vim. A busca fuzzy
@@ -13,7 +13,7 @@ export default class extends Controller {
   static targets = [ "input", "option", "empty" ]
 
   openFromKey(event) {
-    if (event.defaultPrevented || inVimEditor(event.target) || !opensPalette(event)) return
+    if (event.defaultPrevented || !opensPalette(event)) return
 
     event.preventDefault()
     this.open()
