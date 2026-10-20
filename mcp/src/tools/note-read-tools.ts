@@ -7,11 +7,10 @@ import {
   callApi,
   noteHeader,
   noteLocator,
+  readOnlyAnnotations,
   tenantParameter,
   type MarkuppApiFactory,
 } from "./tool-support.js";
-
-const readOnly = { readOnlyHint: true, openWorldHint: false };
 
 // addNoteReadTools registra list_notes, search_notes e read_note, os passos antes de
 // editar.
@@ -33,7 +32,7 @@ function addListNotes(
     description:
       "Lists every note in the tenant as id, path and updated_at, sorted by path. Use it to find a note by its path; to find notes by what they say, use search_notes.",
     parameters: z.object({ tenant: tenantParameter }),
-    annotations: readOnly,
+    annotations: readOnlyAnnotations,
     execute: async ({ tenant }, context) => {
       const api = apiFor(factory, context);
       const notes = await callApi(() => api.listNotes(tenant));
@@ -78,7 +77,7 @@ function addSearchNotes(
     description:
       "Searches note content for a text, case-insensitive, newest first. Returns id, path and updated_at of each match; open the relevant ones with read_note.",
     parameters: searchNotesParameters,
-    annotations: readOnly,
+    annotations: readOnlyAnnotations,
     execute: async ({ tenant, query, limit, offset }, context) => {
       const api = apiFor(factory, context);
       const found = await callApi(() =>
@@ -98,7 +97,7 @@ function addReadNote(
     description:
       "Reads a note's full markdown content and metadata by id. Read the note before edit_note, so old_text is copied from its current content.",
     parameters: noteLocator,
-    annotations: readOnly,
+    annotations: readOnlyAnnotations,
     execute: async ({ tenant, id }, context) => {
       const note = await callApi(() =>
         apiFor(factory, context).getNote(tenant, id),

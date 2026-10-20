@@ -1,7 +1,12 @@
 import type { FastMCP } from "fastmcp";
 import { z } from "zod";
 import type { MarkuppSession } from "../session.js";
-import { apiFor, callApi, type MarkuppApiFactory } from "./tool-support.js";
+import {
+  apiFor,
+  callApi,
+  readOnlyAnnotations,
+  type MarkuppApiFactory,
+} from "./tool-support.js";
 
 // addTenantTools registra list_tenants, por onde o agente descobre o id de tenant que
 // as ferramentas de notas pedem.
@@ -14,7 +19,7 @@ export function addTenantTools(
     description:
       "Lists the tenants you can access, with your role in each. Call it first: every note tool takes a tenant id from here. The viewer role reads notes only.",
     parameters: z.object({}),
-    annotations: { readOnlyHint: true, openWorldHint: false },
+    annotations: readOnlyAnnotations,
     execute: async (_args, context) => {
       const tenants = await callApi(() =>
         apiFor(factory, context).listTenants(),

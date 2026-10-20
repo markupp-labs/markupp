@@ -16,6 +16,16 @@ export const tenantParameter = z
   .min(1)
   .describe("Tenant id from list_tenants.");
 
+// readOnlyAnnotations marca as ferramentas que só leem; writeAnnotations é a base das
+// escritas, que cada ferramenta ajusta.
+export const readOnlyAnnotations = { readOnlyHint: true, openWorldHint: false };
+export const writeAnnotations = {
+  readOnlyHint: false,
+  destructiveHint: false,
+  idempotentHint: false,
+  openWorldHint: false,
+};
+
 export const noteIdParameter = z
   .string()
   .min(1)

@@ -10,17 +10,11 @@ import {
   noteIdParameter,
   noteLocator,
   tenantParameter,
+  writeAnnotations,
   type MarkuppApiFactory,
 } from "./tool-support.js";
 
-// writeAnnotations é a base das escritas; create_note só acrescenta, as outras mudam ou
-// apagam o que existe.
-const writeAnnotations = {
-  readOnlyHint: false,
-  destructiveHint: false,
-  idempotentHint: false,
-  openWorldHint: false,
-};
+// create_note só acrescenta; edit_note e delete_note mudam ou apagam o que existe.
 const destructiveWrite = { ...writeAnnotations, destructiveHint: true };
 
 const createNoteParameters = z.object({
