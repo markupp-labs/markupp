@@ -117,6 +117,17 @@ class RegionNavigationTest < ApplicationSystemTestCase
     assert_selector "nav a[aria-current=page]:focus", text: "Appearance"
   end
 
+  test "an open context menu keeps alt+l and stays the only place with the focus" do
+    open_note(mode: "split")
+
+    find("nav [role=treeitem]", text: "plan").right_click
+    assert_selector "[role=menu]"
+    send_keys [ :alt, "l" ]
+
+    assert_no_selector ".cm-content:focus"
+    assert_selector "[role=menu]:focus-within, [role=menu]:focus"
+  end
+
   test "the palette runs the move from where the focus was" do
     open_note(mode: "edit")
 
