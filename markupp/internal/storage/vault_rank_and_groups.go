@@ -35,7 +35,7 @@ func saveCommunities(ctx context.Context, q *gen.Queries, vaultID string, g *vau
 	if err != nil {
 		return err
 	}
-	communities := g.Communities()
+	communities, _ := g.Communities()
 	ids, err := assignCommunityIDs(ctx, q, vaultID, vaultgraph.InheritCommunityIDs(communities, previous))
 	if err != nil {
 		return err

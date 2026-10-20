@@ -24,30 +24,53 @@ type weightedEdge struct {
 	weight float64
 }
 
+// louvainLimits são os tetos do Louvain: níveis de agregação e passadas de
+// movimentos locais por nível.
+type louvainLimits struct {
+	levels int
+	passes int
+}
+
+// louvainCaps para o Louvain em 10 níveis e 100 passadas por nível. Cada nível ao
+// menos divide o número de comunidades, e um cofre real converge em poucos níveis e
+// passadas; o teto só segura o grafo patológico.
+var louvainCaps = louvainLimits{levels: 10, passes: 100}
+
 // louvain devolve a comunidade de cada nó do grafo de vizinhos adj, simétrico e sem
 // laço, pelo Louvain (Blondel et al., 2008) com resolução 1: movimentos locais que
 // aumentam a modularidade, agregação de cada comunidade num nó e repetição até não
-// haver movimento. A ordem de visita sai de uma semente fixa, então o mesmo grafo
-// dá sempre a mesma partição. O gonum faz o mesmo, mas soma o grau da comunidade
-// membro a membro a cada movimento, e levava dezenas de segundos num cofre de 10 mil
-// notas.
-func louvain(adj [][]int, seed uint64) []int {
-	membership := make([]int, len(adj))
+// haver movimento ou até os tetos de limits, e diz como parou. A ordem de visita sai
+// de uma semente fixa, então o mesmo grafo dá sempre a mesma partição. O gonum faz o
+// mesmo, mas soma o grau da comunidade membro a membro a cada movimento, e levava
+// dezenas de segundos num cofre de 10 mil notas.
+func louvain(adj [][]int, seed uint64, limits louvainLimits) ([]int, Convergence) {
+	membership := singletons(len(adj))
+	rng := rand.New(rand.NewPCG(seed, seed)) //nolint:gosec // G404: a ordem precisa ser reprodutivel, nao imprevisivel
+	g := unitGraph(adj)
+	var stop Convergence
+	for {
+		phase := g.moveNodes(rng, limits.passes)
+		stop = Convergence{Iterations: stop.Iterations + 1, Passes: max(stop.Passes, phase.passes), Capped: stop.Capped || phase.capped}
+		if !phase.moved {
+			return membership, stop
+		}
+		for i := range membership {
+			membership[i] = phase.communities[membership[i]]
+		}
+		if stop.Iterations == limits.levels {
+			return membership, Convergence{Iterations: stop.Iterations, Passes: stop.Passes, Capped: true}
+		}
+		g = g.aggregate(phase.communities)
+	}
+}
+
+// singletons põe cada um dos n nós na própria comunidade.
+func singletons(n int) []int {
+	membership := make([]int, n)
 	for i := range membership {
 		membership[i] = i
 	}
-	rng := rand.New(rand.NewPCG(seed, seed)) //nolint:gosec // G404: a ordem precisa ser reprodutivel, nao imprevisivel
-	g := unitGraph(adj)
-	for {
-		communities, moved := g.moveNodes(rng)
-		if !moved {
-			return membership
-		}
-		for i := range membership {
-			membership[i] = communities[membership[i]]
-		}
-		g = g.aggregate(communities)
-	}
+	return membership
 }
 
 // unitGraph é o primeiro nível: peso 1 em cada ligação.
@@ -77,21 +100,44 @@ func (g *weightedGraph) computeDegrees() {
 	}
 }
 
-// moveNodes faz a fase de movimentos locais e devolve a comunidade de cada nó,
-// renumerada de 0 em diante na ordem dos nós, e se algum nó mudou de comunidade.
-func (g *weightedGraph) moveNodes(rng *rand.Rand) ([]int, bool) {
+// localMoves é o resultado da fase de movimentos locais de um nível: a comunidade de
+// cada nó, renumerada de 0 em diante na ordem dos nós, quantas passadas rodaram, se
+// algum nó mudou de comunidade e se a última passada ainda melhorava quando o teto
+// de passadas chegou.
+type localMoves struct {
+	communities []int
+	passes      int
+	moved       bool
+	capped      bool
+}
+
+// moveNodes faz a fase de movimentos locais, com no máximo maxPasses passadas.
+func (g *weightedGraph) moveNodes(rng *rand.Rand, maxPasses int) localMoves {
 	l := newLocalMover(g)
 	order := rng.Perm(len(g.neighbors))
-	moved := false
-	for improved := true; improved; {
-		improved = false
-		for _, i := range order {
-			if l.moveBest(i) {
-				improved, moved = true, true
-			}
+	var phase localMoves
+	for improved := true; improved; phase.passes++ {
+		if phase.passes == maxPasses {
+			phase.capped = true
+			break
+		}
+		improved = l.pass(order)
+		phase.moved = phase.moved || improved
+	}
+	phase.communities = renumber(l.community)
+	return phase
+}
+
+// pass visita os nós na ordem order, movendo cada um para a melhor comunidade, e diz
+// se algum mudou.
+func (l *localMover) pass(order []int) bool {
+	improved := false
+	for _, i := range order {
+		if l.moveBest(i) {
+			improved = true
 		}
 	}
-	return renumber(l.community), moved
+	return improved
 }
 
 // localMover guarda a comunidade de cada nó, o grau somado de cada comunidade e,

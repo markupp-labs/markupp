@@ -87,11 +87,13 @@ func (g *Graph) PageRank() (map[string]float64, Convergence) {
 }
 
 // Communities devolve as comunidades do Louvain na projeção não dirigida, com
-// resolução 1 e semente fixa. Nota sozinha não é comunidade e fica de fora. Cada
-// comunidade sai com os ids em ordem, e a lista por tamanho e pelo primeiro id.
-func (g *Graph) Communities() [][]string {
+// resolução 1 e semente fixa, e como o Louvain parou: sem movimento ou num dos
+// tetos. Nota sozinha não é comunidade e fica de fora. Cada comunidade sai com os ids
+// em ordem, e a lista por tamanho e pelo primeiro id.
+func (g *Graph) Communities() ([][]string, Convergence) {
+	membership, stop := louvain(g.undirectedIndexes(), louvainSeed, louvainCaps)
 	groups := make(map[int][]string)
-	for i, c := range louvain(g.undirectedIndexes(), louvainSeed) {
+	for i, c := range membership {
 		groups[c] = append(groups[c], g.ids[i])
 	}
 	var out [][]string
@@ -102,7 +104,7 @@ func (g *Graph) Communities() [][]string {
 		}
 	}
 	slices.SortFunc(out, bySizeThenFirst)
-	return out
+	return out, stop
 }
 
 // undirectedIndexes devolve os vizinhos de cada nota na projeção não dirigida, por
