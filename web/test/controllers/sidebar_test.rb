@@ -30,8 +30,8 @@ class SidebarTest < ActionDispatch::IntegrationTest
         assert_select "svg[data-icon=gear-six]"
       end
       # A engrenagem já leva às configurações: o menu da conta só mostra quem está logado e o sair.
-      assert_select "#account_menu[role=menu][popover]" do
-        assert_select "[role=menuitem]", count: 1
+      assert_select "#account_menu[popover]:not([role])" do
+        assert_select "[role=menu] [role=menuitem]", count: 1
         assert_select "form[action=?] button[role=menuitem]", session_path, text: "Log out"
         assert_select "p", text: /Signed in as\s*#{Regexp.escape(EMAIL)}/
       end
