@@ -16,6 +16,7 @@ const MOVES = {
 // Espelho das teclas do ShortcutsHelper (grupo tree); o shortcuts_helper_test confere que batem.
 const ROW_SHORTCUTS = { F2: "rename", Delete: "delete", "alt+shift+KeyC": "copyPath", "alt+shift+KeyW": "copyWikilink" }
 const STATUS_TIMEOUT = 2000
+const NEW_HERE_ITEM = "[data-action~='note-tree#newHere']"
 
 export default class extends Controller {
   static targets = [ "status", "deleteForm" ]
@@ -115,13 +116,28 @@ export default class extends Controller {
 
   openMenu(row, x, y) {
     this.menuRow = row
-    this.contextMenuOutlet.element.querySelectorAll("[data-note-only=true]").forEach((item) => (item.hidden = isFolder(row)))
+    this.showMenuItems((item) => !(item.dataset.noteOnly == "true" && isFolder(row)))
     this.contextMenuOutlet.open({ x, y, opener: row })
   }
 
-  // Ações do menu, sobre a linha em que ele abriu.
+  // Botão direito no espaço vazio da barra lateral é a raiz: só a nota nova, em /. Em linha, botão, link ou campo fica o
+  // menu de cada um (ou o do navegador); quem só lê não cria nota e fica com o do navegador.
+  openRootMenu(event) {
+    if (!this.hasNewNoteUrlValue || !onEmptySidebar(event.target)) return
+
+    event.preventDefault()
+    this.menuRow = null
+    this.showMenuItems((item) => item.matches(NEW_HERE_ITEM))
+    this.contextMenuOutlet.open({ x: event.clientX, y: event.clientY, opener: event.target })
+  }
+
+  showMenuItems(visible) {
+    this.contextMenuOutlet.element.querySelectorAll("[role=menuitem]").forEach((item) => (item.hidden = !visible(item)))
+  }
+
+  // Ações do menu, sobre a linha em que ele abriu; sem linha (menu da raiz), na raiz.
   newHere() {
-    this.visitNewNote(this.menuRow)
+    this.menuRow ? this.visitNewNote(this.menuRow) : this.visitNewNoteIn("", null)
   }
 
   // Na nota aberta só foca e seleciona o campo, sem recarregar o que não foi salvo; outra nota abre já assim (?rename).
@@ -167,12 +183,16 @@ export default class extends Controller {
 
   // A pasta da linha (a própria pasta, ou a da nota); sem linha, o url do servidor já leva a pasta da nota aberta.
   visitNewNote(row) {
+    if (!row) return visitFrom(null, new URL(this.newNoteUrlValue, location.href))
+
+    this.visitNewNoteIn((isFolder(row) ? row.dataset.path : row.dataset.path.replace(/\/[^/]*$/, "")).slice(1), row)
+  }
+
+  // folder vazio é a raiz.
+  visitNewNoteIn(folder, origin) {
     const url = new URL(this.newNoteUrlValue, location.href)
-    if (row) {
-      const folder = (isFolder(row) ? row.dataset.path : row.dataset.path.replace(/\/[^/]*$/, "")).slice(1)
-      folder ? url.searchParams.set("folder", folder) : url.searchParams.delete("folder")
-    }
-    visitFrom(row, url)
+    folder ? url.searchParams.set("folder", folder) : url.searchParams.delete("folder")
+    visitFrom(origin, url)
   }
 
   // Quem só lê copia; renomear e apagar são de quem escreve, e só valem para nota, como o wikilink.
@@ -222,4 +242,11 @@ function groupOf(folder) {
 function setExpanded(folder, expanded) {
   folder.setAttribute("aria-expanded", String(expanded))
   groupOf(folder).hidden = !expanded
+}
+
+// Fundo da área que rola na barra lateral, fora de qualquer linha, botão, link, campo ou menu. A própria barra é popover
+// (a gaveta do celular), então só os outros popovers contam.
+function onEmptySidebar(target) {
+  return target.closest("nav#sidebar .sidebar-scroll") != null &&
+    target.closest("a, button, input, textarea, select, summary, [role=treeitem], [role=menu], dialog, [popover]:not(#sidebar)") == null
 }
