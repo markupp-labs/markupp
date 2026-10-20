@@ -6,6 +6,8 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/go-chi/chi/v5"
+
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/auth"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/identity"
 )
@@ -43,6 +45,24 @@ func resolveTenantBy(resolver TenantResolver, requested func(*http.Request) stri
 			next.ServeHTTP(w, r.WithContext(identity.WithActor(r.Context(), actor)))
 		})
 	}
+}
+
+// requireTenantInPath completa o ator com o vínculo do tenant {id} da rota. Sem vínculo,
+// responde 404, para quem é de fora não descobrir se o tenant existe.
+func requireTenantInPath(resolver TenantResolver) func(http.Handler) http.Handler {
+	return resolveTenantBy(resolver, tenantFromPath, writeTenantNotFound)
+}
+
+func tenantFromPath(r *http.Request) string {
+	return chi.URLParam(r, "id")
+}
+
+func writeTenantNotFound(w http.ResponseWriter, err error) {
+	if errors.Is(err, auth.ErrMembershipNotFound) {
+		writeError(w, "tenant_not_found", "tenant inexistente", http.StatusNotFound)
+		return
+	}
+	writeTenantError(w, err)
 }
 
 func writeTenantError(w http.ResponseWriter, err error) {
