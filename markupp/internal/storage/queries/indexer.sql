@@ -97,9 +97,10 @@ ON CONFLICT (vault_id) DO UPDATE SET revision = nextval('vault_second_stage_revi
 -- name: TryLockSecondStage :one
 SELECT markupp_try_lock_second_stage(sqlc.arg(vault_id)::text)::bool AS locked;
 
--- Notas do cofre, para decidir se o lote foi grande frente a ele.
--- name: CountVaultNotes :one
-SELECT count(*)::int AS note_count FROM notes WHERE vault_id = sqlc.arg(vault_id);
+-- Notas do cofre no último df, para decidir se o lote foi grande frente a ele sem
+-- contar as notas do cofre a cada lote. Cofre ainda sem df conta zero.
+-- name: VaultTermNoteCount :one
+SELECT coalesce((SELECT k.note_count FROM vault_term_stats k WHERE k.vault_id = sqlc.arg(vault_id)), 0)::int AS note_count;
 
 -- name: SecondStageRevision :one
 SELECT revision FROM vault_second_stage_queue WHERE vault_id = sqlc.arg(vault_id);

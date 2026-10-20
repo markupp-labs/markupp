@@ -11,18 +11,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const countVaultNotes = `-- name: CountVaultNotes :one
-SELECT count(*)::int AS note_count FROM notes WHERE vault_id = $1
-`
-
-// Notas do cofre, para decidir se o lote foi grande frente a ele.
-func (q *Queries) CountVaultNotes(ctx context.Context, vaultID string) (int32, error) {
-	row := q.db.QueryRow(ctx, countVaultNotes, vaultID)
-	var note_count int32
-	err := row.Scan(&note_count)
-	return note_count, err
-}
-
 const deleteNoteGraph = `-- name: DeleteNoteGraph :exec
 WITH apagadas AS (DELETE FROM note_links WHERE note_id = ANY ($1::text[]) AND kind <> 'inferred')
 DELETE FROM note_titles WHERE note_id = ANY ($1::text[])
@@ -444,6 +432,19 @@ type UnmarkSecondStageParams struct {
 func (q *Queries) UnmarkSecondStage(ctx context.Context, arg UnmarkSecondStageParams) error {
 	_, err := q.db.Exec(ctx, unmarkSecondStage, arg.VaultID, arg.Revision)
 	return err
+}
+
+const vaultTermNoteCount = `-- name: VaultTermNoteCount :one
+SELECT coalesce((SELECT k.note_count FROM vault_term_stats k WHERE k.vault_id = $1), 0)::int AS note_count
+`
+
+// Notas do cofre no último df, para decidir se o lote foi grande frente a ele sem
+// contar as notas do cofre a cada lote. Cofre ainda sem df conta zero.
+func (q *Queries) VaultTermNoteCount(ctx context.Context, vaultID string) (int32, error) {
+	row := q.db.QueryRow(ctx, vaultTermNoteCount, vaultID)
+	var note_count int32
+	err := row.Scan(&note_count)
+	return note_count, err
 }
 
 const vaultTermStatsKnown = `-- name: VaultTermStatsKnown :one

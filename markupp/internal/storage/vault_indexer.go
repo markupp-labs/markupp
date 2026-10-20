@@ -45,7 +45,7 @@ func (x *PostgresVaultIndexer) IndexNextVault(ctx context.Context, index indexin
 }
 
 // indexedBatch é o lote que uma transação gravou: o cofre, quantas notas vieram e
-// quantas o cofre tinha.
+// quantas o cofre tinha no último df.
 type indexedBatch struct {
 	vault      gen.ReservePendingVaultRow
 	notes      int
@@ -68,7 +68,7 @@ func (x *PostgresVaultIndexer) indexNextBatch(ctx context.Context, index indexin
 		if batch.notes, err = x.indexVault(ctx, q, vault, index); err != nil {
 			return err
 		}
-		batch.vaultNotes, err = countVaultNotes(ctx, q, vault.VaultID)
+		batch.vaultNotes, err = vaultTermNoteCount(ctx, q, vault.VaultID)
 		return err
 	})
 	return batch, found, err
@@ -90,10 +90,12 @@ func (x *PostgresVaultIndexer) indexVault(ctx context.Context, q *gen.Queries, v
 	return len(rows), dequeue(ctx, q, vault.VaultID, rows)
 }
 
-func countVaultNotes(ctx context.Context, q *gen.Queries, vaultID string) (int, error) {
-	n, err := q.CountVaultNotes(ctx, vaultID)
+// vaultTermNoteCount lê o N do último df do cofre: contar as notas dele custaria O(N)
+// a cada lote.
+func vaultTermNoteCount(ctx context.Context, q *gen.Queries, vaultID string) (int, error) {
+	n, err := q.VaultTermNoteCount(ctx, vaultID)
 	if err != nil {
-		return 0, fmt.Errorf("contar as notas do cofre %q: %w", vaultID, err)
+		return 0, fmt.Errorf("ler o N do df do cofre %q: %w", vaultID, err)
 	}
 	return int(n), nil
 }
@@ -106,8 +108,8 @@ func enterVault(ctx context.Context, q *gen.Queries, vault gen.ReservePendingVau
 }
 
 // Um lote é grande, e pede ANALYZE das tabelas derivadas antes do segundo estágio,
-// quando passa de largeBatchBase notas mais largeBatchFraction das notas do cofre: o
-// mesmo limiar padrão do autovacuum (autovacuum_analyze_threshold e
+// quando passa de largeBatchBase notas mais largeBatchFraction das notas do cofre no
+// último df: o mesmo limiar padrão do autovacuum (autovacuum_analyze_threshold e
 // autovacuum_analyze_scale_factor). O segundo estágio roda logo depois do commit,
 // antes de o autovacuum acordar, e sem estatística da carga nova as consultas por
 // título planejam como se as tabelas estivessem vazias.
