@@ -14,10 +14,6 @@ import (
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/storage/storagetest"
 )
 
-// enchimento é quantas notas sem título citado completam os cofres de menção: com
-// elas o cofre passa de cem notas, e o teto do título comum sai dos 5% do cofre.
-const enchimento = 100
-
 // cofreComMencoes monta um cofre indexado com menções não ligadas e os casos que
 // não contam: ligação em qualquer sentido, parte de palavra, texto de ligação,
 // título curto, título stopword e a própria nota. Os títulos ambíguos "plano"
@@ -44,7 +40,6 @@ func cofreComMencoes(t *testing.T) (*pgxpool.Pool, *storage.PostgresNoteGraph) {
 	} {
 		storagetest.SaveNote(ctxDeTeste, t, repo, nota)
 	}
-	semeiaNotas(t, db, "e", "enchimento", enchimento)
 	indexaTodosOsCofres(t, db, "simple")
 	return db, storage.NewPostgresNoteGraph(db, "simple")
 }

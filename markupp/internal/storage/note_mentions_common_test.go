@@ -13,9 +13,9 @@ import (
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/storage/storagetest"
 )
 
-// cofreComTituloComum monta um cofre indexado de 110 notas em que "projeto", de uma
-// palavra, e "plano diretor", de duas, aparecem em sete corpos, mais de 5% do cofre,
-// e "kubernetes" só no corpo de m.
+// cofreComTituloComum monta um cofre indexado de 10 notas em que "projeto", de uma
+// palavra, e "plano diretor", de duas, aparecem em sete corpos, acima do piso de cinco
+// notas, e "kubernetes" só no corpo de m.
 func cofreComTituloComum(t *testing.T) (*pgxpool.Pool, *storage.PostgresNoteGraph) {
 	t.Helper()
 	db := setupNotesDB(t)
@@ -29,7 +29,6 @@ func cofreComTituloComum(t *testing.T) (*pgxpool.Pool, *storage.PostgresNoteGrap
 		storagetest.SaveNote(ctxDeTeste, t, repo, nota)
 	}
 	semeiaNotas(t, db, "u", "o projeto segue o plano diretor", 6)
-	semeiaNotas(t, db, "e", "enchimento", enchimento)
 	indexaTodosOsCofres(t, db, "simple")
 	return db, storage.NewPostgresNoteGraph(db, "simple")
 }
