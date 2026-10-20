@@ -56,6 +56,24 @@ class GraphTest < ActiveSupport::TestCase
     assert_equal [ nil, 'W/"1"', 'W/"2"' ], @api.received_etags
   end
 
+  test "capped keeps the most central nodes in their order, the kept note and the links between them" do
+    nodes = [ [ "a", 0.1 ], [ "b", 0.5 ], [ nil, nil ], [ "c", 0.3 ], [ "d", 0.05 ] ].map do |id, pagerank|
+      Graph::Node.new(id:, title: id.to_s, path: nil, degree: nil, pagerank:, community: nil, unresolved: id.nil?)
+    end
+    links = [ [ 0, 1 ], [ 1, 3 ], [ 2, 1 ], [ 4, 3 ] ].map { |source, target| Graph::Link.new(source:, target:, type: "explicit", predicate: nil) }
+
+    capped = Graph.new(nodes:, links:).capped(3, keep: "d")
+
+    assert_equal %w[b c d], capped.nodes.map(&:id)
+    assert_equal [ [ 0, 1 ], [ 2, 1 ] ], capped.links.map { [ it.source, it.target ] }
+  end
+
+  test "capped leaves a graph within the limit as it is" do
+    graph = Graph.from_api(VAULT_GRAPH.deep_stringify_keys)
+
+    assert_same graph, graph.capped(2)
+  end
+
   test "stores nothing while the graph has no ETag yet" do
     2.times { Graph.of_vault(@api, "vault-1", store: @store) }
 
