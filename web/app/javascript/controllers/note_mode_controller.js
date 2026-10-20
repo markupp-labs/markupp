@@ -7,6 +7,7 @@ import { addCodeTools, copyCode } from "editor/code_blocks"
 import { editorScrollTopFor, previewScrollTopFor } from "editor/scroll_sync"
 import { EditorView } from "@codemirror/view"
 import { playOnce } from "motion/play_once"
+import { inVimEditor } from "controllers/typing"
 
 // Modos da nota: edição (CodeMirror), leitura (markdown renderizado) e lado a lado (preview a cada tecla).
 // O modo vai no data-mode do form (o CSS mostra e esconde os painéis) e no cookie note_mode (NoteModeHelper).
@@ -38,10 +39,12 @@ export default class extends Controller {
     this.apply(detail.mode)
   }
 
-  // Respeita quem já tratou a tecla (no Mac o CodeMirror liga Ctrl+E ao fim da linha; ali vale Cmd+E).
+  // Respeita quem já tratou a tecla (no Mac o CodeMirror liga Ctrl+E ao fim da linha; ali vale Cmd+E) e o editor no
+  // modo Vim, onde o Ctrl+E é do Vim.
   shortcut(event) {
     const target = SHORTCUTS[event.key]
     if (!target || !(event.ctrlKey || event.metaKey) || event.altKey || event.defaultPrevented) return
+    if (inVimEditor(event.target)) return
 
     event.preventDefault()
     this.apply(this.mode == target ? "edit" : target)

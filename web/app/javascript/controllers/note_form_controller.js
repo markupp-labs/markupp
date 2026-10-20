@@ -1,5 +1,6 @@
 import { Controller } from "@hotwired/stimulus"
 import { Turbo } from "@hotwired/turbo-rails"
+import { inVimEditor } from "controllers/typing"
 
 // Salvar explícito: Ctrl+S ou Cmd+S submete, marca alterações não salvas e avisa antes de sair com elas.
 // Com aviso de conflito ou erro de caminho na tela, o que o usuário digitou ainda não está no servidor.
@@ -24,6 +25,11 @@ export default class extends Controller {
   selectPath() {
     this.pathTarget.focus()
     this.pathTarget.select()
+  }
+
+  // Ctrl+S ou Cmd+S; com o modo Vim, no editor a tecla é do Vim e salvar é o :w.
+  saveFromShortcut(event) {
+    if (!inVimEditor(event.target)) this.save()
   }
 
   // Nota só de leitura (papel viewer) ou sem mudança não tem o que salvar.

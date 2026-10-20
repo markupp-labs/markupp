@@ -9,7 +9,7 @@
   <%# Ctrl+, e Cmd+, abrem as configurações; o Stimulus não tem filtro para a vírgula, o controller confere a tecla. %>
   <%# Ctrl+Shift+E e Cmd+Shift+E levam o foco à árvore de notas (sidebar_controller.js); g e depois t abre a lista de tenants. %>
   <% shortcuts = "keydown.ctrl+b@window->sidebar#toggleFromShortcut keydown.meta+b@window->sidebar#toggleFromShortcut keydown@window->settings-shortcut#open keydown@window->sidebar#focusTree keydown@window->tenants-shortcut#open turbo:before-render@document->area-transition#mark" %>
-  <% shortcuts += " keydown.ctrl+k@window->search#open:prevent keydown.meta+k@window->search#open:prevent" if current_tenant %>
+  <% shortcuts += " keydown.ctrl+k@window->search#openFromShortcut:prevent keydown.meta+k@window->search#openFromShortcut:prevent" if current_tenant %>
   <body class="app-shell min-h-dvh bg-surface font-mono text-sm text-ink"
         <%= tag.attributes(data: { controller: [ "sidebar", "settings-shortcut", "tenants-shortcut", "area-transition", ("search" if current_tenant) ].compact.join(" "), action: shortcuts,
                                   area: content_for(:area).presence || "notes",

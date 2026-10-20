@@ -26,7 +26,7 @@ export async function vimModeExtensions() {
   const { vim, getCM } = await library
   return [
     tabLeavesAfterNormalEscape(getCM), vim({ status: true }), vimTheme,
-    EditorView.editorAttributes.of({ "data-vim-keys": "" }),
+    EditorView.editorAttributes.of({ "data-vim-editor": "" }),
   ]
 }
 

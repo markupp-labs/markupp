@@ -1,5 +1,6 @@
 import { Controller } from "@hotwired/stimulus"
 import { playOnce } from "motion/play_once"
+import { inVimEditor } from "controllers/typing"
 
 // Barra lateral estilo VS Code. No desktop recolhe/expande (Ctrl+B ou Cmd+B) e redimensiona pela alça na borda;
 // estado e largura vão para cookies que o servidor lê no próximo render (SidebarHelper). No celular é a gaveta popover.
@@ -12,9 +13,9 @@ export default class extends Controller {
   static values = { hideLabel: String, showLabel: String }
 
   // Atalho vale também com o foco no CodeMirror. Se o editor já tratou a tecla (no Mac, Ctrl+B é o
-  // cursor para a esquerda, à moda do Emacs), ele vence e a barra fica como está.
+  // cursor para a esquerda, à moda do Emacs), ele vence e a barra fica como está; com o modo Vim, o Ctrl+B é dele.
   toggleFromShortcut(event) {
-    if (event.defaultPrevented) return
+    if (event.defaultPrevented || inVimEditor(event.target)) return
 
     event.preventDefault()
     this.toggle()
@@ -24,6 +25,7 @@ export default class extends Controller {
   // fechada. A tecla vem pelo code: com o Shift o key é "E", e em outro layout pode ser outra letra.
   focusTree(event) {
     if (event.code != "KeyE" || !(event.ctrlKey || event.metaKey) || !event.shiftKey || event.altKey || event.defaultPrevented) return
+    if (inVimEditor(event.target)) return
 
     const row = this.panelTarget.querySelector("[role=tree] [role=treeitem][tabindex='0']")
     if (!row) return
