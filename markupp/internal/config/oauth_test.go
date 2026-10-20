@@ -289,3 +289,42 @@ func TestLoad_URLComHostVazio_RetornaErro(t *testing.T) {
 		assert.Contains(t, err.Error(), chave)
 	}
 }
+
+func TestLoad_URLsComPortaPadrao_RemoveAPorta(t *testing.T) {
+	env := envComOAuth()
+	env["MARKUPP_PUBLIC_URL"] = "https://notas.markupp.dev:443"
+	env["MARKUPP_PANEL_URL"] = "http://localhost:80/painel"
+	env["MARKUPP_OAUTH_RESOURCES"] = "https://mcp.markupp.dev:443/mcp=" + segredoDoRecursoDeTeste +
+		",http://[::1]:80/mcp=" + outroSegredoDeTeste
+
+	cfg, err := config.Load(env.Lookup)
+
+	require.NoError(t, err)
+	assert.Equal(t, "https://notas.markupp.dev", cfg.PublicURL)
+	assert.Equal(t, "http://localhost/painel", cfg.PanelURL)
+	assert.Equal(t, "https://mcp.markupp.dev/mcp", cfg.OAuthResources[0].URL)
+	assert.Equal(t, "http://[::1]/mcp", cfg.OAuthResources[1].URL)
+}
+
+func TestLoad_URLsComPortaPadraoDoOutroEsquema_MantemAPorta(t *testing.T) {
+	env := envComOAuth()
+	env["MARKUPP_PUBLIC_URL"] = "https://notas.markupp.dev:80"
+	env["MARKUPP_PANEL_URL"] = "http://localhost:443/painel"
+
+	cfg, err := config.Load(env.Lookup)
+
+	require.NoError(t, err)
+	assert.Equal(t, "https://notas.markupp.dev:80", cfg.PublicURL)
+	assert.Equal(t, "http://localhost:443/painel", cfg.PanelURL)
+}
+
+func TestLoad_RecursoRepetidoComPortaPadrao_RetornaErro(t *testing.T) {
+	env := envComOAuth()
+	env["MARKUPP_OAUTH_RESOURCES"] = "https://mcp.markupp.dev/mcp=" + segredoDoRecursoDeTeste +
+		",https://mcp.markupp.dev:443/mcp=" + outroSegredoDeTeste
+
+	_, err := config.Load(env.Lookup)
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "par 2")
+}
