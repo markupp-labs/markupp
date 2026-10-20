@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <% html_attributes = sidebar_html_attributes %>
 <%= tag.html lang: "en", style: html_attributes[:style],
-             data: { theme: chosen_theme, editor_style: chosen_editor_style, **html_attributes[:data] } do %>
+             data: { theme: chosen_theme, editor_style: chosen_editor_style, vim_keys: chosen_vim_keys, **html_attributes[:data] } do %>
   <%= render "layouts/head" %>
 
   <%# Sem tenant ativo (onboarding) não há notas para buscar: sem busca, sem seletor. %>

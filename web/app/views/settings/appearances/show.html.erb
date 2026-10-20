@@ -19,12 +19,22 @@
   <% end %>
 
   <h2 class="mt-6 text-base font-semibold" id="editor_style_heading"><%= t(".editor_style") %></h2>
-  <div role="group" aria-labelledby="editor_style_heading" class="mt-3 flex flex-wrap gap-2">
-    <% EditorStylesController::STYLES.each do |style| %>
-      <%= button_to t(".#{style}"), editor_style_path, method: :patch, params: { editor_style: style },
-                    aria: { pressed: style == chosen_editor_style },
-                    class: "btn aria-pressed:border-accent aria-pressed:bg-accent-soft aria-pressed:text-ink" %>
-    <% end %>
+  <%# O estilo e as teclas do Vim numa linha, separados por um traço. O Vim sem Turbo, como o tema: o editor lê o
+      data-vim-keys do html, que o Turbo não troca. %>
+  <div class="mt-3 flex flex-wrap items-center gap-2">
+    <div role="group" aria-labelledby="editor_style_heading" class="flex flex-wrap gap-2">
+      <% EditorStylesController::STYLES.each do |style| %>
+        <%= button_to t(".#{style}"), editor_style_path, method: :patch, params: { editor_style: style },
+                      aria: { pressed: style == chosen_editor_style },
+                      class: "btn aria-pressed:border-accent aria-pressed:bg-accent-soft aria-pressed:text-ink" %>
+      <% end %>
+    </div>
+    <span aria-hidden="true" class="mx-1 h-5 w-px bg-line"></span>
+    <% vim_on = chosen_vim_keys == "on" %>
+    <%= button_to t(".vim_keys"), vim_keys_path, method: :patch, params: { vim_keys: vim_on ? "off" : "on" },
+                  form: { data: { turbo: false } }, aria: { pressed: vim_on },
+                  class: "btn aria-pressed:border-accent aria-pressed:bg-accent-soft aria-pressed:text-ink" %>
   </div>
   <p class="mt-2 text-ink-muted"><%= t(".editor_style_hint") %></p>
+  <p class="mt-1 text-ink-muted"><%= t(".vim_keys_hint") %></p>
 </div>

@@ -7,6 +7,7 @@ Rails.application.routes.draw do
   root "notes#index"
   resource :theme, only: :update
   resource :editor_style, only: :update
+  resource :vim_keys, only: :update
   resource :session, only: [ :new, :create, :destroy ]
   resource :invite_acceptance, only: [ :new, :create ]
   resource :password_request, only: [ :new, :create ]

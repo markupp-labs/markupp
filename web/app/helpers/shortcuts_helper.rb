@@ -27,6 +27,8 @@ module ShortcutsHelper
       Shortcut.of(:dark_theme, run: { form: { url: :theme_path, params: { theme: "dark" }, turbo: false } }),
       Shortcut.of(:editor_style_plain, run: { form: { url: :editor_style_path, params: { editor_style: "plain" }, turbo: false } }),
       Shortcut.of(:editor_style_styled, run: { form: { url: :editor_style_path, params: { editor_style: "styled" }, turbo: false } }),
+      Shortcut.of(:vim_keys_on, run: { form: { url: :vim_keys_path, params: { vim_keys: "on" }, turbo: false } }),
+      Shortcut.of(:vim_keys_off, run: { form: { url: :vim_keys_path, params: { vim_keys: "off" }, turbo: false } }),
       Shortcut.of(:tenants, "g t", run: { href: :tenants_path }),
       Shortcut.of(:switch_tenant, run: { click: "button[popovertarget=tenant_switcher]" }),
       Shortcut.of(:log_out, run: { form: { url: :session_path, method: :delete } })

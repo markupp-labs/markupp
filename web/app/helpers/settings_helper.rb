@@ -8,6 +8,9 @@ module SettingsHelper
   # Estilo do editor gravado no cookie; sem escolha, o plain do VS Code.
   def chosen_editor_style = cookies[:editor_style].presence_in(EditorStylesController::STYLES) || "plain"
 
+  # Modo Vim do editor gravado no cookie; sem escolha, desligado.
+  def chosen_vim_keys = cookies[:vim_keys].presence_in(VimKeysController::CHOICES) || "off"
+
   # Item da navegação das configurações; a seção aberta leva o mesmo realce da nota atual.
   def settings_nav_link(section, path)
     link_to t("settings.nav.#{section}"), path, aria: { current: ("page" if section == settings_section) },
