@@ -179,7 +179,7 @@ func TestAuthorize_VariosParametrosRepetidos_CitaSempreOPrimeiroEmOrdem(t *testi
 	for range 20 {
 		rec := authorizeRequest(&fakeOAuthService{}, "state=a&state=b&scope=x&scope=y&client_id=1&client_id=2&resource=r&resource=s")
 
-		assert.Contains(t, rec.Body.String(), `\"client_id\"`)
+		assert.Contains(t, rec.Body.String(), `'client_id'`)
 	}
 }
 
