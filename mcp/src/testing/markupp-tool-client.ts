@@ -7,6 +7,7 @@ import { registerMarkuppTools } from "../tools/register-markupp-tools.js";
 import { FakeApiTokens } from "./fake-markupp-api.js";
 
 type ToolText = { text: string; isError: boolean; parts: string[] };
+type ResourceText = { text: string; mimeType?: string; uri: string };
 type ListedTool = Awaited<ReturnType<Client["listTools"]>>["tools"][number];
 
 // MarkuppToolClient liga um FastMCP com as ferramentas do markupp a um cliente MCP em
@@ -43,6 +44,17 @@ export class MarkuppToolClient {
     const content = result.content as { type: string; text?: string }[];
     const parts = content.map((part) => part.text ?? "");
     return { text: parts.join("\n"), isError: result.isError === true, parts };
+  }
+
+  // read lê o resource uri; a falha chega como a rejeição do cliente MCP.
+  async read(uri: string): Promise<ResourceText> {
+    const { contents } = await this.client.readResource({ uri });
+    const [first] = contents;
+    if (!first || !("text" in first))
+      throw new Error(
+        `resource ${uri} sem conteúdo de texto: ${JSON.stringify(contents)}`,
+      );
+    return { text: first.text, mimeType: first.mimeType, uri: first.uri };
   }
 
   async tool(name: string): Promise<ListedTool> {
