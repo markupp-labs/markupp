@@ -6,7 +6,7 @@ import { inVimInsert } from "editor/vim_mode"
 // perto naquela direção pela geometria da tela, entre as visíveis marcadas com data-focus-region (árvore, caminho,
 // editor, preview, lista de tenants, navegação das configurações). data-focus-region-target diz onde o foco cai, em
 // seletores separados por ";" na ordem de preferência; sem ele, a própria região. Sem região naquela direção, nada.
-// A tecla vem pelo code: no Mac o Option muda a letra (Option+h é o ˙). Campo de formulário e o insert do Vim ficam
+// A tecla vem pelo code: no Mac o Option muda a letra (Option+h é o ˙). Campo de formulário, menu aberto e o insert do Vim ficam
 // com a tecla. A origem é o foco, não o alvo do evento: a paleta repete o atalho no body depois de devolver o foco.
 const DIRECTIONS = { KeyH: "left", KeyJ: "down", KeyK: "up", KeyL: "right" }
 
@@ -28,7 +28,7 @@ function directionOf(event) {
 }
 
 function keepsKeys(target) {
-  return target.closest?.("input, textarea, select, dialog") != null || inVimInsert(target)
+  return target.closest?.("input, textarea, select, dialog, [role=menu]") != null || inVimInsert(target)
 }
 
 // O editor volta pelo view.focus(), que repõe o cursor onde estava; o resto recebe o foco direto.
