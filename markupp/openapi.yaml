@@ -1167,6 +1167,125 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /v1/vaults/{id}/graph:
+    get:
+      summary: Lê o grafo do cofre para desenhar
+      description: |
+        O cofre inteiro, sem paginação: um nó por nota, com grau, PageRank e
+        comunidade, e um nó sem nota por título não resolvido (inclusive anexo), e as
+        ligações como pares de índices no array de nós. Ligação inferida tem o mesmo
+        peso da escrita, só marcada pelo tipo. Os filtros escondem órfãs, nós sem nota
+        e ligações inferidas, ou recortam por comunidade; ligação com ponta escondida
+        também sai. A resposta vem com gzip quando o cliente aceita e com ETag fraco
+        pela versão do grafo do cofre, que muda quando o segundo estágio do indexador
+        roda; antes do primeiro segundo estágio não há ETag. O viewer também lê.
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+        - $ref: '#/components/parameters/VaultID'
+        - $ref: '#/components/parameters/GraphOrphans'
+        - $ref: '#/components/parameters/GraphUnresolved'
+        - $ref: '#/components/parameters/GraphInferred'
+        - $ref: '#/components/parameters/GraphCommunity'
+        - $ref: '#/components/parameters/GraphIfNoneMatch'
+      responses:
+        '200':
+          description: Grafo, com nós e ligações vazios quando não há nota
+          headers:
+            ETag:
+              $ref: '#/components/headers/GraphETag'
+            Content-Encoding:
+              $ref: '#/components/headers/GraphContentEncoding'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GraphResponse'
+        '304':
+          description: If-None-Match traz a versão atual do grafo; sem corpo
+          headers:
+            ETag:
+              $ref: '#/components/headers/GraphETag'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '400':
+          description: Filtro inválido (invalid_request), com o valor e o formato esperado na mensagem
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Cofre inexistente ou de que o usuário não é membro (vault_forbidden)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Erro interno do servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/notes/{id}/graph:
+    get:
+      summary: Lê o grafo local da nota para desenhar
+      description: |
+        As notas a até depth saltos da nota, seguindo as ligações nos dois sentidos,
+        com as ligações entre elas e os nós sem nota que as notas a menos de depth
+        saltos citam. Mesmo formato, filtros, gzip e ETag de GET /v1/vaults/{id}/graph;
+        o filtro vale também no caminho, e a nota lida sempre fica. O viewer também lê.
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+        - $ref: '#/components/parameters/NoteID'
+        - name: depth
+          in: query
+          required: false
+          description: Saltos a partir da nota; fora de 1 a 3 é 400 com o valor e o intervalo
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+            maximum: 3
+        - $ref: '#/components/parameters/GraphOrphans'
+        - $ref: '#/components/parameters/GraphUnresolved'
+        - $ref: '#/components/parameters/GraphInferred'
+        - $ref: '#/components/parameters/GraphCommunity'
+        - $ref: '#/components/parameters/GraphIfNoneMatch'
+      responses:
+        '200':
+          description: Grafo, com nós e ligações vazios quando não há nota
+          headers:
+            ETag:
+              $ref: '#/components/headers/GraphETag'
+            Content-Encoding:
+              $ref: '#/components/headers/GraphContentEncoding'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GraphResponse'
+        '304':
+          description: If-None-Match traz a versão atual do grafo; sem corpo
+          headers:
+            ETag:
+              $ref: '#/components/headers/GraphETag'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '400':
+          description: depth fora de 1 a 3 ou filtro inválido (invalid_request), com o valor e o formato esperado na mensagem
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Nota inexistente ou fora dos cofres do usuário (not_found)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Erro interno do servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /v1/vaults/{id}/links:
     get:
       summary: Lista as ligações das notas do cofre
@@ -1530,6 +1649,45 @@ components:
       description: Identificador do cofre
       schema:
         type: string
+    GraphOrphans:
+      name: orphans
+      in: query
+      required: false
+      description: false esconde as notas órfãs, de grau zero; nota que o segundo estágio ainda não leu fica
+      schema:
+        type: boolean
+        default: true
+    GraphUnresolved:
+      name: unresolved
+      in: query
+      required: false
+      description: false esconde os nós sem nota, de títulos não resolvidos e anexos
+      schema:
+        type: boolean
+        default: true
+    GraphInferred:
+      name: inferred
+      in: query
+      required: false
+      description: false esconde as ligações inferidas
+      schema:
+        type: boolean
+        default: true
+    GraphCommunity:
+      name: community
+      in: query
+      required: false
+      description: Fica só com as notas da comunidade, pelo id de GET /v1/vaults/{id}/communities
+      schema:
+        type: integer
+        format: int64
+    GraphIfNoneMatch:
+      name: If-None-Match
+      in: header
+      required: false
+      description: ETag de uma leitura anterior; com a versão atual, a resposta é 304
+      schema:
+        type: string
     Orphan:
       name: orphan
       in: query
@@ -1615,6 +1773,17 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
+  headers:
+    GraphETag:
+      description: ETag fraco com a versão do grafo do cofre, ausente antes do primeiro segundo estágio
+      schema:
+        type: string
+        example: 'W/"42"'
+    GraphContentEncoding:
+      description: gzip quando o pedido traz Accept-Encoding com gzip
+      schema:
+        type: string
+        enum: [gzip]
   responses:
     Unauthorized:
       description: Token ausente, inválido ou expirado (unauthorized)
@@ -1994,6 +2163,68 @@ components:
           format: double
           description: Probabilidade a priori de o título apontar para a nota citada
           example: 0.33
+    GraphResponse:
+      type: object
+      properties:
+        nodes:
+          type: array
+          items:
+            $ref: '#/components/schemas/GraphNode'
+          description: Notas, por caminho (no grafo local, nível a nível a partir da nota lida), e depois os nós sem nota
+        links:
+          type: array
+          items:
+            $ref: '#/components/schemas/GraphLink'
+    GraphNode:
+      type: object
+      properties:
+        id:
+          type: string
+          nullable: true
+          description: Identificador da nota; null no nó sem nota
+        title:
+          type: string
+          description: Título da nota, ou o título citado no nó sem nota, na primeira grafia
+          example: "meeting"
+        path:
+          type: string
+          nullable: true
+          description: Caminho da nota; null no nó sem nota
+          example: "notas/meeting.md"
+        degree:
+          type: integer
+          nullable: true
+          description: Grau da nota; null antes do segundo estágio e no nó sem nota
+        pagerank:
+          type: number
+          format: double
+          nullable: true
+          description: PageRank da nota; null antes do segundo estágio e no nó sem nota
+        community:
+          type: integer
+          format: int64
+          nullable: true
+          description: Comunidade da nota; null sem comunidade e no nó sem nota
+        unresolved:
+          type: boolean
+          description: true no nó sem nota, de título não resolvido ou anexo
+    GraphLink:
+      type: object
+      properties:
+        source:
+          type: integer
+          description: Índice, em nodes, da nota que liga
+        target:
+          type: integer
+          description: Índice, em nodes, do nó a que liga
+        type:
+          type: string
+          enum: [explicit, embed, typed, inferred]
+          description: Tipo da ligação, como em LinkResponse
+        predicate:
+          type: string
+          nullable: true
+          description: Chave do frontmatter da ligação tipada; null nos outros tipos
     CommunityResponse:
       type: object
       properties:
