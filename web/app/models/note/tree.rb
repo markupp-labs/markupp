@@ -1,6 +1,9 @@
 # Árvore de pastas montada a partir dos caminhos. A API não tem pasta, só caminho.
 class Note::Tree
-  Folder = Data.define(:name, :folders, :notes)
+  Folder = Data.define(:name, :folders, :notes) do
+    # As notas desta pasta e de todas as de dentro.
+    def notes_within = notes + folders.flat_map(&:notes_within)
+  end
 
   def self.build(notes)
     root = new_branch
