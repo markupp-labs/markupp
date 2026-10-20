@@ -7,6 +7,12 @@ class Note
   attribute :content, :string
   attribute :created_at, :datetime
   attribute :updated_at, :datetime
+  # O cofre da nota: é por ele que o painel chega às rotas do cofre (grafo, comunidades, notas do cofre).
+  attribute :vault_id, :string
+  # Organização derivada, que o indexador grava depois: nil na nota que ele ainda não viu.
+  attribute :degree, :integer
+  attribute :pagerank, :float
+  attribute :community, :integer
 
   SEARCH_LIMIT = 20
 
@@ -25,7 +31,9 @@ class Note
   end
 
   # Notas do cofre sem o conteúdo, com a organização derivada; a query filtra (orphan, community) e ordena (sort, direction).
-  def self.in_vault(api, vault_id, **query) = []
+  def self.in_vault(api, vault_id, **query)
+    api.get(MarkuppApi.path("v1", "vaults", vault_id, "notes", **query)).map { from_api(it) }
+  end
 
   # Também monta a nota resumida (id, título e caminho) que vem dentro de ligação, menção, comunidade e busca.
   def self.from_api(attributes) = new(attributes.slice(*attribute_names))
