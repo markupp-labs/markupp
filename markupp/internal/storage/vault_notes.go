@@ -10,8 +10,8 @@ import (
 )
 
 // ListVaultNotes devolve a página das notas do cofre vaultID que vq pede, sem o
-// conteúdo nem a criação e com a organização derivada de cada uma, ou notes.ErrVaultForbidden quando o ator não
-// enxerga o cofre.
+// conteúdo nem a criação e com a organização derivada de cada uma, ou
+// notes.ErrVaultForbidden quando o ator não enxerga o cofre.
 func (r *PostgresNotesRepository) ListVaultNotes(ctx context.Context, vaultID string, vq notes.VaultNotesQuery) ([]notes.Note, error) {
 	var out []notes.Note
 	err := r.run(ctx, func(q *gen.Queries) error {
