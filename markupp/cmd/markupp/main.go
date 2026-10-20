@@ -171,6 +171,10 @@ func serve(ctx context.Context, logger *slog.Logger, cfg config.Config) error {
 	}
 	defer pool.Close()
 
+	cfg, err = prepareInstance(ctx, cfg, storage.NewPostgresInstanceSecrets(pool))
+	if err != nil {
+		return fmt.Errorf("preparar a instancia: %w", err)
+	}
 	handler, err := newHandler(cfg, pool, logger)
 	if err != nil {
 		return err
@@ -197,7 +201,7 @@ func newHandler(cfg config.Config, pool *pgxpool.Pool, logger *slog.Logger) (htt
 	return api.NewRouter(api.RouterDeps{
 		Notes: notesSvc, Auth: authSvc, Admin: adminSvc, AccountEmail: accountEmail,
 		Tokens: codec, Tenants: authSvc, Probe: pool, AllowedOrigins: cfg.AllowedOrigins,
-		OAuthMetadata: oauthMetadataFrom(cfg), OAuth: oauthSvc,
+		OAuthMetadata: oauthMetadataFrom(cfg), OAuth: oauthSvc, MCPUpstreamURL: cfg.MCPUpstreamURL,
 	}), nil
 }
 
