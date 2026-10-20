@@ -12,13 +12,17 @@ import (
 )
 
 // RefreshToken troca o refresh token por um par novo, rotacionando o refresh (RFC 9700,
-// seção 4.14.2). O refresh é consumido antes das conferências: um grant que não bate com
-// a Autorização o perde de vez.
+// seção 4.14.2). Scope e resource são conferidos antes de consumir o refresh, que segue
+// valendo depois de um invalid_scope ou invalid_target; client_id de outro cliente o
+// perde de vez.
 func (s *Service) RefreshToken(ctx context.Context, g RefreshGrant) (TokenResponse, error) {
 	if err := checkRefreshParams(g); err != nil {
 		return TokenResponse{}, err
 	}
 	now := s.clock()
+	if err := s.precheckRefresh(ctx, g, now); err != nil {
+		return TokenResponse{}, err
+	}
 	grant, err := s.consumeRefresh(ctx, g.RefreshToken, now)
 	if err != nil {
 		return TokenResponse{}, err
@@ -38,6 +42,32 @@ func checkRefreshParams(g RefreshGrant) error {
 		return &ProtocolError{Code: errInvalidRequest, Description: "client_id ausente; esperado o client_id que recebeu o refresh token"}
 	}
 	return nil
+}
+
+// precheckRefresh lê o refresh sem consumir e, se ele ainda vale para o client_id do
+// grant, confere scope e resource. Refresh que não vale (desconhecido, rotacionado,
+// revogado, expirado ou de outro cliente) fica para o consumo, que trata o reuso e queima
+// o refresh de outro cliente.
+func (s *Service) precheckRefresh(ctx context.Context, g RefreshGrant, now time.Time) error {
+	grant, err := s.repo.FindToken(ctx, auth.HashOpaqueToken(g.RefreshToken))
+	if errors.Is(err, ErrTokenNotFound) {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("oauth: lendo o refresh token antes de consumir: %w", err)
+	}
+	if !unspentRefresh(grant, g.ClientID, now) {
+		return nil
+	}
+	_, err = checkRefreshGrant(g, grant)
+	return err
+}
+
+// unspentRefresh diz se o token é um refresh do cliente que ainda vale e não foi
+// rotacionado.
+func unspentRefresh(grant TokenGrant, clientID string, now time.Time) bool {
+	return grant.Token.Kind == TokenKindRefresh && !grant.Token.Rotated &&
+		grant.Authorization.ClientID == clientID && liveGrant(grant, now)
 }
 
 // consumeRefresh marca o refresh como rotacionado. Reapresentar um já rotacionado é reuso
@@ -77,8 +107,8 @@ func (s *Service) revokeReusedRefresh(ctx context.Context, authorization Authori
 	return grantError(reusedRefreshDescription)
 }
 
-// checkRefreshGrant confere o grant contra o token consumido e devolve os escopos do
-// par novo.
+// checkRefreshGrant confere o grant contra o refresh, lido ou consumido, e devolve os
+// escopos do access novo.
 func checkRefreshGrant(g RefreshGrant, grant TokenGrant) ([]string, error) {
 	if g.ClientID != grant.Authorization.ClientID {
 		return nil, grantError("client_id " + ClientValue(g.ClientID) + " diferente do dono do refresh token; esperado o client_id que recebeu o token")
