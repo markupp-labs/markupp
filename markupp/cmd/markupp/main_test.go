@@ -318,6 +318,28 @@ func TestCIMDClientMetadataFetcher_BuscaFalha_EmbrulhaOErroComOClientID(t *testi
 	assert.Contains(t, err.Error(), oauth.ClientValue(srv.clientID()))
 }
 
+func TestCIMDClientMetadataFetcher_ClientIDRecusadoAntesDaBusca_EmbrulhaOErroDoContrato(t *testing.T) {
+	srv := newFakeCIMDServer(t, http.StatusOK)
+	fetcher, err := newCIMDClientMetadataFetcher(testCIMDLimits, cimd.WithRootCAs(srv.roots()), cimd.WithIPPolicy(allowLoopback))
+	require.NoError(t, err)
+
+	_, err = fetcher.FetchClientMetadata(context.Background(), srv.clientID())
+
+	require.ErrorIs(t, err, oauth.ErrInvalidMetadataClientID, "a porta aleatória do teste não é a 443")
+	require.ErrorIs(t, err, cimd.ErrInvalidClientID)
+}
+
+func TestCIMDClientMetadataFetcher_BuscaFalha_NaoMarcaClientIDRecusado(t *testing.T) {
+	srv := newFakeCIMDServer(t, http.StatusNotFound)
+	fetcher, err := newCIMDClientMetadataFetcher(testCIMDLimits, cimd.WithRootCAs(srv.roots()), srv.allowedPort(t), cimd.WithIPPolicy(allowLoopback))
+	require.NoError(t, err)
+
+	_, err = fetcher.FetchClientMetadata(context.Background(), srv.clientID())
+
+	require.ErrorIs(t, err, cimd.ErrFetchFailed)
+	assert.NotErrorIs(t, err, oauth.ErrInvalidMetadataClientID)
+}
+
 func TestNewCIMDClientMetadataFetcher_SemTrocarAPolitica_RecusaLoopback(t *testing.T) {
 	srv := newFakeCIMDServer(t, http.StatusOK)
 	fetcher, err := newCIMDClientMetadataFetcher(testCIMDLimits, cimd.WithRootCAs(srv.roots()), srv.allowedPort(t))

@@ -3,6 +3,7 @@ package oauth_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -28,35 +29,56 @@ func newFailureCacheService(repo *fakeOAuthRepository, fetcher *fakeClientMetada
 	return newCIMDTestService(repo, fetcher, cfg, clock.read)
 }
 
-func failingFetchers() map[string]func() *fakeClientMetadataFetcher {
+func TestStartAuthorization_CIMDFalhaDeRedeRecente_RecusaIgualSemBuscarDeNovo(t *testing.T) {
+	repo, clock := newFakeOAuthRepository(), &manualClock{now: testNow}
+	fetcher := &fakeClientMetadataFetcher{err: errors.New("dial tcp 10.0.0.7:443: connection refused")}
+	svc := newFailureCacheService(repo, fetcher, clock)
+	_, primeira := svc.StartAuthorization(context.Background(), validAuthorizeParams())
+	requireProtocolError(t, primeira, "invalid_request", "", "")
+
+	clock.now = testNow.Add(testFailureTTL - time.Second)
+	_, err := svc.StartAuthorization(context.Background(), validAuthorizeParams())
+
+	requireProtocolError(t, err, "invalid_request", "", "")
+	assert.Equal(t, primeira.Error(), err.Error(), "a mesma recusa genérica")
+	assert.Equal(t, []string{testClientID}, fetcher.calls)
+	assert.Empty(t, repo.savedCIMD)
+	assert.Empty(t, repo.created)
+}
+
+// fetchersSemRede falham sem que a busca tenha passado pela rede: o client_id recusado
+// pelo fetcher e o documento recusado pelas guardas do serviço.
+func fetchersSemRede() map[string]func() *fakeClientMetadataFetcher {
 	return map[string]func() *fakeClientMetadataFetcher{
-		"busca falhando": func() *fakeClientMetadataFetcher {
-			return &fakeClientMetadataFetcher{err: errors.New("dial tcp 10.0.0.7:443: connection refused")}
+		"client_id invalido": func() *fakeClientMetadataFetcher {
+			return &fakeClientMetadataFetcher{err: fmt.Errorf("buscar: %w: com porta 8443", oauth.ErrInvalidMetadataClientID)}
 		},
-		"documento fora do contrato": func() *fakeClientMetadataFetcher {
+		"documento sem ttl": func() *fakeClientMetadataFetcher {
 			fetcher := testMetadataFetcher()
 			fetcher.metadata.TTL = 0
+			return fetcher
+		},
+		"documento de outro client_id": func() *fakeClientMetadataFetcher {
+			fetcher := testMetadataFetcher()
+			fetcher.metadata.ClientID = "https://outro.exemplo.dev/oauth.json"
 			return fetcher
 		},
 	}
 }
 
-func TestStartAuthorization_CIMDFalhaRecente_RecusaIgualSemBuscarDeNovo(t *testing.T) {
-	for nome, novoFetcher := range failingFetchers() {
+func TestStartAuthorization_CIMDFalhaSemRede_RecusaSemLembrar(t *testing.T) {
+	for nome, novoFetcher := range fetchersSemRede() {
 		t.Run(nome, func(t *testing.T) {
 			repo, fetcher, clock := newFakeOAuthRepository(), novoFetcher(), &manualClock{now: testNow}
 			svc := newFailureCacheService(repo, fetcher, clock)
 			_, primeira := svc.StartAuthorization(context.Background(), validAuthorizeParams())
 			requireProtocolError(t, primeira, "invalid_request", "", "")
 
-			clock.now = testNow.Add(testFailureTTL - time.Second)
 			_, err := svc.StartAuthorization(context.Background(), validAuthorizeParams())
 
 			requireProtocolError(t, err, "invalid_request", "", "")
-			assert.Equal(t, primeira.Error(), err.Error(), "a mesma recusa genérica")
-			assert.Equal(t, []string{testClientID}, fetcher.calls)
+			assert.Equal(t, []string{testClientID, testClientID}, fetcher.calls, "sem cache negativo, a busca acontece de novo")
 			assert.Empty(t, repo.savedCIMD)
-			assert.Empty(t, repo.created)
 		})
 	}
 }
