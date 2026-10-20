@@ -30,3 +30,5 @@ sugestão nem menção é gravada
 - Título em mais de max(5% das notas do cofre, 5) notas é palavra comum e não vira menção
   (keyphraseness, Mihalcea e Csomai, 2007); o piso de cinco notas preserva as menções do
   cofre pequeno, e cofre ainda sem df não filtra
+- O critério é misto: o título de uma palavra é julgado pelo df, que conta a palavra em
+  qualquer peso, título de outra nota incluído; o de várias, pela contagem no corpo
