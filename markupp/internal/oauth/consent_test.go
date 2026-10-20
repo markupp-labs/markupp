@@ -87,6 +87,18 @@ func TestDescribeRequest_RedirectDeEsquemaPrivadoSemHost_RedirectHostMostraOEsqu
 	}
 }
 
+func TestDescribeRequest_RedirectDeEsquemaPrivadoComHost_RedirectHostMostraEsquemaEHost(t *testing.T) {
+	repo := testRepositoryWithPendingRequest()
+	req := pendingTestRequest()
+	req.RedirectURI = "evilapp://claude.ai/callback"
+	repo.requests["pedido-9"] = req
+
+	view, err := newTestService(repo).DescribeRequest(context.Background(), "pedido-9", testUserID)
+
+	require.NoError(t, err)
+	assert.Equal(t, "evilapp://claude.ai", view.RedirectHost)
+}
+
 func TestDescribeRequest_ClienteDCR_MarcaAOrigemDoNome(t *testing.T) {
 	repo := testRepositoryWithPendingRequest()
 	client := testClient()
