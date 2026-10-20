@@ -46,3 +46,6 @@ pin "mdurl" # @2.1.0
 pin "punycode.js" # @2.3.1
 pin "uc.micro" # @3.0.0
 pin "highlight.js" # @11.12.0 (bundle com as linguagens comuns, ver o cabecalho do arquivo)
+# Gramaticas do highlight.js fora do bundle acima, uma por arquivo (es/languages/<nome>.min.js de @highlightjs/cdn-assets@11.12.0,
+# sem mudanca, renomeado para <nome>.js): sem preload, editor/highlight_code.js importa a de um bloco quando ele aparece.
+pin_all_from "vendor/javascript/highlightjs-languages", under: "highlight.js/languages", to: "highlightjs-languages", preload: false

@@ -146,7 +146,7 @@ THIS IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRE
 EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ================================================================================
-highlight.js@11.12.0 (BSD-3-Clause)
+highlight.js@11.12.0 e @highlightjs/cdn-assets@11.12.0 (BSD-3-Clause, mesmo texto nos dois pacotes)
 ================================================================================
 
 BSD 3-Clause License
