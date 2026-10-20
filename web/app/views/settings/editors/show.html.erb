@@ -3,24 +3,37 @@
 <div class="max-w-[65ch]">
   <h1 class="md-heading text-base font-semibold"><%= t(".title") %></h1>
 
-  <%# O estilo e as teclas do Vim sem Turbo, como o tema: o editor lê o data-editor-style e o data-vim-keys do html,
-      que o Turbo não troca. %>
-  <h2 class="mt-6 text-base font-semibold" id="editor_style_heading"><%= t(".editor_style") %></h2>
-  <div role="group" aria-labelledby="editor_style_heading" class="mt-3 flex flex-wrap gap-2">
-    <% EditorStylesController::STYLES.each do |style| %>
-      <%= button_to t(".#{style}"), editor_style_path, method: :patch, params: { editor_style: style },
-                    form: { data: { turbo: false } }, aria: { pressed: style == chosen_editor_style },
-                    class: "btn aria-pressed:border-accent aria-pressed:bg-accent-soft aria-pressed:text-ink" %>
-    <% end %>
-  </div>
-  <p class="mt-2 text-ink-muted"><%= t(".editor_style_hint") %></p>
+  <%# Lista como as configurações do Obsidian: uma linha por configuração, nome e dica à esquerda, controle à direita; no
+      celular o controle desce para baixo da dica. O estilo e as teclas do Vim vão sem Turbo, como o tema: o editor lê o
+      data-editor-style e o data-vim-keys do html, que o Turbo não troca. %>
+  <div class="mt-4 divide-y divide-line">
+    <div class="flex flex-wrap items-center gap-x-6 gap-y-2 py-4">
+      <div class="min-w-0 flex-1 basis-64">
+        <h2 class="font-semibold" id="editor_style_heading"><%= t(".editor_style") %></h2>
+        <p class="mt-1 text-ink-muted" id="editor_style_hint"><%= t(".editor_style_hint") %></p>
+      </div>
+      <div role="group" aria-labelledby="editor_style_heading" aria-describedby="editor_style_hint" class="flex rounded-md border border-line p-0.5">
+        <% EditorStylesController::STYLES.each do |style| %>
+          <%= button_to t(".#{style}"), editor_style_path, method: :patch, params: { editor_style: style },
+                        form: { data: { turbo: false } }, aria: { pressed: style == chosen_editor_style },
+                        class: "rounded px-3 py-0.5 text-ink-muted hover:bg-accent-soft hover:text-ink aria-pressed:bg-accent-soft aria-pressed:text-ink" %>
+        <% end %>
+      </div>
+    </div>
 
-  <h2 class="mt-6 text-base font-semibold" id="keys_heading"><%= t(".keys") %></h2>
-  <div role="group" aria-labelledby="keys_heading" class="mt-3 flex flex-wrap gap-2">
-    <% vim_on = chosen_vim_keys == "on" %>
-    <%= button_to t(".vim_keys"), vim_keys_path, method: :patch, params: { vim_keys: vim_on ? "off" : "on" },
-                  form: { data: { turbo: false } }, aria: { pressed: vim_on },
-                  class: "btn aria-pressed:border-accent aria-pressed:bg-accent-soft aria-pressed:text-ink" %>
+    <div class="flex flex-wrap items-center gap-x-6 gap-y-2 py-4">
+      <div class="min-w-0 flex-1 basis-64">
+        <h2 class="font-semibold" id="vim_keys_heading"><%= t(".vim_keys") %></h2>
+        <p class="mt-1 text-ink-muted" id="vim_keys_hint"><%= t(".vim_keys_hint") %></p>
+      </div>
+      <%# Interruptor (role=switch): Enter ou espaço trocam, e o form manda o contrário do estado atual. %>
+      <% vim_on = chosen_vim_keys == "on" %>
+      <%= button_to vim_keys_path, method: :patch, params: { vim_keys: vim_on ? "off" : "on" }, form: { data: { turbo: false } },
+                    role: "switch", aria: { checked: vim_on, labelledby: "vim_keys_heading", describedby: "vim_keys_hint" },
+                    class: "group inline-flex h-5 w-9 items-center rounded-full border border-ink-muted bg-surface-sunken " \
+                           "aria-checked:border-accent aria-checked:bg-accent" do %>
+        <span aria-hidden="true" class="size-3.5 translate-x-0.5 rounded-full bg-ink-muted group-aria-checked:translate-x-4 group-aria-checked:bg-surface"></span>
+      <% end %>
+    </div>
   </div>
-  <p class="mt-2 text-ink-muted"><%= t(".vim_keys_hint") %></p>
 </div>

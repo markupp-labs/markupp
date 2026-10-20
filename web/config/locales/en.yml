@@ -93,8 +93,8 @@ en:
       dark_theme: "Dark theme"
       editor_style_plain: "Editor style: plain"
       editor_style_styled: "Editor style: styled"
-      vim_keys_on: "Vim keys: on"
-      vim_keys_off: "Vim keys: off"
+      vim_keys_on: "Vim key bindings: on"
+      vim_keys_off: "Vim key bindings: off"
       tenants: "All tenants"
       switch_tenant: "Switch tenant"
       log_out: "Log out"
@@ -310,13 +310,12 @@ en:
     editors:
       show:
         title: "Editor"
-        editor_style: "Style"
+        editor_style: "Editor style"
         plain: "Plain"
         styled: "Styled"
         editor_style_hint: "Plain shows the markdown at one size, like VS Code. Styled makes headings larger, like the Obsidian source mode."
-        keys: "Keys"
-        vim_keys: "Vim keys"
-        vim_keys_hint: "Vim keys give the editor the normal, insert and visual modes of Vim, with :w, :q and :e. Esc twice, then Tab, leaves the editor."
+        vim_keys: "Vim key bindings"
+        vim_keys_hint: "Vim key bindings give the editor the normal, insert and visual modes of Vim, with :w, :q and :e. Esc twice, then Tab, leaves the editor."
     members:
       index:
         email: "Email"
