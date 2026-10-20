@@ -15,18 +15,18 @@ CREATE TABLE vault_second_stage_queue (
 ALTER SEQUENCE vault_second_stage_revision_seq OWNED BY vault_second_stage_queue.revision;
 
 -- df de cada termo do cofre, no analisador da busca. O tenant vem do cofre, pelas
--- políticas, como em note_titles.
+-- políticas, como em note_titles. O df sai com o cofre, em cascata.
 CREATE TABLE vault_term_frequencies (
-    vault_id TEXT NOT NULL,
+    vault_id TEXT NOT NULL REFERENCES vaults (id) ON DELETE CASCADE,
     term     TEXT NOT NULL,
     df       INTEGER NOT NULL,
     PRIMARY KEY (vault_id, term)
 );
 
 -- N do idf: as notas do cofre com documento no índice léxico quando o df foi
--- calculado. Cofre sem linha ainda não tem df.
+-- calculado. Cofre sem linha ainda não tem df. Sai com o cofre, em cascata.
 CREATE TABLE vault_term_stats (
-    vault_id   TEXT PRIMARY KEY,
+    vault_id   TEXT PRIMARY KEY REFERENCES vaults (id) ON DELETE CASCADE,
     note_count INTEGER NOT NULL
 );
 
