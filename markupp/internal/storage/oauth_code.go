@@ -14,14 +14,15 @@ import (
 
 // RedeemCode consome o código e trava a Autorização gravada no pedido, numa transação.
 // Com ela revogada, o consumo fica gravado e oauth.ErrAuthorizationNotFound volta junto
-// com o pedido. No reuso, marca o pedido e revoga os tokens da Autorização dele, também
-// numa transação, e devolve o pedido com ela, mesmo revogada, e oauth.ErrCodeAlreadyUsed.
-func (r *PostgresOAuthRepository) RedeemCode(ctx context.Context, codeHash string, now time.Time, _ time.Duration) (oauth.RedeemedCode, error) {
+// com o pedido. No reuso, devolve o pedido e oauth.ErrCodeAlreadyUsed; se é o primeiro
+// reuso e chega até reuseWindow depois da decisão, também marca o pedido e revoga os
+// tokens da Autorização dele, que volta junto, mesmo revogada.
+func (r *PostgresOAuthRepository) RedeemCode(ctx context.Context, codeHash string, now time.Time, reuseWindow time.Duration) (oauth.RedeemedCode, error) {
 	var redeemed oauth.RedeemedCode
 	var outcome error
 	err := inTx(ctx, r.pool, func(qtx *gen.Queries) error {
 		var err error
-		redeemed, err = redeemInTx(ctx, qtx, codeHash, now)
+		redeemed, err = redeemInTx(ctx, qtx, codeHash, now, reuseWindow)
 		if errors.Is(err, oauth.ErrAuthorizationNotFound) || errors.Is(err, oauth.ErrCodeAlreadyUsed) {
 			outcome, err = err, nil
 		}
@@ -34,10 +35,10 @@ func (r *PostgresOAuthRepository) RedeemCode(ctx context.Context, codeHash strin
 }
 
 // redeemInTx consome o código ainda não usado ou, se ele já foi, trata o reuso.
-func redeemInTx(ctx context.Context, qtx *gen.Queries, codeHash string, now time.Time) (oauth.RedeemedCode, error) {
+func redeemInTx(ctx context.Context, qtx *gen.Queries, codeHash string, now time.Time, reuseWindow time.Duration) (oauth.RedeemedCode, error) {
 	row, err := qtx.RedeemOAuthCode(ctx, gen.RedeemOAuthCodeParams{CodeHash: codeHash, Now: now})
 	if errors.Is(err, pgx.ErrNoRows) {
-		return reuseCodeInTx(ctx, qtx, codeHash, now)
+		return reuseCodeInTx(ctx, qtx, codeHash, now, reuseWindow)
 	}
 	if err != nil {
 		return oauth.RedeemedCode{}, fmt.Errorf("consumir código de autorização: %w", err)
@@ -49,14 +50,14 @@ func redeemInTx(ctx context.Context, qtx *gen.Queries, codeHash string, now time
 	return redeemed, err
 }
 
-// reuseCodeInTx marca o reuso do código já usado e, com a trava da Autorização do
-// pedido, revoga os tokens dela (RFC 9700, 4.4.2) e audita oauth.code_reuse. A marca faz falhar a gravação do par
-// do primeiro uso que ainda esteja por vir. Código inexistente ou expirado sem uso é
-// oauth.ErrCodeNotFound.
-func reuseCodeInTx(ctx context.Context, qtx *gen.Queries, codeHash string, now time.Time) (oauth.RedeemedCode, error) {
-	row, err := qtx.MarkOAuthCodeReused(ctx, gen.MarkOAuthCodeReusedParams{CodeHash: codeHash, Now: now})
+// reuseCodeInTx marca o primeiro reuso do código já usado, até reuseWindow depois da
+// decisão do pedido, e, com a trava da Autorização do pedido, revoga os tokens dela (RFC
+// 9700, 4.4.2) e audita oauth.code_reuse. A marca faz falhar a gravação do par do
+// primeiro uso que ainda esteja por vir. Outro reuso, ou um reuso tardio, só lê o pedido.
+func reuseCodeInTx(ctx context.Context, qtx *gen.Queries, codeHash string, now time.Time, reuseWindow time.Duration) (oauth.RedeemedCode, error) {
+	row, err := qtx.MarkOAuthCodeReused(ctx, gen.MarkOAuthCodeReusedParams{CodeHash: codeHash, Now: now, DecidedSince: now.Add(-reuseWindow)})
 	if errors.Is(err, pgx.ErrNoRows) {
-		return oauth.RedeemedCode{}, oauth.ErrCodeNotFound
+		return usedCodeInTx(ctx, qtx, codeHash)
 	}
 	if err != nil {
 		return oauth.RedeemedCode{}, fmt.Errorf("marcar reuso do código de autorização: %w", err)
@@ -72,6 +73,19 @@ func reuseCodeInTx(ctx context.Context, qtx *gen.Queries, codeHash string, now t
 		return redeemed, err
 	}
 	return redeemed, oauth.ErrCodeAlreadyUsed
+}
+
+// usedCodeInTx devolve o pedido do código já usado com oauth.ErrCodeAlreadyUsed, sem
+// revogar nada. Código inexistente ou expirado sem uso é oauth.ErrCodeNotFound.
+func usedCodeInTx(ctx context.Context, qtx *gen.Queries, codeHash string) (oauth.RedeemedCode, error) {
+	row, err := qtx.GetUsedOAuthCode(ctx, codeHash)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return oauth.RedeemedCode{}, oauth.ErrCodeNotFound
+	}
+	if err != nil {
+		return oauth.RedeemedCode{}, fmt.Errorf("ler o pedido do código de autorização já usado: %w", err)
+	}
+	return oauth.RedeemedCode{Request: toAuthorizationRequest(row)}, oauth.ErrCodeAlreadyUsed
 }
 
 // codeReuseEvent descreve o reuso do código como falha da conta que o aprovou para o

@@ -122,10 +122,11 @@ type Repository interface {
 	//   - ErrCodeNotFound: o hash não existe ou expirou sem uso em relação a now;
 	//   - ErrAuthorizationNotFound, junto com o RedeemedCode: a Autorização do pedido
 	//     foi revogada; o consumo fica gravado mesmo assim;
-	//   - ErrCodeAlreadyUsed, junto com o RedeemedCode e a Autorização do pedido mesmo
-	//     revogada: o código já foi consumido. Numa transação, o pedido fica marcado
-	//     como reusado (guardando o primeiro reuso em now) e os tokens daquela
-	//     Autorização são revogados com a trava dela (RFC 9700, 4.4.2).
+	//   - ErrCodeAlreadyUsed, junto com o pedido do RedeemedCode: o código já foi
+	//     consumido. Se é o primeiro reuso e now chega até reuseWindow depois da decisão
+	//     do pedido, numa transação o pedido fica marcado como reusado em now e os tokens
+	//     da Autorização dele são revogados com a trava dela (RFC 9700, 4.4.2); só então
+	//     o RedeemedCode traz essa Autorização, mesmo revogada. Fora disso, nada muda.
 	RedeemCode(ctx context.Context, codeHash string, now time.Time, reuseWindow time.Duration) (RedeemedCode, error)
 	// SaveCodeTokens trava a Autorização dos tokens e grava o par emitido pela troca do
 	// código do pedido requestID, numa transação. Sem gravar nada, devolve

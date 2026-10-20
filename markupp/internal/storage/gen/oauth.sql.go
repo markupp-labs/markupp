@@ -290,6 +290,34 @@ func (q *Queries) GetPendingOAuthRequest(ctx context.Context, arg GetPendingOAut
 	return i, err
 }
 
+const getUsedOAuthCode = `-- name: GetUsedOAuthCode :one
+SELECT id, client_id, redirect_uri, scopes, resource, state, code_challenge, created_at, expires_at, decided_at, user_id, code_hash, code_expires_at, code_used_at, authorization_id, code_reused_at FROM oauth_requests WHERE code_hash = $1::TEXT AND code_used_at IS NOT NULL
+`
+
+func (q *Queries) GetUsedOAuthCode(ctx context.Context, codeHash string) (OauthRequest, error) {
+	row := q.db.QueryRow(ctx, getUsedOAuthCode, codeHash)
+	var i OauthRequest
+	err := row.Scan(
+		&i.ID,
+		&i.ClientID,
+		&i.RedirectUri,
+		&i.Scopes,
+		&i.Resource,
+		&i.State,
+		&i.CodeChallenge,
+		&i.CreatedAt,
+		&i.ExpiresAt,
+		&i.DecidedAt,
+		&i.UserID,
+		&i.CodeHash,
+		&i.CodeExpiresAt,
+		&i.CodeUsedAt,
+		&i.AuthorizationID,
+		&i.CodeReusedAt,
+	)
+	return i, err
+}
+
 const isUnreusedOAuthCode = `-- name: IsUnreusedOAuthCode :one
 SELECT EXISTS (
     SELECT 1 FROM oauth_requests
@@ -390,19 +418,22 @@ func (q *Queries) LockOAuthAuthorization(ctx context.Context, id string) (OauthA
 }
 
 const markOAuthCodeReused = `-- name: MarkOAuthCodeReused :one
-UPDATE oauth_requests SET code_reused_at = COALESCE(code_reused_at, $1::TIMESTAMPTZ)
-WHERE code_hash = $2::TEXT AND code_used_at IS NOT NULL
+UPDATE oauth_requests SET code_reused_at = $1::TIMESTAMPTZ
+WHERE code_hash = $2::TEXT AND code_used_at IS NOT NULL AND code_reused_at IS NULL
+  AND decided_at >= $3::TIMESTAMPTZ
 RETURNING id, client_id, redirect_uri, scopes, resource, state, code_challenge, created_at, expires_at, decided_at, user_id, code_hash, code_expires_at, code_used_at, authorization_id, code_reused_at
 `
 
 type MarkOAuthCodeReusedParams struct {
-	Now      time.Time
-	CodeHash string
+	Now          time.Time
+	CodeHash     string
+	DecidedSince time.Time
 }
 
-// Marca o reuso do código já usado, guardando o primeiro reuso.
+// Marca o primeiro reuso do código já usado, se o pedido foi decidido a partir de
+// decided_since; outro reuso ou um reuso tardio não casa.
 func (q *Queries) MarkOAuthCodeReused(ctx context.Context, arg MarkOAuthCodeReusedParams) (OauthRequest, error) {
-	row := q.db.QueryRow(ctx, markOAuthCodeReused, arg.Now, arg.CodeHash)
+	row := q.db.QueryRow(ctx, markOAuthCodeReused, arg.Now, arg.CodeHash, arg.DecidedSince)
 	var i OauthRequest
 	err := row.Scan(
 		&i.ID,

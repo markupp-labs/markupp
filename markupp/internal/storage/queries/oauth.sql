@@ -49,11 +49,16 @@ UPDATE oauth_requests SET code_used_at = sqlc.arg(now)::TIMESTAMPTZ
 WHERE code_hash = sqlc.arg(code_hash)::TEXT AND code_used_at IS NULL AND code_expires_at > sqlc.arg(now)::TIMESTAMPTZ
 RETURNING *;
 
--- Marca o reuso do código já usado, guardando o primeiro reuso.
+-- Marca o primeiro reuso do código já usado, se o pedido foi decidido a partir de
+-- decided_since; outro reuso ou um reuso tardio não casa.
 -- name: MarkOAuthCodeReused :one
-UPDATE oauth_requests SET code_reused_at = COALESCE(code_reused_at, sqlc.arg(now)::TIMESTAMPTZ)
-WHERE code_hash = sqlc.arg(code_hash)::TEXT AND code_used_at IS NOT NULL
+UPDATE oauth_requests SET code_reused_at = sqlc.arg(now)::TIMESTAMPTZ
+WHERE code_hash = sqlc.arg(code_hash)::TEXT AND code_used_at IS NOT NULL AND code_reused_at IS NULL
+  AND decided_at >= sqlc.arg(decided_since)::TIMESTAMPTZ
 RETURNING *;
+
+-- name: GetUsedOAuthCode :one
+SELECT * FROM oauth_requests WHERE code_hash = sqlc.arg(code_hash)::TEXT AND code_used_at IS NOT NULL;
 
 -- name: IsUnreusedOAuthCode :one
 SELECT EXISTS (
