@@ -8,6 +8,22 @@ class TenantsTest < ApplicationSystemTestCase
                     { id: "tenant-2", name: "Home lab", members: { EMAIL => "member" } },
                     { id: "tenant-3", name: "Field notes", members: { EMAIL => "viewer" } } ].freeze
 
+  # No celular não há teclado: as dicas de tecla somem, como o "Alt N" do New tenant (o / da busca e o Ctrl K da gaveta).
+  test "at phone width the key hints are gone" do
+    use_fake_api(tenants: THREE_TENANTS.first(2))
+    sign_in_through_form
+    page.current_window.resize_to(390, 844)
+
+    assert_selector "h1", text: "Tenants"
+    assert_no_selector "header kbd", text: "/"
+    click_on "Home lab"
+    find("[popovertarget=sidebar]").click
+    assert_selector "nav#sidebar:popover-open button[data-action='search#open']"
+    assert_no_selector "nav#sidebar kbd", text: "Ctrl K"
+  ensure
+    page.current_window.resize_to(1400, 900)
+  end
+
   test "choosing a tenant card opens its default note, then the sidebar switches it" do
     use_fake_api(tenants: [ { id: "tenant-1", name: "Acme research", members: { EMAIL => "owner" } },
                             { id: "tenant-2", name: "Home lab", members: { EMAIL => "member" } } ])
