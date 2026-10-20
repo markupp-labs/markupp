@@ -26,7 +26,8 @@ class ShortcutsTest < ActionDispatch::IntegrationTest
     { "Command palette" => [ "Ctrl+Shift+P", "F1", ":" ], "Keyboard shortcuts" => [ "?" ], "New note" => [ "Alt+N" ], "Save" => [ "Ctrl+S" ],
       "Rename / move" => [ "F2" ], "Copy wikilink" => [ "Alt+Shift+W" ], "Focus the note tree" => [ "Ctrl+Shift+E" ],
       "Next row" => [ "j", "↓" ], "All tenants" => [ "g t" ], "Filter tenants" => [ "/" ], "New tenant" => [ "Alt+N" ],
-      "Move between tenants" => [ "hjkl", "←↓↑→" ] }.each do |name, keys|
+      "Move between tenants" => [ "hjkl", "←↓↑→" ], "Indent and outdent in the content" => [ "Tab", "Shift+Tab" ],
+      "From the content back to the path (Esc first)" => [ "Esc Shift+Tab" ] }.each do |name, keys|
       assert_equal keys, rows[name], "expected #{name} with #{keys.inspect} in the help"
     end
   end
