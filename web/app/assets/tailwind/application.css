@@ -79,6 +79,14 @@
   --color-danger: var(--danger);
 }
 
+/* Placeholder no ink-muted, que passa do AA nos dois temas: o padrão do Tailwind (ink a 50%) ficava em 2.2:1 no claro, e
+   na paleta e na busca de tenants ele é o único rótulo visível. */
+@layer base {
+  ::placeholder {
+    color: var(--ink-muted);
+  }
+}
+
 @layer components {
   .btn {
     @apply inline-flex items-center gap-1.5 rounded-md border border-line px-3 py-1 hover:bg-accent-soft;
