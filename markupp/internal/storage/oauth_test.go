@@ -112,6 +112,16 @@ func TestPostgresOAuthRepo_CreateRequest_PendenteVoltaIgual(t *testing.T) {
 	assert.Empty(t, got.UserID)
 }
 
+func TestPostgresOAuthRepo_CreateRequest_ClienteInexistente_DevolveErrClientNotFound(t *testing.T) {
+	repo, _ := repoOAuth(t)
+	pedido := pedidoOAuth("r1", oauth.ScopeNotesRead)
+	pedido.ClientID = "c-apagado"
+
+	err := repo.CreateRequest(context.Background(), pedido)
+
+	require.ErrorIs(t, err, oauth.ErrClientNotFound)
+}
+
 func TestPostgresOAuthRepo_GetPendingRequest_Inexistente(t *testing.T) {
 	repo, _ := repoOAuth(t)
 
