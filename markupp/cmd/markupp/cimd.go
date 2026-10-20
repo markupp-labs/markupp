@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -51,13 +52,22 @@ func newCIMDClientMetadataFetcher(limits cimdLimits, extra ...cimd.Option) (*cim
 	return &cimdClientMetadataFetcher{fetcher: fetcher}, nil
 }
 
+// contractError marca com oauth.ErrInvalidMetadataClientID o client_id que o cimd recusou
+// antes da busca, para o serviço não lembrar essa recusa no cache negativo.
+func contractError(err error) error {
+	if errors.Is(err, cimd.ErrInvalidClientID) {
+		return fmt.Errorf("%w: %w", oauth.ErrInvalidMetadataClientID, err)
+	}
+	return err
+}
+
 // FetchClientMetadata implementa oauth.ClientMetadataFetcher. O erro embrulhado leva
 // detalhe de rede e o corpo do documento, que serve só para o log; o serviço responde ao
 // cliente com um invalid_request genérico.
 func (a *cimdClientMetadataFetcher) FetchClientMetadata(ctx context.Context, clientID string) (oauth.ClientMetadata, error) {
 	meta, err := a.fetcher.Fetch(ctx, clientID)
 	if err != nil {
-		return oauth.ClientMetadata{}, fmt.Errorf("buscar o documento cimd do cliente %s: %w", oauth.ClientValue(clientID), err)
+		return oauth.ClientMetadata{}, fmt.Errorf("buscar o documento cimd do cliente %s: %w", oauth.ClientValue(clientID), contractError(err))
 	}
 	return oauth.ClientMetadata{
 		ClientID: meta.ClientID, Name: meta.Name, RedirectURIs: meta.RedirectURIs, TTL: meta.TTL,

@@ -60,30 +60,33 @@ func (s *Service) cimdClient(ctx context.Context, clientID string) (Client, erro
 }
 
 // fetchCIMDClient busca o documento e grava o cliente até o fim do TTL dele. A falha da
-// busca fica lembrada por CIMDFailureTTL e vai só para o log, como causa interna, para
-// não servir de oráculo da rede interna.
+// busca vai só para o log, como causa interna, para não servir de oráculo da rede
+// interna; o documento recusado pelas guardas daqui não entra no cache negativo.
 func (s *Service) fetchCIMDClient(ctx context.Context, clientID string, now time.Time) (Client, error) {
 	if until, failed := s.failures.failedUntil(clientID, now); failed {
 		return Client{}, unusableMetadataError(clientID, fmt.Errorf("oauth: busca do documento cimd de %s falhou ha pouco; esperada nova tentativa a partir de %s",
 			ClientValue(clientID), until.Format(time.RFC3339)))
 	}
-	metadata, err := s.fetchCheckedMetadata(ctx, clientID)
+	metadata, err := s.fetchMetadata(ctx, clientID, now)
 	if err != nil {
-		s.failures.remember(clientID, now.Add(s.cfg.CIMDFailureTTL), now)
+		return Client{}, unusableMetadataError(clientID, err)
+	}
+	if err := checkFetchedMetadata(clientID, metadata); err != nil {
 		return Client{}, unusableMetadataError(clientID, err)
 	}
 	return s.saveCIMDClient(ctx, clientID, metadata, now)
 }
 
-// fetchCheckedMetadata busca o documento e confere o que o fetcher devolveu. A busca não
-// herda o cancelamento do pedido, só o timeout do próprio fetcher: senão quem derruba a
-// conexão faria a busca de um cliente legítimo falhar e cair no cache negativo.
-func (s *Service) fetchCheckedMetadata(ctx context.Context, clientID string) (ClientMetadata, error) {
+// fetchMetadata busca o documento e lembra por CIMDFailureTTL a falha que passou pela
+// rede. A busca não herda o cancelamento do pedido, só o timeout do próprio fetcher:
+// senão quem derruba a conexão faria a busca de um cliente legítimo falhar e cair no
+// cache negativo.
+func (s *Service) fetchMetadata(ctx context.Context, clientID string, now time.Time) (ClientMetadata, error) {
 	metadata, err := s.metadata.FetchClientMetadata(context.WithoutCancel(ctx), clientID)
-	if err != nil {
-		return ClientMetadata{}, err
+	if err != nil && !errors.Is(err, ErrInvalidMetadataClientID) {
+		s.failures.remember(clientID, now.Add(s.cfg.CIMDFailureTTL), now)
 	}
-	return metadata, checkFetchedMetadata(clientID, metadata)
+	return metadata, err
 }
 
 // saveCIMDClient grava o cliente até o fim do TTL do documento. O conflito com cliente de
