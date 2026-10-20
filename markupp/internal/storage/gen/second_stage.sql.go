@@ -250,6 +250,22 @@ func (q *Queries) NextCommunityIDs(ctx context.Context, count int32) ([]int64, e
 	return items, nil
 }
 
+const saveGraphVersion = `-- name: SaveGraphVersion :exec
+INSERT INTO vault_graph_versions (vault_id, version) VALUES ($1, $2)
+ON CONFLICT (vault_id) DO UPDATE SET version = EXCLUDED.version
+`
+
+type SaveGraphVersionParams struct {
+	VaultID string
+	Version int64
+}
+
+// A versão do grafo é a revisão da marcação que o segundo estágio leu.
+func (q *Queries) SaveGraphVersion(ctx context.Context, arg SaveGraphVersionParams) error {
+	_, err := q.db.Exec(ctx, saveGraphVersion, arg.VaultID, arg.Version)
+	return err
+}
+
 const saveInferredLinks = `-- name: SaveInferredLinks :exec
 INSERT INTO note_links (note_id, vault_id, cited_title, title_key, target_path, kind)
 SELECT s.id, s.vault_id, d.cited_title, d.title_key, t.path, 'inferred'

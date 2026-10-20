@@ -34,9 +34,9 @@ func saveGraphMarkingChange(ctx context.Context, q *gen.Queries, cs indexing.Cha
 }
 
 // runSecondStage recalcula o que depende do cofre inteiro, se ele estiver marcado, e
-// desmarca só a revisão lida: a marcação de um lote concorrente fica para o próximo
-// Job. searchConfig é a configuração de texto do índice léxico. As postagens vêm por
-// último, porque a repesagem trava as linhas de note_terms até o commit, e um lote
+// desmarca só a revisão lida, que vira a versão do grafo do cofre: a marcação de um
+// lote concorrente fica para o próximo Job. searchConfig é a configuração de texto do
+// índice léxico. As postagens vêm por último, porque a repesagem trava as linhas de note_terms até o commit, e um lote
 // concorrente que regrava essas notas espera por elas.
 func runSecondStage(ctx context.Context, q *gen.Queries, vaultID, searchConfig string) error {
 	revision, err := q.SecondStageRevision(ctx, vaultID)
@@ -51,6 +51,9 @@ func runSecondStage(ctx context.Context, q *gen.Queries, vaultID, searchConfig s
 	}
 	if err := refreshTerms(ctx, q, vaultID); err != nil {
 		return err
+	}
+	if err := q.SaveGraphVersion(ctx, gen.SaveGraphVersionParams{VaultID: vaultID, Version: revision}); err != nil {
+		return fmt.Errorf("gravar a versao %d do grafo do cofre %q: %w", revision, vaultID, err)
 	}
 	if err := q.UnmarkSecondStage(ctx, gen.UnmarkSecondStageParams{VaultID: vaultID, Revision: revision}); err != nil {
 		return fmt.Errorf("desmarcar a revisao %d do segundo estagio do cofre %q: %w", revision, vaultID, err)

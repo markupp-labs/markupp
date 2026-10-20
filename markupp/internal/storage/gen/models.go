@@ -201,6 +201,11 @@ type Vault struct {
 	CreatedAt time.Time
 }
 
+type VaultGraphVersion struct {
+	VaultID string
+	Version int64
+}
+
 type VaultMember struct {
 	VaultID   string
 	UserID    string

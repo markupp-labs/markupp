@@ -65,3 +65,8 @@ INSERT INTO note_communities (note_id, vault_id, community_id)
 SELECT n.id, n.vault_id, d.community_id
 FROM (SELECT unnest(sqlc.arg(note_ids)::text[]) AS note_id, unnest(sqlc.arg(community_ids)::bigint[]) AS community_id) d
 JOIN notes n ON n.id = d.note_id;
+
+-- A versão do grafo é a revisão da marcação que o segundo estágio leu.
+-- name: SaveGraphVersion :exec
+INSERT INTO vault_graph_versions (vault_id, version) VALUES (sqlc.arg(vault_id), sqlc.arg(version))
+ON CONFLICT (vault_id) DO UPDATE SET version = EXCLUDED.version;
