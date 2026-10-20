@@ -9,7 +9,14 @@ export default class extends Controller {
   static values = { defaultButton: String }
 
   connect() {
-    Turbo.config.forms.confirm = (message, _form, submitter) => this.ask(message, submitter)
+    this.previousConfirm = Turbo.config.forms.confirm
+    this.confirmHook = (message, _form, submitter) => this.ask(message, submitter)
+    Turbo.config.forms.confirm = this.confirmHook
+  }
+
+  // Fora do layout do painel (telas públicas) o Turbo volta a perguntar como antes, sem um diálogo fora da página.
+  disconnect() {
+    if (Turbo.config.forms.confirm == this.confirmHook) Turbo.config.forms.confirm = this.previousConfirm
   }
 
   // Um item de menu que pede a confirmação fecha o menu, e o toggle que devolve o foco à linha vem numa tarefa depois:
