@@ -66,13 +66,14 @@ class NotesController < ApplicationController
     def resolved_path = Note.new(path: @origin_path).resolve(@typed_path)
 
     # O caminho resolvido como o campo de caminho, a partir da nota aberta: a nota que já existe nele, ou uma nova com
-    # ele, ainda não salva, como o :e do Vim num arquivo que não existe.
+    # ele, ainda não salva, como o :e do Vim num arquivo que não existe. A nova já vem com o "# nome", como o campo de
+    # caminho põe na nota nova (note_form_controller.js), e o cabeçalho segue o caminho se ele mudar.
     def open_typed_path
       path = Note.new(path: params[:origin_path].to_s).resolve(params[:path])
       existing = @tree.notes_within.find { it.path == path }
       return redirect_to(note_path(existing)) if existing
 
-      @note = Note.new(path:, content: "") if current_tenant.writer?
+      @note = Note.new(path:).tap { it.content = "# #{it.title}\n\n" } if current_tenant.writer?
     end
 
     # O :wq do modo Vim salva e sai para a nota padrão.
