@@ -1,7 +1,9 @@
 Rails.application.routes.draw do
   get "up" => "rails/health#show", as: :rails_health_check
 
-  resources :notes, only: [ :index, :show, :new, :create, :update, :destroy ]
+  resources :notes, only: [ :index, :show, :new, :create, :update, :destroy ] do
+    resource :links, only: :show, controller: "note_links"
+  end
   resource :search, only: :show
   resource :explorer, only: :show
 

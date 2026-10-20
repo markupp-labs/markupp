@@ -1,0 +1,3 @@
+<%= turbo_frame_tag "note_links", target: "_top" do %>
+  <%= render "layouts/empty_state", title: t("notes.unreachable.title"), hint: t("notes.unreachable.hint"), tone: "danger" %>
+<% end %>
