@@ -22,31 +22,36 @@ type OAuthMetadata struct {
 const (
 	oauthAuthorizePath = "/oauth/authorize"
 	oauthTokenPath     = "/oauth/token" //nolint:gosec // G101: caminho do endpoint, não credencial
+	oauthRevokePath    = "/oauth/revoke"
 )
 
 type oauthMetadataResponse struct {
-	Issuer                            string   `json:"issuer"`
-	AuthorizationEndpoint             string   `json:"authorization_endpoint"`
-	TokenEndpoint                     string   `json:"token_endpoint"`
-	ScopesSupported                   []string `json:"scopes_supported"`
-	ResponseTypesSupported            []string `json:"response_types_supported"`
-	GrantTypesSupported               []string `json:"grant_types_supported"`
-	CodeChallengeMethodsSupported     []string `json:"code_challenge_methods_supported"`
-	TokenEndpointAuthMethodsSupported []string `json:"token_endpoint_auth_methods_supported"`
+	Issuer                                 string   `json:"issuer"`
+	AuthorizationEndpoint                  string   `json:"authorization_endpoint"`
+	TokenEndpoint                          string   `json:"token_endpoint"`
+	RevocationEndpoint                     string   `json:"revocation_endpoint"`
+	ScopesSupported                        []string `json:"scopes_supported"`
+	ResponseTypesSupported                 []string `json:"response_types_supported"`
+	GrantTypesSupported                    []string `json:"grant_types_supported"`
+	CodeChallengeMethodsSupported          []string `json:"code_challenge_methods_supported"`
+	TokenEndpointAuthMethodsSupported      []string `json:"token_endpoint_auth_methods_supported"`
+	RevocationEndpointAuthMethodsSupported []string `json:"revocation_endpoint_auth_methods_supported"`
 }
 
-// newOAuthMetadataResponse anuncia o fluxo de código com PKCE S256 e cliente público,
-// sem segredo no endpoint de token.
+// newOAuthMetadataResponse anuncia o fluxo de código com PKCE S256, o refresh e a
+// revogação, todos com cliente público, sem segredo nos endpoints.
 func newOAuthMetadataResponse(issuer string) oauthMetadataResponse {
 	return oauthMetadataResponse{
-		Issuer:                            issuer,
-		AuthorizationEndpoint:             issuer + oauthAuthorizePath,
-		TokenEndpoint:                     issuer + oauthTokenPath,
-		ScopesSupported:                   oauth.SupportedScopes(),
-		ResponseTypesSupported:            []string{"code"},
-		GrantTypesSupported:               []string{grantTypeAuthorizationCode},
-		CodeChallengeMethodsSupported:     []string{"S256"},
-		TokenEndpointAuthMethodsSupported: []string{"none"},
+		Issuer:                                 issuer,
+		AuthorizationEndpoint:                  issuer + oauthAuthorizePath,
+		TokenEndpoint:                          issuer + oauthTokenPath,
+		RevocationEndpoint:                     issuer + oauthRevokePath,
+		ScopesSupported:                        oauth.SupportedScopes(),
+		ResponseTypesSupported:                 []string{"code"},
+		GrantTypesSupported:                    []string{grantTypeAuthorizationCode, grantTypeRefreshToken},
+		CodeChallengeMethodsSupported:          []string{"S256"},
+		TokenEndpointAuthMethodsSupported:      []string{"none"},
+		RevocationEndpointAuthMethodsSupported: []string{"none"},
 	}
 }
 
