@@ -6,8 +6,10 @@ class NotesController < ApplicationController
   before_action :set_tree, except: :destroy, unless: -> { request.format.json? }
   before_action :set_typed_path, only: %i[create update]
 
-  # A tela padrão é uma nota nova em branco; viewer não cria, então só escolhe na árvore.
+  # A tela padrão é uma nota nova em branco; viewer não cria, então só escolhe na árvore. Com path, o :e do modo Vim.
   def index
+    return open_typed_path if params.key?(:path)
+
     @note = Note.blank(nil) if current_tenant.writer?
   end
 
@@ -28,7 +30,7 @@ class NotesController < ApplicationController
   def create
     @note = Note.new(path: resolved_path, content: note_content_param)
     if @note.save(credential.api)
-      redirect_to note_path(@note), notice: t(".created")
+      redirect_to saved_note_destination, notice: t(".created")
     else
       render :new, status: path_error_status
     end
@@ -37,7 +39,7 @@ class NotesController < ApplicationController
   def update
     @note = Note.new(id: params[:id], updated_at: params[:last_modified_at])
     if @note.update(credential.api, { path: resolved_path, content: note_content_param }, force: params[:force] == "true")
-      redirect_to note_path(@note), notice: t(".saved")
+      redirect_to saved_note_destination, notice: t(".saved")
     else
       render :show, status: path_error_status
     end
@@ -62,6 +64,19 @@ class NotesController < ApplicationController
     end
 
     def resolved_path = Note.new(path: @origin_path).resolve(@typed_path)
+
+    # O caminho resolvido como o campo de caminho, a partir da nota aberta: a nota que já existe nele, ou uma nova com
+    # ele, ainda não salva, como o :e do Vim num arquivo que não existe.
+    def open_typed_path
+      path = Note.new(path: params[:origin_path].to_s).resolve(params[:path])
+      existing = @tree.notes_within.find { it.path == path }
+      return redirect_to(note_path(existing)) if existing
+
+      @note = Note.new(path:, content: "") if current_tenant.writer?
+    end
+
+    # O :wq do modo Vim salva e sai para a nota padrão.
+    def saved_note_destination = params[:quit] == "true" ? root_path : note_path(@note)
 
     def note_content_param = Note.restore_line_breaks(note_params[:content], crlf: params[:crlf] == "true")
 
