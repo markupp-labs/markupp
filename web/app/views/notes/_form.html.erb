@@ -15,7 +15,7 @@
                       note_mode_missing_note_value: t(".missing_note"), note_mode_copied_value: t(".copied"),
                       note_mode_copy_failed_value: t(".copy_failed"),
                       action: "keydown.ctrl+s@window->note-form#save:prevent keydown.meta+s@window->note-form#save:prevent " \
-                              "keydown@window->note-mode#shortcut input->note-mode#render turbo:load@document->note-mode#scrollToHash click->note-mode#followAnchor scroll->note-mode#followScroll:capture " \
+                              "keydown@window->note-mode#shortcut input->note-mode#render highlight:grammar-loaded@document->note-mode#render turbo:load@document->note-mode#scrollToHash click->note-mode#followAnchor scroll->note-mode#followScroll:capture " \
                               "input->note-form#track submit->note-form#submit turbo:submit-start@document->note-form#allowLeavingOnDelete " \
                               "beforeunload@window->note-form#warnBeforeUnload turbo:before-visit@document->note-form#confirmVisit " \
                               "keydown.shift+tab->note-form#focusPath note-form:heading->editor#replaceStart" } do |form| %>
