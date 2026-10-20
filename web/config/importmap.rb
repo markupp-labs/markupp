@@ -90,3 +90,8 @@ pin "highlight.js" # @11.12.0 (bundle com as linguagens comuns, ver o cabecalho 
 # Gramaticas do highlight.js fora do bundle acima, uma por arquivo (es/languages/<nome>.min.js de @highlightjs/cdn-assets@11.12.0,
 # sem mudanca, renomeado para <nome>.js): sem preload, editor/highlight_code.js importa a de um bloco quando ele aparece.
 pin_all_from "vendor/javascript/highlightjs-languages", under: "highlight.js/languages", to: "highlightjs-languages", preload: false
+# Modo Vim do editor (editor/vim_mode.js): sem preload, baixa so com o modo ligado nas configuracoes. Arquivos do
+# ga.jspm.io (cabecalho de cada um); o search entra como dependencia do vim. Licencas em vendor/javascript/LICENSES.txt.
+pin "@replit/codemirror-vim", to: "@replit--codemirror-vim.js", preload: false # @6.4.0
+pin "@replit/codemirror-vim-core", to: "@replit--codemirror-vim-core.js", preload: false # @0.1.0
+pin "@codemirror/search", to: "@codemirror--search.js", preload: false # @6.7.2
