@@ -908,9 +908,9 @@ paths:
         wikilink ou embed com pasta ([[pasta/Nota]]) pelo caminho a partir da raiz do
         cofre, com .md quando falta; sem nota nesse caminho, vale o título do último
         segmento. A nota que cita a si mesma não conta. A resolução é feita na leitura,
-        então renomear, mover ou apagar uma nota muda as ligações das outras na hora; o que a própria nota cita só muda quando o
-        indexador processa o cofre dela. Ligação para outro cofre é sempre não
-        resolvida.
+        então renomear, mover ou apagar uma nota muda as ligações das outras na hora; o
+        que a própria nota cita só muda quando o indexador processa o cofre dela. Ligação
+        para outro cofre é sempre não resolvida.
 
         Também é ligação a tipada: a chave do frontmatter cujo valor é um wikilink
         inteiro, entre aspas (autor: "[[Fulana]]") ou sem elas (autor: [[Fulana]]), ou
