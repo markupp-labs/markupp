@@ -84,12 +84,8 @@ type OauthClient struct {
 }
 
 type OauthPendingDcrClient struct {
-	ID                string
-	Source            string
-	Name              string
-	RedirectUris      []string
-	MetadataExpiresAt pgtype.Timestamptz
-	CreatedAt         time.Time
+	ID           string
+	PendingSince interface{}
 }
 
 type OauthRequest struct {

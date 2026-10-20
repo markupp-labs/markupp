@@ -22,7 +22,7 @@ func (r *PostgresOAuthRepository) RegisterDCRClient(ctx context.Context, reg oau
 	})
 }
 
-// reservePendingDCRSlot apaga os pendentes criados há PendingTTL ou mais e devolve
+// reservePendingDCRSlot apaga os pendentes há PendingTTL ou mais e devolve
 // *oauth.PendingClientLimitError se os que sobram já somam MaxPending.
 func reservePendingDCRSlot(ctx context.Context, qtx *gen.Queries, reg oauth.DCRRegistration) error {
 	if err := qtx.DeleteExpiredPendingDCRClients(ctx, reg.IssuedAt.Add(-reg.PendingTTL)); err != nil {
@@ -35,7 +35,7 @@ func reservePendingDCRSlot(ctx context.Context, qtx *gen.Queries, reg oauth.DCRR
 	if pending.Pending < int64(reg.MaxPending) {
 		return nil
 	}
-	return &oauth.PendingClientLimitError{MaxPending: reg.MaxPending, FreesAt: pending.OldestCreatedAt.Add(reg.PendingTTL)}
+	return &oauth.PendingClientLimitError{MaxPending: reg.MaxPending, FreesAt: pending.OldestPendingSince.Add(reg.PendingTTL)}
 }
 
 func createDCRClient(ctx context.Context, qtx *gen.Queries, reg oauth.DCRRegistration) error {

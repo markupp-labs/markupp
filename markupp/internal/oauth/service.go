@@ -26,8 +26,8 @@ const maxDescribedValueLen = 80
 // URL canônica. ExchangeTTL é a validade do token da API entregue pela troca.
 // CIMDFailureTTL é quanto tempo uma busca de documento CIMD que falhou fica lembrada,
 // recusando o client_id sem buscar de novo; zero desliga o cache negativo. DCRMaxPending
-// e DCRPendingTTL são o teto e o prazo dos clientes registrados por DCR que ainda não
-// ganharam Autorização.
+// e DCRPendingTTL são o teto e o prazo dos clientes registrados por DCR sem nenhuma
+// Autorização ativa.
 type ServiceConfig struct {
 	Issuer          string
 	PanelURL        string
@@ -68,7 +68,7 @@ func NewService(repo Repository, cfg ServiceConfig, scoped ScopedTokenIssuer, me
 	}
 }
 
-// dcrPendingCutoff é o limite de criação do cliente DCR pendente em now: criado nele ou
+// dcrPendingCutoff é o limite do cliente DCR pendente em now: pendente desde ele ou
 // antes, o cliente conta como inexistente, mesmo antes de ser apagado.
 func (s *Service) dcrPendingCutoff(now time.Time) time.Time {
 	return now.Add(-s.cfg.DCRPendingTTL)

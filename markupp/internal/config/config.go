@@ -69,10 +69,11 @@ type Config struct {
 	OAuthCIMDCacheMaxHours int
 	// OAuthDCREnabled liga o registro dinâmico de clientes (RFC 7591) em /oauth/register.
 	OAuthDCREnabled bool
-	// OAuthDCRMaxPending é o teto de clientes registrados por DCR que ainda não ganharam
-	// Autorização.
+	// OAuthDCRMaxPending é o teto de clientes registrados por DCR sem nenhuma Autorização
+	// ativa.
 	OAuthDCRMaxPending int
-	// OAuthDCRPendingHours é quanto um cliente DCR sem Autorização dura até ser apagado.
+	// OAuthDCRPendingHours é quanto um cliente DCR sem Autorização ativa dura, desde o
+	// registro ou a última revogação, até ser apagado.
 	OAuthDCRPendingHours int
 }
 

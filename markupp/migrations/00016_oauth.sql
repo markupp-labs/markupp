@@ -73,11 +73,15 @@ CREATE TABLE oauth_tokens (
 CREATE INDEX oauth_tokens_authorization_id_idx ON oauth_tokens (authorization_id);
 CREATE INDEX oauth_tokens_expires_at_idx ON oauth_tokens (expires_at);
 
--- Pendente é o cliente DCR que nunca ganhou Autorização, revogada ou não: é o que o
--- registro dinâmico conta no teto e apaga depois do prazo.
+-- Pendente é o cliente DCR sem nenhuma Autorização ativa: é o que o registro dinâmico
+-- conta no teto e apaga depois do prazo, contado desde pending_since, o maior entre a
+-- criação do cliente e a última revogação de Autorização dele.
 CREATE VIEW oauth_pending_dcr_clients AS
-SELECT c.* FROM oauth_clients c
-WHERE c.source = 'dcr' AND NOT EXISTS (SELECT 1 FROM oauth_authorizations a WHERE a.client_id = c.id);
+SELECT c.id, GREATEST(c.created_at, (
+    SELECT max(a.revoked_at) FROM oauth_authorizations a WHERE a.client_id = c.id)) AS pending_since
+FROM oauth_clients c
+WHERE c.source = 'dcr' AND NOT EXISTS (
+    SELECT 1 FROM oauth_authorizations a WHERE a.client_id = c.id AND a.revoked_at IS NULL);
 
 -- Garante o isolamento mesmo se o banco tiver DEFAULT PRIVILEGES concedendo a PUBLIC ou a
 -- qualquer papel criado pelas migrações.

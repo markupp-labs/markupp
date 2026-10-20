@@ -35,7 +35,7 @@ func NewPostgresOAuthRepository(pool *pgxpool.Pool) *PostgresOAuthRepository {
 }
 
 // GetClient devolve o cliente registrado, ou oauth.ErrClientNotFound se ele não existe
-// ou é DCR pendente criado em dcrPendingCutoff ou antes.
+// ou é DCR pendente desde dcrPendingCutoff ou antes.
 func (r *PostgresOAuthRepository) GetClient(ctx context.Context, id string, dcrPendingCutoff time.Time) (oauth.Client, error) {
 	row, err := r.q.GetOAuthClient(ctx, gen.GetOAuthClientParams{ID: id, DcrPendingCutoff: dcrPendingCutoff})
 	if errors.Is(err, pgx.ErrNoRows) {

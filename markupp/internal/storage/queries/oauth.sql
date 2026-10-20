@@ -1,13 +1,13 @@
 -- Authorization server OAuth 2.1 (ADR-0039). As tabelas são da instância, sem tenant nem
 -- RLS: as queries rodam no papel da conexão. Códigos e tokens só passam como hash.
 
--- O cliente DCR pendente criado no limite ou antes conta como inexistente, mesmo antes
--- de a limpeza dos registros apagá-lo.
+-- O cliente DCR pendente desde o limite ou antes conta como inexistente, mesmo antes de
+-- a limpeza dos registros apagá-lo.
 -- name: GetOAuthClient :one
 SELECT * FROM oauth_clients c
 WHERE c.id = sqlc.arg(id) AND NOT EXISTS (
     SELECT 1 FROM oauth_pending_dcr_clients p
-    WHERE p.id = c.id AND p.created_at <= sqlc.arg(dcr_pending_cutoff)::TIMESTAMPTZ);
+    WHERE p.id = c.id AND p.pending_since <= sqlc.arg(dcr_pending_cutoff)::TIMESTAMPTZ);
 
 -- name: GetFreshCIMDClient :one
 SELECT * FROM oauth_clients
@@ -43,14 +43,15 @@ SELECT pg_advisory_xact_lock_shared(hashtextextended('markupp.oauth_dcr_registra
 FROM oauth_requests r JOIN oauth_clients c ON c.id = r.client_id
 WHERE r.id = $1 AND c.source = 'dcr';
 
--- Os pedidos do pendente saem junto, pelo ON DELETE CASCADE.
+-- Os pedidos e as Autorizações revogadas do pendente saem junto, pelo ON DELETE
+-- CASCADE; a auditoria fica.
 -- name: DeleteExpiredPendingDCRClients :exec
 DELETE FROM oauth_clients
-WHERE id IN (SELECT p.id FROM oauth_pending_dcr_clients p WHERE p.created_at <= sqlc.arg(cutoff)::TIMESTAMPTZ);
+WHERE id IN (SELECT p.id FROM oauth_pending_dcr_clients p WHERE p.pending_since <= sqlc.arg(cutoff)::TIMESTAMPTZ);
 
 -- name: CountPendingDCRClients :one
 SELECT count(*) AS pending,
-    COALESCE(min(p.created_at), sqlc.arg(now)::TIMESTAMPTZ)::TIMESTAMPTZ AS oldest_created_at
+    COALESCE(min(p.pending_since), sqlc.arg(now)::TIMESTAMPTZ)::TIMESTAMPTZ AS oldest_pending_since
 FROM oauth_pending_dcr_clients p;
 
 -- name: CreateDCRClient :exec
@@ -65,7 +66,7 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9);
 SELECT * FROM oauth_requests
 WHERE id = sqlc.arg(id) AND decided_at IS NULL AND expires_at > sqlc.arg(now)::TIMESTAMPTZ;
 
--- Não aprova o pedido de cliente DCR pendente criado no limite ou antes, como se o
+-- Não aprova o pedido de cliente DCR pendente desde o limite ou antes, como se o
 -- cliente não existisse mais.
 -- name: ApproveOAuthRequest :one
 UPDATE oauth_requests
@@ -74,7 +75,7 @@ SET decided_at = sqlc.arg(decided_at)::TIMESTAMPTZ, user_id = sqlc.arg(user_id):
 WHERE oauth_requests.id = sqlc.arg(id) AND decided_at IS NULL AND expires_at > sqlc.arg(decided_at)::TIMESTAMPTZ
   AND NOT EXISTS (
     SELECT 1 FROM oauth_pending_dcr_clients p
-    WHERE p.id = oauth_requests.client_id AND p.created_at <= sqlc.arg(dcr_pending_cutoff)::TIMESTAMPTZ)
+    WHERE p.id = oauth_requests.client_id AND p.pending_since <= sqlc.arg(dcr_pending_cutoff)::TIMESTAMPTZ)
 RETURNING *;
 
 -- name: DenyOAuthRequest :one

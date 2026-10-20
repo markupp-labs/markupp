@@ -117,7 +117,7 @@ var (
 // globais (ADR-0034): a implementação não usa ator nem RLS.
 type Repository interface {
 	// GetClient devolve ErrClientNotFound se o cliente não existe ou é DCR pendente
-	// criado em dcrPendingCutoff ou antes, mesmo que ainda não tenha sido apagado.
+	// desde dcrPendingCutoff ou antes, mesmo que ainda não tenha sido apagado.
 	GetClient(ctx context.Context, id string, dcrPendingCutoff time.Time) (Client, error)
 	// CreateRequest devolve ErrClientNotFound embrulhado se o cliente não existe mais.
 	CreateRequest(ctx context.Context, req AuthorizationRequest) error
@@ -130,7 +130,7 @@ type Repository interface {
 	// sucesso, tudo numa transação. Com cliente DCR, a transação compartilha a trava de
 	// RegisterDCRClient, para a limpeza dos pendentes esperar a aprovação aberta.
 	// Devolve ErrRequestNotFound se o pedido já não estiver pendente ou se o cliente for
-	// DCR pendente criado em approval.DCRPendingCutoff ou antes.
+	// DCR pendente desde approval.DCRPendingCutoff ou antes.
 	ApproveRequest(ctx context.Context, approval Approval) (AuthorizationRequest, error)
 	// DenyRequest marca o pedido como decidido e audita oauth.authorize com falha, na
 	// mesma transação. Devolve ErrRequestNotFound se o pedido já não estiver pendente.
@@ -190,9 +190,9 @@ type Repository interface {
 	// devolve ErrClientSourceConflict embrulhado.
 	SaveCIMDClient(ctx context.Context, client Client, expiresAt, now time.Time) error
 	// RegisterDCRClient grava o cliente de origem DCR criado em reg.IssuedAt. Numa
-	// transação serializada por uma trava única, apaga antes os pendentes criados há
-	// reg.PendingTTL ou mais e conta os que sobram: com reg.MaxPending ou mais, não grava
-	// e devolve *PendingClientLimitError.
+	// transação serializada por uma trava única, apaga antes os pendentes há
+	// reg.PendingTTL ou mais, com as Autorizações revogadas deles, e conta os que sobram:
+	// com reg.MaxPending ou mais, não grava e devolve *PendingClientLimitError.
 	RegisterDCRClient(ctx context.Context, reg DCRRegistration) error
 	// RecordAuditEvent grava um evento avulso do authorization server.
 	RecordAuditEvent(ctx context.Context, event AuditEvent) error
@@ -204,7 +204,8 @@ type Repository interface {
 }
 
 // DCRRegistration é o cliente a registrar por DCR (RFC 7591) com o teto e o prazo dos
-// registros pendentes: clientes DCR que nunca ganharam Autorização, revogada ou não.
+// registros pendentes: clientes DCR sem nenhuma Autorização ativa, pendentes desde a
+// criação ou desde a última revogação de Autorização deles, o que vier depois.
 type DCRRegistration struct {
 	Client     Client
 	IssuedAt   time.Time

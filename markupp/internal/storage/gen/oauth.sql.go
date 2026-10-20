@@ -19,7 +19,7 @@ SET decided_at = $1::TIMESTAMPTZ, user_id = $2::TEXT,
 WHERE oauth_requests.id = $5 AND decided_at IS NULL AND expires_at > $1::TIMESTAMPTZ
   AND NOT EXISTS (
     SELECT 1 FROM oauth_pending_dcr_clients p
-    WHERE p.id = oauth_requests.client_id AND p.created_at <= $6::TIMESTAMPTZ)
+    WHERE p.id = oauth_requests.client_id AND p.pending_since <= $6::TIMESTAMPTZ)
 RETURNING id, client_id, redirect_uri, scopes, resource, state, code_challenge, created_at, expires_at, decided_at, user_id, code_hash, code_expires_at, code_used_at, authorization_id, code_reused_at
 `
 
@@ -32,7 +32,7 @@ type ApproveOAuthRequestParams struct {
 	DcrPendingCutoff time.Time
 }
 
-// Não aprova o pedido de cliente DCR pendente criado no limite ou antes, como se o
+// Não aprova o pedido de cliente DCR pendente desde o limite ou antes, como se o
 // cliente não existisse mais.
 func (q *Queries) ApproveOAuthRequest(ctx context.Context, arg ApproveOAuthRequestParams) (OauthRequest, error) {
 	row := q.db.QueryRow(ctx, approveOAuthRequest,
@@ -97,19 +97,19 @@ func (q *Queries) ConsumeOAuthRefreshToken(ctx context.Context, arg ConsumeOAuth
 
 const countPendingDCRClients = `-- name: CountPendingDCRClients :one
 SELECT count(*) AS pending,
-    COALESCE(min(p.created_at), $1::TIMESTAMPTZ)::TIMESTAMPTZ AS oldest_created_at
+    COALESCE(min(p.pending_since), $1::TIMESTAMPTZ)::TIMESTAMPTZ AS oldest_pending_since
 FROM oauth_pending_dcr_clients p
 `
 
 type CountPendingDCRClientsRow struct {
-	Pending         int64
-	OldestCreatedAt time.Time
+	Pending            int64
+	OldestPendingSince time.Time
 }
 
 func (q *Queries) CountPendingDCRClients(ctx context.Context, now time.Time) (CountPendingDCRClientsRow, error) {
 	row := q.db.QueryRow(ctx, countPendingDCRClients, now)
 	var i CountPendingDCRClientsRow
-	err := row.Scan(&i.Pending, &i.OldestCreatedAt)
+	err := row.Scan(&i.Pending, &i.OldestPendingSince)
 	return i, err
 }
 
@@ -169,10 +169,11 @@ func (q *Queries) CreateOAuthRequest(ctx context.Context, arg CreateOAuthRequest
 
 const deleteExpiredPendingDCRClients = `-- name: DeleteExpiredPendingDCRClients :exec
 DELETE FROM oauth_clients
-WHERE id IN (SELECT p.id FROM oauth_pending_dcr_clients p WHERE p.created_at <= $1::TIMESTAMPTZ)
+WHERE id IN (SELECT p.id FROM oauth_pending_dcr_clients p WHERE p.pending_since <= $1::TIMESTAMPTZ)
 `
 
-// Os pedidos do pendente saem junto, pelo ON DELETE CASCADE.
+// Os pedidos e as Autorizações revogadas do pendente saem junto, pelo ON DELETE
+// CASCADE; a auditoria fica.
 func (q *Queries) DeleteExpiredPendingDCRClients(ctx context.Context, cutoff time.Time) error {
 	_, err := q.db.Exec(ctx, deleteExpiredPendingDCRClients, cutoff)
 	return err
@@ -299,7 +300,7 @@ const getOAuthClient = `-- name: GetOAuthClient :one
 SELECT id, source, name, redirect_uris, metadata_expires_at, created_at FROM oauth_clients c
 WHERE c.id = $1 AND NOT EXISTS (
     SELECT 1 FROM oauth_pending_dcr_clients p
-    WHERE p.id = c.id AND p.created_at <= $2::TIMESTAMPTZ)
+    WHERE p.id = c.id AND p.pending_since <= $2::TIMESTAMPTZ)
 `
 
 type GetOAuthClientParams struct {
@@ -309,8 +310,8 @@ type GetOAuthClientParams struct {
 
 // Authorization server OAuth 2.1 (ADR-0039). As tabelas são da instância, sem tenant nem
 // RLS: as queries rodam no papel da conexão. Códigos e tokens só passam como hash.
-// O cliente DCR pendente criado no limite ou antes conta como inexistente, mesmo antes
-// de a limpeza dos registros apagá-lo.
+// O cliente DCR pendente desde o limite ou antes conta como inexistente, mesmo antes de
+// a limpeza dos registros apagá-lo.
 func (q *Queries) GetOAuthClient(ctx context.Context, arg GetOAuthClientParams) (OauthClient, error) {
 	row := q.db.QueryRow(ctx, getOAuthClient, arg.ID, arg.DcrPendingCutoff)
 	var i OauthClient
