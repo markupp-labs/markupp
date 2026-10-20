@@ -37,6 +37,17 @@ module Settings
       assert_select "main", text: /Follows your system/, count: 0
     end
 
+    test "show holds only the theme, without the editor style or vim keys" do
+      use_fake_api
+      sign_in_as
+
+      get settings_appearance_path
+
+      assert_select "main section form[action=?]", editor_style_path, count: 0
+      assert_select "main section form[action=?]", vim_keys_path, count: 0
+      assert_select "main section", text: /Vim keys/, count: 0
+    end
+
     test "picking a theme comes back to the appearance" do
       use_fake_api
       sign_in_as

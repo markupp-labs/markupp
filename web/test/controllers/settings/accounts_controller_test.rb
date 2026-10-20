@@ -129,7 +129,7 @@ module Settings
       assert_select "nav#sidebar a", text: "Back to notes", count: 0
     end
 
-    test "a member sees account and appearance, without the tenant section" do
+    test "a member sees account, appearance and editor, in that order, without the tenant section" do
       use_fake_api(tenants: MEMBER_ONLY)
       sign_in_as
 
@@ -138,6 +138,10 @@ module Settings
       assert_select "main nav[aria-label=Settings]" do
         assert_select "a[href=?][aria-current=page]", settings_account_path, text: "Account"
         assert_select "a[href=?]:not([aria-current])", settings_appearance_path, text: "Appearance"
+        assert_select "a[href='/settings/editor']:not([aria-current])", text: "Editor"
+        assert_select "a" do |links|
+          assert_equal %w[Account Appearance Editor], links.map { it.text.strip }
+        end
         assert_select "a[href=?]", settings_members_path, count: 0
         assert_select "a[href=?]", settings_invites_path, count: 0
       end
@@ -153,6 +157,9 @@ module Settings
         assert_select "*", text: /Acme research/
         assert_select "a[href=?]", settings_members_path, text: "Members"
         assert_select "a[href=?]", settings_invites_path, text: "Invites"
+        assert_select "a" do |links|
+          assert_equal %w[Account Appearance Editor Members Invites], links.map { it.text.strip }
+        end
       end
     end
 

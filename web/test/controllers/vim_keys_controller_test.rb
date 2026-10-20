@@ -1,6 +1,6 @@
 require "test_helper"
 
-# Modo Vim do editor (Configuracoes > Aparencia > Editor): desligado por padrao, ligado ou desligado num cookie.
+# Modo Vim do editor (Configuracoes > Editor): desligado por padrao, ligado ou desligado num cookie.
 class VimKeysControllerTest < ActionDispatch::IntegrationTest
   setup do
     use_fake_api(notes: [])
@@ -8,11 +8,17 @@ class VimKeysControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "update keeps the choice in a permanent cookie and goes back" do
-    patch "/vim_keys", params: { vim_keys: "on" }, headers: { "HTTP_REFERER" => "http://www.example.com/settings/appearance" }
+    patch "/vim_keys", params: { vim_keys: "on" }, headers: { "HTTP_REFERER" => "http://www.example.com/settings/editor" }
 
-    assert_redirected_to "http://www.example.com/settings/appearance"
+    assert_redirected_to "http://www.example.com/settings/editor"
     assert_equal "on", cookies[:vim_keys]
     assert_match(/expires=/i, response.headers["set-cookie"].to_s)
+  end
+
+  test "update without a referer goes to the editor settings" do
+    patch "/vim_keys", params: { vim_keys: "on" }
+
+    assert_redirected_to "/settings/editor"
   end
 
   test "update rejects an unknown value" do
@@ -23,8 +29,8 @@ class VimKeysControllerTest < ActionDispatch::IntegrationTest
     assert_nil cookies[:vim_keys]
   end
 
-  test "the appearance offers vim keys next to the editor style, off by default and outside Turbo" do
-    get settings_appearance_path
+  test "the editor settings offer vim keys, off by default and outside Turbo" do
+    get "/settings/editor"
 
     assert_select "main form[action='/vim_keys'][data-turbo=false]" do
       assert_select "input[name=vim_keys][value=on]", 1
@@ -32,10 +38,10 @@ class VimKeysControllerTest < ActionDispatch::IntegrationTest
     end
   end
 
-  test "the appearance offers to turn vim keys off when they are on" do
+  test "the editor settings offer to turn vim keys off when they are on" do
     cookies[:vim_keys] = "on"
 
-    get settings_appearance_path
+    get "/settings/editor"
 
     assert_select "main form[action='/vim_keys']" do
       assert_select "input[name=vim_keys][value=off]", 1

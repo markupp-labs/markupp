@@ -33,8 +33,9 @@ class EditorStyleTest < ApplicationSystemTestCase
     assert_equal text_size, heading_size
   end
 
-  test "styled from the appearance makes headings larger" do
-    visit settings_appearance_path
+  test "styled from the editor settings makes headings larger" do
+    visit "/settings/editor"
+    assert_selector "main h1", text: "Editor"
     within("[aria-labelledby=editor_style_heading]") do
       click_on "Styled"
       # Espera a volta do PATCH: visitar antes dela perde o cookie.
@@ -49,8 +50,9 @@ class EditorStyleTest < ApplicationSystemTestCase
   end
 
   # O estilo mora no data-editor-style do html, que uma visita do Turbo nao troca: o botao vai sem Turbo, como o tema.
-  test "styled from the appearance holds when going back to the note through the sidebar" do
-    visit settings_appearance_path
+  test "styled from the editor settings holds when going back to the note through the sidebar" do
+    visit "/settings/editor"
+    assert_selector "main h1", text: "Editor"
     within("[aria-labelledby=editor_style_heading]") { click_on "Styled" }
     assert_selector "html[data-editor-style=styled]"
 

@@ -1,6 +1,6 @@
 require "application_system_test_case"
 
-# Modo Vim do editor (editor/vim_mode.js), ligado em Configuracoes > Aparencia > Editor: modos normal, insert e visual,
+# Modo Vim do editor (editor/vim_mode.js), ligado em Configuracoes > Editor: modos normal, insert e visual,
 # atalhos do Vim com o foco no editor e Esc Esc antes do Tab para sair dele.
 class VimModeTest < ApplicationSystemTestCase
   include ContrastAssertions
@@ -10,8 +10,8 @@ class VimModeTest < ApplicationSystemTestCase
     sign_in_through_form
   end
 
-  test "vim keys turn on from the appearance and the editor opens in normal mode with a block cursor" do
-    visit settings_appearance_path
+  test "vim keys turn on from the editor settings and the editor opens in normal mode with a block cursor" do
+    visit "/settings/editor"
     assert_selector "main button[aria-pressed=false]", text: "Vim keys"
     within("main") { click_on "Vim keys" }
     assert_selector "main button[aria-pressed=true]", text: "Vim keys"
