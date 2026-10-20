@@ -25,6 +25,42 @@ export type NoteRevision = {
   lastModifiedAt: string;
 };
 
+// Role é o papel de uma conta no tenant, do maior para o menor.
+export type Role = "owner" | "admin" | "member" | "viewer";
+
+// Member é um membro do tenant como GET /v1/users devolve; id é o id da conta.
+export type Member = {
+  id: string;
+  email: string;
+  role: string;
+  joined_at: string;
+};
+
+// TenantInvite é um convite do tenant como GET /v1/users/invites devolve; accepted_at
+// só vem no convite já aceito.
+export type TenantInvite = {
+  id: string;
+  email: string;
+  role: string;
+  invited_by?: string;
+  expires_at: string;
+  accepted_at?: string;
+  created_at: string;
+};
+
+// IssuedInvite é o convite recém-emitido; token só vem quando o servidor não manda o
+// convite por email e o administrador repassa o token à mão.
+export type IssuedInvite = TenantInvite & { token?: string };
+
+// PendingInvite é um convite endereçado à conta como GET /v1/me/invites devolve.
+export type PendingInvite = {
+  id: string;
+  tenant_id: string;
+  tenant_name: string;
+  role: string;
+  expires_at: string;
+};
+
 // MarkuppApi é a fatia da API REST do markupp que as ferramentas MCP usam. tenant é o
 // id do tenant em que a chamada age.
 export interface MarkuppApi {
@@ -39,6 +75,20 @@ export interface MarkuppApi {
   createNote(tenant: string, path: string, content: string): Promise<Note>;
   updateNote(tenant: string, id: string, revision: NoteRevision): Promise<Note>;
   deleteNote(tenant: string, id: string): Promise<void>;
+  listMembers(tenant: string): Promise<Member[]>;
+  changeMemberRole(tenant: string, userId: string, role: Role): Promise<void>;
+  removeMember(tenant: string, userId: string): Promise<void>;
+  listInvites(tenant: string): Promise<TenantInvite[]>;
+  inviteMember(
+    tenant: string,
+    email: string,
+    role: Role,
+  ): Promise<IssuedInvite>;
+  revokeInvite(tenant: string, inviteId: string): Promise<void>;
+  createTenant(name: string): Promise<TenantMembership>;
+  listMyInvites(): Promise<PendingInvite[]>;
+  acceptInvite(inviteId: string): Promise<TenantMembership>;
+  declineInvite(inviteId: string): Promise<void>;
 }
 
 // MarkuppApiError é a resposta de erro {error, message} da API, com o status HTTP.
@@ -65,7 +115,7 @@ export type HttpMarkuppApiOptions = {
 };
 
 type ApiCall = {
-  method: "GET" | "POST" | "PUT" | "DELETE";
+  method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   path: string;
   tenant?: string;
   body?: unknown;
@@ -135,6 +185,66 @@ export class HttpMarkuppApi implements MarkuppApi {
     await this.send({ method: "DELETE", path: notePath(id), tenant });
   }
 
+  listMembers(tenant: string): Promise<Member[]> {
+    return this.json({ method: "GET", path: "/v1/users", tenant });
+  }
+
+  async changeMemberRole(
+    tenant: string,
+    userId: string,
+    role: Role,
+  ): Promise<void> {
+    const path = memberPath(userId);
+    await this.send({ method: "PATCH", path, tenant, body: { role } });
+  }
+
+  async removeMember(tenant: string, userId: string): Promise<void> {
+    await this.send({ method: "DELETE", path: memberPath(userId), tenant });
+  }
+
+  listInvites(tenant: string): Promise<TenantInvite[]> {
+    return this.json({ method: "GET", path: "/v1/users/invites", tenant });
+  }
+
+  inviteMember(
+    tenant: string,
+    email: string,
+    role: Role,
+  ): Promise<IssuedInvite> {
+    const body = { email, role };
+    return this.json({
+      method: "POST",
+      path: "/v1/users/invites",
+      tenant,
+      body,
+    });
+  }
+
+  async revokeInvite(tenant: string, inviteId: string): Promise<void> {
+    const path = `/v1/users/invites/${encodeURIComponent(inviteId)}`;
+    await this.send({ method: "DELETE", path, tenant });
+  }
+
+  createTenant(name: string): Promise<TenantMembership> {
+    return this.json({ method: "POST", path: "/v1/tenants", body: { name } });
+  }
+
+  listMyInvites(): Promise<PendingInvite[]> {
+    return this.json({ method: "GET", path: "/v1/me/invites" });
+  }
+
+  acceptInvite(inviteId: string): Promise<TenantMembership> {
+    const path = `${myInvitePath(inviteId)}/accept`;
+    return this.json({ method: "POST", path });
+  }
+
+  async declineInvite(inviteId: string): Promise<void> {
+    await this.send({
+      method: "POST",
+      path: `${myInvitePath(inviteId)}/decline`,
+    });
+  }
+
   private async json<T>(call: ApiCall): Promise<T> {
     const response = await this.send(call);
     return (await response.json()) as T;
@@ -162,6 +272,14 @@ export class HttpMarkuppApi implements MarkuppApi {
 
 function notePath(id: string): string {
   return `/v1/notes/${encodeURIComponent(id)}`;
+}
+
+function memberPath(userId: string): string {
+  return `/v1/users/${encodeURIComponent(userId)}`;
+}
+
+function myInvitePath(inviteId: string): string {
+  return `/v1/me/invites/${encodeURIComponent(inviteId)}`;
 }
 
 // toApiError lê o corpo {error, message}; um corpo fora desse formato (um proxy no
