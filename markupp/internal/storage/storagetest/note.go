@@ -17,7 +17,7 @@ type NoteSaver interface {
 
 // SaveNote grava note por repo no contexto ctx, falha o teste se der erro e
 // devolve a nota gravada.
-func SaveNote(ctx context.Context, t testing.TB, repo NoteSaver, note notes.Note) notes.Note {
+func SaveNote(ctx context.Context, t *testing.T, repo NoteSaver, note notes.Note) notes.Note {
 	t.Helper()
 	saved, err := repo.Save(ctx, note)
 	require.NoError(t, err, "salvar nota %q no cofre %q", note.ID, note.VaultID)
