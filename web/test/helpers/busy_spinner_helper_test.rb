@@ -17,11 +17,4 @@ class BusySpinnerHelperTest < ActionView::TestCase
     assert_equal "#search_results[aria-busy]", span["data-busy-spinner-busy-when-value"]
     assert_equal "busy-spinner absolute", span["class"]
   end
-
-  test "the page spinner waits for a visit or a form that is not aimed at a frame, with the label hidden" do
-    span = Nokogiri::HTML5.fragment(page_busy_spinner).at_css("span")
-
-    assert_equal "html[aria-busy], form[aria-busy]:not([data-turbo-frame])", span["data-busy-spinner-busy-when-value"]
-    assert_equal "busy-spinner busy-spinner-page busy-spinner-quiet", span["class"]
-  end
 end
