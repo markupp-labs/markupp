@@ -37,12 +37,17 @@ func isHTTPSURL(clientID string) bool {
 func (s *Service) registeredClient(ctx context.Context, clientID string) (Client, error) {
 	client, err := s.repo.GetClient(ctx, clientID, s.dcrPendingCutoff(s.clock()))
 	if errors.Is(err, ErrClientNotFound) {
-		return Client{}, &ProtocolError{Code: errInvalidRequest, Description: "client_id " + ClientValue(clientID) + " nao registrado; esperado " + registeredClientShape}
+		return Client{}, unregisteredClientError(clientID)
 	}
 	if err != nil {
 		return Client{}, fmt.Errorf("oauth: buscando o cliente %s: %w", ClientValue(clientID), err)
 	}
 	return client, nil
+}
+
+// unregisteredClientError é a recusa do client_id que não existe ou deixou de existir.
+func unregisteredClientError(clientID string) error {
+	return &ProtocolError{Code: errInvalidRequest, Description: "client_id " + ClientValue(clientID) + " nao registrado; esperado " + registeredClientShape}
 }
 
 // cimdClient usa o documento em cache ainda válido ou busca e grava um novo. Documento
