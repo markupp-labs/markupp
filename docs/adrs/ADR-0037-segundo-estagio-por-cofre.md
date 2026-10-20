@@ -18,8 +18,9 @@ cofre, depois do commit do lote, em transação própria, e só quando ligaçõe
 cofre mudaram: o lote que cria, renomeia, move de pasta ou muda as ligações de uma nota
 marca o cofre, e um trigger de exclusão em notes também marca. O scaler do KEDA conta o
 cofre marcado como pendente, e o reindex marca os cofres que reenfileira e descarta o df
-deles. Hoje o segundo estágio recalcula as
-ligações inferidas, o PageRank, as comunidades, o df e o N do cofre, e repesa com eles as
+deles. Hoje o segundo estágio recalcula primeiro o df e o N do cofre,
+para o filtro de título comum da ligação inferida valer já no primeiro Job, depois as
+ligações inferidas, o PageRank e as comunidades, e por último repesa com o df e o N as
 postagens tf-idf e a norma de cada nota
 
 Quando o cofre ganha df, na primeira vez, depois do reindex ou depois de um df de N zero, o
