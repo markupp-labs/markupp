@@ -120,6 +120,19 @@ func (q *Queries) CreateOAuthRequest(ctx context.Context, arg CreateOAuthRequest
 	return err
 }
 
+const deleteStaleCIMDClients = `-- name: DeleteStaleCIMDClients :exec
+DELETE FROM oauth_clients c
+WHERE c.source = 'cimd' AND c.metadata_expires_at <= $1::TIMESTAMPTZ
+  AND NOT EXISTS (SELECT 1 FROM oauth_authorizations a WHERE a.client_id = c.id)
+`
+
+// Apaga os clientes CIMD cujo documento venceu em now e que nunca ganharam uma
+// Autorização; os pedidos pendentes deles caem junto, pelo ON DELETE CASCADE.
+func (q *Queries) DeleteStaleCIMDClients(ctx context.Context, now time.Time) error {
+	_, err := q.db.Exec(ctx, deleteStaleCIMDClients, now)
+	return err
+}
+
 const denyOAuthRequest = `-- name: DenyOAuthRequest :one
 UPDATE oauth_requests SET decided_at = $1::TIMESTAMPTZ, user_id = $2::TEXT
 WHERE id = $3 AND decided_at IS NULL AND expires_at > $1::TIMESTAMPTZ

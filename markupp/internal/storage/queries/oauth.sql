@@ -18,6 +18,13 @@ SET name = EXCLUDED.name, redirect_uris = EXCLUDED.redirect_uris,
     metadata_expires_at = EXCLUDED.metadata_expires_at
 WHERE oauth_clients.source = 'cimd';
 
+-- Apaga os clientes CIMD cujo documento venceu em now e que nunca ganharam uma
+-- Autorização; os pedidos pendentes deles caem junto, pelo ON DELETE CASCADE.
+-- name: DeleteStaleCIMDClients :exec
+DELETE FROM oauth_clients c
+WHERE c.source = 'cimd' AND c.metadata_expires_at <= sqlc.arg(now)::TIMESTAMPTZ
+  AND NOT EXISTS (SELECT 1 FROM oauth_authorizations a WHERE a.client_id = c.id);
+
 -- name: CreateOAuthRequest :exec
 INSERT INTO oauth_requests (id, client_id, redirect_uri, scopes, resource, state, code_challenge, created_at, expires_at)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9);
