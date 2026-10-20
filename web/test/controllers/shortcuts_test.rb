@@ -7,7 +7,8 @@ class ShortcutsTest < ActionDispatch::IntegrationTest
   PALETTE = [
     [ "New note", "Alt N" ], [ "Edit mode", "Ctrl E" ], [ "Read mode", "Ctrl E" ], [ "Side by side", "Ctrl \\" ],
     [ "Keyboard shortcuts", "?" ], [ "Search notes", "Ctrl K" ], [ "Settings", "Ctrl ," ], [ "Toggle sidebar", "Ctrl B" ],
-    [ "Focus the note tree", "Ctrl Shift E" ], [ "Links view", "Ctrl Shift L" ], [ "Graph view", "Ctrl Shift G" ], [ "Explorer view", "Alt O" ],
+    [ "Focus the note tree", "Ctrl Shift E" ], [ "Links view", "Ctrl Shift L" ], [ "Graph view", "Ctrl Shift G" ], [ "Full graph", "Alt G" ],
+    [ "Explorer view", "Alt O" ],
     [ "Focus region left", "Alt H" ], [ "Focus region below", "Alt J" ], [ "Focus region above", "Alt K" ], [ "Focus region right", "Alt L" ],
     [ "Light theme", "" ], [ "Dark theme", "" ], [ "Editor style: plain", "" ], [ "Editor style: styled", "" ],
     [ "Vim key bindings: on", "" ], [ "Vim key bindings: off", "" ],
@@ -24,12 +25,13 @@ class ShortcutsTest < ActionDispatch::IntegrationTest
 
     assert_select "dialog#shortcut_help[aria-labelledby=shortcut_help_title]" do
       assert_select "#shortcut_help_title", "Keyboard shortcuts"
-      [ "General", "Note", "Tree", "Menus and lists", "Tenants" ].each { assert_select "h3", text: it }
+      [ "General", "Note", "Tree", "Menus and lists", "Tenants", "Graph" ].each { assert_select "h3", text: it }
     end
     rows = css_select("#shortcut_help dt").to_h { |keys| [ keys.next_element.text.strip, keys.css("kbd").map(&:text) ] }
     { "Command palette" => [ "Ctrl+Shift+P", "F1", ":" ], "Keyboard shortcuts" => [ "?" ], "New note" => [ "Alt+N" ], "Save" => [ "Ctrl+S" ],
       "Rename / move" => [ "F2" ], "Copy wikilink" => [ "Alt+Shift+W" ], "Focus the note tree" => [ "Ctrl+Shift+E" ],
-      "Links view" => [ "Ctrl+Shift+L" ], "Graph view" => [ "Ctrl+Shift+G" ],
+      "Links view" => [ "Ctrl+Shift+L" ], "Graph view" => [ "Ctrl+Shift+G" ], "Full graph" => [ "Alt+G" ],
+      "Next and previous note in the graph" => [ "j", "k", "↓", "↑" ], "Zoom the graph in and out" => [ "+", "-" ], "Fit the graph" => [ "0" ],
       "Focus region left" => [ "Alt+H" ], "Focus region right" => [ "Alt+L" ],
       "Next row" => [ "j", "↓" ], "All tenants" => [ "g t" ], "Filter tenants" => [ "/" ],
       "Move between tenants" => [ "hjkl", "←↓↑→" ], "Indent and outdent in the content" => [ "Tab", "Shift+Tab" ],
