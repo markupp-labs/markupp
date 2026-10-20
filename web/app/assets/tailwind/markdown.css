@@ -1,0 +1,80 @@
+/* Leitura: markdown renderizado como um README do GitHub (tamanhos e espaços do markdown-body dele), nos tokens
+   Kanagawa. O texto vai na pilha de fontes do sistema do GitHub, sem baixar fonte; a Fira Code fica só no código. */
+.markdown-body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
+  font-size: 1rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+
+  & > :first-child { margin-top: 0; }
+  & > :last-child { margin-bottom: 0; }
+  & :where(p, ul, ol, blockquote, pre, table) { margin-block: 0 1rem; }
+  & :where(h1, h2, h3, h4, h5, h6) { margin-block: 1.5rem 1rem; font-weight: 600; line-height: 1.25; color: var(--ink); scroll-margin-top: 1rem; }
+  & :where(h1, h2) { padding-bottom: 0.3em; border-bottom: 1px solid var(--line); }
+  & h1 { font-size: 2em; }
+  & h2 { font-size: 1.5em; }
+  & h3 { font-size: 1.25em; }
+  & h4 { font-size: 1em; }
+  & h5 { font-size: 0.875em; }
+  & h6 { font-size: 0.85em; color: var(--ink-muted); }
+  & a { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
+  /* [[wikilink]] sem nota: na cor do texto (não a do link) e com sublinhado tracejado; não navega nem cria nota. */
+  & .wikilink-missing { color: inherit; text-decoration: underline dashed; text-underline-offset: 2px; cursor: help; }
+  /* ![[nota]] embutida (editor/note_embeds.js): bloco com borda, uma faixa de destaque à esquerda e o
+     link da nota no topo, como no Obsidian. É um span (vem de regra inline), por isso o display block. */
+  & .note-embed { display: block; margin-block: 0.5rem 1rem; border: 1px solid var(--line); border-left: 2px solid var(--accent); border-radius: 0.375rem; padding: 0.5rem 1rem 0.75rem; }
+  & .note-embed-link { display: inline-block; margin-bottom: 0.5rem; font-size: 0.9em; }
+  & .note-embed-body { display: block; }
+  & .note-embed-body > :first-child { margin-top: 0; }
+  & .note-embed-body > :last-child { margin-bottom: 0; }
+  & :where(ul, ol) { padding-left: 2em; }
+  & ul { list-style: disc; }
+  & ul ul { list-style: circle; }
+  & ul ul ul { list-style: square; }
+  & ol { list-style: decimal; }
+  & ol ol { list-style: lower-roman; }
+  & ol ol ol { list-style: lower-alpha; }
+  & li + li { margin-top: 0.25em; }
+  & :where(ul, ol) :where(ul, ol) { margin-block: 0; }
+  & blockquote { border-left: 0.25em solid var(--line); padding: 0 1em; color: var(--ink-muted); }
+  & :where(code, pre) { font-family: var(--font-mono); }
+  & code { background: var(--surface-sunken); border-radius: 0.375rem; padding: 0.2em 0.4em; font-size: 85%; }
+  & pre { background: var(--surface-sunken); border: 1px solid var(--line); border-radius: 0.375rem; padding: 1rem; font-size: 85%; line-height: 1.45; overflow-x: auto; }
+  & pre code { background: none; padding: 0; font-size: 100%; overflow-wrap: normal; }
+  /* Bloco cercado: quem rola na horizontal é o code, não o pre, com a barra fina nos tokens do tema (sem o trilho
+     branco padrão no claro). O pre vira a moldura parada; o padding passa para o code, e a barra encosta na borda. */
+  & pre:has(> code) { padding: 0; overflow: hidden; }
+  /* Números de linha (editor/code_blocks.js) na coluna antes do code, apagados, fora da seleção e da cópia. Mesma fonte
+     e altura de linha do code para as linhas casarem. */
+  & pre > .code-lines { padding: 1rem 0 1rem 1rem; text-align: right; white-space: pre; color: var(--ink-muted); user-select: none; }
+  /* Cabeçalho (editor/code_blocks.js): faixa fina no topo, como a barra de título de um terminal, com a linguagem à
+     esquerda e o copiar à direita, sempre à vista e fora da seleção. O pre vira grade: o cabeçalho na primeira linha
+     de ponta a ponta; números e code na segunda, o code sempre na última coluna (o bloco indentado não tem números). */
+  & pre:has(> code) { display: grid; grid-template-columns: auto minmax(0, 1fr); }
+  & .code-header { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; border-bottom: 1px solid var(--line); padding: 0.125rem 0.25rem 0.125rem 1rem; font-size: 0.85em; white-space: normal; color: var(--ink-muted); user-select: none; }
+  & .code-tools { display: flex; align-items: center; gap: 0.25rem; }
+  & pre > code { display: block; grid-column: -2; padding: 1rem; overflow-x: auto; scrollbar-color: var(--line) transparent; scrollbar-width: thin; }
+  /* Destaque de sintaxe (editor/highlight_code.js): classes do highlight.js nas variáveis --code-*.
+     Tudo em :where (especificidade zero): a regra composta (.hljs-variable.language_) vem depois da simples. */
+  & :where(.hljs-keyword, .hljs-selector-tag, .hljs-doctag, .hljs-template-tag) { color: var(--code-keyword); }
+  & :where(.hljs-string, .hljs-regexp, .hljs-addition) { color: var(--code-string); }
+  & :where(.hljs-number, .hljs-literal) { color: var(--code-number); }
+  & :where(.hljs-title, .hljs-section, .hljs-name) { color: var(--code-function); }
+  & :where(.hljs-type, .hljs-title.class_, .hljs-title.class_.inherited__) { color: var(--code-type); }
+  & :where(.hljs-attr, .hljs-attribute, .hljs-property, .hljs-variable, .hljs-template-variable) { color: var(--code-identifier); }
+  & :where(.hljs-symbol, .hljs-variable.language_, .hljs-variable.constant_, .hljs-link) { color: var(--code-constant); }
+  & :where(.hljs-built_in, .hljs-selector-id, .hljs-selector-class, .hljs-selector-attr, .hljs-selector-pseudo) { color: var(--code-builtin); }
+  & :where(.hljs-meta, .hljs-deletion, .hljs-bullet) { color: var(--code-special); }
+  & :where(.hljs-subst) { color: var(--ink); }
+  & :where(.hljs-comment, .hljs-quote) { color: var(--ink-muted); font-style: italic; }
+  & :where(.hljs-section, .hljs-strong) { font-weight: 700; }
+  & :where(.hljs-emphasis) { font-style: italic; }
+  & hr { height: 0.25em; margin-block: 1.5rem; border: 0; background: var(--line); }
+  & table { display: block; width: max-content; max-width: 100%; overflow-x: auto; border-collapse: collapse; }
+  & :where(th, td) { border: 1px solid var(--line); padding: 6px 13px; text-align: left; }
+  & th { font-weight: 600; }
+  & tr:nth-child(2n) { background: var(--surface-sunken); }
+  & img { max-width: 100%; }
+  & :where(strong, b) { font-weight: 600; }
+  & :where(em, i) { font-style: italic; }
+}

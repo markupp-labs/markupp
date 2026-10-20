@@ -1,0 +1,86 @@
+/* Árvore de notas da barra lateral (notes/_folder) e o menu de contexto dela (notes/_tree_menu). */
+@layer components {
+  /* Linha da árvore, reaproveitada nos itens de lista (paleta, menus): o mesmo realce no hover. */
+  .tree-row {
+    @apply rounded-md px-2 py-1 hover:bg-accent-soft;
+  }
+
+  /* Árvore de notas como a saída do comando tree: 13px, linhas coladas (py-0) para as guias quase se tocarem, guias na
+     ink-muted (no line sumiam nos dois temas) e o nome cortado com reticências. */
+  .note-tree {
+    font-size: 13px;
+  }
+
+  .note-tree .tree-row {
+    @apply flex items-center py-0 leading-6;
+  }
+
+  .tree-guide {
+    @apply shrink-0 self-stretch whitespace-pre text-ink-muted;
+  }
+
+  /* Célula de 4 caracteres da guia (NoteTreeHelper#tree_guide): a vertical sai do centro do primeiro caractere e vai de
+     cima a baixo (│, ├) ou até o meio (└); o traço (──) vai do centro dele até o fim do terceiro. O texto fica
+     transparente por baixo, só para copiar. */
+  .tree-cell {
+    position: relative;
+    display: inline-block;
+    height: 100%;
+    vertical-align: top;
+    color: transparent;
+  }
+
+  .tree-cell:is([data-cell="pipe"], [data-cell="tee"], [data-cell="elbow"])::before,
+  .tree-cell:is([data-cell="tee"], [data-cell="elbow"])::after {
+    content: "";
+    position: absolute;
+    left: calc(0.5ch - 0.5px);
+    background: var(--ink-muted);
+  }
+
+  .tree-cell:is([data-cell="pipe"], [data-cell="tee"])::before {
+    top: 0;
+    width: 1px;
+    height: 100%;
+  }
+
+  .tree-cell[data-cell="elbow"]::before {
+    top: 0;
+    width: 1px;
+    height: 50%;
+  }
+
+  .tree-cell:is([data-cell="tee"], [data-cell="elbow"])::after {
+    top: 50%;
+    width: 2.5ch;
+    height: 1px;
+  }
+
+  /* Item do menu de contexto da árvore (com o .tree-row): a linha da árvore com o atalho à direita, apagado. O foco (teclado ou o
+     primeiro item ao abrir com o mouse) pinta como o hover; o Delete usa o .btn-danger também no foco. */
+  .context-menu-item {
+    @apply flex w-full items-center justify-between gap-4 py-0.5 text-left whitespace-nowrap focus:bg-accent-soft focus:outline-none;
+
+    & kbd {
+      @apply font-mono text-xs text-ink-muted;
+    }
+
+    &.btn-danger:focus {
+      @apply bg-danger text-surface;
+
+      & kbd {
+        @apply text-surface;
+      }
+    }
+  }
+
+  /* Marcador da pasta no lugar do ícone: + fechada, - aberta, à moda do NERDTree em ASCII; o aria-expanded já diz o estado. */
+  .tree-marker::before {
+    content: "+ " / "";
+    @apply whitespace-pre;
+  }
+
+  [aria-expanded="true"] > .tree-marker::before {
+    content: "- " / "";
+  }
+}
