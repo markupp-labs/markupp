@@ -79,15 +79,15 @@ func TestPageRank_ConfereComOGonum(t *testing.T) {
 	}
 }
 
-func TestPageRank_ParaNoTetoDe100Iteracoes(t *testing.T) {
+func TestPageRank_CicloPequenoConvergeAntesDoTeto(t *testing.T) {
 	g := vaultgraph.New([]string{"a", "b", "c", "d"}, []vaultgraph.Edge{
 		{Source: "a", Target: "b"}, {Source: "b", Target: "c"}, {Source: "c", Target: "a"}, {Source: "d", Target: "a"},
 	})
 
 	_, parada := g.PageRank()
 
-	assert.Equal(t, vaultgraph.Convergence{Iterations: 100, Capped: true}, parada,
-		"o ciclo gira a diferenca a 0,85 por iteracao e so chegaria a tolerancia depois de 100")
+	assert.False(t, parada.Capped, "parada: %+v", parada)
+	assert.Less(t, parada.Iterations, 100, "o ciclo gira a diferenca a 0,85 por iteracao e cai abaixo de N x 1e-6 na norma 1")
 }
 
 func TestPageRank_ConvergeAntesDoTeto(t *testing.T) {
