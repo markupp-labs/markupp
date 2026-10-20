@@ -127,15 +127,17 @@ DELETE FROM note_terms WHERE note_id = ANY (sqlc.arg(note_ids)::text[]);
 -- Os termos de maior tf-idf de cada nota do lote, tirados do documento que o lote
 -- acabou de gravar, com o df e o N vigentes, gravados com o tf, o peso e a norma do
 -- vetor. tf = 1 + log10 das posições do lexema. A ordem por nota, no LATERAL, ordena
--- poucos lexemas de cada vez em memória. Documento sem lexema não grava linha.
+-- poucos lexemas de cada vez em memória. Documento sem lexema não grava linha. O cofre
+-- vem do parâmetro, e não de uma junção com notes: no papel do indexador o RLS de
+-- notes estima poucas linhas, e o plano percorria as notas do cofre sondando o lote a
+-- cada uma, O(N x B). A política de note_search_index já descarta nota apagada.
 -- name: SaveNoteTerms :exec
 WITH stats AS (
     SELECT coalesce((SELECT k.note_count FROM vault_term_stats k WHERE k.vault_id = sqlc.arg(vault_id)), 0) AS note_count
 )
 INSERT INTO note_terms (note_id, vault_id, terms, tfs, weights, norm)
-SELECT n.id, n.vault_id, top.terms, top.tfs, top.weights, top.norm
+SELECT s.note_id, sqlc.arg(vault_id), top.terms, top.tfs, top.weights, top.norm
 FROM note_search_index s
-JOIN notes n ON n.id = s.note_id
 CROSS JOIN stats
 CROSS JOIN LATERAL (
     SELECT array_agg(w.term ORDER BY w.weight DESC, w.term)::text[] AS terms,
