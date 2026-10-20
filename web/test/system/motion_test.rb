@@ -36,6 +36,18 @@ class MotionTest < ApplicationSystemTestCase
     assert_equal [ { "transform" => "480 #{QUINT}" }, { "grid-template-columns" => "480 #{QUINT}" }, { "transform" => "480 #{QUINT}" }, {} ], opening
   end
 
+  # A barra fechando para, e abrindo parte, com a borda dela sobre a linha da faixa da barra fechada: sem duas linhas no
+  # fim do recolher nem salto da borda no começo do expandir.
+  test "the sidebar stops and starts with its edge on the line of the closed strip" do
+    visit root_path
+
+    closing = sidebar_edge_after_click(at: :end)
+    assert_no_selector "nav#sidebar"
+    opening = sidebar_edge_after_click(at: :start)
+
+    assert_equal [ strip_edge, strip_edge ], [ closing, opening ].map { it.round(1) }
+  end
+
   # O deslize leva a borda esquerda do main junto com a barra: o que encosta à direita no cabeçalho (o seletor de modo)
   # fica parado e o que encosta à esquerda (o caminho) anda sem saltos, quadro a quadro, do lugar onde estava.
   test "the note header holds still while the sidebar slides, only its left edge follows the sidebar" do
@@ -168,6 +180,26 @@ class MotionTest < ApplicationSystemTestCase
   end
 
   private
+    # Borda direita da barra num ponto do deslize que o clique na lombada começa, com a transição parada ali.
+    def sidebar_edge_after_click(at:)
+      evaluate_script(<<~JS)
+        (() => {
+          document.querySelector('.sidebar-spine').click()
+          const sidebar = document.querySelector('nav#sidebar')
+          const slide = sidebar.getAnimations().find((animation) => animation.transitionProperty == 'transform')
+          slide.pause()
+          slide.currentTime = #{at == :end ? "slide.effect.getTiming().duration" : 0}
+          const edge = sidebar.getBoundingClientRect().right
+          slide.finish()
+          return edge
+        })()
+      JS
+    end
+
+    def strip_edge
+      evaluate_script("parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sidebar-strip')) * 16 + 1").round(1)
+    end
+
     # A saída que interrompe uma entrada encurta (a transição revertida); a ação seguinte espera a anterior acabar.
     def wait_until_still(selector)
       assert_selector(selector, visible: :all) { |element| element.evaluate_script("this.getAnimations().length == 0") }
