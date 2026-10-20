@@ -7,6 +7,7 @@
   <p id="confirm_dialog_message" data-confirm-dialog-target="message"></p>
   <form method="dialog" class="mt-4 flex justify-end gap-2">
     <button value="cancel" class="btn" autofocus><%= t(".cancel") %></button>
-    <button value="confirm" class="btn btn-danger" data-confirm-dialog-target="confirm"><%= t(".delete") %></button>
+    <%# Vazio até a pergunta: o controller põe o rótulo de quem pediu, e a página não ganha um Delete fora de contexto. %>
+    <button value="confirm" class="btn btn-danger" data-confirm-dialog-target="confirm"></button>
   </form>
 </dialog>
