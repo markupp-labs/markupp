@@ -17,6 +17,9 @@ type OAuthResource struct {
 
 const minOAuthResourceSecretBytes = 32
 
+// defaultPanelURL é onde o painel roda fora do compose (ADR-0041).
+const defaultPanelURL = "http://localhost:3999"
+
 // oauthURLRule descreve o que cada variável de URL do OAuth aceita além do esquema.
 type oauthURLRule struct {
 	key       string
@@ -33,7 +36,8 @@ var (
 		expected: "url=segredo com url https://host[:porta][/caminho] sem query nem fragmento (http so em localhost, 127.0.0.1 ou [::1])"}
 )
 
-// OAuthEnabled diz se o authorization server está ligado, o que MARKUPP_PUBLIC_URL decide.
+// OAuthEnabled diz se o authorization server está ligado. Depois do Load ele sempre
+// está, porque MARKUPP_PUBLIC_URL tem padrão (ADR-0041).
 func (c Config) OAuthEnabled() bool {
 	return c.PublicURL != ""
 }
@@ -50,19 +54,16 @@ func setOAuthDefaults(cfg *Config) {
 	cfg.OAuthCIMDMaxKB = 64
 	cfg.OAuthCIMDCacheMinMinutes = 5
 	cfg.OAuthCIMDCacheMaxHours = 24
-	cfg.OAuthDCREnabled = true
+	cfg.OAuthDCREnabled = false
 	cfg.OAuthDCRMaxPending = 1000
 	cfg.OAuthDCRPendingHours = 24
 }
 
-// loadOAuthSettings lê o authorization server (ADR-0039). Sem MARKUPP_PUBLIC_URL ele
-// fica desligado e as demais variáveis nem são lidas.
+// loadOAuthSettings lê o authorization server (ADR-0039). Sem MARKUPP_PUBLIC_URL, o
+// issuer é o próprio servidor em localhost (ADR-0041).
 func loadOAuthSettings(lookup LookupFunc, cfg *Config) error {
-	var public string
+	public := fmt.Sprintf("http://localhost:%d", cfg.Port)
 	readString(lookup, publicURLRule.key, &public)
-	if public == "" {
-		return nil
-	}
 	var err error
 	if cfg.PublicURL, err = normalizeOAuthURL(public, publicURLRule); err != nil {
 		return err
@@ -130,13 +131,11 @@ func (c Config) checkCIMDCacheBounds() error {
 		c.OAuthCIMDCacheMinMinutes, c.OAuthCIMDCacheMaxHours)
 }
 
-// loadPanelURL exige o painel, para onde o authorization server manda o login e o consentimento.
+// loadPanelURL lê o painel, para onde o authorization server manda o login e o
+// consentimento, com o painel local como padrão (ADR-0041).
 func loadPanelURL(lookup LookupFunc, cfg *Config) error {
-	var panel string
+	panel := defaultPanelURL
 	readString(lookup, panelURLRule.key, &panel)
-	if panel == "" {
-		return fmt.Errorf("MARKUPP_PANEL_URL vazia, esperado %s quando MARKUPP_PUBLIC_URL existe", panelURLRule.expected)
-	}
 	var err error
 	cfg.PanelURL, err = normalizeOAuthURL(panel, panelURLRule)
 	return err
@@ -196,9 +195,6 @@ func readOAuthResources(lookup LookupFunc) ([]OAuthResource, error) {
 		if resources, err = appendUniqueResource(resources, resource); err != nil {
 			return nil, err
 		}
-	}
-	if len(resources) == 0 {
-		return nil, fmt.Errorf("MARKUPP_OAUTH_RESOURCES vazia, esperado ao menos um par url=segredo quando MARKUPP_PUBLIC_URL existe")
 	}
 	return resources, nil
 }
