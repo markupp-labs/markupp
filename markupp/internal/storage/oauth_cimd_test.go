@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -67,4 +68,35 @@ func TestPostgresOAuthRepo_GetFreshCIMDClient_IgnoraVencido(t *testing.T) {
 	_, err := repo.GetFreshCIMDClient(ctx, clienteCIMD, expira)
 
 	require.ErrorIs(t, err, oauth.ErrClientNotFound)
+}
+
+// clienteCIMDDe é um cliente CIMD de id próprio, para os testes com vários clientes.
+func clienteCIMDDe(id string) oauth.Client {
+	return oauth.Client{ID: id, Name: "Agente " + id, RedirectURIs: []string{"https://agente.example/cb"}}
+}
+
+func clientesComID(t *testing.T, pool *pgxpool.Pool, id string) int {
+	t.Helper()
+	return countRows(t, pool, `SELECT count(*) FROM oauth_clients WHERE id = '`+id+`'`)
+}
+
+func TestPostgresOAuthRepo_SaveCIMDClient_ApagaVencidosSemAutorizacao(t *testing.T) {
+	repo, pool := repoOAuth(t)
+	ctx := context.Background()
+	gravacao := instanteOAuth.Add(time.Hour)
+	vencido, autorizado, fresco := "https://vencido.example/c.json", "https://autorizado.example/c.json", "https://fresco.example/c.json"
+	require.NoError(t, repo.SaveCIMDClient(ctx, clienteCIMDDe(vencido), gravacao, instanteOAuth))
+	require.NoError(t, repo.SaveCIMDClient(ctx, clienteCIMDDe(autorizado), instanteOAuth.Add(time.Minute), instanteOAuth))
+	require.NoError(t, repo.SaveCIMDClient(ctx, clienteCIMDDe(fresco), gravacao.Add(time.Second), instanteOAuth))
+	_, err := pool.Exec(ctx, `INSERT INTO oauth_authorizations (id, user_id, client_id, scopes, revoked_at)
+		VALUES ('a-revogada', 'u1', $1, ARRAY['notas:leitura'], $2)`, autorizado, instanteOAuth)
+	require.NoError(t, err)
+
+	require.NoError(t, repo.SaveCIMDClient(ctx, documentoCIMD("Agente CIMD", "https://agente.example/cb"), gravacao.Add(time.Hour), gravacao))
+
+	assert.Zero(t, clientesComID(t, pool, vencido), "vencido no instante da gravação e sem Autorização")
+	assert.Equal(t, 1, clientesComID(t, pool, autorizado), "com Autorização, mesmo revogada")
+	assert.Equal(t, 1, clientesComID(t, pool, fresco))
+	assert.Equal(t, 1, clientesComID(t, pool, clienteCIMD), "o recém-gravado fica")
+	assert.Equal(t, 1, clientesComID(t, pool, "c1"), "o cliente DCR não é tocado")
 }
