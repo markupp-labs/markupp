@@ -1358,8 +1358,9 @@ paths:
 
         O título casa inteiro, com fronteira de palavra, sem diferença de caixa nem de
         acento, fora de wikilink, embed e link markdown. Ficam de fora a própria nota,
-        títulos com menos de 3 letras e títulos que são stopword em português ou
-        inglês.
+        títulos com menos de 3 letras, títulos que são stopword em português ou inglês
+        e títulos comuns, que estão no corpo de mais de 5% das notas do cofre; antes do
+        primeiro segundo estágio do cofre nenhum título é comum.
 
         Cada nota aparece uma vez, com o título de maior prior: a probabilidade a
         priori de o título apontar para a nota citada, com suavização de Laplace,
@@ -1415,8 +1416,9 @@ paths:
 
         O título casa inteiro, com fronteira de palavra, sem diferença de caixa nem de
         acento, fora de wikilink, embed e link markdown. Ficam de fora a própria nota,
-        títulos com menos de 3 letras e títulos que são stopword em português ou
-        inglês.
+        títulos com menos de 3 letras, títulos que são stopword em português ou inglês
+        e títulos comuns, que estão no corpo de mais de 5% das notas do cofre; antes do
+        primeiro segundo estágio do cofre nenhum título é comum.
 
         Cada nota aparece uma vez, com o título de maior prior: a probabilidade a
         priori de o título apontar para a nota citada, com suavização de Laplace,
