@@ -15,6 +15,10 @@ import (
 // similaridade léxica.
 const queryTermsPerNote = 10
 
+// lexicalDepth é quantas candidatas da similaridade léxica entram no RRF: as mil
+// primeiras, como Cormack, Clarke e Büttcher (2009) fundem cada lista.
+const lexicalDepth = 1000
+
 // suggestedNote é uma linha de uma das listas de sugestão: a nota e o sinal dela.
 type suggestedNote struct {
 	note  notes.NoteSummary
@@ -44,7 +48,9 @@ func suggestionLists(ctx context.Context, q *gen.Queries, noteID string) (struct
 	if err != nil {
 		return nil, nil, err
 	}
-	cos, err := q.ListLexicalSuggestions(ctx, gen.ListLexicalSuggestionsParams{VaultID: note.VaultID, NoteID: noteID, QueryTerms: queryTermsPerNote})
+	cos, err := q.ListLexicalSuggestions(ctx, gen.ListLexicalSuggestionsParams{
+		VaultID: note.VaultID, NoteID: noteID, QueryTerms: queryTermsPerNote, Depth: lexicalDepth,
+	})
 	return convertRows(ra, toSuggestedNote), convertRows(cos, func(r gen.ListLexicalSuggestionsRow) suggestedNote {
 		return toSuggestedNote(gen.ListStructuralSuggestionsRow(r))
 	}), err

@@ -132,12 +132,14 @@ SELECT n.id, n.vault_id, n.path, n.updated_at, c.score::float8 AS score
 FROM markupp_lexical_similarity($1, $2, $3::int) AS c (note_id, score)
 JOIN notes n ON n.id = c.note_id
 ORDER BY c.score DESC, n.path, n.id
+LIMIT $4
 `
 
 type ListLexicalSuggestionsParams struct {
 	VaultID    string
 	NoteID     string
 	QueryTerms int32
+	Depth      int32
 }
 
 type ListLexicalSuggestionsRow struct {
@@ -148,8 +150,14 @@ type ListLexicalSuggestionsRow struct {
 	Score     float64
 }
 
+// Só as depth primeiras saem do banco: o top-N ordena sem guardar todas as candidatas.
 func (q *Queries) ListLexicalSuggestions(ctx context.Context, arg ListLexicalSuggestionsParams) ([]ListLexicalSuggestionsRow, error) {
-	rows, err := q.db.Query(ctx, listLexicalSuggestions, arg.VaultID, arg.NoteID, arg.QueryTerms)
+	rows, err := q.db.Query(ctx, listLexicalSuggestions,
+		arg.VaultID,
+		arg.NoteID,
+		arg.QueryTerms,
+		arg.Depth,
+	)
 	if err != nil {
 		return nil, err
 	}
