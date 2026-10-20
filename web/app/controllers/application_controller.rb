@@ -50,7 +50,7 @@ class ApplicationController < ActionController::Base
     end
 
     # Só caminho do próprio painel: //host e /\host o navegador lê como outro site.
-    def panel_path(path) = path if path.to_s.match?(%r{\A/(?![/\\])})
+    def panel_path(path) = (path if path.to_s.match?(%r{\A/(?![/\\])}))
 
     # Logout de verdade: o refresh é revogado na API antes de a sessão do Rails sumir.
     def end_session
