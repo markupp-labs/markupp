@@ -20,6 +20,8 @@ A API é orientada a recursos, com interface uniforme:
   /vaults/{id}/notes), e o item com identificador global é endereçado direto (/notes/{id})
 - Relação entre recursos é sub-coleção do recurso de origem, uma por sentido: ligações de saída
   em /notes/{id}/links e de entrada em /notes/{id}/backlinks
+- A coleção devolve a representação enxuta do item, sem o conteúdo, e o item completo vem da rota
+  dele: listar as notas do cofre não lê nem transfere o texto de cada uma
 - Visão sobre uma coleção é consulta, não rota: filtro, ordenação e paginação por parâmetros
   (?orphan=true, ?sort=pagerank&direction=desc), com os valores derivados como campos do recurso
 - Busca é recurso próprio em /search, porque a representação do resultado (relevância e trecho)
