@@ -16,7 +16,7 @@ import (
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/notify"
 )
 
-const mailpitImage = "axllent/mailpit:v1.31.4"
+const mailpitImage = "axllent/mailpit:v1.31.6"
 
 // mailpit sobe um servidor SMTP de verdade, que guarda o que recebe e expõe as
 // mensagens por HTTP, e devolve as URLs do SMTP e da API dele. Ele aceita qualquer
