@@ -76,6 +76,19 @@ class CommandPaletteTest < ApplicationSystemTestCase
     assert_field "Path", with: "/work/"
   end
 
+  # Barra de rolagem fina nos tokens do tema, como nos painéis que rolam, na lista da paleta e na ajuda de atalhos.
+  test "the palette list and the shortcut help scroll with the thin theme scrollbar" do
+    styles = evaluate_script(<<~JS)
+      [ "#command_palette_options", "#shortcut_help" ].map((selector) => {
+        const style = getComputedStyle(document.querySelector(selector))
+        return [ style.scrollbarWidth, style.scrollbarColor ]
+      })
+    JS
+    line = evaluate_script("getComputedStyle(document.body).getPropertyValue('--line')")
+
+    assert_equal [ [ "thin", "#{rgb(line)} rgba(0, 0, 0, 0)" ] ] * 2, styles
+  end
+
   private
     def open_palette
       send_keys [ :control, :shift, "p" ]
@@ -87,6 +100,10 @@ class CommandPaletteTest < ApplicationSystemTestCase
       send_keys query
       assert_selector "[role=option][aria-selected=true]"
       send_keys :enter
+    end
+
+    def rgb(hex)
+      evaluate_script("(() => { const probe = document.createElement('i'); probe.style.color = '#{hex.strip}'; document.body.append(probe); const color = getComputedStyle(probe).color; probe.remove(); return color })()")
     end
 
     def option_labels
