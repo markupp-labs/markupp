@@ -1,0 +1,13 @@
+<%# Lugar vazio (visão sem conteúdo, lista ou busca sem resultado, falha): os tis do Vim descendo pela margem, como num
+    buffer sem linhas, o título e o que fazer. tone: "danger" pinta os tis e o título de erro. %>
+<% tone = local_assigns[:tone] %>
+<div class="empty-state flex gap-3 px-1 py-2">
+  <pre aria-hidden="true" class="m-0 select-none leading-5 <%= tone == "danger" ? "text-danger" : "text-accent" %>">~
+~
+~
+~</pre>
+  <div class="min-w-0 leading-5">
+    <p class="<%= tone == "danger" ? "text-danger" : "text-ink" %>"><%= title %></p>
+    <p class="mt-1 text-xs/5 text-ink-muted"><%= hint %></p>
+  </div>
+</div>

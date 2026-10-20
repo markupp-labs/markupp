@@ -38,8 +38,8 @@
             <%= render "layouts/search_button", label: t(".search") %>
             <%= yield :sidebar %>
           <% end %>
-          <%= sidebar_view_panel("links") { render "layouts/sidebar_view_empty", view: "links" } %>
-          <%= sidebar_view_panel("graph") { render "layouts/sidebar_view_empty", view: "graph" } %>
+          <%= sidebar_view_panel("links") { render "layouts/empty_state", title: t(".links_empty.title"), hint: t(".links_empty.hint") } %>
+          <%= sidebar_view_panel("graph") { render "layouts/empty_state", title: t(".graph_empty.title"), hint: t(".graph_empty.hint") } %>
         <% else %>
           <%# Sem tenant (onboarding, ou a API caiu antes de carregá-lo) a marca fica, com o nome do produto no lugar. %>
           <%= link_to root_path, class: "tree-row mb-2 flex items-center gap-2" do %>

@@ -49,6 +49,12 @@ en:
       hide_sidebar: "Hide sidebar"
       show_sidebar: "Show sidebar"
       resize_sidebar: "Resize sidebar"
+      links_empty:
+        title: "Open a note to see its links"
+        hint: "Its links and backlinks show up here."
+      graph_empty:
+        title: "Open a note to see its graph"
+        hint: "The notes around it show up here."
     activity_bar:
       label: "Views"
       explorer: "Explorer"
@@ -57,13 +63,6 @@ en:
       account: "Account"
       settings: "Settings"
       settings_shortcut: "Settings (%{keys})"
-    sidebar_view_empty:
-      links:
-        title: "Open a note to see its links"
-        hint: "Its links and backlinks show up here."
-      graph:
-        title: "Open a note to see its graph"
-        hint: "The notes around it show up here."
     tenant_switcher:
       switch: "Switch tenant"
       new_tenant: "New tenant"
