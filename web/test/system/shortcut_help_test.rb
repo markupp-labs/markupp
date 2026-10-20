@@ -33,6 +33,18 @@ class ShortcutHelpTest < ApplicationSystemTestCase
     assert_equal 2, columns.size, "expected one description column per help column, found x = #{columns.sort}"
   end
 
+  test "with vim keys on the help lists the vim commands" do
+    page.driver.browser.manage.add_cookie(name: "vim_keys", value: "on")
+    visit note_path("1")
+    find("[role=treeitem]", text: "plan").execute_script("this.focus()")
+    press_question_mark
+
+    within("dialog#shortcut_help[open]") do
+      assert_selector "h3", text: "Vim"
+      assert_selector "kbd", text: ":wq"
+    end
+  end
+
   test "? typed in the content or the path stays text" do
     find(".cm-content").send_keys([ :control, :end ], "Why")
     press_question_mark

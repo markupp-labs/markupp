@@ -11,6 +11,15 @@ class ShortcutsHelperTest < ActionView::TestCase
     assert_equal "Ctrl+Shift+P / F1 / :".length, help_keys_width
   end
 
+  test "the help has the vim group only with vim keys on" do
+    @vim_keys = "off"
+    assert_not_includes help_shortcut_groups.keys, :vim
+
+    @vim_keys = "on"
+    assert_equal [ ":w", ":wq", ":q", ":q!", ":e path", ":edit", ":e", ":read", ":split", "Esc Esc Tab", "Esc Esc Shift+Tab" ],
+                 help_shortcut_groups[:vim]&.flat_map(&:keys)
+  end
+
   test "shortcut_keys reads the keys of a shortcut by its name, one name per shortcut" do
     assert_equal [ "j", "↓" ], shortcut_keys(:next_row)
     assert_equal "Alt+Shift+C", shortcut_key(:copy_path)
@@ -27,4 +36,8 @@ class ShortcutsHelperTest < ActionView::TestCase
 
     assert_equal mirror.keys.index_with { shortcut_key(it) }, mirror
   end
+
+  private
+    # O modo Vim vem do cookie (SettingsHelper); aqui, do teste.
+    def chosen_vim_keys = @vim_keys || "off"
 end
