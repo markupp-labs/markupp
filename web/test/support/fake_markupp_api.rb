@@ -7,16 +7,20 @@ class FakeMarkuppApi
   delegate :disable_local_auth!, :hold_refreshes_together!, to: :@auth
   delegate :assign_role!, :deny_notes_in!, to: :@tenants
   delegate :sent_tokens, to: :@account_email
+  delegate :received_etags, :graph_queries, :change_graph!, to: :@graph
 
   # email_enabled: false é o servidor sem SMTP, que devolve o token do convite emitido e recusa os fluxos de email da conta.
+  # graph é o cenário das ligações, comunidades e grafos sob /v1 (ver FakeMarkuppGraph).
   def initialize(notes: [], unreachable: false, conflict: false, accounts: FakeMarkuppAccounts::DEFAULT_ACCOUNTS,
-                 tenants: FakeMarkuppTenants::DEFAULT_TENANTS, invites: [], email_enabled: true)
+                 tenants: FakeMarkuppTenants::DEFAULT_TENANTS, invites: [], email_enabled: true, graph: {})
     @accounts = FakeMarkuppAccounts.new(accounts)
     @tenants = FakeMarkuppTenants.new(tenants, invites)
     @auth = FakeMarkuppAuth.new(@accounts, @tenants)
     @tenant_admin = FakeMarkuppTenantAdmin.new(@tenants, @accounts, email_enabled:)
     @account_email = FakeMarkuppAccountEmail.new(@accounts, @auth, email_enabled:)
     @notes = FakeMarkuppNotes.new(notes:, conflict:)
+    @note_index = FakeMarkuppNoteIndex.new(@notes)
+    @graph = FakeMarkuppGraph.new(graph)
     @unreachable = unreachable
     @slow_calls = FakeSlowCalls.new(timeout: 10)
     @received_credentials = []
@@ -44,6 +48,8 @@ class FakeMarkuppApi
 
   def get(path) = receive("GET", path)
 
+  def conditional_get(path, etag:) = receive("GET", path, method: :conditional_get, etag:)
+
   def put(path, body) = receive("PUT", path, body)
 
   def patch(path, body) = receive("PATCH", path, body)
@@ -56,7 +62,7 @@ class FakeMarkuppApi
     attr_writer :credentials
 
   private
-    def receive(verb, path, *body)
+    def receive(verb, path, *body, method: verb.downcase, **options)
       call = "#{verb} #{path}"
       @slow_calls.pass(call)
       raise "fake API bug on #{call}" if @bug
@@ -65,12 +71,12 @@ class FakeMarkuppApi
       @received_credentials << @credentials.merge(call:) if @credentials
       account = authenticate(call)
       membership = tenant_membership(path, account, call) || {}
-      fake_for(call, path).public_send(verb.downcase, path, *body, account:, role: membership["role"], tenant_id: membership["id"])
+      fake_for(call, path).public_send(method, path, *body, account:, role: membership["role"], tenant_id: membership["id"], **options)
     end
 
-    # Só notas e administração agem num tenant; chamada de confiança, sem conta, não tem papel.
+    # Só notas, grafo e administração agem num tenant; chamada de confiança, sem conta, não tem papel.
     def tenant_membership(path, account, call)
-      return unless account && path.start_with?("/notes", "/users")
+      return unless account && path.start_with?("/notes", "/users", "/v1/")
 
       @tenants.membership_for(account, @credentials[:tenant_id], call)
     end
@@ -83,11 +89,13 @@ class FakeMarkuppApi
 
     def fake_for(call, path)
       return @notes if path.start_with?("/notes")
+      return @note_index if path.start_with?("/v1/search/") || FakeMarkuppNoteIndex::VAULT_NOTES.match?(path)
+      return @graph if path.start_with?("/v1/")
       return @account_email if path.start_with?("/auth/password/", "/auth/email/")
       return @auth if path.start_with?("/auth/")
       return @tenants if path.start_with?("/me/") || path == "/tenants"
       return @tenant_admin if path.start_with?("/users")
 
-      raise ArgumentError, "fake API has no route for #{call}, expected /notes, /auth, /me, /tenants or /users"
+      raise ArgumentError, "fake API has no route for #{call}, expected /notes, /v1, /auth, /me, /tenants or /users"
     end
 end

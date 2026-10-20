@@ -4,9 +4,11 @@ require "socket"
 class FakeHttpServer
   attr_reader :requested_method, :requested_path, :requested_body, :requested_headers
 
-  def initialize(status:, body:)
+  # headers vão na resposta além de Content-Type, Content-Length e Connection.
+  def initialize(status:, body:, headers: {})
     @status = status
     @body = body
+    @headers = headers
     @server = TCPServer.new("127.0.0.1", 0)
   end
 
@@ -16,7 +18,8 @@ class FakeHttpServer
     Thread.new do
       client = @server.accept
       read_request(client)
-      client.write("HTTP/1.1 #{@status}\r\nContent-Type: application/json\r\n" \
+      extra = @headers.map { |name, value| "#{name}: #{value}\r\n" }.join
+      client.write("HTTP/1.1 #{@status}\r\nContent-Type: application/json\r\n#{extra}" \
                    "Content-Length: #{@body.bytesize}\r\nConnection: close\r\n\r\n#{@body}")
       client.close
     end

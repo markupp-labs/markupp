@@ -1,10 +1,13 @@
 # Rotas de notas da FakeMarkuppApi: listagem, busca, conflito e caminho duplicado, como a API.
 class FakeMarkuppNotes
-  attr_reader :put_requests, :post_requests
+  # Cofre de toda nota que o cenário não põe em outro.
+  VAULT_ID = "vault-1"
+
+  attr_reader :notes, :put_requests, :post_requests
 
   # conflict: true faz todo PUT sem force responder como se outro cliente tivesse salvo antes.
   def initialize(notes:, conflict:)
-    @notes = notes.map(&:stringify_keys)
+    @notes = notes.map { { "vault_id" => VAULT_ID }.merge(it.stringify_keys) }
     @conflict = conflict
     @put_requests = []
     @post_requests = []
@@ -35,7 +38,7 @@ class FakeMarkuppNotes
     @post_requests << body
     refuse_path(body[:path], nil)
 
-    @notes << body.slice(:path, :content).stringify_keys.merge("id" => "created-#{@post_requests.size}", "updated_at" => "2026-10-01T12:00:00.000Z")
+    @notes << body.slice(:path, :content).stringify_keys.merge("vault_id" => VAULT_ID, "id" => "created-#{@post_requests.size}", "updated_at" => "2026-10-01T12:00:00.000Z")
     @notes.last
   end
 
