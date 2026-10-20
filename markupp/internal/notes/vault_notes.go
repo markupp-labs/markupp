@@ -24,9 +24,9 @@ const (
 )
 
 // VaultNotesQuery recorta e ordena a lista das notas de um cofre. Orphan fica com as
-// notas de grau zero, ou com as de grau positivo quando falso, e Community com as da
-// comunidade; ambos ignoram a nota sem organização derivada. Sort ordena, decrescente
-// com Descending, e a ordem por caminho é sempre crescente. Nil e vazio não filtram.
+// notas de grau zero, ou, quando falso, com as de grau positivo e as sem organização
+// derivada; Community fica com as da comunidade. Sort ordena, decrescente com
+// Descending, e a ordem por caminho é sempre crescente. Nil e vazio não filtram.
 type VaultNotesQuery struct {
 	Orphan     *bool
 	Community  *int64
@@ -36,7 +36,8 @@ type VaultNotesQuery struct {
 	Limit      int
 }
 
-// ListVaultNotes devolve a página das notas do cofre vaultID que q pede.
+// ListVaultNotes devolve a página das notas do cofre vaultID que q pede, sem o
+// conteúdo.
 func (s *Service) ListVaultNotes(ctx context.Context, vaultID string, q VaultNotesQuery) ([]Note, error) {
 	list, err := s.repo.ListVaultNotes(ctx, vaultID, q)
 	if err != nil {
