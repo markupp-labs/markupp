@@ -8,6 +8,7 @@ class MotionTest < ApplicationSystemTestCase
   LAYER_IN = { "opacity" => "380 #{QUINT}", "transform" => "380 #{QUINT}" }.freeze
   LAYER_OUT = { "display" => "150 linear", "opacity" => "150 linear", "overlay" => "150 linear", "transform" => "150 linear" }.freeze
   AREA_MOVE = [ "::view-transition-new(root) area-in 410 #{QUINT}", "::view-transition-old(root) area-out 150 linear" ].freeze
+  AREA_BACK = [ "::view-transition-new(root) area-in-back 410 #{QUINT}", "::view-transition-old(root) area-out-back 150 linear" ].freeze
 
   setup do
     emulate_motion_preference("no-preference")
@@ -132,14 +133,16 @@ class MotionTest < ApplicationSystemTestCase
   end
 
   # Troca de área (notas, configurações, tenants, telas públicas) como a troca de workspace do Hyprland: a página que
-  # sai some rápida e linear deslizando um pouco, a que entra vem na easeOutQuint. A barra lateral e a lombada, iguais
-  # dos dois lados, ficam paradas.
-  test "entering and leaving the settings and the tenants slides the area, the sidebar holds still" do
+  # sai some rápida e linear deslizando um pouco, a que entra vem na easeOutQuint. Voltar às notas desliza para o lado
+  # oposto (area-in-back, area-out-back). A barra lateral e a lombada, iguais dos dois lados, ficam paradas, também na
+  # lista de tenants, que com tenant ativo tem a barra das notas.
+  test "entering the settings and the tenants slides the area one way, going back to the notes the other, the sidebar holds still" do
     visit note_path("1")
 
     assert_equal AREA_MOVE, area_motions_of_visit(settings_account_path)
-    assert_equal AREA_MOVE, area_motions_of_visit(note_path("1"))
+    assert_equal AREA_BACK, area_motions_of_visit(note_path("1"))
     assert_equal AREA_MOVE, area_motions_of_visit(tenants_path)
+    assert_equal AREA_BACK, area_motions_of_visit(note_path("1"))
   end
 
   test "going from a note to a note swaps at once" do
@@ -163,6 +166,7 @@ class MotionTest < ApplicationSystemTestCase
     visit note_path("1")
 
     assert_empty area_motions_of_visit(settings_account_path)
+    assert_empty area_motions_of_visit(note_path("1"))
   end
 
   test "reduced motion swaps everything at once" do
