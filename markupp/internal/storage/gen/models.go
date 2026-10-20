@@ -30,6 +30,12 @@ type AuditEvent struct {
 	OccurredAt time.Time
 }
 
+type InstanceSecret struct {
+	Name      string
+	Value     string
+	CreatedAt time.Time
+}
+
 type Note struct {
 	ID        string
 	Path      string
