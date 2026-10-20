@@ -21,6 +21,10 @@ type NoteGraph interface {
 	Suggestions(ctx context.Context, noteID string, p notes.Page) ([]notes.LinkSuggestion, error)
 	Communities(ctx context.Context, vaultID string, p notes.Page) ([]notes.Community, error)
 	Community(ctx context.Context, vaultID string, communityID int64) (notes.Community, error)
+	VaultGraph(ctx context.Context, vaultID string, f notes.GraphFilter) (notes.Graph, error)
+	LocalGraph(ctx context.Context, noteID string, depth int, f notes.GraphFilter) (notes.Graph, error)
+	VaultGraphVersion(ctx context.Context, vaultID string) (int64, error)
+	NoteGraphVersion(ctx context.Context, noteID string) (int64, error)
 }
 
 func mountNoteGraphRoutes(r chi.Router, graph NoteGraph) {
@@ -32,6 +36,7 @@ func mountNoteGraphRoutes(r chi.Router, graph NoteGraph) {
 	r.Get("/v1/notes/{id}/suggestions", serveList(readPage, graph.Suggestions))
 	r.Get("/v1/vaults/{id}/communities", serveList(readPage, graph.Communities))
 	r.Get("/v1/vaults/{id}/communities/{cid}", serveCommunity(graph))
+	mountGraphViewRoutes(r, graph)
 }
 
 // serveList responde com a página que list devolve para o id da rota e a consulta

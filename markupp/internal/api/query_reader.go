@@ -47,6 +47,20 @@ func (qr *queryReader) int64(name string) *int64 {
 	return &v
 }
 
+// intBetween lê name como inteiro de lo a hi, fallback quando ausente.
+func (qr *queryReader) intBetween(name string, fallback, lo, hi int) int {
+	raw := qr.values.Get(name)
+	if raw == "" || qr.err != nil {
+		return fallback
+	}
+	v, err := strconv.Atoi(raw)
+	if err != nil || v < lo || v > hi {
+		qr.err = fmt.Errorf("%w: %s %q, esperado inteiro de %d a %d", errInvalidQuery, name, raw, lo, hi)
+		return 0
+	}
+	return v
+}
+
 // oneOf lê name, que precisa ser um dos valores aceitos, vazio quando ausente.
 func (qr *queryReader) oneOf(name string, accepted ...string) string {
 	raw := qr.values.Get(name)
