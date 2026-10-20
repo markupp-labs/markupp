@@ -452,3 +452,17 @@ func emitirTokenDe(pool *pgxpool.Pool, authorizationID, hash string) error {
 		VALUES ($1, $2, 'access', 'https://mcp.markupp.dev', '{notas:leitura}', now() + interval '1 hour')`, hash, authorizationID)
 	return err
 }
+
+func TestPostgresOAuthRepo_RecordAuditEvent_GravaSemTenantComContaECliente(t *testing.T) {
+	repo, pool := repoOAuth(t)
+
+	err := repo.RecordAuditEvent(context.Background(), oauth.AuditEvent{
+		Action: oauth.AuditActionExchange, Result: oauth.AuditResultSuccess,
+		UserID: "u1", ClientID: "c1", OccurredAt: instanteOAuth,
+	})
+
+	require.NoError(t, err)
+	assert.Equal(t, 1, countRows(t, pool, `SELECT count(*) FROM audit_events WHERE action = 'oauth.exchange'
+		AND result = 'success' AND actor_id = 'u1' AND target = 'c1' AND tenant_id IS NULL
+		AND occurred_at = '2026-10-16T12:00:00Z'`))
+}
