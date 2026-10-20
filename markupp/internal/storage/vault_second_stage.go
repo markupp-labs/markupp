@@ -62,22 +62,36 @@ func runSecondStage(ctx context.Context, q *gen.Queries, vaultID, searchConfig s
 	return nil
 }
 
-// refreshTerms recalcula o df do cofre e, quando ele ainda não tinha df (primeira vez
-// ou depois do reindex), reenfileira as notas do cofre para o lote reescolher os
-// termos com o idf de verdade. Reenfileirar não marca o cofre, e o lote que só regrava
-// as mesmas notas também não, então o segundo estágio não volta por isso.
+// refreshTerms recalcula o df do cofre e, quando ele ganha df pela primeira vez
+// (primeira vez, depois do reindex ou depois de um df de N zero), reenfileira as
+// notas do cofre para o lote reescolher os termos com o idf de verdade. Df de N zero
+// não reenfileira: nenhuma nota tem documento, nem termo para reescolher, e a nota
+// ainda sem documento já está na fila. Reenfileirar não marca o cofre, e o lote que
+// só regrava as mesmas notas também não, então o segundo estágio não volta por isso.
 func refreshTerms(ctx context.Context, q *gen.Queries, vaultID string) error {
-	known, err := q.VaultTermStatsKnown(ctx, vaultID)
+	known, err := vaultTermStatsKnown(ctx, q, vaultID)
 	if err != nil {
-		return fmt.Errorf("ler se o cofre %q ja tem df: %w", vaultID, err)
+		return err
 	}
 	if err := refreshTermFrequencies(ctx, q, vaultID); err != nil || known {
+		return err
+	}
+	if known, err = vaultTermStatsKnown(ctx, q, vaultID); err != nil || !known {
 		return err
 	}
 	if err := q.RequeueVaultNotes(ctx, vaultID); err != nil {
 		return fmt.Errorf("reenfileirar as notas do cofre %q para reescolher os termos com o df novo: %w", vaultID, err)
 	}
 	return nil
+}
+
+// vaultTermStatsKnown diz se o cofre tem df de N maior que zero.
+func vaultTermStatsKnown(ctx context.Context, q *gen.Queries, vaultID string) (bool, error) {
+	known, err := q.VaultTermStatsKnown(ctx, vaultID)
+	if err != nil {
+		return false, fmt.Errorf("ler se o cofre %q ja tem df: %w", vaultID, err)
+	}
+	return known, nil
 }
 
 // refreshTermFrequencies troca o df e o N do cofre pelos do índice léxico atual e
