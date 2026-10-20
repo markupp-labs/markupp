@@ -55,7 +55,7 @@ curl_api() {
 }
 
 login_smoke() {
-  curl_api -X POST "$URL/auth/login" \
+  curl_api -X POST "$URL/v1/auth/login" \
     -H 'Content-Type: application/json' \
     -d '{"email":"admin@markupp.local","password":"senhaForte123"}' \
     | grep -o '"access_token":"[^"]*"' | cut -d'"' -f4
@@ -63,7 +63,7 @@ login_smoke() {
 
 cria_nota_smoke() {
   local token="$1"
-  curl_api -X POST "$URL/notes" \
+  curl_api -X POST "$URL/v1/notes" \
     -H "Authorization: Bearer $token" \
     -H 'Content-Type: application/json' \
     -d '{"path":"smoke.md","content":"oi"}'
