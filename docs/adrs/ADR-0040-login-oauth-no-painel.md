@@ -1,4 +1,4 @@
-# ADR-0039: Login e consentimento OAuth no painel
+# ADR-0040: Login e consentimento OAuth no painel
 
 ## Status
 
@@ -6,7 +6,7 @@ Aceita
 
 ## Contexto
 
-O authorization server do ADR-0038 precisa de telas para a conta entrar e consentir a
+O authorization server do ADR-0039 precisa de telas para a conta entrar e consentir a
 Autorização de um cliente. O servidor Go não renderiza HTML hoje, e o painel Rails do ADR-0031
 é a interface web do sistema, mas vive numa branch de longa duração sem previsão de merge
 
