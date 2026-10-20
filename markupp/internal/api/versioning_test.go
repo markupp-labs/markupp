@@ -3,6 +3,7 @@ package api_test
 import (
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -14,9 +15,15 @@ const obsoletaDesde = "@1792108800"
 
 func versionedRequest(t *testing.T, method, path string) *httptest.ResponseRecorder {
 	t.Helper()
+	return versionedRequestWithBody(t, method, path, "")
+}
+
+func versionedRequestWithBody(t *testing.T, method, path, body string) *httptest.ResponseRecorder {
+	t.Helper()
 	router := api.NewRouter(api.RouterDeps{Notes: &fakeService{}, Tenants: tenantDeTeste, Auth: &fakeAuthService{}, Tokens: &fakeTokenValidator{}, Probe: &fakeProbe{}})
-	req := httptest.NewRequest(method, path, nil)
+	req := httptest.NewRequest(method, path, strings.NewReader(body))
 	req.Header.Set("Authorization", "Bearer token-valido")
+	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
 	return rec
@@ -63,4 +70,26 @@ func TestSemPrefixo_RotaComParametro_SucessoraMantemOCaminho(t *testing.T) {
 	rec := versionedRequest(t, http.MethodGet, "/notes/nota-1")
 
 	assert.Equal(t, `</v1/notes/nota-1>; rel="successor-version"`, rec.Header().Get("Link"))
+}
+
+func TestV1_PostLogin_AlcancaOHandler(t *testing.T) {
+	rec := versionedRequestWithBody(t, http.MethodPost, "/v1/auth/login", `{"email":"a@b.c","password":"senha"}`)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Empty(t, rec.Header().Get("Deprecation"))
+}
+
+func TestV1_PostNotas_CriaSemObsolescencia(t *testing.T) {
+	rec := versionedRequestWithBody(t, http.MethodPost, "/v1/notes", `{"path":"x.md","content":"y"}`)
+
+	assert.Equal(t, http.StatusCreated, rec.Code)
+	assert.Empty(t, rec.Header().Get("Deprecation"))
+}
+
+func TestSemPrefixo_PostNotas_CriaEMarcaObsoleta(t *testing.T) {
+	rec := versionedRequestWithBody(t, http.MethodPost, "/notes", `{"path":"x.md","content":"y"}`)
+
+	assert.Equal(t, http.StatusCreated, rec.Code)
+	assert.Equal(t, obsoletaDesde, rec.Header().Get("Deprecation"))
+	assert.Equal(t, `</v1/notes>; rel="successor-version"`, rec.Header().Get("Link"))
 }
