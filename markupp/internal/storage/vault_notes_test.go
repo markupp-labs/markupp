@@ -34,13 +34,15 @@ func idsDasNotas(lidas []notes.Note) []string {
 
 func ptr[T any](v T) *T { return &v }
 
-func TestListVaultNotes_SemOrdemPedida_OrdenaPorCaminho(t *testing.T) {
+func TestListVaultNotes_SemOrdemPedida_OrdenaPorCaminhoSemLerOConteudo(t *testing.T) {
 	_, repo, _ := cofreLigado(t)
 
 	lidas := notasDoCofre(ctxDeTeste, t, repo, notes.VaultNotesQuery{Limit: 100})
 
 	assert.Equal(t, []string{"a", "c", "d", "e", "f", "g", "c2", "b"}, idsDasNotas(lidas))
-	assert.Equal(t, "[[B]] [[Inexistente]] ![[foto.png]]", lidas[0].Content, "a nota vem inteira")
+	assert.Empty(t, lidas[0].Content, "a colecao nao le o conteudo")
+	assert.NotEmpty(t, lidas[0].ContentSHA256)
+	assert.False(t, lidas[0].UpdatedAt.IsZero())
 }
 
 func TestListVaultNotes_TrazGrauPageRankEComunidadeEOrdenaPorPageRank(t *testing.T) {

@@ -8,17 +8,27 @@ import (
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/notes"
 )
 
-// noteV1Response é a nota em /v1: a das rotas sem prefixo mais a organização
-// derivada, null antes do segundo estágio do indexador.
-type noteV1Response struct {
-	noteResponse
+// noteRankResponse é a organização derivada da nota, null antes do segundo estágio
+// do indexador.
+type noteRankResponse struct {
 	Degree    *int     `json:"degree"`
 	PageRank  *float64 `json:"pagerank"`
 	Community *int64   `json:"community"`
 }
 
+func toNoteRankResponse(r notes.NoteRank) noteRankResponse {
+	return noteRankResponse{Degree: r.Degree, PageRank: r.PageRank, Community: r.Community}
+}
+
+// noteV1Response é a nota em /v1: a das rotas sem prefixo mais a organização
+// derivada.
+type noteV1Response struct {
+	noteResponse
+	noteRankResponse
+}
+
 func toV1Response(n notes.Note) any {
-	return noteV1Response{noteResponse: toNoteResponse(n), Degree: n.Rank.Degree, PageRank: n.Rank.PageRank, Community: n.Rank.Community}
+	return noteV1Response{noteResponse: toNoteResponse(n), noteRankResponse: toNoteRankResponse(n.Rank)}
 }
 
 // mountV1NotesRoutes monta a nota como item de id global e a coleção das notas sob
