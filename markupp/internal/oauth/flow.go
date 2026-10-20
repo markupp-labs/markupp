@@ -55,8 +55,8 @@ type RequestView struct {
 	// ClientSource é a origem do cliente, para o painel marcar o nome do cliente DCR
 	// como não verificado.
 	ClientSource string
-	// RedirectHost é o host da redirect_uri ou, no esquema privado sem host, o esquema
-	// com dois-pontos (como "cursor:").
+	// RedirectHost é o host da redirect_uri; no esquema privado, precedido do esquema
+	// (como "evilapp://claude.ai") ou, sem host, o esquema com dois-pontos ("cursor:").
 	RedirectHost      string
 	Scopes            []string
 	AlreadyAuthorized bool

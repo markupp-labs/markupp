@@ -1031,8 +1031,9 @@ components:
         redirect_host:
           type: string
           description: >-
-            Host para onde o navegador volta depois da decisão ou, na redirect_uri de
-            esquema privado sem host, o esquema com dois-pontos (como cursor:)
+            Host para onde o navegador volta depois da decisão. Na redirect_uri de
+            esquema privado, o host vem precedido do esquema (como evilapp://claude.ai) ou,
+            sem host, é o esquema com dois-pontos (como cursor:)
         scopes:
           type: array
           items:

@@ -60,8 +60,10 @@ func (s *Service) alreadyAuthorized(ctx context.Context, userID string, req Auth
 	return true, nil
 }
 
-// redirectHost devolve o host (com porta, se houver) da redirect_uri já validada ou, no
-// esquema privado sem host, o esquema com dois-pontos, para a tela nunca mostrar vazio.
+// redirectHost devolve o host (com porta, se houver) da redirect_uri já validada. No
+// esquema privado, o esquema vai junto (evilapp://claude.ai), para o host não se passar
+// por um site, e sozinho com dois-pontos quando não há host, para a tela nunca mostrar
+// vazio.
 func redirectHost(redirectURI string) string {
 	parsed, err := url.Parse(redirectURI)
 	if err != nil {
@@ -69,6 +71,9 @@ func redirectHost(redirectURI string) string {
 	}
 	if parsed.Host == "" {
 		return parsed.Scheme + ":"
+	}
+	if parsed.Scheme != "http" && parsed.Scheme != "https" {
+		return parsed.Scheme + "://" + parsed.Host
 	}
 	return parsed.Host
 }
