@@ -168,6 +168,48 @@ class BusySpinnerTest < ApplicationSystemTestCase
     assert_no_spinner
   end
 
+  # Como no VS Code: aos 300ms o rótulo do botão some sem ele mudar de largura e o glifo fica no meio dele, então nada
+  # ao redor anda. O braille (sem reduced-motion) tem os pontos no alto da célula; o que se mede é o centro da tinta.
+  test "a slow save hides the label, keeps the width of the button and centers the glyph on it" do
+    emulate_motion_preference("no-preference")
+    visit note_path("1")
+    fill_in "Path", with: "/work/plan"
+    width = find_button("Save").evaluate_script("this.getBoundingClientRect().width")
+    @api.hold_calls!("PUT /notes/1")
+
+    assert_spinner_after_threshold(".note-form button[aria-busy=true]") { click_on "Save" }
+    save = find(".note-form button[aria-busy=true]")
+    assert_in_delta width, save.evaluate_script("this.getBoundingClientRect().width"), 0.5
+    assert_equal "rgba(0, 0, 0, 0)", save.evaluate_script("getComputedStyle(this).color")
+    assert_glyph_centered_on save
+  end
+
+  test "the glyph spinning on a tree row is centered on the row" do
+    emulate_motion_preference("no-preference")
+    visit note_path("1")
+    @api.hold_calls!("GET /notes/2")
+
+    assert_spinner_after_threshold(busy_row("ideas")) { within("nav") { click_on "ideas" } }
+    assert_glyph_centered_on find(busy_row("ideas")), axes: [ 1 ]
+  end
+
+  # O X nativo do campo de busca e o glifo, os dois no accent, pareciam um par de controles.
+  test "the native clear button of the search box hides while the spinner shows" do
+    visit root_path
+    find("body").send_keys([ :control, "k" ])
+    fill_in "Search notes", with: "Big"
+    assert_selector "[role=option]", count: 1
+    refute_equal "none", search_cancel_display
+    @api.hold_calls!("GET /notes/search")
+
+    assert_spinner_after_threshold("dialog .busy-spinner") { fill_in "Search notes", with: "Bi" }
+    assert_equal "none", search_cancel_display
+
+    @api.release_calls!
+    assert_no_spinner
+    refute_equal "none", search_cancel_display
+  end
+
   test "the braille frames spin every 80ms, and reduced motion shows three still dots instead" do
     @api.hold_calls!("GET /notes/2")
     visit note_path("1")
@@ -191,6 +233,30 @@ class BusySpinnerTest < ApplicationSystemTestCase
     end
 
     def assert_no_spinner = assert_no_selector(".busy-spinner-glyph", visible: :all)
+
+    # Centro da tinta do glifo contra o centro do container, até meio pixel. A tinta é a do "⠿" (os seis pontos que os
+    # quadros usam) na fonte do glifo, medida pelo canvas a partir da linha de base, que um marcador vazio dá.
+    def assert_glyph_centered_on(container, axes: [ 0, 1 ])
+      box = container.evaluate_script("(({ left, top, width, height }) => [ left + width / 2, top + height / 2 ])(this.getBoundingClientRect())")
+      ink = container.find(".busy-spinner-glyph").evaluate_script(<<~JS)
+        (() => {
+          const marker = Object.assign(document.createElement("span"), { style: "display: inline-block; width: 0; height: 0" })
+          this.append(marker)
+          const baseline = marker.getBoundingClientRect().bottom
+          marker.remove()
+          const context = document.createElement("canvas").getContext("2d")
+          context.font = getComputedStyle(this).font
+          const dots = context.measureText("⠿")
+          const { left, width } = this.getBoundingClientRect()
+          return [ left + width / 2, baseline + (dots.actualBoundingBoxDescent - dots.actualBoundingBoxAscent) / 2 ]
+        })()
+      JS
+      axes.each { |axis| assert_in_delta box[axis], ink[axis], 0.5, "glyph ink #{ink} off the center #{box} of the container" }
+    end
+
+    def search_cancel_display
+      find_field("Search notes").evaluate_script('getComputedStyle(this, "::-webkit-search-cancel-button").display')
+    end
 
     # Do glifo: as animações do ::before (nome e duração) e o quadro que ele mostra agora.
     def glyph_motion
