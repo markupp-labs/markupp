@@ -3,6 +3,10 @@
 module SidebarHelper
   SIDEBAR_WIDTH_RANGE = 240..480
   SIDEBAR_DEFAULT_WIDTH = 288
+  # Visões da barra lateral, na ordem da barra de atividades; a primeira é a padrão.
+  SIDEBAR_VIEWS = %w[explorer links graph search].freeze
+
+  def current_sidebar_view = SIDEBAR_VIEWS.first
 
   def sidebar_closed?
     cookies[:sidebar] == "closed"
