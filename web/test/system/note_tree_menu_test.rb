@@ -4,7 +4,7 @@ require "application_system_test_case"
 # Nova nota sem botão: Alt+N de qualquer lugar ou "New note here" no menu.
 class NoteTreeMenuTest < ApplicationSystemTestCase
   NOTES = [ { id: "1", path: "work/2026/goals.md", content: "# Goals\n" }, { id: "2", path: "work/plan.md", content: "# Plan\n" },
-            { id: "3", path: "ideas.md", content: "# Ideas\n" } ].freeze
+            { id: "3", path: "ideas.md", content: "# Ideas\n" }, { id: "4", path: "cost$&.md", content: "# Cost\n" } ].freeze
   NOTE_ITEMS = [ "New note here", "Rename / move", "Delete", "Copy path", "Copy wikilink" ].freeze
 
   setup do
@@ -110,6 +110,17 @@ class NoteTreeMenuTest < ApplicationSystemTestCase
     click_on "Copy wikilink"
     assert_selector "[role=status]", text: "Copied [[plan]]"
     assert_equal "[[plan]]", clipboard
+  end
+
+  # O caminho entra na mensagem como texto: o $& de um nome não vira padrão de substituição.
+  test "the copied message shows a path with $& as it is" do
+    grant_clipboard
+    visit note_path("1")
+    row("cost$&").right_click
+    click_on "Copy path"
+
+    assert_selector "[role=status]", text: "Copied /cost$&"
+    assert_equal "/cost$&", clipboard
   end
 
   test "each action has its key on the focused row, shown in the menu" do
