@@ -97,7 +97,9 @@ func benchIndexacao(b *testing.B, porLote int) {
 	b.ReportMetric(float64(b.Elapsed().Nanoseconds())/float64(b.N*porLote), "ns/nota")
 }
 
-// cofreIndexado semeia o cofre sintético vault inteiro e esvazia a fila dele uma vez.
+// cofreIndexado semeia o cofre sintético vault inteiro e esvazia a fila dele: o
+// primeiro segundo estágio reenfileira todas as notas para reescolher os termos com o
+// idf, e sem esvaziar de novo a primeira medida pagaria um lote do cofre inteiro.
 func cofreIndexado(b *testing.B, vault []benchfixture.Note) (*pgxpool.Pool, *storage.PostgresVaultIndexer) {
 	b.Helper()
 	pool := storagetest.EmptyPool(b)
@@ -106,7 +108,10 @@ func cofreIndexado(b *testing.B, vault []benchfixture.Note) (*pgxpool.Pool, *sto
 	storagetest.SeedVault(b, pool, ator, "cofre-bench", vault)
 	idx, err := storage.NewPostgresVaultIndexer(context.Background(), pool, "simple", slog.New(slog.DiscardHandler))
 	require.NoError(b, err)
-	indexaLote(b, idx)
+	for found := true; found; {
+		found, err = idx.IndexNextVault(context.Background(), indexing.Index)
+		require.NoError(b, err)
+	}
 	return pool, idx
 }
 
