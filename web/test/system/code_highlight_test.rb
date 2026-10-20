@@ -21,8 +21,26 @@ class CodeHighlightTest < ApplicationSystemTestCase
     ```
   MARKDOWN
 
+  # Linguagens fora do bundle inicial: baixam só quando um bloco delas aparece.
+  NOTE_WITH_ON_DEMAND_CODE = <<~MARKDOWN.freeze
+    ```java
+    public class Hello {}
+    ```
+
+    ```rs
+    fn main() {}
+    ```
+
+    ```kotlin
+    fun greet() = 1
+    ```
+  MARKDOWN
+
+  ON_DEMAND_LANGUAGE_MODULE = %r{highlightjs-languages/(java|rust|kotlin)-|legacy-modes--mode--(clike|rust)-}
+
   setup do
-    use_fake_api(notes: [ { id: "1", path: "plan.md", content: NOTE_WITH_CODE }, { id: "2", path: "blank.md", content: "" } ])
+    use_fake_api(notes: [ { id: "1", path: "plan.md", content: NOTE_WITH_CODE }, { id: "2", path: "blank.md", content: "" },
+                          { id: "3", path: "langs.md", content: NOTE_WITH_ON_DEMAND_CODE } ])
     sign_in_through_form
   end
 
@@ -80,7 +98,44 @@ class CodeHighlightTest < ApplicationSystemTestCase
     assert_selector ".note-preview pre code span.hljs-keyword", text: "def"
   end
 
+  test "reading highlights java, rust by its rs alias and kotlin, loaded on demand" do
+    visit note_path("3")
+    click_on "Read"
+
+    %w[public fn fun].each { |keyword| assert_selector ".note-preview pre code span.hljs-keyword", text: keyword, exact_text: true }
+    assert_equal [ "Java", "Rust", "Kotlin" ], all(".note-preview pre .code-header .code-language", count: 3).map(&:text)
+  end
+
+  test "editing highlights java, rust by its rs alias and kotlin, loaded on demand" do
+    visit note_path("3")
+
+    %w[public fn fun].each { |keyword| assert_editor_token keyword, "--code-keyword" }
+  end
+
+  # Abrir uma nota sem esses blocos não baixa nem pré-carrega os módulos; a nota que os usa baixa.
+  test "language modules download only for a note that uses them" do
+    visit note_path("1")
+    click_on "Read"
+    assert_selector ".note-preview pre code span.hljs-keyword", text: "def", match: :first
+    assert_empty on_demand_language_resources
+
+    visit note_path("3")
+    click_on "Side by side"
+    assert_selector ".note-preview pre code span.hljs-keyword", text: "fn"
+    assert_editor_token "fn", "--code-keyword"
+    assert_equal %w[clike java kotlin rust], on_demand_language_resources.map { |name| name[/(clike|java|kotlin|rust)-/, 1] }.compact.uniq.sort
+  end
+
   private
+    # Módulos das linguagens sob demanda que a página baixou ou pôs em modulepreload.
+    def on_demand_language_resources
+      names = evaluate_script(<<~JS)
+        [ ...performance.getEntriesByType("resource").map((entry) => entry.name),
+          ...[ ...document.querySelectorAll("link[rel=modulepreload]") ].map((link) => link.href) ]
+      JS
+      names.grep(ON_DEMAND_LANGUAGE_MODULE)
+    end
+
     # Cor do token no editor igual à da variável, medida num elemento de prova dentro do editor (mesmo tema).
     def assert_editor_token(text, variable)
       expected = evaluate_script(<<~JS, variable)
