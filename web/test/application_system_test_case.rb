@@ -12,6 +12,11 @@ Capybara.enable_aria_label = true
 Capybara.default_max_wait_time = 6
 
 class ApplicationSystemTestCase < ActionDispatch::SystemTestCase
+  # Um Chrome a cada dois núcleos: com um por núcleo a máquina satura e as esperas por condição estouram. O
+  # parallelize vale para o processo todo, mas este arquivo só é carregado pelos testes de sistema; os unitários
+  # seguem com todos os núcleos. PARALLEL_WORKERS, quando definido, ganha deste número (o próprio Rails o lê).
+  parallelize(workers: (Etc.nprocessors / 2).clamp(1..))
+
   # HEADED=1 abre a janela do navegador para acompanhar o teste.
   driven_by :selenium, using: ENV["HEADED"] ? :chrome : :headless_chrome, screen_size: [ 1400, 900 ]
 
