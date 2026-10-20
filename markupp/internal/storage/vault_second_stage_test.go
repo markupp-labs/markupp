@@ -124,6 +124,17 @@ func TestSegundoEstagio_CofreMarcadoApagado_SaiDaFila(t *testing.T) {
 	assert.Zero(t, countRows(t, db, cofresMarcados), "a marcacao sai com o cofre, em cascata")
 }
 
+func TestSegundoEstagio_CofreApagado_LevaODfJunto(t *testing.T) {
+	db, _ := cofreComDf(t)
+	require.NotZero(t, countRows(t, db, "SELECT count(*) FROM vault_term_frequencies"))
+
+	_, err := db.Exec(context.Background(), "DELETE FROM vaults WHERE id = $1", cofreDeTeste)
+
+	require.NoError(t, err)
+	assert.Zero(t, countRows(t, db, "SELECT count(*) FROM vault_term_frequencies"), "o df sai com o cofre, em cascata")
+	assert.Zero(t, countRows(t, db, "SELECT count(*) FROM vault_term_stats"), "o N do df sai com o cofre, em cascata")
+}
+
 func TestSegundoEstagio_Reindex_MarcaOCofre(t *testing.T) {
 	db, _ := cofreComDf(t)
 
