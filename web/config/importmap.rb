@@ -101,3 +101,5 @@ pin "d3-force", preload: false # @3.0.0
 pin "d3-dispatch", preload: false # @3.0.1
 pin "d3-quadtree", preload: false # @3.0.1
 pin "d3-timer", preload: false # @3.0.1
+# Desenho do grafo (graph_view_controller.js importa sob demanda): sem preload, como o d3-force.
+pin_all_from "app/javascript/graph", under: "graph", preload: false

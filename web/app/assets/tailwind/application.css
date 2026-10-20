@@ -4,6 +4,7 @@
 @import "./activity_bar.css";
 @import "./markdown.css";
 @import "./links.css";
+@import "./graph.css";
 
 /* A fonte mora em public/, sem digest, para as páginas de erro estáticas usarem a mesma URL sem o app. */
 @font-face {

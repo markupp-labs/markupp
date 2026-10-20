@@ -1,0 +1,93 @@
+/* Grafo em canvas (graphs/_canvas): o palco é um quadro com a borda line, como um split do Vim, no fundo da barra lateral
+   na visão Graph (quadrado) e no surface na tela cheia (o resto da altura). Os avisos (vazio, recusado, sem servidor)
+   cobrem o canvas, e a linha de status embaixo conta nós e ligações como a statusline. O canvas lê o fundo do palco para
+   o halo dos nomes (graph/theme_colors.js). */
+@layer components {
+  .graph-view {
+    @apply flex min-h-0 flex-col gap-2;
+  }
+
+  .graph-stage {
+    @apply relative overflow-hidden rounded-md border border-line bg-surface-sunken;
+  }
+
+  .graph-view-local .graph-stage {
+    aspect-ratio: 1;
+  }
+
+  .graph-view-full {
+    @apply flex-1;
+  }
+
+  .graph-view-full .graph-stage {
+    @apply min-h-80 flex-1 bg-surface;
+  }
+
+  .graph-canvas {
+    @apply absolute inset-0 block size-full cursor-grab touch-none outline-offset-[-2px];
+
+    &[data-hovering] {
+      @apply cursor-pointer;
+    }
+
+    &:active {
+      @apply cursor-grabbing;
+    }
+  }
+
+  .graph-overlay {
+    @apply absolute inset-0 bg-inherit p-2;
+  }
+
+  .graph-busy {
+    @apply absolute top-2 left-2 text-xs text-ink-muted;
+  }
+
+  .graph-status {
+    @apply min-h-4 truncate text-xs leading-4 whitespace-pre text-ink-muted tabular-nums;
+  }
+
+  .graph-toolbar {
+    @apply flex items-center justify-between gap-2;
+  }
+
+  /* Seletor de saltos como um prompt: "depth" apagado e as opções; a escolhida fica no accent-soft, entre colchetes. */
+  .graph-depth {
+    @apply flex items-center gap-1 text-xs text-ink-muted;
+  }
+
+  .graph-depth-option {
+    @apply rounded-sm px-1.5 leading-5 tabular-nums hover:text-ink;
+
+    &[aria-pressed="true"] {
+      @apply bg-accent-soft text-ink;
+
+      &::before {
+        content: "[";
+      }
+
+      &::after {
+        content: "]";
+      }
+    }
+  }
+
+  /* Tela cheia: o cabeçalho e o grafo tomam a altura da tela menos o padding do main, sem rolar a página. */
+  .graph-page {
+    @apply flex min-h-[calc(100dvh-2rem)] flex-col gap-3 md:h-[calc(100dvh-3rem)] md:min-h-0;
+  }
+}
+
+/* O grafo chega com um fade curto, como a janela que abre no Hyprland; com reduced-motion aparece parado. */
+@media (prefers-reduced-motion: no-preference) {
+  .graph-view[data-graph-nodes] .graph-canvas {
+    animation: graph-arrive 240ms cubic-bezier(0.05, 0.9, 0.1, 1.05);
+  }
+}
+
+@keyframes graph-arrive {
+  from {
+    opacity: 0;
+    scale: 0.98;
+  }
+}
