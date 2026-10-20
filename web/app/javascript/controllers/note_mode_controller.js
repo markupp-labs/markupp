@@ -18,8 +18,11 @@ export default class extends Controller {
   static targets = [ "source", "preview", "button", "codeTools", "embedSpinner" ]
   static values = { wikilinks: Object, folder: String, missingNote: String, copied: String, copyFailed: String }
 
+  // Endereço com #slug colado na barra: no carregamento inteiro o turbo:load passa antes do connect, então a rolagem
+  // ao título sai daqui também. Numa visita do Turbo ele ainda rola ao topo depois, e o turbo:load rola de novo.
   connect() {
     this.render()
+    this.scrollToHash()
   }
 
   disconnect() {
