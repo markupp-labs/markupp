@@ -3,7 +3,9 @@ Rails.application.routes.draw do
 
   resources :notes, only: [ :index, :show, :new, :create, :update, :destroy ] do
     resource :links, only: :show, controller: "note_links"
+    resource :graph, only: :show, controller: "note_graphs"
   end
+  resource :graph, only: :show
   resource :search, only: :show
   resource :explorer, only: :show
 
