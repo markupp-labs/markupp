@@ -404,17 +404,11 @@ func TestLoad_DuracaoDoOAuthInvalida_RetornaErroComVariavelEValor(t *testing.T) 
 	}
 }
 
-func TestLoad_SemPublicURL_IgnoraDuracoesDoOAuth(t *testing.T) {
-	env := fakeEnv{
-		"MARKUPP_DATABASE_URL": urlDeTeste, "MARKUPP_AUTH_SECRET": segredoDeTesteValido,
-		"MARKUPP_OAUTH_ACCESS_MINUTES": "0", "MARKUPP_OAUTH_CODE_SECONDS": "lixo",
-		"MARKUPP_OAUTH_EXCHANGE_MINUTES": "16",
-	}
+func TestLoad_SemPublicURL_AindaLeAsDuracoesDoOAuth(t *testing.T) {
+	env := fakeEnv{"MARKUPP_DATABASE_URL": urlDeTeste, "MARKUPP_OAUTH_ACCESS_MINUTES": "0"}
 
-	cfg, err := config.Load(env.Lookup)
+	_, err := config.Load(env.Lookup)
 
-	require.NoError(t, err, "sem MARKUPP_PUBLIC_URL as duracoes do OAuth nem sao lidas")
-	assert.Equal(t, 60, cfg.OAuthAccessMinutes)
-	assert.Equal(t, 60, cfg.OAuthCodeSeconds)
-	assert.Equal(t, 5, cfg.OAuthExchangeMinutes)
+	require.Error(t, err, "o OAuth vem ligado pela URL publica padrao")
+	assert.Contains(t, err.Error(), "MARKUPP_OAUTH_ACCESS_MINUTES")
 }

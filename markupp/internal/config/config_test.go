@@ -53,6 +53,8 @@ func TestLoad_SoVariaveisObrigatorias_UsaDefaultsNoResto(t *testing.T) {
 	esperado := config.Default()
 	esperado.DatabaseURL = urlDeTeste
 	esperado.AuthSecret = segredoDeTesteValido
+	esperado.PublicURL = "http://localhost:8080"
+	esperado.PanelURL = "http://localhost:3999"
 	assert.Equal(t, esperado, cfg)
 }
 
