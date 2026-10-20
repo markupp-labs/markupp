@@ -11,6 +11,7 @@ import (
 
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/auth"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/identity"
+	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/oauth"
 )
 
 // AdminService é o que as rotas de administração consomem.
@@ -48,7 +49,7 @@ type issuedInviteResponse struct {
 func mountAdminRoutes(r chi.Router, svc AdminService, validator TokenValidator, tenants TenantResolver) {
 	h := &adminHandler{svc: svc}
 	r.Group(func(g chi.Router) {
-		g.Use(RequireAuth(validator), RequireTenant(tenants), requireAdmin)
+		g.Use(acceptOAuthScope(oauth.ScopeAdmin), RequireAuth(validator), RequireTenant(tenants), requireAdmin)
 		g.Get("/users", h.listMembers)
 		g.Get("/users/invites", h.listInvites)
 		g.Post("/users/invites", h.issueInvite)
@@ -79,7 +80,7 @@ type memberResponse struct {
 func (h *adminHandler) listMembers(w http.ResponseWriter, r *http.Request) {
 	members, err := h.svc.ListMembers(r.Context())
 	if err != nil {
-		writeInternal(w, "listar membros", err)
+		writeAdminInternal(w, "listar membros", err)
 		return
 	}
 	out := make([]memberResponse, 0, len(members))
@@ -92,7 +93,7 @@ func (h *adminHandler) listMembers(w http.ResponseWriter, r *http.Request) {
 func (h *adminHandler) listInvites(w http.ResponseWriter, r *http.Request) {
 	invites, err := h.svc.ListInvites(r.Context())
 	if err != nil {
-		writeInternal(w, "listar convites", err)
+		writeAdminInternal(w, "listar convites", err)
 		return
 	}
 	out := make([]inviteResponse, 0, len(invites))
@@ -167,7 +168,7 @@ func writeAdminError(w http.ResponseWriter, err error) {
 	case errors.Is(err, auth.ErrRoleAboveOwn):
 		writeError(w, "role_above_own", err.Error(), http.StatusForbidden)
 	default:
-		writeInternal(w, "administrar o tenant", err)
+		writeAdminInternal(w, "administrar o tenant", err)
 	}
 }
 
@@ -178,7 +179,13 @@ func toInviteResponse(inv auth.Invite) inviteResponse {
 	}
 }
 
-func writeInternal(w http.ResponseWriter, operation string, err error) {
-	slog.Error("falha na administracao", "operacao", operation, "error", err)
+func writeAdminInternal(w http.ResponseWriter, operation string, err error) {
+	writeLoggedInternal(w, "falha na administracao", operation, err)
+}
+
+// writeLoggedInternal registra a falha com a mensagem da área e responde 500 sem expor
+// a causa ao cliente.
+func writeLoggedInternal(w http.ResponseWriter, message, operation string, err error) {
+	slog.Error(message, "operacao", operation, "error", err)
 	writeError(w, "internal", "erro interno", http.StatusInternalServerError)
 }

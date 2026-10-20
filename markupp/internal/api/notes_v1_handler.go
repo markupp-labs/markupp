@@ -48,16 +48,13 @@ func toListItemResponse(n notes.Note) any {
 	}
 }
 
-// mountV1NotesRoutes monta a nota como item de id global e a coleção das notas sob
-// o cofre que as contém (ADR-0040).
+// mountV1NotesRoutes monta a coleção das notas sob o cofre que as contém e a busca
+// (ADR-0040); o item de id global fica no mountNoteItemRoutes.
 func mountV1NotesRoutes(r chi.Router, svc NoteService) {
 	h := &notesHandler{svc: svc, render: toV1Response}
-	r.Get("/v1/notes/{id}", h.get)
-	r.With(requireWriter).Put("/v1/notes/{id}", h.update)
-	r.With(requireWriter).Delete("/v1/notes/{id}", h.delete)
-	r.Get("/v1/vaults/{id}/notes", h.listVault)
-	r.With(requireWriter).Post("/v1/vaults/{id}/notes", h.createInRouteVault)
-	r.Get("/v1/search/notes", h.searchV1)
+	r.Get("/vaults/{id}/notes", h.listVault)
+	r.With(requireWriter).Post("/vaults/{id}/notes", h.createInRouteVault)
+	r.Get("/search/notes", h.searchV1)
 }
 
 // searchHitResponse é o resultado da busca em /v1: a nota resumida, o cofre dela, a

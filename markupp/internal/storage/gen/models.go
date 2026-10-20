@@ -30,6 +30,12 @@ type AuditEvent struct {
 	OccurredAt time.Time
 }
 
+type InstanceSecret struct {
+	Name      string
+	Value     string
+	CreatedAt time.Time
+}
+
 type Note struct {
 	ID            string
 	Path          string
@@ -141,6 +147,61 @@ type Notification struct {
 	CreatedAt      time.Time
 	Kind           string
 	AccountTokenID pgtype.Text
+}
+
+type OauthAuthorization struct {
+	ID        string
+	UserID    string
+	ClientID  string
+	Scopes    []string
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	RevokedAt pgtype.Timestamptz
+}
+
+type OauthClient struct {
+	ID                string
+	Source            string
+	Name              string
+	RedirectUris      []string
+	MetadataExpiresAt pgtype.Timestamptz
+	CreatedAt         time.Time
+}
+
+type OauthPendingDcrClient struct {
+	ID           string
+	PendingSince interface{}
+}
+
+type OauthRequest struct {
+	ID              string
+	ClientID        string
+	RedirectUri     string
+	Scopes          []string
+	Resource        string
+	State           pgtype.Text
+	CodeChallenge   string
+	CreatedAt       time.Time
+	ExpiresAt       time.Time
+	DecidedAt       pgtype.Timestamptz
+	UserID          pgtype.Text
+	CodeHash        pgtype.Text
+	CodeExpiresAt   pgtype.Timestamptz
+	CodeUsedAt      pgtype.Timestamptz
+	AuthorizationID pgtype.Text
+	CodeReusedAt    pgtype.Timestamptz
+}
+
+type OauthToken struct {
+	TokenHash       string
+	AuthorizationID string
+	Kind            string
+	Resource        string
+	Scopes          []string
+	ExpiresAt       time.Time
+	Revoked         bool
+	RotatedAt       pgtype.Timestamptz
+	CreatedAt       time.Time
 }
 
 type RefreshToken struct {

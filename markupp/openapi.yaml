@@ -5,12 +5,23 @@ info:
     API REST para gerenciamento de notas do projeto Markupp, orientada a recursos
     (ADR-0040): a coleção vive sob o recurso que a contém, o item de id global é
     endereçado direto, a relação é sub-coleção por sentido e a visão sobre uma
-    coleção é parâmetro de consulta. As notas e o grafo vivem sob /v1; as rotas de
-    notas sem prefixo continuam servidas, marcadas como obsoletas, durante a
-    transição (ADR-0026).
+    coleção é parâmetro de consulta.
+
+    Todas as rotas vivem sob /v1 (ADR-0026). Durante a transição, os mesmos caminhos
+    continuam servidos sem prefixo, com os cabeçalhos Deprecation (RFC 9745) e
+    Link rel="successor-version" apontando o caminho sob /v1; sem prefixo, a nota
+    mantém a representação antiga, sem a organização derivada. As rotas /oauth/requests,
+    /me/authorizations, /vaults, /search e as sub-coleções de /notes/{id} nasceram
+    depois da transição e existem só sob /v1, sem o caminho sem prefixo.
+
+    Os endpoints do protocolo OAuth (/oauth/authorize, /oauth/token, /oauth/revoke e a
+    metadata em /.well-known/oauth-authorization-server) ficam na raiz, fora de /v1, e
+    seguem as RFCs, com um desvio intencional da RFC 7009 (ADR-0046): /oauth/revoke
+    responde 200 sem revogar nada quando o token é de outro cliente, em vez de recusar o
+    pedido, para não revelar a quem o token pertence.
   version: 0.1.0
 servers:
-  - url: http://localhost:8080
+  - url: http://localhost:8080/v1
     description: Servidor local padrão
 security:
   - bearerAuth: []
@@ -495,6 +506,113 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/InviteNotFound'
+  /me/authorizations:
+    get:
+      summary: Lista as Autorizações OAuth ativas da conta
+      description: >
+        Rota do painel. Exige login, mas não o cabeçalho de tenant: a Autorização é da conta.
+      responses:
+        '200':
+          description: Autorizações ativas, uma por cliente
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum: [no-store]
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/OAuthAuthorizationResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /me/authorizations/{id}:
+    delete:
+      summary: Revoga uma Autorização OAuth da conta
+      description: >
+        Revoga a Autorização e todos os tokens emitidos por ela; o cliente precisa de um
+        novo consentimento para voltar a acessar a conta.
+      parameters:
+        - $ref: '#/components/parameters/OAuthAuthorizationID'
+      responses:
+        '204':
+          description: Autorização revogada
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum: [no-store]
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/OAuthAuthorizationNotFound'
+  /oauth/requests/{id}:
+    get:
+      summary: Descreve um pedido de autorização OAuth para a tela de consentimento
+      description: >
+        Rota do painel. Exige login, mas não o cabeçalho de tenant. O id do pedido funciona
+        como portador (ADR-0047): qualquer conta logada que o tenha vê e decide o pedido.
+        O pedido vale 10 minutos e é de uso único.
+      parameters:
+        - $ref: '#/components/parameters/OAuthRequestID'
+      responses:
+        '200':
+          description: Pedido pendente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OAuthRequestResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/OAuthRequestNotFound'
+  /oauth/requests/{id}/approve:
+    post:
+      summary: Aprova um pedido de autorização OAuth
+      description: Devolve o endereço do cliente, com o código, para onde o painel leva o navegador.
+      parameters:
+        - $ref: '#/components/parameters/OAuthRequestID'
+      responses:
+        '200':
+          description: Pedido aprovado
+          headers:
+            Cache-Control:
+              description: Sempre no-store, porque o redirect pode carregar o código
+              schema:
+                type: string
+                enum: [no-store]
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OAuthDecisionResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/OAuthRequestNotFound'
+  /oauth/requests/{id}/deny:
+    post:
+      summary: Recusa um pedido de autorização OAuth
+      description: Devolve o endereço do cliente, com o erro access_denied, para onde o painel leva o navegador.
+      parameters:
+        - $ref: '#/components/parameters/OAuthRequestID'
+      responses:
+        '200':
+          description: Pedido recusado
+          headers:
+            Cache-Control:
+              description: Sempre no-store, porque o redirect pode carregar o código
+              schema:
+                type: string
+                enum: [no-store]
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OAuthDecisionResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/OAuthRequestNotFound'
   /auth/me:
     get:
       summary: Devolve a conta autenticada
@@ -633,146 +751,6 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
   /notes/{id}:
     get:
-      deprecated: true
-      summary: Recupera uma nota por ID
-      description: Retorna a nota correspondente ao identificador fornecido. Obsoleta, substituída por /v1/notes/{id}.
-      parameters:
-        - $ref: '#/components/parameters/TenantHeader'
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Identificador único da nota
-      responses:
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '200':
-          description: Nota encontrada
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/NoteResponse'
-        '400':
-          description: ID inválido
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
-          description: Nota não encontrada
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: Erro interno do servidor
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-    put:
-      deprecated: true
-      summary: Atualiza uma nota existente
-      description: |
-        Obsoleta, substituída por /v1/notes/{id}.
-
-        Atualiza o caminho e conteúdo de uma nota existente.
-        
-        Implementa optimistic locking: o cliente deve enviar o `lastModifiedAt` da última vez que leu a nota.
-        Se a nota foi modificada no servidor desde então:
-        - Sem flag `force`: retorna erro 409 Conflict
-        - Com flag `force: true`: atualiza mesmo assim (sobrescrita)
-      parameters:
-        - $ref: '#/components/parameters/TenantHeader'
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Identificador único da nota
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/NoteUpdateRequest'
-      responses:
-        '403':
-          $ref: '#/components/responses/ReadOnly'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '200':
-          description: Nota atualizada com sucesso
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/NoteResponse'
-        '400':
-          description: Requisição inválida ou dados de nota inválidos
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
-          description: Nota não encontrada
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '409':
-          description: |
-            Conflito: a nota foi modificada no servidor desde a última leitura (e force não foi ativado),
-            ou caminho de nota duplicado.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: Erro interno do servidor
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-    delete:
-      deprecated: true
-      summary: Exclui uma nota
-      description: Remove a nota identificada pelo ID. Obsoleta, substituída por /v1/notes/{id}.
-      parameters:
-        - $ref: '#/components/parameters/TenantHeader'
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Identificador único da nota
-      responses:
-        '403':
-          $ref: '#/components/responses/ReadOnly'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '204':
-          description: Nota excluída com sucesso
-        '400':
-          description: ID inválido
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
-          description: Nota não encontrada
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: Erro interno do servidor
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-  /v1/notes/{id}:
-    get:
       summary: Lê uma nota
       description: |
         A nota com o conteúdo e a organização derivada que o indexador grava no
@@ -887,7 +865,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-  /v1/notes/{id}/links:
+  /notes/{id}/links:
     get:
       summary: Lista as ligações que esta nota faz
       description: |
@@ -958,7 +936,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-  /v1/notes/{id}/backlinks:
+  /notes/{id}/backlinks:
     get:
       summary: Lista as ligações para esta nota
       description: |
@@ -1001,7 +979,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-  /v1/search/notes:
+  /search/notes:
     get:
       summary: Busca notas por texto no índice léxico
       description: |
@@ -1065,7 +1043,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-  /v1/vaults/{id}/communities:
+  /vaults/{id}/communities:
     get:
       summary: Lista as comunidades do cofre
       description: |
@@ -1113,7 +1091,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-  /v1/vaults/{id}/communities/{cid}:
+  /vaults/{id}/communities/{cid}:
     get:
       summary: Lê uma comunidade do cofre
       description: |
@@ -1167,7 +1145,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-  /v1/vaults/{id}/graph:
+  /vaults/{id}/graph:
     get:
       summary: Lê o grafo do cofre para desenhar
       description: |
@@ -1229,7 +1207,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-  /v1/notes/{id}/graph:
+  /notes/{id}/graph:
     get:
       summary: Lê o grafo local da nota para desenhar
       description: |
@@ -1296,7 +1274,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-  /v1/vaults/{id}/links:
+  /vaults/{id}/links:
     get:
       summary: Lista as ligações das notas do cofre
       description: |
@@ -1344,7 +1322,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-  /v1/notes/{id}/mentions:
+  /notes/{id}/mentions:
     get:
       summary: Lista os títulos que esta nota menciona sem ligar
       description: |
@@ -1401,7 +1379,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-  /v1/notes/{id}/backmentions:
+  /notes/{id}/backmentions:
     get:
       summary: Lista as notas que mencionam esta sem ligar
       description: |
@@ -1459,7 +1437,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-  /v1/notes/{id}/suggestions:
+  /notes/{id}/suggestions:
     get:
       summary: Lista as notas que esta nota poderia ligar
       description: |
@@ -1513,7 +1491,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-  /v1/vaults/{id}/notes:
+  /vaults/{id}/notes:
     get:
       summary: Lista as notas do cofre
       description: |
@@ -1785,6 +1763,20 @@ components:
       required: true
       schema:
         type: string
+    OAuthRequestID:
+      name: id
+      in: path
+      required: true
+      description: Id do pedido de autorização
+      schema:
+        type: string
+    OAuthAuthorizationID:
+      name: id
+      in: path
+      required: true
+      description: Id da Autorização, um dos de GET /me/authorizations
+      schema:
+        type: string
   securitySchemes:
     bearerAuth:
       type: http
@@ -1845,7 +1837,76 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/ErrorResponse'
+    OAuthRequestNotFound:
+      description: Pedido de autorização inexistente, vencido ou já decidido (request_not_found)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    OAuthAuthorizationNotFound:
+      description: Autorização inexistente, já revogada ou de outra conta (authorization_not_found)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
   schemas:
+    OAuthAuthorizationResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        client_id:
+          type: string
+        client_name:
+          type: string
+        scopes:
+          type: array
+          items:
+            type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    OAuthRequestResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        client_id:
+          type: string
+        client_name:
+          type: string
+        client_source:
+          type: string
+          enum: [cimd, dcr]
+          description: >-
+            Origem do registro do cliente. O nome do cliente cimd vem do documento publicado
+            no domínio do client_id; o do cliente dcr é declarado pelo próprio cliente e não
+            é verificado
+        redirect_host:
+          type: string
+          description: >-
+            Host para onde o navegador volta depois da decisão. Na redirect_uri de
+            esquema privado, o host vem precedido do esquema (como evilapp://claude.ai) ou,
+            sem host, é o esquema com dois-pontos (como cursor:)
+        scopes:
+          type: array
+          items:
+            type: string
+        already_authorized:
+          type: boolean
+          description: A conta já autorizou esse cliente com esses escopos
+        expires_at:
+          type: string
+          format: date-time
+    OAuthDecisionResponse:
+      type: object
+      properties:
+        redirect_to:
+          type: string
+          description: URL do cliente para onde o painel leva o navegador
     Role:
       type: string
       enum: [owner, admin, member, viewer]

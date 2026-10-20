@@ -4,7 +4,6 @@ x-servidor: &servidor
     dockerfile: Dockerfile.dev
   environment: &ambiente
     MARKUPP_DATABASE_URL: postgres://markupp:${POSTGRES_PASSWORD:-markupp}@postgres:5432/markupp?sslmode=disable
-    MARKUPP_AUTH_SECRET: ${MARKUPP_AUTH_SECRET:?MARKUPP_AUTH_SECRET obrigatoria, execute make compose-env}
     MARKUPP_AUTH_REGISTRATION_ENABLED: ${MARKUPP_AUTH_REGISTRATION_ENABLED:-false}
   volumes:
     - ./markupp:/src
@@ -67,6 +66,15 @@ services:
     environment:
       <<: *ambiente
       MARKUPP_INVITE_BY_EMAIL: "true"
+      # Segredos gerados no banco na primeira subida (ADR-0041). A URL pública acompanha
+      # a porta publicada no host; o servidor MCP fica nela em /mcp, encaminhado pelo Go.
+      MARKUPP_PUBLIC_URL: ${MARKUPP_PUBLIC_URL:-http://localhost:${MARKUPP_PORT:-8080}}
+      MARKUPP_MCP_UPSTREAM_URL: http://mcp:3000
+      MARKUPP_MCP_SECRET_PATH: /run/markupp-mcp/secret
+    volumes:
+      - ./markupp:/src
+      - ${GO_MOD_CACHE:-go_mod_cache}:/go/pkg/mod
+      - mcp_secret:/run/markupp-mcp
     ports:
       - "${MARKUPP_PORT:-8080}:8080"
     depends_on:
@@ -88,7 +96,22 @@ services:
     depends_on:
       - markupp
 
+  # Servidor MCP (ADR-0045): descobre o issuer pelo Go e lê o segredo que o Go escreve no
+  # volume compartilhado. Os agentes chegam a ele pelo /mcp do Go.
+  mcp:
+    build:
+      context: ./mcp
+    environment:
+      MARKUPP_MCP_API_URL: http://markupp:8080
+      MARKUPP_MCP_SECRET_PATH: /run/markupp-mcp/secret
+    volumes:
+      - mcp_secret:/run/markupp-mcp:ro
+    depends_on:
+      markupp:
+        condition: service_started
+
 volumes:
   postgres_data:
   go_mod_cache:
   bundle_cache:
+  mcp_secret:

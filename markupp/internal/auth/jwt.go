@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"strings"
 	"time"
+	"unicode"
 )
 
 var (
@@ -28,11 +29,13 @@ type tokenHeader struct {
 }
 
 // Claims são as declarações de identidade do JWT. Tenant e papel ficam fora: vêm do
-// vínculo no banco a cada requisição, e nunca envelhecem dentro do token.
+// vínculo no banco a cada requisição, e nunca envelhecem dentro do token. Scope só
+// existe no token que a troca OAuth entrega; vazio é token de login, de acesso inteiro.
 type Claims struct {
 	Subject   string `json:"sub"`
 	IssuedAt  int64  `json:"iat"`
 	ExpiresAt int64  `json:"exp"`
+	Scope     string `json:"scope,omitempty"`
 }
 
 // TokenPair representa o par de tokens emitidos para a sessão.
@@ -176,4 +179,33 @@ func NewOpaqueToken() (string, error) {
 func HashOpaqueToken(token string) string {
 	h := sha256.Sum256([]byte(token))
 	return hex.EncodeToString(h[:])
+}
+
+// IssueScopedToken emite o token da API com escopo que a troca de token OAuth entrega:
+// o mesmo JWT do login, com validade ttl e os escopos separados por espaço na claim scope.
+func (c *TokenCodec) IssueScopedToken(userID string, scopes []string, ttl time.Duration) (string, error) {
+	if ttl <= 0 {
+		return "", fmt.Errorf("auth: validade %s do token com escopo invalida; esperado maior que zero", ttl)
+	}
+	if err := checkTokenScopes(scopes); err != nil {
+		return "", err
+	}
+	now := c.clock()
+	return c.encodeClaims(Claims{
+		Subject: userID, IssuedAt: now.Unix(), ExpiresAt: now.Add(ttl).Unix(), Scope: strings.Join(scopes, " "),
+	})
+}
+
+// checkTokenScopes barra lista vazia e escopo vazio ou com espaço, que fariam a claim
+// scope sumir ou mudar de sentido. Sem claim scope o token valeria como de login.
+func checkTokenScopes(scopes []string) error {
+	if len(scopes) == 0 {
+		return errors.New("auth: token com escopo sem nenhum escopo; esperado ao menos um")
+	}
+	for _, scope := range scopes {
+		if scope == "" || strings.ContainsFunc(scope, unicode.IsSpace) {
+			return fmt.Errorf("auth: escopo %q invalido; esperado texto sem espacos", scope)
+		}
+	}
+	return nil
 }
