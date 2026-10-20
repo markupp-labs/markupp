@@ -422,6 +422,38 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '401':
           $ref: '#/components/responses/Unauthorized'
+  /tenants/{id}:
+    delete:
+      summary: Apaga um tenant
+      description: >
+        Só o owner apaga. Apaga de vez, numa transação, o tenant e tudo que pertence a ele:
+        cofres, notas e o que deriva delas, vínculos e convites. As contas continuam, e a
+        auditoria guarda quem apagou. O tenant vem do caminho, não do cabeçalho
+        X-Markupp-Tenant.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Id do tenant, um dos de GET /me/tenants
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Tenant apagado
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: O papel no tenant não é owner (forbidden)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Tenant inexistente ou de que a conta não é membro (tenant_not_found)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /me/tenants:
     get:
       summary: Lista os tenants da conta
