@@ -19,6 +19,8 @@ type RouterDeps struct {
 	AllowedOrigins []string
 	OAuthMetadata  *OAuthMetadata
 	OAuth          OAuthService
+	// MCPUpstreamURL é o servidor MCP para onde /mcp é encaminhado. Vazia, /mcp não existe.
+	MCPUpstreamURL string
 }
 
 // NewRouter monta o roteador com sonda, rotas de autenticação, de notas e de
@@ -32,6 +34,7 @@ func NewRouter(d RouterDeps) chi.Router {
 	r.Use(middleware.RequestID)
 	r.Use(middleware.Recoverer)
 	mountOAuthServerRoutes(r, d)
+	mountMCPProxy(r, d.MCPUpstreamURL)
 	r.Group(func(g chi.Router) {
 		g.Use(allowOrigins(d.AllowedOrigins))
 		mountAPIRoutes(g, d)
