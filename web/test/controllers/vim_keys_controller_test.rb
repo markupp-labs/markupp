@@ -34,7 +34,7 @@ class VimKeysControllerTest < ActionDispatch::IntegrationTest
 
     assert_select "main form[action='/vim_keys'][data-turbo=false]" do
       assert_select "input[name=vim_keys][value=on]", 1
-      assert_select "button[aria-pressed=false]", text: "Vim keys"
+      assert_select "button[role=switch][aria-checked=false]"
     end
   end
 
@@ -45,7 +45,7 @@ class VimKeysControllerTest < ActionDispatch::IntegrationTest
 
     assert_select "main form[action='/vim_keys']" do
       assert_select "input[name=vim_keys][value=off]", 1
-      assert_select "button[aria-pressed=true]", text: "Vim keys"
+      assert_select "button[role=switch][aria-checked=true]"
     end
   end
 

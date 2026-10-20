@@ -45,7 +45,7 @@ module Settings
 
       assert_select "main section form[action=?]", editor_style_path, count: 0
       assert_select "main section form[action=?]", vim_keys_path, count: 0
-      assert_select "main section", text: /Vim keys/, count: 0
+      assert_select "main section", text: /Vim key/, count: 0
     end
 
     test "picking a theme comes back to the appearance" do

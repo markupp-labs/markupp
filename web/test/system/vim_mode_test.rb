@@ -12,9 +12,8 @@ class VimModeTest < ApplicationSystemTestCase
 
   test "vim keys turn on from the editor settings and the editor opens in normal mode with a block cursor" do
     visit "/settings/editor"
-    assert_selector "main button[aria-pressed=false]", text: "Vim keys"
-    within("main") { click_on "Vim keys" }
-    assert_selector "main button[aria-pressed=true]", text: "Vim keys"
+    find("main [role=switch][aria-checked=false][aria-labelledby=vim_keys_heading]").send_keys(:space)
+    assert_selector "main [role=switch][aria-checked=true]"
 
     visit note_path("1")
 

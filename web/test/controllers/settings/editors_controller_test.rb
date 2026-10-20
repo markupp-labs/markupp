@@ -18,10 +18,12 @@ module Settings
       assert_response :success
       assert_select "main h1", "Editor"
       assert_select "main nav a[href='/settings/editor'][aria-current=page]", text: "Editor"
-      assert_select "main [role=group][aria-labelledby=editor_style_heading] form[action=?]", editor_style_path, count: 2
-      assert_select "main form[action=?] button", vim_keys_path, text: "Vim keys"
-      assert_select "main", text: /Styled makes headings larger/
-      assert_select "main", text: /normal, insert and visual modes of Vim/
+      assert_select "main #editor_style_heading", "Editor style"
+      assert_select "main [role=group][aria-labelledby=editor_style_heading][aria-describedby=editor_style_hint] form[action=?]", editor_style_path, count: 2
+      assert_select "main #editor_style_hint", text: /Styled makes headings larger/
+      assert_select "main #vim_keys_heading", "Vim key bindings"
+      assert_select "main form[action=?] button[role=switch][aria-labelledby=vim_keys_heading][aria-describedby=vim_keys_hint]", vim_keys_path
+      assert_select "main #vim_keys_hint", text: /normal, insert and visual modes of Vim/
     end
 
     test "show works for an account without tenant" do

@@ -9,7 +9,7 @@ class ShortcutsTest < ActionDispatch::IntegrationTest
     [ "Keyboard shortcuts", "?" ], [ "Search notes", "Ctrl K" ], [ "Settings", "Ctrl ," ], [ "Toggle sidebar", "Ctrl B" ],
     [ "Focus region left", "Alt H" ], [ "Focus region below", "Alt J" ], [ "Focus region above", "Alt K" ], [ "Focus region right", "Alt L" ],
     [ "Light theme", "" ], [ "Dark theme", "" ], [ "Editor style: plain", "" ], [ "Editor style: styled", "" ],
-    [ "Vim keys: on", "" ], [ "Vim keys: off", "" ],
+    [ "Vim key bindings: on", "" ], [ "Vim key bindings: off", "" ],
     [ "All tenants", "g t" ], [ "Switch tenant", "" ], [ "Log out", "" ]
   ].freeze
 
