@@ -42,4 +42,15 @@ class ErrorPagesTest < ApplicationSystemTestCase
     assert_selector "main h1", text: "500: Something broke on the panel"
     assert evaluate_async_script(FONT_LOADED_SCRIPT), "expected the Fira Code from /FiraCode-VF.woff2 to load on the static page"
   end
+
+  # O Chromium headless segue o claro do sistema: o escuro só pode vir do cookie do tema escolhido no painel.
+  test "the static pages follow the theme chosen in the panel" do
+    visit new_session_path
+    click_on "Dark theme"
+    assert_selector "html[data-theme=dark]", visible: :all
+
+    visit "/500.html"
+    assert_selector "html[data-theme=dark]", visible: :all
+    assert_equal "rgb(31, 31, 40)", evaluate_script("getComputedStyle(document.body).backgroundColor")
+  end
 end

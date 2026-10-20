@@ -13,6 +13,9 @@ class StaticErrorPagesTest < ActionDispatch::IntegrationTest
       assert_includes page.at_css("pre[data-mascot=large]")&.text.to_s, MascotHelper::MASCOT_TEXT_BY_SIZE.fetch(:large)
       assert_includes html, 'url("/FiraCode-VF.woff2")'
       assert_includes html, "prefers-color-scheme: dark"
+      assert_includes html, ':root[data-theme="dark"]'
+      assert_match(/document\.cookie\.match\(.*theme=\(light\|dark\)/, page.at_css("head script:not([src])")&.text.to_s,
+                   "expected #{file} to take the theme from the cookie, as the panel does")
       assert_empty page.css("script[src], link[href], img, iframe"), "expected #{file} self-contained, without loaded resources"
       assert_no_match(%r{https?://|url\((?!"/FiraCode-VF\.woff2")}, html, "expected #{file} to reference only the panel font")
     end
