@@ -12,15 +12,33 @@ export type HttpConfig = {
   port: number;
 };
 
+// ResourceSecretSource é de onde vem o segredo do resource: o valor na variável, que
+// tem precedência, ou o arquivo que o Go escreve no volume compartilhado.
+export type ResourceSecretSource =
+  { kind: "value"; value: string } | { kind: "file"; path: string };
+
+// HttpEnvConfig é o que dá para resolver só com o ambiente; o issuer e o segredo em
+// arquivo dependem de I/O e ficam para resolveHttpConfig.
+export type HttpEnvConfig = {
+  apiUrl: string;
+  resourceUrl: string | undefined;
+  secret: ResourceSecretSource;
+  port: number;
+};
+
+// PublicUrlRule é a regra do Go para as URLs que o agente vê: https, ou http só em
+// loopback, sem userinfo, query nem fragmento; o caminho varia por variável.
+export type PublicUrlRule = {
+  path: "forbidden" | "required";
+  expected: string;
+};
+
+const DEFAULT_API_URL = "http://localhost:8080";
 const DEFAULT_PORT = 3000;
 const MIN_RESOURCE_SECRET_BYTES = 32;
 const LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
 
-// PublicUrlRule é a regra do Go para as URLs que o agente vê: https, ou http só em
-// loopback, sem userinfo, query nem fragmento; o caminho varia por variável.
-type PublicUrlRule = { path: "forbidden" | "required"; expected: string };
-
-const ISSUER_RULE: PublicUrlRule = {
+export const ISSUER_RULE: PublicUrlRule = {
   path: "forbidden",
   expected:
     "https://host[:porta] sem caminho, query nem fragmento (http so em localhost, 127.0.0.1 ou [::1])",
@@ -31,45 +49,52 @@ const RESOURCE_RULE: PublicUrlRule = {
     "https://host[:porta]/caminho sem query nem fragmento (http so em localhost, 127.0.0.1 ou [::1]); o caminho e a rota do endpoint MCP",
 };
 
-// loadHttpConfig lê e valida as variáveis do transporte HTTP, falhando na primeira
-// inválida com o nome dela, o valor recebido e o formato esperado.
-export function loadHttpConfig(env: McpEnvironment): HttpConfig {
-  const resource = publicUrl(env, "MARKUPP_MCP_RESOURCE_URL", RESOURCE_RULE);
+// loadHttpEnv lê e valida as variáveis do transporte HTTP, todas opcionais, falhando
+// na primeira inválida com o nome dela, o valor recebido e o formato esperado.
+export function loadHttpEnv(env: McpEnvironment): HttpEnvConfig {
   return {
     apiUrl: internalUrl(env, "MARKUPP_MCP_API_URL"),
-    issuerUrl: publicUrl(env, "MARKUPP_MCP_ISSUER_URL", ISSUER_RULE).origin,
-    resourceUrl: resource.href,
-    resourceSecret: resourceSecret(env),
-    endpoint: resource.pathname as `/${string}`,
+    resourceUrl: optionalResourceUrl(env),
+    secret: secretSource(env),
     port: port(env),
   };
 }
 
-function required(env: McpEnvironment, key: string, expected: string): string {
+function optional(env: McpEnvironment, key: string): string | undefined {
   const value = env[key]?.trim() ?? "";
-  if (value === "") {
-    throw new Error(`${key} vazia, esperado ${expected}`);
-  }
-  return value;
+  return value === "" ? undefined : value;
 }
 
 // internalUrl aceita http em qualquer host: é o endereço do Go dentro do cluster ou do
 // compose, que o agente nunca vê.
 function internalUrl(env: McpEnvironment, key: string): string {
-  const expected = "http(s)://host[:porta] do servidor Go";
-  const raw = required(env, key, expected);
+  const raw = optional(env, key) ?? DEFAULT_API_URL;
   const url = URL.parse(raw);
   if (!url || !["http:", "https:"].includes(url.protocol)) {
-    throw new Error(`${key}="${raw}", esperado ${expected}`);
+    throw new Error(
+      `${key}="${raw}", esperado http(s)://host[:porta] do servidor Go`,
+    );
   }
   return raw.replace(/\/+$/, "");
 }
 
-function publicUrl(env: McpEnvironment, key: string, rule: PublicUrlRule): URL {
-  const raw = required(env, key, rule.expected);
+function optionalResourceUrl(env: McpEnvironment): string | undefined {
+  const key = "MARKUPP_MCP_RESOURCE_URL";
+  const raw = optional(env, key);
+  if (raw === undefined) return undefined;
+  return checkPublicUrl(key, raw, RESOURCE_RULE).href;
+}
+
+// checkPublicUrl valida a URL pela regra e cita a origem dela no erro: o nome da
+// variável ou o documento de onde a URL veio.
+export function checkPublicUrl(
+  source: string,
+  raw: string,
+  rule: PublicUrlRule,
+): URL {
   const url = URL.parse(raw);
   if (!url || !publicUrlAllowed(url, raw, rule)) {
-    throw new Error(`${key}="${raw}", esperado ${rule.expected}`);
+    throw new Error(`${source}="${raw}", esperado ${rule.expected}`);
   }
   return url;
 }
@@ -84,23 +109,33 @@ function publicUrlAllowed(url: URL, raw: string, rule: PublicUrlRule): boolean {
   return secure && clean && !raw.includes("#") && pathOk;
 }
 
-// resourceSecret cita só o tamanho do segredo, nunca o valor.
-function resourceSecret(env: McpEnvironment): string {
+function secretSource(env: McpEnvironment): ResourceSecretSource {
   const key = "MARKUPP_MCP_RESOURCE_SECRET";
-  const expected = `o segredo do par deste servidor em MARKUPP_OAUTH_RESOURCES no Go, com ao menos ${MIN_RESOURCE_SECRET_BYTES} bytes aleatorios`;
-  const secret = required(env, key, expected);
+  const value = optional(env, key);
+  if (value !== undefined) {
+    return { kind: "value", value: checkSecretSize(key, value) };
+  }
+  const path = optional(env, "MARKUPP_MCP_SECRET_PATH");
+  if (path !== undefined) return { kind: "file", path };
+  throw new Error(
+    `${key} e MARKUPP_MCP_SECRET_PATH vazias, esperado o segredo do resource em ${key} ou, em MARKUPP_MCP_SECRET_PATH, o caminho do arquivo em que o Go o escreve`,
+  );
+}
+
+// checkSecretSize cita só a origem e o tamanho do segredo, nunca o valor.
+export function checkSecretSize(source: string, secret: string): string {
   const bytes = new TextEncoder().encode(secret).length;
   if (bytes < MIN_RESOURCE_SECRET_BYTES) {
     throw new Error(
-      `${key} com ${bytes} bytes, esperado ao menos ${MIN_RESOURCE_SECRET_BYTES} bytes aleatorios`,
+      `${source} com ${bytes} bytes, esperado ao menos ${MIN_RESOURCE_SECRET_BYTES} bytes aleatorios`,
     );
   }
   return secret;
 }
 
 function port(env: McpEnvironment): number {
-  const raw = env.MARKUPP_MCP_PORT?.trim();
-  if (!raw) return DEFAULT_PORT;
+  const raw = optional(env, "MARKUPP_MCP_PORT");
+  if (raw === undefined) return DEFAULT_PORT;
   const value = Number(raw);
   if (!/^\d+$/.test(raw) || value < 1 || value > 65535) {
     throw new Error(`MARKUPP_MCP_PORT="${raw}", esperado inteiro de 1 a 65535`);

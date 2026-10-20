@@ -1,12 +1,15 @@
+import { loadHttpEnv, type HttpConfig, type McpEnvironment } from "./config.js";
 import {
-  loadHttpConfig,
-  type HttpConfig,
-  type McpEnvironment,
-} from "./config.js";
+  errorMessage,
+  resolveHttpConfig,
+  type StartupDeps,
+} from "./resolve-http-config.js";
 
-// CliDeps é o que o CLI faz fora de si: escrever no stderr e servir o transporte HTTP.
+// CliDeps é o que o CLI faz fora de si: escrever no stderr, o I/O da subida e servir o
+// transporte HTTP.
 export type CliDeps = {
   writeError: (line: string) => void;
+  startup: StartupDeps;
   serveHttp: (config: HttpConfig) => Promise<void>;
 };
 
@@ -39,9 +42,9 @@ async function serveHttpFromEnv(
 ): Promise<number> {
   let config: HttpConfig;
   try {
-    config = loadHttpConfig(env);
+    config = await resolveHttpConfig(loadHttpEnv(env), deps.startup);
   } catch (error) {
-    deps.writeError(error instanceof Error ? error.message : String(error));
+    deps.writeError(errorMessage(error));
     return 1;
   }
   await deps.serveHttp(config);
