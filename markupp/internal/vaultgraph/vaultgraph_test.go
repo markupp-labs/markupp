@@ -2,9 +2,12 @@ package vaultgraph_test
 
 import (
 	"fmt"
+	"math/rand/v2"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"gonum.org/v1/gonum/graph/network"
+	"gonum.org/v1/gonum/graph/simple"
 
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/vaultgraph"
 )
@@ -33,7 +36,7 @@ func TestResourceAllocation_SomaUmSobreOGrauDosVizinhosEmComum(t *testing.T) {
 func TestPageRank_AmortecimentoDe085ComNotaSemSaida(t *testing.T) {
 	g := vaultgraph.New([]string{"a", "b"}, []vaultgraph.Edge{{Source: "a", Target: "b"}})
 
-	rank := g.PageRank()
+	rank, _ := g.PageRank()
 
 	assert.InDelta(t, 0.350877, rank["a"], 1e-5, "a massa da nota sem saida se espalha por todas")
 	assert.InDelta(t, 0.649123, rank["b"], 1e-5)
@@ -44,11 +47,53 @@ func TestPageRank_NotaCitadaPorTodasLidera(t *testing.T) {
 		{Source: "x", Target: "indice"}, {Source: "y", Target: "indice"}, {Source: "z", Target: "indice"}, {Source: "indice", Target: "x"},
 	})
 
-	rank := g.PageRank()
+	rank, _ := g.PageRank()
 
 	assert.Greater(t, rank["indice"], rank["x"])
 	assert.Greater(t, rank["x"], rank["y"])
 	assert.InDelta(t, 1, rank["x"]+rank["y"]+rank["z"]+rank["indice"], 1e-9)
+}
+
+func TestPageRank_ConfereComOGonum(t *testing.T) {
+	rng := rand.New(rand.NewPCG(7, 7))
+	ids := make([]string, 300)
+	referencia := simple.NewDirectedGraph()
+	for i := range ids {
+		ids[i] = fmt.Sprintf("n%03d", i)
+		referencia.AddNode(simple.Node(i))
+	}
+	var edges []vaultgraph.Edge
+	for range 900 {
+		from, to := rng.IntN(250), rng.IntN(300)
+		if from != to {
+			edges = append(edges, vaultgraph.Edge{Source: ids[from], Target: ids[to]})
+			referencia.SetEdge(simple.Edge{F: simple.Node(from), T: simple.Node(to)})
+		}
+	}
+
+	rank, _ := vaultgraph.New(ids, edges).PageRank()
+
+	esperado := network.PageRankSparse(referencia, 0.85, 1e-10)
+	for i, id := range ids {
+		assert.InDelta(t, esperado[int64(i)], rank[id], 1e-6, "nota %s", id)
+	}
+}
+
+func TestPageRank_ParaNoTetoDe100Iteracoes(t *testing.T) {
+	g := vaultgraph.New([]string{"a", "b", "c", "d"}, []vaultgraph.Edge{
+		{Source: "a", Target: "b"}, {Source: "b", Target: "c"}, {Source: "c", Target: "a"}, {Source: "d", Target: "a"},
+	})
+
+	_, parada := g.PageRank()
+
+	assert.Equal(t, vaultgraph.Convergence{Iterations: 100, Capped: true}, parada,
+		"o ciclo gira a diferenca a 0,85 por iteracao e so chegaria a tolerancia depois de 100")
+}
+
+func TestPageRank_ConvergeAntesDoTeto(t *testing.T) {
+	_, parada := vaultgraph.New([]string{"a", "b", "c"}, nil).PageRank()
+
+	assert.Equal(t, vaultgraph.Convergence{Iterations: 1}, parada, "sem ligacao, o vetor uniforme ja e o PageRank")
 }
 
 // doisTriangulos é o grafo de dois triângulos ligados por uma ponte, mais uma nota
