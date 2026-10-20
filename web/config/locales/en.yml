@@ -49,6 +49,22 @@ en:
       hide_sidebar: "Hide sidebar"
       show_sidebar: "Show sidebar"
       resize_sidebar: "Resize sidebar"
+    activity_bar:
+      label: "Views"
+      explorer: "Explorer"
+      links: "Links"
+      graph: "Graph"
+      search: "Search"
+    sidebar_view_empty:
+      links:
+        title: "Open a note to see its links"
+        hint: "Its links and backlinks show up here."
+      graph:
+        title: "Open a note to see its graph"
+        hint: "The notes around it show up here."
+      search:
+        title: "Search your notes"
+        hint: "Find a note by its words."
     tenant_switcher:
       switch: "Switch tenant"
       new_tenant: "New tenant"
@@ -83,6 +99,9 @@ en:
       settings: "Settings"
       toggle_sidebar: "Toggle sidebar"
       focus_tree: "Focus the note tree"
+      focus_links: "Links view"
+      focus_graph: "Graph view"
+      focus_search: "Search view"
       focus_region_left: "Focus region left"
       focus_region_below: "Focus region below"
       focus_region_above: "Focus region above"

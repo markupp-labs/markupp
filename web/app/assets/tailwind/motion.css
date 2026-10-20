@@ -89,8 +89,8 @@
    da barra: o main acompanha só pela borda esquerda. Assim nada salta: o que encosta à direita (o seletor de modo da
    nota) fica parado e o que encosta à esquerda anda junto com a barra. Um transform no main deslocaria também o lado
    direito, que já nasce na largura nova (o seletor saía da tela e voltava). O preço é refazer o layout do main a cada
-   quadro durante o deslize, como no Obsidian. A barra para e parte com a borda sobre a linha da faixa da barra fechada
-   (--sidebar-strip mais 1px, application.css), que ela cobre sem emenda. Fechando, a barra fica fixa por cima durante a saída e só depois some
+   quadro durante o deslize, como no Obsidian. A barra para e parte com a borda sobre a linha da barra de atividades,
+   por baixo dela, que a cobre sem emenda. Fechando, a barra fica fixa por cima durante a saída e só depois some
    (allow-discrete). O data-sidebar-moved no body (sidebar_controller.js) limita o movimento ao clique: carregar, navegar
    ou arrastar a alça não anima. */
 @media (width >= 48rem) {
@@ -102,14 +102,14 @@
 
   :root[data-sidebar="closed"] .sidebar.layer {
     position: fixed;
-    left: 0;
-    transform: translateX(calc(var(--sidebar-strip) + 1px - 100%));
+    left: var(--activity-width, 0px);
+    transform: translateX(-100%);
     transition: transform var(--motion-window-out) linear, display var(--motion-window-out) linear allow-discrete;
   }
 
   @starting-style {
     body[data-sidebar-moved] .sidebar.layer {
-      transform: translateX(calc(var(--sidebar-strip) + 1px - 100%));
+      transform: translateX(-100%);
     }
   }
 
@@ -129,6 +129,23 @@
   :root[data-sidebar="closed"] .sidebar-spine {
     transition: transform var(--motion-window-out) linear;
   }
+}
+
+/* Marca da visão ativa na barra de atividades (activity_bar.css): ao trocar de visão, a do ícone novo cresce a partir do
+   meio na curva das janelas e a do antigo encolhe rápida e linear, como o foco passando de uma janela a outra. */
+.activity-tab::before {
+  transform: scaleY(0);
+  transition: transform var(--motion-window-out) linear, opacity var(--motion-window-out) linear;
+}
+
+.activity-bar-drawer .activity-tab::before {
+  transform: scaleX(0);
+}
+
+.activity-tab[aria-selected="true"]::before {
+  transform: none;
+  transition-duration: var(--motion-window-in);
+  transition-timing-function: var(--ease-out-quint);
 }
 
 /* Troca de modo da nota (data-mode-switched, note_mode_controller.js; abrir a nota não anima): o painel que entra
@@ -190,6 +207,10 @@
   view-transition-name: sidebar-spine;
 }
 
+.activity-bar-side {
+  view-transition-name: activity-bar;
+}
+
 ::view-transition-group(*),
 ::view-transition-old(*),
 ::view-transition-new(*) {
@@ -198,13 +219,15 @@
 
 :root[data-area-moved]::view-transition-old(root),
 :root[data-area-moved]::view-transition-old(sidebar):only-child,
-:root[data-area-moved]::view-transition-old(sidebar-spine):only-child {
+:root[data-area-moved]::view-transition-old(sidebar-spine):only-child,
+:root[data-area-moved]::view-transition-old(activity-bar):only-child {
   animation: area-out var(--motion-window-out) linear both;
 }
 
 :root[data-area-moved]::view-transition-new(root),
 :root[data-area-moved]::view-transition-new(sidebar):only-child,
-:root[data-area-moved]::view-transition-new(sidebar-spine):only-child {
+:root[data-area-moved]::view-transition-new(sidebar-spine):only-child,
+:root[data-area-moved]::view-transition-new(activity-bar):only-child {
   animation: area-in var(--motion-window-in) var(--ease-out-quint) both;
 }
 

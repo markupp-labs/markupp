@@ -17,6 +17,9 @@ module ShortcutsHelper
     def in_area?(area) = areas.nil? || areas.include?(area)
   end
 
+  # Visão da barra lateral pelo atalho dela (sidebar_controller.js), que a paleta repete; só com a visão na página.
+  SIDEBAR_VIEW_PRESS = ->(view, letter) { { press: { key: letter, code: "Key#{letter}", ctrlKey: true, shiftKey: true }, when: "#sidebar_view_#{view}" } }
+
   SHORTCUT_GROUPS = {
     general: [
       Shortcut.of(:command_palette, "Ctrl+Shift+P", "F1", ":"),
@@ -24,7 +27,10 @@ module ShortcutsHelper
       Shortcut.of(:search, "Ctrl+K", run: { click: "button[data-action='search#open']" }),
       Shortcut.of(:settings, "Ctrl+,", run: { href: :settings_path }),
       Shortcut.of(:toggle_sidebar, "Ctrl+B", run: { click: ".sidebar-spine" }),
-      Shortcut.of(:focus_tree, "Ctrl+Shift+E"),
+      Shortcut.of(:focus_tree, "Ctrl+Shift+E", run: SIDEBAR_VIEW_PRESS.("explorer", "E")),
+      Shortcut.of(:focus_links, "Ctrl+Shift+L", run: SIDEBAR_VIEW_PRESS.("links", "L")),
+      Shortcut.of(:focus_graph, "Ctrl+Shift+G", run: SIDEBAR_VIEW_PRESS.("graph", "G")),
+      Shortcut.of(:focus_search, "Ctrl+Shift+F", run: SIDEBAR_VIEW_PRESS.("search", "F")),
       # Região vizinha pela geometria (region_nav_controller.js); a paleta repete a tecla a partir do foco devolvido.
       Shortcut.of(:focus_region_left, "Alt+H", run: { press: { key: "h", code: "KeyH", altKey: true } }),
       Shortcut.of(:focus_region_below, "Alt+J", run: { press: { key: "j", code: "KeyJ", altKey: true } }),

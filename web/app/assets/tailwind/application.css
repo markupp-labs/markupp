@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "./motion.css";
 @import "./tree.css";
+@import "./activity_bar.css";
 @import "./markdown.css";
 
 /* A fonte mora em public/, sem digest, para as páginas de erro estáticas usarem a mesma URL sem o app. */
@@ -257,44 +258,30 @@
   display: none;
 }
 
-/* Barra lateral no desktop, estilo VS Code: coluna na largura escolhida (cookie, --sidebar-width no <html>);
+/* Barra lateral no desktop, estilo VS Code: coluna na largura escolhida (cookie, --sidebar-width no <html>), depois da
+   barra de atividades (--activity-width, activity_bar.css; sem ela, a coluna tem largura zero);
    fechada, a coluna vai a zero e a barra some. As duas colunas existem sempre (o main fica na segunda) para a troca
    poder deslizar a coluna (motion.css). A barra tem a largura dela, não a da coluna: no deslize não se espreme.
    Fora de @layer para vencer os utilitários. */
 @media (width >= 48rem) {
   .app-shell {
     display: grid;
-    grid-template-columns: var(--sidebar-width, 18rem) minmax(0, 1fr);
+    grid-template-columns: var(--activity-width, 0px) var(--sidebar-width, 18rem) minmax(0, 1fr);
   }
 
   .app-shell > .sidebar {
-    grid-column: 1;
+    grid-column: 2;
     width: var(--sidebar-width, 18rem);
   }
 
   .app-shell > main {
-    grid-column: 2;
+    grid-column: 3;
   }
 
-  /* Fechada, sobra da barra uma faixa na borda esquerda (o fundo dela e a linha dela, como uma lombada de livro): a
-     barra não some do nada e a aba de abrir sai dali. A faixa tem a largura da folga do ícone da lombada
-     (--sidebar-strip), e a coluna é a faixa mais a linha. */
-  :root {
-    --sidebar-strip: 0.4375rem;
-  }
-
+  /* Fechada, a coluna vai a zero sem deixar faixa: a barra de atividades à vista já diz onde a barra está, e a aba de
+     abrir sai da borda dela. */
   :root[data-sidebar="closed"] .app-shell {
-    grid-template-columns: calc(var(--sidebar-strip) + 1px) minmax(0, 1fr);
-  }
-
-  :root[data-sidebar="closed"] .app-shell::before {
-    content: "";
-    position: fixed;
-    inset: 0 auto 0 0;
-    box-sizing: content-box;
-    width: var(--sidebar-strip);
-    border-right: 1px solid var(--line);
-    background: var(--surface-sunken);
+    grid-template-columns: var(--activity-width, 0px) 0px minmax(0, 1fr);
   }
 
   :root[data-sidebar="closed"] .sidebar {
@@ -303,8 +290,8 @@
 }
 
 /* Lombada: aba do recolher como a borda da barra puxada para fora, no fundo e na linha dela, sem linha entre as duas
-   (cobre o pixel da border-r). Fixa perto do topo; acompanha a --sidebar-width e, fechada, vira a ponta na borda da
-   tela. Com 7px de folga em volta do ícone (31px) cabe no padding do main e fica longe do miolo da alça, à esquerda. */
+   (cobre o pixel da border-r). Fixa perto do topo; acompanha a --sidebar-width e, fechada, sai da borda da barra de
+   atividades. Com 7px de folga em volta do ícone (31px) cabe no padding do main e fica longe do miolo da alça, à esquerda. */
 .sidebar-spine {
   display: none;
 }
@@ -313,9 +300,10 @@
   .sidebar-spine {
     position: fixed;
     top: 0.75rem;
-    left: calc(var(--sidebar-width, 18rem) - 1px);
+    z-index: 1;
+    left: calc(var(--activity-width, 0px) + var(--sidebar-width, 18rem) - 1px);
     display: flex;
-    padding: 0.5rem var(--sidebar-strip);
+    padding: 0.5rem 0.4375rem;
     border: 1px solid var(--line);
     border-left: 0;
     border-radius: 0 0.375rem 0.375rem 0;
@@ -334,10 +322,10 @@
     outline-offset: -2px;
   }
 
-  /* Fechada, a aba vai à faixa da barra por transform (não left), para andar junto com a barra (motion.css); cobre a
-     linha da faixa como cobre a da barra aberta. */
+  /* Fechada, a aba vai à borda da barra de atividades por transform (não left), para andar junto com a barra
+     (motion.css); cobre a linha dela como cobre a da barra aberta. */
   :root[data-sidebar="closed"] .sidebar-spine {
-    transform: translateX(calc(var(--sidebar-strip) + 1px - var(--sidebar-width, 18rem)));
+    transform: translateX(calc(0px - var(--sidebar-width, 18rem)));
   }
 }
 

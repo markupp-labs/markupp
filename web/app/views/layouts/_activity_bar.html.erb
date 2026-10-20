@@ -1,0 +1,10 @@
+<%# Barra de atividades, como a do VS Code: um ícone por visão da barra lateral. No desktop (placement "side") é a coluna
+    à esquerda dela, à vista também com a barra recolhida; na gaveta do celular ("drawer"), a linha do topo. Setas e j/k
+    andam entre os ícones, Enter mostra a visão (sidebar_controller.js). %>
+<div role="tablist" aria-label="<%= t(".label") %>" aria-orientation="<%= placement == "side" ? "vertical" : "horizontal" %>"
+     data-focus-region="activity" data-focus-region-target="[role=tab][tabindex='0']"
+     class="activity-bar activity-bar-<%= placement %>">
+  <% SidebarHelper::SIDEBAR_VIEWS.each_key do |view| %>
+    <%= sidebar_view_tab(view) %>
+  <% end %>
+</div>
