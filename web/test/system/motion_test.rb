@@ -7,8 +7,8 @@ class MotionTest < ApplicationSystemTestCase
   POPIN_IN = { "opacity" => "410 #{QUINT}", "transform" => "410 #{QUINT}" }.freeze
   LAYER_IN = { "opacity" => "380 #{QUINT}", "transform" => "380 #{QUINT}" }.freeze
   LAYER_OUT = { "display" => "150 linear", "opacity" => "150 linear", "overlay" => "150 linear", "transform" => "150 linear" }.freeze
-  AREA_MOVE = [ "::view-transition-new(root) area-in 410 #{QUINT}", "::view-transition-old(root) area-out 150 linear" ].freeze
-  AREA_BACK = [ "::view-transition-new(root) area-in-back 410 #{QUINT}", "::view-transition-old(root) area-out-back 150 linear" ].freeze
+  AREA_MOVE = [ "::view-transition-new(root) area-in 410 #{QUINT} 1.5rem", "::view-transition-old(root) area-out 150 linear 1.5rem" ].freeze
+  AREA_BACK = [ "::view-transition-new(root) area-in 410 #{QUINT} -1.5rem", "::view-transition-old(root) area-out 150 linear -1.5rem" ].freeze
 
   setup do
     emulate_motion_preference("no-preference")
@@ -134,7 +134,7 @@ class MotionTest < ApplicationSystemTestCase
 
   # Troca de área (notas, configurações, tenants, telas públicas) como a troca de workspace do Hyprland: a página que
   # sai some rápida e linear deslizando um pouco, a que entra vem na easeOutQuint. Voltar às notas desliza para o lado
-  # oposto (area-in-back, area-out-back). A barra lateral e a lombada, iguais dos dois lados, ficam paradas, também na
+  # oposto (--area-shift negativo). A barra lateral e a lombada, iguais dos dois lados, ficam paradas, também na
   # lista de tenants, que com tenant ativo tem a barra das notas.
   test "entering the settings and the tenants slides the area one way, going back to the notes the other, the sidebar holds still" do
     visit note_path("1")
@@ -157,7 +157,7 @@ class MotionTest < ApplicationSystemTestCase
     click_on FakeMarkuppAccounts::DEFAULT_EMAIL
 
     motions = area_motions_while(%(document.querySelector("form[action='#{session_path}'] button").click()))
-    assert_equal AREA_MOVE + [ "::view-transition-old(sidebar) area-out 150 linear", "::view-transition-old(sidebar-spine) area-out 150 linear" ],
+    assert_equal AREA_MOVE + [ "::view-transition-old(sidebar) area-out 150 linear 1.5rem", "::view-transition-old(sidebar-spine) area-out 150 linear 1.5rem" ],
                  motions
   end
 
@@ -240,7 +240,7 @@ class MotionTest < ApplicationSystemTestCase
     def area_motions_of_visit(path) = area_motions_while("Turbo.visit(#{path.to_json})")
 
     # Roda a ação e junta, quadro a quadro até o turbo:load (que vem depois do fim da view transition), as animações
-    # dos pseudo-elementos da view transition: "pseudo nome duração curva", em ordem. A visita inteira cabe no prazo do
+    # dos pseudo-elementos da view transition: "pseudo nome duração curva deslize", em ordem. A visita inteira cabe no prazo do
     # script, que o Capybara tira do tempo de espera: 10s, como o login, para os Chromes em paralelo.
     def area_motions_while(action)
       using_wait_time(10) { collect_area_motions(action) }
@@ -254,8 +254,9 @@ class MotionTest < ApplicationSystemTestCase
         const tick = () => {
           document.getAnimations().filter((motion) => motion.effect.pseudoElement?.startsWith("::view-transition")).forEach((motion) => {
             const pseudo = motion.effect.pseudoElement
-            const easing = getComputedStyle(document.documentElement, pseudo).animationTimingFunction
-            seen.add(`${pseudo} ${motion.animationName} ${motion.effect.getComputedTiming().duration} ${easing}`)
+            const style = getComputedStyle(document.documentElement, pseudo)
+            const shift = style.getPropertyValue("--area-shift").trim()
+            seen.add(`${pseudo} ${motion.animationName} ${motion.effect.getComputedTiming().duration} ${style.animationTimingFunction} ${shift}`)
           })
           loaded ? done([ ...seen ].sort()) : requestAnimationFrame(tick)
         }
