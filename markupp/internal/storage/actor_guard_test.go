@@ -14,7 +14,7 @@ import (
 // arquivosForaDoAtor podem usar o pool direto: autenticação roda antes de existir
 // tenant (ADR-0034), o indexador reserva o cofre antes de entrar no papel
 // markupp_indexer, o notificador trabalha no papel markupp_notifier, o authorization
-// server OAuth usa tabelas da instância (ADR-0039), e os outros
+// server OAuth usa tabelas da instância (ADR-0046), e os outros
 // abrem o pool, migram e montam a transação do ator.
 var arquivosForaDoAtor = map[string]bool{
 	"auth.go":                true,
