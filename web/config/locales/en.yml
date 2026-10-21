@@ -172,6 +172,7 @@ en:
       graph_unresolved: "Show or hide unresolved links"
       graph_inferred: "Show or hide inferred links"
       graph_community: "Next and previous community in the graph"
+      graph_clear_filters: "Clear the graph filters"
   markupp_api:
     errors:
       session_expired: "Your session expired. Log in again."

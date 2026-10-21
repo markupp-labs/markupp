@@ -16,8 +16,8 @@ const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)")
 const darkScheme = window.matchMedia("(prefers-color-scheme: dark)")
 
 export default class extends Controller {
-  static targets = [ "canvas", "empty", "refused", "failure", "status", "announce", "list" ]
-  static values = { url: String, autofocus: Boolean, labels: Object }
+  static targets = [ "canvas", "empty", "filtered", "refused", "failure", "status", "announce", "list" ]
+  static values = { url: String, autofocus: Boolean, filtered: Boolean, labels: Object }
 
   connect() {
     this.visibility = new IntersectionObserver(([ entry ]) => this.visibilityChanged(entry.isIntersecting))
@@ -82,7 +82,7 @@ export default class extends Controller {
   show(graph, createGraphScene) {
     this.scene?.destroy()
     this.scene = null
-    this.reveal(graph.nodes.length ? null : this.emptyTarget)
+    this.reveal(graph.nodes.length ? null : this.emptyOverlay())
     Object.assign(this.element.dataset, { graphNodes: graph.nodes.length, graphLinks: graph.links.length })
     this.statusTarget.textContent = this.statusOf(graph)
     this.listNotes([])
@@ -110,9 +110,20 @@ export default class extends Controller {
     this.statusTarget.textContent = ""
   }
 
-  // Um aviso no lugar do canvas (vazio, recusado, sem servidor), ou nenhum.
+  // Botão do vazio com filtro: o foco volta ao canvas, que o botão some, e os filtros (graph-filters) se limpam.
+  clearFilters() {
+    this.canvasTarget.focus()
+    this.dispatch("clear-filters")
+  }
+
+  // Sem notas: com filtro ligado, o vazio que diz isso; senão o do cofre.
+  emptyOverlay() {
+    return this.filteredValue && this.hasFilteredTarget ? this.filteredTarget : this.emptyTarget
+  }
+
+  // Um aviso no lugar do canvas (vazio, vazio pelos filtros, recusado, sem servidor), ou nenhum.
   reveal(overlay) {
-    [ this.emptyTarget, this.refusedTarget, this.failureTarget ].forEach((target) => { target.hidden = target != overlay })
+    [ this.emptyTarget, ...this.filteredTargets, this.refusedTarget, this.failureTarget ].forEach((target) => { target.hidden = target != overlay })
   }
 
   mirror({ running, zoom, focus }) {

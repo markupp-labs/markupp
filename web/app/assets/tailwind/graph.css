@@ -39,6 +39,11 @@
     @apply absolute inset-0 bg-inherit p-2;
   }
 
+  /* Alinhado ao texto do vazio, depois da coluna dos tis (px-1, 1ch e gap-3 do empty_state). */
+  .graph-clear-filters {
+    @apply mt-1 ml-[calc(0.25rem+1ch+0.75rem)];
+  }
+
   .graph-busy {
     @apply absolute top-2 left-2 text-xs text-ink-muted;
   }

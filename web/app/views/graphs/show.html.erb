@@ -1,7 +1,7 @@
 <%# Grafo do cofre inteiro em tela cheia, ainda na área das notas (sem deslize de área): a árvore segue na barra lateral,
     o canvas toma o main e o Esc (ou o voltar) leva à nota de onde a tela foi aberta. As visões Links e Graph da barra
     lateral mostram essa nota, como na página dela (notes/_form). Os filtros (graphs/_filters) ficam no cabeçalho, e a
-    query da página diz quais valem. %>
+    query da página diz quais valem; com eles escondendo tudo, o canvas diz isso no lugar do vazio do cofre. %>
 <% content_for :title, t(".title") %>
 <% content_for :sidebar, render("notes/sidebar", tree: @tree, current: @origin) %>
 <% if @origin %>
@@ -17,7 +17,7 @@
   </header>
   <% if @vault_id %>
     <%= render "graphs/canvas", id: "vault_graph", url: graph_path(format: :json, vault: @vault_id, note: @origin&.id, **@filters), region: "graph",
-                                autofocus: true, class: "graph-view-full" %>
+                                autofocus: true, filterable: true, filtered: @filters.any?, class: "graph-view-full" %>
   <% else %>
     <%= render "layouts/empty_state", title: t("graphs.empty.title"), hint: t("graphs.empty.hint") %>
   <% end %>

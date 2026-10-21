@@ -3,11 +3,12 @@
     zoom, 0 enquadra); o status diz quantos nós e ligações estão desenhados, e o aviso falado diz a nota com o foco. A
     lista, só para o leitor de tela, traz um link por nota desenhada, na ordem do j.
     Vazio, recusado ou sem servidor, o estado vazio de cada caso toma o lugar do canvas. region: a região do Alt+hjkl;
-    toolbar: os controles acima do canvas, dentro do controller (o seletor de saltos da visão Graph). %>
+    toolbar: os controles acima do canvas, dentro do controller (o seletor de saltos da visão Graph); filterable: o grafo
+    tem filtros (a tela cheia), e o vazio com filtro ligado (filtered) diz isso e oferece limpar. %>
 <% region = local_assigns[:region] %>
 <%= tag.div id:, class: [ "graph-view", local_assigns[:class] ],
             data: { controller: "graph-view", action: "keydown->graph-view#press",
-                    graph_view_url_value: url, graph_view_autofocus_value: local_assigns[:autofocus] == true,
+                    graph_view_url_value: url, graph_view_autofocus_value: local_assigns[:autofocus] == true, graph_view_filtered_value: local_assigns[:filtered] == true,
                     graph_view_labels_value: { status: t("graphs.status"), capped: t("graphs.capped") }.to_json,
                     graph_depth: local_assigns[:depth], focus_region: region, focus_region_target: ("[data-graph-canvas]" if region) } do %>
   <%= local_assigns[:toolbar] %>
@@ -19,6 +20,15 @@
     <div hidden data-graph-view-target="empty" class="graph-overlay">
       <%= render "layouts/empty_state", title: t("graphs.empty.title"), hint: t("graphs.empty.hint") %>
     </div>
+    <% if local_assigns[:filterable] %>
+      <div hidden data-graph-view-target="filtered" class="graph-overlay">
+        <%= render "layouts/empty_state", title: t("graphs.filtered.title"), hint: t("graphs.filtered.hint") %>
+        <%= tag.button type: "button", class: "btn graph-clear-filters", data: { action: "graph-view#clearFilters" },
+                       aria: { keyshortcuts: shortcut_key(:graph_clear_filters).upcase } do %>
+          <%= t("graphs.filtered.clear") %> <kbd aria-hidden="true" class="text-ink-muted"><%= shortcut_key(:graph_clear_filters) %></kbd>
+        <% end %>
+      </div>
+    <% end %>
     <div hidden data-graph-view-target="refused" class="graph-overlay">
       <%= render "layouts/empty_state", title: t("graphs.refused.title"), hint: t("graphs.refused.hint"), tone: "danger" %>
     </div>

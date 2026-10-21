@@ -24,6 +24,10 @@ en:
     empty:
       title: "No notes to draw yet"
       hint: "Notes and the links between them show up here."
+    filtered:
+      title: "No notes match these filters"
+      hint: "Clear the filters to see every note."
+      clear: "Clear filters"
     refused:
       title: "Can't open this graph"
       hint: "You may no longer have access to these notes."

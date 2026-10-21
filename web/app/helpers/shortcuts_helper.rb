@@ -126,7 +126,8 @@ module ShortcutsHelper
       Shortcut.of(:graph_orphans, "o", run: GRAPH_FILTER_PRESS.("O")),
       Shortcut.of(:graph_unresolved, "u", run: GRAPH_FILTER_PRESS.("U")),
       Shortcut.of(:graph_inferred, "i", run: GRAPH_FILTER_PRESS.("I")),
-      Shortcut.of(:graph_community, "c", "Shift+C", run: GRAPH_FILTER_PRESS.("C"))
+      Shortcut.of(:graph_community, "c", "Shift+C", run: GRAPH_FILTER_PRESS.("C")),
+      Shortcut.of(:graph_clear_filters, "x", run: GRAPH_FILTER_PRESS.("X"))
     ]
   }.freeze
 

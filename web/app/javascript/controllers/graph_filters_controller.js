@@ -5,20 +5,32 @@ import { replaceQuery } from "controllers/url_query"
 // página (replaceState, sem visita: o foco fica onde estava, e recarregar ou compartilhar o endereço desenha igual) e
 // pede ao canvas (outlet graph-view) o grafo filtrado. Teclas pelo code que a view tira do registro único
 // (ShortcutsHelper): a do painel abre e fecha, a de cada filtro liga e desliga, a da comunidade vai para a próxima e,
-// com Shift, para a anterior. Valem com o foco na tela do grafo, ou no body, de onde a paleta repete a tecla, e não num
+// com Shift, para a anterior, e a de limpar mostra tudo (como o botão do vazio pelos filtros, no canvas). Valem com o foco na tela do grafo, ou no body, de onde a paleta repete a tecla, e não num
 // campo de texto. Esc com o painel aberto o fecha antes de o Esc voltar à nota (area-back pula a camada data-esc-layer
 // aberta); com o foco dentro do painel, ele volta ao summary, e fora dele (o canvas, depois do f) fica onde estava.
 export default class extends Controller {
   static targets = [ "toggle", "community", "count" ]
   static outlets = [ "graph-view" ]
-  static values = { code: String }
+  static values = { code: String, clearCode: String }
 
   change() {
     const query = this.query()
     window.history.replaceState(window.history.state, "", replaceQuery(new URL(window.location.href), query))
     const active = Object.values(query).filter((value) => value != null).length
     this.countTarget.textContent = active ? `[${active}]` : ""
-    if (this.hasGraphViewOutlet) this.graphViewOutlet.redraw(query)
+    if (!this.hasGraphViewOutlet) return
+
+    this.graphViewOutlet.filteredValue = active > 0
+    this.graphViewOutlet.redraw(query)
+  }
+
+  // Tudo marcado e todas as comunidades; sem filtro ligado, nada muda.
+  clear() {
+    if (!Object.values(this.query()).some((value) => value != null)) return
+
+    this.toggleTargets.forEach((toggle) => { toggle.checked = true })
+    this.communityTarget.value = ""
+    this.change()
   }
 
   press(event) {
@@ -49,6 +61,7 @@ export default class extends Controller {
     if (code == this.communityTarget.dataset.graphFiltersCode) return () => this.stepCommunity(shiftKey ? -1 : 1)
     if (shiftKey) return null
     if (code == this.codeValue) return () => { this.element.open = !this.element.open }
+    if (code == this.clearCodeValue) return () => this.clear()
 
     const toggle = this.toggleTargets.find((target) => target.dataset.graphFiltersCode == code)
     return toggle && (() => { toggle.checked = !toggle.checked; this.change() })
