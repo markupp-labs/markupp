@@ -467,3 +467,49 @@ func TestNewMarkupp_EmailSemRemetente_RetornaErroComOCampo(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "email.from")
 }
+
+func envValue(t *testing.T, container resource.PropertyMap, name string) string {
+	t.Helper()
+	for _, env := range container["env"].ArrayValue() {
+		if env.ObjectValue()["name"].StringValue() == name {
+			return env.ObjectValue()["value"].StringValue()
+		}
+	}
+	require.Failf(t, "variavel ausente", "esperada %s no conteiner", name)
+	return ""
+}
+
+func TestNewMarkupp_SemOpcoesDeLimiteEPainel_NaoPassaAsVariaveis(t *testing.T) {
+	monitor := deploy(t, argsComEmail())
+
+	api := firstContainer(t, deploymentNamed(t, monitor, "markupp-api"))
+	notifier := firstContainer(t, deploymentNamed(t, monitor, "markupp-notifier"))
+	assert.NotContains(t, envNames(api), "MARKUPP_TRUSTED_PROXIES")
+	assert.NotContains(t, envNames(api), "MARKUPP_RATE_LIMIT_PER_MINUTE")
+	assert.NotContains(t, envNames(notifier), "MARKUPP_PANEL_URL")
+}
+
+func TestNewMarkupp_ComPainel_NotificadorRecebeAURL(t *testing.T) {
+	args := argsComEmail()
+	args.Email.PanelURL = "https://painel.markupp.dev"
+
+	monitor := deploy(t, args)
+
+	notifier := firstContainer(t, deploymentNamed(t, monitor, "markupp-notifier"))
+	assert.Equal(t, "https://painel.markupp.dev", envValue(t, notifier, "MARKUPP_PANEL_URL"))
+	api := firstContainer(t, deploymentNamed(t, monitor, "markupp-api"))
+	assert.NotContains(t, envNames(api), "MARKUPP_PANEL_URL", "so o notificador monta o email")
+}
+
+func TestNewMarkupp_ComProxiesELimite_APIRecebeAsVariaveis(t *testing.T) {
+	args := argsDeTeste()
+	args.TrustedProxies = []string{"10.0.0.0/8", "fd00::/8"}
+	limite := 20
+	args.RateLimitPerMinute = &limite
+
+	monitor := deploy(t, args)
+
+	api := firstContainer(t, deploymentNamed(t, monitor, "markupp-api"))
+	assert.Equal(t, "10.0.0.0/8,fd00::/8", envValue(t, api, "MARKUPP_TRUSTED_PROXIES"))
+	assert.Equal(t, "20", envValue(t, api, "MARKUPP_RATE_LIMIT_PER_MINUTE"))
+}

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math"
 	"net/mail"
+	"net/netip"
 	"net/url"
 	"strconv"
 	"strings"
@@ -46,6 +47,7 @@ type Config struct {
 	// usa http://localhost na porta do servidor quando a variável falta (ADR-0041).
 	PublicURL string
 	// PanelURL é o painel que faz o login e o consentimento do OAuth, sem barra final.
+	// Os emails do notificador levam o link da rota do painel que recebe o token.
 	PanelURL string
 	// OAuthResources são os servidores de recursos que aceitam os tokens do OAuth. Vazia
 	// no Load, vira o MCP da mesma origem com o segredo do banco em WithInstanceSecrets.
@@ -81,6 +83,12 @@ type Config struct {
 	// OAuthDCRPendingHours é quanto um cliente DCR sem Autorização ativa dura, desde o
 	// registro ou a última revogação, até ser apagado.
 	OAuthDCRPendingHours int
+	// RateLimitPerMinute é quantas tentativas por minuto cada IP e cada email têm nas
+	// rotas de conta (ADR-0044).
+	RateLimitPerMinute int
+	// TrustedProxies são as redes dos proxies cujo X-Forwarded-For o limite de
+	// tentativas aceita. Vazia, o limite usa só o IP da conexão.
+	TrustedProxies []netip.Prefix
 }
 
 // Default devolve a configuração usada nas variáveis não definidas.
@@ -96,6 +104,7 @@ func Default() Config {
 		LocalAuthEnabled:        true,
 		SearchConfig:            "simple",
 		IndexInterval:           30 * time.Second,
+		RateLimitPerMinute:      5,
 	}
 	setOAuthDefaults(&cfg)
 	return cfg
@@ -135,7 +144,48 @@ func loadServerSettings(lookup LookupFunc, cfg *Config) error {
 	if err := loadMCPSettings(lookup, cfg); err != nil {
 		return err
 	}
-	return loadSMTPSettings(lookup, cfg)
+	if err := loadSMTPSettings(lookup, cfg); err != nil {
+		return err
+	}
+	if err := readRateLimit(lookup, &cfg.RateLimitPerMinute); err != nil {
+		return err
+	}
+	return readTrustedProxies(lookup, &cfg.TrustedProxies)
+}
+
+func readRateLimit(lookup LookupFunc, target *int) error {
+	limit := int64(*target)
+	if err := readBounded(lookup, "MARKUPP_RATE_LIMIT_PER_MINUTE", 1, 10000, "de 1 a 10000", &limit); err != nil {
+		return err
+	}
+	*target = int(limit)
+	return nil
+}
+
+// readTrustedProxies lê a lista de CIDRs separada por vírgula, ignorando itens vazios.
+func readTrustedProxies(lookup LookupFunc, target *[]netip.Prefix) error {
+	raw, _ := lookup("MARKUPP_TRUSTED_PROXIES")
+	for _, item := range strings.Split(raw, ",") {
+		item = strings.TrimSpace(item)
+		if item == "" {
+			continue
+		}
+		prefix, err := netip.ParsePrefix(item)
+		if err != nil {
+			return fmt.Errorf("MARKUPP_TRUSTED_PROXIES=%q: %q nao e CIDR; esperada lista de CIDRs IPv4 ou IPv6 separada por virgula, como 10.0.0.0/8,fd00::/8", raw, item)
+		}
+		*target = append(*target, unmapPrefix(prefix).Masked())
+	}
+	return nil
+}
+
+// unmapPrefix converte o CIDR IPv4 mapeado em IPv6 (::ffff:a.b.c.d/n, n >= 96) no
+// CIDR IPv4 equivalente, porque o limite compara o IP da conexão já sem o mapeamento.
+func unmapPrefix(prefix netip.Prefix) netip.Prefix {
+	if !prefix.Addr().Is4In6() || prefix.Bits() < 96 {
+		return prefix
+	}
+	return netip.PrefixFrom(prefix.Addr().Unmap(), prefix.Bits()-96)
 }
 
 // loadSMTPSettings lê o convite por email da API e o servidor de email do notificador

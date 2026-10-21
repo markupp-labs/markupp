@@ -64,6 +64,26 @@ oferecer STARTTLS. Texto puro só com `?tls=none` no fim da URL, para servidor l
 Com email, a API deixa de devolver o token do convite, e o notificador gera o token na entrega e
 o envia só por email.
 
+Os emails de convite, verificação de email e troca de senha levam primeiro o link da página do
+painel que recebe o token (/invite_acceptance/new, /email_confirmation/new e
+/password_reset/new, com ?token=), e depois o token em texto para quem não conseguir abrir o
+link. O painel é o de `MARKUPP_PANEL_URL` no notificador, a mesma variável do OAuth descrita
+abaixo, com `http://localhost:3999` como padrão. No componente, ela vem de `email.panelUrl`.
+
+A API limita login, refresh, aceite de convite, pedido de verificação de email e pedido e troca
+de senha a 5 tentativas por minuto por IP e, quando o corpo traz email, por email (ADR-0044).
+Acima disso responde 429 com Retry-After. A variável `MARKUPP_RATE_LIMIT_PER_MINUTE`, de 1 a
+10000, troca o 5. A contagem fica na memória de cada réplica, então com N réplicas o limite
+efetivo chega a N vezes o configurado. O IP é o da conexão, e endereços IPv6 do mesmo prefixo
+/64 contam como um só. Atrás de proxy, todo cliente aparece com o IP do proxy e divide o mesmo
+limite, a menos que a variável `MARKUPP_TRUSTED_PROXIES` liste a rede do proxy: CIDRs IPv4 ou
+IPv6 separados por vírgula, como 10.0.0.0/8,fd00::/8. Com ela, a conexão que vem de uma dessas
+redes tem o X-Forwarded-For lido da direita para a esquerda, e o IP que conta é o primeiro que
+não é proxy confiável. Header vazio ou malformado fica com o IP da conexão, e conexão de fora da
+lista nunca tem o header lido. Liste só as redes dos proxies: um CIDR que cubra clientes deixa
+qualquer um deles escolher o IP que conta. No componente, `trustedProxies` recebe a lista de
+CIDRs e `rateLimitPerMinute` o limite, e os dois vão só para a API.
+
 Sem outra opção, o componente cria um Gateway próprio nas portas 80 e 443. Em cluster onde
 outro Gateway já ocupa essas portas, como o Cilium em hostNetwork, que exige porta única por
 Gateway, informe `existingGateway` com nome, namespace e listener. O componente cria só o
@@ -153,7 +173,8 @@ Esperado: o login devolve `access_token`, `POST` retorna JSON com `id` UUID, `GE
 A conta é da instância e participa de vários tenants, cada um com um papel
 ([ADR-0035](adrs/ADR-0035-conta-global-com-vinculo-por-tenant.md)). Quem tem um tenant só não
 precisa dizer nada. Quem tem mais de um escolhe por requisição com o cabeçalho
-`X-Markupp-Tenant`, usando um id de `GET /me/tenants`. Qualquer conta cria tenant em
+`X-Markupp-Tenant`, usando um id de `GET /me/tenants`, que mostra também quantas notas a conta
+lê em cada tenant e quando a mais recente mudou. Qualquer conta cria tenant em
 `POST /tenants` e vira owner dele. Só o owner apaga o tenant, em `DELETE /tenants/{id}`, e
 apaga de vez: cofres, notas, vínculos e convites vão junto, e as contas continuam.
 

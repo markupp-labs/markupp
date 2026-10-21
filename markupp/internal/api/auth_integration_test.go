@@ -85,12 +85,14 @@ func TestIntegration_Auth_FluxoCompleto(t *testing.T) {
 
 	meBody := decodeJSON(t, meResp.Body)
 	assert.Equal(t, "admin@markupp.dev", meBody["email"])
+	assert.Equal(t, true, meBody["email_verified"], "o primeiro acesso nasce com email verificado")
+	assert.Equal(t, true, meBody["password_login"], "login local ligado e conta com senha")
 
 	tenantsResp := getWithAuth(t, server.URL+"/me/tenants", accessToken)
 	defer func() { _ = tenantsResp.Body.Close() }()
 	var tenants []map[string]any
 	require.NoError(t, json.NewDecoder(tenantsResp.Body).Decode(&tenants))
-	assert.Equal(t, []map[string]any{{"id": "default", "name": "default", "role": "owner"}}, tenants)
+	assert.Equal(t, []map[string]any{{"id": "default", "name": "default", "role": "owner", "notes_count": float64(0), "last_note_at": nil}}, tenants)
 
 	var userCount, vaultCount, auditCount int
 	require.NoError(t, db.QueryRow(context.Background(), "SELECT COUNT(*) FROM users").Scan(&userCount))

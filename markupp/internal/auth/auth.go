@@ -31,10 +31,14 @@ var (
 // User representa uma conta da instância com chave estável (UUID). O acesso a cada
 // tenant vem de um Membership.
 type User struct {
-	ID        string
-	Email     string
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	ID    string
+	Email string
+	// EmailVerified diz se a pessoa já provou o email; na criação da conta quem decide é o caminho de cadastro, não este campo.
+	EmailVerified bool
+	// PasswordLogin diz se a conta pode entrar por email e senha neste servidor; só GetAccount preenche.
+	PasswordLogin bool
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
 }
 
 // Member é um usuário visto de dentro do tenant, com o papel dele lá.
@@ -50,6 +54,14 @@ type Membership struct {
 	TenantID   string
 	TenantName string
 	Role       string
+}
+
+// TenantSummary é o vínculo com o resumo das notas que a conta lê no tenant:
+// quantas são e quando a mais recente mudou, nil sem nota.
+type TenantSummary struct {
+	Membership
+	NotesCount int
+	LastNoteAt *time.Time
 }
 
 // UserIdentity isola o vínculo de autenticação externa ou credencial local.
@@ -162,6 +174,7 @@ type Repository interface {
 	CreateAccountTx(ctx context.Context, params CreateAccountParams) (User, error)
 	GetMembership(ctx context.Context, userID, tenantID string) (Membership, error)
 	ListMemberships(ctx context.Context, userID string) ([]Membership, error)
+	ListTenantSummaries(ctx context.Context, userID string) ([]TenantSummary, error)
 	CreateTenantTx(ctx context.Context, params CreateTenantParams) error
 	ListPendingInvites(ctx context.Context, userID string, now time.Time) ([]PendingInvite, error)
 	AcceptInviteByIDTx(ctx context.Context, params AcceptInviteByIDParams) (Membership, error)

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -65,6 +66,45 @@ func TestIntegration_ConviteAteNotaIsolada(t *testing.T) {
 	assert.Equal(t, http.StatusForbidden, status)
 	status, _ = sendJSON(t, http.MethodPost, url+"/auth/login", "", `{"email":"membro@markupp.dev","password":"senhaMembro"}`)
 	assert.Equal(t, http.StatusOK, status, "convidado entra depois com a senha escolhida")
+}
+
+func meusTenants(t *testing.T, url, token string) []map[string]any {
+	t.Helper()
+	resp := getWithAuth(t, url+"/me/tenants", token)
+	defer func() { _ = resp.Body.Close() }()
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	var tenants []map[string]any
+	require.NoError(t, json.NewDecoder(resp.Body).Decode(&tenants))
+	require.Len(t, tenants, 1)
+	return tenants
+}
+
+func TestIntegration_MeusTenants_ContaSoAsNotasDosCofresDaConta(t *testing.T) {
+	server, _ := setupAuthIntegrationServer(t)
+	url := server.URL
+	_, admin := sendJSON(t, http.MethodPost, url+"/auth/login", "", `{"email":"admin@markupp.dev","password":"senhaAdmin"}`)
+	tokenAdmin := admin["access_token"].(string)
+	_, convite := sendJSON(t, http.MethodPost, url+"/users/invites", tokenAdmin, `{"email":"membro@markupp.dev","role":"member"}`)
+	_, membro := sendJSON(t, http.MethodPost, url+"/auth/invites/accept", "", `{"token":"`+convite["token"].(string)+`","password":"senhaMembro"}`)
+	tokenMembro := membro["access_token"].(string)
+	status, nota := sendJSON(t, http.MethodPost, url+"/notes", tokenAdmin, `{"path":"do-admin.md","content":"x"}`)
+	require.Equal(t, http.StatusCreated, status)
+	for _, path := range []string{"a.md", "b.md"} {
+		status, _ = sendJSON(t, http.MethodPost, url+"/notes", tokenMembro, `{"path":"`+path+`","content":"x"}`)
+		require.Equal(t, http.StatusCreated, status)
+	}
+
+	doAdmin, doMembro := meusTenants(t, url, tokenAdmin)[0], meusTenants(t, url, tokenMembro)[0]
+
+	assert.Equal(t, float64(1), doAdmin["notes_count"], "o admin nao le o cofre do membro")
+	assert.Equal(t, float64(2), doMembro["notes_count"])
+	ultimaTexto, _ := doAdmin["last_note_at"].(string)
+	ultima, err := time.Parse(time.RFC3339, ultimaTexto)
+	require.NoError(t, err)
+	criadaTexto, _ := nota["updated_at"].(string)
+	criada, err := time.Parse(time.RFC3339, criadaTexto)
+	require.NoError(t, err)
+	assert.WithinDuration(t, criada, ultima, time.Millisecond)
 }
 
 // sendAs é sendJSON com o tenant escolhido no cabeçalho.

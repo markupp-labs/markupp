@@ -7,3 +7,6 @@
 # Sistema
 .DS_Store
 .env
+
+# Binário do go build no componente
+/deploy/pulumi/pulumi

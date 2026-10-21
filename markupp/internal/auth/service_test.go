@@ -129,6 +129,15 @@ func (f *fakeRepository) ListMemberships(ctx context.Context, userID string) ([]
 	return out, nil
 }
 
+func (f *fakeRepository) ListTenantSummaries(ctx context.Context, userID string) ([]auth.TenantSummary, error) {
+	memberships, _ := f.ListMemberships(ctx, userID)
+	out := make([]auth.TenantSummary, 0, len(memberships))
+	for _, m := range memberships {
+		out = append(out, auth.TenantSummary{Membership: m})
+	}
+	return out, nil
+}
+
 func (f *fakeRepository) GetUserByID(ctx context.Context, id string) (auth.User, error) {
 	u, ok := f.users[id]
 	if !ok {

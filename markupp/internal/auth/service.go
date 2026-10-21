@@ -273,9 +273,12 @@ func (s *Service) RevokeSession(ctx context.Context, rawRefreshToken string) err
 	return s.repo.RevokeRefreshToken(ctx, hash)
 }
 
-// GetAccount busca os detalhes da conta do usuário.
+// GetAccount busca os detalhes da conta do usuário. Toda conta nasce com identidade
+// local, então PasswordLogin segue só a config; com outro provedor, cruzar com a identidade.
 func (s *Service) GetAccount(ctx context.Context, userID string) (User, error) {
-	return s.repo.GetUserByID(ctx, userID)
+	user, err := s.repo.GetUserByID(ctx, userID)
+	user.PasswordLogin = err == nil && s.cfg.LocalEnabled
+	return user, err
 }
 
 // ResolveTenant devolve o vínculo de userID com o tenant requested. Sem pedido, vale o
@@ -297,9 +300,9 @@ func (s *Service) ResolveTenant(ctx context.Context, userID, requested string) (
 	return Membership{}, fmt.Errorf("%w: usuario %q esta em %d tenants", ErrTenantRequired, userID, len(memberships))
 }
 
-// ListTenants devolve os tenants de userID, com o papel em cada um.
-func (s *Service) ListTenants(ctx context.Context, userID string) ([]Membership, error) {
-	return s.repo.ListMemberships(ctx, userID)
+// ListTenants devolve os tenants de userID, com o papel e o resumo das notas em cada um.
+func (s *Service) ListTenants(ctx context.Context, userID string) ([]TenantSummary, error) {
+	return s.repo.ListTenantSummaries(ctx, userID)
 }
 
 // maxTenantNameLength limita o nome que aparece no seletor de tenant dos clientes.

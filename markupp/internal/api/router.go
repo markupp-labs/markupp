@@ -1,6 +1,8 @@
 package api
 
 import (
+	"net/http"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 
@@ -22,6 +24,8 @@ type RouterDeps struct {
 	OAuth          OAuthService
 	// MCPUpstreamURL é o servidor MCP para onde /mcp é encaminhado. Vazia, /mcp não existe.
 	MCPUpstreamURL string
+	// AccountRateLimiter limita as rotas de conta (ADR-0044). Nil deixa as rotas livres.
+	AccountRateLimiter *AccountRateLimiter
 }
 
 // NewRouter monta o roteador com sonda, rotas de autenticação, de notas e de
@@ -72,8 +76,9 @@ func mustHaveRouterDeps(d RouterDeps) {
 func newVersionRoutes(d RouterDeps, current bool) chi.Router {
 	r := chi.NewRouter()
 	r.Get("/healthz", healthz(d.Probe))
+	limit := limitAccountAttempts(d.AccountRateLimiter)
 	if d.Auth != nil {
-		mountAuthRoutes(r, d.Auth, d.Tokens)
+		mountAuthRoutes(r, d.Auth, d.Tokens, limit)
 	}
 	if d.Notes != nil {
 		mountProtectedNotesRoutes(r, d.Notes, d.Tokens, d.Tenants, current)
@@ -85,7 +90,7 @@ func newVersionRoutes(d RouterDeps, current bool) chi.Router {
 		mountAdminRoutes(r, d.Admin, d.Tokens, d.Tenants)
 	}
 	if d.AccountEmail != nil {
-		mountAccountEmailRoutes(r, d.AccountEmail, d.Tokens)
+		mountAccountEmailRoutes(r, d.AccountEmail, d.Tokens, limit)
 	}
 	return r
 }
@@ -121,12 +126,12 @@ func mountProtectedGraphRoutes(r chi.Router, graph NoteGraph, tokenValidator Tok
 	mountNoteGraphRoutes(r.With(acceptOAuthScope(oauth.ScopeNotesRead), RequireAuth(tokenValidator), RequireTenant(tenants)), graph)
 }
 
-func mountAuthRoutes(r chi.Router, authSvc AuthService, tokenValidator TokenValidator) {
+func mountAuthRoutes(r chi.Router, authSvc AuthService, tokenValidator TokenValidator, limit func(http.Handler) http.Handler) {
 	h := &authHandler{svc: authSvc}
-	r.Post("/auth/login", h.login)
-	r.Post("/auth/refresh", h.refresh)
+	r.With(limit).Post("/auth/login", h.login)
+	r.With(limit).Post("/auth/refresh", h.refresh)
 	r.Post("/auth/logout", h.logout)
-	r.Post("/auth/invites/accept", h.acceptInvite)
+	r.With(limit).Post("/auth/invites/accept", h.acceptInvite)
 	account := r.With(acceptOAuthScope(anyOAuthScope), RequireAuth(tokenValidator))
 	account.Get("/auth/me", h.me)
 	account.Get("/me/tenants", h.myTenants)

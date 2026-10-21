@@ -54,6 +54,12 @@ type MarkuppArgs struct {
 	// Email liga o envio de email e o notificador, que também exige o KEDA. Sem ele,
 	// nada é enviado.
 	Email *EmailArgs `pulumi:"email,optional"`
+	// TrustedProxies são os CIDRs dos proxies cujo X-Forwarded-For a API usa no
+	// limite de tentativas (MARKUPP_TRUSTED_PROXIES). Vazio, vale o IP da conexão.
+	TrustedProxies []string `pulumi:"trustedProxies,optional"`
+	// RateLimitPerMinute troca as 5 tentativas por minuto das rotas de conta
+	// (MARKUPP_RATE_LIMIT_PER_MINUTE).
+	RateLimitPerMinute *int `pulumi:"rateLimitPerMinute,optional"`
 }
 
 // GatewayRefArgs aponta para um Gateway de outro namespace. Ele precisa

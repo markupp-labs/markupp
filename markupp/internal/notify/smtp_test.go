@@ -56,7 +56,7 @@ func TestSMTPMailer_Send_EntregaAoServidor(t *testing.T) {
 	mailer, err := notify.NewSMTPMailer(smtpURL)
 	require.NoError(t, err)
 
-	err = mailer.Send(context.Background(), notify.InviteMessage(detalhesDeTeste(), "tok-123", "convites@markupp.dev"))
+	err = mailer.Send(context.Background(), notify.InviteMessage(detalhesDeTeste(), "tok-123", "convites@markupp.dev", ""))
 	require.NoError(t, err)
 
 	resp, err := http.Get(apiURL + "/api/v1/messages")
@@ -74,7 +74,7 @@ func TestSMTPMailer_ComUsuario_AutenticaEEntrega(t *testing.T) {
 	mailer, err := notify.NewSMTPMailer(strings.Replace(smtpURL, "smtp://", "smtp://markupp:qualquer@", 1))
 	require.NoError(t, err)
 
-	require.NoError(t, mailer.Send(context.Background(), notify.InviteMessage(detalhesDeTeste(), "tok", "convites@markupp.dev")))
+	require.NoError(t, mailer.Send(context.Background(), notify.InviteMessage(detalhesDeTeste(), "tok", "convites@markupp.dev", "")))
 
 	resp, err := http.Get(apiURL + "/api/v1/messages")
 	require.NoError(t, err)
@@ -88,7 +88,7 @@ func TestSMTPMailer_ServidorInalcancavel_RetornaErroComOEndereco(t *testing.T) {
 	mailer, err := notify.NewSMTPMailer("smtp://127.0.0.1:1")
 	require.NoError(t, err)
 
-	err = mailer.Send(context.Background(), notify.InviteMessage(detalhesDeTeste(), "tok", "convites@markupp.dev"))
+	err = mailer.Send(context.Background(), notify.InviteMessage(detalhesDeTeste(), "tok", "convites@markupp.dev", ""))
 
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "127.0.0.1:1")
@@ -106,7 +106,7 @@ func TestSMTPMailer_ConexaoCaiNoQuit_ContaComoEntregue(t *testing.T) {
 	mailer, err := notify.NewSMTPMailer(servidor.sobe(t))
 	require.NoError(t, err)
 
-	err = mailer.Send(context.Background(), notify.InviteMessage(detalhesDeTeste(), "tok-123", "convites@markupp.dev"))
+	err = mailer.Send(context.Background(), notify.InviteMessage(detalhesDeTeste(), "tok-123", "convites@markupp.dev", ""))
 
 	require.NoError(t, err, "o servidor ja aceitou o DATA: reenviar mataria o token deste email")
 	assert.Contains(t, servidor.lido(&servidor.mensagem), "tok-123")
@@ -117,7 +117,7 @@ func TestSMTPMailer_Send_MandaMessageIDNoDominioDoRemetente(t *testing.T) {
 	mailer, err := notify.NewSMTPMailer(servidor.sobe(t))
 	require.NoError(t, err)
 
-	require.NoError(t, mailer.Send(context.Background(), notify.InviteMessage(detalhesDeTeste(), "tok", "convites@markupp.dev")))
+	require.NoError(t, mailer.Send(context.Background(), notify.InviteMessage(detalhesDeTeste(), "tok", "convites@markupp.dev", "")))
 
 	assert.Regexp(t, `(?m)^Message-ID: <[^@\s]+@markupp\.dev>\r?$`, servidor.lido(&servidor.mensagem), "o Gmail recusa mensagem sem Message-ID")
 }
@@ -127,7 +127,7 @@ func TestSMTPMailer_Send_ApresentaODominioDoRemetenteNoEHLO(t *testing.T) {
 	mailer, err := notify.NewSMTPMailer(servidor.sobe(t))
 	require.NoError(t, err)
 
-	require.NoError(t, mailer.Send(context.Background(), notify.InviteMessage(detalhesDeTeste(), "tok", "convites@markupp.dev")))
+	require.NoError(t, mailer.Send(context.Background(), notify.InviteMessage(detalhesDeTeste(), "tok", "convites@markupp.dev", "")))
 
 	assert.Equal(t, "EHLO markupp.dev", servidor.lido(&servidor.ehlo), "EHLO localhost pesa contra o email nos filtros de spam")
 }
@@ -137,7 +137,7 @@ func TestSMTPMailer_ServidorSemSTARTTLS_RecusaMandarEmTextoPuro(t *testing.T) {
 	mailer, err := notify.NewSMTPMailer(strings.TrimSuffix(servidor.sobe(t), "?tls=none"))
 	require.NoError(t, err)
 
-	err = mailer.Send(context.Background(), notify.InviteMessage(detalhesDeTeste(), "tok-123", "convites@markupp.dev"))
+	err = mailer.Send(context.Background(), notify.InviteMessage(detalhesDeTeste(), "tok-123", "convites@markupp.dev", ""))
 
 	require.Error(t, err, "sem TLS o token do convite viaja legivel")
 	assert.Contains(t, err.Error(), "STARTTLS")
@@ -158,7 +158,7 @@ func TestSMTPMailer_RemetenteComNome_EnvelopeLevaSoOEndereco(t *testing.T) {
 	mailer, err := notify.NewSMTPMailer(servidor.sobe(t))
 	require.NoError(t, err)
 
-	require.NoError(t, mailer.Send(context.Background(), notify.InviteMessage(detalhesDeTeste(), "tok", "Markupp <convites@markupp.dev>")))
+	require.NoError(t, mailer.Send(context.Background(), notify.InviteMessage(detalhesDeTeste(), "tok", "Markupp <convites@markupp.dev>", "")))
 
 	assert.Equal(t, "MAIL FROM:<convites@markupp.dev>", servidor.lido(&servidor.mailFrom))
 	assert.Contains(t, servidor.lido(&servidor.mensagem), "From: \"Markupp\" <convites@markupp.dev>")
@@ -168,7 +168,7 @@ func TestSMTPMailer_RemetenteIlegivel_RetornaErroComOValor(t *testing.T) {
 	mailer, err := notify.NewSMTPMailer("smtp://127.0.0.1:1?tls=none")
 	require.NoError(t, err)
 
-	err = mailer.Send(context.Background(), notify.InviteMessage(detalhesDeTeste(), "tok", "sem-arroba"))
+	err = mailer.Send(context.Background(), notify.InviteMessage(detalhesDeTeste(), "tok", "sem-arroba", ""))
 
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "sem-arroba")

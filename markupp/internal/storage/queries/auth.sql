@@ -6,7 +6,7 @@ INSERT INTO users (id, email, email_verified, created_at, updated_at)
 VALUES ($1, $2, $3, $4, $5);
 
 -- name: GetUserByID :one
-SELECT id, email, created_at, updated_at FROM users WHERE id = $1;
+SELECT id, email, email_verified, created_at, updated_at FROM users WHERE id = $1;
 
 -- name: CreateUserIdentity :exec
 INSERT INTO user_identities (id, user_id, provider, provider_user_id, password_hash, created_at)
@@ -109,6 +109,24 @@ WHERE m.user_id = $1 AND m.tenant_id = $2;
 -- name: ListMemberships :many
 SELECT m.tenant_id, t.name AS tenant_name, m.role
 FROM tenant_memberships m JOIN tenants t ON t.id = m.tenant_id
+WHERE m.user_id = $1
+ORDER BY t.name, m.tenant_id;
+
+-- Roda fora do RLS, que só enxerga um tenant por transação, e por isso repete a regra de
+-- notes_read: a conta lê a nota do cofre de que é membro, no tenant desse cofre, que a
+-- chave estrangeira de notes amarra ao tenant_id da nota.
+-- name: ListTenantSummaries :many
+WITH visible AS (
+    SELECT n.tenant_id, count(*) AS notes_count, max(n.updated_at)::timestamptz AS last_note_at
+    FROM notes n JOIN vault_members vm ON vm.vault_id = n.vault_id
+    WHERE vm.user_id = $1
+    GROUP BY n.tenant_id
+)
+SELECT m.tenant_id, t.name AS tenant_name, m.role,
+       coalesce(v.notes_count, 0)::int AS notes_count, v.last_note_at
+FROM tenant_memberships m
+JOIN tenants t ON t.id = m.tenant_id
+LEFT JOIN visible v ON v.tenant_id = m.tenant_id
 WHERE m.user_id = $1
 ORDER BY t.name, m.tenant_id;
 
