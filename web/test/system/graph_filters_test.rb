@@ -1,14 +1,15 @@
 require "application_system_test_case"
 
 # Filtros do grafo cheio além do painel (graph_view_test cobre as teclas de cada um): o vazio próprio quando eles escondem
-# todas as notas, com o botão e a tecla de limpar.
+# todas as notas, com o botão e a tecla de limpar, e o histórico: cada troca é um passo que o voltar desfaz.
 class GraphFiltersTest < ApplicationSystemTestCase
   ROADMAP = { id: "roadmap", title: "roadmap", path: "roadmap.md", degree: 0, pagerank: 0.3, community: 2, unresolved: false }.freeze
   NOTES = [ { id: "plan", path: "work/plan.md", content: "# plan\n" }, { id: "roadmap", path: "roadmap.md", content: "# roadmap\n" } ].freeze
   GRAPH = { "vault-1" => { nodes: [ ROADMAP ], links: [] }, "vault-1?orphans=false" => { nodes: [], links: [] } }.freeze
+  COMMUNITIES = [ { id: 7, size: 2, hub: { id: "plan", title: "plan", path: "work/plan.md" } } ].freeze
 
   setup do
-    use_fake_api(notes: NOTES, graph: { graph: GRAPH })
+    use_fake_api(notes: NOTES, graph: { graph: GRAPH, communities: { "vault-1" => COMMUNITIES } })
     sign_in_through_form
   end
 
@@ -37,6 +38,26 @@ class GraphFiltersTest < ApplicationSystemTestCase
     assert_selector "main [data-graph-nodes='1']"
     assert_selector "main canvas[data-graph-canvas]:focus"
     assert_equal "", find("#graph_filters .graph-filters-count", visible: :all).text(:all)
+  end
+
+  test "back undoes one filter at a time and redraws without loading the page again" do
+    visit graph_path(note: "plan")
+    assert_selector "main [data-graph-nodes='1']"
+    send_keys "o"
+    assert_selector "main [data-graph-nodes='0']"
+    send_keys "c"
+    assert_equal({ "note" => "plan", "orphans" => "false", "community" => "7" }, page_query)
+    execute_script("document.querySelector('#vault_graph').dataset.samePage = 'yes'")
+
+    go_back
+    assert_equal({ "note" => "plan", "orphans" => "false" }, page_query)
+    assert_selector "#graph_filters select[name=community] option[value='']:checked", visible: :all
+    assert_selector "#graph_filters .graph-filters-count", text: "[1]"
+    go_back
+
+    assert_equal({ "note" => "plan" }, page_query)
+    assert_selector "#vault_graph[data-same-page=yes][data-graph-nodes='1']"
+    assert_selector "#graph_filters input[name=orphans]:checked", visible: :all
   end
 
   private
