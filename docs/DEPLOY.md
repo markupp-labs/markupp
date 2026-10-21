@@ -62,7 +62,8 @@ e só o notificador a recebe: a API recebe apenas `MARKUPP_INVITE_BY_EMAIL=true`
 O email leva o token do convite, então o notificador exige TLS: com smtp:// o servidor precisa
 oferecer STARTTLS. Texto puro só com `?tls=none` no fim da URL, para servidor local.
 Com email, a API deixa de devolver o token do convite, e o notificador gera o token na entrega e
-o envia só por email.
+o envia só por email. O bloco `email` vazio vale como sem email, porque o Pulumi YAML não omite
+propriedade, e o bloco com `from` sem `smtpUrl` é recusado.
 
 Os emails de convite, verificação de email e troca de senha levam primeiro o link da página do
 painel que recebe o token (/invite_acceptance/new, /email_confirmation/new e
@@ -97,6 +98,14 @@ O projeto em `deploy/stacks` usa o componente pelo caminho local e tem duas stac
 - `prod`: o Enterprise no cluster de produção, com Let's Encrypt
 - `dev`: um cluster kind que o CI sobe em cada PR e a cada push em dev para testar a implantação, com
   certificado autoassinado
+
+As duas sobem sem email. Para ligar numa stack, com a URL do SMTP cifrada no arquivo da stack:
+
+```sh
+pulumi config set --path --secret email.smtpUrl 'smtps://usuario:senha@host:465'
+pulumi config set --path email.from 'markupp <nao-responda@exemplo.com>'
+pulumi config set --path email.panelUrl https://painel.exemplo.com
+```
 
 Para rodar o mesmo teste da stack dev na própria máquina, com Docker, kind, helm, kubectl e
 Pulumi instalados:
