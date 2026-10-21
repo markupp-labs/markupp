@@ -10,48 +10,60 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
+	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/indexing"
 )
 
 // Note é uma nota persistida, identificada por ID e endereçada por Path dentro
-// do cofre VaultID.
+// do cofre VaultID. ContentSHA256 é o SHA-256 dos bytes UTF-8 de Content, em hex
+// minúsculo. Rank é a organização derivada que o segundo estágio do indexador
+// gravou para ela.
 type Note struct {
-	ID        string
-	VaultID   string
-	Path      string
-	Content   string
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	ID            string
+	VaultID       string
+	Path          string
+	Content       string
+	ContentSHA256 string
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+	Rank          NoteRank
 }
 
-// SearchResult é a projeção de uma nota devolvida pela busca, sem o conteúdo.
+// SearchResult é a projeção de uma nota devolvida pela busca: sem o conteúdo, com o
+// trecho cru dele em que os termos da consulta aparecem entre U+0002 e U+0003 e a
+// relevância, que a rota sem prefixo não expõe.
 type SearchResult struct {
 	ID        string    `json:"id"`
 	VaultID   string    `json:"vault_id"`
 	Path      string    `json:"path"`
 	UpdatedAt time.Time `json:"updated_at"`
+	Snippet   string    `json:"snippet"`
+	Rank      float64   `json:"-"`
 }
 
 // Repository é a porta de persistência que o Service consome.
 type Repository interface {
 	DefaultVaultID(ctx context.Context) (string, error)
-	Save(ctx context.Context, note Note) error
+	Save(ctx context.Context, note Note) (Note, error)
 	Update(ctx context.Context, id, path, content string, updatedAt, lastModifiedAt time.Time, force bool) (Note, error)
 	Delete(ctx context.Context, id string) error
 	GetNoteByID(ctx context.Context, id string) (Note, error)
 	ListNotes(ctx context.Context) ([]Note, error)
-	SearchNotes(ctx context.Context, query string, offset, limit int32) ([]SearchResult, error)
+	ListVaultNotes(ctx context.Context, vaultID string, q VaultNotesQuery) ([]Note, error)
+	SearchNotes(ctx context.Context, query, vaultID string, offset, limit int32) ([]SearchResult, error)
 }
 
 // Erros de domínio devolvidos pelo Service e traduzidos em status HTTP pela
 // camada de API.
 var (
-	ErrInvalidPath    = errors.New("path inválido")
-	ErrInvalidContent = errors.New("content inválido")
-	ErrDuplicatePath  = errors.New("path já existe")
-	ErrNotFound       = errors.New("nota não encontrada")
-	ErrInvalidID      = errors.New("ID inválido")
-	ErrConflict       = errors.New("nota foi atualizada por outro cliente")
-	ErrVaultForbidden = errors.New("cofre inexistente ou sem acesso")
+	ErrInvalidPath       = errors.New("path inválido")
+	ErrInvalidContent    = errors.New("content inválido")
+	ErrDuplicatePath     = errors.New("path já existe")
+	ErrNotFound          = errors.New("nota não encontrada")
+	ErrInvalidID         = errors.New("ID inválido")
+	ErrConflict          = errors.New("nota foi atualizada por outro cliente")
+	ErrVaultForbidden    = errors.New("cofre inexistente ou sem acesso")
+	ErrCommunityNotFound = errors.New("comunidade não encontrada")
 )
 
 // Service aplica as regras de negócio das notas sobre um Repository.
@@ -86,7 +98,8 @@ func (s *Service) ListNotes(ctx context.Context) ([]Note, error) {
 }
 
 // Create valida path e content e persiste uma nota nova com ID gerado no cofre
-// vaultID, ou no cofre padrão do ator quando vaultID vem vazio.
+// vaultID, ou no cofre padrão do ator quando vaultID vem vazio, e devolve a nota
+// como o banco a gravou, com o content_sha256 calculado lá.
 func (s *Service) Create(ctx context.Context, vaultID, path, content string) (Note, error) {
 	if err := validatePath(path); err != nil {
 		return Note{}, err
@@ -100,10 +113,11 @@ func (s *Service) Create(ctx context.Context, vaultID, path, content string) (No
 	}
 	now := canonicalTime(s.clock())
 	note := Note{ID: s.newID(), VaultID: vaultID, Path: path, Content: content, CreatedAt: now, UpdatedAt: now}
-	if err := s.repo.Save(ctx, note); err != nil {
+	saved, err := s.repo.Save(ctx, note)
+	if err != nil {
 		return Note{}, fmt.Errorf("salvar nota %q no cofre %q: %w", note.ID, vaultID, err)
 	}
-	return note, nil
+	return saved, nil
 }
 
 func (s *Service) resolveVault(ctx context.Context, vaultID string) (string, error) {
@@ -186,6 +200,9 @@ func validatePath(path string) error {
 	if strings.Contains(p, "..") {
 		return ErrInvalidPath
 	}
+	if indexing.Title(p) == "" {
+		return fmt.Errorf("%w: caminho %q sem titulo, esperado nome antes da extensao .md no ultimo segmento, como pasta/nota.md", ErrInvalidPath, path)
+	}
 	return nil
 }
 
@@ -196,9 +213,9 @@ func (s *Service) validateContent(content string) error {
 	return nil
 }
 
-// SearchNotes busca por conteúdo, normalizando offset negativo para zero e
-// limit não positivo para dez.
-func (s *Service) SearchNotes(ctx context.Context, query string, offset, limit int) ([]SearchResult, error) {
+// SearchNotes busca no índice léxico do cofre vaultID, ou de todos os cofres do ator
+// quando vazio, normalizando offset negativo para zero e limit não positivo para dez.
+func (s *Service) SearchNotes(ctx context.Context, query, vaultID string, offset, limit int) ([]SearchResult, error) {
 	if offset < 0 {
 		offset = 0
 	}
@@ -206,7 +223,7 @@ func (s *Service) SearchNotes(ctx context.Context, query string, offset, limit i
 		limit = 10
 	}
 
-	results, err := s.repo.SearchNotes(ctx, query, int32(offset), int32(limit))
+	results, err := s.repo.SearchNotes(ctx, query, vaultID, int32(offset), int32(limit))
 	if err != nil {
 		return nil, fmt.Errorf("buscar notas: %w", err)
 	}

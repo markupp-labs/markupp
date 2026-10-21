@@ -12,18 +12,37 @@ import (
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/indexing"
 )
 
-func TestIndex_NotasMudadas_DevolveUmDocumentoPorNotaComOConteudo(t *testing.T) {
+func TestIndex_NotasMudadas_DevolveUmDocumentoPorNotaComTituloEConteudo(t *testing.T) {
 	cs := indexing.Changeset{TenantID: "t1", VaultID: "va", Notes: []indexing.NoteChange{
-		{NoteID: "n1", Content: "reuniao com o cliente"},
-		{NoteID: "n2", Content: "decisao tecnica"},
+		{NoteID: "n1", Path: "atas/Reuniao Semanal.md", Content: "reuniao com o cliente"},
+		{NoteID: "n2", Path: "decisao.md", Content: "decisao tecnica"},
 	}}
 
 	docs := indexing.Index(cs)
 
-	assert.Equal(t, []indexing.SearchDocument{
-		{NoteID: "n1", Text: "reuniao com o cliente"},
-		{NoteID: "n2", Text: "decisao tecnica"},
+	assert.Equal(t, []indexing.IndexedNote{
+		{Search: indexing.SearchDocument{NoteID: "n1", Title: "Reuniao Semanal", Text: "reuniao com o cliente"}, TitleKeys: []string{"reuniao semanal"}},
+		{Search: indexing.SearchDocument{NoteID: "n2", Title: "decisao", Text: "decisao tecnica"}, TitleKeys: []string{"decisao"}},
 	}, docs)
+}
+
+func TestTitle_UltimoSegmentoDoCaminhoSemExtensaoMd(t *testing.T) {
+	casos := map[string]string{
+		"nota.md":               "nota",
+		"pasta/sub/Nota Boa.md": "Nota Boa",
+		"versao.v2.md":          "versao.v2",
+		"a.b.md":                "a.b",
+		"sem-extensao":          "sem-extensao",
+		"arquivo":               "arquivo",
+		"Nota.MD":               "Nota",
+		"Nota.Md":               "Nota",
+		"pasta/.oculta.md":      ".oculta",
+		"foto.png":              "foto.png",
+		"pasta/doc.txt":         "doc.txt",
+	}
+	for caminho, titulo := range casos {
+		assert.Equal(t, titulo, indexing.Title(caminho), "titulo do caminho %q", caminho)
+	}
 }
 
 func TestIndex_SemNotas_DevolveVazio(t *testing.T) {
@@ -37,7 +56,7 @@ type fakeVaultQueue struct {
 	errs     []error
 	pending  []bool
 	calls    int
-	produced []indexing.SearchDocument
+	produced []indexing.IndexedNote
 }
 
 func (f *fakeVaultQueue) IndexNextVault(_ context.Context, index indexing.IndexFunc) (bool, error) {
@@ -53,7 +72,7 @@ func (f *fakeVaultQueue) IndexNextVault(_ context.Context, index indexing.IndexF
 	found := f.pending[0]
 	f.pending = f.pending[1:]
 	if found {
-		f.produced = index(indexing.Changeset{Notes: []indexing.NoteChange{{NoteID: "n1", Content: "oi"}}})
+		f.produced = index(indexing.Changeset{Notes: []indexing.NoteChange{{NoteID: "n1", Path: "oi.md", Content: "oi"}}})
 	}
 	return found, nil
 }
@@ -81,7 +100,7 @@ func TestRunLoop_EsvaziaOsCofresPendentesAntesDeEsperar(t *testing.T) {
 	assert.ErrorIs(t, err, context.Canceled)
 	assert.Equal(t, 4, queue.calls, "dois cofres, uma rodada vazia, espera, outra rodada vazia")
 	assert.Equal(t, 2, espera.calls)
-	assert.Equal(t, []indexing.SearchDocument{{NoteID: "n1", Text: "oi"}}, queue.produced,
+	assert.Equal(t, []indexing.IndexedNote{{Search: indexing.SearchDocument{NoteID: "n1", Title: "oi", Text: "oi"}, TitleKeys: []string{"oi"}}}, queue.produced,
 		"o laço indexa com indexing.Index")
 }
 
