@@ -25,7 +25,7 @@ func setupAuthIntegrationServer(t *testing.T) (*httptest.Server, *pgxpool.Pool) 
 	pool := storagetest.EmptyPool(t)
 	require.NoError(t, storage.Migrate(context.Background(), pool))
 
-	notesRepo := storage.NewPostgresNotesRepository(pool)
+	notesRepo := storage.NewPostgresNotesRepository(pool, "simple")
 	notesSvc := notes.NewService(notesRepo, integrationMaxNoteSize)
 
 	authRepo := storage.NewPostgresAuthRepository(pool)

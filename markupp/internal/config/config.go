@@ -43,9 +43,46 @@ type Config struct {
 	SMTPURL string
 	// SMTPFrom é o remetente dos emails, obrigatório com SMTPURL.
 	SMTPFrom string
-	// PanelURL é a URL base do painel web. Definida, os emails do notificador levam o
-	// link da rota do painel que recebe o token; vazia, só o token.
+	// PublicURL é o issuer do authorization server, sem caminho nem barra final. O Load
+	// usa http://localhost na porta do servidor quando a variável falta (ADR-0041).
+	PublicURL string
+	// PanelURL é o painel que faz o login e o consentimento do OAuth, sem barra final.
+	// Os emails do notificador levam o link da rota do painel que recebe o token.
 	PanelURL string
+	// OAuthResources são os servidores de recursos que aceitam os tokens do OAuth. Vazia
+	// no Load, vira o MCP da mesma origem com o segredo do banco em WithInstanceSecrets.
+	OAuthResources []OAuthResource
+	// MCPUpstreamURL é o servidor MCP para onde /mcp é encaminhado. Vazia, /mcp não existe.
+	MCPUpstreamURL string
+	// MCPSecretPath é o arquivo onde o servidor escreve o segredo do MCP da mesma origem,
+	// num volume que o servidor MCP lê.
+	MCPSecretPath string
+	// OAuthAccessMinutes é a validade do access token emitido pelo OAuth.
+	OAuthAccessMinutes int
+	// OAuthRefreshDays é a validade do refresh token emitido pelo OAuth.
+	OAuthRefreshDays int
+	// OAuthRequestMinutes é quanto o pedido de autorização espera o consentimento.
+	OAuthRequestMinutes int
+	// OAuthCodeSeconds é a validade do authorization code até a troca pelo token.
+	OAuthCodeSeconds int
+	// OAuthExchangeMinutes é a validade do token da API entregue pela troca de token.
+	OAuthExchangeMinutes int
+	// OAuthCIMDTimeoutSeconds limita a busca do Client ID Metadata Document de um cliente.
+	OAuthCIMDTimeoutSeconds int
+	// OAuthCIMDMaxKB é o maior Client ID Metadata Document aceito, em KB.
+	OAuthCIMDMaxKB int
+	// OAuthCIMDCacheMinMinutes é o menor tempo que um documento fica em cache.
+	OAuthCIMDCacheMinMinutes int
+	// OAuthCIMDCacheMaxHours é o maior tempo que um documento fica em cache.
+	OAuthCIMDCacheMaxHours int
+	// OAuthDCREnabled liga o registro dinâmico de clientes (RFC 7591) em /oauth/register.
+	OAuthDCREnabled bool
+	// OAuthDCRMaxPending é o teto de clientes registrados por DCR sem nenhuma Autorização
+	// ativa.
+	OAuthDCRMaxPending int
+	// OAuthDCRPendingHours é quanto um cliente DCR sem Autorização ativa dura, desde o
+	// registro ou a última revogação, até ser apagado.
+	OAuthDCRPendingHours int
 	// RateLimitPerMinute é quantas tentativas por minuto cada IP e cada email têm nas
 	// rotas de conta (ADR-0044).
 	RateLimitPerMinute int
@@ -56,7 +93,7 @@ type Config struct {
 
 // Default devolve a configuração usada nas variáveis não definidas.
 func Default() Config {
-	return Config{
+	cfg := Config{
 		Port:                    8080,
 		MaxNoteSize:             50 * 1024 * 1024,
 		AuthSecret:              "",
@@ -69,6 +106,8 @@ func Default() Config {
 		IndexInterval:           30 * time.Second,
 		RateLimitPerMinute:      5,
 	}
+	setOAuthDefaults(&cfg)
+	return cfg
 }
 
 // Load lê as variáveis MARKUPP_*, exigindo MARKUPP_DATABASE_URL e caindo em
@@ -94,9 +133,15 @@ func Load(lookup LookupFunc) (Config, error) {
 	return cfg, nil
 }
 
-// loadServerSettings lê o que só o servidor e o notificador usam: autenticação e email.
+// loadServerSettings lê o que só o servidor e o notificador usam: autenticação, OAuth e email.
 func loadServerSettings(lookup LookupFunc, cfg *Config) error {
 	if err := loadAuthSettings(lookup, cfg); err != nil {
+		return err
+	}
+	if err := loadOAuthSettings(lookup, cfg); err != nil {
+		return err
+	}
+	if err := loadMCPSettings(lookup, cfg); err != nil {
 		return err
 	}
 	if err := loadSMTPSettings(lookup, cfg); err != nil {
@@ -105,10 +150,7 @@ func loadServerSettings(lookup LookupFunc, cfg *Config) error {
 	if err := readRateLimit(lookup, &cfg.RateLimitPerMinute); err != nil {
 		return err
 	}
-	if err := readTrustedProxies(lookup, &cfg.TrustedProxies); err != nil {
-		return err
-	}
-	return readPanelURL(lookup, &cfg.PanelURL)
+	return readTrustedProxies(lookup, &cfg.TrustedProxies)
 }
 
 func readRateLimit(lookup LookupFunc, target *int) error {
@@ -144,42 +186,6 @@ func unmapPrefix(prefix netip.Prefix) netip.Prefix {
 		return prefix
 	}
 	return netip.PrefixFrom(prefix.Addr().Unmap(), prefix.Bits()-96)
-}
-
-// readPanelURL aceita só URL absoluta http ou https sem query nem fragmento, porque
-// o link do email acrescenta a rota e ?token= no fim dela.
-func readPanelURL(lookup LookupFunc, target *string) error {
-	var raw string
-	readString(lookup, "MARKUPP_PANEL_URL", &raw)
-	if raw == "" {
-		return nil
-	}
-	if problem := panelURLProblem(raw); problem != "" {
-		return fmt.Errorf("MARKUPP_PANEL_URL=%q: %s; esperada URL absoluta http:// ou https:// sem query nem fragmento, como https://painel.exemplo.com", raw, problem)
-	}
-	*target = raw
-	return nil
-}
-
-// panelURLProblem diz qual regra da URL do painel raw viola, ou "" quando ela serve.
-func panelURLProblem(raw string) string {
-	parsed, err := url.Parse(raw)
-	if err != nil {
-		return "nao e URL valida (" + err.Error() + ")"
-	}
-	if parsed.Scheme != "http" && parsed.Scheme != "https" {
-		return "esquema " + strconv.Quote(parsed.Scheme) + " nao e http nem https"
-	}
-	if parsed.Host == "" {
-		return "falta o host"
-	}
-	if parsed.RawQuery != "" || parsed.ForceQuery {
-		return "tem query"
-	}
-	if parsed.Fragment != "" {
-		return "tem fragmento"
-	}
-	return ""
 }
 
 // loadSMTPSettings lê o convite por email da API e o servidor de email do notificador
@@ -305,10 +311,10 @@ func loadAuthFlags(lookup LookupFunc, cfg *Config) error {
 }
 
 func readAuthSecret(lookup LookupFunc, target *string) error {
-	val, ok := lookup("MARKUPP_AUTH_SECRET")
+	val, _ := lookup("MARKUPP_AUTH_SECRET")
 	trimmed := strings.TrimSpace(val)
-	if !ok || trimmed == "" {
-		return fmt.Errorf("MARKUPP_AUTH_SECRET vazia, esperado ao menos %d bytes aleatorios (ex.: openssl rand -hex 32)", minAuthSecretBytes)
+	if trimmed == "" {
+		return nil
 	}
 	if len(trimmed) < minAuthSecretBytes {
 		return fmt.Errorf("MARKUPP_AUTH_SECRET com %d bytes, esperado ao menos %d bytes aleatorios", len(trimmed), minAuthSecretBytes)

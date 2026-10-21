@@ -54,6 +54,8 @@ func TestLoad_SoVariaveisObrigatorias_UsaDefaultsNoResto(t *testing.T) {
 	esperado := config.Default()
 	esperado.DatabaseURL = urlDeTeste
 	esperado.AuthSecret = segredoDeTesteValido
+	esperado.PublicURL = "http://localhost:8080"
+	esperado.PanelURL = "http://localhost:3999"
 	assert.Equal(t, esperado, cfg)
 }
 
@@ -184,14 +186,13 @@ func TestLoad_RefreshExpirationInvalido_RetornaErroComOValor(t *testing.T) {
 	assert.Contains(t, err.Error(), "dez")
 }
 
-func TestLoad_SemAuthSecret_RetornaErroExigindoVariavel(t *testing.T) {
+func TestLoad_SemAuthSecret_DeixaOSegredoParaOBanco(t *testing.T) {
 	env := fakeEnv{"MARKUPP_DATABASE_URL": urlDeTeste}
 
-	_, err := config.Load(env.Lookup)
+	cfg, err := config.Load(env.Lookup)
 
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "MARKUPP_AUTH_SECRET")
-	assert.Contains(t, err.Error(), "32 bytes")
+	require.NoError(t, err, "sem a variavel o servidor gera o segredo na subida (ADR-0041)")
+	assert.Empty(t, cfg.AuthSecret)
 }
 
 func TestLoad_AuthSecretCurto_RetornaErroComTamanhoEFormato(t *testing.T) {
@@ -391,57 +392,6 @@ func TestLoad_ConvitePorEmailInvalido_RetornaErroComOValor(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "MARKUPP_INVITE_BY_EMAIL")
 	assert.Contains(t, err.Error(), "talvez")
-}
-
-func TestLoad_SemPainel_DeixaOLinkDesligado(t *testing.T) {
-	env := fakeEnv{"MARKUPP_DATABASE_URL": urlDeTeste, "MARKUPP_AUTH_SECRET": segredoDeTesteValido}
-
-	cfg, err := config.Load(env.Lookup)
-
-	require.NoError(t, err)
-	assert.Empty(t, cfg.PanelURL, "sem painel o email leva so o token")
-}
-
-func TestLoad_PainelHTTPouHTTPS_LeAURL(t *testing.T) {
-	for _, valor := range []string{"https://painel.markupp.dev", "http://localhost:3999/", "https://markupp.dev/painel"} {
-		env := fakeEnv{"MARKUPP_DATABASE_URL": urlDeTeste, "MARKUPP_AUTH_SECRET": segredoDeTesteValido, "MARKUPP_PANEL_URL": valor}
-
-		cfg, err := config.Load(env.Lookup)
-
-		require.NoError(t, err, valor)
-		assert.Equal(t, valor, cfg.PanelURL)
-	}
-}
-
-func TestLoad_PainelForaDoFormato_RetornaErroComOValor(t *testing.T) {
-	for _, valor := range []string{"painel.markupp.dev", "/painel", "ftp://painel.markupp.dev", "https://", "https://painel.markupp.dev/?x=1"} {
-		env := fakeEnv{"MARKUPP_DATABASE_URL": urlDeTeste, "MARKUPP_AUTH_SECRET": segredoDeTesteValido, "MARKUPP_PANEL_URL": valor}
-
-		_, err := config.Load(env.Lookup)
-
-		require.Error(t, err, valor)
-		assert.Contains(t, err.Error(), "MARKUPP_PANEL_URL", valor)
-		assert.Contains(t, err.Error(), valor)
-		assert.Contains(t, err.Error(), "https://")
-	}
-}
-
-func TestLoad_PainelForaDoFormato_DizQualRegraFalhou(t *testing.T) {
-	casos := map[string]string{
-		"ftp://painel.markupp.dev":        "esquema",
-		"https://":                        "host",
-		"https://painel.markupp.dev/?x=1": "query",
-		"https://painel.markupp.dev/?":    "query",
-		"https://painel.markupp.dev/#x":   "fragmento",
-	}
-	for valor, regra := range casos {
-		env := fakeEnv{"MARKUPP_DATABASE_URL": urlDeTeste, "MARKUPP_AUTH_SECRET": segredoDeTesteValido, "MARKUPP_PANEL_URL": valor}
-
-		_, err := config.Load(env.Lookup)
-
-		require.Error(t, err, valor)
-		assert.Contains(t, err.Error(), regra, valor)
-	}
 }
 
 func TestLoad_SemLimiteDeTentativas_UsaCincoPorMinuto(t *testing.T) {

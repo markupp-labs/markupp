@@ -14,6 +14,7 @@ type TokenValidator interface {
 }
 
 // RequireAuth intercepta requisições exigindo um cabeçalho Authorization: Bearer <token>.
+// Token OAuth só passa na rota que declarou antes, com acceptOAuthScope, o que aceita.
 func RequireAuth(validator TokenValidator) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -29,12 +30,25 @@ func serveAuthenticated(w http.ResponseWriter, r *http.Request, next http.Handle
 		return
 	}
 	claims, err := validator.ValidateToken(tokenString)
-	if err != nil {
+	// Scope só de espaços não é login nem escopo algum: o token é recusado inteiro.
+	if err != nil || (claims.Scope != "" && strings.TrimSpace(claims.Scope) == "") {
 		writeError(w, "unauthorized", "token ausente ou invalido", http.StatusUnauthorized)
 		return
 	}
-	ctx := identity.WithActor(r.Context(), identity.Actor{UserID: claims.Subject})
-	next.ServeHTTP(w, r.WithContext(ctx))
+	actor := actorFromClaims(claims)
+	if !allowOAuthActor(w, r, actor) {
+		return
+	}
+	next.ServeHTTP(w, r.WithContext(identity.WithActor(r.Context(), actor)))
+}
+
+// actorFromClaims monta o ator do token. Scope vazio é token de login, de acesso inteiro.
+func actorFromClaims(claims auth.Claims) identity.Actor {
+	actor := identity.Actor{UserID: claims.Subject}
+	if claims.Scope != "" {
+		actor.FromOAuth, actor.OAuthScopes = true, strings.Fields(claims.Scope)
+	}
+	return actor
 }
 
 func extractBearerToken(authHeader string) (string, bool) {

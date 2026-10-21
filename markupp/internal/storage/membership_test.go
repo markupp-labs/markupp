@@ -66,7 +66,7 @@ func TestAuthRepo_CreateTenantTx_CriadorViraOwnerComCofreEAuditoria(t *testing.T
 	require.NoError(t, err)
 	assert.Equal(t, auth.Membership{TenantID: "novo", TenantName: "Acme Ltda", Role: "owner"}, m)
 	ctx := identity.WithActor(context.Background(), identity.Actor{UserID: "u1", TenantID: "novo", Role: "owner"})
-	padrao, err := storage.NewPostgresNotesRepository(db).DefaultVaultID(ctx)
+	padrao, err := storage.NewPostgresNotesRepository(db, "simple").DefaultVaultID(ctx)
 	require.NoError(t, err)
 	assert.Equal(t, "cofre-novo", padrao)
 	var auditados int
@@ -77,7 +77,8 @@ func TestAuthRepo_CreateTenantTx_CriadorViraOwnerComCofreEAuditoria(t *testing.T
 func salvarNotaEm(ctx context.Context, t *testing.T, db *pgxpool.Pool, id, vaultID string, updatedAt time.Time) {
 	t.Helper()
 	nota := notes.Note{ID: id, VaultID: vaultID, Path: id + ".md", Content: id, CreatedAt: updatedAt, UpdatedAt: updatedAt}
-	require.NoError(t, storage.NewPostgresNotesRepository(db).Save(ctx, nota))
+	_, err := storage.NewPostgresNotesRepository(db, "simple").Save(ctx, nota)
+	require.NoError(t, err)
 }
 
 func TestAuthRepo_ListTenantSummaries_ContaSoAsNotasQueAContaLe(t *testing.T) {
@@ -113,7 +114,7 @@ func TestAuthRepo_ListTenantSummaries_BateComOQueORLSDeixaLer(t *testing.T) {
 
 	lista, err := storage.NewPostgresAuthRepository(db).ListTenantSummaries(context.Background(), "u1")
 	require.NoError(t, err)
-	visiveis, err := storage.NewPostgresNotesRepository(db).ListNotes(ctxU1)
+	visiveis, err := storage.NewPostgresNotesRepository(db, "simple").ListNotes(ctxU1)
 	require.NoError(t, err)
 
 	require.Len(t, lista, 1)

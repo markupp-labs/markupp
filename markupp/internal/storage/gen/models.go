@@ -30,14 +30,45 @@ type AuditEvent struct {
 	OccurredAt time.Time
 }
 
-type Note struct {
-	ID        string
-	Path      string
-	Content   string
+type InstanceSecret struct {
+	Name      string
+	Value     string
 	CreatedAt time.Time
-	UpdatedAt time.Time
-	TenantID  string
+}
+
+type Note struct {
+	ID            string
+	Path          string
+	Content       string
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+	TenantID      string
+	VaultID       string
+	ContentSha256 []byte
+}
+
+type NoteCentrality struct {
+	NoteID    string
 	VaultID   string
+	Pagerank  float64
+	InDegree  int32
+	OutDegree int32
+}
+
+type NoteCommunity struct {
+	NoteID      string
+	VaultID     string
+	CommunityID int64
+}
+
+type NoteEdge struct {
+	SourceID   string
+	TargetID   string
+	VaultID    string
+	Kind       string
+	Predicate  pgtype.Text
+	TitleKey   string
+	CitedTitle string
 }
 
 type NoteIndexQueue struct {
@@ -45,9 +76,63 @@ type NoteIndexQueue struct {
 	Revision int64
 }
 
+type NoteLink struct {
+	NoteID     string
+	VaultID    string
+	CitedTitle string
+	TitleKey   string
+	TargetPath pgtype.Text
+	Kind       string
+	Predicate  pgtype.Text
+}
+
+type NoteLinkItem struct {
+	SourceID           string
+	SourcePath         string
+	VaultID            string
+	TargetID           pgtype.Text
+	TargetPath         pgtype.Text
+	CitedTitle         string
+	TitleKey           string
+	Kind               string
+	Predicate          pgtype.Text
+	InferredTargetID   pgtype.Text
+	InferredTargetPath pgtype.Text
+}
+
 type NoteSearchIndex struct {
 	NoteID   string
 	Document string
+}
+
+type NoteTerm struct {
+	NoteID  string
+	VaultID string
+	Terms   []string
+	Tfs     []float64
+	Weights []float64
+	Norm    float64
+}
+
+type NoteTitle struct {
+	NoteID   string
+	VaultID  string
+	TitleKey string
+	Path     string
+}
+
+type NoteUnresolvedLinkItem struct {
+	SourceID           string
+	SourcePath         string
+	VaultID            string
+	TargetID           pgtype.Text
+	TargetPath         pgtype.Text
+	CitedTitle         string
+	TitleKey           string
+	Kind               string
+	Predicate          pgtype.Text
+	InferredTargetID   pgtype.Text
+	InferredTargetPath pgtype.Text
 }
 
 type Notification struct {
@@ -62,6 +147,61 @@ type Notification struct {
 	CreatedAt      time.Time
 	Kind           string
 	AccountTokenID pgtype.Text
+}
+
+type OauthAuthorization struct {
+	ID        string
+	UserID    string
+	ClientID  string
+	Scopes    []string
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	RevokedAt pgtype.Timestamptz
+}
+
+type OauthClient struct {
+	ID                string
+	Source            string
+	Name              string
+	RedirectUris      []string
+	MetadataExpiresAt pgtype.Timestamptz
+	CreatedAt         time.Time
+}
+
+type OauthPendingDcrClient struct {
+	ID           string
+	PendingSince interface{}
+}
+
+type OauthRequest struct {
+	ID              string
+	ClientID        string
+	RedirectUri     string
+	Scopes          []string
+	Resource        string
+	State           pgtype.Text
+	CodeChallenge   string
+	CreatedAt       time.Time
+	ExpiresAt       time.Time
+	DecidedAt       pgtype.Timestamptz
+	UserID          pgtype.Text
+	CodeHash        pgtype.Text
+	CodeExpiresAt   pgtype.Timestamptz
+	CodeUsedAt      pgtype.Timestamptz
+	AuthorizationID pgtype.Text
+	CodeReusedAt    pgtype.Timestamptz
+}
+
+type OauthToken struct {
+	TokenHash       string
+	AuthorizationID string
+	Kind            string
+	Resource        string
+	Scopes          []string
+	ExpiresAt       time.Time
+	Revoked         bool
+	RotatedAt       pgtype.Timestamptz
+	CreatedAt       time.Time
 }
 
 type RefreshToken struct {
@@ -122,8 +262,29 @@ type Vault struct {
 	CreatedAt time.Time
 }
 
+type VaultGraphVersion struct {
+	VaultID string
+	Version int64
+}
+
 type VaultMember struct {
 	VaultID   string
 	UserID    string
 	CreatedAt time.Time
+}
+
+type VaultSecondStageQueue struct {
+	VaultID  string
+	Revision int64
+}
+
+type VaultTermFrequency struct {
+	VaultID string
+	Term    string
+	Df      int32
+}
+
+type VaultTermStat struct {
+	VaultID   string
+	NoteCount int32
 }

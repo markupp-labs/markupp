@@ -102,6 +102,10 @@ func writeAccountEmailError(w http.ResponseWriter, err error) {
 	case errors.Is(err, auth.ErrInvalidToken):
 		writeError(w, "invalid_token", err.Error(), http.StatusBadRequest)
 	default:
-		writeInternal(w, "email da conta", err)
+		writeAccountEmailInternal(w, "email da conta", err)
 	}
+}
+
+func writeAccountEmailInternal(w http.ResponseWriter, operation string, err error) {
+	writeLoggedInternal(w, "falha no email da conta", operation, err)
 }

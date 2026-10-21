@@ -22,7 +22,7 @@ type EmailArgs struct {
 	// From é o remetente dos emails.
 	From string `pulumi:"from"`
 	// PanelURL é a URL base do painel web, que põe nos emails o link da página que
-	// recebe o token (MARKUPP_PANEL_URL). Vazia, o email leva só o token.
+	// recebe o token (MARKUPP_PANEL_URL). Vazia, o notificador usa o painel local padrão.
 	PanelURL string `pulumi:"panelUrl,optional"`
 }
 

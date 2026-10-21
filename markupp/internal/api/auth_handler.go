@@ -222,6 +222,10 @@ func (h *authHandler) handleAuthError(w http.ResponseWriter, err error) {
 	case errors.Is(err, auth.ErrRefreshTokenRevoked), errors.Is(err, auth.ErrRefreshTokenExpired), errors.Is(err, auth.ErrRefreshTokenInvalid):
 		writeError(w, "invalid_refresh_token", "refresh token revogado ou expirado", http.StatusUnauthorized)
 	default:
-		writeInternal(w, "autenticacao", err)
+		writeAuthInternal(w, "autenticacao", err)
 	}
+}
+
+func writeAuthInternal(w http.ResponseWriter, operation string, err error) {
+	writeLoggedInternal(w, "falha na autenticacao", operation, err)
 }
