@@ -85,7 +85,7 @@ class GraphsControllerTest < ActionDispatch::IntegrationTest
     assert_equal [ { "community" => "9", "inferred" => "false", "orphans" => "false" }, {} ], @api.graph_queries
   end
 
-  test "the full graph page draws the graph of the filters in its query, with the filters panel set the same way" do
+  test "the full graph page draws the graph of the filters in its query, with the filters panel open and set the same way" do
     hub = { id: "plan", title: "plan", path: "work/plan.md" }
     use_fake_api(notes: NOTES, graph: GRAPH.merge(communities: { "vault-1" => [ { id: 9, size: 2, hub: }, { id: 4, size: 1, hub: } ] }))
     sign_in_as
@@ -93,7 +93,7 @@ class GraphsControllerTest < ActionDispatch::IntegrationTest
     get graph_path(note: "roadmap", orphans: "false", community: "9")
 
     assert_select "main [data-graph-view-url-value=?]", graph_path(format: :json, vault: "vault-1", note: "roadmap", community: 9, orphans: false)
-    assert_select "main #graph_filters" do
+    assert_select "main #graph_filters[open]" do
       assert_select "input[type=checkbox][name=orphans]:not([checked])"
       assert_select "input[type=checkbox][name=unresolved][checked]"
       assert_select "input[type=checkbox][name=inferred][checked]"
@@ -105,6 +105,8 @@ class GraphsControllerTest < ActionDispatch::IntegrationTest
 
   test "the full graph page without a note goes back to the start, and an empty tenant has nothing to draw" do
     get graph_path
+
+    assert_select "main #graph_filters:not([open])"
 
     assert_select "[data-graph-view-url-value=?]", graph_path(format: :json, vault: "vault-1")
     assert_select "main a[href=?][aria-keyshortcuts=Escape]", root_path
