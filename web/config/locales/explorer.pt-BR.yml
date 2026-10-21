@@ -1,7 +1,6 @@
 pt-BR:
   explorer:
     mode_label: "Visão do Explorador"
-    now: "agora"
     modes:
       folders: "Pastas"
       central: "Mais centrais"

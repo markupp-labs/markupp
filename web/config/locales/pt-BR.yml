@@ -62,43 +62,15 @@ pt-BR:
       submit: "Confirmar"
     create:
       confirmed: "Email confirmado. Os convites pendentes agora aparecem na sua lista de tenants."
-  # Tempo curto para os cards de tenant ("há 2h"), pelo time_ago_in_words com este scope. Mesmas unidades do inglês,
-  # como as do compact_age do Explorer.
-  datetime_short:
-    half_a_minute: "1m"
-    less_than_x_seconds:
-      one: "1s"
-      other: "%{count}s"
-    x_seconds:
-      one: "1s"
-      other: "%{count}s"
-    less_than_x_minutes:
-      one: "1m"
-      other: "%{count}m"
-    x_minutes:
-      one: "1m"
-      other: "%{count}m"
-    about_x_hours:
-      one: "1h"
-      other: "%{count}h"
-    x_days:
-      one: "1d"
-      other: "%{count}d"
-    about_x_months:
-      one: "1mo"
-      other: "%{count}mo"
-    x_months:
-      one: "1mo"
-      other: "%{count}mo"
-    about_x_years:
-      one: "1y"
-      other: "%{count}y"
-    over_x_years:
-      one: "1y"
-      other: "%{count}y"
-    almost_x_years:
-      one: "1y"
-      other: "%{count}y"
+  # Unidades da idade curta (CompactAgeHelper): o maior passo que cabe, sem espaço entre o número e a unidade.
+  compact_age:
+    now: "agora"
+    y: "%{count}a"
+    mo: "%{count}mês"
+    w: "%{count}sem"
+    d: "%{count}d"
+    h: "%{count}h"
+    m: "%{count}min"
   errors:
     show:
       back_to_notes: "Voltar para as suas notas"

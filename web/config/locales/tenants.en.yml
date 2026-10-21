@@ -29,6 +29,7 @@ en:
         one: "%{count} note"
         other: "%{count} notes"
       last_edit: "last edit %{time} ago"
+      last_edit_now: "last edit just now"
     create:
       created: "Created %{name}."
       invalid_name: "Use 1 to 100 characters."

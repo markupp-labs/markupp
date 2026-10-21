@@ -29,6 +29,7 @@ pt-BR:
         one: "%{count} nota"
         other: "%{count} notas"
       last_edit: "última edição há %{time}"
+      last_edit_now: "última edição agora mesmo"
     create:
       created: "%{name} criado."
       invalid_name: "Use de 1 a 100 caracteres."
