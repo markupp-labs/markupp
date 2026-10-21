@@ -179,6 +179,20 @@ class ActivityBarTest < ApplicationSystemTestCase
     page.current_window.resize_to(1400, 900)
   end
 
+  test "on a phone a tap on the icon of the active view closes the drawer" do
+    page.current_window.resize_to(390, 844)
+    visit root_path
+    click_on "Notes"
+    assert_selector "nav#sidebar:popover-open .activity-bar-drawer [role=tab][aria-label=Explorer][aria-selected=true]"
+
+    find(".activity-bar-drawer [role=tab][aria-label=Explorer]").click
+
+    assert_no_selector "nav#sidebar:popover-open"
+    assert_selector "[role=tab][aria-label=Explorer][aria-selected=true]", visible: :all
+  ensure
+    page.current_window.resize_to(1400, 900)
+  end
+
   private
     def tab(label)
       find(".activity-bar-side [role=tab][aria-label=#{label}]")
