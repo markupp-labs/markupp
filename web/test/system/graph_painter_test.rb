@@ -26,17 +26,27 @@ class GraphPainterTest < ApplicationSystemTestCase
     assert_equal %w[line accent line accent], lit
   end
 
+  # O enquadramento aproxima o grafo para ocupar o canvas; a bolinha para de crescer na tela a partir do zoom 2.
+  test "a node stops growing on screen past zoom 2" do
+    at_two = painted(nodes: "[ node('a', {}), node('b', {}) ]", zoom: 2)["arcs"].first * 2
+    at_four = painted(nodes: "[ node('a', {}), node('b', {}) ]", zoom: 4)["arcs"].first * 4
+
+    assert_in_delta at_two, at_four
+  end
+
   private
-    # Pinta com o FakeCanvasContext e devolve o y de cada nome (o nó está em y 0, raio 5, zoom 1) e a cor de cada
+    # Pinta com o FakeCanvasContext e devolve o y de cada nome (o nó está em y 0, raio 5), o raio de cada arco e a cor de cada
     # traço de ligação, na ordem.
-    def painted(nodes:, active: nil)
+    def painted(nodes:, active: nil, zoom: 1)
       evaluate_async_script(<<~JS)
         const done = arguments[arguments.length - 1]
         import("graph/painter").then(({ paintGraph }) => {
           class FakeCanvasContext {
             labels = {}
             strokes = []
-            setTransform() {} clearRect() {} setLineDash() {} beginPath() {} moveTo() {} lineTo() {} arc() {} fill() {}
+            arcs = []
+            setTransform() {} clearRect() {} setLineDash() {} beginPath() {} moveTo() {} lineTo() {} fill() {}
+            arc(x, y, radius) { this.arcs.push(radius) }
             stroke() { this.strokes.push(this.strokeStyle) }
             strokeText() {}
             fillText(text, x, y) { this.labels[text] = y }
@@ -48,9 +58,9 @@ class GraphPainterTest < ApplicationSystemTestCase
           if (active) active.neighbors = [ nodes[1] ]
           const context = new FakeCanvasContext()
           const colors = { line: "line", ink: "ink", muted: "muted", accent: "accent", halo: "halo", communities: [ "c0" ] }
-          const camera = { width: 100, height: 100, k: 1, apply() {} }
+          const camera = { width: 100, height: 100, k: #{zoom}, apply() {} }
           paintGraph(context, { nodes, links, colors, camera, ratio: 1, emphasis: { active } })
-          done({ labels: context.labels, linkStrokes: context.strokes.slice(0, active ? 4 : 2) })
+          done({ labels: context.labels, arcs: context.arcs, linkStrokes: context.strokes.slice(0, active ? 4 : 2) })
         })
       JS
     end
