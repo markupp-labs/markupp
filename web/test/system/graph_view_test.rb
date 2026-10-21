@@ -11,9 +11,11 @@ class GraphViewTest < ApplicationSystemTestCase
   LOCAL = { nodes: [ PLAN, ROADMAP, GHOST ], links: [ { source: 0, target: 1, type: "explicit" }, { source: 0, target: 2, type: "explicit" },
                                                      { source: 1, target: 0, type: "inferred" } ] }.freeze
   VAULT = { nodes: [ ROADMAP ], links: [] }.freeze
+  COMMUNITIES = [ { id: 7, size: 2, hub: { id: "plan", title: "plan", path: "work/plan.md" } } ].freeze
 
   setup do
-    use_fake_api(notes: NOTES, graph: { graph: { "plan" => LOCAL, "vault-1" => VAULT } })
+    use_fake_api(notes: NOTES, graph: { graph: { "plan" => LOCAL, "vault-1" => VAULT, "vault-1?orphans=false" => { nodes: [], links: [] } },
+                                         communities: { "vault-1" => COMMUNITIES } })
     sign_in_through_form
     visit note_path("plan")
     assert_field "Path", with: "/work/plan"
@@ -112,6 +114,52 @@ class GraphViewTest < ApplicationSystemTestCase
     assert_operator find("main [data-graph-zoom]")["data-graph-zoom"].to_f, :>, 2
   end
 
+  test "o hides the orphan notes of the full graph, the page address keeps the filter and a reload draws it again" do
+    visit graph_path(note: "plan")
+    assert_selector "main [data-graph-nodes='1']"
+
+    send_keys "o"
+    assert_selector "main [data-graph-nodes='0']"
+    assert_equal({ "note" => "plan", "orphans" => "false" }, page_query)
+    refresh
+    assert_selector "main [data-graph-nodes='0']"
+    assert_selector "#graph_filters input[name=orphans]:not(:checked)", visible: :all
+    find("main canvas[data-graph-canvas]").execute_script("this.focus()")
+    send_keys "o"
+
+    assert_selector "main [data-graph-nodes='1']"
+    assert_equal({ "note" => "plan" }, page_query)
+  end
+
+  test "c and shift+c step through the communities of the full graph" do
+    visit graph_path(note: "plan")
+    assert_selector "main [data-graph-nodes='1']"
+
+    send_keys "c"
+    assert_equal({ "note" => "plan", "community" => "7" }, page_query)
+    assert_selector "#graph_filters select[name=community] option[value='7']:checked", text: "plan (2)", visible: :all
+    send_keys [ :shift, "c" ]
+
+    assert_equal({ "note" => "plan" }, page_query)
+  end
+
+  test "f opens the filters over the canvas, alt+k reaches them, esc closes them and alt+j goes back to the canvas" do
+    visit graph_path(note: "plan")
+    assert_selector "main canvas[data-graph-canvas]:focus"
+
+    send_keys "f"
+    assert_selector "#graph_filters[open] input[name=orphans]"
+    assert_selector "main canvas[data-graph-canvas]:focus"
+    send_keys [ :alt, "k" ]
+    assert_selector "#graph_filters summary:focus"
+    send_keys :escape
+    assert_selector "#graph_filters:not([open]) summary:focus"
+    assert_selector "main h1", text: "Graph"
+    send_keys [ :alt, "j" ]
+
+    assert_selector "main canvas[data-graph-canvas]:focus"
+  end
+
   test "on a phone the full graph fits the screen, status line included, without scrolling the page" do
     page.current_window.resize_to(390, 844)
     visit graph_path(note: "plan")
@@ -157,6 +205,8 @@ class GraphViewTest < ApplicationSystemTestCase
   end
 
   private
+    def page_query = Rack::Utils.parse_query(URI(current_url).query)
+
     def graph_module_requested?
       evaluate_script("performance.getEntriesByType('resource').some((entry) => /d3-force|graph\\/scene/.test(entry.name))")
     end

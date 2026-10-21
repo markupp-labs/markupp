@@ -1,6 +1,7 @@
 # Rotas de grafo da FakeMarkuppApi sob /v1, com o cenário que o teste dá, pelo id da nota ou do cofre da rota:
 #   { links: { "1" => [LinkResponse] }, backlinks:, mentions:, backmentions:, suggestions:,
 #     communities: { "vault-1" => [CommunityResponse] }, graph: { "vault-1" => GraphResponse }, graph_etag: 'W/"1"' }
+# O grafo filtrado vem do cenário com a query na chave ("vault-1?orphans=false"), senão o do id.
 # Id sem cenário responde lista vazia e grafo sem nós. Sem graph_etag o grafo vem sem ETag, como antes do indexador.
 class FakeMarkuppGraph
   ROUTE = %r{\A/v1/(?:notes|vaults)/(?<id>[^/?]+)/(?<resource>[a-z]+)(?:\?|\z)}
@@ -41,7 +42,7 @@ class FakeMarkuppGraph
   private
     def graph(id, params)
       @graph_queries << params
-      @scenario.dig("graph", id) || EMPTY_GRAPH
+      @scenario.dig("graph", "#{id}?#{params.to_query}") || @scenario.dig("graph", id) || EMPTY_GRAPH
     end
 
     def of_type(items, type) = type ? items.select { it["type"] == type } : items

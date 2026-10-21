@@ -78,6 +78,31 @@ class GraphsControllerTest < ActionDispatch::IntegrationTest
     assert_select "#sidebar_view_graph", text: /Open a note to see its graph/
   end
 
+  test "the vault graph passes on the filters of the query, the way the API takes them, and drops the rest" do
+    get graph_path(format: :json, vault: "vault-1", orphans: "false", unresolved: "true", inferred: "false", community: "9")
+    get graph_path(format: :json, vault: "vault-1", orphans: "no", community: "nine")
+
+    assert_equal [ { "community" => "9", "inferred" => "false", "orphans" => "false" }, {} ], @api.graph_queries
+  end
+
+  test "the full graph page draws the graph of the filters in its query, with the filters panel set the same way" do
+    hub = { id: "plan", title: "plan", path: "work/plan.md" }
+    use_fake_api(notes: NOTES, graph: GRAPH.merge(communities: { "vault-1" => [ { id: 9, size: 2, hub: }, { id: 4, size: 1, hub: } ] }))
+    sign_in_as
+
+    get graph_path(note: "roadmap", orphans: "false", community: "9")
+
+    assert_select "main [data-graph-view-url-value=?]", graph_path(format: :json, vault: "vault-1", note: "roadmap", community: 9, orphans: false)
+    assert_select "main #graph_filters" do
+      assert_select "input[type=checkbox][name=orphans]:not([checked])"
+      assert_select "input[type=checkbox][name=unresolved][checked]"
+      assert_select "input[type=checkbox][name=inferred][checked]"
+      assert_select "select[name=community] option", count: 3
+      assert_select "select[name=community] option[value='']", text: "All communities"
+      assert_select "select[name=community] option[selected][value='9']", text: "plan (2)"
+    end
+  end
+
   test "the full graph page without a note goes back to the start, and an empty tenant has nothing to draw" do
     get graph_path
 
