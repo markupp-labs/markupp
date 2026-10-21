@@ -36,7 +36,7 @@ class GraphFiltersTest < ApplicationSystemTestCase
 
     assert_selector "main [data-graph-nodes='1']"
     assert_selector "main canvas[data-graph-canvas]:focus"
-    assert_equal "", find("#graph_filters .graph-filters-count").text
+    assert_equal "", find("#graph_filters .graph-filters-count", visible: :all).text(:all)
   end
 
   private
