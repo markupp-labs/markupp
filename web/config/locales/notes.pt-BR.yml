@@ -1,0 +1,50 @@
+pt-BR:
+  notes:
+    index:
+      pick: "Escolha uma nota na barra lateral."
+    form:
+      save: "Salvar"
+      unsaved: "Mudanças não salvas"
+      leave: "Há mudanças não salvas. Sair mesmo assim?"
+      leave_button: "Sair"
+      stay: "Ficar"
+      conflict: "Esta nota mudou no servidor desde que você a abriu."
+      reload: "Recarregar e descartar minhas mudanças"
+      overwrite: "Sobrescrever"
+      delete: "Apagar"
+      confirm_delete: "Apagar %{path}? Não dá para desfazer."
+      read_only: "Só leitura: seu papel aqui é viewer."
+      mode: "Visão da nota"
+      modes:
+        edit: "Editar"
+        read: "Ler"
+        split: "Lado a lado"
+      preview: "Pré-visualização"
+      missing_note: "Nenhuma nota chamada %{name}"
+      copy_code: "Copiar código"
+      copied: "Copiado"
+      copy_failed: "Não deu para copiar"
+    update:
+      saved: "Salvo"
+    create:
+      created: "Criada"
+    destroy:
+      deleted: "Apagada"
+    sidebar:
+      new_note: "Nova nota"
+      tree: "Notas"
+      empty: "Nenhuma nota ainda."
+      copied: "%{text} copiado"
+    tree_menu:
+      label: "Ações da nota"
+      new_here: "Nova nota aqui"
+      rename: "Renomear / mover"
+      delete: "Apagar"
+      copy_path: "Copiar caminho"
+      copy_wikilink: "Copiar wikilink"
+    not_found:
+      title: "Nota não encontrada"
+      hint: "Ela pode ter sido renomeada ou apagada. Escolha outra na barra lateral."
+    unreachable:
+      title: "Não dá para alcançar o servidor do markupp"
+      hint: "Tente de novo daqui a pouco."

@@ -1,0 +1,14 @@
+pt-BR:
+  my_invites:
+    invite:
+      join: "Entrar em %{tenant} como %{role}"
+      expires: "Expira em %{date}"
+      accept: "Aceitar"
+      decline: "Recusar"
+    update:
+      joined: "Você entrou em %{name} como %{role}."
+    destroy:
+      declined: "Convite recusado."
+    errors:
+      invite_not_found: "Esse convite não vale mais."
+      already_member: "Você já é membro desse tenant."

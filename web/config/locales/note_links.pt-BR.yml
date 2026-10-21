@@ -1,0 +1,17 @@
+pt-BR:
+  note_links:
+    sections:
+      backlinks: "Ligações de entrada"
+      outgoing: "Ligações de saída"
+      mentions: "Menções não ligadas"
+      suggestions: "Sugestões"
+    none:
+      backlinks: "Nenhuma ligação de entrada ainda"
+      outgoing: "Nenhuma ligação de saída"
+      mentions: "Nenhuma menção não ligada"
+      suggestions: "Nenhuma sugestão"
+    unresolved: "Nenhuma nota chamada %{title}"
+    maybe: "talvez %{title}"
+    show_more: "Mostrar mais"
+    copy: "Copiar %{wikilink}"
+    copy_title: "Copiar wikilink (%{keys})"

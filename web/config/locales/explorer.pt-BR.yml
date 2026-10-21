@@ -1,0 +1,25 @@
+pt-BR:
+  explorer:
+    mode_label: "Visão do Explorador"
+    now: "agora"
+    modes:
+      folders: "Pastas"
+      central: "Mais centrais"
+      linked: "Mais ligadas"
+      recent: "Mudadas por último"
+      orphans: "Órfãs"
+      communities: "Por comunidade"
+    community:
+      one: "Comunidade em torno de %{hub}, 1 nota"
+      other: "Comunidade em torno de %{hub}, %{count} notas"
+    no_community:
+      one: "Sem comunidade, 1 nota"
+      other: "Sem comunidade, %{count} notas"
+    no_community_heading: "Sem comunidade"
+    empty:
+      ranked:
+        title: "Nada ranqueado ainda"
+        hint: "As ligações entre as notas são calculadas um instante depois de salvar."
+      orphans:
+        title: "Nenhuma nota órfã"
+        hint: "Toda nota liga a outra ou é ligada por uma."

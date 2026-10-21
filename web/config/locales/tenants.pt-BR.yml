@@ -1,0 +1,38 @@
+pt-BR:
+  tenants:
+    roles:
+      owner: "owner"
+      admin: "admin"
+      member: "member"
+      viewer: "viewer"
+    index:
+      title: "Tenants"
+      first: "Crie seu primeiro tenant"
+      sidebar_label: "Tenants"
+      first_hint: "Um tenant guarda as notas que você compartilha com outras pessoas."
+      pending_invites: "Convites pendentes"
+      no_invites: "Nenhum convite pendente. Os convites aparecem aqui depois que seu email for confirmado."
+      confirm_email: "Confirme seu email"
+      filter: "Filtrar tenants"
+      filter_title: "Filtrar tenants (%{keys})"
+      new_tenant_title: "Novo tenant (%{keys})"
+      no_match: "Nenhum tenant passa pelo filtro."
+    new_tenant_form:
+      new_tenant: "Novo tenant"
+      create: "Criar"
+      cancel: "Cancelar"
+    card:
+      general: "Configurações de %{name}"
+      invites: "Convites de %{name}"
+      no_notes: "Nenhuma nota ainda"
+      notes:
+        one: "%{count} nota"
+        other: "%{count} notas"
+      last_edit: "última edição há %{time}"
+    create:
+      created: "%{name} criado."
+      invalid_name: "Use de 1 a 100 caracteres."
+    destroy:
+      deleted: "%{name} apagado."
+      gone: "Esse tenant não existe mais."
+      name_mismatch: "O nome não confere. Nada foi apagado."

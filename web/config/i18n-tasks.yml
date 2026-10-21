@@ -16,8 +16,10 @@ ignore_missing:
   - tenants.refuse_unconfirmed_deletion.name_mismatch
 
 ignore_unused:
-  # Procuradas pelo próprio Rails: erros e atributos do ActiveModel, e o time_ago_in_words com scope: :datetime_short.
+  # Procuradas pelo próprio Rails: erros e atributos do ActiveModel, rótulos do form.label e o time_ago_in_words com
+  # scope: :datetime_short.
   - activemodel.*
+  - helpers.label.*
   - datetime_short.*
   # Chave montada pelo leave_panel_session do PasswordResetsController.
   - password_resets.create.changed*

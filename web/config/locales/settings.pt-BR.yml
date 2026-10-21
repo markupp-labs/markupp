@@ -1,0 +1,95 @@
+pt-BR:
+  settings:
+    nav:
+      title: "Configurações"
+      close: "Fechar configurações"
+      accounts: "Conta"
+      appearances: "Aparência"
+      editors: "Editor"
+      tenant: "Tenant"
+      general: "Geral"
+      members: "Membros"
+      invites: "Convites"
+    accounts:
+      already_confirmed: "Seu email já está confirmado."
+      show:
+        title: "Conta"
+        email: "Email"
+        confirmation: "Confirmação do email"
+        confirmation_hint: "Confirme seu email para ver os convites enviados a ele. O email de confirmação traz um token."
+        send: "Enviar email de confirmação"
+        have_token: "Tenho um token"
+        password: "Senha"
+        password_hint: "O servidor manda um token para %{email}; use-o para escolher a senha nova."
+        change_password: "Trocar senha"
+        have_reset_token: "Tenho um token de redefinição"
+    appearances:
+      show:
+        title: "Aparência"
+        theme: "Tema"
+        light: "Claro"
+        dark: "Escuro"
+        follows_system: "Segue o tema do sistema até você escolher um."
+    editors:
+      show:
+        title: "Editor"
+        editor_style: "Estilo do editor"
+        plain: "Simples"
+        styled: "Estilizado"
+        editor_style_hint: "Simples mostra o markdown num tamanho só, como no VS Code. Estilizado aumenta os títulos, como o modo fonte do Obsidian."
+        vim_keys: "Atalhos do Vim"
+        vim_keys_hint: "Os atalhos do Vim dão ao editor os modos normal, inserção e visual do Vim, com :w, :q e :e. Esc duas vezes e depois Tab saem do editor."
+    general:
+      show:
+        tenant_name: "Nome do tenant"
+      danger_zone:
+        title: "Zona de perigo"
+        delete_tenant: "Apagar tenant"
+        hint: "Isto apaga o tenant e todas as notas dele para todos os membros. Não tem volta."
+        confirm: "Apagar %{name}? Isto apaga o tenant e todas as notas dele para todos os membros, e não dá para desfazer."
+        type_name: "Digite %{name} para confirmar"
+    members:
+      index:
+        email: "Email"
+        role: "Papel"
+        joined: "Entrou em"
+      member:
+        you: "(você)"
+        role_for: "Papel de %{email}"
+        joined: "Entrou em"
+        save: "Salvar"
+        remove: "Remover"
+        confirm_remove: "Remover %{email} de %{tenant}?"
+      update:
+        updated: "Papel atualizado."
+      destroy:
+        removed: "Membro removido."
+        left: "Você saiu de %{name}."
+      errors:
+        last_owner: "Um tenant precisa de pelo menos um owner. Torne outra pessoa owner antes."
+        role_above_own: "Você não pode dar nem mudar um papel acima do seu."
+        member_not_found: "Essa pessoa não é mais membro."
+    invites:
+      index:
+        token_hint: "Este servidor não tem email configurado. Mande você mesmo este token para %{email}; ele vale uma vez e expira em %{date}."
+        token: "Token do convite"
+        send: "Enviar convite"
+        empty: "Nenhum convite ainda. Convide alguém pelo formulário acima."
+        email: "Email"
+        role: "Papel"
+        status: "Situação"
+      invite:
+        expires: "Expira em %{date}"
+        accepted: "Aceito"
+        expired: "Expirado"
+        revoke: "Revogar"
+        confirm_revoke: "Revogar o convite de %{email}?"
+      create:
+        sent: "Convite enviado para %{email}."
+      destroy:
+        revoked: "Convite revogado."
+        not_pending: "Esse convite não está mais pendente."
+      errors:
+        invalid_request: "Informe um endereço como nome@exemplo.com."
+        already_member: "%{email} já é membro."
+        role_above_own: "Você não pode dar nem mudar um papel acima do seu."

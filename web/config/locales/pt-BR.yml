@@ -1,0 +1,123 @@
+pt-BR:
+  rate_limited:
+    one: "Tentativas demais. Tente de novo em %{count} minuto."
+    other: "Tentativas demais. Tente de novo em %{count} minutos."
+  busy_spinner:
+    label: "Carregando"
+  markupp_api:
+    errors:
+      session_expired: "Sua sessão expirou. Entre de novo."
+      forbidden: "Seu papel neste tenant não permite isso."
+      read_only: "Seu papel neste tenant é viewer, que só lê notas."
+      tenant_unavailable: "Você não tem mais acesso a esse tenant."
+  sessions:
+    back_to_login:
+      label: "Voltar para o login"
+    new:
+      title: "Entrar"
+      submit: "Entrar"
+      invite_hint: "Recebeu um token de convite?"
+      accept_invite: "Aceite aqui."
+      forgot_password: "Esqueceu a senha?"
+    destroy:
+      logged_out: "Você saiu."
+  invite_acceptances:
+    new:
+      title: "Aceitar um convite"
+      hint: "Cole o token do email de convite e escolha uma senha para a sua conta nova."
+      password: "Senha"
+      submit: "Criar conta"
+      log_in: "Entrar"
+  password_requests:
+    new:
+      title: "Redefinir sua senha"
+      submit: "Enviar"
+      token_hint: "Já tem o token?"
+      have_token: "Tenho um token"
+    create:
+      sent: "Se alguma conta usa esse email, um token de redefinição está a caminho."
+      invalid_email: "Informe o email da sua conta."
+      email_unavailable: "Este servidor não envia email. Peça a um administrador para redefinir sua senha."
+      local_auth_disabled: "O login com senha está desativado neste servidor."
+  password_resets:
+    new:
+      title: "Escolha uma senha nova"
+      hint: "Cole o token do email e escolha uma senha nova."
+      password: "Senha nova"
+      submit: "Redefinir senha"
+    create:
+      changed: "Senha alterada. Entre com a nova."
+      changed_signed_out: "Senha alterada. Entre de novo."
+  password_changes:
+    create:
+      sent: "Email de redefinição de senha enviado para %{email}. Use o token dele para escolher a senha nova."
+  email_verifications:
+    create:
+      sent: "Email de confirmação enviado. Pode levar alguns minutos."
+      email_unavailable: "Este servidor não envia email. Peça a um administrador para confirmar seu email."
+  email_confirmations:
+    new:
+      title: "Confirme seu email"
+      hint: "Cole o token do email de confirmação."
+      submit: "Confirmar"
+    create:
+      confirmed: "Email confirmado. Os convites pendentes agora aparecem na sua lista de tenants."
+  # Tempo curto para os cards de tenant ("há 2h"), pelo time_ago_in_words com este scope. Mesmas unidades do inglês,
+  # como as do compact_age do Explorer.
+  datetime_short:
+    half_a_minute: "1m"
+    less_than_x_seconds:
+      one: "1s"
+      other: "%{count}s"
+    x_seconds:
+      one: "1s"
+      other: "%{count}s"
+    less_than_x_minutes:
+      one: "1m"
+      other: "%{count}m"
+    x_minutes:
+      one: "1m"
+      other: "%{count}m"
+    about_x_hours:
+      one: "1h"
+      other: "%{count}h"
+    x_days:
+      one: "1d"
+      other: "%{count}d"
+    about_x_months:
+      one: "1mo"
+      other: "%{count}mo"
+    x_months:
+      one: "1mo"
+      other: "%{count}mo"
+    about_x_years:
+      one: "1y"
+      other: "%{count}y"
+    over_x_years:
+      one: "1y"
+      other: "%{count}y"
+    almost_x_years:
+      one: "1y"
+      other: "%{count}y"
+  errors:
+    show:
+      back_to_notes: "Voltar para as suas notas"
+      back_to_login: "Ir para o login"
+      "400":
+        title: "Requisição inválida"
+        hint: "O painel não conseguiu ler o que foi enviado. Volte e tente de novo."
+      "404":
+        title: "Nada em %{path}"
+        hint: "Confira o endereço, ou volte daqui."
+      "406":
+        title: "Não dá para responder nesse formato"
+        hint: "Este endereço só responde páginas web. Abra no navegador."
+      "422":
+        title: "Mudança recusada"
+        hint: "O formulário pode ter expirado. Recarregue a página e envie de novo."
+      "500":
+        title: "Algo quebrou no painel"
+        hint: "O erro foi registrado. Tente de novo daqui a pouco."
+      other:
+        title: "A requisição falhou"
+        hint: "Volte e tente de novo."

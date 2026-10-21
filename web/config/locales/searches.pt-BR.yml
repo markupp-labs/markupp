@@ -1,0 +1,5 @@
+pt-BR:
+  searches:
+    show:
+      empty: "Nada encontrado para \"%{query}\""
+      empty_hint: "Tente menos palavras, ou aspas para uma frase exata."

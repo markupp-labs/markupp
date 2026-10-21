@@ -4,6 +4,14 @@ en:
     attributes:
       note:
         title: "Name"
+        path: "Path"
+        content: "Content"
+      session_login:
+        email: "Email"
+        password: "Password"
+      token_form:
+        token: "Token"
+        password: "Password"
     errors:
       models:
         note:

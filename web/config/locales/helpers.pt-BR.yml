@@ -1,0 +1,11 @@
+pt-BR:
+  # Rótulos dos formulários sem model (form_with scope:), que o form.label procura em helpers.label.<scope>.
+  helpers:
+    label:
+      invite:
+        email: "Email"
+        role: "Papel"
+      password_request:
+        email: "Email"
+      tenant:
+        name: "Nome"

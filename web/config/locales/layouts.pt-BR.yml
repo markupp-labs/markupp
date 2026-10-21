@@ -1,0 +1,43 @@
+pt-BR:
+  layouts:
+    area_back:
+      label: "Voltar"
+      title: "Voltar (Esc)"
+    confirm_dialog:
+      cancel: "Cancelar"
+      delete: "Apagar"
+    application:
+      notes: "Notas"
+      light_theme: "Tema claro"
+      dark_theme: "Tema escuro"
+      search: "Buscar"
+      search_notes: "Buscar notas"
+      search_placeholder: "Buscar no conteúdo das notas"
+      search_syntax: "\"frase exata\"  isto OR aquilo  -palavra"
+      search_keys: "↑↓ ^J ^K mover  ↵ abrir  esc fechar"
+      hide_sidebar: "Esconder barra lateral"
+      show_sidebar: "Mostrar barra lateral"
+      resize_sidebar: "Redimensionar barra lateral"
+      links_empty:
+        title: "Abra uma nota para ver as ligações dela"
+        hint: "As ligações de saída e de entrada aparecem aqui."
+      graph_empty:
+        title: "Abra uma nota para ver o grafo dela"
+        hint: "As notas em volta dela aparecem aqui."
+    activity_bar:
+      label: "Visões"
+      explorer: "Explorador"
+      links: "Ligações"
+      graph: "Grafo"
+      account: "Conta"
+      settings: "Configurações"
+      settings_shortcut: "Configurações (%{keys})"
+    tenant_switcher:
+      switch: "Trocar de tenant"
+      new_tenant: "Novo tenant"
+      all_tenants: "Todos os tenants"
+      all_tenants_title: "Todos os tenants (g t)"
+    account_menu:
+      label: "Menu da conta"
+      signed_in_as: "Conectado como"
+      log_out: "Sair"
