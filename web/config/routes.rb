@@ -3,6 +3,9 @@ Rails.application.routes.draw do
 
   resources :notes, only: [ :index, :show, :new, :create, :update, :destroy ] do
     resource :links, only: :show, controller: "note_links"
+    # Próxima página de uma seção da visão Links (o Show more).
+    resources :link_sections, path: "links", param: :section, only: :show, controller: "note_link_sections",
+                              constraints: { section: /backlinks|outgoing|mentions|suggestions/ }
     resource :graph, only: :show, controller: "note_graphs"
   end
   resource :graph, only: :show

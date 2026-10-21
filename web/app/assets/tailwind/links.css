@@ -77,6 +77,19 @@
     @apply text-xs text-ink-muted;
   }
 
+  /* Show more: o frame dele ocupa a linha; depois de carregar, a lista da página seguinte segue a da seção. */
+  .links-more {
+    @apply block;
+
+    & > turbo-frame {
+      @apply flex items-center;
+    }
+  }
+
+  .links-more-link {
+    @apply text-ink-muted hover:text-ink focus-visible:text-ink;
+  }
+
   .links-copy {
     @apply shrink-0 rounded-md p-1 text-ink-muted hover:bg-accent-soft hover:text-ink focus-visible:text-ink;
   }

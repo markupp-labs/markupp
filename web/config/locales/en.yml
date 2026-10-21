@@ -159,7 +159,7 @@ en:
       move_tenants: "Move between tenants"
       open_tenant: "Enter the tenant"
       links_move: "Move through the sections and the notes"
-      links_open: "Open the note, or fold the section"
+      links_open: "Open the note, fold the section or show more"
       links_copy_wikilink: "Copy the wikilink of a suggestion"
       graph_move: "Next and previous note in the graph"
       graph_open: "Open the note"

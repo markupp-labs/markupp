@@ -1,0 +1,4 @@
+<%# Página seguinte de uma seção da visão Links, no frame do Show more que a pediu. %>
+<%= turbo_frame_tag links_page_frame_id(@section, @offset), target: "_top" do %>
+  <ul class="links-list"><%= render "note_links/page", section: @section, items: @items, offset: @offset %></ul>
+<% end %>

@@ -4,7 +4,7 @@
 <%= turbo_frame_tag "note_links", target: "_top" do %>
   <% NoteLinkSection::NAMES.each do |name| %>
     <%= links_section(name, @sections[name]) do %>
-      <%= render partial: "note_links/#{name}", collection: @sections[name], as: :item %>
+      <%= render "note_links/page", section: name, items: @sections[name], offset: 0 %>
     <% end %>
   <% end %>
   <p role="status" data-note-links-target="status" class="truncate px-2 text-xs text-ink-muted"></p>

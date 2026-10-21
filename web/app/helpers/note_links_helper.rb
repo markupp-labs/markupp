@@ -6,7 +6,7 @@ module NoteLinksHelper
   # O controller fica no frame, que o Turbo mantém: só o conteúdo dele troca.
   def note_links_frame(note)
     turbo_frame_tag "note_links", src: note_links_path(note), loading: :lazy, target: "_top",
-                    data: { controller: "note-links", action: "keydown->note-links#navigate turbo:frame-load->note-links#focusWhenWaiting",
+                    data: { controller: "note-links", action: "keydown->note-links#navigate turbo:frame-load->note-links#frameLoaded",
                             note_links_copied_value: t("notes.sidebar.copied"), note_links_copy_failed_value: t("notes.form.copy_failed") } do
       busy_spinner(busy_when: "#note_links[aria-busy]", class: "px-2")
     end
@@ -19,6 +19,9 @@ module NoteLinksHelper
                   items.empty? ? tag.p(t("note_links.none.#{name}"), class: "links-none") : tag.ul(class: "links-list", &) ])
     end
   end
+
+  # Frame de uma página da seção a partir de offset: o Show more da página anterior e, depois de carregar, as linhas.
+  def links_page_frame_id(section, offset) = "links_#{section}_#{offset}"
 
   # O que a linha mostra à direita: o predicado na ligação tipada, embed e inferred nas outras que não são o wikilink comum.
   def link_kind(link)
