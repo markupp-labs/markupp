@@ -1,5 +1,6 @@
 <%# Danger zone, como a do GitHub: só o owner apaga o tenant. O botão pede pelo diálogo do painel (layouts/_confirm_dialog),
-    que só libera o Delete tenant com o nome exato digitado (data-confirm-match). %>
+    que só libera o Delete tenant com o nome exato digitado (data-confirm-match) e o manda no pedido como confirm_name
+    (data-confirm-match-param), para o painel conferir de novo antes de chamar a API. %>
 <section id="danger_zone" aria-labelledby="danger_zone_title" class="mt-8">
   <h2 id="danger_zone_title" class="md-heading font-semibold text-danger"><%= t(".title") %></h2>
   <div class="mt-2 flex flex-col gap-3 rounded-md border border-danger p-3 md:flex-row md:items-center md:justify-between">
@@ -10,6 +11,7 @@
     <%= button_to t(".delete_tenant"), tenant_path(current_tenant.id), method: :delete, id: "delete_tenant",
                   class: "btn btn-danger shrink-0 self-start md:self-auto", form: { class: "shrink-0" },
                   data: { turbo_confirm: t(".confirm", name: current_tenant.name), confirm_button: t(".delete_tenant"),
-                          confirm_match: current_tenant.name, confirm_match_label: t(".type_name", name: current_tenant.name) } %>
+                          confirm_match: current_tenant.name, confirm_match_param: "confirm_name",
+                          confirm_match_label: t(".type_name", name: current_tenant.name) } %>
   </div>
 </section>

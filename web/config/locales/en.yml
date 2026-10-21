@@ -225,6 +225,7 @@ en:
     destroy:
       deleted: "Deleted %{name}."
       gone: "That tenant no longer exists."
+      name_mismatch: "The name doesn't match. Nothing was deleted."
   invite_acceptances:
     new:
       title: "Accept an invite"
