@@ -163,7 +163,7 @@ func (h *adminHandler) deleteTenant(w http.ResponseWriter, r *http.Request) {
 	case errors.Is(err, auth.ErrMembershipNotFound):
 		writeTenantNotFound(w, err)
 	default:
-		writeInternal(w, "apagar o tenant", err)
+		writeAdminInternal(w, "apagar o tenant", err)
 	}
 }
 

@@ -11,6 +11,7 @@ import (
 
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/auth"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/identity"
+	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/notes"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/storage"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/storage/storagetest"
 )
@@ -28,18 +29,18 @@ func eventoDeApagarTenant(ator identity.Actor) auth.AuditEventRecord {
 // t2 com uma nota da outra dona e um vínculo da dona de t1.
 func semearDoisTenants(t *testing.T, db *pgxpool.Pool) {
 	t.Helper()
-	notas := storage.NewPostgresNotesRepository(db)
+	notas := storage.NewPostgresNotesRepository(db, "simple")
 	ctxDona := storagetest.SeedMember(t, db, donaDoT1, "va")
 	ctxU2 := storagetest.SeedMember(t, db, identity.Actor{UserID: "u2", TenantID: "t1", Role: "member"}, "vb")
-	require.NoError(t, notas.Save(ctxDona, notaNoCofre("n-dona", "dela.md", "va")))
-	require.NoError(t, notas.Save(ctxU2, notaNoCofre("n-u2", "dele.md", "vb")))
+	salvarNota(ctxDona, t, notas, notaNoCofre("n-dona", "dela.md", "va"))
+	salvarNota(ctxU2, t, notas, notaNoCofre("n-u2", "dele.md", "vb"))
 	inv := conviteDe(donaDoT1, "c1", "nova@markupp.dev")
 	require.NoError(t, storage.NewPostgresAdminRepository(db).CreateInviteTx(ctxDona, inv, auth.HashOpaqueToken("tok"), eventoDoConvite(inv), true))
 	_, err := db.Exec(context.Background(), "INSERT INTO note_search_index (note_id, document) VALUES ('n-dona', to_tsvector('dela'))")
 	require.NoError(t, err)
 	ctxOutra := storagetest.SeedMember(t, db, identity.Actor{UserID: "outra", TenantID: "t2", Role: "owner"}, "vc")
 	storagetest.SeedMember(t, db, identity.Actor{UserID: "dona", TenantID: "t2", Role: "member"}, "vd")
-	require.NoError(t, notas.Save(ctxOutra, notaNoCofre("n-outra", "outra.md", "vc")))
+	salvarNota(ctxOutra, t, notas, notaNoCofre("n-outra", "outra.md", "vc"))
 }
 
 func TestAdminRepo_DeleteTenantTx_ApagaTudoDoTenantEPreservaOOutroEAsContas(t *testing.T) {
@@ -80,4 +81,10 @@ func TestRLS_SoOwnerApagaOTenant(t *testing.T) {
 		assert.ErrorIs(t, err, auth.ErrMembershipNotFound, papel)
 		assert.Equal(t, 1, countRows(t, db, "SELECT count(*) FROM tenants WHERE id = 't1'"), "%s nao apaga o tenant", papel)
 	}
+}
+
+func salvarNota(ctx context.Context, t *testing.T, notas *storage.PostgresNotesRepository, nota notes.Note) {
+	t.Helper()
+	_, err := notas.Save(ctx, nota)
+	require.NoError(t, err)
 }
