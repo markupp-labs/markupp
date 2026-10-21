@@ -142,7 +142,8 @@ A conta é da instância e participa de vários tenants, cada um com um papel
 ([ADR-0035](adrs/ADR-0035-conta-global-com-vinculo-por-tenant.md)). Quem tem um tenant só não
 precisa dizer nada. Quem tem mais de um escolhe por requisição com o cabeçalho
 `X-Markupp-Tenant`, usando um id de `GET /me/tenants`. Qualquer conta cria tenant em
-`POST /tenants` e vira owner dele.
+`POST /tenants` e vira owner dele. Só o owner apaga o tenant, em `DELETE /tenants/{id}`, e
+apaga de vez: cofres, notas, vínculos e convites vão junto, e as contas continuam.
 
 A conta de auto-registro (`MARKUPP_AUTH_REGISTRATION_ENABLED=true`) nasce sem email provado e
 não recebe convite pela lista até verificar. Com SMTP configurado, ela recebe o email de

@@ -113,7 +113,7 @@ _Avoid_: usuário do tenant, perfil
 
 **Vínculo**:
 A participação de uma conta num tenant, com um papel: owner, admin, member ou viewer. Owner e
-admin administram o tenant, e o viewer só lê nos cofres de que é membro. O acesso às notas
+admin administram o tenant, só o owner apaga o tenant, e o viewer só lê nos cofres de que é membro. O acesso às notas
 continua sendo pelo cofre.
 _Avoid_: associação, assinatura, membership
 
