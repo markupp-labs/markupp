@@ -80,7 +80,7 @@ pin "@codemirror/lang-php", to: "@codemirror--lang-php.js", preload: false # @6.
 pin "@lezer/php", to: "@lezer--php.js", preload: false # @1.0.6
 # Preview de markdown; licencas de quem nao traz o aviso no arquivo em vendor/javascript/LICENSES.txt.
 pin "dompurify" # @3.4.16
-pin "markdown-it" # @15.0.2
+pin "markdown-it" # @15.0.3
 pin "entities" # @8.1.0 (bundle do jsdelivr +esm, ver o cabecalho do arquivo)
 pin "linkify-it" # @6.1.0
 pin "mdurl" # @2.1.0
