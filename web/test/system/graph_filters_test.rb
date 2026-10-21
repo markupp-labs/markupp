@@ -40,6 +40,23 @@ class GraphFiltersTest < ApplicationSystemTestCase
     assert_equal "", find("#graph_filters .graph-filters-count", visible: :all).text(:all)
   end
 
+  test "a filter in the address opens the filters panel on a desktop" do
+    visit graph_path(note: "plan", orphans: "false")
+    assert_selector "main [data-graph-nodes='0']"
+
+    assert_selector "#graph_filters[open]"
+  end
+
+  test "on a phone a filter in the address leaves the filters panel closed over the graph" do
+    page.current_window.resize_to(390, 844)
+    visit graph_path(note: "plan", orphans: "false")
+    assert_selector "main [data-graph-nodes='0']"
+
+    assert_selector "#graph_filters:not([open]) .graph-filters-count", text: "[1]"
+  ensure
+    page.current_window.resize_to(1400, 900)
+  end
+
   test "back undoes one filter at a time and redraws without loading the page again" do
     visit graph_path(note: "plan")
     assert_selector "main [data-graph-nodes='1']"
