@@ -1,5 +1,6 @@
 import { Controller } from "@hotwired/stimulus"
 import { replaceQuery } from "controllers/url_query"
+import { desktop } from "controllers/viewport"
 
 // Filtros do grafo cheio (graphs/_filters), como os do graph view do Obsidian. Cada troca é um passo do histórico com os
 // filtros na query da página (pushState, sem visita: o foco fica onde estava, e recarregar ou compartilhar o endereço
@@ -18,8 +19,10 @@ export default class extends Controller {
   static outlets = [ "graph-view" ]
   static values = { code: String, clearCode: String }
 
+  // No celular o painel cobre o grafo: o filtro da query não o abre sozinho, como no desktop (graphs/_filters).
   connect() {
     this.visitId = turboVisitId(window.history.state)
+    if (!desktop.matches) this.element.open = false
   }
 
   change() {

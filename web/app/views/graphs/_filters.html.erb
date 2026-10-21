@@ -1,8 +1,8 @@
 <%# Filtros do grafo cheio, como os do graph view do Obsidian (graph_filters_controller.js): um painel recolhível no
     cabeçalho que abre por cima do canvas. Marcado é mostrado; desmarcar esconde as órfãs, os nós sem nota ou as ligações
     inferidas, e a comunidade recorta. filters: os da query (GraphsController#graph_filters), que o painel repete, e com
-    algum deles o painel já abre; communities: as do cofre, as maiores primeiro. A tecla de cada controle vem do registro
-    único (ShortcutsHelper). %>
+    algum deles o painel já abre (no desktop: no celular o controller o fecha); communities: as do cofre, as maiores
+    primeiro. A tecla de cada controle vem do registro único (ShortcutsHelper). %>
 <% title = t(".title") %>
 <% code = ->(shortcut) { "Key#{shortcut_key(shortcut).upcase}" } %>
 <% community_options = [ [ t(".all_communities"), "" ],
