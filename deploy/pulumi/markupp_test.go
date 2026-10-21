@@ -191,7 +191,7 @@ func TestNewMarkupp_DeploymentDaAPI_LeOBancoESegredoDoSecret(t *testing.T) {
 	api := monitor.single(t, "kubernetes:apps/v1:Deployment")
 	container := firstContainer(t, api)
 	envs := container["env"].ArrayValue()
-	require.Len(t, envs, 2)
+	require.Len(t, envs, 3)
 	assert.Equal(t, "MARKUPP_DATABASE_URL", envs[0].ObjectValue()["name"].StringValue())
 	assert.Equal(t, "MARKUPP_AUTH_SECRET", envs[1].ObjectValue()["name"].StringValue())
 	refDB := at(t, envs[0].ObjectValue(), "valueFrom", "secretKeyRef")
@@ -200,6 +200,19 @@ func TestNewMarkupp_DeploymentDaAPI_LeOBancoESegredoDoSecret(t *testing.T) {
 	refAuth := at(t, envs[1].ObjectValue(), "valueFrom", "secretKeyRef")
 	assert.Equal(t, "markupp-db-app", at(t, refAuth.ObjectValue(), "name").StringValue())
 	assert.Equal(t, "auth-secret", at(t, refAuth.ObjectValue(), "key").StringValue())
+}
+
+func TestNewMarkupp_DeploymentDaAPI_AnunciaOHostComoURLPublica(t *testing.T) {
+	monitor := deploy(t, argsDeTeste())
+
+	container := firstContainer(t, monitor.single(t, "kubernetes:apps/v1:Deployment"))
+	var publicURL string
+	for _, env := range container["env"].ArrayValue() {
+		if env.ObjectValue()["name"].StringValue() == "MARKUPP_PUBLIC_URL" {
+			publicURL = env.ObjectValue()["value"].StringValue()
+		}
+	}
+	assert.Equal(t, "https://markupp.dev.br", publicURL, "o issuer do OAuth e o host que o Gateway publica com TLS (ADR-0041)")
 }
 
 func TestNewMarkupp_DeploymentDaAPI_UsaDuasReplicasESondaHealthz(t *testing.T) {

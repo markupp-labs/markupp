@@ -1,6 +1,6 @@
 module github.com/ifsc-ES2/projeto-markupp/markupp
 
-go 1.26.9
+go 1.26.10
 
 require (
 	github.com/go-chi/chi/v5 v5.2.5
@@ -10,7 +10,13 @@ require (
 	github.com/stretchr/testify v1.11.1
 	github.com/testcontainers/testcontainers-go v0.44.0
 	github.com/testcontainers/testcontainers-go/modules/postgres v0.44.0
+	github.com/yuin/goldmark v1.8.6
+	go.abhg.dev/goldmark/wikilink v0.6.0
 	golang.org/x/crypto v0.56.0
+	golang.org/x/sync v0.22.0
+	golang.org/x/text v0.41.0
+	gonum.org/v1/gonum v0.17.0
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
@@ -65,9 +71,6 @@ require (
 	go.opentelemetry.io/otel/metric v1.44.0 // indirect
 	go.opentelemetry.io/otel/trace v1.44.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
-	golang.org/x/sync v0.22.0 // indirect
 	golang.org/x/sys v0.47.0 // indirect
-	golang.org/x/text v0.41.0 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
 	modernc.org/sqlite v1.50.0 // indirect
 )

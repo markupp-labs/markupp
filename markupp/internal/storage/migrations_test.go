@@ -95,6 +95,38 @@ func TestMigracao00013_NaoReescreveATabelaDeNotas(t *testing.T) {
 		"reescrever notas trava leitura e escrita durante o upgrade")
 }
 
+func TestMigracao00016_NotasAnteriores_GanhamOHashDoConteudo(t *testing.T) {
+	pool := storagetest.EmptyPool(t)
+	provider := gooseProvider(t, pool)
+	_, err := provider.UpTo(context.Background(), 15)
+	require.NoError(t, err)
+	storagetest.SeedMember(t, pool, identity.Actor{UserID: "ua", TenantID: "t1", Role: "member"}, "va")
+	_, err = pool.Exec(context.Background(), `INSERT INTO notes (id, tenant_id, vault_id, path, content, created_at, updated_at)
+		VALUES ('antiga', 't1', 'va', 'antiga.md', 'ação', now(), now())`)
+	require.NoError(t, err)
+
+	_, err = provider.Up(context.Background())
+
+	require.NoError(t, err)
+	assert.Equal(t, 1, countRows(t, pool, "SELECT count(*) FROM notes WHERE encode(content_sha256, 'hex') = '"+sha256DeAcao+"'"))
+}
+
+func TestMigracao00016_DownEUpComNota(t *testing.T) {
+	pool := storagetest.EmptyPool(t)
+	provider := gooseProvider(t, pool)
+	_, err := provider.Up(context.Background())
+	require.NoError(t, err)
+	storagetest.SeedMember(t, pool, identity.Actor{UserID: "ua", TenantID: "t1", Role: "member"}, "va")
+	_, err = pool.Exec(context.Background(), `INSERT INTO notes (id, tenant_id, vault_id, path, content, created_at, updated_at)
+		VALUES ('n1', 't1', 'va', 'n1.md', 'oi', now(), now())`)
+	require.NoError(t, err)
+
+	_, err = provider.DownTo(context.Background(), 15)
+	require.NoError(t, err)
+	_, err = provider.Up(context.Background())
+	require.NoError(t, err)
+}
+
 func TestMigracao00013_DownEUp(t *testing.T) {
 	pool := storagetest.EmptyPool(t)
 	provider := gooseProvider(t, pool)
@@ -129,6 +161,19 @@ func TestMigracao00015_DownEUpComPedidosDaConta(t *testing.T) {
 	contaAutoRegistrada(t, pool, "u1", "nova@markupp.dev", true)
 
 	_, err = provider.DownTo(context.Background(), 14)
+	require.NoError(t, err)
+	_, err = provider.Up(context.Background())
+	require.NoError(t, err)
+}
+
+func TestMigracao00035_DownEUpComTenantSemeado(t *testing.T) {
+	pool := storagetest.EmptyPool(t)
+	provider := gooseProvider(t, pool)
+	_, err := provider.Up(context.Background())
+	require.NoError(t, err)
+	storagetest.SeedMember(t, pool, identity.Actor{UserID: "dona", TenantID: "t1", Role: "owner"}, "va")
+
+	_, err = provider.DownTo(context.Background(), 34)
 	require.NoError(t, err)
 	_, err = provider.Up(context.Background())
 	require.NoError(t, err)

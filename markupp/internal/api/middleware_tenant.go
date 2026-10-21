@@ -6,6 +6,8 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/go-chi/chi/v5"
+
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/auth"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/identity"
 )
@@ -21,18 +23,46 @@ type TenantResolver interface {
 // RequireTenant completa o ator autenticado com o tenant e o papel que o banco
 // registra para ele. O cabeçalho só escolhe entre os tenants da pessoa.
 func RequireTenant(resolver TenantResolver) func(http.Handler) http.Handler {
+	return resolveTenantBy(resolver, tenantFromHeader, writeTenantError)
+}
+
+func tenantFromHeader(r *http.Request) string {
+	return r.Header.Get(TenantHeader)
+}
+
+// resolveTenantBy completa o ator com o vínculo do tenant que requested lê da
+// requisição, e responde com writeErr quando o vínculo falta.
+func resolveTenantBy(resolver TenantResolver, requested func(*http.Request) string, writeErr func(http.ResponseWriter, error)) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			actor, _ := identity.ActorFrom(r.Context())
-			m, err := resolver.ResolveTenant(r.Context(), actor.UserID, r.Header.Get(TenantHeader))
+			m, err := resolver.ResolveTenant(r.Context(), actor.UserID, requested(r))
 			if err != nil {
-				writeTenantError(w, err)
+				writeErr(w, err)
 				return
 			}
 			actor.TenantID, actor.Role = m.TenantID, m.Role
 			next.ServeHTTP(w, r.WithContext(identity.WithActor(r.Context(), actor)))
 		})
 	}
+}
+
+// requireTenantInPath completa o ator com o vínculo do tenant {id} da rota. Sem vínculo,
+// responde 404, para quem é de fora não descobrir se o tenant existe.
+func requireTenantInPath(resolver TenantResolver) func(http.Handler) http.Handler {
+	return resolveTenantBy(resolver, tenantFromPath, writeTenantNotFound)
+}
+
+func tenantFromPath(r *http.Request) string {
+	return chi.URLParam(r, "id")
+}
+
+func writeTenantNotFound(w http.ResponseWriter, err error) {
+	if errors.Is(err, auth.ErrMembershipNotFound) {
+		writeError(w, "tenant_not_found", "tenant inexistente", http.StatusNotFound)
+		return
+	}
+	writeTenantError(w, err)
 }
 
 func writeTenantError(w http.ResponseWriter, err error) {
