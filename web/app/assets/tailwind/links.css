@@ -41,8 +41,10 @@
     @apply py-0.5 pl-6 text-xs/6 text-ink-muted;
   }
 
+  /* relative: contém o texto só para leitor de tela (absoluto) na linha; sem ele, o texto escapa para o fim da barra
+     lateral e a faz rolar inteira. */
   .links-item {
-    @apply flex items-center;
+    @apply relative flex items-center;
   }
 
   /* Linha como a do Explorer plano: título, pasta apagada e, à direita, o tipo da ligação. Recuada sob a seta da seção. */
