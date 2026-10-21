@@ -1,6 +1,6 @@
 require "application_system_test_case"
 
-# Visões do Explorer: o seletor (ou Alt+O) troca a árvore por listas planas do cofre sem sair da página, e as linhas
+# Visões do Explorer: o seletor (ou Alt+O, que antes abre o Explorer escondido) troca a árvore por listas planas do cofre sem sair da página, e as linhas
 # andam por j/k, abrem o menu de contexto e recebem o Alt+h como a árvore.
 class ExplorerModesTest < ApplicationSystemTestCase
   NOTES = [ { id: "hub", path: "work/hub.md", content: "# Hub\n", degree: 4, pagerank: 0.5, community: 2 },
@@ -71,5 +71,22 @@ class ExplorerModesTest < ApplicationSystemTestCase
     find(".cm-content").click
     send_keys [ :alt, "h" ]
     assert_selector "[role=treeitem][aria-current=page]:focus", text: "leaf"
+  end
+
+  test "alt+o opens the explorer first when the sidebar is hidden or shows another view" do
+    click_on "Hide sidebar"
+    assert_no_selector "nav#sidebar"
+    find(".cm-content").click
+    send_keys [ :alt, "o" ]
+    assert_selector "select#explorer_mode option:focus", visible: :all
+    assert_selector "[role=tab][aria-label=Explorer][aria-selected=true]", match: :first
+    send_keys :escape
+
+    send_keys [ :control, :shift, "l" ]
+    assert_selector "#sidebar_view_links #links_backlinks summary:focus"
+    send_keys [ :alt, "o" ]
+
+    assert_selector "select#explorer_mode option:focus", visible: :all
+    assert_selector "[role=tab][aria-label=Explorer][aria-selected=true]", match: :first
   end
 end
