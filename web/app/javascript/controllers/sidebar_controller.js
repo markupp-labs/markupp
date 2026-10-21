@@ -9,8 +9,8 @@ const COOKIE_MAX_AGE = 60 * 60 * 24 * 365
 const KEY_STEP = 16
 // Atalho de cada visão, como no VS Code (Ctrl+Shift+E e F); Links e Graph pegam L e G, livres no navegador e no editor.
 const VIEW_KEYS = { KeyE: "explorer", KeyL: "links", KeyG: "graph" }
-// Setas e j/k (h/l na linha da gaveta) andam entre os ícones da barra de atividades, dando a volta nas pontas.
-const TAB_STEPS = { ArrowDown: 1, ArrowRight: 1, j: 1, l: 1, ArrowUp: -1, ArrowLeft: -1, k: -1, h: -1 }
+// Setas e j/k (h/l na linha da gaveta) andam entre os ícones da barra de atividades, dando a volta nas pontas; teclas pelo code.
+const TAB_STEPS = { ArrowDown: 1, ArrowRight: 1, KeyJ: 1, KeyL: 1, ArrowUp: -1, ArrowLeft: -1, KeyK: -1, KeyH: -1 }
 const desktop = window.matchMedia("(width >= 48rem)")
 
 export default class extends Controller {
@@ -61,7 +61,7 @@ export default class extends Controller {
 
   // Só o ícone com o foco fica no Tab (roving tabindex); Enter ou espaço mostram a visão dele pelo clique do botão.
   moveTab(event) {
-    const step = TAB_STEPS[event.key]
+    const step = TAB_STEPS[event.code]
     if (!step || event.altKey || event.ctrlKey || event.metaKey) return
 
     event.preventDefault()
