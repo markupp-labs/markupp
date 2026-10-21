@@ -4,7 +4,8 @@ import { Controller } from "@hotwired/stimulus"
 // visíveis (as de uma seção dobrada ficam de fora), Enter abre a nota ou dobra a seção (o próprio link e o summary), y
 // numa sugestão copia o wikilink dela, como o yank do Vim. Teclas pelo code. Quem apertou Ctrl+Shift+L antes de o frame
 // chegar ficou com o foco na visão; quando ele chega, o foco desce para a primeira seção. O Show more no fim de uma seção
-// cheia carrega a página seguinte no frame dele; o link sai e o foco desce para a primeira linha nova.
+// cheia carrega a página seguinte no frame dele; o link sai, a contagem da seção passa à que a página trouxe e o foco
+// desce para a primeira linha nova.
 const STEPS = { ArrowDown: 1, KeyJ: 1, ArrowUp: -1, KeyK: -1 }
 const ITEMS = "summary, [data-links-item]"
 const STATUS_TIMEOUT = 2000
@@ -28,10 +29,17 @@ export default class extends Controller {
 
   frameLoaded({ target }) {
     if (target == this.element) return this.focusWhenWaiting()
+    this.updateCount(target)
     if (document.activeElement != document.body) return
 
     const first = target.querySelector(ITEMS) ?? target.closest("details")?.querySelector("summary")
     first?.focus()
+  }
+
+  updateCount(frame) {
+    const count = frame.querySelector("[data-links-count]")?.dataset.linksCount
+    const summary = frame.closest("details")?.querySelector(".links-section-count")
+    if (count && summary) summary.textContent = count
   }
 
   focusWhenWaiting() {

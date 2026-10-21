@@ -15,9 +15,15 @@ module NoteLinksHelper
   # Seção recolhível, aberta, com o nome e a contagem no summary; vazia, diz que não há nada.
   def links_section(name, items, &)
     tag.details(id: "links_#{name}", open: true, class: "links-section") do
-      safe_join([ links_section_summary(name, items.size),
+      safe_join([ links_section_summary(name, links_count(items, 0)),
                   items.empty? ? tag.p(t("note_links.none.#{name}"), class: "links-none") : tag.ul(class: "links-list", &) ])
     end
+  end
+
+  # Contagem da seção até a página que começa em offset: a API não dá o total, então a página cheia diz que há mais (100+)
+  # e a que não enche dá o número real.
+  def links_count(items, offset)
+    "#{offset + items.size}#{"+" if items.size == NoteLinkSection::PAGE_SIZE}"
   end
 
   # Frame de uma página da seção a partir de offset: o Show more da página anterior e, depois de carregar, as linhas.
