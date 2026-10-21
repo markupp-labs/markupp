@@ -47,8 +47,13 @@ export default class extends Controller {
   changeDepth({ currentTarget, params: { depth } }) {
     this.element.querySelectorAll("[data-graph-view-depth-param]").forEach((button) => button.setAttribute("aria-pressed", String(button == currentTarget)))
     this.element.dataset.graphDepth = depth
+    this.redraw({ depth })
+  }
+
+  // Pede de novo o grafo com a query trocada; valor null tira o parâmetro.
+  redraw(query) {
     const url = new URL(this.urlValue, window.location.href)
-    url.searchParams.set("depth", depth)
+    for (const [ name, value ] of Object.entries(query)) value == null ? url.searchParams.delete(name) : url.searchParams.set(name, value)
     this.drawn = this.draw(url)
   }
 
