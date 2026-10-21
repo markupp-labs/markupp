@@ -79,6 +79,34 @@ class GraphFiltersTest < ApplicationSystemTestCase
     assert_selector "#graph_filters input[name=inferred]:checked", visible: :all
   end
 
+  test "back, forward and back again from a note opened by the filtered graph shows the filtered graph" do
+    visit graph_path(note: "plan")
+    assert_selector "main [data-graph-nodes='1']"
+    send_keys "i"
+    send_keys "j", :enter
+    assert_field "Path", with: "/roadmap"
+    go_back
+    assert_selector "main [data-graph-nodes='1']"
+    go_forward
+    assert_field "Path", with: "/roadmap"
+
+    go_back
+    assert_equal({ "note" => "plan", "inferred" => "false" }, page_query)
+    assert_selector "main [data-graph-nodes='1']"
+    assert_selector "#graph_filters input[name=inferred]:not(:checked)", visible: :all
+  end
+
+  test "back from the graph to the note and forward again shows the graph" do
+    visit note_path("plan")
+    send_keys [ :alt, "g" ]
+    assert_selector "main [data-graph-nodes='1']"
+    go_back
+    assert_field "Path", with: "/work/plan"
+
+    go_forward
+    assert_selector "main [data-graph-nodes='1']"
+  end
+
   private
     def page_query = Rack::Utils.parse_query(URI(current_url).query)
 end
