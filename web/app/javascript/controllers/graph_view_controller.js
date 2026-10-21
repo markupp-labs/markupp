@@ -1,5 +1,6 @@
 import { Controller } from "@hotwired/stimulus"
 import { Turbo } from "@hotwired/turbo-rails"
+import { replaceQuery } from "controllers/url_query"
 
 // Grafo em canvas (graphs/_canvas), na visão Graph da barra lateral e na tela cheia do cofre. Só quando o canvas fica à
 // vista o controller baixa a cena (graph/scene.js, que traz o d3-force) e pede o json; antes disso nada baixa. Fora da
@@ -52,9 +53,7 @@ export default class extends Controller {
 
   // Pede de novo o grafo com a query trocada; valor null tira o parâmetro.
   redraw(query) {
-    const url = new URL(this.urlValue, window.location.href)
-    for (const [ name, value ] of Object.entries(query)) value == null ? url.searchParams.delete(name) : url.searchParams.set(name, value)
-    this.drawn = this.draw(url)
+    this.drawn = this.draw(replaceQuery(new URL(this.urlValue, window.location.href), query))
   }
 
   press(event) {
