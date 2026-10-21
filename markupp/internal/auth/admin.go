@@ -22,6 +22,7 @@ var (
 	ErrInvalidEmail  = errors.New("email invalido")
 	ErrAlreadyMember = errors.New("email ja pertence a um usuario do tenant")
 	ErrRoleAboveOwn  = errors.New("papel acima do de quem atribui")
+	ErrNotOwner      = errors.New("acao reservada ao owner do tenant")
 )
 
 // Invite é o convite para entrar no tenant. O token não fica aqui: só o hash dele
@@ -52,6 +53,9 @@ type AdminRepository interface {
 	CreateInviteTx(ctx context.Context, inv Invite, tokenHash string, event AuditEventRecord, byEmail bool) error
 	ChangeMembershipTx(ctx context.Context, change MembershipChange, check func(MembershipState) error) error
 	RevokeInviteTx(ctx context.Context, inviteID string, event AuditEventRecord) error
+	// DeleteTenantTx apaga de vez o tenant do ator, com tudo que pertence a ele, e grava
+	// a auditoria na mesma transação.
+	DeleteTenantTx(ctx context.Context, event AuditEventRecord) error
 }
 
 // AdminService reúne o que o administrador faz no próprio tenant.
@@ -143,5 +147,17 @@ func (s *AdminService) RevokeInvite(ctx context.Context, actor identity.Actor, i
 	return s.repo.RevokeInviteTx(ctx, inviteID, AuditEventRecord{
 		ID: s.newID(), TenantID: actor.TenantID, ActorID: actor.UserID, Action: "users.invite_revoke",
 		Target: inviteID, Result: "success", OccurredAt: s.clock(),
+	})
+}
+
+// DeleteTenant apaga de vez o tenant do ator, com cofres, notas, vínculos e convites,
+// auditado na mesma transação. Só o owner apaga; as contas continuam.
+func (s *AdminService) DeleteTenant(ctx context.Context, actor identity.Actor) error {
+	if actor.Role != identity.RoleOwner {
+		return fmt.Errorf("%w: papel %q, esperado %q", ErrNotOwner, actor.Role, identity.RoleOwner)
+	}
+	return s.repo.DeleteTenantTx(ctx, AuditEventRecord{
+		ID: s.newID(), TenantID: actor.TenantID, ActorID: actor.UserID, Action: "tenants.delete",
+		Target: actor.TenantID, Result: "success", OccurredAt: s.clock(),
 	})
 }

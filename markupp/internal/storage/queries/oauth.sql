@@ -1,8 +1,62 @@
 -- Authorization server OAuth 2.1 (ADR-0046). As tabelas são da instância, sem tenant nem
 -- RLS: as queries rodam no papel da conexão. Códigos e tokens só passam como hash.
 
+-- O cliente DCR pendente desde o limite ou antes conta como inexistente, mesmo antes de
+-- a limpeza dos registros apagá-lo.
 -- name: GetOAuthClient :one
-SELECT * FROM oauth_clients WHERE id = $1;
+SELECT * FROM oauth_clients c
+WHERE c.id = sqlc.arg(id) AND NOT EXISTS (
+    SELECT 1 FROM oauth_pending_dcr_clients p
+    WHERE p.id = c.id AND p.pending_since <= sqlc.arg(dcr_pending_cutoff)::TIMESTAMPTZ);
+
+-- name: GetFreshCIMDClient :one
+SELECT * FROM oauth_clients
+WHERE id = sqlc.arg(id) AND source = 'cimd' AND metadata_expires_at > sqlc.arg(now)::TIMESTAMPTZ;
+
+-- Cria ou atualiza o cliente CIMD. O WHERE do conflito impede sobrescrever um cliente de
+-- outra origem: nesse caso nenhuma linha é afetada.
+-- name: UpsertCIMDClient :execrows
+INSERT INTO oauth_clients (id, source, name, redirect_uris, metadata_expires_at)
+VALUES (sqlc.arg(id), 'cimd', sqlc.arg(name), sqlc.arg(redirect_uris), sqlc.arg(expires_at)::TIMESTAMPTZ)
+ON CONFLICT (id) DO UPDATE
+SET name = EXCLUDED.name, redirect_uris = EXCLUDED.redirect_uris,
+    metadata_expires_at = EXCLUDED.metadata_expires_at
+WHERE oauth_clients.source = 'cimd';
+
+-- Apaga os clientes CIMD cujo documento venceu em now e que nunca ganharam uma
+-- Autorização; os pedidos pendentes deles caem junto, pelo ON DELETE CASCADE.
+-- name: DeleteStaleCIMDClients :exec
+DELETE FROM oauth_clients c
+WHERE c.source = 'cimd' AND c.metadata_expires_at <= sqlc.arg(now)::TIMESTAMPTZ
+  AND NOT EXISTS (SELECT 1 FROM oauth_authorizations a WHERE a.client_id = c.id AND a.revoked_at IS NULL);
+
+-- Serializa os registros DCR da instância até o fim da transação, para o teto de
+-- pendentes valer sob concorrência.
+-- name: LockDCRRegistrations :exec
+SELECT pg_advisory_xact_lock(hashtextextended('markupp.oauth_dcr_registration', 0));
+
+-- Compartilha a trava dos registros DCR até o fim da transação quando o pedido é de
+-- cliente DCR: a aprovação aberta segura a limpeza dos pendentes, que senão apagaria o
+-- cliente e, em cascata, a Autorização ainda não commitada.
+-- name: ShareDCRRegistrationLockForRequest :exec
+SELECT pg_advisory_xact_lock_shared(hashtextextended('markupp.oauth_dcr_registration', 0))
+FROM oauth_requests r JOIN oauth_clients c ON c.id = r.client_id
+WHERE r.id = $1 AND c.source = 'dcr';
+
+-- Os pedidos e as Autorizações revogadas do pendente saem junto, pelo ON DELETE
+-- CASCADE; a auditoria fica.
+-- name: DeleteExpiredPendingDCRClients :exec
+DELETE FROM oauth_clients
+WHERE id IN (SELECT p.id FROM oauth_pending_dcr_clients p WHERE p.pending_since <= sqlc.arg(cutoff)::TIMESTAMPTZ);
+
+-- name: CountPendingDCRClients :one
+SELECT count(*) AS pending,
+    COALESCE(min(p.pending_since), sqlc.arg(now)::TIMESTAMPTZ)::TIMESTAMPTZ AS oldest_pending_since
+FROM oauth_pending_dcr_clients p;
+
+-- name: CreateDCRClient :exec
+INSERT INTO oauth_clients (id, source, name, redirect_uris, created_at)
+VALUES (sqlc.arg(id), 'dcr', sqlc.arg(name), sqlc.arg(redirect_uris), sqlc.arg(created_at)::TIMESTAMPTZ);
 
 -- name: CreateOAuthRequest :exec
 INSERT INTO oauth_requests (id, client_id, redirect_uri, scopes, resource, state, code_challenge, created_at, expires_at)
@@ -12,11 +66,16 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9);
 SELECT * FROM oauth_requests
 WHERE id = sqlc.arg(id) AND decided_at IS NULL AND expires_at > sqlc.arg(now)::TIMESTAMPTZ;
 
+-- Não aprova o pedido de cliente DCR pendente desde o limite ou antes, como se o
+-- cliente não existisse mais.
 -- name: ApproveOAuthRequest :one
 UPDATE oauth_requests
 SET decided_at = sqlc.arg(decided_at)::TIMESTAMPTZ, user_id = sqlc.arg(user_id)::TEXT,
     code_hash = sqlc.arg(code_hash)::TEXT, code_expires_at = sqlc.arg(code_expires_at)::TIMESTAMPTZ
-WHERE id = sqlc.arg(id) AND decided_at IS NULL AND expires_at > sqlc.arg(decided_at)::TIMESTAMPTZ
+WHERE oauth_requests.id = sqlc.arg(id) AND decided_at IS NULL AND expires_at > sqlc.arg(decided_at)::TIMESTAMPTZ
+  AND NOT EXISTS (
+    SELECT 1 FROM oauth_pending_dcr_clients p
+    WHERE p.id = oauth_requests.client_id AND p.pending_since <= sqlc.arg(dcr_pending_cutoff)::TIMESTAMPTZ)
 RETURNING *;
 
 -- name: DenyOAuthRequest :one

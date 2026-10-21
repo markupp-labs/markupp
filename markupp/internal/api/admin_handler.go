@@ -11,6 +11,7 @@ import (
 
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/auth"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/identity"
+	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/oauth"
 )
 
 // AdminService é o que as rotas de administração consomem.
@@ -21,6 +22,7 @@ type AdminService interface {
 	ChangeRole(ctx context.Context, actor identity.Actor, userID, role string) error
 	RemoveMember(ctx context.Context, actor identity.Actor, userID string) error
 	RevokeInvite(ctx context.Context, actor identity.Actor, inviteID string) error
+	DeleteTenant(ctx context.Context, actor identity.Actor) error
 }
 
 type adminHandler struct {
@@ -43,18 +45,23 @@ type issuedInviteResponse struct {
 	Token string `json:"token,omitempty"`
 }
 
-// mountAdminRoutes monta as rotas que só owner e admin do tenant alcançam. O papel vem
-// do vínculo no banco, nunca do cliente.
+// mountAdminRoutes monta as rotas de administração do tenant: as de membros e convites,
+// que só owner e admin alcançam, e o apagar do tenant, só do owner. O papel vem do
+// vínculo no banco, nunca do cliente.
 func mountAdminRoutes(r chi.Router, svc AdminService, validator TokenValidator, tenants TenantResolver) {
 	h := &adminHandler{svc: svc}
 	r.Group(func(g chi.Router) {
-		g.Use(RequireAuth(validator), RequireTenant(tenants), requireAdmin)
+		g.Use(acceptOAuthScope(oauth.ScopeAdmin), RequireAuth(validator), RequireTenant(tenants), requireAdmin)
 		g.Get("/users", h.listMembers)
 		g.Get("/users/invites", h.listInvites)
 		g.Post("/users/invites", h.issueInvite)
 		g.Patch("/users/{id}", h.changeRole)
 		g.Delete("/users/{id}", h.removeMember)
 		g.Delete("/users/invites/{id}", h.revokeInvite)
+	})
+	r.Group(func(g chi.Router) {
+		g.Use(RequireAuth(validator), requireTenantInPath(tenants))
+		g.Delete("/tenants/{id}", h.deleteTenant)
 	})
 }
 
@@ -143,6 +150,21 @@ func (h *adminHandler) revokeInvite(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.answerMembership(w, err)
+}
+
+func (h *adminHandler) deleteTenant(w http.ResponseWriter, r *http.Request) {
+	actor, _ := identity.ActorFrom(r.Context())
+	err := h.svc.DeleteTenant(r.Context(), actor)
+	switch {
+	case err == nil:
+		w.WriteHeader(http.StatusNoContent)
+	case errors.Is(err, auth.ErrNotOwner):
+		writeError(w, "forbidden", "so o owner apaga o tenant", http.StatusForbidden)
+	case errors.Is(err, auth.ErrMembershipNotFound):
+		writeTenantNotFound(w, err)
+	default:
+		writeAdminInternal(w, "apagar o tenant", err)
+	}
 }
 
 func (h *adminHandler) answerMembership(w http.ResponseWriter, err error) {

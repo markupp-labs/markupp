@@ -13,11 +13,14 @@ const (
 )
 
 // Actor é o usuário do JWT validado, com o tenant em que a requisição age e o papel
-// dele lá, lidos do vínculo no banco.
+// dele lá, lidos do vínculo no banco. FromOAuth marca o token entregue pela troca
+// OAuth, que só alcança o que OAuthScopes permite; token de login tem acesso inteiro.
 type Actor struct {
-	UserID   string
-	TenantID string
-	Role     string
+	UserID      string
+	TenantID    string
+	Role        string
+	FromOAuth   bool
+	OAuthScopes []string
 }
 
 var roleRanks = map[string]int{RoleOwner: 4, RoleAdmin: 3, RoleMember: 2, RoleViewer: 1}

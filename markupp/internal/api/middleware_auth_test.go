@@ -55,6 +55,23 @@ func TestRequireAuth_TokenValido_InjetaContextoEProssegue(t *testing.T) {
 	assert.Equal(t, "user-123", capturedUser.UserID)
 	assert.Empty(t, capturedUser.TenantID, "o tenant vem do vinculo, nao do token")
 	assert.Empty(t, capturedUser.Role)
+	assert.False(t, capturedUser.FromOAuth, "token sem scope e de login")
+	assert.Empty(t, capturedUser.OAuthScopes)
+}
+
+func TestRequireAuth_TokenOAuthSemARotaDeclarar_Retorna403FirstPartyOnly(t *testing.T) {
+	validator := &fakeTokenValidator{claims: auth.Claims{Subject: "user-123", Scope: "notas:leitura notas:escrita administracao"}}
+	var reached bool
+	handler := api.RequireAuth(validator)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { reached = true }))
+	req := httptest.NewRequest(http.MethodGet, "/protegido", nil)
+	req.Header.Set("Authorization", "Bearer token-oauth")
+	rec := httptest.NewRecorder()
+
+	handler.ServeHTTP(rec, req)
+
+	assert.False(t, reached)
+	assert.Equal(t, http.StatusForbidden, rec.Code)
+	assert.JSONEq(t, `{"error":"first_party_only","message":"rota so aceita o token de login"}`, rec.Body.String())
 }
 
 func TestRequireAuth_SemHeaderAuthorization_Retorna401(t *testing.T) {

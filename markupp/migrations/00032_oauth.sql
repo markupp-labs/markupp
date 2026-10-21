@@ -8,8 +8,12 @@ CREATE TABLE oauth_clients (
     name                TEXT NOT NULL,
     redirect_uris       TEXT[] NOT NULL CHECK (cardinality(redirect_uris) > 0),
     metadata_expires_at TIMESTAMPTZ,
-    created_at          TIMESTAMPTZ NOT NULL DEFAULT now()
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
+    -- Só o cliente CIMD tem documento em cache com validade.
+    CHECK (source = 'cimd' OR metadata_expires_at IS NULL)
 );
+-- Os registros DCR varrem os clientes dessa origem para expirar e contar os pendentes.
+CREATE INDEX oauth_clients_dcr_created_at_idx ON oauth_clients (created_at) WHERE source = 'dcr';
 
 CREATE TABLE oauth_authorizations (
     id         TEXT PRIMARY KEY,
@@ -69,12 +73,23 @@ CREATE TABLE oauth_tokens (
 CREATE INDEX oauth_tokens_authorization_id_idx ON oauth_tokens (authorization_id);
 CREATE INDEX oauth_tokens_expires_at_idx ON oauth_tokens (expires_at);
 
+-- Pendente é o cliente DCR sem nenhuma Autorização ativa: é o que o registro dinâmico
+-- conta no teto e apaga depois do prazo, contado desde pending_since, o maior entre a
+-- criação do cliente e a última revogação de Autorização dele.
+CREATE VIEW oauth_pending_dcr_clients AS
+SELECT c.id, GREATEST(c.created_at, (
+    SELECT max(a.revoked_at) FROM oauth_authorizations a WHERE a.client_id = c.id)) AS pending_since
+FROM oauth_clients c
+WHERE c.source = 'dcr' AND NOT EXISTS (
+    SELECT 1 FROM oauth_authorizations a WHERE a.client_id = c.id AND a.revoked_at IS NULL);
+
 -- Garante o isolamento mesmo se o banco tiver DEFAULT PRIVILEGES concedendo a PUBLIC ou a
 -- qualquer papel criado pelas migrações.
-REVOKE ALL ON oauth_clients, oauth_authorizations, oauth_requests, oauth_tokens
+REVOKE ALL ON oauth_clients, oauth_authorizations, oauth_requests, oauth_tokens, oauth_pending_dcr_clients
     FROM PUBLIC, markupp_app, markupp_scaler, markupp_indexer, markupp_notifier;
 
 -- +goose Down
+DROP VIEW IF EXISTS oauth_pending_dcr_clients;
 DROP TABLE IF EXISTS oauth_tokens;
 DROP TABLE IF EXISTS oauth_requests;
 DROP TABLE IF EXISTS oauth_authorizations;

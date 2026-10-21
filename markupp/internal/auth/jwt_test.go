@@ -143,3 +143,61 @@ func TestTokenCodec_ValidateToken_HeaderComTypInvalidoAssinado_RetornaErro(t *te
 	_, err := codec.ValidateToken(token)
 	require.ErrorIs(t, err, auth.ErrInvalidToken, "typ JOSE deveria ser recusado")
 }
+
+func TestTokenCodec_IssueScopedToken_ValidaComEscoposEValidadeCurta(t *testing.T) {
+	clock := func() time.Time { return time.Date(2026, 10, 19, 12, 0, 0, 0, time.UTC) }
+	codec := auth.NewTokenCodec(segredoTeste, 15*time.Minute, clock)
+
+	token, err := codec.IssueScopedToken("user-1", []string{"notas:leitura", "administracao"}, 5*time.Minute)
+	require.NoError(t, err)
+
+	claims, err := codec.ValidateToken(token)
+	require.NoError(t, err)
+	assert.Equal(t, auth.Claims{
+		Subject: "user-1", IssuedAt: clock().Unix(),
+		ExpiresAt: clock().Add(5 * time.Minute).Unix(), Scope: "notas:leitura administracao",
+	}, claims)
+}
+
+func TestTokenCodec_IssueScopedToken_ExpiraNoTTL(t *testing.T) {
+	current := time.Date(2026, 10, 19, 12, 0, 0, 0, time.UTC)
+	codec := auth.NewTokenCodec(segredoTeste, 15*time.Minute, func() time.Time { return current })
+	token, err := codec.IssueScopedToken("user-1", []string{"notas:leitura"}, 5*time.Minute)
+	require.NoError(t, err)
+
+	futuro := auth.NewTokenCodec(segredoTeste, 15*time.Minute, func() time.Time { return current.Add(6 * time.Minute) })
+	_, err = futuro.ValidateToken(token)
+	require.ErrorIs(t, err, auth.ErrExpiredToken)
+}
+
+func TestTokenCodec_IssueScopedToken_EntradaInvalida_RetornaErro(t *testing.T) {
+	codec := auth.NewTokenCodec(segredoTeste, 15*time.Minute, time.Now)
+	casos := map[string]struct {
+		scopes []string
+		ttl    time.Duration
+	}{
+		"ttl zero":          {[]string{"notas:leitura"}, 0},
+		"ttl negativo":      {[]string{"notas:leitura"}, -time.Minute},
+		"sem escopos":       {nil, 5 * time.Minute},
+		"escopo vazio":      {[]string{""}, 5 * time.Minute},
+		"escopo com espaco": {[]string{"notas:leitura administracao"}, 5 * time.Minute},
+	}
+	for nome, c := range casos {
+		token, err := codec.IssueScopedToken("user-1", c.scopes, c.ttl)
+		require.Error(t, err, nome)
+		assert.Empty(t, token, nome)
+	}
+}
+
+func TestTokenCodec_GenerateTokenPair_TokenDeLoginSemScope(t *testing.T) {
+	codec := auth.NewTokenCodec(segredoTeste, 15*time.Minute, time.Now)
+	pair, err := codec.GenerateTokenPair("user-1")
+	require.NoError(t, err)
+
+	claims, err := codec.ValidateToken(pair.AccessToken)
+	require.NoError(t, err)
+	assert.Empty(t, claims.Scope)
+	payload, err := base64.RawURLEncoding.DecodeString(strings.Split(pair.AccessToken, ".")[1])
+	require.NoError(t, err)
+	assert.NotContains(t, string(payload), "scope")
+}

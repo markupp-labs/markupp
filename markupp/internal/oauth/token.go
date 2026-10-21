@@ -77,8 +77,11 @@ func checkResource(raw, granted string) error {
 // grant sem gravar nada.
 func (s *Service) issueTokens(ctx context.Context, redeemed RedeemedCode, now time.Time) (TokenResponse, error) {
 	base := IssuedToken{AuthorizationID: redeemed.Authorization.ID, Resource: redeemed.Request.Resource, Scopes: redeemed.Request.Scopes}
-	pair := s.newTokenPair(base, base.Scopes, now)
-	err := s.repo.SaveCodeTokens(ctx, redeemed.Request.ID, pair.tokens)
+	pair, err := s.newTokenPair(base, base.Scopes, redeemed.Authorization.UserID, now)
+	if err != nil {
+		return TokenResponse{}, err
+	}
+	err = s.repo.SaveCodeTokens(ctx, redeemed.Request.ID, pair.tokens)
 	switch {
 	case err == nil:
 		return pair.response, nil
@@ -98,20 +101,42 @@ type tokenPair struct {
 }
 
 // newTokenPair gera access e refresh com a Autorização e o resource de base. O access e
-// a resposta levam os escopos de base; o refresh, refreshScopes.
-func (s *Service) newTokenPair(base IssuedToken, refreshScopes []string, now time.Time) tokenPair {
-	access, refresh := s.newToken(), s.newToken()
+// a resposta levam os escopos de base; o refresh, refreshScopes. Para a API, cujo
+// resource é o issuer, o access é o JWT curto dela (ADR-0042).
+func (s *Service) newTokenPair(base IssuedToken, refreshScopes []string, userID string, now time.Time) (tokenPair, error) {
 	refreshBase := base
 	refreshBase.Scopes = refreshScopes
+	if base.Resource == s.cfg.Issuer {
+		return s.newAPITokenPair(base, refreshBase, userID, now)
+	}
+	access, refresh := s.newToken(), s.newToken()
 	return tokenPair{
 		tokens: []IssuedToken{
 			withSecret(base, access, TokenKindAccess, now.Add(s.cfg.AccessTTL)),
 			withSecret(refreshBase, refresh, TokenKindRefresh, now.Add(s.cfg.RefreshTTL)),
 		},
-		response: TokenResponse{
-			AccessToken: access, TokenType: "Bearer", ExpiresIn: int64(s.cfg.AccessTTL / time.Second),
-			RefreshToken: refresh, Scope: strings.Join(base.Scopes, " "),
-		},
+		response: tokenResponse(access, s.cfg.AccessTTL, refresh, base.Scopes),
+	}, nil
+}
+
+// newAPITokenPair entrega o JWT da API com a validade da troca e grava só o refresh:
+// o JWT não passa pelo banco, como o da troca de token.
+func (s *Service) newAPITokenPair(base, refreshBase IssuedToken, userID string, now time.Time) (tokenPair, error) {
+	access, err := s.scoped.IssueScopedToken(userID, base.Scopes, s.cfg.ExchangeTTL)
+	if err != nil {
+		return tokenPair{}, fmt.Errorf("oauth: emitindo o token da API da autorização %q: %w", base.AuthorizationID, err)
+	}
+	refresh := s.newToken()
+	return tokenPair{
+		tokens:   []IssuedToken{withSecret(refreshBase, refresh, TokenKindRefresh, now.Add(s.cfg.RefreshTTL))},
+		response: tokenResponse(access, s.cfg.ExchangeTTL, refresh, base.Scopes),
+	}, nil
+}
+
+func tokenResponse(access string, ttl time.Duration, refresh string, scopes []string) TokenResponse {
+	return TokenResponse{
+		AccessToken: access, TokenType: "Bearer", ExpiresIn: int64(ttl / time.Second),
+		RefreshToken: refresh, Scope: strings.Join(scopes, " "),
 	}
 }
 

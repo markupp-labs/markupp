@@ -34,25 +34,31 @@ func NewPostgresOAuthRepository(pool *pgxpool.Pool) *PostgresOAuthRepository {
 	return &PostgresOAuthRepository{pool: pool, q: gen.New(pool)}
 }
 
-// GetClient devolve o cliente registrado, ou oauth.ErrClientNotFound.
-func (r *PostgresOAuthRepository) GetClient(ctx context.Context, id string) (oauth.Client, error) {
-	row, err := r.q.GetOAuthClient(ctx, id)
+// GetClient devolve o cliente registrado, ou oauth.ErrClientNotFound se ele não existe
+// ou é DCR pendente desde dcrPendingCutoff ou antes.
+func (r *PostgresOAuthRepository) GetClient(ctx context.Context, id string, dcrPendingCutoff time.Time) (oauth.Client, error) {
+	row, err := r.q.GetOAuthClient(ctx, gen.GetOAuthClientParams{ID: id, DcrPendingCutoff: dcrPendingCutoff})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return oauth.Client{}, fmt.Errorf("%w: client_id %s", oauth.ErrClientNotFound, oauth.ClientValue(id))
 	}
 	if err != nil {
 		return oauth.Client{}, fmt.Errorf("buscar cliente oauth %s: %w", oauth.ClientValue(id), err)
 	}
-	return oauth.Client{ID: row.ID, Name: row.Name, RedirectURIs: row.RedirectUris}, nil
+	return oauth.Client{ID: row.ID, Name: row.Name, RedirectURIs: row.RedirectUris, Source: row.Source}, nil
 }
 
-// CreateRequest grava o Pedido de autorização ainda sem conta nem código.
+// CreateRequest grava o Pedido de autorização ainda sem conta nem código. O cliente
+// apagado depois da busca dele viola a chave estrangeira e sai como
+// oauth.ErrClientNotFound.
 func (r *PostgresOAuthRepository) CreateRequest(ctx context.Context, req oauth.AuthorizationRequest) error {
 	err := r.q.CreateOAuthRequest(ctx, gen.CreateOAuthRequestParams{
 		ID: req.ID, ClientID: req.ClientID, RedirectUri: req.RedirectURI, Scopes: req.Scopes,
 		Resource: req.Resource, State: pgtype.Text{String: req.State, Valid: req.State != ""},
 		CodeChallenge: req.CodeChallenge, CreatedAt: req.CreatedAt, ExpiresAt: req.ExpiresAt,
 	})
+	if pgErrorCode(err) == foreignKeyViolationCode {
+		return fmt.Errorf("%w: client_id %s apagado antes de gravar o pedido", oauth.ErrClientNotFound, oauth.ClientValue(req.ClientID))
+	}
 	if err != nil {
 		return fmt.Errorf("gravar pedido de autorização do cliente %s: %w", oauth.ClientValue(req.ClientID), err)
 	}
@@ -87,11 +93,15 @@ func (r *PostgresOAuthRepository) ApproveRequest(ctx context.Context, a oauth.Ap
 }
 
 // approveInTx decide o pedido como aprovado, concede os escopos, liga o pedido à
-// Autorização e audita o sucesso.
+// Autorização e audita o sucesso. O pedido de cliente DCR compartilha antes a trava dos
+// registros, para a limpeza dos pendentes não apagar o cliente no meio da aprovação.
 func approveInTx(ctx context.Context, qtx *gen.Queries, a oauth.Approval) (gen.OauthRequest, error) {
+	if err := qtx.ShareDCRRegistrationLockForRequest(ctx, a.RequestID); err != nil {
+		return gen.OauthRequest{}, fmt.Errorf("compartilhar a trava dos registros dcr na aprovação: %w", err)
+	}
 	row, err := qtx.ApproveOAuthRequest(ctx, gen.ApproveOAuthRequestParams{
 		ID: a.RequestID, UserID: a.UserID, CodeHash: a.CodeHash,
-		CodeExpiresAt: a.CodeExpiresAt, DecidedAt: a.DecidedAt,
+		CodeExpiresAt: a.CodeExpiresAt, DecidedAt: a.DecidedAt, DcrPendingCutoff: a.DCRPendingCutoff,
 	})
 	if err != nil {
 		return row, requestErr("aprovar pedido", err)
@@ -229,4 +239,9 @@ func toAuthorization(row gen.OauthAuthorization) oauth.Authorization {
 		ID: row.ID, UserID: row.UserID, ClientID: row.ClientID, Scopes: row.Scopes,
 		CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt, Revoked: row.RevokedAt.Valid,
 	}
+}
+
+// RecordAuditEvent grava um evento avulso do authorization server.
+func (r *PostgresOAuthRepository) RecordAuditEvent(ctx context.Context, event oauth.AuditEvent) error {
+	return auditOAuth(ctx, gen.New(r.pool), event)
 }
