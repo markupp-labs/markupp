@@ -11,7 +11,7 @@ class ShortcutsTest < ActionDispatch::IntegrationTest
     [ "Explorer view", "Alt O" ],
     [ "Focus region left", "Alt H" ], [ "Focus region below", "Alt J" ], [ "Focus region above", "Alt K" ], [ "Focus region right", "Alt L" ],
     [ "Light theme", "" ], [ "Dark theme", "" ], [ "Editor style: plain", "" ], [ "Editor style: styled", "" ],
-    [ "Vim key bindings: on", "" ], [ "Vim key bindings: off", "" ],
+    [ "Vim keys: on", "" ], [ "Vim keys: off", "" ],
     [ "All tenants", "g t" ], [ "Switch tenant", "" ], [ "Delete tenant", "" ], [ "Log out", "" ]
   ].freeze
 
