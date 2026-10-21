@@ -1,0 +1,14 @@
+en:
+  my_invites:
+    invite:
+      join: "Join %{tenant} as %{role}"
+      expires: "Expires %{date}"
+      accept: "Accept"
+      decline: "Decline"
+    update:
+      joined: "Joined %{name} as %{role}."
+    destroy:
+      declined: "Invite declined."
+    errors:
+      invite_not_found: "That invite is no longer valid."
+      already_member: "You are already a member of that tenant."

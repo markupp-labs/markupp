@@ -1,0 +1,95 @@
+en:
+  settings:
+    nav:
+      title: "Settings"
+      close: "Close settings"
+      accounts: "Account"
+      appearances: "Appearance"
+      editors: "Editor"
+      tenant: "Tenant"
+      general: "General"
+      members: "Members"
+      invites: "Invites"
+    accounts:
+      already_confirmed: "Your email is already confirmed."
+      show:
+        title: "Account"
+        email: "Email"
+        confirmation: "Email confirmation"
+        confirmation_hint: "Confirm your email to see the invites sent to it. The confirmation email brings a token."
+        send: "Send confirmation email"
+        have_token: "I have a token"
+        password: "Password"
+        password_hint: "The server emails a token to %{email}; use it to choose the new password."
+        change_password: "Change password"
+        have_reset_token: "I have a reset token"
+    appearances:
+      show:
+        title: "Appearance"
+        theme: "Theme"
+        light: "Light"
+        dark: "Dark"
+        follows_system: "Follows your system theme until you pick one."
+    editors:
+      show:
+        title: "Editor"
+        editor_style: "Editor style"
+        plain: "Plain"
+        styled: "Styled"
+        editor_style_hint: "Plain shows the markdown at one size, like VS Code. Styled makes headings larger, like the Obsidian source mode."
+        vim_keys: "Vim key bindings"
+        vim_keys_hint: "Vim key bindings give the editor the normal, insert and visual modes of Vim, with :w, :q and :e. Esc twice, then Tab, leaves the editor."
+    general:
+      show:
+        tenant_name: "Tenant name"
+      danger_zone:
+        title: "Danger zone"
+        delete_tenant: "Delete tenant"
+        hint: "This deletes the tenant and all of its notes for every member. There is no going back."
+        confirm: "Delete %{name}? This deletes the tenant and all of its notes for every member, and it can't be undone."
+        type_name: "Type %{name} to confirm"
+    members:
+      index:
+        email: "Email"
+        role: "Role"
+        joined: "Joined"
+      member:
+        you: "(you)"
+        role_for: "Role for %{email}"
+        joined: "Joined"
+        save: "Save"
+        remove: "Remove"
+        confirm_remove: "Remove %{email} from %{tenant}?"
+      update:
+        updated: "Role updated."
+      destroy:
+        removed: "Member removed."
+        left: "You left %{name}."
+      errors:
+        last_owner: "A tenant needs at least one owner. Make someone else owner first."
+        role_above_own: "You can't give or change a role above your own."
+        member_not_found: "That person is no longer a member."
+    invites:
+      index:
+        token_hint: "This server has no email set up. Send this token to %{email} yourself; it works once and expires on %{date}."
+        token: "Invite token"
+        send: "Send invite"
+        empty: "No invites yet. Invite someone with the form above."
+        email: "Email"
+        role: "Role"
+        status: "Status"
+      invite:
+        expires: "Expires %{date}"
+        accepted: "Accepted"
+        expired: "Expired"
+        revoke: "Revoke"
+        confirm_revoke: "Revoke the invite for %{email}?"
+      create:
+        sent: "Invite sent to %{email}."
+      destroy:
+        revoked: "Invite revoked."
+        not_pending: "That invite is no longer pending."
+      errors:
+        invalid_request: "Enter an address like name@example.com."
+        already_member: "%{email} is already a member."
+        role_above_own: "You can't give or change a role above your own."

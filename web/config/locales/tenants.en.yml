@@ -1,0 +1,38 @@
+en:
+  tenants:
+    roles:
+      owner: "owner"
+      admin: "admin"
+      member: "member"
+      viewer: "viewer"
+    index:
+      title: "Tenants"
+      first: "Create your first tenant"
+      sidebar_label: "Tenants"
+      first_hint: "A tenant holds the notes you share with other people."
+      pending_invites: "Pending invites"
+      no_invites: "No pending invites. Invites show up here once your email is confirmed."
+      confirm_email: "Confirm your email"
+      filter: "Filter tenants"
+      filter_title: "Filter tenants (%{keys})"
+      new_tenant_title: "New tenant (%{keys})"
+      no_match: "No tenant matches the filter."
+    new_tenant_form:
+      new_tenant: "New tenant"
+      create: "Create"
+      cancel: "Cancel"
+    card:
+      general: "%{name} settings"
+      invites: "Invites of %{name}"
+      no_notes: "No notes yet"
+      notes:
+        one: "%{count} note"
+        other: "%{count} notes"
+      last_edit: "last edit %{time} ago"
+    create:
+      created: "Created %{name}."
+      invalid_name: "Use 1 to 100 characters."
+    destroy:
+      deleted: "Deleted %{name}."
+      gone: "That tenant no longer exists."
+      name_mismatch: "The name doesn't match. Nothing was deleted."

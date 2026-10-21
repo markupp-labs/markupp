@@ -1,0 +1,29 @@
+en:
+  activemodel:
+    # O título é o nome no fim do caminho: o erro de título em branco diz "Name", como o campo chama.
+    attributes:
+      note:
+        title: "Name"
+    errors:
+      models:
+        note:
+          attributes:
+            path:
+              taken: "already taken"
+              invalid: "can't contain .. or pass 1024 characters"
+        session_login:
+          attributes:
+            base:
+              invalid_credentials: "Email or password is wrong."
+              local_auth_disabled: "Password login is disabled on this server."
+        token_form:
+          attributes:
+            token:
+              blank: "Paste the token from the email."
+              invalid_token: "This token is invalid, expired or already used."
+            password:
+              invalid: "Enter a password up to 72 bytes long."
+            base:
+              account_exists: "This email already has an account. Log in and accept the invite from your tenant list."
+              local_auth_disabled: "Password login is disabled on this server."
+              email_unavailable: "This server can't send email, so password reset is off. Ask an administrator."

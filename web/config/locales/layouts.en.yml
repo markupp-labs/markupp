@@ -1,0 +1,43 @@
+en:
+  layouts:
+    area_back:
+      label: "Back"
+      title: "Back (Esc)"
+    confirm_dialog:
+      cancel: "Cancel"
+      delete: "Delete"
+    application:
+      notes: "Notes"
+      light_theme: "Light theme"
+      dark_theme: "Dark theme"
+      search: "Search"
+      search_notes: "Search notes"
+      search_placeholder: "Search note content"
+      search_syntax: "\"exact phrase\"  this OR that  -word"
+      search_keys: "↑↓ ^J ^K move  ↵ open  esc close"
+      hide_sidebar: "Hide sidebar"
+      show_sidebar: "Show sidebar"
+      resize_sidebar: "Resize sidebar"
+      links_empty:
+        title: "Open a note to see its links"
+        hint: "Its links and backlinks show up here."
+      graph_empty:
+        title: "Open a note to see its graph"
+        hint: "The notes around it show up here."
+    activity_bar:
+      label: "Views"
+      explorer: "Explorer"
+      links: "Links"
+      graph: "Graph"
+      account: "Account"
+      settings: "Settings"
+      settings_shortcut: "Settings (%{keys})"
+    tenant_switcher:
+      switch: "Switch tenant"
+      new_tenant: "New tenant"
+      all_tenants: "All tenants"
+      all_tenants_title: "All tenants (g t)"
+    account_menu:
+      label: "Account menu"
+      signed_in_as: "Signed in as"
+      log_out: "Log out"
