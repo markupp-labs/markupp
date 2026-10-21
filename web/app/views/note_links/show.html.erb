@@ -1,44 +1,10 @@
 <%# Ligações da nota aberta, como os painéis do Obsidian, em seções recolhíveis (details) com a contagem: quem liga para
-    ela, para onde ela liga (a não resolvida com o sublinhado tracejado dos wikilinks e,
-    com a nota que o indexador inferiu, o maybe que a abre), quem cita o título dela sem ligar
-    e as sugestões de ligação. j/k e setas andam pelas seções e linhas visíveis, Enter abre ou dobra (note_links_controller.js). %>
+    ela, para onde ela liga, quem cita o título dela sem ligar e as sugestões de ligação, cada item no partial da seção.
+    j/k e setas andam pelas seções e linhas visíveis, Enter abre ou dobra (note_links_controller.js). %>
 <%= turbo_frame_tag "note_links", target: "_top" do %>
-  <%= links_section("backlinks", @backlinks) do %>
-    <% @backlinks.each do |link| %>
-      <%= render "note_links/row", note: link.source, kind: link_kind(link) %>
-    <% end %>
-  <% end %>
-  <%= links_section("outgoing", @outgoing) do %>
-    <% @outgoing.each do |link| %>
-      <% if link.unresolved? && link.inferred_target %>
-        <% reason = t("note_links.unresolved", title: link.cited_title) %>
-        <% maybe = t("note_links.maybe", title: link.inferred_target.title) %>
-        <li class="links-item">
-          <%= link_to note_path(link.inferred_target), title: "#{reason}, #{maybe}", data: { links_item: "" }, class: "tree-row links-row link-unresolved" do %>
-            <span class="links-row-title truncate"><%= link.cited_title %></span><span class="sr-only"> (<%= reason %>)</span>
-            <span class="links-row-maybe truncate"><%= maybe %></span>
-          <% end %>
-        </li>
-      <% elsif link.unresolved? %>
-        <% reason = t("note_links.unresolved", title: link.cited_title) %>
-        <li class="links-item">
-          <span tabindex="-1" title="<%= reason %>" data-links-item class="tree-row links-row link-unresolved">
-            <span class="links-row-title truncate"><%= link.cited_title %></span><span class="sr-only"> (<%= reason %>)</span>
-          </span>
-        </li>
-      <% else %>
-        <%= render "note_links/row", note: link.target, kind: link_kind(link) %>
-      <% end %>
-    <% end %>
-  <% end %>
-  <%= links_section("mentions", @mentions) do %>
-    <% @mentions.each do |mention| %>
-      <%= render "note_links/row", note: mention.note, kind: "\"#{mention.cited_title}\"" %>
-    <% end %>
-  <% end %>
-  <%= links_section("suggestions", @suggestions) do %>
-    <% @suggestions.each do |suggestion| %>
-      <%= render "note_links/row", note: suggestion.note, wikilink: "[[#{suggestion.note.title}]]" %>
+  <% NoteLinkSection::NAMES.each do |name| %>
+    <%= links_section(name, @sections[name]) do %>
+      <%= render partial: "note_links/#{name}", collection: @sections[name], as: :item %>
     <% end %>
   <% end %>
   <p role="status" data-note-links-target="status" class="truncate px-2 text-xs text-ink-muted"></p>
