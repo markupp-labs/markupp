@@ -75,9 +75,9 @@
     @apply cursor-pointer;
   }
 
-  /* Só o título citado trunca: o maybe fica inteiro. */
+  /* O título citado trunca primeiro: o maybe fica inteiro até a metade da linha e, mais longo, trunca ali. */
   .links-row-maybe {
-    @apply shrink-0 text-xs whitespace-nowrap text-ink-muted;
+    @apply max-w-1/2 shrink-0 truncate text-xs text-ink-muted;
   }
 
   /* Show more: o frame dele ocupa a linha; depois de carregar, a lista da página seguinte segue a da seção. */
