@@ -117,7 +117,7 @@ en:
       vim_keys_off: "Vim keys: off"
       tenants: "All tenants"
       switch_tenant: "Switch tenant"
-      tenant_general: "Tenant settings"
+      tenant_general: "Tenant: General"
       delete_tenant: "Delete tenant"
       log_out: "Log out"
       new_note: "New note"
