@@ -9,7 +9,8 @@
 <%= tag.details id: "graph_filters", class: "graph-filters",
                 data: { controller: "graph-filters", graph_filters_graph_view_outlet: "#vault_graph",
                         graph_filters_code_value: code.(:graph_filters), focus_region: "graph-filters", focus_region_target: "summary",
-                        action: "change->graph-filters#change keydown@window->graph-filters#press keydown.esc->graph-filters#close" } do %>
+                        action: "change->graph-filters#change keydown@window->graph-filters#press keydown.esc@window->graph-filters#close",
+                        esc_layer: "" } do %>
   <%= tag.summary class: "graph-filters-heading", title: "#{title} (#{shortcut_key(:graph_filters)})",
                   aria: { keyshortcuts: shortcut_key(:graph_filters).upcase } do %>
     <span><%= title %></span>

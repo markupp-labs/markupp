@@ -6,7 +6,8 @@ import { replaceQuery } from "controllers/url_query"
 // pede ao canvas (outlet graph-view) o grafo filtrado. Teclas pelo code que a view tira do registro único
 // (ShortcutsHelper): a do painel abre e fecha, a de cada filtro liga e desliga, a da comunidade vai para a próxima e,
 // com Shift, para a anterior. Valem com o foco na tela do grafo, ou no body, de onde a paleta repete a tecla, e não num
-// campo de texto. Esc dentro do painel o fecha e devolve o foco ao summary, antes de o Esc voltar à nota.
+// campo de texto. Esc com o painel aberto o fecha antes de o Esc voltar à nota (area-back pula a camada data-esc-layer
+// aberta); com o foco dentro do painel, ele volta ao summary, e fora dele (o canvas, depois do f) fica onde estava.
 export default class extends Controller {
   static targets = [ "toggle", "community", "count" ]
   static outlets = [ "graph-view" ]
@@ -31,11 +32,12 @@ export default class extends Controller {
   }
 
   close(event) {
-    if (!this.element.open) return
+    if (!this.element.open || document.querySelector("dialog[open], :popover-open")) return
 
     event.preventDefault()
+    const focusWasInside = this.element.contains(document.activeElement)
     this.element.open = false
-    this.element.querySelector("summary").focus()
+    if (focusWasInside) this.element.querySelector("summary").focus()
   }
 
   query() {
