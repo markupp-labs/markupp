@@ -43,6 +43,23 @@ class GraphViewTest < ApplicationSystemTestCase
     assert_field "Path", with: "/roadmap"
   end
 
+  test "a graph taken out of the page and put back draws again and answers the keys" do
+    send_keys [ :control, :shift, "g" ]
+    assert_selector "#sidebar_view_graph [data-graph-nodes='3']"
+
+    evaluate_async_script(<<~JS)
+      const done = arguments[arguments.length - 1]
+      const graph = document.querySelector("#sidebar_view_graph [data-controller~=graph-view]")
+      const [ parent, next ] = [ graph.parentNode, graph.nextSibling ]
+      graph.remove()
+      setTimeout(() => { parent.insertBefore(graph, next); done() }, 50)
+    JS
+    find("#sidebar_view_graph canvas[data-graph-canvas]").execute_script("this.focus()")
+    send_keys "j"
+
+    assert_selector "#sidebar_view_graph [data-graph-focus=plan]"
+  end
+
   test "the depth buttons redraw the graph two hops away and back" do
     send_keys [ :control, :shift, "g" ]
     assert_selector "#sidebar_view_graph [data-graph-nodes='3']"
