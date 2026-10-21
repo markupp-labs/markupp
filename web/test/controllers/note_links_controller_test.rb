@@ -85,6 +85,16 @@ class NoteLinksControllerTest < ActionDispatch::IntegrationTest
     assert_select "[role=status][data-note-links-target=status]"
   end
 
+  test "suggestions list a full page, like the other sections" do
+    many = Array.new(12) { |i| { note: { id: "s#{i}", title: "s#{i}", path: "s#{i}.md" }, score: 0.01, resource_allocation: 0, cosine: 0 } }
+    use_fake_api(notes: NOTES, graph: { suggestions: { "plan" => many } })
+    sign_in_as
+
+    get note_links_path("plan")
+
+    assert_select "#links_suggestions .links-section-count", text: "12"
+  end
+
   test "an empty section says so and counts zero" do
     get note_links_path("roadmap")
 
