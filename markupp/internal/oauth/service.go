@@ -9,6 +9,7 @@ import (
 // Códigos de erro do protocolo usados pelo Service (RFC 6749 e RFC 8707).
 const (
 	errInvalidRequest          = "invalid_request"
+	errInvalidClient           = "invalid_client"
 	errUnsupportedResponseType = "unsupported_response_type"
 	errInvalidScope            = "invalid_scope"
 	errInvalidTarget           = "invalid_target"
@@ -21,15 +22,25 @@ const (
 const maxDescribedValueLen = 80
 
 // ServiceConfig é a configuração do authorization server. Resources já vem na forma
-// canônica de CanonicalURL.
+// canônica de CanonicalURL, e ResourceSecrets guarda o segredo de cada um, pela mesma
+// URL canônica. ExchangeTTL é a validade do token da API entregue pela troca.
+// CIMDFailureTTL é quanto tempo uma busca de documento CIMD que falhou fica lembrada,
+// recusando o client_id sem buscar de novo; zero desliga o cache negativo. DCRMaxPending
+// e DCRPendingTTL são o teto e o prazo dos clientes registrados por DCR sem nenhuma
+// Autorização ativa.
 type ServiceConfig struct {
-	Issuer     string
-	PanelURL   string
-	Resources  []string
-	AccessTTL  time.Duration
-	RefreshTTL time.Duration
-	RequestTTL time.Duration
-	CodeTTL    time.Duration
+	Issuer          string
+	PanelURL        string
+	Resources       []string
+	ResourceSecrets map[string]string
+	AccessTTL       time.Duration
+	RefreshTTL      time.Duration
+	RequestTTL      time.Duration
+	CodeTTL         time.Duration
+	ExchangeTTL     time.Duration
+	CIMDFailureTTL  time.Duration
+	DCRMaxPending   int
+	DCRPendingTTL   time.Duration
 }
 
 // Service conduz o fluxo authorization code com PKCE: cria o pedido, mostra e decide o
@@ -37,15 +48,30 @@ type ServiceConfig struct {
 type Service struct {
 	repo     Repository
 	cfg      ServiceConfig
+	scoped   ScopedTokenIssuer
+	metadata ClientMetadataFetcher
+	failures *cimdFailureMemory
+	fetches  *cimdFetchGate
 	clock    func() time.Time
 	newID    func() string
 	newToken func() string
 }
 
-// NewService monta o Service. newToken gera os códigos e tokens opacos, que só chegam ao
-// repositório pelo hash.
-func NewService(repo Repository, cfg ServiceConfig, clock func() time.Time, newID func() string, newToken func() string) *Service {
-	return &Service{repo: repo, cfg: cfg, clock: clock, newID: newID, newToken: newToken}
+// NewService monta o Service. scoped emite o token da API entregue pela troca, metadata
+// busca o documento dos clientes registrados por CIMD, e newToken gera os códigos e
+// tokens opacos, que só chegam ao repositório pelo hash.
+func NewService(repo Repository, cfg ServiceConfig, scoped ScopedTokenIssuer, metadata ClientMetadataFetcher, clock func() time.Time, newID func() string, newToken func() string) *Service {
+	return &Service{
+		repo: repo, cfg: cfg, scoped: scoped, metadata: metadata,
+		failures: newCIMDFailureMemory(), fetches: newCIMDFetchGate(),
+		clock: clock, newID: newID, newToken: newToken,
+	}
+}
+
+// dcrPendingCutoff é o limite do cliente DCR pendente em now: pendente desde ele ou
+// antes, o cliente conta como inexistente, mesmo antes de ser apagado.
+func (s *Service) dcrPendingCutoff(now time.Time) time.Time {
+	return now.Add(-s.cfg.DCRPendingTTL)
 }
 
 // canonicalize devolve a forma canônica de uma URL recebida; ok falso se ela não parseia.

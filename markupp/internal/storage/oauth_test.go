@@ -16,6 +16,10 @@ import (
 
 var instanteOAuth = time.Date(2026, 10, 16, 12, 0, 0, 0, time.UTC)
 
+// janelaReusoCodigo é a janela, contada da decisão do pedido, em que o reuso do código
+// ainda revoga os tokens; os testes usam a duração padrão do pedido.
+const janelaReusoCodigo = 10 * time.Minute
+
 // repoOAuth sobe o banco com a conta u1 e o cliente c1 e devolve o repositório sobre ele.
 func repoOAuth(t *testing.T) (*storage.PostgresOAuthRepository, *pgxpool.Pool) {
 	t.Helper()
@@ -56,16 +60,16 @@ func auditoriasOAuth(t *testing.T, pool *pgxpool.Pool, result string) int {
 func TestPostgresOAuthRepo_GetClient_DevolveCliente(t *testing.T) {
 	repo, _ := repoOAuth(t)
 
-	client, err := repo.GetClient(context.Background(), "c1")
+	client, err := repo.GetClient(context.Background(), "c1", time.Time{})
 
 	require.NoError(t, err)
-	assert.Equal(t, oauth.Client{ID: "c1", Name: "Agente", RedirectURIs: []string{"http://127.0.0.1/cb"}}, client)
+	assert.Equal(t, oauth.Client{ID: "c1", Name: "Agente", RedirectURIs: []string{"http://127.0.0.1/cb"}, Source: oauth.ClientSourceDCR}, client)
 }
 
 func TestPostgresOAuthRepo_GetClient_Inexistente(t *testing.T) {
 	repo, _ := repoOAuth(t)
 
-	_, err := repo.GetClient(context.Background(), "c-nenhum")
+	_, err := repo.GetClient(context.Background(), "c-nenhum", time.Time{})
 
 	require.ErrorIs(t, err, oauth.ErrClientNotFound)
 }
@@ -77,7 +81,7 @@ func TestPostgresOAuthRepo_ClientIDLongo_ChegaLimitadoAoErro(t *testing.T) {
 	pedido := pedidoOAuth("r1", oauth.ScopeNotesRead)
 	pedido.ClientID = longo
 	casos := map[string]func() error{
-		"cliente inexistente":           func() error { _, err := repo.GetClient(ctx, longo); return err },
+		"cliente inexistente":           func() error { _, err := repo.GetClient(ctx, longo, time.Time{}); return err },
 		"pedido de cliente inexistente": func() error { return repo.CreateRequest(ctx, pedido) },
 		"autorização inexistente":       func() error { _, err := repo.ActiveAuthorization(ctx, "u1", longo); return err },
 	}
@@ -106,6 +110,16 @@ func TestPostgresOAuthRepo_CreateRequest_PendenteVoltaIgual(t *testing.T) {
 	assert.Equal(t, pedido.Resource, got.Resource)
 	assert.True(t, pedido.ExpiresAt.Equal(got.ExpiresAt))
 	assert.Empty(t, got.UserID)
+}
+
+func TestPostgresOAuthRepo_CreateRequest_ClienteInexistente_DevolveErrClientNotFound(t *testing.T) {
+	repo, _ := repoOAuth(t)
+	pedido := pedidoOAuth("r1", oauth.ScopeNotesRead)
+	pedido.ClientID = "c-apagado"
+
+	err := repo.CreateRequest(context.Background(), pedido)
+
+	require.ErrorIs(t, err, oauth.ErrClientNotFound)
 }
 
 func TestPostgresOAuthRepo_GetPendingRequest_Inexistente(t *testing.T) {
@@ -314,7 +328,7 @@ func TestPostgresOAuthRepo_RedeemCode_DevolvePedidoEAutorizacao(t *testing.T) {
 	repo, _ := repoOAuth(t)
 	pedidoAprovado(t, repo, "r1", "h1", oauth.ScopeNotesRead)
 
-	got, err := repo.RedeemCode(context.Background(), "h1", instanteOAuth.Add(90*time.Second))
+	got, err := repo.RedeemCode(context.Background(), "h1", instanteOAuth.Add(90*time.Second), janelaReusoCodigo)
 
 	require.NoError(t, err)
 	assert.Equal(t, "r1", got.Request.ID)
@@ -329,10 +343,10 @@ func TestPostgresOAuthRepo_RedeemCode_ReusoDevolveOriginalComErro(t *testing.T) 
 	repo, _ := repoOAuth(t)
 	ctx := context.Background()
 	pedidoAprovado(t, repo, "r1", "h1", oauth.ScopeNotesRead)
-	primeiro, err := repo.RedeemCode(ctx, "h1", instanteOAuth.Add(90*time.Second))
+	primeiro, err := repo.RedeemCode(ctx, "h1", instanteOAuth.Add(90*time.Second), janelaReusoCodigo)
 	require.NoError(t, err)
 
-	got, err := repo.RedeemCode(ctx, "h1", instanteOAuth.Add(100*time.Second))
+	got, err := repo.RedeemCode(ctx, "h1", instanteOAuth.Add(100*time.Second), janelaReusoCodigo)
 
 	require.ErrorIs(t, err, oauth.ErrCodeAlreadyUsed)
 	assert.Equal(t, "r1", got.Request.ID)
@@ -343,30 +357,31 @@ func TestPostgresOAuthRepo_RedeemCode_ReusoDepoisDeExpirarContinuaJaUsado(t *tes
 	repo, _ := repoOAuth(t)
 	ctx := context.Background()
 	pedidoAprovado(t, repo, "r1", "h1", oauth.ScopeNotesRead)
-	_, err := repo.RedeemCode(ctx, "h1", instanteOAuth.Add(90*time.Second))
+	_, err := repo.RedeemCode(ctx, "h1", instanteOAuth.Add(90*time.Second), janelaReusoCodigo)
 	require.NoError(t, err)
 
-	got, err := repo.RedeemCode(ctx, "h1", instanteOAuth.Add(time.Hour))
+	got, err := repo.RedeemCode(ctx, "h1", instanteOAuth.Add(time.Hour), janelaReusoCodigo)
 
 	require.ErrorIs(t, err, oauth.ErrCodeAlreadyUsed)
 	assert.Equal(t, "r1", got.Request.ID)
 }
 
-func TestPostgresOAuthRepo_RedeemCode_ReusoSemAutorizacaoAtiva(t *testing.T) {
+func TestPostgresOAuthRepo_RedeemCode_ReusoComAutorizacaoRevogadaDevolveADoPedido(t *testing.T) {
 	repo, pool := repoOAuth(t)
 	ctx := context.Background()
 	pedidoAprovado(t, repo, "r1", "h1", oauth.ScopeNotesRead)
-	_, err := repo.RedeemCode(ctx, "h1", instanteOAuth.Add(90*time.Second))
+	primeiro, err := repo.RedeemCode(ctx, "h1", instanteOAuth.Add(90*time.Second), janelaReusoCodigo)
 	require.NoError(t, err)
 	_, err = pool.Exec(ctx, "UPDATE oauth_authorizations SET revoked_at = now()")
 	require.NoError(t, err)
 
-	got, err := repo.RedeemCode(ctx, "h1", instanteOAuth.Add(100*time.Second))
+	got, err := repo.RedeemCode(ctx, "h1", instanteOAuth.Add(100*time.Second), janelaReusoCodigo)
 
 	require.ErrorIs(t, err, oauth.ErrCodeAlreadyUsed)
 	assert.Equal(t, "r1", got.Request.ID)
 	assert.Equal(t, "u1", got.Request.UserID)
-	assert.Empty(t, got.Authorization.ID)
+	assert.Equal(t, primeiro.Authorization.ID, got.Authorization.ID, "a Autorização do pedido, mesmo revogada")
+	assert.True(t, got.Authorization.Revoked)
 }
 
 func TestPostgresOAuthRepo_RedeemCode_ExpiradoNoInstanteExato(t *testing.T) {
@@ -374,7 +389,7 @@ func TestPostgresOAuthRepo_RedeemCode_ExpiradoNoInstanteExato(t *testing.T) {
 	pedidoAprovado(t, repo, "r1", "h1", oauth.ScopeNotesRead)
 	codeExpiresAt := instanteOAuth.Add(2 * time.Minute)
 
-	_, err := repo.RedeemCode(context.Background(), "h1", codeExpiresAt)
+	_, err := repo.RedeemCode(context.Background(), "h1", codeExpiresAt, janelaReusoCodigo)
 
 	require.ErrorIs(t, err, oauth.ErrCodeNotFound)
 }
@@ -382,7 +397,7 @@ func TestPostgresOAuthRepo_RedeemCode_ExpiradoNoInstanteExato(t *testing.T) {
 func TestPostgresOAuthRepo_RedeemCode_HashDesconhecido(t *testing.T) {
 	repo, _ := repoOAuth(t)
 
-	_, err := repo.RedeemCode(context.Background(), "h-nenhum", instanteOAuth)
+	_, err := repo.RedeemCode(context.Background(), "h-nenhum", instanteOAuth, janelaReusoCodigo)
 
 	require.ErrorIs(t, err, oauth.ErrCodeNotFound)
 }
@@ -393,10 +408,10 @@ func TestPostgresOAuthRepo_RedeemCode_SemAutorizacaoAtiva(t *testing.T) {
 	_, err := pool.Exec(context.Background(), "UPDATE oauth_authorizations SET revoked_at = now()")
 	require.NoError(t, err)
 
-	_, err = repo.RedeemCode(context.Background(), "h1", instanteOAuth.Add(90*time.Second))
+	_, err = repo.RedeemCode(context.Background(), "h1", instanteOAuth.Add(90*time.Second), janelaReusoCodigo)
 
 	require.ErrorIs(t, err, oauth.ErrAuthorizationNotFound)
-	_, err = repo.RedeemCode(context.Background(), "h1", instanteOAuth.Add(100*time.Second))
+	_, err = repo.RedeemCode(context.Background(), "h1", instanteOAuth.Add(100*time.Second), janelaReusoCodigo)
 	require.ErrorIs(t, err, oauth.ErrCodeAlreadyUsed, "o consumo fica gravado mesmo sem Autorização ativa")
 }
 
@@ -410,38 +425,32 @@ func tokensOAuth(authorizationID string) []oauth.IssuedToken {
 	}
 }
 
-func TestPostgresOAuthRepo_SaveTokens_GravaTodosComEscopos(t *testing.T) {
+// repoComPedidoDeA1 sobe o banco com a Autorização ativa a1 e o pedido r1 ligado a ela.
+func repoComPedidoDeA1(t *testing.T) (*storage.PostgresOAuthRepository, *pgxpool.Pool) {
+	t.Helper()
 	repo, pool := repoOAuth(t)
 	require.NoError(t, autorizar(pool, "a1", "{notas:leitura}", false))
+	require.NoError(t, pedidoDaAutorizacao(pool, "a1"))
+	return repo, pool
+}
 
-	require.NoError(t, repo.SaveTokens(context.Background(), tokensOAuth("a1")))
+func TestPostgresOAuthRepo_SaveCodeTokens_GravaTodosComEscopos(t *testing.T) {
+	repo, pool := repoComPedidoDeA1(t)
+
+	require.NoError(t, repo.SaveCodeTokens(context.Background(), "r1", tokensOAuth("a1")))
 
 	assert.Equal(t, 2, countRows(t, pool, `SELECT count(*) FROM oauth_tokens
 		WHERE authorization_id = 'a1' AND scopes = '{notas:leitura}' AND NOT revoked`))
 }
 
-func TestPostgresOAuthRepo_SaveTokens_FalhaNaoGravaNenhum(t *testing.T) {
-	repo, pool := repoOAuth(t)
-	require.NoError(t, autorizar(pool, "a1", "{notas:leitura}", false))
+func TestPostgresOAuthRepo_SaveCodeTokens_FalhaNaoGravaNenhum(t *testing.T) {
+	repo, pool := repoComPedidoDeA1(t)
 	tokens := tokensOAuth("a1")
 	tokens[1].Scopes = []string{"notas:tudo"}
 
-	require.Error(t, repo.SaveTokens(context.Background(), tokens))
+	require.Error(t, repo.SaveCodeTokens(context.Background(), "r1", tokens))
 
 	assert.Equal(t, 0, countRows(t, pool, "SELECT count(*) FROM oauth_tokens"))
-}
-
-func TestPostgresOAuthRepo_RevokeAuthorizationTokens_RevogaSoOsDaAutorizacao(t *testing.T) {
-	repo, pool := repoOAuth(t)
-	ctx := context.Background()
-	require.NoError(t, autorizar(pool, "a1", "{notas:leitura}", false))
-	require.NoError(t, repo.SaveTokens(ctx, tokensOAuth("a1")))
-	require.NoError(t, emitirTokenDe(pool, "a0", "t-outro"))
-
-	require.NoError(t, repo.RevokeAuthorizationTokens(ctx, "a1"))
-
-	assert.Equal(t, 2, countRows(t, pool, "SELECT count(*) FROM oauth_tokens WHERE authorization_id = 'a1' AND revoked"))
-	assert.Equal(t, 0, countRows(t, pool, "SELECT count(*) FROM oauth_tokens WHERE authorization_id = 'a0' AND revoked"))
 }
 
 // emitirTokenDe grava um token numa Autorização revogada a0, para conferir o alcance da revogação.
@@ -452,4 +461,18 @@ func emitirTokenDe(pool *pgxpool.Pool, authorizationID, hash string) error {
 	_, err := pool.Exec(context.Background(), `INSERT INTO oauth_tokens (token_hash, authorization_id, kind, resource, scopes, expires_at)
 		VALUES ($1, $2, 'access', 'https://mcp.markupp.dev', '{notas:leitura}', now() + interval '1 hour')`, hash, authorizationID)
 	return err
+}
+
+func TestPostgresOAuthRepo_RecordAuditEvent_GravaSemTenantComContaECliente(t *testing.T) {
+	repo, pool := repoOAuth(t)
+
+	err := repo.RecordAuditEvent(context.Background(), oauth.AuditEvent{
+		Action: oauth.AuditActionExchange, Result: oauth.AuditResultSuccess,
+		UserID: "u1", ClientID: "c1", OccurredAt: instanteOAuth,
+	})
+
+	require.NoError(t, err)
+	assert.Equal(t, 1, countRows(t, pool, `SELECT count(*) FROM audit_events WHERE action = 'oauth.exchange'
+		AND result = 'success' AND actor_id = 'u1' AND target = 'c1' AND tenant_id IS NULL
+		AND occurred_at = '2026-10-16T12:00:00Z'`))
 }

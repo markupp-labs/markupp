@@ -12,13 +12,21 @@ import (
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/oauth"
 )
 
-// esperarBloqueio espera alguma conexão do banco ficar parada esperando uma trava.
-func esperarBloqueio(t *testing.T, pool *pgxpool.Pool) {
+// esperarBloqueio espera alguma conexão do banco ficar parada esperando uma trava e
+// falha com o motivo se nenhuma ficar.
+func esperarBloqueio(t *testing.T, pool *pgxpool.Pool, motivo string) {
+	t.Helper()
+	esperarBloqueios(t, pool, 1, motivo)
+}
+
+// esperarBloqueios espera ao menos n conexões do banco ficarem paradas esperando uma
+// trava e falha com o motivo se não ficarem.
+func esperarBloqueios(t *testing.T, pool *pgxpool.Pool, n int, motivo string) {
 	t.Helper()
 	require.Eventually(t, func() bool {
 		return countRows(t, pool, `SELECT count(*) FROM pg_stat_activity
-			WHERE datname = current_database() AND wait_event_type = 'Lock'`) > 0
-	}, 5*time.Second, 10*time.Millisecond, "a aprovação deveria esperar a Autorização da outra transação")
+			WHERE datname = current_database() AND wait_event_type = 'Lock'`) >= n
+	}, 15*time.Second, 10*time.Millisecond, motivo)
 }
 
 func TestPostgresOAuthRepo_ApproveRequest_ConcorrenteComOutraCriacaoAmplia(t *testing.T) {
@@ -36,7 +44,7 @@ func TestPostgresOAuthRepo_ApproveRequest_ConcorrenteComOutraCriacaoAmplia(t *te
 		_, err := repo.ApproveRequest(ctx, aprovacao("r1", "h1", instanteOAuth.Add(time.Minute)))
 		aprovou <- err
 	}()
-	esperarBloqueio(t, pool)
+	esperarBloqueio(t, pool, "a aprovação deveria esperar a Autorização da outra transação")
 
 	require.NoError(t, outra.Commit(ctx))
 
@@ -92,4 +100,48 @@ func TestPostgresOAuthRepo_DenyRequest_FalhaDeAuditoriaTemContexto(t *testing.T)
 
 	require.ErrorContains(t, err, `oauth.authorize`)
 	require.ErrorContains(t, err, "'c1'")
+}
+
+// autorizacaoDoPedido devolve a Autorização gravada no pedido, ou "" se ele não tem.
+func autorizacaoDoPedido(t *testing.T, pool *pgxpool.Pool, requestID string) string {
+	t.Helper()
+	var id *string
+	err := pool.QueryRow(context.Background(), "SELECT authorization_id FROM oauth_requests WHERE id = $1", requestID).Scan(&id)
+	require.NoError(t, err)
+	if id == nil {
+		return ""
+	}
+	return *id
+}
+
+func TestPostgresOAuthRepo_ApproveRequest_GravaNoPedidoAAutorizacaoCriadaOuAmpliada(t *testing.T) {
+	repo, pool := repoOAuth(t)
+	ctx := context.Background()
+	pedidoAprovado(t, repo, "r1", "h1", oauth.ScopeNotesRead)
+	criada, err := repo.ActiveAuthorization(ctx, "u1", "c1")
+	require.NoError(t, err)
+	require.NoError(t, repo.CreateRequest(ctx, pedidoOAuth("r2", oauth.ScopeNotesWrite)))
+
+	_, err = repo.ApproveRequest(ctx, aprovacao("r2", "h2", instanteOAuth.Add(2*time.Minute)))
+
+	require.NoError(t, err)
+	assert.Equal(t, criada.ID, autorizacaoDoPedido(t, pool, "r1"), "o pedido que criou a Autorização")
+	assert.Equal(t, criada.ID, autorizacaoDoPedido(t, pool, "r2"), "o pedido que ampliou a Autorização")
+}
+
+func TestPostgresOAuthRepo_ApproveRequest_DepoisDeRevogarGravaANova(t *testing.T) {
+	repo, pool := repoOAuth(t)
+	ctx := context.Background()
+	pedidoAprovado(t, repo, "r1", "h1", oauth.ScopeNotesRead)
+	revogarAutorizacoes(t, pool)
+	require.NoError(t, repo.CreateRequest(ctx, pedidoOAuth("r2", oauth.ScopeNotesRead)))
+
+	_, err := repo.ApproveRequest(ctx, aprovacao("r2", "h2", instanteOAuth.Add(2*time.Minute)))
+
+	require.NoError(t, err)
+	nova, err := repo.ActiveAuthorization(ctx, "u1", "c1")
+	require.NoError(t, err)
+	assert.Equal(t, nova.ID, autorizacaoDoPedido(t, pool, "r2"))
+	assert.NotEqual(t, nova.ID, autorizacaoDoPedido(t, pool, "r1"))
+	assert.NotEmpty(t, autorizacaoDoPedido(t, pool, "r1"), "o pedido antigo segue com a revogada")
 }

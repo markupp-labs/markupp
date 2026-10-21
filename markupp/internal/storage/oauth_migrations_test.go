@@ -75,7 +75,7 @@ func TestMigracao00032_TabelasOAuth_SemPrivilegioParaPapeis(t *testing.T) {
 	pool := bancoComOAuthSobDefaultPrivileges(t)
 
 	for _, papel := range papeisSemAcessoOAuth {
-		for _, tabela := range tabelasOAuth {
+		for _, tabela := range append(tabelasOAuth, "oauth_pending_dcr_clients") {
 			assert.Equal(t, 0, privilegiosOAuth(t, pool, papel, tabela), "%s não pode tocar em %s", papel, tabela)
 		}
 	}
@@ -84,7 +84,7 @@ func TestMigracao00032_TabelasOAuth_SemPrivilegioParaPapeis(t *testing.T) {
 func TestMigracao00032_ChavesEstrangeiras_Indexadas(t *testing.T) {
 	pool := bancoComOAuth(t)
 
-	for _, fk := range [][2]string{{"oauth_requests", "user_id"}, {"oauth_requests", "client_id"},
+	for _, fk := range [][2]string{{"oauth_requests", "user_id"}, {"oauth_requests", "client_id"}, {"oauth_requests", "authorization_id"},
 		{"oauth_authorizations", "user_id"}, {"oauth_authorizations", "client_id"}, {"oauth_tokens", "authorization_id"}} {
 		assert.Positive(t, countRows(t, pool, `SELECT count(*) FROM pg_indexes WHERE tablename = '`+fk[0]+
 			`' AND indexdef ~ '\(`+fk[1]+`[,)]'`), "%s.%s precisa de índice com a coluna na frente", fk[0], fk[1])
@@ -105,6 +105,22 @@ func TestMigracao00032_SourceInvalido_Rejeitado(t *testing.T) {
 	_, err := pool.Exec(context.Background(), `INSERT INTO oauth_clients (id, source, name, redirect_uris)
 		VALUES ('c2', 'manual', 'Agente', ARRAY['http://127.0.0.1/cb'])`)
 
+	assert.Error(t, err)
+}
+
+// O CHECK é o que garante que GetFreshCIMDClient nunca devolve cliente de outra origem:
+// só o cimd tem validade de documento.
+func TestMigracao00032_ValidadeDoDocumento_SoEmClienteCIMD(t *testing.T) {
+	pool := bancoComOAuth(t)
+	inserir := func(id, source string) error {
+		_, err := pool.Exec(context.Background(), `INSERT INTO oauth_clients (id, source, name, redirect_uris, metadata_expires_at)
+			VALUES ($1, $2, 'Agente', ARRAY['http://127.0.0.1/cb'], now() + interval '1 hour')`, id, source)
+		return err
+	}
+
+	assert.Error(t, inserir("c2", "dcr"))
+	assert.NoError(t, inserir("https://agente.example/c.json", "cimd"))
+	_, err := pool.Exec(context.Background(), `UPDATE oauth_clients SET metadata_expires_at = now() WHERE id = 'c1'`)
 	assert.Error(t, err)
 }
 
@@ -147,4 +163,45 @@ func TestMigracao00032_EscopoDoToken_RestritoAosSuportados(t *testing.T) {
 	assert.NoError(t, emitirToken(pool, "t1", "{notas:leitura}"))
 	assert.Error(t, emitirToken(pool, "t2", "{notas:tudo}"))
 	assert.Error(t, emitirToken(pool, "t3", "{}"), "lista vazia de escopos")
+}
+
+func TestMigracao00032_TokenRotacionado_GuardaQuandoFoiTrocado(t *testing.T) {
+	pool := bancoComOAuth(t)
+	require.NoError(t, autorizar(pool, "a1", "{notas:leitura}", false))
+	require.NoError(t, emitirToken(pool, "t1", "{notas:leitura}"))
+
+	_, err := pool.Exec(context.Background(), `UPDATE oauth_tokens SET rotated_at = now() WHERE token_hash = 't1'`)
+
+	assert.NoError(t, err)
+}
+
+// pedidoDaAutorizacao grava o pedido r1 de c1 ligado à Autorização authorizationID.
+func pedidoDaAutorizacao(pool *pgxpool.Pool, authorizationID string) error {
+	_, err := pool.Exec(context.Background(), `INSERT INTO oauth_requests (id, client_id, redirect_uri, scopes,
+		resource, code_challenge, expires_at, authorization_id)
+		VALUES ('r1', 'c1', 'http://127.0.0.1/cb', '{notas:leitura}', 'https://mcp.markupp.dev', 'desafio',
+		now() + interval '10 minutes', $1)`, authorizationID)
+	return err
+}
+
+func TestMigracao00032_PedidoLigadoAAutorizacao_SaiComEla(t *testing.T) {
+	pool := bancoComOAuth(t)
+	require.NoError(t, autorizar(pool, "a1", "{notas:leitura}", false))
+	require.NoError(t, pedidoDaAutorizacao(pool, "a1"))
+
+	_, err := pool.Exec(context.Background(), "DELETE FROM oauth_authorizations WHERE id = 'a1'")
+
+	require.NoError(t, err)
+	assert.Equal(t, 0, countRows(t, pool, "SELECT count(*) FROM oauth_requests"))
+	assert.Error(t, pedidoDaAutorizacao(pool, "a-nenhuma"), "o pedido só aponta para Autorização existente")
+}
+
+func TestMigracao00032_PedidoGuardaQuandoOCodigoFoiReusado(t *testing.T) {
+	pool := bancoComOAuth(t)
+	require.NoError(t, autorizar(pool, "a1", "{notas:leitura}", false))
+	require.NoError(t, pedidoDaAutorizacao(pool, "a1"))
+
+	_, err := pool.Exec(context.Background(), "UPDATE oauth_requests SET code_reused_at = now() WHERE id = 'r1'")
+
+	assert.NoError(t, err)
 }

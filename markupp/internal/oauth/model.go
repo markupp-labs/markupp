@@ -3,6 +3,7 @@ package oauth
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 )
 
@@ -11,7 +12,21 @@ type Client struct {
 	ID           string
 	Name         string
 	RedirectURIs []string
+	// Source é a origem do registro: ClientSourceCIMD, ClientSourceDCR ou
+	// ClientSourceBuiltin.
+	Source string
 }
+
+// Origens de um cliente registrado. Só o nome do cliente CIMD é verificado pelo domínio
+// do documento; o do DCR é o que o próprio cliente declarou, e o embutido vem de fábrica.
+const (
+	ClientSourceCIMD    = "cimd"
+	ClientSourceDCR     = "dcr"
+	ClientSourceBuiltin = "builtin"
+)
+
+// BuiltinMCPClientID é o cliente público embutido do markupp-mcp em stdio (ADR-0042).
+const BuiltinMCPClientID = "markupp-mcp"
 
 // AuthorizationRequest é o Pedido de autorização: a solicitação de um cliente para agir
 // em nome de uma conta. O ID funciona como portador (ADR-0047): qualquer conta logada que
@@ -38,6 +53,9 @@ type Authorization struct {
 	Scopes    []string
 	CreatedAt time.Time
 	UpdatedAt time.Time
+	// Revoked é preenchido por FindToken, RedeemCode e no reuso de
+	// ConsumeRefreshToken, que devolvem a Autorização mesmo revogada.
+	Revoked bool
 }
 
 // Tipos de token guardados em oauth_tokens.
@@ -55,6 +73,10 @@ type IssuedToken struct {
 	Resource        string
 	Scopes          []string
 	ExpiresAt       time.Time
+	// Revoked é preenchido por FindToken, que devolve o token mesmo revogado.
+	Revoked bool
+	// Rotated é preenchido por FindToken: o refresh já foi trocado por um par novo.
+	Rotated bool
 }
 
 // Approval registra a aprovação de um pedido: o código emitido e a conta que aprovou.
@@ -65,6 +87,9 @@ type Approval struct {
 	CodeHash      string
 	CodeExpiresAt time.Time
 	DecidedAt     time.Time
+	// DCRPendingCutoff é o limite de criação do cliente DCR pendente: criado nele ou
+	// antes, o cliente conta como inexistente e o pedido não é aprovado.
+	DCRPendingCutoff time.Time
 }
 
 // Denial registra a recusa de um pedido pela conta.
@@ -75,7 +100,7 @@ type Denial struct {
 }
 
 // RedeemedCode é o resultado de consumir um código: o pedido que o originou e a
-// Autorização ativa da conta para o cliente.
+// Autorização gravada nele na aprovação.
 type RedeemedCode struct {
 	Request       AuthorizationRequest
 	Authorization Authorization
@@ -88,20 +113,29 @@ var (
 	ErrAuthorizationNotFound = errors.New("autorização ativa não encontrada")
 	ErrCodeNotFound          = errors.New("código de autorização inexistente ou expirado")
 	ErrCodeAlreadyUsed       = errors.New("código de autorização já usado")
+	ErrTokenNotFound         = errors.New("token oauth inexistente, expirado ou revogado")
+	ErrRefreshReused         = errors.New("refresh token oauth já rotacionado")
+	ErrClientSourceConflict  = errors.New("client_id já registrado por outra origem")
 )
 
 // Repository é a porta de persistência do authorization server. Todas as tabelas são
 // globais (ADR-0034): a implementação não usa ator nem RLS.
 type Repository interface {
-	GetClient(ctx context.Context, id string) (Client, error)
+	// GetClient devolve ErrClientNotFound se o cliente não existe ou é DCR pendente
+	// desde dcrPendingCutoff ou antes, mesmo que ainda não tenha sido apagado.
+	GetClient(ctx context.Context, id string, dcrPendingCutoff time.Time) (Client, error)
+	// CreateRequest devolve ErrClientNotFound embrulhado se o cliente não existe mais.
 	CreateRequest(ctx context.Context, req AuthorizationRequest) error
 	// GetPendingRequest devolve ErrRequestNotFound se o pedido não existe, expirou em
 	// relação a now ou já foi decidido.
 	GetPendingRequest(ctx context.Context, id string, now time.Time) (AuthorizationRequest, error)
 	// ApproveRequest marca o pedido como decidido, grava o hash do código, cria a
 	// Autorização ativa da conta para o cliente ou amplia os escopos dela com os do
-	// pedido, e audita oauth.authorize com sucesso, tudo numa transação. Devolve
-	// ErrRequestNotFound se o pedido já não estiver pendente.
+	// pedido, grava no pedido o ID dessa Autorização e audita oauth.authorize com
+	// sucesso, tudo numa transação. Com cliente DCR, a transação compartilha a trava de
+	// RegisterDCRClient, para a limpeza dos pendentes esperar a aprovação aberta.
+	// Devolve ErrRequestNotFound se o pedido já não estiver pendente ou se o cliente for
+	// DCR pendente desde approval.DCRPendingCutoff ou antes.
 	ApproveRequest(ctx context.Context, approval Approval) (AuthorizationRequest, error)
 	// DenyRequest marca o pedido como decidido e audita oauth.authorize com falha, na
 	// mesma transação. Devolve ErrRequestNotFound se o pedido já não estiver pendente.
@@ -109,11 +143,165 @@ type Repository interface {
 	// ActiveAuthorization devolve ErrAuthorizationNotFound quando não há Autorização
 	// ativa da conta para o cliente.
 	ActiveAuthorization(ctx context.Context, userID, clientID string) (Authorization, error)
-	// RedeemCode consome o código de uso único. Devolve ErrCodeNotFound se o hash não
-	// existe ou expirou em relação a now, e ErrCodeAlreadyUsed junto com o RedeemedCode
-	// do pedido original quando o código já foi consumido.
-	RedeemCode(ctx context.Context, codeHash string, now time.Time) (RedeemedCode, error)
-	SaveTokens(ctx context.Context, tokens []IssuedToken) error
-	// RevokeAuthorizationTokens revoga todos os tokens da Autorização.
-	RevokeAuthorizationTokens(ctx context.Context, authorizationID string) error
+	// RedeemCode consome o código de uso único e lê, com a trava, a Autorização gravada
+	// no pedido, não a ativa da conta para o cliente. Os erros, por caso:
+	//   - ErrCodeNotFound: o hash não existe ou expirou sem uso em relação a now;
+	//   - ErrAuthorizationNotFound, junto com o RedeemedCode: a Autorização do pedido
+	//     foi revogada; o consumo fica gravado mesmo assim;
+	//   - ErrCodeAlreadyUsed, junto com o pedido do RedeemedCode: o código já foi
+	//     consumido. Se é o primeiro reuso e now chega até reuseWindow depois da decisão
+	//     do pedido, numa transação o pedido fica marcado como reusado em now e os tokens
+	//     da Autorização dele são revogados com a trava dela (RFC 9700, 4.4.2); só então
+	//     o RedeemedCode traz essa Autorização, mesmo revogada. Fora disso, nada muda.
+	RedeemCode(ctx context.Context, codeHash string, now time.Time, reuseWindow time.Duration) (RedeemedCode, error)
+	// SaveCodeTokens trava a Autorização dos tokens e grava o par emitido pela troca do
+	// código do pedido requestID, numa transação. Sem gravar nada, devolve
+	// ErrAuthorizationNotFound se a Autorização foi revogada e ErrCodeAlreadyUsed se o
+	// código do pedido foi reapresentado depois do consumo, ou se o pedido não é dessa
+	// Autorização.
+	SaveCodeTokens(ctx context.Context, requestID string, tokens []IssuedToken) error
+	// ConsumeRefreshToken marca o refresh token como rotacionado e lê a Autorização
+	// ativa na mesma transação. Os erros, por caso:
+	//   - ErrTokenNotFound: o hash não é de um refresh válido (inexistente, expirado em
+	//     relação a now ou revogado, mesmo já rotacionado);
+	//   - ErrRefreshReused, junto com o TokenGrant: o refresh já tinha sido rotacionado e
+	//     não foi revogado; o grant traz a Autorização dona mesmo revogada, como
+	//     FindToken, para a auditoria ter ator e alvo;
+	//   - ErrAuthorizationNotFound: o refresh era vigente, mas a Autorização dele foi
+	//     revogada; a rotação fica gravada mesmo assim.
+	ConsumeRefreshToken(ctx context.Context, tokenHash string, now time.Time) (TokenGrant, error)
+	// SaveRefreshedTokens trava a Autorização dos tokens, grava o novo par e audita o
+	// evento, numa transação. Sem gravar nada, devolve ErrAuthorizationNotFound se a
+	// Autorização foi revogada e ErrTokenNotFound se o refresh pai, pelo parentHash, foi
+	// revogado depois do consumo.
+	SaveRefreshedTokens(ctx context.Context, parentHash string, tokens []IssuedToken, event AuditEvent) error
+	// RevokeAuthorizationTokensAudited trava a Autorização, revoga os tokens dela e audita
+	// o evento, numa transação. triggerHash é o token que disparou a revogação: já com a
+	// trava, ele precisa existir, ser da Autorização e não estar revogado e, com
+	// ExpiredTriggerIgnored, não ter expirado em event.OccurredAt. Senão não revoga nem
+	// audita e devolve nil. Devolve ErrAuthorizationNotFound se a Autorização não existe.
+	RevokeAuthorizationTokensAudited(ctx context.Context, authorizationID, triggerHash string, expiry TriggerExpiry, event AuditEvent) error
+	// FindToken devolve o dono de um token de qualquer tipo, mesmo revogado ou expirado,
+	// ou ErrTokenNotFound.
+	FindToken(ctx context.Context, tokenHash string) (TokenGrant, error)
+	// ListActiveAuthorizations devolve as Autorizações ativas da conta com o nome do
+	// cliente, da mais recente para a mais antiga.
+	ListActiveAuthorizations(ctx context.Context, userID string) ([]AuthorizationSummary, error)
+	// GetFreshCIMDClient devolve o cliente registrado por CIMD cujo documento em cache
+	// ainda vale em relação a now, ou ErrClientNotFound.
+	GetFreshCIMDClient(ctx context.Context, id string, now time.Time) (Client, error)
+	// SaveCIMDClient cria ou atualiza o cliente de origem CIMD com o documento buscado em
+	// now, válido até expiresAt. Nunca sobrescreve um cliente de outra origem: nesse caso
+	// devolve ErrClientSourceConflict embrulhado.
+	SaveCIMDClient(ctx context.Context, client Client, expiresAt, now time.Time) error
+	// RegisterDCRClient grava o cliente de origem DCR criado em reg.IssuedAt. Numa
+	// transação serializada por uma trava única, apaga antes os pendentes há
+	// reg.PendingTTL ou mais, com as Autorizações revogadas deles, e conta os que sobram:
+	// com reg.MaxPending ou mais, não grava e devolve *PendingClientLimitError.
+	RegisterDCRClient(ctx context.Context, reg DCRRegistration) error
+	// RecordAuditEvent grava um evento avulso do authorization server.
+	RecordAuditEvent(ctx context.Context, event AuditEvent) error
+	// RevokeAuthorization trava a Autorização, confere que ela é da conta e segue ativa
+	// antes de escrever, marca-a como revogada, revoga os tokens dela e audita o evento
+	// com event.ClientID preenchido pela Autorização, numa transação. Devolve
+	// ErrAuthorizationNotFound se ela não existe, já foi revogada ou é de outra conta.
+	RevokeAuthorization(ctx context.Context, userID, authorizationID string, event AuditEvent) error
+}
+
+// DCRRegistration é o cliente a registrar por DCR (RFC 7591) com o teto e o prazo dos
+// registros pendentes: clientes DCR sem nenhuma Autorização ativa, pendentes desde a
+// criação ou desde a última revogação de Autorização deles, o que vier depois.
+type DCRRegistration struct {
+	Client     Client
+	IssuedAt   time.Time
+	MaxPending int
+	PendingTTL time.Duration
+}
+
+// PendingClientLimitError recusa o registro DCR com o teto de pendentes atingido. FreesAt
+// é quando o pendente mais antigo expira e abre vaga.
+type PendingClientLimitError struct {
+	MaxPending int
+	FreesAt    time.Time
+}
+
+func (e *PendingClientLimitError) Error() string {
+	return fmt.Sprintf("teto de %d clientes dcr pendentes atingido; esperada vaga a partir de %s",
+		e.MaxPending, e.FreesAt.UTC().Format(time.RFC3339))
+}
+
+// TriggerExpiry diz se o token que disparou a revogação auditada ainda revoga depois de
+// expirar.
+type TriggerExpiry int
+
+const (
+	// ExpiredTriggerRevokes revoga mesmo com o gatilho expirado, como no reuso de refresh.
+	ExpiredTriggerRevokes TriggerExpiry = iota
+	// ExpiredTriggerIgnored não revoga com o gatilho expirado, como no /oauth/revoke.
+	ExpiredTriggerIgnored
+)
+
+// ClientMetadata é o Client ID Metadata Document de um cliente já buscado e validado,
+// com o tempo que ele pode ficar em cache.
+type ClientMetadata struct {
+	ClientID     string
+	Name         string
+	RedirectURIs []string
+	TTL          time.Duration
+}
+
+// ErrInvalidMetadataClientID é o erro que o ClientMetadataFetcher embrulha quando o
+// client_id não serve como URL de documento e a busca nem sai para a rede.
+var ErrInvalidMetadataClientID = errors.New("client_id não serve como URL de documento de metadados")
+
+// ClientMetadataFetcher busca e valida o documento de metadados de um client_id que é
+// URL (draft-ietf-oauth-client-id-metadata-document). Erro de busca ou de validação
+// volta com o detalhe (rede, IP resolvido, corpo), que serve só para o log: o serviço
+// responde ao cliente com um invalid_request genérico e guarda o erro como causa interna.
+// O client_id recusado antes da busca volta embrulhando ErrInvalidMetadataClientID.
+type ClientMetadataFetcher interface {
+	FetchClientMetadata(ctx context.Context, clientID string) (ClientMetadata, error)
+}
+
+// ScopedTokenIssuer emite o token curto da API que a troca de token entrega ao
+// resource, com a conta como sujeito e os escopos da Autorização.
+type ScopedTokenIssuer interface {
+	IssueScopedToken(userID string, scopes []string, ttl time.Duration) (string, error)
+}
+
+// TokenGrant liga um token emitido à Autorização que o originou.
+type TokenGrant struct {
+	Token         IssuedToken
+	Authorization Authorization
+}
+
+// AuthorizationSummary é a Autorização ativa com o nome do cliente, para a conta listar.
+type AuthorizationSummary struct {
+	Authorization
+	ClientName string
+}
+
+// Ações auditadas pelo authorization server além da decisão do pedido.
+const (
+	AuditActionRefresh      = "oauth.refresh"
+	AuditActionRefreshReuse = "oauth.refresh_reuse"
+	AuditActionRevoke       = "oauth.revoke"
+	AuditActionCodeReuse    = "oauth.code_reuse"
+	AuditActionExchange     = "oauth.exchange"
+)
+
+// Resultados de um evento auditado.
+const (
+	AuditResultSuccess = "success"
+	AuditResultFailure = "failure"
+)
+
+// AuditEvent é um evento do authorization server para o registro de operações críticas
+// (ADR-0022), sempre sem tenant.
+type AuditEvent struct {
+	Action     string
+	Result     string
+	UserID     string
+	ClientID   string
+	OccurredAt time.Time
 }

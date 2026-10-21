@@ -24,6 +24,8 @@ type fakeAdminRepository struct {
 	actorRole   string
 	owners      int
 	revoked     string
+
+	tenantDeleted bool
 }
 
 func (f *fakeAdminRepository) ListMembers(ctx context.Context) ([]auth.Member, error) {

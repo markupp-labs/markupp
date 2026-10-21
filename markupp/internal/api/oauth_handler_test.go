@@ -26,13 +26,23 @@ type fakeOAuthService struct {
 	view       oauth.RequestView
 	redirectTo string
 	tokens     oauth.TokenResponse
+	exchange   oauth.ExchangeResponse
 	err        error
 
-	gotParams    oauth.AuthorizeParams
-	gotGrant     oauth.CodeGrant
-	gotRequestID string
-	gotUserID    string
-	decision     string
+	authorizations []oauth.AuthorizationView
+	registration   oauth.RegistrationResponse
+
+	gotRegistration *oauth.RegistrationRequest
+
+	gotParams          oauth.AuthorizeParams
+	gotGrant           oauth.CodeGrant
+	gotRefresh         oauth.RefreshGrant
+	gotRevoke          oauth.RevokeRequest
+	gotExchange        oauth.ExchangeGrant
+	gotRequestID       string
+	gotUserID          string
+	gotAuthorizationID string
+	decision           string
 }
 
 func (f *fakeOAuthService) StartAuthorization(_ context.Context, p oauth.AuthorizeParams) (string, error) {
@@ -60,6 +70,36 @@ func (f *fakeOAuthService) ExchangeCode(_ context.Context, g oauth.CodeGrant) (o
 	return f.tokens, f.err
 }
 
+func (f *fakeOAuthService) RefreshToken(_ context.Context, g oauth.RefreshGrant) (oauth.TokenResponse, error) {
+	f.gotRefresh = g
+	return f.tokens, f.err
+}
+
+func (f *fakeOAuthService) ExchangeToken(_ context.Context, g oauth.ExchangeGrant) (oauth.ExchangeResponse, error) {
+	f.gotExchange = g
+	return f.exchange, f.err
+}
+
+func (f *fakeOAuthService) RevokeToken(_ context.Context, r oauth.RevokeRequest) error {
+	f.gotRevoke = r
+	return f.err
+}
+
+func (f *fakeOAuthService) ListAuthorizations(_ context.Context, userID string) ([]oauth.AuthorizationView, error) {
+	f.gotUserID = userID
+	return f.authorizations, f.err
+}
+
+func (f *fakeOAuthService) RevokeAuthorization(_ context.Context, userID, authorizationID string) error {
+	f.gotUserID, f.gotAuthorizationID = userID, authorizationID
+	return f.err
+}
+
+func (f *fakeOAuthService) RegisterClient(_ context.Context, r oauth.RegistrationRequest) (oauth.RegistrationResponse, error) {
+	f.gotRegistration = &r
+	return f.registration, f.err
+}
+
 func oauthRouter(svc *fakeOAuthService) http.Handler {
 	return oauthRouterComOrigens(svc, nil)
 }
@@ -68,7 +108,7 @@ func oauthRouter(svc *fakeOAuthService) http.Handler {
 func oauthRouterComOrigens(svc *fakeOAuthService, origins []string) http.Handler {
 	return api.NewRouter(api.RouterDeps{
 		Tokens: &fakeTokenValidator{claims: auth.Claims{Subject: "u1"}}, Probe: &fakeProbe{}, AllowedOrigins: origins,
-		OAuth: svc, OAuthMetadata: &api.OAuthMetadata{Issuer: issuerDeTeste},
+		OAuth: svc, OAuthMetadata: &api.OAuthMetadata{Issuer: issuerDeTeste, DynamicRegistration: true},
 	})
 }
 
@@ -250,7 +290,7 @@ func TestToken_ErroDoProtocoloComRedirect_Retorna400SemRedirecionar(t *testing.T
 }
 
 func TestToken_GrantTypeAusenteOuOutro_Retorna400UnsupportedGrantType(t *testing.T) {
-	for _, grant := range []string{"", "password", "refresh_token"} {
+	for _, grant := range []string{"", "password", "client_credentials"} {
 		form := codeForm()
 		form.Set("grant_type", grant)
 		svc := &fakeOAuthService{}

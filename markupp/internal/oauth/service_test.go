@@ -15,25 +15,29 @@ import (
 )
 
 const (
-	testIssuer      = "https://markupp.exemplo.dev"
-	testPanelURL    = "https://painel.exemplo.dev"
-	testResource    = "https://markupp.exemplo.dev/mcp"
-	testClientID    = "https://cliente.exemplo.dev/oauth.json"
-	testRedirectURI = "https://cliente.exemplo.dev/callback"
-	testVerifier    = "verificador-de-teste-com-mais-de-quarenta-e-tres-caracteres"
+	testIssuer         = "https://markupp.exemplo.dev"
+	testPanelURL       = "https://painel.exemplo.dev"
+	testResource       = "https://markupp.exemplo.dev/mcp"
+	testClientID       = "https://cliente.exemplo.dev/oauth.json"
+	testRedirectURI    = "https://cliente.exemplo.dev/callback"
+	testVerifier       = "verificador-de-teste-com-mais-de-quarenta-e-tres-caracteres"
+	testResourceSecret = "segredo-do-resource-com-32-bytes" // #nosec G101 -- valor fictício de teste
 )
 
 var testNow = time.Date(2026, 10, 16, 12, 0, 0, 0, time.FixedZone("BRT", -3*3600))
 
 func testServiceConfig() oauth.ServiceConfig {
 	return oauth.ServiceConfig{
-		Issuer:     testIssuer,
-		PanelURL:   testPanelURL,
-		Resources:  []string{testResource},
-		AccessTTL:  time.Hour,
-		RefreshTTL: 30 * 24 * time.Hour,
-		RequestTTL: 10 * time.Minute,
-		CodeTTL:    time.Minute,
+		Issuer:          testIssuer,
+		PanelURL:        testPanelURL,
+		Resources:       []string{testResource},
+		AccessTTL:       time.Hour,
+		RefreshTTL:      30 * 24 * time.Hour,
+		RequestTTL:      10 * time.Minute,
+		CodeTTL:         time.Minute,
+		ResourceSecrets: map[string]string{testResource: testResourceSecret},
+		ExchangeTTL:     5 * time.Minute,
+		DCRPendingTTL:   testDCRPendingTTL,
 	}
 }
 
@@ -50,10 +54,15 @@ func (s *sequenceSource) next() string {
 
 // newTestService monta o Service com relógio fixo, IDs "pedido-N" e tokens "token-N".
 func newTestService(repo *fakeOAuthRepository) *oauth.Service {
+	return newTestServiceWithIssuer(repo, nil)
+}
+
+// newTestServiceWithIssuer é o newTestService com o emissor do token da troca.
+func newTestServiceWithIssuer(repo *fakeOAuthRepository, scoped oauth.ScopedTokenIssuer) *oauth.Service {
 	ids := &sequenceSource{prefix: "pedido"}
 	tokens := &sequenceSource{prefix: "token"}
 	clock := func() time.Time { return testNow }
-	return oauth.NewService(repo, testServiceConfig(), clock, ids.next, tokens.next)
+	return oauth.NewService(repo, testServiceConfig(), scoped, nil, clock, ids.next, tokens.next)
 }
 
 func testChallenge(verifier string) string {
@@ -62,7 +71,7 @@ func testChallenge(verifier string) string {
 }
 
 func testClient() oauth.Client {
-	return oauth.Client{ID: testClientID, Name: "Cliente de teste", RedirectURIs: []string{testRedirectURI}}
+	return oauth.Client{ID: testClientID, Name: "Cliente de teste", RedirectURIs: []string{testRedirectURI}, Source: oauth.ClientSourceCIMD}
 }
 
 func testRepositoryWithClient() *fakeOAuthRepository {

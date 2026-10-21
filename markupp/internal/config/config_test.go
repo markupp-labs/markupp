@@ -53,6 +53,8 @@ func TestLoad_SoVariaveisObrigatorias_UsaDefaultsNoResto(t *testing.T) {
 	esperado := config.Default()
 	esperado.DatabaseURL = urlDeTeste
 	esperado.AuthSecret = segredoDeTesteValido
+	esperado.PublicURL = "http://localhost:8080"
+	esperado.PanelURL = "http://localhost:3999"
 	assert.Equal(t, esperado, cfg)
 }
 
@@ -183,14 +185,13 @@ func TestLoad_RefreshExpirationInvalido_RetornaErroComOValor(t *testing.T) {
 	assert.Contains(t, err.Error(), "dez")
 }
 
-func TestLoad_SemAuthSecret_RetornaErroExigindoVariavel(t *testing.T) {
+func TestLoad_SemAuthSecret_DeixaOSegredoParaOBanco(t *testing.T) {
 	env := fakeEnv{"MARKUPP_DATABASE_URL": urlDeTeste}
 
-	_, err := config.Load(env.Lookup)
+	cfg, err := config.Load(env.Lookup)
 
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "MARKUPP_AUTH_SECRET")
-	assert.Contains(t, err.Error(), "32 bytes")
+	require.NoError(t, err, "sem a variavel o servidor gera o segredo na subida (ADR-0041)")
+	assert.Empty(t, cfg.AuthSecret)
 }
 
 func TestLoad_AuthSecretCurto_RetornaErroComTamanhoEFormato(t *testing.T) {

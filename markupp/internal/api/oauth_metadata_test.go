@@ -22,7 +22,7 @@ func metadataRequest(t *testing.T, metadata *api.OAuthMetadata, path string) *ht
 }
 
 func TestOAuthMetadata_Configurado_Retorna200ComOsCampos(t *testing.T) {
-	rec := metadataRequest(t, &api.OAuthMetadata{Issuer: "https://markupp.exemplo"}, metadataPath)
+	rec := metadataRequest(t, &api.OAuthMetadata{Issuer: "https://markupp.exemplo", DynamicRegistration: true}, metadataPath)
 
 	require.Equal(t, http.StatusOK, rec.Code)
 	assert.Equal(t, "application/json", rec.Header().Get("Content-Type"))
@@ -30,12 +30,24 @@ func TestOAuthMetadata_Configurado_Retorna200ComOsCampos(t *testing.T) {
 		"issuer": "https://markupp.exemplo",
 		"authorization_endpoint": "https://markupp.exemplo/oauth/authorize",
 		"token_endpoint": "https://markupp.exemplo/oauth/token",
+		"registration_endpoint": "https://markupp.exemplo/oauth/register",
+		"revocation_endpoint": "https://markupp.exemplo/oauth/revoke",
 		"scopes_supported": ["notas:leitura", "notas:escrita", "administracao"],
 		"response_types_supported": ["code"],
-		"grant_types_supported": ["authorization_code"],
+		"grant_types_supported": ["authorization_code", "refresh_token", "urn:ietf:params:oauth:grant-type:token-exchange"],
 		"code_challenge_methods_supported": ["S256"],
-		"token_endpoint_auth_methods_supported": ["none"]
+		"token_endpoint_auth_methods_supported": ["none"],
+		"revocation_endpoint_auth_methods_supported": ["none"],
+		"client_id_metadata_document_supported": true
 	}`, rec.Body.String())
+}
+
+func TestOAuthMetadata_SemRegistroDinamico_NaoAnunciaRegistrationEndpoint(t *testing.T) {
+	rec := metadataRequest(t, &api.OAuthMetadata{Issuer: "https://markupp.exemplo"}, metadataPath)
+
+	require.Equal(t, http.StatusOK, rec.Code)
+	assert.NotContains(t, rec.Body.String(), "registration_endpoint")
+	assert.Contains(t, rec.Body.String(), `"token_endpoint":"https://markupp.exemplo/oauth/token"`)
 }
 
 func TestOAuthMetadata_Configurado_NaoMarcaObsoleta(t *testing.T) {

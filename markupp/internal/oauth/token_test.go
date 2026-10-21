@@ -3,6 +3,7 @@ package oauth_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -47,6 +48,7 @@ func TestExchangeCode_CodigoValido_EmiteTokensDosEscoposDoPedido(t *testing.T) {
 	assert.Equal(t, []string{auth.HashOpaqueToken("codigo-1")}, repo.redeemCalls)
 	assert.Equal(t, []time.Time{testNow}, repo.redeemNow)
 	assert.Equal(t, [][]oauth.IssuedToken{expectedIssuedTokens()}, repo.saved)
+	assert.Equal(t, []string{pendingTestRequest().ID}, repo.savedRequests, "o par fica preso ao pedido do código")
 }
 
 func expectedIssuedTokens() []oauth.IssuedToken {
@@ -94,7 +96,6 @@ func TestExchangeCode_GrantQueNaoBateComOPedido_InvalidGrant(t *testing.T) {
 			requireProtocolError(t, err, "invalid_grant", "", "")
 			assert.Len(t, repo.redeemCalls, 1, "o código é consumido antes das conferências")
 			assert.Empty(t, repo.saved)
-			assert.Empty(t, repo.revoked)
 		})
 	}
 }
@@ -135,41 +136,54 @@ func TestExchangeCode_CodigoRecusadoPeloRepositorio_InvalidGrant(t *testing.T) {
 
 			requireProtocolError(t, err, "invalid_grant", "", "")
 			assert.Empty(t, repo.saved)
-			assert.Empty(t, repo.revoked)
 		})
 	}
 }
 
-func TestExchangeCode_CodigoReusado_RevogaTokensDaAutorizacao(t *testing.T) {
+func TestExchangeCode_CodigoReusado_InvalidGrantSemGravar(t *testing.T) {
 	repo := testRepositoryWithRedeemableCode()
 	repo.redeemErr = oauth.ErrCodeAlreadyUsed
 
 	_, err := newTestService(repo).ExchangeCode(context.Background(), validCodeGrant())
 
 	requireProtocolError(t, err, "invalid_grant", "", "")
-	assert.Equal(t, []string{"aut-1"}, repo.revoked)
 	assert.Empty(t, repo.saved)
 }
 
-func TestExchangeCode_CodigoReusadoSemAutorizacao_NaoRevoga(t *testing.T) {
-	repo := newFakeOAuthRepository()
-	repo.redeemErr = oauth.ErrCodeAlreadyUsed
+func TestExchangeCode_JanelaDoReusoEADuracaoDoPedido(t *testing.T) {
+	repo := testRepositoryWithRedeemableCode()
 
 	_, err := newTestService(repo).ExchangeCode(context.Background(), validCodeGrant())
 
-	requireProtocolError(t, err, "invalid_grant", "", "")
-	assert.Empty(t, repo.revoked)
+	require.NoError(t, err)
+	assert.Equal(t, []time.Duration{testServiceConfig().RequestTTL}, repo.redeemWindows,
+		"o reuso só revoga até RequestTTL depois da decisão do pedido")
+}
+
+// TestExchangeCode_ParRecusadoNaGravacao_InvalidGrant cobre o reuso do código ou a
+// revogação pela conta que entra entre o consumo e a gravação do par.
+func TestExchangeCode_ParRecusadoNaGravacao_InvalidGrant(t *testing.T) {
+	casos := map[string]error{
+		"codigo reapresentado": oauth.ErrCodeAlreadyUsed,
+		"autorizacao revogada": fmt.Errorf("contexto: %w", oauth.ErrAuthorizationNotFound),
+	}
+	for nome, causa := range casos {
+		t.Run(nome, func(t *testing.T) {
+			repo := testRepositoryWithRedeemableCode()
+			repo.saveErr = causa
+
+			_, err := newTestService(repo).ExchangeCode(context.Background(), validCodeGrant())
+
+			requireProtocolError(t, err, "invalid_grant", "", "")
+			assert.Len(t, repo.saved, 1)
+		})
+	}
 }
 
 func TestExchangeCode_FalhaDoRepositorio_DevolveErroEmbrulhado(t *testing.T) {
 	casos := map[string]func(*fakeOAuthRepository) error{
 		"ao consumir": func(r *fakeOAuthRepository) error { r.redeemErr = errors.New("banco fora do ar"); return r.redeemErr },
 		"ao salvar":   func(r *fakeOAuthRepository) error { r.saveErr = errors.New("banco fora do ar"); return r.saveErr },
-		"ao revogar": func(r *fakeOAuthRepository) error {
-			r.redeemErr = oauth.ErrCodeAlreadyUsed
-			r.revokeErr = errors.New("banco fora do ar")
-			return r.revokeErr
-		},
 	}
 	for nome, falha := range casos {
 		t.Run(nome, func(t *testing.T) {

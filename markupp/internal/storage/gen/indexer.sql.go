@@ -7,7 +7,39 @@ package gen
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
+
+const deleteNoteGraph = `-- name: DeleteNoteGraph :exec
+WITH apagadas AS (DELETE FROM note_links WHERE note_id = ANY ($1::text[]) AND kind <> 'inferred')
+DELETE FROM note_titles WHERE note_id = ANY ($1::text[])
+`
+
+// O lote substitui as linhas do grafo das notas dele: apaga e grava de novo. A
+// ligação inferida é do segundo estágio, que a refaz quando o grafo muda.
+func (q *Queries) DeleteNoteGraph(ctx context.Context, noteIds []string) error {
+	_, err := q.db.Exec(ctx, deleteNoteGraph, noteIds)
+	return err
+}
+
+const deleteNoteTerms = `-- name: DeleteNoteTerms :exec
+DELETE FROM note_terms WHERE note_id = ANY ($1::text[])
+`
+
+func (q *Queries) DeleteNoteTerms(ctx context.Context, noteIds []string) error {
+	_, err := q.db.Exec(ctx, deleteNoteTerms, noteIds)
+	return err
+}
+
+const deleteVaultTermFrequencies = `-- name: DeleteVaultTermFrequencies :exec
+DELETE FROM vault_term_frequencies WHERE vault_id = $1
+`
+
+func (q *Queries) DeleteVaultTermFrequencies(ctx context.Context, vaultID string) error {
+	_, err := q.db.Exec(ctx, deleteVaultTermFrequencies, vaultID)
+	return err
+}
 
 const dequeueNotes = `-- name: DequeueNotes :exec
 DELETE FROM note_index_queue q
@@ -43,7 +75,7 @@ func (q *Queries) EnterIndexer(ctx context.Context, arg EnterIndexerParams) erro
 }
 
 const listPendingNotes = `-- name: ListPendingNotes :many
-SELECT n.id, n.content, q.revision
+SELECT n.id, n.path, n.content, q.revision
 FROM note_index_queue q
 JOIN notes n ON n.id = q.note_id
 WHERE n.vault_id = $1
@@ -52,6 +84,7 @@ ORDER BY n.id
 
 type ListPendingNotesRow struct {
 	ID       string
+	Path     string
 	Content  string
 	Revision int64
 }
@@ -66,7 +99,12 @@ func (q *Queries) ListPendingNotes(ctx context.Context, vaultID string) ([]ListP
 	var items []ListPendingNotesRow
 	for rows.Next() {
 		var i ListPendingNotesRow
-		if err := rows.Scan(&i.ID, &i.Content, &i.Revision); err != nil {
+		if err := rows.Scan(
+			&i.ID,
+			&i.Path,
+			&i.Content,
+			&i.Revision,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -77,11 +115,67 @@ func (q *Queries) ListPendingNotes(ctx context.Context, vaultID string) ([]ListP
 	return items, nil
 }
 
+const markSecondStage = `-- name: MarkSecondStage :exec
+INSERT INTO vault_second_stage_queue (vault_id) VALUES ($1)
+ON CONFLICT (vault_id) DO UPDATE SET revision = nextval('vault_second_stage_revision_seq')
+`
+
+func (q *Queries) MarkSecondStage(ctx context.Context, vaultID string) error {
+	_, err := q.db.Exec(ctx, markSecondStage, vaultID)
+	return err
+}
+
+const noteGraphFingerprint = `-- name: NoteGraphFingerprint :one
+SELECT md5(
+    coalesce((SELECT string_agg(ROW(t.note_id, t.title_key, t.path)::text, ',' ORDER BY ROW(t.note_id, t.title_key, t.path)::text)
+              FROM note_titles t WHERE t.note_id = ANY ($1::text[])), '')
+    || ';' ||
+    coalesce((SELECT string_agg(ROW(l.note_id, l.title_key, l.target_path, l.kind, l.predicate)::text, ','
+                                ORDER BY ROW(l.note_id, l.title_key, l.target_path, l.kind, l.predicate)::text)
+              FROM note_links l WHERE l.note_id = ANY ($1::text[]) AND l.kind <> 'inferred'), '')
+)::text AS fingerprint
+`
+
+// Impressão dos títulos, dos caminhos e das ligações das notas do lote, para saber se o
+// lote os mudou. A ligação inferida fica de fora porque o lote não a grava.
+func (q *Queries) NoteGraphFingerprint(ctx context.Context, noteIds []string) (string, error) {
+	row := q.db.QueryRow(ctx, noteGraphFingerprint, noteIds)
+	var fingerprint string
+	err := row.Scan(&fingerprint)
+	return fingerprint, err
+}
+
+const requeueNotes = `-- name: RequeueNotes :one
+SELECT markupp_requeue_notes($1::text) AS requeued
+`
+
+// Roda no papel da conexão, o dono do banco: o NULL reenfileira a instalação inteira.
+func (q *Queries) RequeueNotes(ctx context.Context, vaultID pgtype.Text) (int64, error) {
+	row := q.db.QueryRow(ctx, requeueNotes, vaultID)
+	var requeued int64
+	err := row.Scan(&requeued)
+	return requeued, err
+}
+
+const requeueVaultNotes = `-- name: RequeueVaultNotes :exec
+INSERT INTO note_index_queue (note_id)
+SELECT id FROM notes WHERE vault_id = $1
+ON CONFLICT (note_id) DO UPDATE SET revision = nextval('note_revision_seq')
+`
+
+// Põe as notas do cofre de volta na fila, com revisão nova para o lote que já as leu
+// deixá-las pendentes.
+func (q *Queries) RequeueVaultNotes(ctx context.Context, vaultID string) error {
+	_, err := q.db.Exec(ctx, requeueVaultNotes, vaultID)
+	return err
+}
+
 const reservePendingVault = `-- name: ReservePendingVault :one
 
 SELECT v.id AS vault_id, v.tenant_id
 FROM vaults v
 WHERE v.id IN (SELECT n.vault_id FROM note_index_queue q JOIN notes n ON n.id = q.note_id)
+   OR v.id IN (SELECT s.vault_id FROM vault_second_stage_queue s WHERE NOT markupp_second_stage_running(s.vault_id))
 ORDER BY random()
 LIMIT 1
 FOR NO KEY UPDATE OF v SKIP LOCKED
@@ -96,7 +190,9 @@ type ReservePendingVaultRow struct {
 // só então entra no papel markupp_indexer, preso pelo RLS ao cofre reservado.
 // Trava a linha do cofre, e não a fila, para dois Jobs nunca pegarem o mesmo cofre. NO KEY
 // UPDATE não conflita com a checagem de chave estrangeira, então as notas seguem
-// graváveis. A ordem aleatória impede que um cofre que sempre falha segure os outros.
+// graváveis. A ordem aleatória impede que um cofre que sempre falha segure os outros. O
+// cofre só marcado para o segundo estágio também é pendente, desde que nenhum Job já
+// esteja no segundo estágio dele.
 func (q *Queries) ReservePendingVault(ctx context.Context) (ReservePendingVaultRow, error) {
 	row := q.db.QueryRow(ctx, reservePendingVault)
 	var i ReservePendingVaultRow
@@ -116,10 +212,136 @@ func (q *Queries) ResolveSearchConfig(ctx context.Context, name string) (int64, 
 	return config_oid, err
 }
 
+const reweightVaultNoteTerms = `-- name: ReweightVaultNoteTerms :exec
+UPDATE note_terms t
+SET weights = r.weights, norm = r.norm
+FROM (
+    SELECT w.note_id, array_agg(w.weight ORDER BY w.ord)::float8[] AS weights, sqrt(sum(w.weight ^ 2))::float8 AS norm
+    FROM (
+        SELECT p.note_id, p.ord, p.tf * markupp_term_idf(st.note_count, f.df, st.note_count > 0) AS weight
+        FROM (
+            SELECT o.note_id, i.ord, o.terms[i.ord] AS term, o.tfs[i.ord] AS tf
+            FROM (SELECT l.note_id, l.terms, l.tfs FROM note_terms l WHERE l.vault_id = $1 FOR UPDATE SKIP LOCKED) o
+            CROSS JOIN LATERAL generate_subscripts(o.terms, 1) AS i (ord)
+        ) p
+        CROSS JOIN (SELECT k.note_count FROM vault_term_stats k WHERE k.vault_id = $1) st
+        LEFT JOIN vault_term_frequencies f ON f.vault_id = $1 AND f.term = p.term
+    ) w
+    GROUP BY w.note_id
+) r
+WHERE t.note_id = r.note_id
+`
+
+// Repesa as postagens do cofre com o df e o N recém-gravados, na ordem dos termos, numa
+// junção só entre os termos de todas as notas e o df do cofre. A linha que um lote
+// concorrente está regravando fica de fora: o lote a grava com o df anterior, e o
+// segundo estágio não espera por ele nem o faz esperar além do commit.
+func (q *Queries) ReweightVaultNoteTerms(ctx context.Context, vaultID string) error {
+	_, err := q.db.Exec(ctx, reweightVaultNoteTerms, vaultID)
+	return err
+}
+
+const saveNoteLinks = `-- name: SaveNoteLinks :exec
+INSERT INTO note_links (note_id, vault_id, cited_title, title_key, target_path, kind, predicate)
+SELECT n.id, n.vault_id, d.cited_title, d.title_key, NULLIF(d.target_path, ''), d.kind, NULLIF(d.predicate, '')
+FROM (SELECT unnest($1::text[]) AS note_id, unnest($2::text[]) AS cited_title,
+             unnest($3::text[]) AS title_key, unnest($4::text[]) AS target_path,
+             unnest($5::text[]) AS kind, unnest($6::text[]) AS predicate) d
+JOIN notes n ON n.id = d.note_id
+`
+
+type SaveNoteLinksParams struct {
+	NoteIds     []string
+	CitedTitles []string
+	TitleKeys   []string
+	TargetPaths []string
+	Kinds       []string
+	Predicates  []string
+}
+
+// Caminho vazio é ligação sem caminho, isto é, que não veio de link markdown, e
+// predicado vazio é ligação que não é tipada.
+func (q *Queries) SaveNoteLinks(ctx context.Context, arg SaveNoteLinksParams) error {
+	_, err := q.db.Exec(ctx, saveNoteLinks,
+		arg.NoteIds,
+		arg.CitedTitles,
+		arg.TitleKeys,
+		arg.TargetPaths,
+		arg.Kinds,
+		arg.Predicates,
+	)
+	return err
+}
+
+const saveNoteTerms = `-- name: SaveNoteTerms :exec
+WITH stats AS (
+    SELECT coalesce((SELECT k.note_count FROM vault_term_stats k WHERE k.vault_id = $1), 0) AS note_count
+)
+INSERT INTO note_terms (note_id, vault_id, terms, tfs, weights, norm)
+SELECT s.note_id, $1, top.terms, top.tfs, top.weights, top.norm
+FROM note_search_index s
+CROSS JOIN stats
+CROSS JOIN LATERAL (
+    SELECT array_agg(w.term ORDER BY w.weight DESC, w.term)::text[] AS terms,
+           array_agg(w.tf ORDER BY w.weight DESC, w.term)::float8[] AS tfs,
+           array_agg(w.weight ORDER BY w.weight DESC, w.term)::float8[] AS weights,
+           sqrt(sum(w.weight ^ 2))::float8 AS norm
+    FROM (
+        SELECT u.lexeme AS term, 1 + log(cardinality(u.positions)::float8) AS tf,
+               (1 + log(cardinality(u.positions)::float8))
+               * markupp_term_idf(stats.note_count,
+                    (SELECT f.df FROM vault_term_frequencies f WHERE f.vault_id = $1 AND f.term = u.lexeme),
+                    stats.note_count > 0) AS weight
+        FROM unnest(s.document) AS u (lexeme, positions, weights)
+        ORDER BY weight DESC, term
+        LIMIT $2::int
+    ) w
+) top
+WHERE s.note_id = ANY ($3::text[]) AND top.terms IS NOT NULL
+`
+
+type SaveNoteTermsParams struct {
+	VaultID      string
+	TermsPerNote int32
+	NoteIds      []string
+}
+
+// Os termos de maior tf-idf de cada nota do lote, tirados do documento que o lote
+// acabou de gravar, com o df e o N vigentes, gravados com o tf, o peso e a norma do
+// vetor. tf = 1 + log10 das posições do lexema. A ordem por nota, no LATERAL, ordena
+// poucos lexemas de cada vez em memória. Documento sem lexema não grava linha. O cofre
+// vem do parâmetro, e não de uma junção com notes: no papel do indexador o RLS de
+// notes estima poucas linhas, e o plano percorria as notas do cofre sondando o lote a
+// cada uma, O(N x B). A política de note_search_index já descarta nota apagada.
+func (q *Queries) SaveNoteTerms(ctx context.Context, arg SaveNoteTermsParams) error {
+	_, err := q.db.Exec(ctx, saveNoteTerms, arg.VaultID, arg.TermsPerNote, arg.NoteIds)
+	return err
+}
+
+const saveNoteTitles = `-- name: SaveNoteTitles :exec
+INSERT INTO note_titles (note_id, vault_id, title_key, path)
+SELECT n.id, n.vault_id, d.title_key, n.path
+FROM (SELECT unnest($1::text[]) AS note_id, unnest($2::text[]) AS title_key) d
+JOIN notes n ON n.id = d.note_id
+`
+
+type SaveNoteTitlesParams struct {
+	NoteIds   []string
+	TitleKeys []string
+}
+
+// O cofre vem da nota. Nota apagada depois da leitura some no JOIN.
+func (q *Queries) SaveNoteTitles(ctx context.Context, arg SaveNoteTitlesParams) error {
+	_, err := q.db.Exec(ctx, saveNoteTitles, arg.NoteIds, arg.TitleKeys)
+	return err
+}
+
 const saveSearchDocuments = `-- name: SaveSearchDocuments :exec
 INSERT INTO note_search_index (note_id, document)
-SELECT n.id, to_tsvector($1::text::regconfig, left(d.body, 250000))
-FROM (SELECT unnest($2::text[]) AS note_id, unnest($3::text[]) AS body) d
+SELECT n.id, setweight(to_tsvector($1::text::regconfig, d.title), 'A')
+          || setweight(to_tsvector($1::text::regconfig, left(d.body, 250000)), 'D')
+FROM (SELECT unnest($2::text[]) AS note_id, unnest($3::text[]) AS title,
+             unnest($4::text[]) AS body) d
 JOIN notes n ON n.id = d.note_id
 ON CONFLICT (note_id) DO UPDATE SET document = EXCLUDED.document
 `
@@ -127,12 +349,112 @@ ON CONFLICT (note_id) DO UPDATE SET document = EXCLUDED.document
 type SaveSearchDocumentsParams struct {
 	SearchConfig string
 	NoteIds      []string
+	Titles       []string
 	Bodies       []string
 }
 
-// Nota apagada depois da leitura some no JOIN e não é gravada. O corte em 250 mil
-// caracteres (até 1MB em UTF-8) mantém o tsvector abaixo do teto de 1MB de lexemas.
+// Nota apagada depois da leitura some no JOIN e não é gravada. O título pesa A e o
+// corpo pesa D no ts_rank. O corte em 250 mil caracteres do corpo (até 1MB em UTF-8)
+// mantém o tsvector abaixo do teto de 1MB de lexemas.
 func (q *Queries) SaveSearchDocuments(ctx context.Context, arg SaveSearchDocumentsParams) error {
-	_, err := q.db.Exec(ctx, saveSearchDocuments, arg.SearchConfig, arg.NoteIds, arg.Bodies)
+	_, err := q.db.Exec(ctx, saveSearchDocuments,
+		arg.SearchConfig,
+		arg.NoteIds,
+		arg.Titles,
+		arg.Bodies,
+	)
 	return err
+}
+
+const saveVaultTermFrequencies = `-- name: SaveVaultTermFrequencies :exec
+INSERT INTO vault_term_frequencies (vault_id, term, df)
+SELECT n.vault_id, u.lexeme, count(*)
+FROM notes n
+JOIN note_search_index s ON s.note_id = n.id
+CROSS JOIN LATERAL unnest(s.document) AS u (lexeme, positions, weights)
+WHERE n.vault_id = $1
+GROUP BY n.vault_id, u.lexeme
+`
+
+// df de cada lexema do índice léxico das notas do cofre.
+func (q *Queries) SaveVaultTermFrequencies(ctx context.Context, vaultID string) error {
+	_, err := q.db.Exec(ctx, saveVaultTermFrequencies, vaultID)
+	return err
+}
+
+const saveVaultTermStats = `-- name: SaveVaultTermStats :exec
+INSERT INTO vault_term_stats (vault_id, note_count)
+SELECT $1, count(*)
+FROM notes n JOIN note_search_index s ON s.note_id = n.id
+WHERE n.vault_id = $1
+ON CONFLICT (vault_id) DO UPDATE SET note_count = EXCLUDED.note_count
+`
+
+// N do idf: as notas do cofre com documento, as mesmas que o df conta.
+func (q *Queries) SaveVaultTermStats(ctx context.Context, vaultID string) error {
+	_, err := q.db.Exec(ctx, saveVaultTermStats, vaultID)
+	return err
+}
+
+const secondStageRevision = `-- name: SecondStageRevision :one
+SELECT revision FROM vault_second_stage_queue WHERE vault_id = $1
+`
+
+func (q *Queries) SecondStageRevision(ctx context.Context, vaultID string) (int64, error) {
+	row := q.db.QueryRow(ctx, secondStageRevision, vaultID)
+	var revision int64
+	err := row.Scan(&revision)
+	return revision, err
+}
+
+const tryLockSecondStage = `-- name: TryLockSecondStage :one
+SELECT markupp_try_lock_second_stage($1::text)::bool AS locked
+`
+
+// Falso quando outro Job já está no segundo estágio do cofre. Solta no fim da transação.
+func (q *Queries) TryLockSecondStage(ctx context.Context, vaultID string) (bool, error) {
+	row := q.db.QueryRow(ctx, tryLockSecondStage, vaultID)
+	var locked bool
+	err := row.Scan(&locked)
+	return locked, err
+}
+
+const unmarkSecondStage = `-- name: UnmarkSecondStage :exec
+DELETE FROM vault_second_stage_queue WHERE vault_id = $1 AND revision = $2
+`
+
+type UnmarkSecondStageParams struct {
+	VaultID  string
+	Revision int64
+}
+
+// Desmarca só a revisão lida: a mudança confirmada depois dela deixa o cofre marcado.
+func (q *Queries) UnmarkSecondStage(ctx context.Context, arg UnmarkSecondStageParams) error {
+	_, err := q.db.Exec(ctx, unmarkSecondStage, arg.VaultID, arg.Revision)
+	return err
+}
+
+const vaultTermNoteCount = `-- name: VaultTermNoteCount :one
+SELECT coalesce((SELECT k.note_count FROM vault_term_stats k WHERE k.vault_id = $1), 0)::int AS note_count
+`
+
+// Notas do cofre no último df, para decidir se o lote foi grande frente a ele sem
+// contar as notas do cofre a cada lote. Cofre ainda sem df conta zero.
+func (q *Queries) VaultTermNoteCount(ctx context.Context, vaultID string) (int32, error) {
+	row := q.db.QueryRow(ctx, vaultTermNoteCount, vaultID)
+	var note_count int32
+	err := row.Scan(&note_count)
+	return note_count, err
+}
+
+const vaultTermStatsKnown = `-- name: VaultTermStatsKnown :one
+SELECT coalesce((SELECT k.note_count > 0 FROM vault_term_stats k WHERE k.vault_id = $1), false)::bool AS known
+`
+
+// Se o cofre já tem df, pelo mesmo critério com que SaveNoteTerms usa o idf.
+func (q *Queries) VaultTermStatsKnown(ctx context.Context, vaultID string) (bool, error) {
+	row := q.db.QueryRow(ctx, vaultTermStatsKnown, vaultID)
+	var known bool
+	err := row.Scan(&known)
+	return known, err
 }

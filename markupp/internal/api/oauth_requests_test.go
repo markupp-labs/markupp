@@ -23,14 +23,14 @@ func consentRequest(svc *fakeOAuthService, method, path string, authenticated bo
 
 func TestOAuthRequests_Descrever_DevolveOPedidoDaConta(t *testing.T) {
 	svc := &fakeOAuthService{view: oauth.RequestView{
-		ID: "p1", ClientID: "c1", ClientName: "Agente", RedirectHost: "cli.exemplo",
+		ID: "p1", ClientID: "c1", ClientName: "Agente", ClientSource: oauth.ClientSourceDCR, RedirectHost: "cli.exemplo",
 		Scopes: []string{"notas:leitura"}, AlreadyAuthorized: true, ExpiresAt: "2026-10-16T12:10:00Z",
 	}}
 
 	rec := consentRequest(svc, http.MethodGet, "/v1/oauth/requests/p1", true)
 
 	require.Equal(t, http.StatusOK, rec.Code)
-	assert.JSONEq(t, `{"id":"p1","client_id":"c1","client_name":"Agente","redirect_host":"cli.exemplo",
+	assert.JSONEq(t, `{"id":"p1","client_id":"c1","client_name":"Agente","client_source":"dcr","redirect_host":"cli.exemplo",
 		"scopes":["notas:leitura"],"already_authorized":true,"expires_at":"2026-10-16T12:10:00Z"}`, rec.Body.String())
 	assert.Equal(t, "p1", svc.gotRequestID)
 	assert.Equal(t, "u1", svc.gotUserID)

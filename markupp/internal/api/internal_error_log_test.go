@@ -9,6 +9,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/oauth"
 )
 
 // logCapturado troca o log padrão por um que escreve no buffer até o fim do teste.
@@ -68,4 +70,18 @@ func TestMyInvites_ErroInesperado_RegistraComMensagemDosConvitesDaConta(t *testi
 	assert.Equal(t, http.StatusInternalServerError, rec.Code)
 	assert.Contains(t, buf.String(), `"msg":"falha nos convites da conta"`)
 	assert.Contains(t, buf.String(), "banco fora")
+}
+
+func TestOAuthAuthorize_RecusaComCausaInterna_RegistraACausaSemMandarAoCliente(t *testing.T) {
+	buf := logCapturado(t)
+	recusa := &oauth.ProtocolError{Code: "invalid_request", Description: "documento invalido; esperado documento valido"}
+	svc := &fakeOAuthService{err: recusa.WithInternalCause(errors.New("dial tcp 10.0.0.7:443: connection refused"))}
+
+	rec := authorizeRequest(svc, "client_id=https://cliente.exemplo.dev/doc.json")
+
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+	assert.Contains(t, rec.Body.String(), "documento invalido")
+	assert.NotContains(t, rec.Body.String(), "10.0.0.7")
+	assert.Contains(t, buf.String(), `"msg":"recusa do oauth com causa interna"`)
+	assert.Contains(t, buf.String(), "10.0.0.7")
 }

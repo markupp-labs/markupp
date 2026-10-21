@@ -34,25 +34,31 @@ func NewPostgresOAuthRepository(pool *pgxpool.Pool) *PostgresOAuthRepository {
 	return &PostgresOAuthRepository{pool: pool, q: gen.New(pool)}
 }
 
-// GetClient devolve o cliente registrado, ou oauth.ErrClientNotFound.
-func (r *PostgresOAuthRepository) GetClient(ctx context.Context, id string) (oauth.Client, error) {
-	row, err := r.q.GetOAuthClient(ctx, id)
+// GetClient devolve o cliente registrado, ou oauth.ErrClientNotFound se ele não existe
+// ou é DCR pendente desde dcrPendingCutoff ou antes.
+func (r *PostgresOAuthRepository) GetClient(ctx context.Context, id string, dcrPendingCutoff time.Time) (oauth.Client, error) {
+	row, err := r.q.GetOAuthClient(ctx, gen.GetOAuthClientParams{ID: id, DcrPendingCutoff: dcrPendingCutoff})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return oauth.Client{}, fmt.Errorf("%w: client_id %s", oauth.ErrClientNotFound, oauth.ClientValue(id))
 	}
 	if err != nil {
 		return oauth.Client{}, fmt.Errorf("buscar cliente oauth %s: %w", oauth.ClientValue(id), err)
 	}
-	return oauth.Client{ID: row.ID, Name: row.Name, RedirectURIs: row.RedirectUris}, nil
+	return oauth.Client{ID: row.ID, Name: row.Name, RedirectURIs: row.RedirectUris, Source: row.Source}, nil
 }
 
-// CreateRequest grava o Pedido de autorização ainda sem conta nem código.
+// CreateRequest grava o Pedido de autorização ainda sem conta nem código. O cliente
+// apagado depois da busca dele viola a chave estrangeira e sai como
+// oauth.ErrClientNotFound.
 func (r *PostgresOAuthRepository) CreateRequest(ctx context.Context, req oauth.AuthorizationRequest) error {
 	err := r.q.CreateOAuthRequest(ctx, gen.CreateOAuthRequestParams{
 		ID: req.ID, ClientID: req.ClientID, RedirectUri: req.RedirectURI, Scopes: req.Scopes,
 		Resource: req.Resource, State: pgtype.Text{String: req.State, Valid: req.State != ""},
 		CodeChallenge: req.CodeChallenge, CreatedAt: req.CreatedAt, ExpiresAt: req.ExpiresAt,
 	})
+	if pgErrorCode(err) == foreignKeyViolationCode {
+		return fmt.Errorf("%w: client_id %s apagado antes de gravar o pedido", oauth.ErrClientNotFound, oauth.ClientValue(req.ClientID))
+	}
 	if err != nil {
 		return fmt.Errorf("gravar pedido de autorização do cliente %s: %w", oauth.ClientValue(req.ClientID), err)
 	}
@@ -86,17 +92,27 @@ func (r *PostgresOAuthRepository) ApproveRequest(ctx context.Context, a oauth.Ap
 	return toAuthorizationRequest(row), nil
 }
 
-// approveInTx decide o pedido como aprovado, concede os escopos e audita o sucesso.
+// approveInTx decide o pedido como aprovado, concede os escopos, liga o pedido à
+// Autorização e audita o sucesso. O pedido de cliente DCR compartilha antes a trava dos
+// registros, para a limpeza dos pendentes não apagar o cliente no meio da aprovação.
 func approveInTx(ctx context.Context, qtx *gen.Queries, a oauth.Approval) (gen.OauthRequest, error) {
+	if err := qtx.ShareDCRRegistrationLockForRequest(ctx, a.RequestID); err != nil {
+		return gen.OauthRequest{}, fmt.Errorf("compartilhar a trava dos registros dcr na aprovação: %w", err)
+	}
 	row, err := qtx.ApproveOAuthRequest(ctx, gen.ApproveOAuthRequestParams{
 		ID: a.RequestID, UserID: a.UserID, CodeHash: a.CodeHash,
-		CodeExpiresAt: a.CodeExpiresAt, DecidedAt: a.DecidedAt,
+		CodeExpiresAt: a.CodeExpiresAt, DecidedAt: a.DecidedAt, DcrPendingCutoff: a.DCRPendingCutoff,
 	})
 	if err != nil {
 		return row, requestErr("aprovar pedido", err)
 	}
-	if err := grantScopes(ctx, qtx, row, a.DecidedAt); err != nil {
+	authorizationID, err := grantScopes(ctx, qtx, row, a.DecidedAt)
+	if err != nil {
 		return row, err
+	}
+	err = qtx.SetOAuthRequestAuthorization(ctx, gen.SetOAuthRequestAuthorizationParams{ID: row.ID, AuthorizationID: authorizationID})
+	if err != nil {
+		return row, fmt.Errorf("ligar o pedido aprovado à autorização %q: %w", authorizationID, err)
 	}
 	return row, auditAuthorize(ctx, qtx, row, "success", a.DecidedAt)
 }
@@ -119,16 +135,16 @@ func (r *PostgresOAuthRepository) DenyRequest(ctx context.Context, d oauth.Denia
 }
 
 // grantScopes cria a Autorização ativa da conta para o cliente com os escopos do pedido,
-// ou amplia a existente com eles, num upsert atômico.
-func grantScopes(ctx context.Context, qtx *gen.Queries, req gen.OauthRequest, at time.Time) error {
-	err := qtx.UpsertOAuthAuthorization(ctx, gen.UpsertOAuthAuthorizationParams{
+// ou amplia a existente com eles, num upsert atômico. Devolve o ID dela.
+func grantScopes(ctx context.Context, qtx *gen.Queries, req gen.OauthRequest, at time.Time) (string, error) {
+	id, err := qtx.UpsertOAuthAuthorization(ctx, gen.UpsertOAuthAuthorizationParams{
 		ID: uuid.NewString(), UserID: req.UserID.String, ClientID: req.ClientID,
 		Scopes: orderedScopes(req.Scopes), At: at, Supported: oauth.SupportedScopes(),
 	})
 	if err != nil {
-		return fmt.Errorf("conceder escopos de %q para %s: %w", req.UserID.String, oauth.ClientValue(req.ClientID), err)
+		return "", fmt.Errorf("conceder escopos de %q para %s: %w", req.UserID.String, oauth.ClientValue(req.ClientID), err)
 	}
-	return nil
+	return id, nil
 }
 
 // orderedScopes devolve os escopos na ordem de oauth.SupportedScopes, sem repetir.
@@ -141,12 +157,21 @@ func orderedScopes(scopes []string) []string {
 // auditAuthorize registra a decisão do pedido como oauth.authorize, com o cliente como
 // alvo e a conta que decidiu como ator.
 func auditAuthorize(ctx context.Context, qtx *gen.Queries, req gen.OauthRequest, result string, at time.Time) error {
+	return auditOAuth(ctx, qtx, oauth.AuditEvent{
+		Action: auditActionOAuthAuthorize, Result: result, UserID: req.UserID.String,
+		ClientID: req.ClientID, OccurredAt: at,
+	})
+}
+
+// auditOAuth grava o evento do authorization server sem tenant, com a conta como ator e
+// o cliente como alvo.
+func auditOAuth(ctx context.Context, qtx *gen.Queries, e oauth.AuditEvent) error {
 	err := qtx.CreateAuditEvent(ctx, toCreateAuditEventParams(auth.AuditEventRecord{
-		ID: uuid.NewString(), ActorID: req.UserID.String, Action: auditActionOAuthAuthorize,
-		Target: req.ClientID, Result: result, OccurredAt: at,
+		ID: uuid.NewString(), ActorID: e.UserID, Action: e.Action,
+		Target: e.ClientID, Result: e.Result, OccurredAt: e.OccurredAt,
 	}))
 	if err != nil {
-		return fmt.Errorf("registrar auditoria %s (%s) para o cliente %s: %w", auditActionOAuthAuthorize, result, oauth.ClientValue(req.ClientID), err)
+		return fmt.Errorf("registrar auditoria %s (%s) para o cliente %s: %w", e.Action, e.Result, oauth.ClientValue(e.ClientID), err)
 	}
 	return nil
 }
@@ -168,76 +193,26 @@ func activeAuthorization(ctx context.Context, q *gen.Queries, userID, clientID s
 	return toAuthorization(row), nil
 }
 
-// RedeemCode consome o código e lê a Autorização ativa na mesma transação, devolvendo o
-// pedido com ela. Sem Autorização ativa, o consumo fica gravado e o erro volta junto com
-// o pedido. No reuso, devolve o mesmo resultado junto com oauth.ErrCodeAlreadyUsed.
-func (r *PostgresOAuthRepository) RedeemCode(ctx context.Context, codeHash string, now time.Time) (oauth.RedeemedCode, error) {
-	var redeemed oauth.RedeemedCode
-	var missing error
-	err := inTx(ctx, r.pool, func(qtx *gen.Queries) error {
-		var err error
-		redeemed, err = redeemInTx(ctx, qtx, codeHash, now)
-		if errors.Is(err, oauth.ErrAuthorizationNotFound) {
-			missing, err = err, nil
+// saveTokensInTx grava os tokens por qtx, parando no primeiro erro.
+func saveTokensInTx(ctx context.Context, qtx *gen.Queries, tokens []oauth.IssuedToken) error {
+	for _, t := range tokens {
+		err := qtx.SaveOAuthToken(ctx, gen.SaveOAuthTokenParams{
+			TokenHash: t.Hash, AuthorizationID: t.AuthorizationID, Kind: t.Kind,
+			Resource: t.Resource, Scopes: t.Scopes, ExpiresAt: t.ExpiresAt,
+		})
+		if err != nil {
+			return fmt.Errorf("gravar token %s da autorização %q: %w", t.Kind, t.AuthorizationID, err)
 		}
-		return err
-	})
-	if errors.Is(err, pgx.ErrNoRows) {
-		return r.usedCode(ctx, codeHash)
 	}
-	if err != nil {
-		return oauth.RedeemedCode{}, err
-	}
-	return redeemed, missing
+	return nil
 }
 
-// redeemInTx marca o código como usado e busca a Autorização ativa do pedido.
-func redeemInTx(ctx context.Context, qtx *gen.Queries, codeHash string, now time.Time) (oauth.RedeemedCode, error) {
-	row, err := qtx.RedeemOAuthCode(ctx, gen.RedeemOAuthCodeParams{CodeHash: codeHash, Now: now})
-	if err != nil {
-		return oauth.RedeemedCode{}, fmt.Errorf("consumir código de autorização: %w", err)
-	}
-	req := toAuthorizationRequest(row)
-	authz, err := activeAuthorization(ctx, qtx, req.UserID, req.ClientID)
-	return oauth.RedeemedCode{Request: req, Authorization: authz}, err
-}
-
-// usedCode distingue o código reusado do inexistente ou expirado.
-func (r *PostgresOAuthRepository) usedCode(ctx context.Context, codeHash string) (oauth.RedeemedCode, error) {
-	row, err := r.q.GetOAuthRequestByUsedCode(ctx, codeHash)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return oauth.RedeemedCode{}, oauth.ErrCodeNotFound
-	}
-	if err != nil {
-		return oauth.RedeemedCode{}, fmt.Errorf("buscar código de autorização já usado: %w", err)
-	}
-	req := toAuthorizationRequest(row)
-	authz, err := r.ActiveAuthorization(ctx, req.UserID, req.ClientID)
-	if err != nil && !errors.Is(err, oauth.ErrAuthorizationNotFound) {
-		return oauth.RedeemedCode{}, err
-	}
-	return oauth.RedeemedCode{Request: req, Authorization: authz}, oauth.ErrCodeAlreadyUsed
-}
-
-// SaveTokens grava os tokens emitidos, só pelo hash, todos ou nenhum.
-func (r *PostgresOAuthRepository) SaveTokens(ctx context.Context, tokens []oauth.IssuedToken) error {
-	return inTx(ctx, r.pool, func(qtx *gen.Queries) error {
-		for _, t := range tokens {
-			err := qtx.SaveOAuthToken(ctx, gen.SaveOAuthTokenParams{
-				TokenHash: t.Hash, AuthorizationID: t.AuthorizationID, Kind: t.Kind,
-				Resource: t.Resource, Scopes: t.Scopes, ExpiresAt: t.ExpiresAt,
-			})
-			if err != nil {
-				return fmt.Errorf("gravar token %s da autorização %q: %w", t.Kind, t.AuthorizationID, err)
-			}
-		}
-		return nil
-	})
-}
-
-// RevokeAuthorizationTokens revoga todos os tokens da Autorização.
-func (r *PostgresOAuthRepository) RevokeAuthorizationTokens(ctx context.Context, authorizationID string) error {
-	if err := r.q.RevokeOAuthAuthorizationTokens(ctx, authorizationID); err != nil {
+// revokeLockedTokens revoga os tokens da Autorização que a transação de qtx já travou com
+// lockAuthorization. É o único caminho do UPDATE que revoga tokens. A trava serializa a
+// revogação com a gravação de um par, que trava a mesma linha: sem ela, um par gravado
+// em paralelo escaparia do UPDATE.
+func revokeLockedTokens(ctx context.Context, qtx *gen.Queries, authorizationID string) error {
+	if err := qtx.RevokeOAuthAuthorizationTokens(ctx, authorizationID); err != nil {
 		return fmt.Errorf("revogar tokens da autorização %q: %w", authorizationID, err)
 	}
 	return nil
@@ -262,6 +237,11 @@ func toAuthorizationRequest(row gen.OauthRequest) oauth.AuthorizationRequest {
 func toAuthorization(row gen.OauthAuthorization) oauth.Authorization {
 	return oauth.Authorization{
 		ID: row.ID, UserID: row.UserID, ClientID: row.ClientID, Scopes: row.Scopes,
-		CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
+		CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt, Revoked: row.RevokedAt.Valid,
 	}
+}
+
+// RecordAuditEvent grava um evento avulso do authorization server.
+func (r *PostgresOAuthRepository) RecordAuditEvent(ctx context.Context, event oauth.AuditEvent) error {
+	return auditOAuth(ctx, gen.New(r.pool), event)
 }
