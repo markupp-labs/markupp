@@ -1,0 +1,127 @@
+package storage_test
+
+import (
+	"testing"
+	"time"
+
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/identity"
+	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/storage"
+	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/storage/storagetest"
+)
+
+// Hashes de referência calculados fora do banco, com sha256sum sobre os bytes UTF-8.
+const (
+	sha256DeVazio = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+	sha256DeAcao  = "0664077f33cc3ebbaa4bbdacac0eb70e740983080f01dce29929e73b7785a7ad"
+)
+
+func TestPostgresRepo_GetNoteByID_DevolveSHA256DoConteudoEmUTF8(t *testing.T) {
+	casos := map[string]string{"": sha256DeVazio, "ação": sha256DeAcao}
+	for conteudo, esperado := range casos {
+		db := setupNotesDB(t)
+		repo := storage.NewPostgresNotesRepository(db, "simple")
+		storagetest.SaveNote(ctxDeTeste, t, repo, notaComConteudo("n1", cofreDeTeste, conteudo))
+
+		got, err := repo.GetNoteByID(ctxDeTeste, "n1")
+
+		require.NoError(t, err)
+		assert.Equal(t, esperado, got.ContentSHA256, "conteudo %q", conteudo)
+	}
+}
+
+func TestPostgresRepo_Save_DevolveOSHA256CalculadoPeloBanco(t *testing.T) {
+	db := setupNotesDB(t)
+	repo := storage.NewPostgresNotesRepository(db, "simple")
+	nota := notaComConteudo("n1", cofreDeTeste, "ação")
+	nota.ContentSHA256 = "ignorado"
+
+	got, err := repo.Save(ctxDeTeste, nota)
+
+	require.NoError(t, err)
+	assert.Equal(t, sha256DeAcao, got.ContentSHA256)
+}
+
+func TestPostgresRepo_ListNotes_DevolveSHA256DeCadaNota(t *testing.T) {
+	db := setupNotesDB(t)
+	repo := storage.NewPostgresNotesRepository(db, "simple")
+	storagetest.SaveNote(ctxDeTeste, t, repo, notaComConteudo("n1", cofreDeTeste, "ação"))
+
+	got, err := repo.ListNotes(ctxDeTeste)
+
+	require.NoError(t, err)
+	require.Len(t, got, 1)
+	assert.Equal(t, sha256DeAcao, got[0].ContentSHA256)
+}
+
+func TestPostgresRepo_Update_HashAcompanhaOConteudoNovo(t *testing.T) {
+	db := setupNotesDB(t)
+	repo := storage.NewPostgresNotesRepository(db, "simple")
+	storagetest.SaveNote(ctxDeTeste, t, repo, notaComConteudo("n1", cofreDeTeste, ""))
+
+	got, err := repo.Update(ctxDeTeste, "n1", "n1.md", "ação", time.Now(), time.Time{}, true)
+
+	require.NoError(t, err)
+	assert.Equal(t, sha256DeAcao, got.ContentSHA256)
+}
+
+func TestNotas_HashForjadoPeloCliente_EhSobrescrito(t *testing.T) {
+	db := setupTestDB(t)
+	storagetest.SeedMember(t, db, identity.Actor{UserID: "ua", TenantID: "t1", Role: "member"}, "va")
+	const hashDaNota = "SELECT encode(content_sha256, 'hex') FROM notes WHERE id = 'n1'"
+	_, err := db.Exec(ctxDeTeste, `INSERT INTO notes (id, tenant_id, vault_id, path, content, content_sha256, created_at, updated_at)
+		VALUES ('n1', 't1', 'va', 'n1.md', 'ação', '\x00', now(), now())`)
+	require.NoError(t, err)
+	assert.Equal(t, sha256DeAcao, textoDaConsulta(t, db, hashDaNota), "insert com hash forjado")
+
+	_, err = db.Exec(ctxDeTeste, `UPDATE notes SET content_sha256 = '\x00' WHERE id = 'n1'`)
+
+	require.NoError(t, err)
+	assert.Equal(t, sha256DeAcao, textoDaConsulta(t, db, hashDaNota), "update so do hash")
+}
+
+func textoDaConsulta(t *testing.T, db *pgxpool.Pool, query string) string {
+	t.Helper()
+	var s string
+	require.NoError(t, db.QueryRow(ctxDeTeste, query).Scan(&s))
+	return s
+}
+
+func TestVaultIndexer_NotaReescritaComOMesmoConteudo_NaoVoltaParaAFila(t *testing.T) {
+	db := setupTestDB(t)
+	repo := storage.NewPostgresNotesRepository(db, "simple")
+	ctx := storagetest.SeedMember(t, db, identity.Actor{UserID: "ua", TenantID: "t1", Role: "member"}, "va")
+	storagetest.SaveNote(ctx, t, repo, notaComConteudo("n1", "va", "ação"))
+	indexaTodosOsCofres(t, db, "simple")
+
+	_, err := repo.Update(ctx, "n1", "n1.md", "ação", time.Now(), time.Time{}, true)
+
+	require.NoError(t, err)
+	assert.Zero(t, countRows(t, db, consultaDoScaler), "mesmo hash nao pede reindexacao")
+}
+
+func TestVaultIndexer_ConteudoNovo_VoltaParaAFila(t *testing.T) {
+	db := setupTestDB(t)
+	repo := storage.NewPostgresNotesRepository(db, "simple")
+	ctx := storagetest.SeedMember(t, db, identity.Actor{UserID: "ua", TenantID: "t1", Role: "member"}, "va")
+	storagetest.SaveNote(ctx, t, repo, notaComConteudo("n1", "va", "ação"))
+	indexaTodosOsCofres(t, db, "simple")
+
+	_, err := repo.Update(ctx, "n1", "n1.md", "acao", time.Now(), time.Time{}, true)
+
+	require.NoError(t, err)
+	assert.Equal(t, 1, countRows(t, db, consultaDoScaler), "hash novo pede reindexacao")
+}
+
+func TestMigracao_TriggerDaFila_ComparaOHashEmVezDoTexto(t *testing.T) {
+	db := setupTestDB(t)
+
+	var condicao string
+	require.NoError(t, db.QueryRow(ctxDeTeste,
+		"SELECT pg_get_triggerdef(oid) FROM pg_trigger WHERE tgname = 'notes_enqueue_on_update'").Scan(&condicao))
+
+	assert.Contains(t, condicao, "old.content_sha256 IS DISTINCT FROM new.content_sha256")
+}

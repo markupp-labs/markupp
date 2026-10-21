@@ -45,7 +45,7 @@ func TestIntegration_OAuthDCR_RedirectJavascript_Retorna400SemGravar(t *testing.
 	assert.Equal(t, http.StatusBadRequest, status)
 	assert.Equal(t, "invalid_redirect_uri", body["error"])
 	var clientes int
-	require.NoError(t, pool.QueryRow(context.Background(), "SELECT count(*) FROM oauth_clients").Scan(&clientes))
+	require.NoError(t, pool.QueryRow(context.Background(), "SELECT count(*) FROM oauth_clients WHERE source <> 'builtin'").Scan(&clientes))
 	assert.Equal(t, 1, clientes, "so o cliente semeado")
 }
 

@@ -13,7 +13,7 @@ import (
 
 func TestSearchNotes_ComResultados_RetornaPaginado(t *testing.T) {
 	db := setupNotesDB(t)
-	repo := storage.NewPostgresNotesRepository(db)
+	repo := storage.NewPostgresNotesRepository(db, "simple")
 	ctx := ctxDeTeste
 
 	now := time.Now()
@@ -24,11 +24,12 @@ func TestSearchNotes_ComResultados_RetornaPaginado(t *testing.T) {
 		{ID: "4", VaultID: cofreDeTeste, Path: "golang3.md", Content: "golang advanced", CreatedAt: now, UpdatedAt: now},
 	}
 	for _, note := range notesData {
-		err := repo.Save(ctx, note)
+		_, err := repo.Save(ctx, note)
 		require.NoError(t, err)
 	}
 
-	results, err := repo.SearchNotes(ctx, "golang", 0, 10)
+	indexaTodosOsCofres(t, db, "simple")
+	results, err := repo.SearchNotes(ctx, "golang", "", 0, 10)
 
 	require.NoError(t, err)
 	require.Len(t, results, 3)
@@ -39,7 +40,7 @@ func TestSearchNotes_ComResultados_RetornaPaginado(t *testing.T) {
 
 func TestSearchNotes_ComPaginacao_RetornaApenasLimitAndOffset(t *testing.T) {
 	db := setupNotesDB(t)
-	repo := storage.NewPostgresNotesRepository(db)
+	repo := storage.NewPostgresNotesRepository(db, "simple")
 	ctx := ctxDeTeste
 
 	now := time.Now()
@@ -52,11 +53,12 @@ func TestSearchNotes_ComPaginacao_RetornaApenasLimitAndOffset(t *testing.T) {
 			CreatedAt: now,
 			UpdatedAt: now,
 		}
-		err := repo.Save(ctx, note)
+		_, err := repo.Save(ctx, note)
 		require.NoError(t, err)
 	}
 
-	results, err := repo.SearchNotes(ctx, "golang", 1, 2)
+	indexaTodosOsCofres(t, db, "simple")
+	results, err := repo.SearchNotes(ctx, "golang", "", 1, 2)
 
 	require.NoError(t, err)
 	require.Len(t, results, 2)
@@ -64,7 +66,7 @@ func TestSearchNotes_ComPaginacao_RetornaApenasLimitAndOffset(t *testing.T) {
 
 func TestSearchNotes_OffsetMaiorQueTotal_RetornaVazio(t *testing.T) {
 	db := setupNotesDB(t)
-	repo := storage.NewPostgresNotesRepository(db)
+	repo := storage.NewPostgresNotesRepository(db, "simple")
 	ctx := ctxDeTeste
 
 	now := time.Now()
@@ -76,10 +78,11 @@ func TestSearchNotes_OffsetMaiorQueTotal_RetornaVazio(t *testing.T) {
 		CreatedAt: now,
 		UpdatedAt: now,
 	}
-	err := repo.Save(ctx, note)
+	_, err := repo.Save(ctx, note)
 	require.NoError(t, err)
 
-	results, err := repo.SearchNotes(ctx, "golang", 100, 10)
+	indexaTodosOsCofres(t, db, "simple")
+	results, err := repo.SearchNotes(ctx, "golang", "", 100, 10)
 
 	require.NoError(t, err)
 	assert.Empty(t, results)
@@ -87,7 +90,7 @@ func TestSearchNotes_OffsetMaiorQueTotal_RetornaVazio(t *testing.T) {
 
 func TestSearchNotes_NaoEncontra_RetornaVazio(t *testing.T) {
 	db := setupNotesDB(t)
-	repo := storage.NewPostgresNotesRepository(db)
+	repo := storage.NewPostgresNotesRepository(db, "simple")
 	ctx := ctxDeTeste
 
 	now := time.Now()
@@ -99,18 +102,19 @@ func TestSearchNotes_NaoEncontra_RetornaVazio(t *testing.T) {
 		CreatedAt: now,
 		UpdatedAt: now,
 	}
-	err := repo.Save(ctx, note)
+	_, err := repo.Save(ctx, note)
 	require.NoError(t, err)
 
-	results, err := repo.SearchNotes(ctx, "golang", 0, 10)
+	indexaTodosOsCofres(t, db, "simple")
+	results, err := repo.SearchNotes(ctx, "golang", "", 0, 10)
 
 	require.NoError(t, err)
 	assert.Empty(t, results)
 }
 
-func TestSearchNotes_LikeEhCaseInsensitive(t *testing.T) {
+func TestSearchNotes_IgnoraCaixa(t *testing.T) {
 	db := setupNotesDB(t)
-	repo := storage.NewPostgresNotesRepository(db)
+	repo := storage.NewPostgresNotesRepository(db, "simple")
 	ctx := ctxDeTeste
 
 	now := time.Now()
@@ -119,30 +123,13 @@ func TestSearchNotes_LikeEhCaseInsensitive(t *testing.T) {
 		{ID: "2", VaultID: cofreDeTeste, Path: "b.md", Content: "golang tips", CreatedAt: now, UpdatedAt: now},
 	}
 	for _, note := range notesData {
-		err := repo.Save(ctx, note)
+		_, err := repo.Save(ctx, note)
 		require.NoError(t, err)
 	}
 
-	results, err := repo.SearchNotes(ctx, "golang", 0, 10)
+	indexaTodosOsCofres(t, db, "simple")
+	results, err := repo.SearchNotes(ctx, "golang", "", 0, 10)
 
 	require.NoError(t, err)
 	require.Len(t, results, 2)
-}
-
-func TestSearchNotes_QueryParcial_CasaSubstring(t *testing.T) {
-	db := setupNotesDB(t)
-	repo := storage.NewPostgresNotesRepository(db)
-	ctx := ctxDeTeste
-
-	now := time.Now()
-	require.NoError(t, repo.Save(ctx, notes.Note{
-		ID: "1", Path: "g.md", Content: "golang tutorial", CreatedAt: now, UpdatedAt: now,
-		VaultID: cofreDeTeste,
-	}))
-
-	results, err := repo.SearchNotes(ctx, "olang", 0, 10)
-
-	require.NoError(t, err)
-	require.Len(t, results, 1)
-	assert.Equal(t, "1", results[0].ID)
 }

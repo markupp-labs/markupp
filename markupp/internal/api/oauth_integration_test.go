@@ -65,7 +65,7 @@ func setupOAuthIntegrationServerWith(t *testing.T, opcoes opcoesDeIntegracaoOAut
 	codec := auth.NewTokenCodec("segredo-para-teste-de-integracao-de-oauth", 15*time.Minute, time.Now)
 	authCfg := auth.ServiceConfig{DefaultTenantID: "default", LocalEnabled: true, RefreshExpirationPeriod: 24 * time.Hour}
 	authSvc := auth.NewService(storage.NewPostgresAuthRepository(pool), codec, auth.NewBcryptHasher(), authCfg, time.Now)
-	notesSvc := notes.NewService(storage.NewPostgresNotesRepository(pool), integrationMaxNoteSize)
+	notesSvc := notes.NewService(storage.NewPostgresNotesRepository(pool, "simple"), integrationMaxNoteSize)
 	router := api.NewRouter(api.RouterDeps{
 		Auth: authSvc, Notes: notesSvc, Tokens: codec, Tenants: authSvc, Probe: pool,
 		OAuthMetadata: &api.OAuthMetadata{Issuer: issuerDeIntegracao, DynamicRegistration: opcoes.dcr}, OAuth: oauthServiceDeIntegracao(pool, codec, opcoes),

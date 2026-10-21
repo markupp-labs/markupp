@@ -140,9 +140,12 @@ func narrowScopes(raw string, granted []string) ([]string, error) {
 // seção 6). Uma revogação que entrou depois do consumo derruba o grant sem gravar nada.
 func (s *Service) saveRefreshed(ctx context.Context, grant TokenGrant, scopes []string, now time.Time) (TokenResponse, error) {
 	base := IssuedToken{AuthorizationID: grant.Authorization.ID, Resource: grant.Token.Resource, Scopes: scopes}
-	pair := s.newTokenPair(base, grant.Token.Scopes, now)
+	pair, err := s.newTokenPair(base, grant.Token.Scopes, grant.Authorization.UserID, now)
+	if err != nil {
+		return TokenResponse{}, err
+	}
 	event := auditEvent(AuditActionRefresh, AuditResultSuccess, grant.Authorization, now)
-	err := s.repo.SaveRefreshedTokens(ctx, grant.Token.Hash, pair.tokens, event)
+	err = s.repo.SaveRefreshedTokens(ctx, grant.Token.Hash, pair.tokens, event)
 	if errors.Is(err, ErrTokenNotFound) || errors.Is(err, ErrAuthorizationNotFound) {
 		return TokenResponse{}, grantError(revokedRefreshDescription)
 	}

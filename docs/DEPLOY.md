@@ -108,10 +108,22 @@ com o indexador e o notificador em laço e o Mailpit, que recebe todo email de d
 make run
 ```
 
-Servidor em `http://localhost:8080` e caixa de email em `http://localhost:8025`. Os testes rodam no host e precisam de Go e de Docker:
+Nada precisa ser configurado antes: `docker compose up` também funciona. Servidor em
+`http://localhost:8080`, servidor MCP em `http://localhost:8080/mcp` e caixa de email em
+`http://localhost:8025`. Na primeira subida o servidor gera os próprios segredos e os guarda no
+banco (ADR-0041). O consentimento do OAuth abre no painel em `http://localhost:3999`, que roda
+fora do compose. Os testes rodam no host e precisam de Go e de Docker:
 
 ```sh
 make test
+```
+
+O teste de ponta a ponta do servidor MCP sobe a stack num projeto do compose à parte, faz o
+OAuth e o login do stdio contra o Go real e apaga tudo no fim. Precisa de Node 26 com `npm ci`
+feito em `mcp/`; com a stack de dev de pé, troque as portas por `MARKUPP_PORT` e `MAILPIT_PORT`:
+
+```sh
+make e2e-mcp
 ```
 
 ## Validar
@@ -142,7 +154,8 @@ A conta é da instância e participa de vários tenants, cada um com um papel
 ([ADR-0035](adrs/ADR-0035-conta-global-com-vinculo-por-tenant.md)). Quem tem um tenant só não
 precisa dizer nada. Quem tem mais de um escolhe por requisição com o cabeçalho
 `X-Markupp-Tenant`, usando um id de `GET /me/tenants`. Qualquer conta cria tenant em
-`POST /tenants` e vira owner dele.
+`POST /tenants` e vira owner dele. Só o owner apaga o tenant, em `DELETE /tenants/{id}`, e
+apaga de vez: cofres, notas, vínculos e convites vão junto, e as contas continuam.
 
 A conta de auto-registro (`MARKUPP_AUTH_REGISTRATION_ENABLED=true`) nasce sem email provado e
 não recebe convite pela lista até verificar. Com SMTP configurado, ela recebe o email de
@@ -156,16 +169,21 @@ do email em `POST /auth/password/reset`.
 
 ## OAuth
 
-O authorization server OAuth 2.1 fica desligado até `MARKUPP_PUBLIC_URL` existir. Com ela, as
-outras duas variáveis passam a ser obrigatórias:
+O authorization server OAuth 2.1 vem ligado, e nenhuma variável é obrigatória. A única que um
+self-host normalmente define é a URL pública:
 
 - `MARKUPP_PUBLIC_URL`: o issuer, como `https://notas.exemplo.com`, sem caminho, query nem
-  fragmento
+  fragmento. Padrão: `http://localhost` na porta do servidor
 - `MARKUPP_PANEL_URL`: o painel que faz o login e o consentimento, como
-  `https://notas.exemplo.com/painel`, sem query nem fragmento
+  `https://notas.exemplo.com/painel`, sem query nem fragmento. Padrão: `http://localhost:3999`
 - `MARKUPP_OAUTH_RESOURCES`: os servidores de recursos que aceitam os tokens, em pares
   `url=segredo` separados por vírgula, cada segredo com ao menos 32 bytes (ex.:
-  `openssl rand -hex 32`) e cada URL uma vez só, sem query nem fragmento
+  `openssl rand -hex 32`) e cada URL uma vez só, sem query nem fragmento. Sem ela, o único
+  resource é o servidor MCP em `MARKUPP_PUBLIC_URL/mcp`, com segredo gerado e guardado no banco
+- `MARKUPP_AUTH_SECRET`: o segredo do JWT. Sem ela, o servidor gera um na primeira subida e o
+  guarda no banco, que todas as réplicas leem
+
+Definidas, as variáveis valem no lugar do que está no banco, que é como o cluster opera.
 
 As URLs exigem https e um host, sem usuário nem senha; http só vale para localhost, 127.0.0.1
 e [::1]. O servidor guarda cada URL com esquema e host em minúsculas, sem a porta padrão do
@@ -220,9 +238,30 @@ variáveis são opcionais e lidas só com o OAuth ligado:
 
 | Variável | Padrão | Faixa | O que controla |
 |---|---|---|---|
-| `MARKUPP_OAUTH_DCR_ENABLED` | true | true ou false | liga o registro dinâmico; desligado, `/oauth/register` responde 404 e a metadata não o anuncia |
+| `MARKUPP_OAUTH_DCR_ENABLED` | false | true ou false | liga o registro dinâmico; desligado, `/oauth/register` responde 404 e a metadata não o anuncia |
 | `MARKUPP_OAUTH_DCR_MAX_PENDING` | 1000 | 1 a 100000 | teto de clientes pendentes |
 | `MARKUPP_OAUTH_DCR_PENDING_HOURS` | 24 | 1 a 168 | prazo, desde o registro ou a última revogação, para o cliente pendente receber uma autorização antes de ser apagado |
+
+## Servidor MCP
+
+No self-host o servidor MCP fica na mesma origem, em `/mcp`: o servidor Go encaminha a rota e a
+metadata do recurso protegido ao container do MCP. O Go escreve o segredo do MCP num arquivo de
+volume compartilhado, e o MCP descobre o issuer pela metadata do Go. O compose já liga as duas
+pontas:
+
+| Variável | Onde | Padrão | O que é |
+|---|---|---|---|
+| `MARKUPP_MCP_UPSTREAM_URL` | Go | sem `/mcp` | endereço interno do servidor MCP, para onde `/mcp` é encaminhado |
+| `MARKUPP_MCP_SECRET_PATH` | Go e MCP | sem arquivo | arquivo do segredo do MCP: o Go escreve e o MCP lê |
+| `MARKUPP_MCP_API_URL` | MCP | `http://localhost:8080` | endereço do servidor Go visto pelo MCP; aceita http em qualquer host |
+| `MARKUPP_MCP_RESOURCE_URL` | MCP | issuer + `/mcp` | URL pública do MCP com o caminho do endpoint; o caminho vira a rota |
+| `MARKUPP_MCP_RESOURCE_SECRET` | MCP | o do arquivo | segredo do par em `MARKUPP_OAUTH_RESOURCES`, com ao menos 32 bytes |
+| `MARKUPP_MCP_PORT` | MCP | 3000 | porta em que o MCP escuta, em todas as interfaces |
+
+O servidor MCP sobe com `markupp-mcp http` (a imagem já começa assim) e espera até 60 segundos
+pelo Go e pelo arquivo do segredo. No cluster, com o MCP em subdomínio próprio (ADR-0045), o
+`MARKUPP_OAUTH_RESOURCES` do Go e o `MARKUPP_MCP_RESOURCE_URL` e o `MARKUPP_MCP_RESOURCE_SECRET`
+do MCP vêm do Secret.
 
 ## Aviso
 

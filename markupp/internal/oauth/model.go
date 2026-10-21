@@ -12,16 +12,21 @@ type Client struct {
 	ID           string
 	Name         string
 	RedirectURIs []string
-	// Source é a origem do registro, ClientSourceCIMD ou ClientSourceDCR.
+	// Source é a origem do registro: ClientSourceCIMD, ClientSourceDCR ou
+	// ClientSourceBuiltin.
 	Source string
 }
 
 // Origens de um cliente registrado. Só o nome do cliente CIMD é verificado pelo domínio
-// do documento; o do DCR é o que o próprio cliente declarou.
+// do documento; o do DCR é o que o próprio cliente declarou, e o embutido vem de fábrica.
 const (
-	ClientSourceCIMD = "cimd"
-	ClientSourceDCR  = "dcr"
+	ClientSourceCIMD    = "cimd"
+	ClientSourceDCR     = "dcr"
+	ClientSourceBuiltin = "builtin"
 )
+
+// BuiltinMCPClientID é o cliente público embutido do markupp-mcp em stdio (ADR-0042).
+const BuiltinMCPClientID = "markupp-mcp"
 
 // AuthorizationRequest é o Pedido de autorização: a solicitação de um cliente para agir
 // em nome de uma conta. O ID funciona como portador (ADR-0047): qualquer conta logada que

@@ -42,13 +42,19 @@ type Config struct {
 	SMTPURL string
 	// SMTPFrom é o remetente dos emails, obrigatório com SMTPURL.
 	SMTPFrom string
-	// PublicURL é o issuer do authorization server, sem caminho nem barra final.
-	// Vazia desliga o OAuth (ADR-0046).
+	// PublicURL é o issuer do authorization server, sem caminho nem barra final. O Load
+	// usa http://localhost na porta do servidor quando a variável falta (ADR-0041).
 	PublicURL string
 	// PanelURL é o painel que faz o login e o consentimento do OAuth, sem barra final.
 	PanelURL string
-	// OAuthResources são os servidores de recursos que aceitam os tokens do OAuth.
+	// OAuthResources são os servidores de recursos que aceitam os tokens do OAuth. Vazia
+	// no Load, vira o MCP da mesma origem com o segredo do banco em WithInstanceSecrets.
 	OAuthResources []OAuthResource
+	// MCPUpstreamURL é o servidor MCP para onde /mcp é encaminhado. Vazia, /mcp não existe.
+	MCPUpstreamURL string
+	// MCPSecretPath é o arquivo onde o servidor escreve o segredo do MCP da mesma origem,
+	// num volume que o servidor MCP lê.
+	MCPSecretPath string
 	// OAuthAccessMinutes é a validade do access token emitido pelo OAuth.
 	OAuthAccessMinutes int
 	// OAuthRefreshDays é a validade do refresh token emitido pelo OAuth.
@@ -124,6 +130,9 @@ func loadServerSettings(lookup LookupFunc, cfg *Config) error {
 		return err
 	}
 	if err := loadOAuthSettings(lookup, cfg); err != nil {
+		return err
+	}
+	if err := loadMCPSettings(lookup, cfg); err != nil {
 		return err
 	}
 	return loadSMTPSettings(lookup, cfg)
@@ -252,10 +261,10 @@ func loadAuthFlags(lookup LookupFunc, cfg *Config) error {
 }
 
 func readAuthSecret(lookup LookupFunc, target *string) error {
-	val, ok := lookup("MARKUPP_AUTH_SECRET")
+	val, _ := lookup("MARKUPP_AUTH_SECRET")
 	trimmed := strings.TrimSpace(val)
-	if !ok || trimmed == "" {
-		return fmt.Errorf("MARKUPP_AUTH_SECRET vazia, esperado ao menos %d bytes aleatorios (ex.: openssl rand -hex 32)", minAuthSecretBytes)
+	if trimmed == "" {
+		return nil
 	}
 	if len(trimmed) < minAuthSecretBytes {
 		return fmt.Errorf("MARKUPP_AUTH_SECRET com %d bytes, esperado ao menos %d bytes aleatorios", len(trimmed), minAuthSecretBytes)
