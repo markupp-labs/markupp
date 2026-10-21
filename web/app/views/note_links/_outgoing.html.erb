@@ -1,19 +1,18 @@
 <%# Ligação que esta nota faz; a não resolvida com o sublinhado tracejado dos wikilinks e, com a nota que o indexador
     inferiu, o maybe que a abre. %>
+<% reason = t("note_links.unresolved", title: item.cited_title) if item.unresolved? %>
 <% if item.unresolved? && item.inferred_target %>
-  <% reason = t("note_links.unresolved", title: item.cited_title) %>
   <% maybe = t("note_links.maybe", title: item.inferred_target.title) %>
   <li class="links-item">
     <%= link_to note_path(item.inferred_target), title: "#{reason}, #{maybe}", data: { links_item: "" }, class: "tree-row links-row link-unresolved" do %>
-      <span class="links-row-title truncate"><%= item.cited_title %></span><span class="sr-only"> (<%= reason %>)</span>
+      <%= render "note_links/unresolved_title", cited_title: item.cited_title, reason: %>
       <span class="links-row-maybe truncate"><%= maybe %></span>
     <% end %>
   </li>
 <% elsif item.unresolved? %>
-  <% reason = t("note_links.unresolved", title: item.cited_title) %>
   <li class="links-item">
     <span tabindex="-1" title="<%= reason %>" data-links-item class="tree-row links-row link-unresolved">
-      <span class="links-row-title truncate"><%= item.cited_title %></span><span class="sr-only"> (<%= reason %>)</span>
+      <%= render "note_links/unresolved_title", cited_title: item.cited_title, reason: %>
     </span>
   </li>
 <% else %>
