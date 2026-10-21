@@ -144,7 +144,8 @@ class CommandPaletteTest < ApplicationSystemTestCase
     assert_no_selector "dialog#command_palette[open]"
   end
 
-  # Barra de rolagem fina nos tokens do tema, como nos painéis que rolam, na lista da paleta e na ajuda de atalhos.
+  # Barra de rolagem fina nos tokens do tema, como nos painéis que rolam, na lista da paleta e na ajuda de atalhos: o
+  # puxador no ink-muted, que contrasta com o fundo nos dois temas, e o trilho transparente.
   test "the palette list and the shortcut help scroll with the thin theme scrollbar" do
     styles = evaluate_script(<<~JS)
       [ "#command_palette_options", "#shortcut_help" ].map((selector) => {
@@ -152,9 +153,9 @@ class CommandPaletteTest < ApplicationSystemTestCase
         return [ style.scrollbarWidth, style.scrollbarColor ]
       })
     JS
-    line = evaluate_script("getComputedStyle(document.body).getPropertyValue('--line')")
+    thumb = evaluate_script("getComputedStyle(document.body).getPropertyValue('--ink-muted')")
 
-    assert_equal [ [ "thin", "#{rgb(line)} rgba(0, 0, 0, 0)" ] ] * 2, styles
+    assert_equal [ [ "thin", "#{rgb(thumb)} rgba(0, 0, 0, 0)" ] ] * 2, styles
   end
 
   private
