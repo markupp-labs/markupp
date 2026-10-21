@@ -2,7 +2,7 @@ require "test_helper"
 
 # Barra lateral: cabeçalho do tenant com o seletor à parte e ícones das ações; conta, tema e configurações ficam no pé da
 # barra de atividades, como no VS Code.
-class SidebarTest < ActionDispatch::IntegrationTest
+class SidebarControllerTest < ActionDispatch::IntegrationTest
   EMAIL = FakeMarkuppAccounts::DEFAULT_EMAIL
 
   test "the tenant name leads home and a separate button opens the switcher" do
