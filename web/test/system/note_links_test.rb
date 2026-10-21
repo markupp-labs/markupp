@@ -6,12 +6,13 @@ class NoteLinksTest < ApplicationSystemTestCase
   PLAN = { id: "plan", title: "plan", path: "work/plan.md" }.freeze
   ROADMAP = { id: "roadmap", title: "roadmap", path: "roadmap.md" }.freeze
   IDEAS = { id: "ideas", title: "ideas", path: "ideas.md" }.freeze
+  LONG_CITED_TITLE = "Road map for the next quarters with every milestone the whole team agreed on".freeze
   NOTES = [ PLAN, ROADMAP, IDEAS ].map { { id: it[:id], path: it[:path], content: "# #{it[:title]}\n" } }.freeze
   GRAPH = {
     backlinks: { "plan" => [ { source: ROADMAP, target: PLAN, cited_title: "plan", type: "explicit", predicate: nil, inferred_target: nil } ],
                  "roadmap" => [ { source: IDEAS, target: ROADMAP, cited_title: "roadmap", type: "explicit", predicate: nil, inferred_target: nil } ] },
     links: { "plan" => [ { source: PLAN, target: nil, cited_title: "Ghost", type: "explicit", predicate: nil, inferred_target: nil },
-                         { source: PLAN, target: nil, cited_title: "Road map", type: "explicit", predicate: nil, inferred_target: ROADMAP } ] },
+                         { source: PLAN, target: nil, cited_title: LONG_CITED_TITLE, type: "explicit", predicate: nil, inferred_target: ROADMAP } ] },
     suggestions: { "plan" => [ { note: IDEAS, score: 0.03, resource_allocation: 0.5, cosine: 0.2 } ] }
   }.freeze
 
@@ -47,6 +48,19 @@ class NoteLinksTest < ApplicationSystemTestCase
     send_keys :enter
 
     assert_field "Path", with: "/roadmap"
+  end
+
+  # Na linha estreita da barra lateral, só o título citado trunca: o maybe com a nota inferida fica inteiro.
+  test "an unresolved link with a long cited title truncates the title and keeps the maybe whole" do
+    send_keys [ :control, :shift, "l" ]
+    assert_selector "#links_outgoing .links-row-maybe", text: "maybe roadmap"
+
+    title, maybe = %w[title maybe].map do |part|
+      evaluate_script("(e => [e.scrollWidth, e.clientWidth])(document.querySelector('#links_outgoing a.link-unresolved .links-row-#{part}'))")
+    end
+
+    assert_operator title[0], :>, title[1], "expected the cited title to truncate, its scroll and client widths are #{title}"
+    assert_operator maybe[0], :<=, maybe[1], "expected the maybe to fit whole, its scroll and client widths are #{maybe}"
   end
 
   # O texto só para leitor de tela da ligação não resolvida é absoluto: fora de uma linha posicionada, ele escapa para o
