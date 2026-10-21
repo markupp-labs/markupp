@@ -72,9 +72,20 @@
     }
   }
 
-  /* Tela cheia: o cabeçalho e o grafo tomam a altura da tela menos o padding do main, sem rolar a página. */
+  /* Tela cheia: o cabeçalho e o grafo tomam a altura da tela menos o padding do main, sem rolar a página. No celular o
+     botão da gaveta fica em cima do main: a página vira coluna da altura da tela e o grafo fica com o que sobra. */
   .graph-page {
-    @apply flex min-h-[calc(100dvh-2rem)] flex-col gap-3 md:h-[calc(100dvh-3rem)] md:min-h-0;
+    @apply flex min-h-0 flex-1 flex-col gap-3 md:h-[calc(100dvh-3rem)] md:flex-none;
+  }
+}
+
+@media (width < 48rem) {
+  .app-shell:has(> main > .graph-page) {
+    @apply flex h-dvh flex-col items-start;
+  }
+
+  .app-shell > main:has(> .graph-page) {
+    @apply flex min-h-0 flex-1 flex-col self-stretch;
   }
 }
 
