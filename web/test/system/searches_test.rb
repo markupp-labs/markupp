@@ -46,6 +46,15 @@ class SearchesTest < ApplicationSystemTestCase
     assert_text "Try fewer words"
   end
 
+  test "the empty state stands off the edge of the dialog, its tildes in line with the text of the field" do
+    open_search("nothing")
+    assert_text 'No matches for "nothing"'
+
+    field = find_field("Search notes")
+    text_start = edge(field, "left") + evaluate_script("parseFloat(getComputedStyle(arguments[0]).paddingLeft)", field)
+    assert_in_delta text_start, edge(find("#search_results .empty-state pre"), "left"), 0.5
+  end
+
   test "the sidebar button opens the search too" do
     click_on "Search"
 
