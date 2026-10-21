@@ -1,0 +1,5 @@
+<%# Página seguinte de uma seção da visão Links, no frame do Show more que a pediu, com a contagem até ela, que o
+    note_links_controller.js leva ao summary da seção. %>
+<%= turbo_frame_tag links_page_frame_id(@section, @offset), target: "_top" do %>
+  <ul class="links-list" data-links-count="<%= links_count(@items, @offset) %>"><%= render "note_links/page", section: @section, items: @items, offset: @offset %></ul>
+<% end %>

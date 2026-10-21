@@ -1,0 +1,21 @@
+<head>
+  <title><%= content_for(:title) || "markupp" %></title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="application-name" content="markupp">
+  <meta name="mobile-web-app-capable" content="yes">
+  <%= csrf_meta_tags %>
+  <%= csp_meta_tag %>
+  <%# Visitas do Turbo por view transition; só a troca de área anima (area_transition_controller.js, motion.css). %>
+  <meta name="view-transition" content="same-origin">
+
+  <%= yield :head %>
+
+  <%# Favicon do mascote em pontos de braille, gerado por script/mascot.rb. %>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="/favicon-32.png" type="image/png" sizes="32x32">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" sizes="180x180">
+
+  <%= stylesheet_link_tag :app, "data-turbo-track": "reload" %>
+  <%= javascript_importmap_tags %>
+</head>

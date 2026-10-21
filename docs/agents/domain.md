@@ -17,15 +17,17 @@ terms or decisions actually get resolved.
 
 ## File structure
 
-This repo holds one module: `markupp/`, the Go server. The Obsidian plugin lives in
+This repo holds two modules: `markupp/`, the Go server, and `web/`, the Rails panel that
+consumes its API (ADR-0031). The Obsidian plugin lives in
 `markupp-labs/obsidian-markupp-plugin`.
 
     /
     |- CONTEXT-MAP.md
     |- docs/adrs/                       system-wide decisions, ADR-0001 onwards
-    `- markupp/
-        |- CONTEXT.md
-        `- docs/adrs/                   server-specific decisions
+    |- markupp/
+    |   |- CONTEXT.md
+    |   `- docs/adrs/                   server-specific decisions
+    `- web/                             Rails panel, client of the API
 
 Existing ADRs are named `ADR-NNNN-slug-em-portugues.md` and are written in Portuguese.
 Keep that convention for new ones.

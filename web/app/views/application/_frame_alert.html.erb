@@ -1,0 +1,4 @@
+<%# Mesmo id do frame que pediu, para o Turbo encaixar; o link abre a página inteira, que não tem o frame. %>
+<%= turbo_frame_tag request.headers["Turbo-Frame"] do %>
+  <p role="alert" class="px-3 py-2"><%= link_to alert, path, data: { turbo_frame: "_top" }, class: "text-danger underline" %></p>
+<% end %>

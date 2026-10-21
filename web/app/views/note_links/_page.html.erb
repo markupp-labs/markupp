@@ -1,0 +1,7 @@
+<%# Uma página de uma seção da visão Links: as linhas e, com a página cheia e abaixo do teto da API, o Show more que traz
+    a seguinte. %>
+<%= render partial: "note_links/#{section}", collection: items, as: :item %>
+<% next_offset = NoteLinkSection.next_offset(offset) %>
+<% if items.size == NoteLinkSection::PAGE_SIZE && next_offset %>
+  <%= render "note_links/more", section:, offset: next_offset %>
+<% end %>

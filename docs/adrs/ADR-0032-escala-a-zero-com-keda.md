@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposta
+Aceita
 
 ## Contexto
 
@@ -15,15 +15,22 @@ promessa sem dono e a latência de indexação não tem estimativa
 
 ## Decisão
 
-KEDA roda no cluster. Os dois indexadores são ScaledJob, com scaler de PostgreSQL consultando o
-cursor de revisão, e um Job nasce por cofre com mudança pendente. O worker de notificação continua
+KEDA roda no cluster. Os dois indexadores são ScaledJob, com scaler de PostgreSQL contando os
+cofres com nota pendente, e um Job nasce por cofre com mudança pendente. O worker de notificação continua
 Deployment, com ScaledObject levando as réplicas a zero enquanto não houver notificação
 pendente
 
-A unidade de trabalho é o cofre, onde o dado derivado nasce (ADR-0024). A consulta do scaler
-conta os cofres com mudança pendente, e cada Job reserva um deles travando a linha do cursor do
-cofre com `SELECT ... FOR UPDATE SKIP LOCKED`. Um cofre já reservado é pulado, então dois Jobs
-nunca indexam o mesmo lote, e Jobs em paralelo trabalham em cofres diferentes
+A unidade de trabalho é o cofre, onde o dado derivado nasce (ADR-0024). Um trigger põe a nota
+numa fila de pendências a cada escrita de conteúdo, com uma revisão nova. O indexador tira a nota
+da fila só se a revisão ainda for a que leu, então a escrita confirmada durante a indexação
+continua pendente. Um número único por cofre perderia a escrita que pega revisão antes de outra e
+confirma depois dela
+
+A consulta do scaler conta os cofres com nota na fila, com um papel do banco que só pode fazer
+essa contagem. Cada Job reserva um cofre travando a linha dele com `SELECT ... FOR NO KEY UPDATE
+SKIP LOCKED`, em ordem aleatória. Um cofre já reservado é pulado, então dois Jobs nunca indexam
+o mesmo lote, Jobs em paralelo trabalham em cofres diferentes, e um cofre que sempre falha não
+segura os outros
 
 ## Alternativas consideradas
 
@@ -41,8 +48,12 @@ nunca indexam o mesmo lote, e Jobs em paralelo trabalham em cofres diferentes
 ## Consequências
 
 - Fecha a lacuna do ADR-0027, que prometia escala a zero sem dizer quem dispara
-- Continua sendo consulta ao cursor de revisão, então não contraria o ADR-0018 nem o ADR-0021.
-  O polling sai da aplicação e passa para a plataforma
+- Continua sendo consulta ao banco, então não contraria o ADR-0018 nem o ADR-0021. O polling sai
+  da aplicação e passa para a plataforma
+- A consulta do scaler lê a fila a cada intervalo, custo que cresce com as notas pendentes e
+  não com a base
+- A fila é estado a mais no registro, mantido por trigger. Trocar a configuração de busca não
+  põe as notas já indexadas de volta nela
 - KEDA é componente novo para instalar, versionar e operar no cluster
 - O self-host por compose não tem Kubernetes nem KEDA, então o indexador precisa de um modo de
   laço além do modo de execução única que o Job usa
@@ -51,7 +62,7 @@ nunca indexam o mesmo lote, e Jobs em paralelo trabalham em cofres diferentes
 - A reserva dura a transação: Job que morre no meio solta a trava, e o cofre volta a ser pego
   pelo próximo Job
 - Um cofre grande não se divide entre Jobs, porque o paralelismo é por cofre
-- KEDA não está instalado no cluster da disciplina, que hoje tem Gateway API, Cilium,
-  cert-manager e Longhorn. Sem ele, esta decisão descreve o alvo e não o que roda. Instalar é
-  por Helm, que já existe nas máquinas. O próprio KEDA serve as métricas do scaler de
-  PostgreSQL, então metrics-server só entra se algum serviço escalar por CPU ou memória
+- KEDA vira pré-requisito do cluster, instalado por Helm, e o kind do CI o instala junto com os
+  outros. O componente Pulumi deixa desligar o indexador em cluster sem KEDA. O próprio KEDA
+  serve as métricas do scaler de PostgreSQL, então metrics-server só entra se algum serviço
+  escalar por CPU ou memória

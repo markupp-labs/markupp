@@ -1,0 +1,26 @@
+<%# Grafo do cofre inteiro em tela cheia, ainda na área das notas (sem deslize de área): a árvore segue na barra lateral,
+    o canvas toma o main e o Esc (ou o voltar) leva à nota de onde a tela foi aberta. As visões Links e Graph da barra
+    lateral mostram essa nota, como na página dela (notes/_form). Os filtros (graphs/_filters) ficam no cabeçalho, e a
+    query da página diz quais valem; com eles escondendo tudo, o canvas diz isso no lugar do vazio do cofre. %>
+<% content_for :title, t(".title") %>
+<%# Fora do cache do Turbo: o voltar de outra página pede o grafo com os filtros da query (graph_filters_controller.js). %>
+<% content_for :head, tag.meta(name: "turbo-cache-control", content: "no-cache") %>
+<% content_for :sidebar, render("notes/sidebar", tree: @tree, current: @origin) %>
+<% if @origin %>
+  <% content_for :note_links, note_links_frame(@origin) %>
+  <% content_for :note_graph, render("graphs/local", note: @origin) %>
+<% end %>
+<div class="graph-page">
+  <header class="flex items-center gap-3">
+    <%= render "layouts/area_back", path: @origin ? note_path(@origin) : root_path %>
+    <h1 class="font-semibold"><%= t(".title") %></h1>
+    <span aria-hidden="true" class="ml-auto hidden truncate text-xs text-ink-muted md:inline"><%= t(".keys") %></span>
+    <%= render "graphs/filters", filters: @filters, communities: @communities if @vault_id %>
+  </header>
+  <% if @vault_id %>
+    <%= render "graphs/canvas", id: "vault_graph", url: graph_path(format: :json, vault: @vault_id, note: @origin&.id, **@filters), region: "graph",
+                                autofocus: true, filterable: true, filtered: @filters.any?, class: "graph-view-full" %>
+  <% else %>
+    <%= render "layouts/empty_state", title: t("graphs.empty.title"), hint: t("graphs.empty.hint") %>
+  <% end %>
+</div>

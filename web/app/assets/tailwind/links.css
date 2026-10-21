@@ -1,0 +1,105 @@
+/* Visão Links da nota aberta (note_links/show): seções recolhíveis como as dobras do Vim, com a seta ASCII que gira, e
+   linhas na medida das da árvore (13px). */
+@layer components {
+  .links-section {
+    font-size: 13px;
+  }
+
+  .links-section + .links-section {
+    @apply mt-2;
+  }
+
+  /* Sem o marcador do navegador: a seta é texto (▸ dobrada, gira para ▾ aberta, como no NERDTree), e a contagem fica à
+     direita, apagada. */
+  .links-section-heading {
+    @apply flex cursor-pointer list-none items-center gap-2 leading-6 text-ink-muted select-none hover:text-ink focus-visible:text-ink;
+
+    &::-webkit-details-marker {
+      display: none;
+    }
+
+    &::before {
+      content: "▸";
+      display: inline-block;
+      transition: rotate 120ms ease-out;
+    }
+
+    [open] > &::before {
+      rotate: 90deg;
+    }
+  }
+
+  .links-section-title {
+    @apply text-xs tracking-wide uppercase;
+  }
+
+  .links-section-count {
+    @apply ml-auto text-xs tabular-nums;
+  }
+
+  .links-none {
+    @apply py-0.5 pl-6 text-xs/6 text-ink-muted;
+  }
+
+  /* relative: contém o texto só para leitor de tela (absoluto) na linha; sem ele, o texto escapa para o fim da barra
+     lateral e a faz rolar inteira. */
+  .links-item {
+    @apply relative flex items-center;
+  }
+
+  /* Linha como a do Explorer plano: título, pasta apagada e, à direita, o tipo da ligação. Recuada sob a seta da seção. */
+  .links-row {
+    @apply flex min-w-0 flex-1 items-baseline gap-2 py-0 pl-6 leading-6;
+  }
+
+  .links-row-folder {
+    @apply text-xs text-ink-muted;
+  }
+
+  .links-row-kind {
+    @apply ml-auto shrink-0 pl-2 text-xs text-ink-muted;
+  }
+
+  /* Ligação não resolvida: o mesmo sublinhado tracejado do wikilink sem nota (markdown.css), na cor do texto. */
+  .link-unresolved {
+    @apply cursor-help;
+
+    & .links-row-title {
+      text-decoration: underline dashed;
+      text-underline-offset: 2px;
+    }
+  }
+
+  /* Com a nota que o indexador inferiu, a linha abre essa nota: o maybe vai apagado depois do título citado. */
+  a.link-unresolved {
+    @apply cursor-pointer;
+  }
+
+  /* O título citado trunca primeiro: o maybe fica inteiro até a metade da linha e, mais longo, trunca ali. */
+  .links-row-maybe {
+    @apply max-w-1/2 shrink-0 truncate text-xs text-ink-muted;
+  }
+
+  /* Show more: o frame dele ocupa a linha; depois de carregar, a lista da página seguinte segue a da seção. */
+  .links-more {
+    @apply block;
+
+    & > turbo-frame {
+      @apply flex items-center;
+    }
+  }
+
+  .links-more-link {
+    @apply text-ink-muted hover:text-ink focus-visible:text-ink;
+  }
+
+  .links-copy {
+    @apply shrink-0 rounded-md p-1 text-ink-muted hover:bg-accent-soft hover:text-ink focus-visible:text-ink;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .links-section-heading::before {
+    transition: none;
+  }
+}

@@ -1,0 +1,7 @@
+<%# Voltar das áreas ao lado das notas (AsideArea) à página de onde a área foi aberta, ou ao path dado (a tela do grafo
+    volta à nota de onde veio), pelo clique ou pelo Esc. %>
+<%= link_to local_assigns.fetch(:path) { area_origin_path }, class: "btn-icon", title: t(".title"),
+            aria: { label: t(".label"), keyshortcuts: "Escape" },
+            data: { controller: "area-back", action: "keydown.esc@window->area-back#go" } do %>
+  <%= icon("arrow-left") %>
+<% end %>

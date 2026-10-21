@@ -1,0 +1,20 @@
+<% content_for :title, t(".title") %>
+
+<div class="max-w-[65ch]">
+  <h1 class="md-heading text-base font-semibold"><%= t(".title") %></h1>
+
+  <h2 class="mt-6 text-base font-semibold" id="theme_heading"><%= t(".theme") %></h2>
+  <%# Sem Turbo, como no rodapé: o tema mora no data-theme do html, que o Turbo não troca. %>
+  <div role="group" aria-labelledby="theme_heading" class="mt-3 flex flex-wrap gap-2">
+    <% { "light" => :sun, "dark" => :moon }.each do |theme, glyph| %>
+      <%= button_to theme_path, method: :patch, params: { theme: }, form: { data: { turbo: false } },
+                    aria: { pressed: theme == chosen_theme },
+                    class: "btn aria-pressed:border-accent aria-pressed:bg-accent-soft aria-pressed:text-ink" do %>
+        <%= icon(glyph) %><%= t(".#{theme}") %>
+      <% end %>
+    <% end %>
+  </div>
+  <% unless chosen_theme %>
+    <p class="mt-2 text-ink-muted"><%= t(".follows_system") %></p>
+  <% end %>
+</div>

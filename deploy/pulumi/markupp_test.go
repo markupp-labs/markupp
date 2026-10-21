@@ -138,11 +138,13 @@ func TestNewMarkupp_SemBancoExterno_CriaPostgresNoNamespaceComVolume(t *testing.
 func TestNewMarkupp_SemBancoExterno_GuardaSenhaGeradaEURLNoSecret(t *testing.T) {
 	monitor := deploy(t, argsDeTeste())
 
-	require.Len(t, monitor.byType(randomPasswordType), 1)
+	require.Len(t, monitor.byType(randomPasswordType), 3, "banco, JWT e scaler")
 	secret := monitor.single(t, "kubernetes:core/v1:Secret")
 	assert.Equal(t, senhaDeTeste, plain(at(t, secret, "stringData", "password")).StringValue())
-	assert.Equal(t, "postgres://markupp:"+senhaDeTeste+"@markupp-db:5432/markupp?sslmode=disable",
-		plain(at(t, secret, "stringData", "uri")).StringValue())
+	assert.Equal(t, senhaDeTeste, plain(at(t, secret, "stringData", "auth-secret")).StringValue())
+	assert.Equal(t, "postgres://markupp:"+senhaDeTeste+"@markupp-db.markupp.svc:5432/markupp?sslmode=disable",
+		plain(at(t, secret, "stringData", "uri")).StringValue(),
+		"o scaler do KEDA consulta o banco do namespace keda, onde o nome curto do Service não resolve")
 }
 
 func TestNewMarkupp_SemBancoExterno_PostgresLeASenhaDoSecret(t *testing.T) {
@@ -167,10 +169,11 @@ func TestNewMarkupp_ComBancoExterno_NaoCriaPostgresEGuardaURLEmSecret(t *testing
 	monitor := deploy(t, args)
 
 	assert.Empty(t, monitor.byType("kubernetes:apps/v1:StatefulSet"))
-	assert.Empty(t, monitor.byType(randomPasswordType))
+	require.Len(t, monitor.byType(randomPasswordType), 2, "JWT e scaler")
 	secret := monitor.single(t, "kubernetes:core/v1:Secret")
 	assert.Equal(t, "postgres://markupp@db.externo:5432/markupp",
 		at(t, secret, "stringData", "uri").StringValue())
+	assert.Equal(t, senhaDeTeste, plain(at(t, secret, "stringData", "auth-secret")).StringValue())
 }
 
 func TestNewMarkupp_JobDeMigracao_RodaOSubcomandoMigrateNaImagem(t *testing.T) {
@@ -182,16 +185,34 @@ func TestNewMarkupp_JobDeMigracao_RodaOSubcomandoMigrateNaImagem(t *testing.T) {
 	assert.Equal(t, "migrate", container["args"].ArrayValue()[0].StringValue())
 }
 
-func TestNewMarkupp_DeploymentDaAPI_LeOBancoDoSecret(t *testing.T) {
+func TestNewMarkupp_DeploymentDaAPI_LeOBancoESegredoDoSecret(t *testing.T) {
 	monitor := deploy(t, argsDeTeste())
 
 	api := monitor.single(t, "kubernetes:apps/v1:Deployment")
 	container := firstContainer(t, api)
-	env := container["env"].ArrayValue()[0].ObjectValue()
-	assert.Equal(t, "MARKUPP_DATABASE_URL", env["name"].StringValue())
-	ref := at(t, env, "valueFrom", "secretKeyRef")
-	assert.Equal(t, "markupp-db-app", at(t, ref.ObjectValue(), "name").StringValue())
-	assert.Equal(t, "uri", at(t, ref.ObjectValue(), "key").StringValue())
+	envs := container["env"].ArrayValue()
+	require.Len(t, envs, 3)
+	assert.Equal(t, "MARKUPP_DATABASE_URL", envs[0].ObjectValue()["name"].StringValue())
+	assert.Equal(t, "MARKUPP_AUTH_SECRET", envs[1].ObjectValue()["name"].StringValue())
+	refDB := at(t, envs[0].ObjectValue(), "valueFrom", "secretKeyRef")
+	assert.Equal(t, "markupp-db-app", at(t, refDB.ObjectValue(), "name").StringValue())
+	assert.Equal(t, "uri", at(t, refDB.ObjectValue(), "key").StringValue())
+	refAuth := at(t, envs[1].ObjectValue(), "valueFrom", "secretKeyRef")
+	assert.Equal(t, "markupp-db-app", at(t, refAuth.ObjectValue(), "name").StringValue())
+	assert.Equal(t, "auth-secret", at(t, refAuth.ObjectValue(), "key").StringValue())
+}
+
+func TestNewMarkupp_DeploymentDaAPI_AnunciaOHostComoURLPublica(t *testing.T) {
+	monitor := deploy(t, argsDeTeste())
+
+	container := firstContainer(t, monitor.single(t, "kubernetes:apps/v1:Deployment"))
+	var publicURL string
+	for _, env := range container["env"].ArrayValue() {
+		if env.ObjectValue()["name"].StringValue() == "MARKUPP_PUBLIC_URL" {
+			publicURL = env.ObjectValue()["value"].StringValue()
+		}
+	}
+	assert.Equal(t, "https://markupp.dev.br", publicURL, "o issuer do OAuth e o host que o Gateway publica com TLS (ADR-0041)")
 }
 
 func TestNewMarkupp_DeploymentDaAPI_UsaDuasReplicasESondaHealthz(t *testing.T) {
@@ -200,7 +221,7 @@ func TestNewMarkupp_DeploymentDaAPI_UsaDuasReplicasESondaHealthz(t *testing.T) {
 	api := monitor.single(t, "kubernetes:apps/v1:Deployment")
 	assert.Equal(t, 2.0, at(t, api, "spec", "replicas").NumberValue())
 	container := firstContainer(t, api)
-	assert.Equal(t, "/healthz", at(t, container, "readinessProbe", "httpGet", "path").StringValue())
+	assert.Equal(t, "/v1/healthz", at(t, container, "readinessProbe", "httpGet", "path").StringValue())
 }
 
 func TestNewMarkupp_Entrada_RoteiaOHostPeloGatewayComTLS(t *testing.T) {
@@ -321,4 +342,174 @@ func TestNewMarkupp_LivenessDaAPI_NaoDependeDoBanco(t *testing.T) {
 	assert.True(t, liveness["httpGet"].IsNull(),
 		"liveness no /healthz reinicia a API inteira quando o banco cai")
 	assert.Equal(t, float64(apiPort), at(t, liveness, "tcpSocket", "port").NumberValue())
+}
+
+const scaledObjectType = "kubernetes:keda.sh/v1alpha1:ScaledObject"
+
+func argsComEmail() MarkuppArgs {
+	args := argsDeTeste()
+	args.Email = &EmailArgs{SMTPURL: pulumi.String("smtps://markupp:senha@smtp.markupp.dev:465"), From: "convites@markupp.dev"}
+	return args
+}
+
+func deploymentNamed(t *testing.T, monitor *fakeResourceMonitor, name string) resource.PropertyMap {
+	t.Helper()
+	for _, d := range monitor.byType("kubernetes:apps/v1:Deployment") {
+		if d.Name == name {
+			return d.Inputs
+		}
+	}
+	require.Failf(t, "deployment ausente", "esperado o Deployment %q", name)
+	return nil
+}
+
+func envNames(container resource.PropertyMap) []string {
+	var names []string
+	for _, env := range container["env"].ArrayValue() {
+		names = append(names, env.ObjectValue()["name"].StringValue())
+	}
+	return names
+}
+
+func TestNewMarkupp_SemEmail_NaoCriaNotificador(t *testing.T) {
+	monitor := deploy(t, argsDeTeste())
+
+	assert.Empty(t, monitor.byType(scaledObjectType))
+	assert.Len(t, monitor.byType("kubernetes:apps/v1:Deployment"), 1, "so a API")
+}
+
+func TestNewMarkupp_ComEmail_GuardaAURLDoSMTPNoSecret(t *testing.T) {
+	monitor := deploy(t, argsComEmail())
+
+	secret := monitor.single(t, "kubernetes:core/v1:Secret")
+	assert.Equal(t, "smtps://markupp:senha@smtp.markupp.dev:465", plain(at(t, secret, "stringData", "smtp-url")).StringValue())
+}
+
+func TestNewMarkupp_ComEmail_APIEnfileiraOConviteSemASenhaDoSMTP(t *testing.T) {
+	monitor := deploy(t, argsComEmail())
+
+	api := firstContainer(t, deploymentNamed(t, monitor, "markupp-api"))
+	assert.Contains(t, envNames(api), "MARKUPP_INVITE_BY_EMAIL", "a API precisa saber que o convite sai por email para nao devolver o token")
+	assert.NotContains(t, envNames(api), "MARKUPP_SMTP_URL", "a API exposta a internet nao guarda a senha do SMTP")
+}
+
+func TestNewMarkupp_ComEmail_MigracaoEIndexadorNaoRecebemOSMTP(t *testing.T) {
+	monitor := deploy(t, argsComEmail())
+
+	migracao := firstContainer(t, monitor.single(t, "kubernetes:batch/v1:Job"))
+	indexador := containerDoIndexador(t, monitor.single(t, scaledJobType))
+	for nome, container := range map[string]resource.PropertyMap{"migracao": migracao, "indexador": indexador} {
+		assert.NotContains(t, envNames(container), "MARKUPP_SMTP_URL", nome)
+		assert.NotContains(t, envNames(container), "MARKUPP_SMTP_FROM", nome)
+	}
+}
+
+func TestNewMarkupp_RemetenteIlegivel_RetornaErroComOValor(t *testing.T) {
+	args := argsComEmail()
+	args.Email.From = "noreply"
+
+	err := declareErr(args)
+
+	require.Error(t, err, "remetente que o servidor recusaria derruba todos os conteineres")
+	assert.Contains(t, err.Error(), "email.from")
+	assert.Contains(t, err.Error(), "noreply")
+}
+
+func TestNewMarkupp_ComEmail_NotificadorRodaNotifyLoop(t *testing.T) {
+	monitor := deploy(t, argsComEmail())
+
+	notifier := firstContainer(t, deploymentNamed(t, monitor, "markupp-notifier"))
+	assert.Equal(t, "notify-loop", notifier["args"].ArrayValue()[0].StringValue())
+	assert.Subset(t, envNames(notifier), []string{"MARKUPP_DATABASE_URL", "MARKUPP_SMTP_URL", "MARKUPP_SMTP_FROM"})
+}
+
+func TestNewMarkupp_ComEmail_KEDAEscalaONotificadorEntreZeroEUm(t *testing.T) {
+	monitor := deploy(t, argsComEmail())
+
+	scaled := monitor.single(t, scaledObjectType)
+	assert.Equal(t, "markupp-notifier", at(t, scaled, "spec", "scaleTargetRef", "name").StringValue())
+	assert.Equal(t, 0.0, at(t, scaled, "spec", "minReplicaCount").NumberValue())
+	assert.Equal(t, 1.0, at(t, scaled, "spec", "maxReplicaCount").NumberValue())
+	assert.Equal(t, 30.0, at(t, scaled, "spec", "pollingInterval").NumberValue())
+	trigger := at(t, scaled, "spec", "triggers").ArrayValue()[0].ObjectValue()
+	assert.Equal(t, "postgresql", trigger["type"].StringValue())
+	metadata := trigger["metadata"].ObjectValue()
+	assert.Equal(t, "SELECT markupp_pending_notifications()", metadata["query"].StringValue())
+	assert.True(t, metadata["connectionFromEnv"].IsNull(), "a URL do notificador e a do dono do banco")
+	assert.Equal(t, "markupp-scaler", at(t, trigger, "authenticationRef", "name").StringValue())
+}
+
+func TestNewMarkupp_SoEmailSemIndexador_AindaCriaOAcessoDoScaler(t *testing.T) {
+	args := argsComEmail()
+	desligado := false
+	args.Indexer = &IndexerArgs{Enabled: &desligado}
+
+	monitor := deploy(t, args)
+
+	assert.Equal(t, "markupp-scaler", at(t, monitor.single(t, triggerAuthType), "metadata", "name").StringValue(),
+		"o notificador tambem consulta o banco como markupp_scaler")
+}
+
+func TestNewMarkupp_SemIndexadorNemEmail_NaoCriaOAcessoDoScaler(t *testing.T) {
+	args := argsDeTeste()
+	desligado := false
+	args.Indexer = &IndexerArgs{Enabled: &desligado}
+
+	assert.Empty(t, deploy(t, args).byType(triggerAuthType))
+}
+
+func TestNewMarkupp_EmailSemRemetente_RetornaErroComOCampo(t *testing.T) {
+	args := argsComEmail()
+	args.Email.From = ""
+
+	err := declareErr(args)
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "email.from")
+}
+
+func envValue(t *testing.T, container resource.PropertyMap, name string) string {
+	t.Helper()
+	for _, env := range container["env"].ArrayValue() {
+		if env.ObjectValue()["name"].StringValue() == name {
+			return env.ObjectValue()["value"].StringValue()
+		}
+	}
+	require.Failf(t, "variavel ausente", "esperada %s no conteiner", name)
+	return ""
+}
+
+func TestNewMarkupp_SemOpcoesDeLimiteEPainel_NaoPassaAsVariaveis(t *testing.T) {
+	monitor := deploy(t, argsComEmail())
+
+	api := firstContainer(t, deploymentNamed(t, monitor, "markupp-api"))
+	notifier := firstContainer(t, deploymentNamed(t, monitor, "markupp-notifier"))
+	assert.NotContains(t, envNames(api), "MARKUPP_TRUSTED_PROXIES")
+	assert.NotContains(t, envNames(api), "MARKUPP_RATE_LIMIT_PER_MINUTE")
+	assert.NotContains(t, envNames(notifier), "MARKUPP_PANEL_URL")
+}
+
+func TestNewMarkupp_ComPainel_NotificadorRecebeAURL(t *testing.T) {
+	args := argsComEmail()
+	args.Email.PanelURL = "https://painel.markupp.dev"
+
+	monitor := deploy(t, args)
+
+	notifier := firstContainer(t, deploymentNamed(t, monitor, "markupp-notifier"))
+	assert.Equal(t, "https://painel.markupp.dev", envValue(t, notifier, "MARKUPP_PANEL_URL"))
+	api := firstContainer(t, deploymentNamed(t, monitor, "markupp-api"))
+	assert.NotContains(t, envNames(api), "MARKUPP_PANEL_URL", "so o notificador monta o email")
+}
+
+func TestNewMarkupp_ComProxiesELimite_APIRecebeAsVariaveis(t *testing.T) {
+	args := argsDeTeste()
+	args.TrustedProxies = []string{"10.0.0.0/8", "fd00::/8"}
+	limite := 20
+	args.RateLimitPerMinute = &limite
+
+	monitor := deploy(t, args)
+
+	api := firstContainer(t, deploymentNamed(t, monitor, "markupp-api"))
+	assert.Equal(t, "10.0.0.0/8,fd00::/8", envValue(t, api, "MARKUPP_TRUSTED_PROXIES"))
+	assert.Equal(t, "20", envValue(t, api, "MARKUPP_RATE_LIMIT_PER_MINUTE"))
 }

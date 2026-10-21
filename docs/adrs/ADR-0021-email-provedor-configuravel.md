@@ -12,22 +12,20 @@ terceiro para funcionar, e o Enterprise precisa de entrega confiável e mensurá
 
 ## Decisão
 
-Envio por provedor configurável: SMTP genérico e Amazon SES. O Enterprise usa SES, o self-host
-aponta para o próprio SMTP. Sem provedor configurado, o sistema não envia e os fluxos que
-dependem de envio ficam explicitamente indisponíveis
+Envio por SMTP genérico nas duas edições, configurado por URL. Cada instalação aponta para o
+servidor de email que tiver. Sem SMTP configurado, o sistema não envia e os fluxos que dependem
+de envio ficam explicitamente indisponíveis
 
 ## Alternativas consideradas
 
-- Só SES: obriga quem hospeda por conta própria a manter conta na AWS
-- Só SMTP, inclusive no Enterprise via SES por SMTP: funciona, mas abre mão do controle de
-  reputação, da métrica de entrega e do tratamento de rejeição que a API do SES entrega
+- API de um serviço de envio: traz métrica de entrega e tratamento de rejeição, e prende a
+  instalação a um fornecedor, enquanto qualquer serviço de envio também aceita SMTP
 - Fila dedicada de notificação desde o início: complexidade antes de existir volume. Envio
   assíncrono com repetição resolve, e fila entra quando o volume for medido
 
 ## Consequências
 
-- É o terceiro provedor configurável do projeto, junto de embedding (ADR-0019) e autenticação
-  (ADR-0020), o que justifica extrair o padrão uma vez em vez de repetir a estrutura três vezes
+- Métrica de entrega e tratamento de rejeição ficam com o servidor de email escolhido
 - Recuperação de acesso por credencial local só existe onde há provedor de email configurado
 - Envio sai do caminho da requisição e vai para o mesmo trabalho assíncrono da indexação
   (ADR-0018), senão a latência da resposta fica presa à do servidor de email

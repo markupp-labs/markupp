@@ -1,0 +1,2 @@
+<%= render "application/error_page", code: @code, title: t(".#{@code}.title", path: @asked_path, default: t(".other.title")),
+                                     hint: t(".#{@code}.hint", default: t(".other.hint")), back: way_back %>

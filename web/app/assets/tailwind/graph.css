@@ -1,0 +1,204 @@
+/* Grafo em canvas (graphs/_canvas): o palco é um quadro com a borda line, como um split do Vim, no fundo da barra lateral
+   na visão Graph (quadrado) e no surface na tela cheia (o resto da altura). Os avisos (vazio, recusado, sem servidor)
+   cobrem o canvas, e a linha de status embaixo conta nós e ligações como a statusline. O canvas lê o fundo do palco para
+   o halo dos nomes (graph/theme_colors.js). */
+@layer components {
+  .graph-view {
+    @apply flex min-h-0 flex-col gap-2;
+  }
+
+  .graph-stage {
+    @apply relative overflow-hidden rounded-md border border-line bg-surface-sunken;
+  }
+
+  .graph-view-local .graph-stage {
+    aspect-ratio: 1;
+  }
+
+  .graph-view-full {
+    @apply flex-1;
+  }
+
+  .graph-view-full .graph-stage {
+    @apply min-h-80 flex-1 bg-surface;
+  }
+
+  .graph-canvas {
+    @apply absolute inset-0 block size-full cursor-grab touch-none outline-offset-[-2px];
+
+    &[data-hovering] {
+      @apply cursor-pointer;
+    }
+
+    &:active {
+      @apply cursor-grabbing;
+    }
+  }
+
+  .graph-overlay {
+    @apply absolute inset-0 bg-inherit p-2;
+  }
+
+  /* Alinhado ao texto do vazio, depois da coluna dos tis (px-1, 1ch e gap-3 do empty_state). */
+  .graph-clear-filters {
+    @apply mt-1 ml-[calc(0.25rem+1ch+0.75rem)];
+  }
+
+  .graph-busy {
+    @apply absolute top-2 left-2 text-xs text-ink-muted;
+  }
+
+  .graph-status {
+    @apply min-h-4 truncate text-xs leading-4 whitespace-pre text-ink-muted tabular-nums;
+  }
+
+  .graph-toolbar {
+    @apply flex items-center justify-between gap-2;
+  }
+
+  /* Seletor de saltos como um prompt: "depth" apagado e as opções; a escolhida fica no accent-soft, entre colchetes. */
+  .graph-depth {
+    @apply flex items-center gap-1 text-xs text-ink-muted;
+  }
+
+  .graph-depth-option {
+    @apply rounded-sm px-1.5 leading-5 tabular-nums hover:text-ink;
+
+    &[aria-pressed="true"] {
+      @apply bg-accent-soft text-ink;
+
+      &::before {
+        content: "[";
+      }
+
+      &::after {
+        content: "]";
+      }
+    }
+  }
+
+  /* Tela cheia: o cabeçalho e o grafo tomam a altura da tela menos o padding do main, sem rolar a página. No celular o
+     botão da gaveta fica em cima do main: a página vira coluna da altura da tela e o grafo fica com o que sobra. */
+  .graph-page {
+    @apply flex min-h-0 flex-1 flex-col gap-3 md:h-[calc(100dvh-3rem)] md:flex-none;
+  }
+}
+
+@media (width < 48rem) {
+  .app-shell:has(> main > .graph-page) {
+    @apply flex h-dvh flex-col items-start;
+  }
+
+  .app-shell > main:has(> .graph-page) {
+    @apply flex min-h-0 flex-1 flex-col self-stretch;
+  }
+}
+
+/* O grafo chega com um fade curto, como a janela que abre no Hyprland; com reduced-motion aparece parado. */
+@media (prefers-reduced-motion: no-preference) {
+  .graph-view[data-graph-nodes] .graph-canvas {
+    animation: graph-arrive 240ms cubic-bezier(0.05, 0.9, 0.1, 1.05);
+  }
+}
+
+@keyframes graph-arrive {
+  from {
+    opacity: 0;
+    scale: 0.98;
+  }
+}
+
+/* Filtros do grafo cheio (graphs/_filters): o summary no cabeçalho, como uma dobra do Vim (▸ que gira para ▾) com a
+   contagem dos filtros ligados entre colchetes; aberto, o painel desce por cima do canvas, no canto direito, e entra
+   como as camadas do Hyprland (sem animar com reduced-motion). Cada filtro é uma linha de terminal: a caixa em texto,
+   [x] mostrado e [ ] escondido, o nome e a tecla. */
+@layer components {
+  .graph-filters {
+    @apply relative ml-auto text-xs md:ml-0;
+  }
+
+  .graph-filters-heading {
+    @apply flex cursor-pointer list-none items-center gap-1.5 rounded-sm px-1.5 leading-6 text-ink-muted select-none hover:text-ink focus-visible:text-ink;
+
+    &::-webkit-details-marker {
+      display: none;
+    }
+
+    &::before {
+      content: "▸";
+      display: inline-block;
+      transition: rotate var(--motion-fade) var(--ease-out-quint);
+    }
+
+    [open] > &::before {
+      rotate: 90deg;
+    }
+
+    [open] > & {
+      @apply text-ink;
+    }
+  }
+
+  .graph-filters-count {
+    @apply text-accent tabular-nums;
+  }
+
+  /* z-10: o painel fica acima do canvas e dos avisos do palco, que vêm depois no documento. */
+  .graph-filters-body {
+    @apply absolute top-full right-0 z-10 mt-1 flex w-56 flex-col gap-0.5 rounded-md border border-line bg-surface p-2 shadow-sm;
+    transform-origin: top right;
+    transition: opacity var(--motion-layer-in) var(--ease-out-quint), transform var(--motion-layer-in) var(--ease-out-quint);
+
+    @starting-style {
+      opacity: 0;
+      transform: scale(var(--popin-scale));
+    }
+  }
+
+  .graph-filters-legend {
+    @apply mb-0.5 px-1 text-ink-muted;
+  }
+
+  .graph-filter,
+  .graph-filter-community {
+    @apply flex cursor-pointer items-center gap-2 rounded-sm px-1 leading-6 text-ink hover:bg-surface-sunken;
+
+    & kbd {
+      @apply text-ink-muted;
+    }
+  }
+
+  .graph-filter-community {
+    @apply mt-1.5;
+  }
+
+  .graph-filter-box {
+    @apply text-ink-muted tabular-nums;
+
+    &::before {
+      content: "[ ]";
+      white-space: pre;
+    }
+
+    .peer:checked + & {
+      @apply text-accent;
+
+      &::before {
+        content: "[x]";
+      }
+    }
+
+    /* Sobre o surface-sunken do hover, o accent não chega ao AA no tema claro (3.95:1): o [x] passa à cor do texto. */
+    .graph-filter:hover > .peer:checked + & {
+      @apply text-ink;
+    }
+
+    .peer:focus-visible + & {
+      @apply rounded-sm outline-2 outline-offset-1 outline-accent;
+    }
+  }
+
+  .graph-filter-select {
+    @apply w-full rounded-sm border border-line bg-surface-sunken px-1 py-0.5 text-ink;
+  }
+}

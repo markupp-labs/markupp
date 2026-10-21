@@ -1,0 +1,18 @@
+<%# Nome do tenant novo: no onboarding fica na página, na lista de tenants dentro do dialog (cancel fecha o dialog). %>
+<%= form_with scope: :tenant, url: tenants_path, class: [ "flex flex-col gap-3", local_assigns[:class] ] do |form| %>
+  <div>
+    <%= form.label :name, class: "block text-ink-muted" %>
+    <%= form.text_field :name, value: @name, required: true, maxlength: 100, autocomplete: "off", autofocus: true,
+                        aria: { invalid: @name_error.present?, describedby: ("tenant_name_error" if @name_error) },
+                        class: "w-full rounded-md border border-line bg-surface px-2 py-1 aria-invalid:border-danger" %>
+    <% if @name_error %>
+      <p id="tenant_name_error" class="text-danger"><%= @name_error %></p>
+    <% end %>
+  </div>
+  <div class="flex gap-2">
+    <%= form.button t(".create"), class: "btn" %>
+    <% if local_assigns[:cancel] %>
+      <button type="submit" formmethod="dialog" formnovalidate class="btn text-ink-muted"><%= t(".cancel") %></button>
+    <% end %>
+  </div>
+<% end %>

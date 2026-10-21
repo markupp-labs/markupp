@@ -1,6 +1,9 @@
 package main
 
 import (
+	"strconv"
+	"strings"
+
 	appsv1 "github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/apps/v1"
 	batchv1 "github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/batch/v1"
 	corev1 "github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/core/v1"
@@ -20,6 +23,7 @@ const imageUID = 10001
 func declareMigrationJob(ctx *pulumi.Context, names resourceNames, args MarkuppArgs, db pulumi.Resource, parent pulumi.ResourceOption) (pulumi.Resource, error) {
 	container := serverContainer(args, names)
 	container.Args = pulumi.StringArray{pulumi.String("migrate")}
+	container.Env = migrationEnv(names)
 	return batchv1.NewJob(ctx, names.component+"-migrate", &batchv1.JobArgs{
 		Metadata: metav1.ObjectMetaArgs{Namespace: pulumi.String(args.Namespace)},
 		Spec: batchv1.JobSpecArgs{
@@ -34,36 +38,71 @@ func declareMigrationJob(ctx *pulumi.Context, names resourceNames, args MarkuppA
 }
 
 func declareAPI(ctx *pulumi.Context, names resourceNames, args MarkuppArgs, opts ...pulumi.ResourceOption) error {
-	labels := pulumi.StringMap{"app.kubernetes.io/name": pulumi.String(names.api)}
-	if _, err := appsv1.NewDeployment(ctx, names.api, apiDeploymentArgs(names, args, labels), opts...); err != nil {
+	if _, err := appsv1.NewDeployment(ctx, names.api, apiDeploymentArgs(names, args), opts...); err != nil {
 		return err
 	}
 	_, err := corev1.NewService(ctx, names.api, &corev1.ServiceArgs{
 		Metadata: namespaced(names.api, args.Namespace),
 		Spec: corev1.ServiceSpecArgs{
-			Selector: labels,
+			Selector: appLabels(names.api),
 			Ports:    corev1.ServicePortArray{corev1.ServicePortArgs{Port: pulumi.Int(apiPort)}},
 		},
 	}, opts...)
 	return err
 }
 
-func apiDeploymentArgs(names resourceNames, args MarkuppArgs, labels pulumi.StringMap) *appsv1.DeploymentArgs {
+func apiDeploymentArgs(names resourceNames, args MarkuppArgs) *appsv1.DeploymentArgs {
 	container := serverContainer(args, names)
+	env := append(databaseURLEnv(names), inviteByEmailEnv(args)...)
+	env = append(env, publicURLEnv(args))
+	env = append(env, rateLimitEnv(args)...)
+	container.Env = env
 	container.Ports = corev1.ContainerPortArray{corev1.ContainerPortArgs{ContainerPort: pulumi.Int(apiPort)}}
 	container.ReadinessProbe = healthzProbe()
 	container.LivenessProbe = processProbe()
+	return serverDeploymentArgs(names.api, args, pulumi.Int(*args.APIReplicas), container)
+}
+
+// rateLimitEnv repassa à API só as opções do limite de tentativas que foram informadas.
+func rateLimitEnv(args MarkuppArgs) corev1.EnvVarArray {
+	var env corev1.EnvVarArray
+	if len(args.TrustedProxies) > 0 {
+		env = append(env, plainEnv("MARKUPP_TRUSTED_PROXIES", strings.Join(args.TrustedProxies, ",")))
+	}
+	if args.RateLimitPerMinute != nil {
+		env = append(env, plainEnv("MARKUPP_RATE_LIMIT_PER_MINUTE", strconv.Itoa(*args.RateLimitPerMinute)))
+	}
+	return env
+}
+
+func plainEnv(name, value string) corev1.EnvVarArgs {
+	return corev1.EnvVarArgs{Name: pulumi.String(name), Value: pulumi.String(value)}
+}
+
+// publicURLEnv dá à API o issuer do OAuth: o host que o Gateway publica com TLS. Sem
+// ela, o servidor anunciaria localhost (ADR-0041).
+func publicURLEnv(args MarkuppArgs) corev1.EnvVarArgs {
+	return corev1.EnvVarArgs{Name: pulumi.String("MARKUPP_PUBLIC_URL"), Value: pulumi.Sprintf("https://%s", args.Host)}
+}
+
+// serverDeploymentArgs é o Deployment de um contêiner só do servidor, sem root. Sem
+// replicas, quem decide o número de réplicas é o KEDA.
+func serverDeploymentArgs(name string, args MarkuppArgs, replicas pulumi.IntPtrInput, container corev1.ContainerArgs) *appsv1.DeploymentArgs {
 	return &appsv1.DeploymentArgs{
-		Metadata: namespaced(names.api, args.Namespace),
+		Metadata: namespaced(name, args.Namespace),
 		Spec: appsv1.DeploymentSpecArgs{
-			Replicas: pulumi.Int(*args.APIReplicas),
-			Selector: metav1.LabelSelectorArgs{MatchLabels: labels},
+			Replicas: replicas,
+			Selector: metav1.LabelSelectorArgs{MatchLabels: appLabels(name)},
 			Template: corev1.PodTemplateSpecArgs{
-				Metadata: metav1.ObjectMetaArgs{Labels: labels},
+				Metadata: metav1.ObjectMetaArgs{Labels: appLabels(name)},
 				Spec:     corev1.PodSpecArgs{SecurityContext: nonRootPod(), Containers: corev1.ContainerArray{container}},
 			},
 		},
 	}
+}
+
+func appLabels(name string) pulumi.StringMap {
+	return pulumi.StringMap{"app.kubernetes.io/name": pulumi.String(name)}
 }
 
 func serverContainer(args MarkuppArgs, names resourceNames) corev1.ContainerArgs {
@@ -87,7 +126,7 @@ func processProbe() corev1.ProbeArgs {
 
 func healthzProbe() corev1.ProbeArgs {
 	return corev1.ProbeArgs{HttpGet: corev1.HTTPGetActionArgs{
-		Path: pulumi.String("/healthz"),
+		Path: pulumi.String("/v1/healthz"),
 		Port: pulumi.Int(apiPort),
 	}}
 }

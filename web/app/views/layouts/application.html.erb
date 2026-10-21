@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<% html_attributes = sidebar_html_attributes %>
+<%= tag.html lang: "en", style: html_attributes[:style],
+             data: { theme: chosen_theme, editor_style: chosen_editor_style, vim_keys: chosen_vim_keys, **html_attributes[:data] } do %>
+  <%= render "layouts/head" %>
+
+  <%# Sem tenant ativo (onboarding) não há notas para buscar: sem busca, sem seletor. %>
+  <%# Ctrl+B/Cmd+B recolhe a barra lateral como no VS Code; o grid e o fechado vêm do CSS (.app-shell). %>
+  <%# Ctrl+, e Cmd+, abrem as configurações; o Stimulus não tem filtro para a vírgula, o controller confere a tecla. %>
+  <%# Ctrl+Shift+E, L e G (Cmd no Mac) mostram a visão da barra lateral e levam o foco a ela (sidebar_controller.js); g e depois t abre a lista de tenants. %>
+  <%# Alt+h/j/k/l levam o foco à região vizinha pela geometria (region_nav_controller.js); na captura, antes do editor e do Vim. %>
+  <%# Alt+G abre o grafo do cofre em tela cheia (full_graph_shortcut_controller.js), a partir da nota aberta. %>
+  <% shortcuts = "keydown.ctrl+b@window->sidebar#toggleFromShortcut keydown.meta+b@window->sidebar#toggleFromShortcut keydown@window->settings-shortcut#open keydown@window->sidebar#focusView explorer-mode:reveal->sidebar#reveal keydown@window->tenants-shortcut#open keydown@window->region-nav#navigate:capture turbo:before-render@document->area-transition#mark" %>
+  <% shortcuts += " keydown.ctrl+k@window->search#open:prevent keydown.meta+k@window->search#open:prevent keydown@window->full-graph-shortcut#open" if current_tenant %>
+  <body class="app-shell min-h-dvh bg-surface font-mono text-sm text-ink"
+        <%= tag.attributes(data: { controller: [ "sidebar", "settings-shortcut", "region-nav", "tenants-shortcut", "area-transition", ("search" if current_tenant), ("full-graph-shortcut" if current_tenant) ].compact.join(" "), action: shortcuts,
+                                  area: current_area,
+                                  settings_shortcut_url_value: settings_path, tenants_shortcut_url_value: tenants_path, full_graph_shortcut_url_value: graph_path,
+                                  sidebar_hide_label_value: t(".hide_sidebar"), sidebar_show_label_value: t(".show_sidebar") }) %>>
+    <%= busy_origin_spinner_template %>
+    <%# Cada página nomeia a barra lateral pelo que ela mostra ali; sem nome, são as notas. %>
+    <% sidebar_label = content_for(:sidebar_label).presence || t(".notes") %>
+    <button popovertarget="sidebar" class="btn m-2 text-ink-muted md:hidden">
+      <%= icon("list") %><%= sidebar_label %>
+    </button>
+
+    <%= render "layouts/activity_bar", placement: "side" %>
+    <%# A lista rola dentro de .sidebar-scroll; conta, tema e configurações ficam no pé da barra de atividades.
+        Alt+h/j/k/l entram pela linha da árvore e, nas outras visões, pelo primeiro botão ou pela própria visão. %>
+    <nav id="sidebar" popover aria-label="<%= sidebar_label %>"
+         data-sidebar-target="panel" data-focus-region="tree"
+         data-focus-region-target="[role=treeitem][tabindex='0']; [role=tabpanel] [data-graph-canvas]; [role=tabpanel] :is(summary, a[href], button); [role=tabpanel][tabindex]"
+         class="sidebar layer m-0 h-dvh w-72 max-w-[85vw] flex-col border-0 border-r border-line bg-surface-sunken p-0 text-ink open:flex md:max-w-none">
+      <%= render "layouts/activity_bar", placement: "drawer" %>
+      <div class="sidebar-scroll scrollbar-theme min-h-0 flex-1 overflow-y-auto p-3">
+        <% if current_tenant %>
+          <%= render "layouts/tenant_switcher" %>
+          <%= sidebar_view_panel("explorer") do %>
+            <%= render "layouts/search_button", label: t(".search") %>
+            <%= yield :sidebar %>
+          <% end %>
+          <%# A página da nota aberta põe o frame das ligações dela (content_for :note_links, notes/_form). %>
+          <%= sidebar_view_panel("links") do %>
+            <%= content_for?(:note_links) ? yield(:note_links) : render("layouts/empty_state", title: t(".links_empty.title"), hint: t(".links_empty.hint")) %>
+          <% end %>
+          <%# A página da nota aberta põe o grafo local dela (content_for :note_graph, graphs/_local). %>
+          <%= sidebar_view_panel("graph") do %>
+            <%= content_for?(:note_graph) ? yield(:note_graph) : render("layouts/empty_state", title: t(".graph_empty.title"), hint: t(".graph_empty.hint")) %>
+          <% end %>
+        <% else %>
+          <%# Sem tenant (onboarding, ou a API caiu antes de carregá-lo) a marca fica, com o nome do produto no lugar. %>
+          <%= link_to root_path, class: "tree-row mb-2 flex items-center gap-2" do %>
+            <%= mascot(:small) %><span>markupp</span>
+          <% end %>
+          <%= yield :sidebar %>
+        <% end %>
+      </div>
+
+      <%# Alça na borda: arrastar com o ponteiro ou setas com o foco. Só no desktop; no celular é gaveta. %>
+      <div role="separator" aria-orientation="vertical" tabindex="0" aria-label="<%= t(".resize_sidebar") %>"
+           aria-valuemin="<%= SidebarHelper::SIDEBAR_WIDTH_RANGE.min %>" aria-valuemax="<%= SidebarHelper::SIDEBAR_WIDTH_RANGE.max %>"
+           aria-valuenow="<%= current_sidebar_width %>"
+           data-sidebar-target="handle"
+           data-action="pointerdown->sidebar#startResize pointermove->sidebar#resize pointerup->sidebar#endResize pointercancel->sidebar#endResize keydown->sidebar#resizeByKey"
+           class="sidebar-handle absolute inset-y-0 right-0 hidden w-1.5 cursor-col-resize touch-none md:block"></div>
+    </nav>
+
+    <%# Lombada: aba colada na borda da barra, ponta dela quando fechada; um botão só nos dois estados. No celular a gaveta tem o seu. %>
+    <%= sidebar_toggle_button(t(sidebar_closed? ? ".show_sidebar" : ".hide_sidebar")) %>
+    <%= render "layouts/account_menu" %>
+
+    <% if current_tenant %>
+      <dialog data-search-target="dialog" aria-label="<%= t(".search_notes") %>"
+              class="layer mx-auto mt-[15vh] w-[min(36rem,calc(100vw-2rem))] layer-panel">
+        <%= form_with url: search_path, method: :get, class: "relative", data: { turbo_frame: "search_results", search_target: "form" } do |form| %>
+          <%= form.search_field :q, placeholder: t(".search_placeholder"), autocomplete: "off", role: "combobox",
+                                aria: { label: t(".search_notes"), controls: "search_options", expanded: true },
+                                data: { search_target: "input",
+                                        action: "input->search#submit keydown->search#navigateField keydown.enter->search#choose" },
+                                class: "w-full border-0 border-b border-line bg-transparent py-2 pr-8 pl-3 outline-none" %>
+          <%= busy_spinner(busy_when: "#search_results[aria-busy]", class: "busy-spinner-quiet absolute inset-y-0 right-3") %>
+        <% end %>
+        <%= turbo_frame_tag "search_results" %>
+        <%# Rodapé como a linha de status de um terminal: a sintaxe que a busca entende e as teclas da lista. %>
+        <footer class="flex flex-wrap justify-between gap-x-4 border-t border-line px-3 py-1 text-xs text-ink-muted">
+          <span class="whitespace-pre"><%= t(".search_syntax") %></span>
+          <span aria-hidden="true" class="hidden whitespace-pre md:inline"><%= t(".search_keys") %></span>
+        </footer>
+      </dialog>
+    <% end %>
+
+    <%= render "layouts/command_palette" %>
+    <%= render "layouts/shortcut_help" %>
+    <%= render "layouts/confirm_dialog" %>
+
+    <%# @container: o lado a lado escolhe colunas ou pilha pela largura do main (application.css). md:pl-10 deixa a lombada (21px) fora do conteúdo.
+        Com a nota, o main vira coluna e o form fica com o que sobra depois do aviso, sem rolar a página por ele. %>
+    <main class="@container min-w-0 p-4 has-[>.note-form]:flex has-[>.note-form]:flex-col md:p-6 md:pl-10">
+      <%= render "layouts/flash" %>
+      <% page = content_for?(:main) ? yield(:main) : yield %>
+      <%# Páginas de erro pedem o mascote ao lado da mensagem (content_for :mascot): os dois no meio do conteúdo, como nas
+          telas públicas, a mensagem na altura do meio do mascote. A altura é a da tela menos o padding do main. %>
+      <% if content_for?(:mascot) %>
+        <div class="flex min-h-[calc(100dvh-2rem)] items-center justify-center gap-10 md:min-h-[calc(100dvh-3rem)]">
+          <%= yield :mascot %><div class="min-w-0 max-w-[65ch]"><%= page %></div>
+        </div>
+      <% else %>
+        <%= page %>
+      <% end %>
+    </main>
+  </body>
+<% end %>

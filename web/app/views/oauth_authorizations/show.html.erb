@@ -1,0 +1,33 @@
+<% title = t(".title", client: @oauth_request.client_name) %>
+<% content_for :title, title %>
+
+<%# Enter aprova e Esc recusa de qualquer ponto da tela (oauth_consent_controller.js); o Approve já nasce com o foco. %>
+<div data-controller="oauth-consent" data-action="keydown@document->oauth-consent#answer">
+  <h1 class="text-base font-semibold break-words"><%= title %></h1>
+  <p class="mt-1 text-ink-muted"><%= t(".signed_in_as", email: credential.account_email) %></p>
+
+  <dl class="mt-4 flex flex-col gap-3 rounded-md border border-line p-3">
+    <div>
+      <dt class="text-ink-muted"><%= t(".returns_to") %></dt>
+      <dd class="break-all"><%= @oauth_request.redirect_host %></dd>
+    </div>
+    <div>
+      <dt class="text-ink-muted"><%= t(".abilities") %></dt>
+      <dd>
+        <ul class="mt-1 flex flex-col gap-1">
+          <% @oauth_request.scopes.each do |scope| %>
+            <li class="flex gap-2 before:text-accent before:content-['>']"><%= t("oauth_authorizations.scopes.#{scope.tr(':', '_')}", default: scope) %></li>
+          <% end %>
+        </ul>
+      </dd>
+    </div>
+  </dl>
+
+  <div class="mt-4 flex gap-2">
+    <%= button_to t(".approve"), approve_oauth_authorization_path(@oauth_request.id), class: "btn", autofocus: true,
+                  form: { data: { turbo: false } }, data: { oauth_consent_target: "approve" } %>
+    <%= button_to t(".deny"), deny_oauth_authorization_path(@oauth_request.id), class: "btn btn-danger",
+                  form: { data: { turbo: false } }, data: { oauth_consent_target: "deny" } %>
+  </div>
+  <p class="mt-3 whitespace-pre text-ink-muted"><%= t(".keys") %></p>
+</div>

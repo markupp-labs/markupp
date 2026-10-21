@@ -1,0 +1,17 @@
+<%# Linha que abre a nota: título, pasta apagada e, à direita, o tipo da ligação (kind). Com wikilink (sugestão), o y na
+    linha e o botão ao lado copiam o [[título]] (note_links_controller.js). %>
+<% kind = local_assigns[:kind] %>
+<% wikilink = local_assigns[:wikilink] %>
+<li class="links-item">
+  <%= link_to note_path(note), title: note.path, class: "tree-row links-row",
+              aria: { keyshortcuts: ("Y" if wikilink) }, data: { links_item: "", wikilink: } do %>
+    <span class="links-row-title truncate"><%= note.title %></span>
+    <span class="links-row-folder truncate"><%= note.folder %></span>
+    <% if kind %><span class="links-row-kind"><%= kind %></span><% end %>
+  <% end %>
+  <% if wikilink %>
+    <button type="button" class="links-copy" aria-label="<%= t("note_links.copy", wikilink:) %>"
+            title="<%= t("note_links.copy_title", keys: shortcut_key(:links_copy_wikilink)) %>"
+            data-wikilink="<%= wikilink %>" data-action="note-links#copy"><%= icon("copy") %></button>
+  <% end %>
+</li>

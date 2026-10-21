@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/auth"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/notes"
 )
 
@@ -19,6 +20,18 @@ import (
 type fakeProbe struct{}
 
 func (fakeProbe) Ping(ctx context.Context) error { return nil }
+
+type fakeSearchTokenValidator struct{}
+
+func (fakeSearchTokenValidator) ValidateToken(tokenString string) (auth.Claims, error) {
+	return auth.Claims{Subject: "user-search"}, nil
+}
+
+type fakeSearchTenants struct{}
+
+func (fakeSearchTenants) ResolveTenant(ctx context.Context, userID, requested string) (auth.Membership, error) {
+	return auth.Membership{TenantID: "default", Role: "member"}, nil
+}
 
 type fakeBuscaService struct {
 	resultado []notes.SearchResult
@@ -28,7 +41,7 @@ type fakeBuscaService struct {
 	chamado   bool
 }
 
-func (f *fakeBuscaService) Create(ctx context.Context, path, content string) (notes.Note, error) {
+func (f *fakeBuscaService) Create(ctx context.Context, vaultID, path, content string) (notes.Note, error) {
 	return notes.Note{}, nil
 }
 
@@ -48,7 +61,11 @@ func (f *fakeBuscaService) ListNotes(ctx context.Context) ([]notes.Note, error) 
 	return nil, nil
 }
 
-func (f *fakeBuscaService) SearchNotes(ctx context.Context, query string, offset, limit int) ([]notes.SearchResult, error) {
+func (f *fakeBuscaService) ListVaultNotes(ctx context.Context, vaultID string, q notes.VaultNotesQuery) ([]notes.Note, error) {
+	return nil, nil
+}
+
+func (f *fakeBuscaService) SearchNotes(ctx context.Context, query, vaultID string, offset, limit int) ([]notes.SearchResult, error) {
 	f.chamado = true
 	f.offset = offset
 	f.limit = limit
@@ -133,8 +150,10 @@ func conferirFalhaParseQueryInt(t *testing.T, caso casoParseQueryInt, err error)
 func buscarNotas(t *testing.T, svc NoteService, queryString string) *httptest.ResponseRecorder {
 	t.Helper()
 	req := httptest.NewRequest(http.MethodGet, "/notes/search?"+queryString, nil)
+	req.Header.Set("Authorization", "Bearer token-valido")
 	rec := httptest.NewRecorder()
-	NewRouter(svc, fakeProbe{}, nil).ServeHTTP(rec, req)
+	validator := fakeSearchTokenValidator{}
+	NewRouter(RouterDeps{Notes: svc, Tenants: fakeSearchTenants{}, Tokens: validator, Probe: fakeProbe{}}).ServeHTTP(rec, req)
 	return rec
 }
 

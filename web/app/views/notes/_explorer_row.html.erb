@@ -1,0 +1,9 @@
+<li role="none">
+  <%= link_to note_path(note), role: "treeitem", title: note.path, data: { path: note.location },
+              aria: { current: ("page" if note.id == current&.id) },
+              class: "tree-row explorer-row aria-[current=page]:bg-accent-soft aria-[current=page]:text-ink" do %>
+    <span class="explorer-row-title truncate"><%= note.title %></span>
+    <span class="explorer-row-folder truncate text-xs text-ink-muted"><%= note.folder %></span>
+    <span class="explorer-row-metric ml-auto shrink-0 pl-2 text-xs text-ink-muted"><%= explorer_row_metric(note, mode) %></span>
+  <% end %>
+</li>

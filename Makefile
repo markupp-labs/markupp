@@ -3,7 +3,7 @@ DOCKER_COMPOSE=docker compose
 META_COVERAGE=90
 PERFIL_COVERAGE=markupp/cover.out
 
-.PHONY: all test smoke-kind kind-up kind-painel kind-down compose-config compose-env docker-up docker-down run hooks test-scripts coverage coverage-check
+.PHONY: all test test-web e2e-mcp smoke-kind kind-up kind-painel kind-down compose-config compose-env docker-up docker-down run hooks test-scripts coverage coverage-check
 
 all: compose-env compose-config test
 
@@ -11,6 +11,12 @@ all: compose-env compose-config test
 # para o testcontainers subir o PostgreSQL de teste
 test:
 	cd markupp && go test ./...
+
+# Testa o servidor MCP de ponta a ponta contra o Go no compose, num projeto à parte
+# (markupp-e2e) que é apagado no fim. Precisa de Node 26 com npm ci feito em mcp/ e de
+# Docker; MARKUPP_PORT e MAILPIT_PORT mudam as portas se a stack de dev ocupar as padrão
+e2e-mcp:
+	cd mcp && npm run e2e
 
 # Smoke descartável da stack dev num kind com os requisitos do cluster de produção.
 # Precisa de Docker, kind, helm, kubectl e Pulumi, e apaga o cluster no fim
@@ -40,17 +46,21 @@ compose-env:
 	fi
 	@echo ".env criado/atualizado com sucesso."
 
-# Sobe o container Docker do servidor em modo destacado
+# Sobe a stack do compose em modo destacado
 docker-up:
-	$(DOCKER_COMPOSE) -f $(COMPOSE_FILE) up -d --build markupp
+	$(DOCKER_COMPOSE) -f $(COMPOSE_FILE) up -d --build
+
+# Roda os testes do painel dentro do container
+test-web:
+	$(DOCKER_COMPOSE) -f $(COMPOSE_FILE) run --rm --no-deps web sh -c "bundle check || bundle install && bin/rails test"
 
 # Desce e remove o container Docker usado nos testes
 docker-down:
 	$(DOCKER_COMPOSE) -f $(COMPOSE_FILE) down
 
-# Roda a aplicação completa com air via Docker
+# Roda a stack completa (servidor com air, indexador, notificador, Mailpit e painel) via Docker
 run: compose-env compose-config
-	$(DOCKER_COMPOSE) -f $(COMPOSE_FILE) up --build markupp
+	$(DOCKER_COMPOSE) -f $(COMPOSE_FILE) up --build
 
 # Instala os hooks de pre-commit neste clone
 hooks:

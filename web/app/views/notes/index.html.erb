@@ -1,0 +1,7 @@
+<% if @note %>
+  <%= render "form" %>
+<% else %>
+  <% content_for :sidebar, render("notes/sidebar", tree: @tree, current: nil) %>
+
+  <p class="text-ink-muted"><%= t(".pick") %></p>
+<% end %>

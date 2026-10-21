@@ -50,6 +50,34 @@ jobs:
         working-directory: ${{ github.workspace }}
         run: ./scripts/govulncheck-modulos.sh
 
+  mcp-tests:
+    name: Servidor MCP (TypeScript) tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mcp
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 26
+          cache: npm
+          cache-dependency-path: mcp/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check formatting (prettier)
+        run: npx prettier --check .
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Run tests
+        run: npx vitest run
+
   pulumi-component-tests:
     name: Componente Pulumi (Go) tests
     runs-on: ubuntu-latest
@@ -73,6 +101,36 @@ jobs:
 
       - name: Run tests
         run: go test ./... -race -count=1
+
+  painel-tests:
+    name: Painel (Rails) tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version-file: web/.ruby-version
+          bundler-cache: true
+          working-directory: web
+
+      - name: Run rubocop
+        run: bin/rubocop -f github
+
+      - name: Run brakeman
+        run: bin/brakeman --quiet --no-pager --exit-on-warn --exit-on-error
+
+      - name: Vulnerabilidades conhecidas
+        run: |
+          bin/bundler-audit
+          bin/importmap audit
+
+      - name: Run tests
+        run: bin/rails test
 
   convencoes:
     name: Convencoes de commit

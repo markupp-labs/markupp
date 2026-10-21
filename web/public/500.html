@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>500: Something broke on the panel</title>
+  <!-- Página estática do painel: responde quando o app não consegue. Autocontida (só a fonte de /FiraCode-VF.woff2),
+       no visual do layout público, com os tokens Kanagawa (lotus no claro, wave no escuro). As cinco páginas de
+       public/ compartilham este molde; mudou uma, mude as outras. -->
+  <!-- O tema escolhido no painel (cookie theme, ThemesController) vale aqui também; sem cookie, ou sem JS, segue o
+       sistema. Antes do <style> para a página já pintar no tema certo. -->
+  <script>
+    var theme = document.cookie.match(/(?:^|; )theme=(light|dark)(?:;|$)/);
+    if (theme) document.documentElement.setAttribute("data-theme", theme[1]);
+  </script>
+  <style>
+    @font-face {
+      font-family: "Fira Code";
+      src: url("/FiraCode-VF.woff2") format("woff2");
+      font-weight: 300 700;
+      font-display: swap;
+    }
+    :root {
+      color-scheme: light dark;
+      --surface: #f2ecbc;
+      --line: #d5cea3;
+      --ink: #545464;
+      --ink-muted: #5f5c52;
+      --danger: #a8344a;
+      --accent-soft: #c7d7e0;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        --surface: #1f1f28;
+        --line: #2a2a37;
+        --ink: #dcd7ba;
+        --ink-muted: #a6a69c;
+        --danger: #e46876;
+        --accent-soft: #223249;
+      }
+    }
+    :root[data-theme="dark"] {
+      color-scheme: dark;
+      --surface: #1f1f28;
+      --line: #2a2a37;
+      --ink: #dcd7ba;
+      --ink-muted: #a6a69c;
+      --danger: #e46876;
+      --accent-soft: #223249;
+    }
+    :root[data-theme="light"] { color-scheme: light; }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; }
+    body {
+      display: grid;
+      min-height: 100dvh;
+      place-items: center;
+      background: var(--surface);
+      color: var(--ink);
+      font: 14px/1.43 "Fira Code", ui-monospace, monospace;
+    }
+    main { display: flex; width: 100%; max-width: 48rem; align-items: center; justify-content: center; gap: 2.5rem; padding: 1rem; }
+    .mascot { display: none; flex-shrink: 0; font: 8px/1 "Fira Code", ui-monospace, monospace; white-space: pre; color: var(--ink-muted); user-select: none; }
+    .column { width: 100%; max-width: 24rem; }
+    .brand { margin-bottom: 1rem; color: var(--ink-muted); }
+    h1 { font-size: 1rem; font-weight: 600; line-height: 1.5; color: var(--danger); overflow-wrap: break-word; }
+    .hint { margin-top: 0.5rem; color: var(--ink-muted); }
+    .btn {
+      display: inline-flex; align-items: center; gap: 0.375rem; margin-top: 1.5rem; padding: 0.25rem 0.75rem;
+      border: 1px solid var(--line); border-radius: 0.375rem; color: inherit; text-decoration: none;
+    }
+    .btn:hover { background: var(--accent-soft); }
+    .icon { width: 1rem; height: 1rem; flex-shrink: 0; }
+    @media (min-width: 48rem) {
+      main { padding: 1.5rem; }
+      .mascot { display: block; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <pre class="mascot" data-mascot="large" aria-hidden="true">⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⡠⠤⠠⠐⣐⣒⣀⣀⣀⣈⣍⣩⣥⣤⡀⢄⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢐⣩⣶⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣦⣛⣛⣲⣬⢐⢄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣴⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠟⣙⣯⣿⣿⣿⣯⡳⢄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠔⠠⣿⡿⠫⢟⣿⣿⣿⣿⣿⣿⣿⣿⣿⢿⣿⣿⣿⣿⣿⣿⣿⣷⣿⣿⣮⠣⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠌⡰⢨⣿⠁⢠⣾⡿⢻⣿⣿⣿⣿⣿⡿⠃⢩⣿⣿⣿⣿⣿⣿⣿⣿⣿⡿⣿⣷⡘⢦⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⡼⢱⢧⣿⡟⠀⣰⣿⣶⣾⡿⣱⣿⣿⡟⠀⠀⣠⣾⣿⣿⣿⣿⣿⣿⣿⣿⣷⡙⣿⣿⠀⡳⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠆⣿⣼⣿⣇⣶⣿⣿⣿⡿⢀⣿⣿⡿⠀⡔⣰⣿⣿⣿⣿⡿⣿⣿⣿⡏⢸⣿⣷⠘⠃⠀⠐⡀⠄⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠰⢸⣿⣿⣿⣿⣿⣿⣿⣿⢃⣾⣿⣿⠇⣾⢡⣿⣿⣿⣿⡿⢠⣿⡟⣿⣧⣾⢿⣿⡦⠰⡀⠀⠐⠐⡀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⡆⣿⣿⣿⣿⣿⣿⣿⣿⣿⣾⣿⣿⡿⣾⣿⣸⣿⣿⣿⣿⢃⣾⣿⣿⣿⣿⣿⢸⣿⣧⣷⣷⣶⣧⠃⢡⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢠⢰⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣷⣿⣿⣿⣿⣿⣿⣏⣼⣏⣿⣿⢸⣿⣿⢸⣿⣿⣿⣿⣿⣿⣾⢸⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⡸⢸⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⢿⣿⣿⡏⢸⣿⠇⡞⣿⡏⣿⣿⣿⣿⣿⡜⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⡇⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡿⠋⣿⣿⡿⠀⣾⣏⡴⢚⡿⠓⣿⣿⣿⣿⡿⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⢸⠃⣿⣽⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡿⢛⡿⡿⠟⠉⠿⠟⠋⢀⡾⠋⠀⢀⣼⣷⣦⣻⣿⣿⣿⠇⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⣸⢠⣿⣿⣿⣿⣿⣿⠿⣿⣿⣿⣿⣿⣿⡿⣴⣿⣿⣶⣤⣤⠀⠀⠀⠀⠀⠀⠠⣿⣁⣷⠹⣿⣿⡿⠈⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⢀⡟⣸⣿⣿⣿⣿⣿⠃⠶⣌⠛⣿⡿⣿⣿⣻⣿⣧⣀⣽⡆⠻⠀⠀⠀⠀⠀⠀⠐⡏⠋⡻⠀⢸⣿⣧⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⣸⡇⣿⣿⣿⣿⣿⣿⢰⡤⠲⠏⣼⡇⢻⣿⠸⢿⡌⠛⢋⡇⠀⠀⠀⠀⠀⠀⠀⠀⠀⠚⠥⠊⢸⣿⡿⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⢰⠏⢰⣿⣿⣿⣿⣿⣿⡀⠀⠀⢁⣿⠃⠀⠳⠀⠠⠯⠤⠌⠐⠂⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠸⣿⣿⠄⢂⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⢀⡏⢸⢸⣿⣿⣿⣿⣿⣿⣿⣄⠀⢸⣿⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⡄⠀⠀⠀⢀⣿⣿⠠⠀⠡⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⡜⢀⡏⣾⣿⣿⠟⣿⣿⣿⣿⣿⣿⣾⣏⠀⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⡘⣿⣿⣇⡄⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠐⢀⡾⠃⢿⣿⣿⣼⣿⣿⣿⣿⣿⣿⣿⣿⣿⣜⢄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⡰⠁⢸⡏⢿⡑⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⢠⠇⡾⠑⠄⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠙⠙⢿⣷⣄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣼⣇⠀⢸⡿⠈⣷⣀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⡜⡼⢁⡞⢰⣿⣿⣿⣿⣿⣿⣿⣿⢟⡿⠃⠀⠁⠂⢹⣿⣷⣄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢠⣾⣿⣿⠀⠀⡇⡆⠘⣷⡄⠆⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⣿⠁⣾⢿⢼⣿⣿⣿⣿⣿⣿⡿⣣⠟⠁⠀⠀⠀⠀⠀⡉⠛⢿⣷⡀⠐⠶⣤⣄⣀⣀⡀⢀⣰⣿⣿⣏⢻⡆⠀⡇⠀⠀⣿⣷⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⣿⣾⣿⣿⣼⣿⣿⣿⠿⢿⡟⠉⠀⠀⠀⠀⠀⠀⠀⠐⠀⠀⠀⠙⢷⠀⠀⣼⣿⣿⣿⣿⣿⣿⣿⣿⡟⠈⣧⡰⠁⠀⠀⢸⣿⢠⠀⠀⠀⠀⠀
+⠀⠀⠀⢰⣿⣿⣿⣿⣿⣿⣿⠟⢠⡒⣋⣛⠓⠲⢤⣀⠀⢀⡴⠁⠀⠀⠀⠀⠈⡇⢠⠁⠈⠻⣿⣿⣿⣿⣿⣿⣧⢃⠘⡄⣀⡆⠀⣾⡟⢀⠀⠀⠀⠀⠀
+⠀⠀⢀⣿⡟⣿⣿⣿⣿⣿⠏⠀⢸⠁⠀⠈⠙⠳⠦⣌⣙⠷⢄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠀⢿⣿⣿⣿⣿⣿⣿⡌⠀⢹⡗⠀⣰⣿⠁⢸⠀⠀⠀⠀⠀
+⠀⠀⠘⣿⠁⡏⢿⣿⣿⣿⠀⠀⠇⠀⠀⠀⠀⠀⠠⢀⠙⠓⢦⡱⣄⠀⠀⠀⠀⠀⠀⢇⢄⠠⢨⠹⣿⣿⣿⣿⣯⣻⡄⢘⣧⣾⣿⠃⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⢀⢻⡆⠐⠈⣿⣿⡇⠀⠀⠀⠀⠀⠀⠀⠀⢰⠁⠀⠀⠀⠁⠪⡳⣄⠀⠀⠀⠀⠈⢆⠳⡈⢧⠈⠉⠛⠛⢿⡟⠻⠶⢿⠋⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠉⠙⠓⢤⣘⣺⠁⠀⠀⡀⠀⠀⠀⠀⠀⠀⠉⠀⠂⠀⠀⠀⠀⠉⠷⢦⡀⠀⠀⠀⢂⠃⠈⢧⢀⠀⠀⠈⠁⢸⡄⢸⠃⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⡙⠁⠀⠀⠀⠀⠀⠀⠀⠀⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠐⠍⠳⣄⠀⠀⠹⡀⠈⢿⠀⠀⡀⠀⠈⡇⠘⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠇⠀⠀⠀⠀⠀⠀⠀⠠⠀⠀⡀⠀⠀⠀⠀⠀⠀⠀⢀⠀⠀⠀⠈⠓⢦⡀⠑⡀⠈⡄⢀⠁⠀⠀⠃⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠁⠀⠀⠀⠉⠉⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀</pre>
+    <div class="column">
+      <p class="brand">markupp</p>
+      <h1>500: Something broke on the panel</h1>
+      <p class="hint">The error was logged. Try again in a moment.</p>
+        <a class="btn" href="/"><svg class="icon" aria-hidden="true" viewBox="0 0 256 256" fill="currentColor"><path d="M222,128a6,6,0,0,1-6,6H54.49l61.75,61.76a6,6,0,1,1-8.48,8.48l-72-72a6,6,0,0,1,0-8.48l72-72a6,6,0,0,1,8.48,8.48L54.49,122H216A6,6,0,0,1,222,128Z"/></svg>Back to markupp</a>
+    </div>
+  </main>
+</body>
+</html>

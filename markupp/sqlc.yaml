@@ -11,3 +11,14 @@ sql:
         overrides:
           - db_type: "timestamptz"
             go_type: "time.Time"
+          - db_type: "tsvector"
+            go_type: "string"
+          # A junção lateral da view pode não achar palpite; o sqlc não infere o nulo.
+          - column: "note_link_items.inferred_target_id"
+            go_type:
+              import: "github.com/jackc/pgx/v5/pgtype"
+              type: "Text"
+          - column: "note_unresolved_link_items.inferred_target_id"
+            go_type:
+              import: "github.com/jackc/pgx/v5/pgtype"
+              type: "Text"

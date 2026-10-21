@@ -1,0 +1,11 @@
+<%# Ligações da nota aberta, como os painéis do Obsidian, em seções recolhíveis (details) com a contagem: quem liga para
+    ela, para onde ela liga, quem cita o título dela sem ligar e as sugestões de ligação, cada item no partial da seção.
+    j/k e setas andam pelas seções e linhas visíveis, Enter abre ou dobra (note_links_controller.js). %>
+<%= turbo_frame_tag "note_links", target: "_top" do %>
+  <% NoteLinkSection::NAMES.each do |name| %>
+    <%= links_section(name, @sections[name]) do %>
+      <%= render "note_links/page", section: name, items: @sections[name], offset: 0 %>
+    <% end %>
+  <% end %>
+  <p role="status" data-note-links-target="status" class="truncate px-2 text-xs text-ink-muted"></p>
+<% end %>

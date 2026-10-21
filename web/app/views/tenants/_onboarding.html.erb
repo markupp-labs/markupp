@@ -1,0 +1,19 @@
+<% content_for :title, t("tenants.index.first") %>
+
+<div class="max-w-[65ch]">
+  <h1 class="text-base font-semibold"><%= t("tenants.index.first") %></h1>
+  <p class="mt-2 text-ink-muted"><%= t("tenants.index.first_hint") %></p>
+  <%= render "tenants/new_tenant_form", class: "mt-3 max-w-sm rounded-md border border-line p-3" %>
+
+  <h2 class="mt-6 text-base font-semibold"><%= t("tenants.index.pending_invites") %></h2>
+  <% if pending_invites.any? %>
+    <ul class="mt-3 max-w-sm space-y-px rounded-md border border-line p-1">
+      <%= render partial: "my_invites/invite", collection: pending_invites %>
+    </ul>
+  <% else %>
+    <p class="mt-2 text-ink-muted">
+      <%= t("tenants.index.no_invites") %>
+      <%= link_to t("tenants.index.confirm_email"), settings_account_path, class: "text-accent underline" %>
+    </p>
+  <% end %>
+</div>

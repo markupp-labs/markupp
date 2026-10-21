@@ -6,12 +6,285 @@ package gen
 
 import (
 	"time"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
-type Note struct {
+type AccountToken struct {
 	ID        string
-	Path      string
-	Content   string
+	UserID    string
+	Purpose   string
+	TokenHash pgtype.Text
+	ExpiresAt pgtype.Timestamptz
+	UsedAt    pgtype.Timestamptz
+	CreatedAt time.Time
+}
+
+type AuditEvent struct {
+	ID         string
+	TenantID   pgtype.Text
+	ActorID    pgtype.Text
+	Action     string
+	Target     string
+	Result     string
+	OccurredAt time.Time
+}
+
+type InstanceSecret struct {
+	Name      string
+	Value     string
+	CreatedAt time.Time
+}
+
+type Note struct {
+	ID            string
+	Path          string
+	Content       string
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+	TenantID      string
+	VaultID       string
+	ContentSha256 []byte
+}
+
+type NoteCentrality struct {
+	NoteID    string
+	VaultID   string
+	Pagerank  float64
+	InDegree  int32
+	OutDegree int32
+}
+
+type NoteCommunity struct {
+	NoteID      string
+	VaultID     string
+	CommunityID int64
+}
+
+type NoteEdge struct {
+	SourceID   string
+	TargetID   string
+	VaultID    string
+	Kind       string
+	Predicate  pgtype.Text
+	TitleKey   string
+	CitedTitle string
+}
+
+type NoteIndexQueue struct {
+	NoteID   string
+	Revision int64
+}
+
+type NoteLink struct {
+	NoteID     string
+	VaultID    string
+	CitedTitle string
+	TitleKey   string
+	TargetPath pgtype.Text
+	Kind       string
+	Predicate  pgtype.Text
+}
+
+type NoteLinkItem struct {
+	SourceID           string
+	SourcePath         string
+	VaultID            string
+	TargetID           pgtype.Text
+	TargetPath         pgtype.Text
+	CitedTitle         string
+	TitleKey           string
+	Kind               string
+	Predicate          pgtype.Text
+	InferredTargetID   pgtype.Text
+	InferredTargetPath pgtype.Text
+}
+
+type NoteSearchIndex struct {
+	NoteID   string
+	Document string
+}
+
+type NoteTerm struct {
+	NoteID  string
+	VaultID string
+	Terms   []string
+	Tfs     []float64
+	Weights []float64
+	Norm    float64
+}
+
+type NoteTitle struct {
+	NoteID   string
+	VaultID  string
+	TitleKey string
+	Path     string
+}
+
+type NoteUnresolvedLinkItem struct {
+	SourceID           string
+	SourcePath         string
+	VaultID            string
+	TargetID           pgtype.Text
+	TargetPath         pgtype.Text
+	CitedTitle         string
+	TitleKey           string
+	Kind               string
+	Predicate          pgtype.Text
+	InferredTargetID   pgtype.Text
+	InferredTargetPath pgtype.Text
+}
+
+type Notification struct {
+	ID             string
+	TenantID       pgtype.Text
+	InviteID       pgtype.Text
+	Attempts       int32
+	NextAttemptAt  time.Time
+	SentAt         pgtype.Timestamptz
+	FailedAt       pgtype.Timestamptz
+	LastError      pgtype.Text
+	CreatedAt      time.Time
+	Kind           string
+	AccountTokenID pgtype.Text
+}
+
+type OauthAuthorization struct {
+	ID        string
+	UserID    string
+	ClientID  string
+	Scopes    []string
 	CreatedAt time.Time
 	UpdatedAt time.Time
+	RevokedAt pgtype.Timestamptz
+}
+
+type OauthClient struct {
+	ID                string
+	Source            string
+	Name              string
+	RedirectUris      []string
+	MetadataExpiresAt pgtype.Timestamptz
+	CreatedAt         time.Time
+}
+
+type OauthPendingDcrClient struct {
+	ID           string
+	PendingSince interface{}
+}
+
+type OauthRequest struct {
+	ID              string
+	ClientID        string
+	RedirectUri     string
+	Scopes          []string
+	Resource        string
+	State           pgtype.Text
+	CodeChallenge   string
+	CreatedAt       time.Time
+	ExpiresAt       time.Time
+	DecidedAt       pgtype.Timestamptz
+	UserID          pgtype.Text
+	CodeHash        pgtype.Text
+	CodeExpiresAt   pgtype.Timestamptz
+	CodeUsedAt      pgtype.Timestamptz
+	AuthorizationID pgtype.Text
+	CodeReusedAt    pgtype.Timestamptz
+}
+
+type OauthToken struct {
+	TokenHash       string
+	AuthorizationID string
+	Kind            string
+	Resource        string
+	Scopes          []string
+	ExpiresAt       time.Time
+	Revoked         bool
+	RotatedAt       pgtype.Timestamptz
+	CreatedAt       time.Time
+}
+
+type RefreshToken struct {
+	TokenHash string
+	UserID    string
+	ExpiresAt time.Time
+	Revoked   bool
+	CreatedAt time.Time
+}
+
+type Tenant struct {
+	ID        string
+	Name      string
+	CreatedAt time.Time
+}
+
+type TenantMembership struct {
+	TenantID  string
+	UserID    string
+	Role      string
+	CreatedAt time.Time
+}
+
+type User struct {
+	ID            string
+	Email         string
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+	EmailVerified bool
+}
+
+type UserIdentity struct {
+	ID             string
+	UserID         string
+	Provider       string
+	ProviderUserID string
+	PasswordHash   pgtype.Text
+	CreatedAt      time.Time
+}
+
+type UserInvite struct {
+	ID         string
+	TenantID   string
+	Email      string
+	Role       string
+	TokenHash  string
+	InvitedBy  pgtype.Text
+	ExpiresAt  time.Time
+	AcceptedAt pgtype.Timestamptz
+	CreatedAt  time.Time
+	DeclinedAt pgtype.Timestamptz
+}
+
+type Vault struct {
+	ID        string
+	TenantID  string
+	Name      string
+	CreatedAt time.Time
+}
+
+type VaultGraphVersion struct {
+	VaultID string
+	Version int64
+}
+
+type VaultMember struct {
+	VaultID   string
+	UserID    string
+	CreatedAt time.Time
+}
+
+type VaultSecondStageQueue struct {
+	VaultID  string
+	Revision int64
+}
+
+type VaultTermFrequency struct {
+	VaultID string
+	Term    string
+	Df      int32
+}
+
+type VaultTermStat struct {
+	VaultID   string
+	NoteCount int32
 }

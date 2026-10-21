@@ -1,0 +1,11 @@
+<%# Show more no fim de uma página cheia: o link troca só o frame dele pela página seguinte (as linhas dela abrem a
+    página inteira, pelo target _top), e a espera mostra o busy_spinner depois de 300ms. Com a página seguinte vazia
+    (a seção tinha exatamente uma página cheia), o frame fica vazio. %>
+<% frame_id = links_page_frame_id(section, offset) %>
+<li class="links-item links-more">
+  <%= turbo_frame_tag frame_id, target: "_top" do %>
+    <%= link_to t("note_links.show_more"), note_link_section_path(params[:note_id], section, offset:),
+                class: "tree-row links-row links-more-link", data: { links_item: "", turbo_frame: frame_id } %>
+    <%= busy_spinner(busy_when: "##{frame_id}[aria-busy]", class: "busy-spinner-quiet") %>
+  <% end %>
+</li>

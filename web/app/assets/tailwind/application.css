@@ -1,0 +1,450 @@
+@import "tailwindcss";
+@import "./motion.css";
+@import "./tree.css";
+@import "./activity_bar.css";
+@import "./markdown.css";
+@import "./links.css";
+@import "./graph.css";
+
+/* A fonte mora em public/, sem digest, para as páginas de erro estáticas usarem a mesma URL sem o app. */
+@font-face {
+  font-family: "Fira Code";
+  src: url("/FiraCode-VF.woff2") format("woff2");
+  font-weight: 300 700;
+  font-display: swap;
+}
+
+/* Tema padrão: Kanagawa (rebelot/kanagawa.nvim), lotus no claro e wave no escuro.
+   Cada token é light-dark(claro, escuro); o lado vem do color-scheme, que segue o
+   sistema ou o data-theme gravado no cookie. Outro tema é só outro conjunto destas
+   variáveis. */
+:root {
+  color-scheme: light dark;
+  --surface: light-dark(#f2ecbc, #1f1f28);
+  --surface-sunken: light-dark(#e7dba0, #16161d);
+  --line: light-dark(#d5cea3, #2a2a37);
+  --ink: light-dark(#545464, #dcd7ba);
+  --ink-muted: light-dark(#5f5c52, #a6a69c);
+  --accent: light-dark(#4d699b, #7e9cd8);
+  --accent-soft: light-dark(#c7d7e0, #223249);
+  --danger: light-dark(#a8344a, #e46876);
+  /* Fundo escurecido atrás da gaveta do celular: o ink do lotus no claro, o fundo mais escuro do wave no escuro. */
+  --scrim: light-dark(rgb(84 84 100 / 0.4), rgb(22 22 29 / 0.7));
+  /* Fundo atrás dos diálogos modais (paleta, busca, ajuda, confirmação): no claro o mesmo ink, mais leve que o da gaveta;
+     no escuro igual a ela. */
+  --modal-scrim: light-dark(rgb(84 84 100 / 0.35), rgb(22 22 29 / 0.7));
+  /* Sombra das camadas (.layer-panel), tingida da paleta e nunca o preto puro: o ink do lotus no claro e o dragonBlack0
+     do Kanagawa no escuro, mais escuro que o fundo da barra, onde os menus abrem. */
+  --shadow: light-dark(rgb(84 84 100 / 0.22), rgb(13 12 12 / 0.6));
+  /* Sintaxe dos blocos de código (hljs-*), nas cores de sintaxe do Kanagawa. As do lotus foram escurecidas
+     no mesmo matiz até 4.6:1 sobre o surface-sunken do pre (#e7dba0; davam de 2.5 a 4:1); as do wave já passam
+     de 5:1 sobre #16161d. O comentário usa o ink-muted (o fujiGray dava 3.7:1 no escuro). */
+  --code-keyword: light-dark(#624c83, #957fb8);
+  --code-string: light-dark(#516439, #98bb6c);
+  --code-number: light-dark(#92445e, #d27e99);
+  --code-function: light-dark(#455f8c, #7e9cd8);
+  --code-type: light-dark(#48635e, #7aa89f);
+  --code-constant: light-dark(#8f4c00, #ffa066);
+  --code-builtin: light-dark(#386474, #7fb4ca);
+  --code-identifier: light-dark(#635e34, #e6c384);
+  --code-special: light-dark(#ab3142, #e46876);
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+}
+
+/* Esconde o botão do tema já ativo, inclusive quando segue o sistema, e na paleta a ação dele: só se oferece trocar. A
+   paleta deixa de fora a ação que o CSS esconde (command_palette_controller.js). */
+:root[data-theme="light"] :is(.theme-to-light, #command_light_theme),
+:root[data-theme="dark"] :is(.theme-to-dark, #command_dark_theme) {
+  display: none;
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) :is(.theme-to-light, #command_light_theme) {
+    display: none;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) :is(.theme-to-dark, #command_dark_theme) {
+    display: none;
+  }
+}
+
+/* Na paleta, o modo Vim já em uso fica de fora: só se oferece trocar. */
+:root[data-vim-keys="on"] #command_vim_keys_on,
+:root[data-vim-keys="off"] #command_vim_keys_off {
+  display: none;
+}
+
+/* Na paleta, o modo da nota em uso também fica de fora. */
+:root:has(.note-form[data-mode="edit"]) #command_edit_mode,
+:root:has(.note-form[data-mode="read"]) #command_read_mode,
+:root:has(.note-form[data-mode="split"]) #command_side_by_side {
+  display: none;
+}
+
+@theme inline {
+  --font-mono: "Fira Code", ui-monospace, monospace;
+  --color-surface: var(--surface);
+  --color-surface-sunken: var(--surface-sunken);
+  --color-line: var(--line);
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--ink-muted);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-danger: var(--danger);
+}
+
+/* Placeholder no ink-muted, que passa do AA nos dois temas: o padrão do Tailwind (ink a 50%) ficava em 2.2:1 no claro, e
+   na paleta e na busca de tenants ele é o único rótulo visível. */
+@layer base {
+  ::placeholder {
+    color: var(--ink-muted);
+  }
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center gap-1.5 rounded-md border border-line px-3 py-1 hover:bg-accent-soft;
+  }
+
+  /* Ação destrutiva: o hover enche de danger em vez do accent-soft, que derrubava o texto abaixo do AA. */
+  .btn-danger {
+    @apply border-danger text-danger hover:bg-danger hover:text-surface;
+  }
+
+  /* Botão só de ícone: quadrado, sem borda, com o mesmo realce das linhas da árvore. */
+  .btn-icon {
+    @apply inline-flex items-center rounded-md px-1.5 py-1 text-ink-muted hover:bg-accent-soft hover:text-ink;
+  }
+
+  /* Camada flutuante (menus, seletor de tenant e diálogos), como as layers do Hyprland: o surface, mais claro que a
+     barra lateral (surface-sunken), a borda line e a sombra tingida. Atrás dos diálogos modais o fundo escurece com o
+     --modal-scrim. */
+  .layer-panel {
+    @apply rounded-md border border-line bg-surface text-ink;
+    box-shadow: 0 12px 32px -8px var(--shadow), 0 2px 8px -2px var(--shadow);
+  }
+
+  dialog.layer-panel::backdrop {
+    background: var(--modal-scrim);
+  }
+
+  /* Barra de rolagem fina nos tokens do tema, sem o trilho cinza padrão no claro (lista da paleta, ajuda de atalhos). O
+     puxador fica no ink-muted nos dois temas, que contrasta com o fundo (4.79:1); o --line ficava apagado demais. */
+  .scrollbar-theme {
+    scrollbar-color: var(--ink-muted) transparent;
+    scrollbar-width: thin;
+  }
+
+  /* Toque de terminal: colchetes em volta, como [x], sem entrar no nome acessível (o aria-label manda). */
+  .ascii-brackets::before {
+    content: "[";
+  }
+
+  .ascii-brackets::after {
+    content: "]";
+  }
+
+  /* Título de seção com o # do markdown na frente, apagado e fora do nome acessível. */
+  .md-heading::before {
+    content: "# " / "";
+    color: var(--ink-muted);
+  }
+
+  /* Indicador de carregamento (busy_spinner_controller.js): o glifo braille no accent e o rótulo apagado, como o
+     spinner de um terminal. O quadro vem do ::before e gira pelo motion.css; quiet deixa o rótulo só para o leitor
+     de tela. */
+  .busy-spinner {
+    @apply inline-flex items-center gap-1.5 text-ink-muted;
+  }
+
+  /* Parado (reduced-motion), o glifo é "...", como a espera de um terminal sem animação; o braille girando vem do
+     motion.css. Os pontos ficam na linha de base, abaixo do meio da linha: o translate os sobe até o centro. */
+  .busy-spinner-glyph {
+    line-height: 1;
+    color: var(--accent);
+    translate: 0 -0.18em;
+  }
+
+  .busy-spinner-glyph::before {
+    content: "...";
+  }
+
+  .busy-spinner-quiet .busy-spinner-label {
+    @apply sr-only;
+  }
+
+  /* No fim do link ou botão que começou a espera (motion/busy_origin.js), com um respiro do texto. */
+  .busy-spinner-origin {
+    @apply ml-1.5;
+  }
+
+  /* No .btn (e nos ícones da barra de atividades) a espera toma o lugar do rótulo, como no VS Code: o glifo fica no meio do botão, por cima, e o texto e o
+     ícone ficam transparentes, sem o botão mudar de largura nem empurrar o que está ao lado. Fora do fluxo desde o
+     aria-busy, antes de o glifo entrar aos 300ms. */
+  :is(.btn, .btn-icon, .activity-tab):has(> .busy-spinner-origin) {
+    position: relative;
+  }
+
+  :is(.btn, .btn-icon, .activity-tab) > .busy-spinner-origin {
+    @apply absolute inset-0 m-0 justify-center;
+  }
+
+  :is(.btn, .btn-icon, .activity-tab):has(> .busy-spinner-origin:not(:empty)) {
+    color: transparent;
+  }
+
+  /* O ponto de mudança não salva do Save no celular é fundo, não texto: sai junto com o rótulo. */
+  .btn:has(> .busy-spinner-origin:not(:empty)) [data-unsaved-dot] {
+    display: none;
+  }
+
+  /* Na busca, o X nativo de limpar sai enquanto o glifo aparece: os dois no accent pareciam um par de controles. */
+  form:has(> .busy-spinner:not(:empty)) input[type="search"]::-webkit-search-cancel-button {
+    display: none;
+  }
+
+  /* Mascote em braille (script/mascot.rb): linha de altura 1 para os pontos encostarem. O tamanho da fonte
+     é o tamanho do desenho: o grande cabe ao lado do formulário, o pequeno (48x48px) na altura das duas linhas da marca,
+     em negrito para os pontos encorparem. */
+  .mascot {
+    @apply m-0 shrink-0 font-mono leading-none whitespace-pre text-ink-muted select-none;
+  }
+
+  .mascot-large {
+    font-size: 8px;
+  }
+
+  .mascot-small {
+    font-size: 4px;
+    font-weight: 700;
+  }
+
+  /* No desktop a barra lateral fica sempre visível; no celular é popover (gaveta). */
+  @media (width >= 48rem) {
+    .sidebar {
+      display: flex;
+      position: sticky;
+      /* inset antes do top: o shorthand depois desfaria o top e a barra rolaria para fora com a página. */
+      inset: auto;
+      top: 0;
+    }
+  }
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* Card de tenant (tenants/_card): o botão do nome cobre o card, então o contorno do foco vai no card inteiro. */
+.tenant-card:has(.tenant-card-open:focus-visible) {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.tenant-card-open:focus-visible {
+  outline: none;
+}
+
+/* A barra de progresso do Turbo dá lugar à espera no lugar da ação (motion/busy_origin.js). Fora de @layer: o <style> que o Turbo injeta não tem
+   camada e venceria qualquer regra dentro de uma. */
+.turbo-progress-bar {
+  display: none;
+}
+
+/* Barra lateral no desktop, estilo VS Code: coluna na largura escolhida (cookie, --sidebar-width no <html>), depois da
+   barra de atividades (--activity-width, activity_bar.css; sem ela, a coluna tem largura zero);
+   fechada, a coluna vai a zero e a barra some. As duas colunas existem sempre (o main fica na segunda) para a troca
+   poder deslizar a coluna (motion.css). A barra tem a largura dela, não a da coluna: no deslize não se espreme.
+   Fora de @layer para vencer os utilitários. */
+@media (width >= 48rem) {
+  .app-shell {
+    display: grid;
+    grid-template-columns: var(--activity-width, 0px) var(--sidebar-width, 18rem) minmax(0, 1fr);
+  }
+
+  .app-shell > .sidebar {
+    grid-column: 2;
+    width: var(--sidebar-width, 18rem);
+  }
+
+  .app-shell > main {
+    grid-column: 3;
+  }
+
+  /* Fechada, a coluna vai a zero sem deixar faixa: a barra de atividades à vista já diz onde a barra está, e a aba de
+     abrir sai da borda dela. */
+  :root[data-sidebar="closed"] .app-shell {
+    grid-template-columns: var(--activity-width, 0px) 0px minmax(0, 1fr);
+  }
+
+  :root[data-sidebar="closed"] .sidebar {
+    display: none;
+  }
+}
+
+/* Lombada: aba do recolher como a borda da barra puxada para fora, no fundo e na linha dela, sem linha entre as duas
+   (cobre o pixel da border-r). Fixa perto do topo; acompanha a --sidebar-width e, fechada, sai da borda da barra de
+   atividades. Com 7px de folga em volta do ícone (31px) cabe no padding do main e fica longe do miolo da alça, à esquerda. */
+.sidebar-spine {
+  display: none;
+}
+
+@media (width >= 48rem) {
+  .sidebar-spine {
+    position: fixed;
+    top: 0.75rem;
+    z-index: 1;
+    left: calc(var(--activity-width, 0px) + var(--sidebar-width, 18rem) - 1px);
+    display: flex;
+    padding: 0.5rem 0.4375rem;
+    border: 1px solid var(--line);
+    border-left: 0;
+    border-radius: 0 0.375rem 0.375rem 0;
+    background: var(--surface-sunken);
+    color: var(--ink-muted);
+  }
+
+  /* Hover e foco sem fundo próprio: a aba continua sendo a borda da barra; só o ícone sobe para o accent (o ink ficava
+     a 1.11:1 do ink-muted no claro e o hover não aparecia). */
+  .sidebar-spine:is(:hover, :focus-visible) {
+    color: var(--accent);
+  }
+
+  /* Contorno do foco por dentro: fechada, a aba encosta na borda da tela e o de fora sumiria à esquerda. */
+  .sidebar-spine:focus-visible {
+    outline-offset: -2px;
+  }
+
+  /* Fechada, a aba vai à borda da barra de atividades por transform (não left), para andar junto com a barra
+     (motion.css); cobre a linha dela como cobre a da barra aberta. */
+  :root[data-sidebar="closed"] .sidebar-spine {
+    transform: translateX(calc(0px - var(--sidebar-width, 18rem)));
+  }
+}
+
+/* Alça de redimensionar: invisível até o ponteiro ou o foco chegar, aí vira uma linha de destaque na borda. */
+.sidebar-handle:hover,
+.sidebar-handle:focus-visible,
+.sidebar-handle[data-dragging] {
+  background: linear-gradient(var(--accent), var(--accent)) right / 2px 100% no-repeat;
+  outline: none;
+}
+
+/* Modos da nota (data-mode no form, NoteModeHelper): edição mostra o editor, leitura o markdown renderizado,
+   lado a lado os dois. No celular o lado a lado não cabe: o botão some e o modo vale como edição
+   (o botão de edição aparece marcado). */
+.note-form[data-mode="edit"] .note-preview,
+.note-form[data-mode="read"] .note-editor-pane {
+  display: none;
+}
+
+/* Modo Vim: a linha do modo (o rodapé do CodeMirror, sticky no fim do editor) fica no fim da janela, como a statusline
+   do Vim. O editor cresce até o fim da tela e o main perde o padding de baixo: na nota curta a linha cai no fim da
+   janela; na longa gruda embaixo e a nota termina acima dela, no espaço dela. Na leitura o editor some com ela. */
+main:has(.note-form:not([data-mode="read"]) .cm-vim-panel) {
+  padding-bottom: 0;
+}
+
+.note-form:where(:not([data-mode="read"])):has(.cm-vim-panel) .note-panes {
+  display: flex;
+  flex-direction: column;
+}
+
+.note-form:has(.cm-vim-panel) :is(.note-editor-pane, .cm-scroller) {
+  flex-grow: 1;
+}
+
+/* Sem o padding de baixo o preview vai até o fim da janela: o contorno do foco entra nele para não perder a borda de baixo. */
+main:has(.note-form:not([data-mode="read"]) .cm-vim-panel) .note-preview:focus-visible {
+  outline-offset: -2px;
+}
+
+/* No celular o body não é grid: vira coluna para o main ir até o fim da tela, com o botão da gaveta do tamanho dele. */
+@media (width < 48rem) {
+  .app-shell:has(.note-form:not([data-mode="read"]) .cm-vim-panel) {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .app-shell:has(.note-form:not([data-mode="read"]) .cm-vim-panel) > main {
+    flex-grow: 1;
+    align-self: stretch;
+  }
+}
+
+/* O texto do título começa depois da borda e do padding do campo (px-1); o markdown renderizado começa ali também. */
+.note-preview {
+  padding-left: calc(0.25rem + 1px);
+}
+
+@media (width >= 48rem) {
+  /* No lado a lado a nota ocupa a altura da tela e cada painel rola sozinho, como no VS Code: o editor rola o
+     próprio scroller e o preview acompanha (note_mode_controller.js). O main já é coluna com a nota e o form fica
+     com o que sobra (layouts/application.html.erb e notes/_form.html.erb). */
+  main:has(.note-form[data-mode="split"]) {
+    height: 100dvh;
+  }
+
+  /* Conteúdo estreito (o main é o container): editor em cima, preview embaixo, metade da altura cada. */
+  .note-form[data-mode="split"] .note-panes {
+    display: grid;
+    grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .note-form[data-mode="split"] .note-preview {
+    border-top: 1px solid var(--line);
+    padding-top: 1rem;
+  }
+
+  .note-form[data-mode="split"] .cm-editor {
+    min-height: 0;
+  }
+
+  /* Barra de rolagem fina nos tokens do tema, sem o trilho branco padrão no claro. */
+  .note-form[data-mode="split"] :is(.cm-scroller, .note-preview) {
+    overflow-y: auto;
+    scrollbar-color: var(--line) transparent;
+  }
+}
+
+/* Conteúdo largo, medido no main e não na janela (a barra lateral aberta come largura): as duas colunas. */
+@container (width >= 48rem) {
+  .note-form[data-mode="split"] .note-panes {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr);
+  }
+
+  .note-form[data-mode="split"] .note-preview {
+    border-top: 0;
+    padding-top: 0;
+    border-left: 1px solid var(--line);
+    padding-left: 1.5rem;
+  }
+}
+
+@media (width < 48rem) {
+  .note-form .note-mode-split,
+  .note-form[data-mode="split"] .note-preview {
+    display: none;
+  }
+
+  .note-form[data-mode="split"] .note-mode-edit {
+    background: var(--accent-soft);
+    color: var(--ink);
+  }
+
+  :root:has(.note-form[data-mode="split"]) #command_edit_mode {
+    display: none;
+  }
+}

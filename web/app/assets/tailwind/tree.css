@@ -1,0 +1,175 @@
+/* Árvore de notas da barra lateral (notes/_folder) e o menu de contexto dela (notes/_tree_menu). */
+@layer components {
+  /* Linha da árvore, reaproveitada nos itens de lista (paleta, menus): o mesmo realce no hover. */
+  .tree-row {
+    @apply rounded-md px-2 py-1 hover:bg-accent-soft;
+  }
+
+  /* Árvore de notas como a saída do comando tree: 13px, linhas coladas (py-0) para as guias quase se tocarem, guias na
+     ink-muted (no line sumiam nos dois temas) e o nome cortado com reticências. */
+  .note-tree {
+    font-size: 13px;
+  }
+
+  .note-tree .tree-row {
+    @apply flex items-center py-0 leading-6;
+  }
+
+  .tree-guide {
+    @apply shrink-0 self-stretch whitespace-pre text-ink-muted;
+  }
+
+  /* Célula de 4 caracteres da guia (NoteTreeHelper#tree_guide): a vertical sai do centro do primeiro caractere e vai de
+     cima a baixo (│, ├) ou até o meio (└); o traço (──) vai do centro dele até o fim do terceiro. O texto fica
+     transparente por baixo, só para copiar. */
+  .tree-cell {
+    position: relative;
+    display: inline-block;
+    height: 100%;
+    vertical-align: top;
+    color: transparent;
+  }
+
+  .tree-cell:is([data-cell="pipe"], [data-cell="tee"], [data-cell="elbow"])::before,
+  .tree-cell:is([data-cell="tee"], [data-cell="elbow"])::after {
+    content: "";
+    position: absolute;
+    left: calc(0.5ch - 0.5px);
+    background: var(--ink-muted);
+  }
+
+  .tree-cell:is([data-cell="pipe"], [data-cell="tee"])::before {
+    top: 0;
+    width: 1px;
+    height: 100%;
+  }
+
+  .tree-cell[data-cell="elbow"]::before {
+    top: 0;
+    width: 1px;
+    height: 50%;
+  }
+
+  .tree-cell:is([data-cell="tee"], [data-cell="elbow"])::after {
+    top: 50%;
+    width: 2.5ch;
+    height: 1px;
+  }
+
+  /* Item do menu de contexto da árvore (com o .tree-row): a linha da árvore com o atalho à direita, apagado. O foco (teclado ou o
+     primeiro item ao abrir com o mouse) pinta como o hover; o Delete usa o .btn-danger também no foco. */
+  .context-menu-item {
+    @apply flex w-full items-center justify-between gap-4 py-0.5 text-left whitespace-nowrap focus:bg-accent-soft focus:outline-none;
+
+    & kbd {
+      @apply font-mono text-xs text-ink-muted;
+    }
+
+    &.btn-danger:focus {
+      @apply bg-danger text-surface;
+
+      & kbd {
+        @apply text-surface;
+      }
+    }
+  }
+
+  /* Linha em que o menu de contexto abriu, enquanto ele está aberto: contorno do accent por dentro, como no explorador
+     do VS Code, para não confundir com a nota aberta (o fundo do aria-current). */
+  .note-tree .tree-row[data-menu-open] {
+    outline: 1px solid var(--accent);
+    outline-offset: -1px;
+  }
+
+  /* Marcador da pasta no lugar do ícone: + fechada, - aberta, à moda do NERDTree em ASCII; o aria-expanded já diz o estado. */
+  .tree-marker::before {
+    content: "+ " / "";
+    @apply whitespace-pre;
+  }
+
+  [aria-expanded="true"] > .tree-marker::before {
+    content: "- " / "";
+  }
+}
+
+/* Resultado da busca (searches/show): o termo casado no trecho vem em <mark>, no accent-soft com o ink por cima (o
+   amarelo do navegador sumia no lotus), com um sublinhado no accent para não depender só da cor. */
+@layer components {
+  .search-hit-snippet mark {
+    @apply rounded-sm bg-accent-soft px-px text-ink underline decoration-accent underline-offset-2;
+  }
+}
+
+/* Matizes das comunidades (ExplorerHelper#community_hue, id da comunidade módulo 8): as cores de sintaxe do Kanagawa,
+   já com contraste sobre o fundo nos dois temas. O grafo pinta as comunidades com as mesmas. */
+:root {
+  --community-0: var(--code-function);
+  --community-1: var(--code-string);
+  --community-2: var(--code-constant);
+  --community-3: var(--code-keyword);
+  --community-4: var(--code-type);
+  --community-5: var(--code-number);
+  --community-6: var(--code-identifier);
+  --community-7: var(--code-builtin);
+}
+
+/* Visões planas do Explorer (notes/_explorer_groups): a linha da árvore sem as guias, título, pasta apagada e o número
+   à direita; por comunidade, a marca quadrada e a borda na cor dela, como um bloco de código com a margem pintada. */
+@layer components {
+  /* Pela linha de base: a pasta e o número, menores, ficam na linha do título. */
+  .note-tree .explorer-row {
+    @apply items-baseline gap-2;
+  }
+
+  .community + .community {
+    @apply mt-1;
+  }
+
+  .community-heading {
+    @apply flex items-center gap-2 px-2 pt-1 text-xs leading-5 text-ink-muted;
+  }
+
+  .community-swatch {
+    @apply size-2 shrink-0;
+    background: var(--community, var(--ink-muted));
+  }
+
+  .community-notes {
+    margin-left: calc(0.5rem + 3px);
+  }
+
+  /* Seletor da visão: o select nativo com a cara de uma linha da árvore. Onde há o select personalizável
+     (appearance: base-select), a lista abre como as camadas do painel, com o > do prompt na opção escolhida. */
+  .explorer-mode-select {
+    @apply min-w-0 cursor-pointer rounded-md border border-line bg-transparent px-2 py-0.5 text-[13px] text-ink hover:bg-accent-soft;
+  }
+
+  @supports (appearance: base-select) {
+    .explorer-mode-select,
+    .explorer-mode-select::picker(select) {
+      appearance: base-select;
+    }
+
+    .explorer-mode-select::picker-icon {
+      content: "▾" / "";
+      @apply text-ink-muted;
+    }
+
+    .explorer-mode-select::picker(select) {
+      @apply mt-1 rounded-md border border-line bg-surface p-1 text-ink;
+      box-shadow: 0 12px 32px -8px var(--shadow), 0 2px 8px -2px var(--shadow);
+    }
+
+    .explorer-mode-select option {
+      @apply rounded-md px-2 py-0.5 text-[13px] hover:bg-accent-soft focus-visible:bg-accent-soft focus-visible:outline-none;
+    }
+
+    .explorer-mode-select option:checked {
+      @apply text-accent;
+    }
+
+    .explorer-mode-select option::checkmark {
+      content: ">" / "";
+    }
+  }
+}

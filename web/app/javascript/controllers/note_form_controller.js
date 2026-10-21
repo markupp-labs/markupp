@@ -1,0 +1,170 @@
+import { Controller } from "@hotwired/stimulus"
+import { Turbo } from "@hotwired/turbo-rails"
+
+// Salvar explícito: Ctrl+S ou Cmd+S submete, marca alterações não salvas e avisa antes de sair com elas.
+// Com aviso de conflito ou erro de caminho na tela, o que o usuário digitou ainda não está no servidor.
+// O caminho conta como alteração: renomear e mover também precisam salvar.
+// Nota nova sem nada escrito não é alteração: sair dela a descarta sem perguntar.
+// Não há nome automático: com o nome vazio (campo em branco ou barra no fim) o formulário não sai do navegador.
+// A resolução do caminho (relativo, absoluto, .md) é só do servidor (Note#resolve); aqui só o nome vazio.
+export default class extends Controller {
+  static targets = [ "source", "path", "unsaved", "save", "pending", "pathError" ]
+  static values = { leaveMessage: String, new: Boolean, blankTitle: String, rootUrl: String, notesUrl: String }
+
+  connect() {
+    this.originals = this.fields.map((field) => field.defaultValue)
+    const heading = headingFor(this.pathTarget.value)
+    this.heading = this.newValue && this.sourceTarget.value.startsWith(heading) ? heading : ""
+    if (this.newValue) this.moveCaretToEnd()
+    if (new URL(location.href).searchParams.has("rename")) this.selectPath()
+    this.track()
+  }
+
+  // Rename / move da árvore (note_tree_controller.js): o caminho inteiro selecionado, pronto para trocar.
+  selectPath() {
+    this.pathTarget.focus()
+    this.pathTarget.select()
+  }
+
+  // Nota só de leitura (papel viewer) ou sem mudança não tem o que salvar.
+  save() {
+    if (this.sourceTarget.readOnly || !this.changed) return
+
+    this.element.requestSubmit()
+  }
+
+  // Comandos Ex do modo Vim (editor/vim_mode.js). :w salva como o Ctrl+S; :wq salva e sai para a nota padrão, ou só sai
+  // quando não há o que salvar.
+  writeFromVim({ detail }) {
+    if (!detail?.quit) return this.save()
+    if (!this.changed) return Turbo.visit(this.rootUrlValue)
+
+    this.saveAndQuit()
+  }
+
+  // O servidor lê o quit e volta para a nota padrão (NotesController). O Turbo monta o corpo do envio na hora do
+  // requestSubmit, então o campo sai logo depois: um envio recusado aqui (nome em branco) não leva o quit no próximo.
+  saveAndQuit() {
+    const quit = Object.assign(document.createElement("input"), { type: "hidden", name: "quit", value: "true" })
+    this.element.append(quit)
+    this.save()
+    quit.remove()
+  }
+
+  // :q sai para a nota padrão e, com mudança, pergunta antes (confirmVisit); :q! sai descartando.
+  quitFromVim({ detail }) {
+    if (detail.force) this.allowLeaving()
+    Turbo.visit(this.rootUrlValue)
+  }
+
+  // :e caminho: o servidor resolve como o campo de caminho, a partir desta nota, e abre a que existe ou uma nova.
+  openFromVim({ detail }) {
+    const origin = this.element.querySelector("[name=origin_path]").value
+    Turbo.visit(`${this.notesUrlValue}?${new URLSearchParams({ path: detail.path, origin_path: origin })}`)
+  }
+
+  track() {
+    this.unsavedTarget.hidden = !this.changed
+    if (this.hasSaveTarget) this.saveTarget.hidden = !this.changed
+  }
+
+  // Só na nota nova: o "# nome" no começo do conteúdo acompanha o caminho, enquanto o usuário não mexer nele.
+  // O editor troca o cabeçalho anterior pelo novo e marca applied; se o começo mudou, deixa como está.
+  syncHeading() {
+    if (!this.newValue) return
+
+    const next = headingFor(this.pathTarget.value)
+    const { detail } = this.dispatch("heading", { detail: { from: this.heading, to: next, applied: false } })
+    if (detail.applied) this.heading = next
+  }
+
+  // Shift+Tab no conteúdo, depois do Esc que libera o teclado do editor, volta ao caminho com o cursor no fim dele. Sem o
+  // Esc o editor já usou a tecla para desindentar (defaultPrevented).
+  focusPath(event) {
+    if (event.defaultPrevented || !event.target.closest(".cm-editor")) return
+
+    event.preventDefault()
+    this.pathTarget.focus()
+    this.moveCaretToEnd()
+  }
+
+  // A nota nova abre com a pasta no campo (/work/): o que se digita entra depois dela.
+  moveCaretToEnd() {
+    this.pathTarget.setSelectionRange(this.pathTarget.value.length, this.pathTarget.value.length)
+  }
+
+  // Nome em branco: avisa sob o campo e devolve o foco a ele, com o caminho digitado e o conteúdo como estão.
+  submit(event) {
+    if (nameOf(this.pathTarget.value)) return this.allowLeaving()
+
+    event.preventDefault()
+    this.refuseBlankName()
+  }
+
+  refuseBlankName() {
+    this.pathErrorTarget.textContent = this.blankTitleValue
+    this.pathErrorTarget.hidden = false
+    this.pathTarget.setAttribute("aria-invalid", "true")
+    this.pathTarget.setAttribute("aria-describedby", this.pathErrorTarget.id)
+    this.pathTarget.focus()
+  }
+
+  // O aviso de nome em branco sai assim que há nome; outro erro de caminho fica até o servidor responder.
+  clearBlankName() {
+    if (!nameOf(this.pathTarget.value) || this.pathErrorTarget.textContent != this.blankTitleValue) return
+
+    this.pathErrorTarget.textContent = ""
+    this.pathErrorTarget.hidden = true
+    this.pathTarget.removeAttribute("aria-invalid")
+    this.pathTarget.removeAttribute("aria-describedby")
+  }
+
+  allowLeaving() {
+    this.leaving = true
+  }
+
+  // O form de excluir fica fora deste (form não aninha); só envia depois do confirm aceito.
+  allowLeavingOnDelete({ target }) {
+    if (target.id == "delete_note") this.allowLeaving()
+  }
+
+  warnBeforeUnload(event) {
+    if (this.changed) event.preventDefault()
+  }
+
+  // O diálogo do painel (confirm_dialog_controller.js) responde depois: a visita para aqui e, com Leave, segue para onde ia.
+  // O form leva os rótulos Leave e Stay. Fechar a aba fica com o aviso do navegador (warnBeforeUnload), que não muda.
+  confirmVisit(event) {
+    if (!this.changed) return
+
+    event.preventDefault()
+    this.leaveAfterConfirm(event.detail.url)
+  }
+
+  async leaveAfterConfirm(url) {
+    if (!(await Turbo.config.forms.confirm(this.leaveMessageValue, this.element, this.element))) return
+
+    this.allowLeaving()
+    Turbo.visit(url)
+  }
+
+  get fields() {
+    return [ this.sourceTarget, this.pathTarget ]
+  }
+
+  get changed() {
+    const edited = this.fields.some((field, index) => field.value != this.originals[index])
+    return !this.leaving && (this.hasPendingTarget || edited)
+  }
+}
+
+// O nome da nota no caminho digitado, como o servidor lê: o último segmento, sem o .md final; vazio com barra no fim.
+function nameOf(path) {
+  return path.trim().replace(/\.md$/, "").split("/").pop()
+}
+
+// Só o editor põe o cabeçalho; o servidor grava o conteúdo como veio. Leva só o nome: pastas e .md não entram.
+function headingFor(path) {
+  const name = nameOf(path).trim()
+  return name ? `# ${name}\n\n` : ""
+}

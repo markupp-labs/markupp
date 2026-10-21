@@ -27,7 +27,8 @@ func (f *fakeProbe) Ping(ctx context.Context) error {
 
 func healthRequest(t *testing.T, probe api.StorageProbe) *httptest.ResponseRecorder {
 	t.Helper()
-	router := api.NewRouter(&fakeService{}, probe, nil)
+	validator := &fakeTokenValidator{}
+	router := api.NewRouter(api.RouterDeps{Notes: &fakeService{}, Tenants: tenantDeTeste, Tokens: validator, Probe: probe})
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/healthz", nil))
 	return rec

@@ -1,0 +1,264 @@
+require "test_helper"
+
+class NoteTest < ActiveSupport::TestCase
+  test "all builds notes from the API listing" do
+    api = FakeMarkuppApi.new(notes: [ { id: "1", path: "work/plan.md", content: "# Plan", updated_at: "2026-09-30T12:00:00Z" } ])
+
+    note = Note.all(api).sole
+    assert_equal "1", note.id
+    assert_equal "work/plan.md", note.path
+    assert_equal Time.utc(2026, 9, 30, 12), note.updated_at
+  end
+
+  test "find builds the note with the given id" do
+    api = FakeMarkuppApi.new(notes: [ { id: "1", path: "a.md", content: "x" }, { id: "2", path: "b.md", content: "# B\n" } ])
+
+    note = Note.find(api, "2")
+    assert_equal "b.md", note.path
+    assert_equal "# B\n", note.content
+  end
+
+  test "find raises NotFound for an unknown id" do
+    api = FakeMarkuppApi.new(notes: [])
+
+    assert_raises(MarkuppApi::NotFound) { Note.find(api, "missing") }
+  end
+
+  test "persisted only with an id, so routes use the id" do
+    assert Note.new(id: "7").persisted?
+    assert_equal "7", Note.new(id: "7").to_param
+    assert_not Note.new(path: "draft.md").persisted?
+  end
+
+  test "name is the last segment of the path" do
+    assert_equal "plan.md", Note.new(path: "work/2026/plan.md").name
+  end
+
+  test "folder_names are the segments before the name, ignoring empty ones" do
+    assert_equal %w[work 2026], Note.new(path: "/work//2026/plan.md").folder_names
+    assert_empty Note.new(path: "plan.md").folder_names
+  end
+
+  test "update sends path, content and the version read, to the millisecond" do
+    api = FakeMarkuppApi.new(notes: [ { id: "1", path: "a.md", content: "old" } ])
+    note = Note.new(id: "1", path: "a.md", updated_at: "2026-09-30T12:00:00.123456Z")
+
+    note.update(api, { content: "new" })
+
+    assert_equal [ { path: "a.md", content: "new", lastModifiedAt: "2026-09-30T12:00:00.123Z", force: false } ], api.put_requests
+    assert_equal "new", Note.find(api, "1").content
+  end
+
+  test "update with force overwrites a newer version" do
+    api = FakeMarkuppApi.new(notes: [ { id: "1", path: "a.md", content: "old" } ], conflict: true)
+
+    Note.new(id: "1", path: "a.md", updated_at: Time.utc(2026)).update(api, { content: "mine" }, force: true)
+
+    assert api.put_requests.sole[:force]
+    assert_equal "mine", Note.find(api, "1").content
+  end
+
+  test "save posts path and content and takes the id and version from the API" do
+    api = FakeMarkuppApi.new(notes: [])
+    note = Note.new(path: "work/plan.md", content: "# Plan\n")
+
+    note.save(api)
+
+    assert_equal [ { path: "work/plan.md", content: "# Plan\n" } ], api.post_requests
+    assert_equal "created-1", note.id
+    assert_equal Time.utc(2026, 10, 1, 12), note.updated_at
+  end
+
+  test "save with a blank title flags the title without calling the API" do
+    api = FakeMarkuppApi.new(notes: [])
+    note = Note.new(path: Note.blank("work").resolve("  "), content: "x")
+
+    assert_not note.save(api)
+    assert note.errors.of_kind?(:title, :blank)
+    assert_empty api.post_requests
+  end
+
+  test "save flags a taken path after a single try" do
+    api = FakeMarkuppApi.new(notes: [ { id: "1", path: "plan.md" } ])
+
+    note = Note.new(path: "plan.md", content: "")
+
+    assert_not note.save(api)
+    assert note.errors.of_kind?(:path, :taken)
+    assert_equal 1, api.post_requests.size
+  end
+
+  test "update raises Conflict when the note changed on the server" do
+    api = FakeMarkuppApi.new(notes: [ { id: "1", path: "a.md", content: "theirs" } ], conflict: true)
+
+    assert_raises(MarkuppApi::Conflict) { Note.new(id: "1", path: "a.md").update(api, { content: "mine" }) }
+    assert_equal "theirs", Note.find(api, "1").content
+  end
+
+  test "update renames and moves the note to the new path" do
+    api = FakeMarkuppApi.new(notes: [ { id: "1", path: "a.md", content: "x" } ])
+
+    assert Note.new(id: "1", path: "a.md").update(api, { path: "work/b.md", content: "x" })
+
+    assert_equal "work/b.md", api.put_requests.sole[:path]
+    assert_equal "work/b.md", Note.find(api, "1").path
+  end
+
+  test "update returns false with a path error when another note has the path" do
+    api = FakeMarkuppApi.new(notes: [ { id: "1", path: "a.md", content: "x" }, { id: "2", path: "b.md", content: "y" } ])
+    note = Note.new(id: "1", path: "a.md")
+
+    assert_not note.update(api, { path: "b.md", content: "mine" })
+
+    assert_equal [ "Path already taken" ], note.errors.full_messages_for(:path)
+    assert_equal [ "b.md", "mine" ], [ note.path, note.content ]
+    assert_equal "a.md", Note.find(api, "1").path
+  end
+
+  test "update returns false with a path error when the API refuses the path" do
+    api = FakeMarkuppApi.new(notes: [ { id: "1", path: "a.md", content: "x" } ])
+    note = Note.new(id: "1", path: "a.md")
+
+    assert_not note.update(api, { path: " ", content: "x" })
+
+    assert_equal [ "Path can't contain .. or pass 1024 characters" ], note.errors.full_messages_for(:path)
+  end
+
+  test "destroy deletes the note on the server" do
+    api = FakeMarkuppApi.new(notes: [ { id: "1", path: "a.md", content: "x" } ])
+
+    Note.new(id: "1").destroy(api)
+
+    assert_raises(MarkuppApi::NotFound) { Note.find(api, "1") }
+  end
+
+  test "destroy of a note already deleted does not raise" do
+    api = FakeMarkuppApi.new(notes: [])
+
+    assert_nothing_raised { Note.new(id: "gone").destroy(api) }
+  end
+
+  test "restore_line_breaks brings back CRLF when the note used it" do
+    assert_equal "a\r\nb\r\n", Note.restore_line_breaks("a\nb\n", crlf: true)
+    assert_equal "a\r\nb\r\n", Note.restore_line_breaks("a\r\nb\r\n", crlf: true)
+  end
+
+  test "restore_line_breaks keeps LF when the note used it, even after a native form submit" do
+    assert_equal "a\nb\n", Note.restore_line_breaks("a\r\nb\r\n", crlf: false)
+    assert_equal "a\nb\n", Note.restore_line_breaks("a\nb\n", crlf: false)
+  end
+
+  test "crlf? tells whether the content uses CRLF" do
+    assert Note.new(content: "a\r\nb").crlf?
+    assert_not Note.new(content: "a\nb").crlf?
+  end
+
+  test "title is the name without .md, folder the path before it" do
+    note = Note.new(path: "work/2026/Plan.v2.md")
+
+    assert_equal "Plan.v2", note.title
+    assert_equal "work/2026", note.folder
+    assert note.markdown?
+    assert_equal [ "README", "", false ], Note.new(path: "README").then { [ it.title, it.folder, it.markdown? ] }
+  end
+
+  test "a path ending in a slash has an empty title and keeps the folder" do
+    assert_equal [ "", "work", false ], Note.new(path: "work/").then { [ it.title, it.folder, it.markdown? ] }
+  end
+
+  test "update refuses a blank title without calling the API" do
+    api = FakeMarkuppApi.new(notes: [ { id: "1", path: "work/a.md", content: "x" } ])
+    note = Note.new(id: "1")
+
+    assert_not note.update(api, { path: "work/.md", content: "mine" })
+    assert_not note.update(api, { path: "work/", content: "mine" })
+    assert note.errors.of_kind?(:title, :blank)
+    assert_empty api.put_requests
+    assert_equal "work/a.md", Note.find(api, "1").path
+  end
+
+  # Campo único da nota: o caminho digitado segue o :e do Vim, com a pasta da nota como diretório atual.
+  test "resolve reads a path without a leading slash from the folder of the note" do
+    note = Note.new(path: "work/plano.md")
+
+    assert_equal "work/teste.md", note.resolve("teste")
+    assert_equal "work/dev/teste.md", note.resolve("dev/teste")
+    assert_equal "work/teste.md", note.resolve("  teste ")
+  end
+
+  test "resolve reads a leading slash from the root" do
+    assert_equal "dev/teste.md", Note.new(path: "work/plano.md").resolve("/dev/teste")
+  end
+
+  test "resolve absorbs a typed .md and keeps any other extension in the name" do
+    note = Note.new(path: "work/plano.md")
+
+    assert_equal "dev/teste.md", note.resolve("/dev/teste.md")
+    assert_equal "work/teste.pdf.md", note.resolve("teste.pdf")
+  end
+
+  test "resolve leaves the name empty for a trailing slash, so saving asks for a name" do
+    api = FakeMarkuppApi.new(notes: [])
+    note = Note.new(path: Note.new(path: "work/plano.md").resolve("/dev/teste/"), content: "x")
+
+    assert_not note.save(api)
+    assert note.errors.of_kind?(:title, :blank)
+    assert_empty api.post_requests
+  end
+
+  # Uma regra de caminho só no model, a do vim_normalized: o "." da pasta some também na nota em branco e nas pastas.
+  test "blank and the folder drop the . of the path like the vim normalization" do
+    assert_equal "a/b/", Note.blank("a/./b").path
+    assert_equal "a/b", Note.new(path: "a/./b/c.md").folder
+  end
+
+  test "resolve in a blank note starts from the folder it came from, or the root" do
+    assert_equal "work/Idea.md", Note.blank("work").resolve("Idea")
+    assert_equal "Plan.md", Note.blank(nil).resolve("Plan")
+    assert_equal "", Note.blank(nil).resolve(" ")
+  end
+
+  test "resolve keeps a note without .md without it while the name stays" do
+    note = Note.new(path: "docs/README")
+
+    assert_equal "docs/README", note.resolve("/docs/README")
+    assert_equal "other/README", note.resolve("/other/README")
+    assert_equal "docs/LEIAME.md", note.resolve("LEIAME")
+  end
+
+  # Como o :e do Vim: "." é a própria pasta e barras repetidas valem uma. ".." vai como veio, para a API recusar.
+  test "resolve drops dot segments and repeated slashes like vim, and leaves .. for the API to refuse" do
+    note = Note.new(path: "work/plano.md")
+
+    assert_equal "work/plano.md", note.resolve("/work/./plano")
+    assert_equal "work/teste.md", note.resolve("./teste")
+    assert_equal "dev/teste.md", note.resolve("/dev//teste")
+    assert_equal "dev/teste.md", note.resolve("//dev/.//teste")
+    assert_equal "work/../teste.md", note.resolve("../teste")
+  end
+
+  test "resolve keeps a trailing slash or dot as an empty name, so saving asks for one" do
+    note = Note.new(path: "work/plano.md")
+
+    assert_equal "dev/", note.resolve("/dev//")
+    assert_equal "work/", note.resolve(".")
+    assert_equal "dev/", note.resolve("/dev/.")
+  end
+
+  test "a path the API refuses tells what a valid path looks like" do
+    api = FakeMarkuppApi.new(notes: [ { id: "1", path: "work/a.md", content: "x" } ])
+    note = Note.new(id: "1", path: "work/a.md")
+
+    assert_not note.update(api, { path: note.resolve("../teste"), content: "x" })
+
+    assert_equal [ "Path can't contain .. or pass 1024 characters" ], note.errors.full_messages_for(:path)
+  end
+
+  test "location is the absolute path without .md, as the field shows it" do
+    assert_equal "/work/plano", Note.new(path: "work/plano.md").location
+    assert_equal "/docs/README", Note.new(path: "docs/README").location
+    assert_equal "/work/", Note.blank("work").location
+    assert_equal "/work/2026/", Note.blank("/work/2026/").location
+    assert_equal "/", Note.blank(nil).location
+  end
+end
