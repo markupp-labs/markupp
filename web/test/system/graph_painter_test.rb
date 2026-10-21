@@ -1,7 +1,8 @@
 require "application_system_test_case"
 
 # Desenho de um quadro do grafo (graph/painter.js) contra um contexto de canvas falso que anota cada traço e cada nome:
-# o nome fica abaixo do anel mais de fora do nó.
+# o nome fica abaixo do anel mais de fora do nó, e as ligações em repouso usam a cor muted, que contrasta 3:1 ou mais
+# com o palco; a line fica só para as apagadas.
 class GraphPainterTest < ApplicationSystemTestCase
   setup do
     use_fake_api(notes: [])
@@ -15,6 +16,14 @@ class GraphPainterTest < ApplicationSystemTestCase
     assert_operator labels["focused"], :>=, 5 + 6 + 0.75 + 3
     assert_operator labels["current"], :>=, 5 + 4 + 3
     assert_in_delta 5 + 3, labels["plain"]
+  end
+
+  test "links at rest are stroked in the muted ink and the faded ones in line" do
+    rest = painted(nodes: "[ node('a', {}), node('b', {}) ]")["linkStrokes"]
+    lit = painted(nodes: "[ node('a', {}), node('b', {}) ]", active: 0)["linkStrokes"]
+
+    assert_equal %w[muted muted], rest
+    assert_equal %w[line accent line accent], lit
   end
 
   private
