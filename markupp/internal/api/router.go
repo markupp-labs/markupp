@@ -10,6 +10,7 @@ import (
 // RouterDeps reúne o que o roteador expõe. As rotas de um serviço nil não são montadas.
 type RouterDeps struct {
 	Notes          NoteService
+	Graph          NoteGraph
 	Auth           AuthService
 	Admin          AdminService
 	AccountEmail   AccountEmailService
@@ -45,13 +46,12 @@ func NewRouter(d RouterDeps) chi.Router {
 // mountAPIRoutes monta as rotas sob /v1 e o alias obsoleto sem prefixo, que responde
 // por todo caminho que nenhuma outra rota atende.
 func mountAPIRoutes(r chi.Router, d RouterDeps) {
-	routes := newVersionRoutes(d)
 	if d.OAuth != nil {
 		mountOAuthRequestRoutes(r, d.OAuth, d.Tokens)
 		mountOAuthAuthorizationRoutes(r, d.OAuth, d.Tokens)
 	}
-	r.Mount(currentVersionPrefix, routes)
-	r.Mount("/", markDeprecated(routes))
+	r.Mount(currentVersionPrefix, newVersionRoutes(d, true))
+	r.Mount("/", markDeprecated(newVersionRoutes(d, false)))
 }
 
 // mustHaveRouterDeps barra na montagem as dependências que faltam às rotas ligadas.
@@ -59,22 +59,27 @@ func mustHaveRouterDeps(d RouterDeps) {
 	if d.Tokens == nil {
 		panic("api: Tokens obrigatorio para proteger as rotas")
 	}
-	if d.Tenants == nil && (d.Notes != nil || d.Admin != nil) {
-		panic("api: Tenants obrigatorio para as rotas de notas e de administracao")
+	if d.Tenants == nil && (d.Notes != nil || d.Graph != nil || d.Admin != nil) {
+		panic("api: Tenants obrigatorio para as rotas de notas, do grafo e de administracao")
 	}
 	if d.OAuth != nil && d.OAuthMetadata == nil {
 		panic("api: OAuthMetadata obrigatorio para as rotas OAuth, que usam o Issuer")
 	}
 }
 
-func newVersionRoutes(d RouterDeps) chi.Router {
+// newVersionRoutes monta as rotas da versão atual (current) ou do alias obsoleto sem
+// prefixo, que não ganha as rotas nascidas depois da transição.
+func newVersionRoutes(d RouterDeps, current bool) chi.Router {
 	r := chi.NewRouter()
 	r.Get("/healthz", healthz(d.Probe))
 	if d.Auth != nil {
 		mountAuthRoutes(r, d.Auth, d.Tokens)
 	}
 	if d.Notes != nil {
-		mountProtectedNotesRoutes(r, d.Notes, d.Tokens, d.Tenants)
+		mountProtectedNotesRoutes(r, d.Notes, d.Tokens, d.Tenants, current)
+	}
+	if d.Graph != nil && current {
+		mountProtectedGraphRoutes(r, d.Graph, d.Tokens, d.Tenants)
 	}
 	if d.Admin != nil {
 		mountAdminRoutes(r, d.Admin, d.Tokens, d.Tenants)
@@ -87,16 +92,33 @@ func newVersionRoutes(d RouterDeps) chi.Router {
 
 // mountProtectedNotesRoutes confere o escopo do token antes de resolver o tenant, para
 // falhar cedo, como em /users.
-func mountProtectedNotesRoutes(r chi.Router, svc NoteService, tokenValidator TokenValidator, tenants TenantResolver) {
-	h := &notesHandler{svc: svc}
+// current liga a representação de /v1 (ADR-0040) no item da nota, nas notas do cofre e
+// na busca; o alias sem prefixo mantém a representação antiga.
+func mountProtectedNotesRoutes(r chi.Router, svc NoteService, tokenValidator TokenValidator, tenants TenantResolver, current bool) {
 	read := r.With(acceptOAuthScope(oauth.ScopeNotesRead), RequireAuth(tokenValidator), RequireTenant(tenants))
-	read.Get("/notes", h.list)
-	read.Get("/notes/search", h.search)
-	read.Get("/notes/{id}", h.get)
 	write := r.With(acceptOAuthScope(oauth.ScopeNotesWrite), RequireAuth(tokenValidator), RequireTenant(tenants), requireWriter)
-	write.Post("/notes", h.create)
+	legacy := &notesHandler{svc: svc, render: toResponse}
+	read.Get("/notes", legacy.list)
+	read.Get("/notes/search", legacy.search)
+	write.Post("/notes", legacy.create)
+	if !current {
+		mountNoteItemRoutes(read, write, legacy)
+		return
+	}
+	mountV1NotesRoutes(read, write, svc)
+}
+
+// mountNoteItemRoutes monta a leitura, a edição e a remoção da nota de id global.
+func mountNoteItemRoutes(read, write chi.Router, h *notesHandler) {
+	read.Get("/notes/{id}", h.get)
 	write.Put("/notes/{id}", h.update)
 	write.Delete("/notes/{id}", h.delete)
+}
+
+// mountProtectedGraphRoutes monta o grafo, que nasceu depois da transição e existe só
+// sob /v1, lido com o escopo de leitura das notas (emenda do ADR-0040).
+func mountProtectedGraphRoutes(r chi.Router, graph NoteGraph, tokenValidator TokenValidator, tenants TenantResolver) {
+	mountNoteGraphRoutes(r.With(acceptOAuthScope(oauth.ScopeNotesRead), RequireAuth(tokenValidator), RequireTenant(tenants)), graph)
 }
 
 func mountAuthRoutes(r chi.Router, authSvc AuthService, tokenValidator TokenValidator) {

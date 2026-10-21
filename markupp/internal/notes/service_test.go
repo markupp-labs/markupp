@@ -16,9 +16,10 @@ import (
 const testMaxContentSize = 100
 
 type fakeRepo struct {
-	saved   notes.Note
-	saveErr error
-	called  bool
+	saved        notes.Note
+	saveErr      error
+	called       bool
+	storedSHA256 string
 
 	defaultVault       string
 	defaultVaultErr    error
@@ -47,13 +48,17 @@ type fakeRepo struct {
 	listErr    error
 	listCalled bool
 
+	vaultListVaultID string
+	vaultListQuery   notes.VaultNotesQuery
+
 	searchResult []notes.SearchResult
 	searchErr    error
 	searchArgs   struct {
-		query  string
-		offset int32
-		limit  int32
-		called bool
+		query   string
+		vaultID string
+		offset  int32
+		limit   int32
+		called  bool
 	}
 }
 
@@ -62,10 +67,11 @@ func (f *fakeRepo) DefaultVaultID(ctx context.Context) (string, error) {
 	return f.defaultVault, f.defaultVaultErr
 }
 
-func (f *fakeRepo) Save(ctx context.Context, n notes.Note) error {
+func (f *fakeRepo) Save(ctx context.Context, n notes.Note) (notes.Note, error) {
 	f.called = true
 	f.saved = n
-	return f.saveErr
+	n.ContentSHA256 = f.storedSHA256
+	return n, f.saveErr
 }
 
 func (f *fakeRepo) Update(ctx context.Context, id, path, content string, updatedAt, lastModifiedAt time.Time, force bool) (notes.Note, error) {
@@ -94,9 +100,15 @@ func (f *fakeRepo) ListNotes(ctx context.Context) ([]notes.Note, error) {
 	return f.listResult, f.listErr
 }
 
-func (f *fakeRepo) SearchNotes(ctx context.Context, query string, offset, limit int32) ([]notes.SearchResult, error) {
+func (f *fakeRepo) ListVaultNotes(ctx context.Context, vaultID string, q notes.VaultNotesQuery) ([]notes.Note, error) {
+	f.vaultListVaultID, f.vaultListQuery = vaultID, q
+	return f.listResult, f.listErr
+}
+
+func (f *fakeRepo) SearchNotes(ctx context.Context, query, vaultID string, offset, limit int32) ([]notes.SearchResult, error) {
 	f.searchArgs.called = true
 	f.searchArgs.query = query
+	f.searchArgs.vaultID = vaultID
 	f.searchArgs.offset = offset
 	f.searchArgs.limit = limit
 	return f.searchResult, f.searchErr
@@ -136,6 +148,31 @@ func TestCreate_PathLongoDemais_RetornaErrInvalidPath(t *testing.T) {
 
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, notes.ErrInvalidPath))
+}
+
+func TestCreate_PathSemTitulo_RetornaErrInvalidPathComOCaminho(t *testing.T) {
+	for _, caminho := range []string{".md", "pasta/.md", "pasta/.MD"} {
+		repo := &fakeRepo{}
+		svc := newServiceForTest(repo)
+
+		_, err := svc.Create(context.Background(), "cofre-teste", caminho, "qualquer")
+
+		require.ErrorIs(t, err, notes.ErrInvalidPath, "caminho %q", caminho)
+		assert.Contains(t, err.Error(), caminho, "a mensagem traz o caminho recusado")
+		assert.Contains(t, err.Error(), "pasta/nota.md", "a mensagem traz o formato esperado")
+		assert.False(t, repo.called)
+	}
+}
+
+func TestUpdate_PathSemTitulo_RetornaErrInvalidPath(t *testing.T) {
+	repo := &fakeRepo{}
+	svc := newServiceForTest(repo)
+
+	_, err := svc.Update(context.Background(), "id-1", "pasta/.md", "x", time.Now(), false)
+
+	require.ErrorIs(t, err, notes.ErrInvalidPath)
+	assert.Contains(t, err.Error(), "pasta/.md")
+	assert.False(t, repo.updateArgs.called)
 }
 
 func TestCreate_ContentMuitoGrande_RetornaErrInvalidContent(t *testing.T) {
@@ -445,11 +482,42 @@ func TestListNotes_DBVazio_RetornaSliceVazio(t *testing.T) {
 	assert.Empty(t, got)
 }
 
+func TestListVaultNotes_RepassaCofreEConsultaAoRepo(t *testing.T) {
+	esperadas := []notes.Note{{ID: "id-1", Path: "a.md"}}
+	repo := &fakeRepo{listResult: esperadas}
+	consulta := notes.VaultNotesQuery{Sort: notes.SortByPageRank, Descending: true, Offset: 2, Limit: 5}
+
+	got, err := newServiceForTest(repo).ListVaultNotes(context.Background(), "cofre-a", consulta)
+
+	require.NoError(t, err)
+	assert.Equal(t, esperadas, got)
+	assert.Equal(t, "cofre-a", repo.vaultListVaultID)
+	assert.Equal(t, consulta, repo.vaultListQuery)
+}
+
+func TestListVaultNotes_ErroDoRepo_DizOCofreEMantemOErroDeDominio(t *testing.T) {
+	repo := &fakeRepo{listErr: notes.ErrVaultForbidden}
+
+	_, err := newServiceForTest(repo).ListVaultNotes(context.Background(), "cofre-a", notes.VaultNotesQuery{Limit: 10})
+
+	require.ErrorIs(t, err, notes.ErrVaultForbidden)
+	assert.Contains(t, err.Error(), "cofre-a")
+}
+
+func TestSearch_RepassaOCofreAoRepo(t *testing.T) {
+	repo := &fakeRepo{}
+
+	_, err := newServiceForTest(repo).SearchNotes(context.Background(), "golang", "cofre-a", 0, 10)
+
+	require.NoError(t, err)
+	assert.Equal(t, "cofre-a", repo.searchArgs.vaultID)
+}
+
 func TestSearch_RepoRetornaErro_Propagado(t *testing.T) {
 	repo := &fakeRepo{searchErr: errors.New("erro ao buscar")}
 	svc := newServiceForTest(repo)
 
-	_, err := svc.SearchNotes(context.Background(), "golang", 0, 10)
+	_, err := svc.SearchNotes(context.Background(), "golang", "", 0, 10)
 
 	require.Error(t, err)
 	assert.True(t, repo.searchArgs.called)
@@ -459,7 +527,7 @@ func TestSearch_SemResultados_RetornaSliceVazio(t *testing.T) {
 	repo := &fakeRepo{searchResult: []notes.SearchResult{}}
 	svc := newServiceForTest(repo)
 
-	results, err := svc.SearchNotes(context.Background(), "golang", 0, 10)
+	results, err := svc.SearchNotes(context.Background(), "golang", "", 0, 10)
 
 	require.NoError(t, err)
 	assert.Empty(t, results)
@@ -473,7 +541,7 @@ func TestSearch_ComResultados_RetornaSomenteIdPathUpdatedAt(t *testing.T) {
 	}}
 	svc := newServiceForTest(repo)
 
-	results, err := svc.SearchNotes(context.Background(), "golang", 0, 10)
+	results, err := svc.SearchNotes(context.Background(), "golang", "", 0, 10)
 
 	require.NoError(t, err)
 	require.Len(t, results, 2)
@@ -493,7 +561,7 @@ func TestSearch_PaginacaoComOffset_PassaParametrosCorretosAoRepo(t *testing.T) {
 	}}
 	svc := newServiceForTest(repo)
 
-	results, err := svc.SearchNotes(context.Background(), "golang", 1, 2)
+	results, err := svc.SearchNotes(context.Background(), "golang", "", 1, 2)
 
 	require.NoError(t, err)
 	require.Len(t, results, 2)
@@ -509,7 +577,7 @@ func TestSearch_LimitZero_UsaPadraoDeZ(t *testing.T) {
 	repo := &fakeRepo{searchResult: make([]notes.SearchResult, 10)}
 	svc := newServiceForTest(repo)
 
-	_, err := svc.SearchNotes(context.Background(), "golang", 0, 0)
+	_, err := svc.SearchNotes(context.Background(), "golang", "", 0, 0)
 
 	require.NoError(t, err)
 	assert.Equal(t, int32(10), repo.searchArgs.limit)
@@ -519,7 +587,7 @@ func TestSearch_LimitNegativo_UsaPadraoDeZ(t *testing.T) {
 	repo := &fakeRepo{searchResult: make([]notes.SearchResult, 10)}
 	svc := newServiceForTest(repo)
 
-	_, err := svc.SearchNotes(context.Background(), "golang", 0, -5)
+	_, err := svc.SearchNotes(context.Background(), "golang", "", 0, -5)
 
 	require.NoError(t, err)
 	assert.Equal(t, int32(10), repo.searchArgs.limit)
@@ -529,7 +597,7 @@ func TestSearch_OffsetNegativo_UsaZero(t *testing.T) {
 	repo := &fakeRepo{searchResult: []notes.SearchResult{}}
 	svc := newServiceForTest(repo)
 
-	_, err := svc.SearchNotes(context.Background(), "golang", -10, 5)
+	_, err := svc.SearchNotes(context.Background(), "golang", "", -10, 5)
 
 	require.NoError(t, err)
 	assert.Equal(t, int32(0), repo.searchArgs.offset)
@@ -539,7 +607,7 @@ func TestSearch_PassaQueryCruaAoRepo(t *testing.T) {
 	repo := &fakeRepo{searchResult: []notes.SearchResult{}}
 	svc := newServiceForTest(repo)
 
-	_, err := svc.SearchNotes(context.Background(), "test", 0, 10)
+	_, err := svc.SearchNotes(context.Background(), "test", "", 0, 10)
 	require.NoError(t, err)
 
 	assert.Equal(t, "test", repo.searchArgs.query)
@@ -549,7 +617,7 @@ func TestSearch_QueryVazia_PassaVaziaAoRepo(t *testing.T) {
 	repo := &fakeRepo{searchResult: []notes.SearchResult{}}
 	svc := newServiceForTest(repo)
 
-	_, err := svc.SearchNotes(context.Background(), "", 0, 10)
+	_, err := svc.SearchNotes(context.Background(), "", "", 0, 10)
 	require.NoError(t, err)
 
 	assert.Equal(t, "", repo.searchArgs.query)
@@ -596,4 +664,13 @@ func TestCreate_CofreComEspacos_GravaNoCofreSemEspacos(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Equal(t, "cofre-1", note.VaultID)
+}
+
+func TestCreate_DevolveOSHA256GravadoPeloRepositorio(t *testing.T) {
+	svc := newServiceForTest(&fakeRepo{storedSHA256: "hash-do-banco"})
+
+	got, err := svc.Create(context.Background(), "cofre-teste", "a.md", "ação")
+
+	require.NoError(t, err)
+	assert.Equal(t, "hash-do-banco", got.ContentSHA256)
 }

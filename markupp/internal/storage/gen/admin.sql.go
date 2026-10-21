@@ -61,6 +61,20 @@ func (q *Queries) DeleteMember(ctx context.Context, userID string) error {
 	return err
 }
 
+const deleteTenant = `-- name: DeleteTenant :execrows
+DELETE FROM tenants WHERE id = $1
+`
+
+// Só o owner passa pela política. O tenant fica explícito para o apagar não depender só
+// do RLS.
+func (q *Queries) DeleteTenant(ctx context.Context, id string) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteTenant, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const getMemberRole = `-- name: GetMemberRole :one
 SELECT role FROM tenant_memberships WHERE user_id = $1 FOR UPDATE
 `
