@@ -55,7 +55,7 @@ curl_api() {
 }
 
 login_smoke() {
-  curl_api -X POST "$URL/auth/login" \
+  curl_api -X POST "$URL/v1/auth/login" \
     -H 'Content-Type: application/json' \
     -d '{"email":"admin@markupp.local","password":"senhaForte123"}' \
     | grep -o '"access_token":"[^"]*"' | cut -d'"' -f4
@@ -63,7 +63,7 @@ login_smoke() {
 
 cria_nota_smoke() {
   local token="$1"
-  curl_api -X POST "$URL/notes" \
+  curl_api -X POST "$URL/v1/notes" \
     -H "Authorization: Bearer $token" \
     -H 'Content-Type: application/json' \
     -d '{"path":"smoke.md","content":"oi"}'
@@ -71,7 +71,7 @@ cria_nota_smoke() {
 
 testa_api() {
   for _ in $(seq 1 30); do
-    if ! curl_api "$URL/healthz"; then
+    if ! curl_api "$URL/v1/healthz"; then
       sleep 5
       continue
     fi
@@ -114,7 +114,7 @@ cmd_up() {
   sobe_cluster
   instala_painel
   aplica_stack
-  echo "API de pé: curl -k --resolve markupp.local:8443:127.0.0.1 $URL/healthz"
+  echo "API de pé: curl -k --resolve markupp.local:8443:127.0.0.1 $URL/v1/healthz"
   echo "painel: make kind-painel"
 }
 

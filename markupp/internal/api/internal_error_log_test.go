@@ -9,6 +9,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/oauth"
 )
 
 // logCapturado troca o log padrão por um que escreve no buffer até o fim do teste.
@@ -30,7 +32,24 @@ func TestLogin_ErroInesperado_RegistraOErroNoLog(t *testing.T) {
 	router.ServeHTTP(rec, req)
 
 	assert.Equal(t, http.StatusInternalServerError, rec.Code)
+	assert.Contains(t, buf.String(), `"msg":"falha na autenticacao"`)
 	assert.Contains(t, buf.String(), "banco fora", "o 500 sem log esconde a causa de quem opera")
+}
+
+func TestOAuth_ErroInesperado_RegistraComMensagemDoOAuth(t *testing.T) {
+	for _, req := range []*http.Request{
+		httptest.NewRequest(http.MethodGet, "/oauth/authorize?client_id=c1", nil),
+		httptest.NewRequest(http.MethodGet, "/v1/oauth/requests/p1", nil),
+	} {
+		buf := logCapturado(t)
+		req.Header.Set("Authorization", "Bearer token-valido")
+
+		rec := serveOAuth(&fakeOAuthService{err: errors.New("banco fora")}, req)
+
+		assert.Equal(t, http.StatusInternalServerError, rec.Code, req.URL.Path)
+		assert.Contains(t, buf.String(), `"msg":"falha no oauth"`, req.URL.Path)
+		assert.Contains(t, buf.String(), "banco fora", req.URL.Path)
+	}
 }
 
 func TestAccountEmail_ErroInesperado_RegistraOErroNoLog(t *testing.T) {
@@ -39,5 +58,30 @@ func TestAccountEmail_ErroInesperado_RegistraOErroNoLog(t *testing.T) {
 	rec := accountEmailRequest(&fakeAccountEmailService{err: errors.New("banco fora")}, http.MethodPost, "/auth/password/reset", `{"token":"x","password":"senhaNova123"}`, false)
 
 	assert.Equal(t, http.StatusInternalServerError, rec.Code)
+	assert.Contains(t, buf.String(), `"msg":"falha no email da conta"`)
 	assert.Contains(t, buf.String(), "banco fora")
+}
+
+func TestMyInvites_ErroInesperado_RegistraComMensagemDosConvitesDaConta(t *testing.T) {
+	buf := logCapturado(t)
+
+	rec := myInviteRequest(&fakeAuthService{answerErr: errors.New("banco fora")}, http.MethodPost, "/me/invites/c1/accept")
+
+	assert.Equal(t, http.StatusInternalServerError, rec.Code)
+	assert.Contains(t, buf.String(), `"msg":"falha nos convites da conta"`)
+	assert.Contains(t, buf.String(), "banco fora")
+}
+
+func TestOAuthAuthorize_RecusaComCausaInterna_RegistraACausaSemMandarAoCliente(t *testing.T) {
+	buf := logCapturado(t)
+	recusa := &oauth.ProtocolError{Code: "invalid_request", Description: "documento invalido; esperado documento valido"}
+	svc := &fakeOAuthService{err: recusa.WithInternalCause(errors.New("dial tcp 10.0.0.7:443: connection refused"))}
+
+	rec := authorizeRequest(svc, "client_id=https://cliente.exemplo.dev/doc.json")
+
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+	assert.Contains(t, rec.Body.String(), "documento invalido")
+	assert.NotContains(t, rec.Body.String(), "10.0.0.7")
+	assert.Contains(t, buf.String(), `"msg":"recusa do oauth com causa interna"`)
+	assert.Contains(t, buf.String(), "10.0.0.7")
 }

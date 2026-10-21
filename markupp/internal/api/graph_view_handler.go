@@ -25,8 +25,8 @@ type localGraphQuery struct {
 // quando o cliente aceita e validado pela versão do grafo do cofre.
 func mountGraphViewRoutes(r chi.Router, graph NoteGraph) {
 	g := r.With(middleware.Compress(graphCompressionLevel))
-	g.Get("/v1/vaults/{id}/graph", serveGraph(readGraphFilter, graph.VaultGraphVersion, graph.VaultGraph))
-	g.Get("/v1/notes/{id}/graph", serveGraph(readLocalGraphQuery, graph.NoteGraphVersion,
+	g.Get("/vaults/{id}/graph", serveGraph(readGraphFilter, graph.VaultGraphVersion, graph.VaultGraph))
+	g.Get("/notes/{id}/graph", serveGraph(readLocalGraphQuery, graph.NoteGraphVersion,
 		func(ctx context.Context, noteID string, q localGraphQuery) (notes.Graph, error) {
 			return graph.LocalGraph(ctx, noteID, q.depth, q.filter)
 		}))
