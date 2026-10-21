@@ -43,9 +43,10 @@ Rails.application.configure do
   # Don't log any deprecations.
   config.active_support.report_deprecations = false
 
-  # Sem cache_store aqui vale o padrão do Rails, [:file_store, "tmp/cache/"]: cada entrada vira um arquivo no disco
-  # do container, e a vencida só sai quando a mesma chave é lida de novo ou com Rails.cache.cleanup.
-  # config.cache_store = :mem_cache_store
+  # Cache na memória do processo, com teto de 64 MB: o Puma roda um processo só (config/puma.rb), então as threads
+  # dividem o mesmo cache, como dividem as travas da renovação do token. Cheio, sai a entrada usada há mais tempo. Guarda
+  # os pares renovados do refresh (30 s) e os grafos (Graph::STORED_FOR, 6 h); um reinício só obriga a ler de novo.
+  config.cache_store = :memory_store, { size: 64.megabytes }
 
   # Enable locale fallbacks for I18n (makes lookups for any locale fall back to
   # the I18n.default_locale when a translation cannot be found).
