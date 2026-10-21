@@ -12,7 +12,8 @@
                         graph_filters_code_value: code.(:graph_filters),
                         graph_filters_clear_code_value: code.(:graph_clear_filters), focus_region: "graph-filters", focus_region_target: "summary",
                         action: "change->graph-filters#change keydown@window->graph-filters#press keydown.esc@window->graph-filters#close " \
-                                "graph-view:clear-filters@window->graph-filters#clear",
+                                "graph-view:clear-filters@window->graph-filters#clear popstate@window->graph-filters#restore " \
+                                "turbo:before-visit@document->graph-filters#keepForTurbo",
                         esc_layer: "" } do %>
   <%= tag.summary class: "graph-filters-heading", title: "#{title} (#{shortcut_key(:graph_filters)})",
                   aria: { keyshortcuts: shortcut_key(:graph_filters).upcase } do %>

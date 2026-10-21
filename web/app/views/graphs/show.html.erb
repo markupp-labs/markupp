@@ -3,6 +3,8 @@
     lateral mostram essa nota, como na página dela (notes/_form). Os filtros (graphs/_filters) ficam no cabeçalho, e a
     query da página diz quais valem; com eles escondendo tudo, o canvas diz isso no lugar do vazio do cofre. %>
 <% content_for :title, t(".title") %>
+<%# Fora do cache do Turbo: o voltar de outra página pede o grafo com os filtros da query (graph_filters_controller.js). %>
+<% content_for :head, tag.meta(name: "turbo-cache-control", content: "no-cache") %>
 <% content_for :sidebar, render("notes/sidebar", tree: @tree, current: @origin) %>
 <% if @origin %>
   <% content_for :note_links, note_links_frame(@origin) %>
