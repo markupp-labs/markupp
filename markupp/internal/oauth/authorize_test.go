@@ -3,6 +3,7 @@ package oauth_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -152,6 +153,22 @@ func TestStartAuthorization_FalhaAoCriar_DevolveErroEmbrulhado(t *testing.T) {
 	requireNotProtocolError(t, err, repo.createErr)
 }
 
+func TestStartAuthorization_ClienteApagadoAntesDeGravarOPedido_RecusaComoNaoRegistrado(t *testing.T) {
+	naoRegistrado := validAuthorizeParams()
+	naoRegistrado.ClientID = testClientID + "-apagado"
+	repo := testRepositoryWithClient()
+	_, esperado := newTestService(repo).StartAuthorization(context.Background(), naoRegistrado)
+	repo.createErr = fmt.Errorf("gravar pedido: %w", oauth.ErrClientNotFound)
+	params := validAuthorizeParams()
+	params.ClientID = naoRegistrado.ClientID
+	repo.clients[params.ClientID] = repo.clients[testClientID]
+
+	_, err := newTestService(repo).StartAuthorization(context.Background(), params)
+
+	requireProtocolError(t, err, "invalid_request", "", "")
+	assert.Equal(t, esperado.Error(), err.Error())
+}
+
 func TestStartAuthorization_ValorRecebidoNaDescricao_FicaNoConjuntoDaRFC6749(t *testing.T) {
 	repo := testRepositoryWithClient()
 	params := validAuthorizeParams()
@@ -168,7 +185,7 @@ func TestStartAuthorization_ValorRecebidoNaDescricao_FicaNoConjuntoDaRFC6749(t *
 	}
 }
 
-func TestStartAuthorization_SemResourcesConfigurados_DescricaoCompleta(t *testing.T) {
+func TestStartAuthorization_SemResourcesConfigurados_ListaAAPI(t *testing.T) {
 	cfg := testServiceConfig()
 	cfg.Resources = nil
 	service := oauth.NewService(testRepositoryWithClient(), cfg, nil, nil, func() time.Time { return testNow }, nil, nil)
@@ -178,6 +195,5 @@ func TestStartAuthorization_SemResourcesConfigurados_DescricaoCompleta(t *testin
 	var protocolErr *oauth.ProtocolError
 	require.True(t, errors.As(err, &protocolErr))
 	assert.Equal(t, "invalid_target", protocolErr.Code)
-	assert.NotContains(t, protocolErr.Description, "um de ")
-	assert.Contains(t, protocolErr.Description, "nenhum servidor protegido configurado")
+	assert.Contains(t, protocolErr.Description, "um de '"+testIssuer+"'", "a API, pelo issuer, segue aceita como resource")
 }

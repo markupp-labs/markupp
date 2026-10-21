@@ -15,7 +15,7 @@ import (
 const clienteCIMD = "https://agente.example/oauth/client.json"
 
 func documentoCIMD(nome string, redirects ...string) oauth.Client {
-	return oauth.Client{ID: clienteCIMD, Name: nome, RedirectURIs: redirects}
+	return oauth.Client{ID: clienteCIMD, Name: nome, RedirectURIs: redirects, Source: oauth.ClientSourceCIMD}
 }
 
 func TestPostgresOAuthRepo_SaveCIMDClient_CriaCliente(t *testing.T) {
@@ -52,9 +52,9 @@ func TestPostgresOAuthRepo_SaveCIMDClient_NaoSobrescreveClienteDCR(t *testing.T)
 
 	require.ErrorIs(t, err, oauth.ErrClientSourceConflict)
 	assert.ErrorContains(t, err, `esperado source "cimd"`)
-	got, err := repo.GetClient(ctx, "c1")
+	got, err := repo.GetClient(ctx, "c1", time.Time{})
 	require.NoError(t, err)
-	assert.Equal(t, oauth.Client{ID: "c1", Name: "Agente", RedirectURIs: []string{"http://127.0.0.1/cb"}}, got)
+	assert.Equal(t, oauth.Client{ID: "c1", Name: "Agente", RedirectURIs: []string{"http://127.0.0.1/cb"}, Source: oauth.ClientSourceDCR}, got)
 	assert.Equal(t, 1, countRows(t, pool, `SELECT count(*) FROM oauth_clients
 		WHERE id = 'c1' AND source = 'dcr' AND metadata_expires_at IS NULL`))
 }

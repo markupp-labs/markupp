@@ -42,14 +42,21 @@ var declaredOAuthPolicies = map[string]oauthRoutePolicy{
 	"GET /v1/auth/me": anyScopeRoute, "GET /v1/me/tenants": anyScopeRoute,
 	"GET /v1/notes": notesRead, "GET /v1/notes/search": notesRead, "GET /v1/notes/{id}": notesRead,
 	"POST /v1/notes": notesWrite, "PUT /v1/notes/{id}": notesWrite, "DELETE /v1/notes/{id}": notesWrite,
-	"GET /v1/users": adminScope, "GET /v1/users/invites": adminScope, "POST /v1/users/invites": adminScope,
+	"GET /v1/vaults/{id}/notes": notesRead, "POST /v1/vaults/{id}/notes": notesWrite, "GET /v1/search/notes": notesRead,
+	"GET /v1/notes/{id}/links": notesRead, "GET /v1/notes/{id}/backlinks": notesRead, "GET /v1/vaults/{id}/links": notesRead,
+	"GET /v1/notes/{id}/mentions": notesRead, "GET /v1/notes/{id}/backmentions": notesRead,
+	"GET /v1/notes/{id}/suggestions": notesRead, "GET /v1/vaults/{id}/communities": notesRead,
+	"GET /v1/vaults/{id}/communities/{cid}": notesRead, "GET /v1/vaults/{id}/graph": notesRead,
+	"GET /v1/notes/{id}/graph": notesRead,
+	"GET /v1/users":            adminScope, "GET /v1/users/invites": adminScope, "POST /v1/users/invites": adminScope,
 	"PATCH /v1/users/{id}": adminScope, "DELETE /v1/users/{id}": adminScope, "DELETE /v1/users/invites/{id}": adminScope,
 	"POST /v1/tenants": adminScope, "GET /v1/me/invites": adminScope,
 	"POST /v1/me/invites/{id}/accept": adminScope, "POST /v1/me/invites/{id}/decline": adminScope,
 }
 
-// v1OnlyPrefixes são as rotas sem o alias obsoleto sem prefixo.
-var v1OnlyPrefixes = []string{"/v1/me/authorizations", "/v1/oauth/requests"}
+// v1OnlyPrefixes são as rotas sem o alias obsoleto sem prefixo, já com os parâmetros
+// trocados por x1: as do OAuth e as da API orientada a recursos (ADR-0040).
+var v1OnlyPrefixes = []string{"/v1/me/authorizations", "/v1/oauth/requests", "/v1/vaults/", "/v1/search/", "/v1/notes/x1/"}
 
 const allOAuthScopes = "notas:leitura notas:escrita administracao"
 

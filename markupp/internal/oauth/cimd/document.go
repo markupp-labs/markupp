@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net/url"
-	"strings"
 	"time"
 )
 
@@ -35,15 +33,16 @@ func parseDocument(body []byte, clientID string) (ClientMetadata, error) {
 	if err := doc.validate(clientID); err != nil {
 		return ClientMetadata{}, err
 	}
-	return ClientMetadata{ClientID: doc.ClientID, Name: doc.ClientName, RedirectURIs: doc.RedirectURIs}, nil
+	name, err := SanitizeClientName(doc.ClientName)
+	if err != nil {
+		return ClientMetadata{}, fmt.Errorf("%w: %w", ErrInvalidDocument, err)
+	}
+	return ClientMetadata{ClientID: doc.ClientID, Name: name, RedirectURIs: doc.RedirectURIs}, nil
 }
 
 func (d metadataDocument) validate(clientID string) error {
 	if d.ClientID != clientID {
 		return fmt.Errorf("%w: client_id %q; esperado igual a URL buscada %q", ErrInvalidDocument, d.ClientID, clientID)
-	}
-	if strings.TrimSpace(d.ClientName) == "" {
-		return fmt.Errorf("%w: client_name %q; esperado texto nao vazio", ErrInvalidDocument, d.ClientName)
 	}
 	if d.TokenEndpointAuthMethod != nil && *d.TokenEndpointAuthMethod != "none" {
 		return fmt.Errorf("%w: token_endpoint_auth_method %q; esperado ausente ou \"none\"",
@@ -57,49 +56,9 @@ func validateRedirectURIs(uris []string) error {
 		return fmt.Errorf("%w: redirect_uris vazio; esperado lista com ao menos uma URL absoluta", ErrInvalidDocument)
 	}
 	for _, raw := range uris {
-		if reason := redirectURIProblem(raw); reason != "" {
-			return fmt.Errorf("%w: redirect_uri %q %s; esperado %s", ErrInvalidDocument, raw, reason, redirectURIShape)
+		if reason := RedirectURIProblem(raw); reason != "" {
+			return fmt.Errorf("%w: redirect_uri %q %s; esperado %s", ErrInvalidDocument, raw, reason, RedirectURIShape)
 		}
 	}
 	return nil
-}
-
-const redirectURIShape = "https com host, http em 127.0.0.1 ou [::1], ou esquema privado (RFC 8252, secao 7.1) " +
-	"fora de javascript, data, vbscript e file, sem fragmento e sem credenciais"
-
-// forbiddenRedirectSchemes são os esquemas que executam código ou leem arquivo local; o
-// vazio é a URL relativa. O url.Parse já devolve o esquema em minúsculas.
-var forbiddenRedirectSchemes = map[string]bool{"": true, "javascript": true, "data": true, "vbscript": true, "file": true}
-
-func redirectURIProblem(raw string) string {
-	parsed, err := url.Parse(raw)
-	switch {
-	case err != nil:
-		return "nao e uma URL"
-	case strings.Contains(raw, "#"):
-		return "contem fragmento"
-	case parsed.User != nil:
-		return "contem credenciais"
-	}
-	return redirectSchemeProblem(parsed)
-}
-
-// redirectSchemeProblem aceita qualquer esquema privado, com ou sem ponto, fora dos
-// proibidos. URL opaca de http/https sai sem host.
-func redirectSchemeProblem(parsed *url.URL) string {
-	switch parsed.Scheme {
-	case "https":
-		if parsed.Hostname() == "" {
-			return "https sem host"
-		}
-	case "http":
-		if host := parsed.Hostname(); host != "127.0.0.1" && host != "::1" {
-			return "http fora de 127.0.0.1 e [::1]"
-		}
-	default:
-		if forbiddenRedirectSchemes[parsed.Scheme] {
-			return "esquema proibido ou URL relativa"
-		}
-	}
-	return ""
 }

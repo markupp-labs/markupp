@@ -22,7 +22,7 @@ func (r *PostgresOAuthRepository) GetFreshCIMDClient(ctx context.Context, id str
 	if err != nil {
 		return oauth.Client{}, fmt.Errorf("buscar cliente cimd %s: %w", oauth.ClientValue(id), err)
 	}
-	return oauth.Client{ID: row.ID, Name: row.Name, RedirectURIs: row.RedirectUris}, nil
+	return oauth.Client{ID: row.ID, Name: row.Name, RedirectURIs: row.RedirectUris, Source: row.Source}, nil
 }
 
 // SaveCIMDClient cria ou atualiza o cliente CIMD com o documento buscado em now e válido

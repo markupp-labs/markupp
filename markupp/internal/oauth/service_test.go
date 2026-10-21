@@ -37,6 +37,7 @@ func testServiceConfig() oauth.ServiceConfig {
 		CodeTTL:         time.Minute,
 		ResourceSecrets: map[string]string{testResource: testResourceSecret},
 		ExchangeTTL:     5 * time.Minute,
+		DCRPendingTTL:   testDCRPendingTTL,
 	}
 }
 
@@ -70,7 +71,7 @@ func testChallenge(verifier string) string {
 }
 
 func testClient() oauth.Client {
-	return oauth.Client{ID: testClientID, Name: "Cliente de teste", RedirectURIs: []string{testRedirectURI}}
+	return oauth.Client{ID: testClientID, Name: "Cliente de teste", RedirectURIs: []string{testRedirectURI}, Source: oauth.ClientSourceCIMD}
 }
 
 func testRepositoryWithClient() *fakeOAuthRepository {

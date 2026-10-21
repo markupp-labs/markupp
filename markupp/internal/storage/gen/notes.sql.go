@@ -8,12 +8,15 @@ package gen
 import (
 	"context"
 	"time"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const createNote = `-- name: CreateNote :exec
+const createNote = `-- name: CreateNote :one
 
 INSERT INTO notes (id, vault_id, path, content, created_at, updated_at)
 VALUES ($1, $2, $3, $4, $5, $6)
+RETURNING id, path, content, created_at, updated_at, tenant_id, vault_id, content_sha256
 `
 
 type CreateNoteParams struct {
@@ -27,8 +30,8 @@ type CreateNoteParams struct {
 
 // O tenant da nota vem do DEFAULT da coluna, lido da sessão, e o RLS recorta toda
 // leitura e escrita ao tenant e aos cofres do usuário: nenhuma query repete o filtro.
-func (q *Queries) CreateNote(ctx context.Context, arg CreateNoteParams) error {
-	_, err := q.db.Exec(ctx, createNote,
+func (q *Queries) CreateNote(ctx context.Context, arg CreateNoteParams) (Note, error) {
+	row := q.db.QueryRow(ctx, createNote,
 		arg.ID,
 		arg.VaultID,
 		arg.Path,
@@ -36,7 +39,18 @@ func (q *Queries) CreateNote(ctx context.Context, arg CreateNoteParams) error {
 		arg.CreatedAt,
 		arg.UpdatedAt,
 	)
-	return err
+	var i Note
+	err := row.Scan(
+		&i.ID,
+		&i.Path,
+		&i.Content,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.TenantID,
+		&i.VaultID,
+		&i.ContentSha256,
+	)
+	return i, err
 }
 
 const defaultVaultID = `-- name: DefaultVaultID :one
@@ -66,7 +80,7 @@ func (q *Queries) DeleteNote(ctx context.Context, id string) (int64, error) {
 }
 
 const getNoteByID = `-- name: GetNoteByID :one
-SELECT id, path, content, created_at, updated_at, tenant_id, vault_id FROM notes WHERE id = $1
+SELECT id, path, content, created_at, updated_at, tenant_id, vault_id, content_sha256 FROM notes WHERE id = $1
 `
 
 func (q *Queries) GetNoteByID(ctx context.Context, id string) (Note, error) {
@@ -80,12 +94,41 @@ func (q *Queries) GetNoteByID(ctx context.Context, id string) (Note, error) {
 		&i.UpdatedAt,
 		&i.TenantID,
 		&i.VaultID,
+		&i.ContentSha256,
+	)
+	return i, err
+}
+
+const getNoteRank = `-- name: GetNoteRank :one
+SELECT c.pagerank, c.in_degree, c.out_degree, m.community_id
+FROM notes n
+LEFT JOIN note_centrality c ON c.note_id = n.id
+LEFT JOIN note_communities m ON m.note_id = n.id
+WHERE n.id = $1
+`
+
+type GetNoteRankRow struct {
+	Pagerank    pgtype.Float8
+	InDegree    pgtype.Int4
+	OutDegree   pgtype.Int4
+	CommunityID pgtype.Int8
+}
+
+// Organização derivada da nota, nula antes do segundo estágio.
+func (q *Queries) GetNoteRank(ctx context.Context, noteID string) (GetNoteRankRow, error) {
+	row := q.db.QueryRow(ctx, getNoteRank, noteID)
+	var i GetNoteRankRow
+	err := row.Scan(
+		&i.Pagerank,
+		&i.InDegree,
+		&i.OutDegree,
+		&i.CommunityID,
 	)
 	return i, err
 }
 
 const listNotes = `-- name: ListNotes :many
-SELECT id, path, content, created_at, updated_at, tenant_id, vault_id FROM notes
+SELECT id, path, content, created_at, updated_at, tenant_id, vault_id, content_sha256 FROM notes
 ORDER BY path, vault_id
 `
 
@@ -106,6 +149,171 @@ func (q *Queries) ListNotes(ctx context.Context) ([]Note, error) {
 			&i.UpdatedAt,
 			&i.TenantID,
 			&i.VaultID,
+			&i.ContentSha256,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listVaultNotes = `-- name: ListVaultNotes :many
+SELECT n.id, n.vault_id, n.path, n.content_sha256, n.updated_at,
+       c.pagerank, c.in_degree, c.out_degree, m.community_id
+FROM notes n
+LEFT JOIN note_centrality c ON c.note_id = n.id
+LEFT JOIN note_communities m ON m.note_id = n.id
+WHERE n.vault_id = $1
+  AND ($2::bool IS NULL OR COALESCE(c.in_degree + c.out_degree = 0, false) = $2::bool)
+  AND ($3::bigint IS NULL OR m.community_id = $3::bigint)
+ORDER BY
+    CASE WHEN $4::text = 'pagerank' AND $5::bool THEN c.pagerank END DESC NULLS LAST,
+    CASE WHEN $4::text = 'pagerank' AND NOT $5::bool THEN c.pagerank END NULLS LAST,
+    CASE WHEN $4::text = 'degree' AND $5::bool THEN c.in_degree + c.out_degree END DESC NULLS LAST,
+    CASE WHEN $4::text = 'degree' AND NOT $5::bool THEN c.in_degree + c.out_degree END NULLS LAST,
+    CASE WHEN $4::text = 'updated' AND $5::bool THEN n.updated_at END DESC,
+    CASE WHEN $4::text = 'updated' AND NOT $5::bool THEN n.updated_at END,
+    n.path, n.id
+LIMIT $7 OFFSET $6
+`
+
+type ListVaultNotesParams struct {
+	VaultID     string
+	Orphan      pgtype.Bool
+	CommunityID pgtype.Int8
+	Sort        string
+	Descending  bool
+	PageOffset  int32
+	PageLimit   int32
+}
+
+type ListVaultNotesRow struct {
+	ID            string
+	VaultID       string
+	Path          string
+	ContentSha256 []byte
+	UpdatedAt     time.Time
+	Pagerank      pgtype.Float8
+	InDegree      pgtype.Int4
+	OutDegree     pgtype.Int4
+	CommunityID   pgtype.Int8
+}
+
+// A coleção não lê o conteúdo, que só GetNoteByID devolve.
+// A nota sem organização derivada ainda não passou pelo segundo estágio: entra em
+// orphan=false, como no grafo, fica fora do filtro de comunidade e vai para o fim das
+// ordens por PageRank e por grau. orphan=true vai por ListVaultOrphanNotes.
+func (q *Queries) ListVaultNotes(ctx context.Context, arg ListVaultNotesParams) ([]ListVaultNotesRow, error) {
+	rows, err := q.db.Query(ctx, listVaultNotes,
+		arg.VaultID,
+		arg.Orphan,
+		arg.CommunityID,
+		arg.Sort,
+		arg.Descending,
+		arg.PageOffset,
+		arg.PageLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListVaultNotesRow
+	for rows.Next() {
+		var i ListVaultNotesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.VaultID,
+			&i.Path,
+			&i.ContentSha256,
+			&i.UpdatedAt,
+			&i.Pagerank,
+			&i.InDegree,
+			&i.OutDegree,
+			&i.CommunityID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listVaultOrphanNotes = `-- name: ListVaultOrphanNotes :many
+SELECT n.id, n.vault_id, n.path, n.content_sha256, n.updated_at,
+       c.pagerank, c.in_degree, c.out_degree, m.community_id
+FROM notes n
+LEFT JOIN note_centrality c ON c.note_id = n.id
+LEFT JOIN note_communities m ON m.note_id = n.id
+WHERE c.vault_id = $1 AND c.in_degree = 0 AND c.out_degree = 0
+  AND ($2::bigint IS NULL OR m.community_id = $2::bigint)
+ORDER BY
+    CASE WHEN $3::text = 'pagerank' AND $4::bool THEN c.pagerank END DESC NULLS LAST,
+    CASE WHEN $3::text = 'pagerank' AND NOT $4::bool THEN c.pagerank END NULLS LAST,
+    CASE WHEN $3::text = 'degree' AND $4::bool THEN c.in_degree + c.out_degree END DESC NULLS LAST,
+    CASE WHEN $3::text = 'degree' AND NOT $4::bool THEN c.in_degree + c.out_degree END NULLS LAST,
+    CASE WHEN $3::text = 'updated' AND $4::bool THEN n.updated_at END DESC,
+    CASE WHEN $3::text = 'updated' AND NOT $4::bool THEN n.updated_at END,
+    n.path, n.id
+LIMIT $6 OFFSET $5
+`
+
+type ListVaultOrphanNotesParams struct {
+	VaultID     string
+	CommunityID pgtype.Int8
+	Sort        string
+	Descending  bool
+	PageOffset  int32
+	PageLimit   int32
+}
+
+type ListVaultOrphanNotesRow struct {
+	ID            string
+	VaultID       string
+	Path          string
+	ContentSha256 []byte
+	UpdatedAt     time.Time
+	Pagerank      pgtype.Float8
+	InDegree      pgtype.Int4
+	OutDegree     pgtype.Int4
+	CommunityID   pgtype.Int8
+}
+
+// As órfãs do cofre com o predicado fixo do índice parcial, que o plano genérico de
+// ListVaultNotes não usa porque lá o filtro depende do parâmetro. O LEFT JOIN mantém
+// as colunas da linha iguais às de ListVaultNotes; o filtro em c o torna interno.
+func (q *Queries) ListVaultOrphanNotes(ctx context.Context, arg ListVaultOrphanNotesParams) ([]ListVaultOrphanNotesRow, error) {
+	rows, err := q.db.Query(ctx, listVaultOrphanNotes,
+		arg.VaultID,
+		arg.CommunityID,
+		arg.Sort,
+		arg.Descending,
+		arg.PageOffset,
+		arg.PageLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListVaultOrphanNotesRow
+	for rows.Next() {
+		var i ListVaultOrphanNotesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.VaultID,
+			&i.Path,
+			&i.ContentSha256,
+			&i.UpdatedAt,
+			&i.Pagerank,
+			&i.InDegree,
+			&i.OutDegree,
+			&i.CommunityID,
 		); err != nil {
 			return nil, err
 		}
@@ -118,16 +326,24 @@ func (q *Queries) ListNotes(ctx context.Context) ([]Note, error) {
 }
 
 const searchNotes = `-- name: SearchNotes :many
-SELECT id, vault_id, path, updated_at FROM notes
-WHERE content ILIKE $1
-ORDER BY updated_at DESC
-LIMIT $2 OFFSET $3
+SELECT n.id, n.vault_id, n.path, n.updated_at,
+       ts_headline($1::text::regconfig, n.content, q.query,
+                   'StartSel=' || chr(2) || ', StopSel=' || chr(3))::text AS snippet,
+       ts_rank(s.document, q.query, 1)::float8 AS rank
+FROM websearch_to_tsquery($1::text::regconfig, $2::text) AS q (query)
+JOIN note_search_index s ON s.document @@ q.query
+JOIN notes n ON n.id = s.note_id
+WHERE $3::text = '' OR n.vault_id = $3::text
+ORDER BY rank DESC, n.id
+LIMIT $5 OFFSET $4
 `
 
 type SearchNotesParams struct {
-	Content string
-	Limit   int32
-	Offset  int32
+	SearchConfig string
+	Query        string
+	VaultID      string
+	PageOffset   int32
+	PageLimit    int32
 }
 
 type SearchNotesRow struct {
@@ -135,10 +351,23 @@ type SearchNotesRow struct {
 	VaultID   string
 	Path      string
 	UpdatedAt time.Time
+	Snippet   string
+	Rank      float64
 }
 
+// Lê só o índice: a nota ainda não indexada fica fora (ADR-0012). Consulta sem lexema,
+// vazia ou só de stopwords, não casa com nada. O id desempata o ranking para a
+// paginação ser estável. O trecho marca os termos com U+0002 e U+0003, e não com
+// HTML, para o cliente escapar o texto antes de trocar os marcadores por destaque.
+// Cofre vazio busca em todos os cofres do ator.
 func (q *Queries) SearchNotes(ctx context.Context, arg SearchNotesParams) ([]SearchNotesRow, error) {
-	rows, err := q.db.Query(ctx, searchNotes, arg.Content, arg.Limit, arg.Offset)
+	rows, err := q.db.Query(ctx, searchNotes,
+		arg.SearchConfig,
+		arg.Query,
+		arg.VaultID,
+		arg.PageOffset,
+		arg.PageLimit,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -151,6 +380,8 @@ func (q *Queries) SearchNotes(ctx context.Context, arg SearchNotesParams) ([]Sea
 			&i.VaultID,
 			&i.Path,
 			&i.UpdatedAt,
+			&i.Snippet,
+			&i.Rank,
 		); err != nil {
 			return nil, err
 		}
@@ -166,7 +397,7 @@ const updateNoteForced = `-- name: UpdateNoteForced :one
 UPDATE notes
 SET path = $1, content = $2, updated_at = $3
 WHERE id = $4
-RETURNING id, path, content, created_at, updated_at, tenant_id, vault_id
+RETURNING id, path, content, created_at, updated_at, tenant_id, vault_id, content_sha256
 `
 
 type UpdateNoteForcedParams struct {
@@ -192,6 +423,7 @@ func (q *Queries) UpdateNoteForced(ctx context.Context, arg UpdateNoteForcedPara
 		&i.UpdatedAt,
 		&i.TenantID,
 		&i.VaultID,
+		&i.ContentSha256,
 	)
 	return i, err
 }
@@ -200,7 +432,7 @@ const updateNoteWithVersionCheck = `-- name: UpdateNoteWithVersionCheck :one
 UPDATE notes
 SET path = $1, content = $2, updated_at = $3
 WHERE id = $4 AND updated_at = $5
-RETURNING id, path, content, created_at, updated_at, tenant_id, vault_id
+RETURNING id, path, content, created_at, updated_at, tenant_id, vault_id, content_sha256
 `
 
 type UpdateNoteWithVersionCheckParams struct {
@@ -228,6 +460,7 @@ func (q *Queries) UpdateNoteWithVersionCheck(ctx context.Context, arg UpdateNote
 		&i.UpdatedAt,
 		&i.TenantID,
 		&i.VaultID,
+		&i.ContentSha256,
 	)
 	return i, err
 }

@@ -94,7 +94,9 @@ func setupCIMDIntegrationServer(t *testing.T) (*httptest.Server, *publicadorCIMD
 	pub := novoPublicadorCIMD(t)
 	fetcher, err := cimd.NewFetcher(cimd.WithRootCAs(pub.confiaveis()), cimd.WithIPPolicy(liberarLoopback), cimd.WithAllowedPort(pub.porta(t)))
 	require.NoError(t, err)
-	server, _ := setupOAuthIntegrationServerWith(t, fetcherCIMDDeTeste{fetcher: fetcher}, cacheNegativoDeIntegracao)
+	server, _ := setupOAuthIntegrationServerWith(t, opcoesDeIntegracaoOAuth{
+		metadata: fetcherCIMDDeTeste{fetcher: fetcher}, failureTTL: cacheNegativoDeIntegracao,
+	})
 	return server, pub
 }
 

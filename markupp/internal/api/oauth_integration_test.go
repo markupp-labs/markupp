@@ -42,12 +42,19 @@ var semSeguirRedirect = &http.Client{CheckRedirect: func(*http.Request, []*http.
 
 func setupOAuthIntegrationServer(t *testing.T) (*httptest.Server, *pgxpool.Pool) {
 	t.Helper()
-	return setupOAuthIntegrationServerWith(t, nil, 0)
+	return setupOAuthIntegrationServerWith(t, opcoesDeIntegracaoOAuth{})
 }
 
-// setupOAuthIntegrationServerWith monta o servidor de integração com o fetcher de
-// documentos CIMD e o tempo do cache negativo dados.
-func setupOAuthIntegrationServerWith(t *testing.T, metadata oauth.ClientMetadataFetcher, failureTTL time.Duration) (*httptest.Server, *pgxpool.Pool) {
+// opcoesDeIntegracaoOAuth ajustam o servidor de integração: o fetcher de documentos
+// CIMD, o tempo do cache negativo e se o registro dinâmico fica ligado.
+type opcoesDeIntegracaoOAuth struct {
+	metadata   oauth.ClientMetadataFetcher
+	failureTTL time.Duration
+	dcr        bool
+}
+
+// setupOAuthIntegrationServerWith monta o servidor de integração com as opções dadas.
+func setupOAuthIntegrationServerWith(t *testing.T, opcoes opcoesDeIntegracaoOAuth) (*httptest.Server, *pgxpool.Pool) {
 	t.Helper()
 	pool := storagetest.EmptyPool(t)
 	require.NoError(t, storage.Migrate(context.Background(), pool))
@@ -58,10 +65,10 @@ func setupOAuthIntegrationServerWith(t *testing.T, metadata oauth.ClientMetadata
 	codec := auth.NewTokenCodec("segredo-para-teste-de-integracao-de-oauth", 15*time.Minute, time.Now)
 	authCfg := auth.ServiceConfig{DefaultTenantID: "default", LocalEnabled: true, RefreshExpirationPeriod: 24 * time.Hour}
 	authSvc := auth.NewService(storage.NewPostgresAuthRepository(pool), codec, auth.NewBcryptHasher(), authCfg, time.Now)
-	notesSvc := notes.NewService(storage.NewPostgresNotesRepository(pool), integrationMaxNoteSize)
+	notesSvc := notes.NewService(storage.NewPostgresNotesRepository(pool, "simple"), integrationMaxNoteSize)
 	router := api.NewRouter(api.RouterDeps{
 		Auth: authSvc, Notes: notesSvc, Tokens: codec, Tenants: authSvc, Probe: pool,
-		OAuthMetadata: &api.OAuthMetadata{Issuer: issuerDeIntegracao}, OAuth: oauthServiceDeIntegracao(pool, codec, metadata, failureTTL),
+		OAuthMetadata: &api.OAuthMetadata{Issuer: issuerDeIntegracao, DynamicRegistration: opcoes.dcr}, OAuth: oauthServiceDeIntegracao(pool, codec, opcoes),
 	})
 
 	server := httptest.NewServer(router)
@@ -70,12 +77,13 @@ func setupOAuthIntegrationServerWith(t *testing.T, metadata oauth.ClientMetadata
 }
 
 // oauthServiceDeIntegracao monta o serviço OAuth com um resource e o segredo dele.
-func oauthServiceDeIntegracao(pool *pgxpool.Pool, codec *auth.TokenCodec, metadata oauth.ClientMetadataFetcher, failureTTL time.Duration) *oauth.Service {
+func oauthServiceDeIntegracao(pool *pgxpool.Pool, codec *auth.TokenCodec, opcoes opcoesDeIntegracaoOAuth) *oauth.Service {
 	return oauth.NewService(storage.NewPostgresOAuthRepository(pool), oauth.ServiceConfig{
 		Issuer: issuerDeIntegracao, PanelURL: painelDeIntegracao, Resources: []string{resourceDeIntegracao},
 		AccessTTL: time.Hour, RefreshTTL: 24 * time.Hour, RequestTTL: 10 * time.Minute, CodeTTL: time.Minute, ExchangeTTL: 5 * time.Minute,
-		ResourceSecrets: map[string]string{resourceDeIntegracao: segredoDoResource}, CIMDFailureTTL: failureTTL,
-	}, codec, metadata, time.Now, uuid.NewString, func() string { return uuid.NewString() + uuid.NewString() })
+		ResourceSecrets: map[string]string{resourceDeIntegracao: segredoDoResource}, CIMDFailureTTL: opcoes.failureTTL,
+		DCRMaxPending: 1000, DCRPendingTTL: 24 * time.Hour,
+	}, codec, opcoes.metadata, time.Now, uuid.NewString, func() string { return uuid.NewString() + uuid.NewString() })
 }
 
 func loginDeIntegracao(t *testing.T, server *httptest.Server) string {

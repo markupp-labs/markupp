@@ -16,9 +16,16 @@ import (
 // falha com o motivo se nenhuma ficar.
 func esperarBloqueio(t *testing.T, pool *pgxpool.Pool, motivo string) {
 	t.Helper()
+	esperarBloqueios(t, pool, 1, motivo)
+}
+
+// esperarBloqueios espera ao menos n conexões do banco ficarem paradas esperando uma
+// trava e falha com o motivo se não ficarem.
+func esperarBloqueios(t *testing.T, pool *pgxpool.Pool, n int, motivo string) {
+	t.Helper()
 	require.Eventually(t, func() bool {
 		return countRows(t, pool, `SELECT count(*) FROM pg_stat_activity
-			WHERE datname = current_database() AND wait_event_type = 'Lock'`) > 0
+			WHERE datname = current_database() AND wait_event_type = 'Lock'`) >= n
 	}, 15*time.Second, 10*time.Millisecond, motivo)
 }
 

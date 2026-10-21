@@ -14,8 +14,10 @@ const oauthMetadataPath = "/.well-known/oauth-authorization-server"
 
 // OAuthMetadata configura o documento de metadados do authorization server. Issuer é
 // a URL pública do servidor, sem caminho, base dos endpoints anunciados.
+// DynamicRegistration liga o POST /oauth/register (RFC 7591) e o anuncia na metadata.
 type OAuthMetadata struct {
-	Issuer string
+	Issuer              string
+	DynamicRegistration bool
 }
 
 // Caminhos dos endpoints do protocolo, anunciados na metadata sobre o Issuer.
@@ -23,12 +25,14 @@ const (
 	oauthAuthorizePath = "/oauth/authorize"
 	oauthTokenPath     = "/oauth/token" //nolint:gosec // G101: caminho do endpoint, não credencial
 	oauthRevokePath    = "/oauth/revoke"
+	oauthRegisterPath  = "/oauth/register"
 )
 
 type oauthMetadataResponse struct {
 	Issuer                                 string   `json:"issuer"`
 	AuthorizationEndpoint                  string   `json:"authorization_endpoint"`
 	TokenEndpoint                          string   `json:"token_endpoint"`
+	RegistrationEndpoint                   string   `json:"registration_endpoint,omitempty"`
 	RevocationEndpoint                     string   `json:"revocation_endpoint"`
 	ScopesSupported                        []string `json:"scopes_supported"`
 	ResponseTypesSupported                 []string `json:"response_types_supported"`
@@ -41,9 +45,11 @@ type oauthMetadataResponse struct {
 
 // newOAuthMetadataResponse anuncia o fluxo de código com PKCE S256, o refresh e a
 // revogação, todos com cliente público, sem segredo nos endpoints, e o client_id como URL
-// de Client ID Metadata Document.
-func newOAuthMetadataResponse(issuer string) oauthMetadataResponse {
-	return oauthMetadataResponse{
+// de Client ID Metadata Document. O registration_endpoint só aparece com o registro
+// dinâmico ligado.
+func newOAuthMetadataResponse(m OAuthMetadata) oauthMetadataResponse {
+	issuer := m.Issuer
+	body := oauthMetadataResponse{
 		Issuer:                                 issuer,
 		AuthorizationEndpoint:                  issuer + oauthAuthorizePath,
 		TokenEndpoint:                          issuer + oauthTokenPath,
@@ -56,6 +62,10 @@ func newOAuthMetadataResponse(issuer string) oauthMetadataResponse {
 		RevocationEndpointAuthMethodsSupported: []string{"none"},
 		ClientIDMetadataDocumentSupported:      true,
 	}
+	if m.DynamicRegistration {
+		body.RegistrationEndpoint = issuer + oauthRegisterPath
+	}
+	return body
 }
 
 // oauthMetadataHandler serve o documento de metadados, montado uma vez e reaproveitado.
@@ -63,7 +73,7 @@ func newOAuthMetadataResponse(issuer string) oauthMetadataResponse {
 // libera com CORS aberto.
 func oauthMetadataHandler(m OAuthMetadata) http.HandlerFunc {
 	mustBeAbsoluteIssuer(m.Issuer)
-	body := newOAuthMetadataResponse(m.Issuer)
+	body := newOAuthMetadataResponse(m)
 	return func(w http.ResponseWriter, _ *http.Request) {
 		writeJSON(w, http.StatusOK, body)
 	}

@@ -2,6 +2,7 @@ package oauth
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/url"
 	"slices"
@@ -11,6 +12,8 @@ import (
 // StartAuthorization valida o GET /oauth/authorize, grava o Pedido de autorização e
 // devolve a URL da tela de consentimento no painel, /oauth/authorize/<id>. Enquanto cliente e redirect_uri não
 // estão confirmados, o erro não leva RedirectURI; depois, volta ao cliente por redirect.
+// O cliente apagado entre a busca e a gravação do pedido recebe a mesma recusa do cliente
+// não registrado.
 func (s *Service) StartAuthorization(ctx context.Context, p AuthorizeParams) (string, error) {
 	if err := s.checkClientRedirect(ctx, p); err != nil {
 		return "", err
@@ -19,7 +22,11 @@ func (s *Service) StartAuthorization(ctx context.Context, p AuthorizeParams) (st
 	if err != nil {
 		return "", err
 	}
-	if err := s.repo.CreateRequest(ctx, req); err != nil {
+	err = s.repo.CreateRequest(ctx, req)
+	if errors.Is(err, ErrClientNotFound) {
+		return "", unregisteredClientError(p.ClientID)
+	}
+	if err != nil {
 		return "", fmt.Errorf("oauth: gravando o pedido de autorização do cliente %s: %w", ClientValue(p.ClientID), err)
 	}
 	return s.cfg.PanelURL + "/oauth/authorize/" + url.PathEscape(req.ID), nil
@@ -84,19 +91,22 @@ func (s *Service) requestedResource(p AuthorizeParams) (string, error) {
 		return "", redirectError(p, errInvalidTarget, "resource ausente; esperado "+s.knownResources())
 	}
 	resource, ok := canonicalize(p.Resource)
-	if !ok || !slices.Contains(s.cfg.Resources, resource) {
+	if !ok || !s.knownResource(resource) {
 		return "", redirectError(p, errInvalidTarget, "resource "+ClientValue(p.Resource)+" desconhecido; esperado "+s.knownResources())
 	}
 	return resource, nil
 }
 
-// knownResources lista os servidores protegidos aceitos como resource, no conjunto de
-// caracteres do error_description. Sem nenhum configurado, diz isso em vez de listar.
+// knownResource aceita os servidores protegidos e a própria API, identificada pelo
+// issuer como na troca de token (ADR-0042).
+func (s *Service) knownResource(resource string) bool {
+	return resource == s.cfg.Issuer || slices.Contains(s.cfg.Resources, resource)
+}
+
+// knownResources lista a API e os servidores protegidos aceitos como resource, no
+// conjunto de caracteres do error_description.
 func (s *Service) knownResources() string {
-	if len(s.cfg.Resources) == 0 {
-		return "um servidor protegido, mas nao ha nenhum servidor protegido configurado"
-	}
-	described := make([]string, 0, len(s.cfg.Resources))
+	described := []string{ClientValue(s.cfg.Issuer)}
 	for _, resource := range s.cfg.Resources {
 		described = append(described, ClientValue(resource))
 	}

@@ -16,18 +16,24 @@ const approveOAuthRequest = `-- name: ApproveOAuthRequest :one
 UPDATE oauth_requests
 SET decided_at = $1::TIMESTAMPTZ, user_id = $2::TEXT,
     code_hash = $3::TEXT, code_expires_at = $4::TIMESTAMPTZ
-WHERE id = $5 AND decided_at IS NULL AND expires_at > $1::TIMESTAMPTZ
+WHERE oauth_requests.id = $5 AND decided_at IS NULL AND expires_at > $1::TIMESTAMPTZ
+  AND NOT EXISTS (
+    SELECT 1 FROM oauth_pending_dcr_clients p
+    WHERE p.id = oauth_requests.client_id AND p.pending_since <= $6::TIMESTAMPTZ)
 RETURNING id, client_id, redirect_uri, scopes, resource, state, code_challenge, created_at, expires_at, decided_at, user_id, code_hash, code_expires_at, code_used_at, authorization_id, code_reused_at
 `
 
 type ApproveOAuthRequestParams struct {
-	DecidedAt     time.Time
-	UserID        string
-	CodeHash      string
-	CodeExpiresAt time.Time
-	ID            string
+	DecidedAt        time.Time
+	UserID           string
+	CodeHash         string
+	CodeExpiresAt    time.Time
+	ID               string
+	DcrPendingCutoff time.Time
 }
 
+// Não aprova o pedido de cliente DCR pendente desde o limite ou antes, como se o
+// cliente não existisse mais.
 func (q *Queries) ApproveOAuthRequest(ctx context.Context, arg ApproveOAuthRequestParams) (OauthRequest, error) {
 	row := q.db.QueryRow(ctx, approveOAuthRequest,
 		arg.DecidedAt,
@@ -35,6 +41,7 @@ func (q *Queries) ApproveOAuthRequest(ctx context.Context, arg ApproveOAuthReque
 		arg.CodeHash,
 		arg.CodeExpiresAt,
 		arg.ID,
+		arg.DcrPendingCutoff,
 	)
 	var i OauthRequest
 	err := row.Scan(
@@ -88,6 +95,46 @@ func (q *Queries) ConsumeOAuthRefreshToken(ctx context.Context, arg ConsumeOAuth
 	return i, err
 }
 
+const countPendingDCRClients = `-- name: CountPendingDCRClients :one
+SELECT count(*) AS pending,
+    COALESCE(min(p.pending_since), $1::TIMESTAMPTZ)::TIMESTAMPTZ AS oldest_pending_since
+FROM oauth_pending_dcr_clients p
+`
+
+type CountPendingDCRClientsRow struct {
+	Pending            int64
+	OldestPendingSince time.Time
+}
+
+func (q *Queries) CountPendingDCRClients(ctx context.Context, now time.Time) (CountPendingDCRClientsRow, error) {
+	row := q.db.QueryRow(ctx, countPendingDCRClients, now)
+	var i CountPendingDCRClientsRow
+	err := row.Scan(&i.Pending, &i.OldestPendingSince)
+	return i, err
+}
+
+const createDCRClient = `-- name: CreateDCRClient :exec
+INSERT INTO oauth_clients (id, source, name, redirect_uris, created_at)
+VALUES ($1, 'dcr', $2, $3, $4::TIMESTAMPTZ)
+`
+
+type CreateDCRClientParams struct {
+	ID           string
+	Name         string
+	RedirectUris []string
+	CreatedAt    time.Time
+}
+
+func (q *Queries) CreateDCRClient(ctx context.Context, arg CreateDCRClientParams) error {
+	_, err := q.db.Exec(ctx, createDCRClient,
+		arg.ID,
+		arg.Name,
+		arg.RedirectUris,
+		arg.CreatedAt,
+	)
+	return err
+}
+
 const createOAuthRequest = `-- name: CreateOAuthRequest :exec
 INSERT INTO oauth_requests (id, client_id, redirect_uri, scopes, resource, state, code_challenge, created_at, expires_at)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
@@ -117,6 +164,18 @@ func (q *Queries) CreateOAuthRequest(ctx context.Context, arg CreateOAuthRequest
 		arg.CreatedAt,
 		arg.ExpiresAt,
 	)
+	return err
+}
+
+const deleteExpiredPendingDCRClients = `-- name: DeleteExpiredPendingDCRClients :exec
+DELETE FROM oauth_clients
+WHERE id IN (SELECT p.id FROM oauth_pending_dcr_clients p WHERE p.pending_since <= $1::TIMESTAMPTZ)
+`
+
+// Os pedidos e as Autorizações revogadas do pendente saem junto, pelo ON DELETE
+// CASCADE; a auditoria fica.
+func (q *Queries) DeleteExpiredPendingDCRClients(ctx context.Context, cutoff time.Time) error {
+	_, err := q.db.Exec(ctx, deleteExpiredPendingDCRClients, cutoff)
 	return err
 }
 
@@ -238,13 +297,23 @@ func (q *Queries) GetFreshCIMDClient(ctx context.Context, arg GetFreshCIMDClient
 
 const getOAuthClient = `-- name: GetOAuthClient :one
 
-SELECT id, source, name, redirect_uris, metadata_expires_at, created_at FROM oauth_clients WHERE id = $1
+SELECT id, source, name, redirect_uris, metadata_expires_at, created_at FROM oauth_clients c
+WHERE c.id = $1 AND NOT EXISTS (
+    SELECT 1 FROM oauth_pending_dcr_clients p
+    WHERE p.id = c.id AND p.pending_since <= $2::TIMESTAMPTZ)
 `
+
+type GetOAuthClientParams struct {
+	ID               string
+	DcrPendingCutoff time.Time
+}
 
 // Authorization server OAuth 2.1 (ADR-0046). As tabelas são da instância, sem tenant nem
 // RLS: as queries rodam no papel da conexão. Códigos e tokens só passam como hash.
-func (q *Queries) GetOAuthClient(ctx context.Context, id string) (OauthClient, error) {
-	row := q.db.QueryRow(ctx, getOAuthClient, id)
+// O cliente DCR pendente desde o limite ou antes conta como inexistente, mesmo antes de
+// a limpeza dos registros apagá-lo.
+func (q *Queries) GetOAuthClient(ctx context.Context, arg GetOAuthClientParams) (OauthClient, error) {
+	row := q.db.QueryRow(ctx, getOAuthClient, arg.ID, arg.DcrPendingCutoff)
 	var i OauthClient
 	err := row.Scan(
 		&i.ID,
@@ -433,6 +502,17 @@ func (q *Queries) ListActiveOAuthAuthorizations(ctx context.Context, userID stri
 	return items, nil
 }
 
+const lockDCRRegistrations = `-- name: LockDCRRegistrations :exec
+SELECT pg_advisory_xact_lock(hashtextextended('markupp.oauth_dcr_registration', 0))
+`
+
+// Serializa os registros DCR da instância até o fim da transação, para o teto de
+// pendentes valer sob concorrência.
+func (q *Queries) LockDCRRegistrations(ctx context.Context) error {
+	_, err := q.db.Exec(ctx, lockDCRRegistrations)
+	return err
+}
+
 const lockOAuthAuthorization = `-- name: LockOAuthAuthorization :one
 SELECT id, user_id, client_id, scopes, created_at, updated_at, revoked_at FROM oauth_authorizations WHERE id = $1 FOR UPDATE
 `
@@ -593,6 +673,20 @@ type SetOAuthRequestAuthorizationParams struct {
 
 func (q *Queries) SetOAuthRequestAuthorization(ctx context.Context, arg SetOAuthRequestAuthorizationParams) error {
 	_, err := q.db.Exec(ctx, setOAuthRequestAuthorization, arg.AuthorizationID, arg.ID)
+	return err
+}
+
+const shareDCRRegistrationLockForRequest = `-- name: ShareDCRRegistrationLockForRequest :exec
+SELECT pg_advisory_xact_lock_shared(hashtextextended('markupp.oauth_dcr_registration', 0))
+FROM oauth_requests r JOIN oauth_clients c ON c.id = r.client_id
+WHERE r.id = $1 AND c.source = 'dcr'
+`
+
+// Compartilha a trava dos registros DCR até o fim da transação quando o pedido é de
+// cliente DCR: a aprovação aberta segura a limpeza dos pendentes, que senão apagaria o
+// cliente e, em cascata, a Autorização ainda não commitada.
+func (q *Queries) ShareDCRRegistrationLockForRequest(ctx context.Context, id string) error {
+	_, err := q.db.Exec(ctx, shareDCRRegistrationLockForRequest, id)
 	return err
 }
 

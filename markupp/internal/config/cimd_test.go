@@ -64,15 +64,11 @@ func TestLoad_LimiteDoCIMDInvalido_RetornaErroComVariavelEValor(t *testing.T) {
 	}
 }
 
-func TestLoad_SemPublicURL_IgnoraLimitesDoCIMD(t *testing.T) {
-	env := fakeEnv{
-		"MARKUPP_DATABASE_URL": urlDeTeste, "MARKUPP_AUTH_SECRET": segredoDeTesteValido,
-		"MARKUPP_OAUTH_CIMD_TIMEOUT_SECONDS": "0", "MARKUPP_OAUTH_CIMD_MAX_KB": "lixo",
-	}
+func TestLoad_SemPublicURL_AindaLeOsLimitesDoCIMD(t *testing.T) {
+	env := fakeEnv{"MARKUPP_DATABASE_URL": urlDeTeste, "MARKUPP_OAUTH_CIMD_TIMEOUT_SECONDS": "0"}
 
-	cfg, err := config.Load(env.Lookup)
+	_, err := config.Load(env.Lookup)
 
-	require.NoError(t, err, "sem MARKUPP_PUBLIC_URL os limites do CIMD nem sao lidos")
-	assert.Equal(t, 5, cfg.OAuthCIMDTimeoutSeconds)
-	assert.Equal(t, 64, cfg.OAuthCIMDMaxKB)
+	require.Error(t, err, "o OAuth vem ligado pela URL publica padrao")
+	assert.Contains(t, err.Error(), "MARKUPP_OAUTH_CIMD_TIMEOUT_SECONDS")
 }
