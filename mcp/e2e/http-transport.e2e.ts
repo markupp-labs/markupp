@@ -132,8 +132,19 @@ describe("transporte HTTP com OAuth", () => {
     );
     expect(tenant?.role).toBe("owner");
     await exerciseNoteLifecycle(tenant?.id ?? "");
-  });
+  }, 120_000);
 });
+
+// SEARCH_INDEX_WAIT cobre o intervalo de 30s do indexador do compose.
+const SEARCH_INDEX_WAIT = { timeout: 60_000, interval: 1_000 };
+
+async function searchIds(tenant: string, query: string): Promise<string[]> {
+  const found = await callToolJson<NoteHeader[]>(client, "search_notes", {
+    tenant,
+    query,
+  });
+  return found.map((note) => note.id);
+}
 
 async function exerciseNoteLifecycle(tenant: string): Promise<void> {
   const marker = `marcador-${Date.now()}`;
@@ -142,11 +153,10 @@ async function exerciseNoteLifecycle(tenant: string): Promise<void> {
     path: `e2e/${marker}.md`,
     content: `# Nota do e2e\n\nconteudo com ${marker}\n`,
   });
-  const found = await callToolJson<NoteHeader[]>(client, "search_notes", {
-    tenant,
-    query: marker,
-  });
-  expect(found.map((note) => note.id)).toEqual([created.id]);
+  // A busca lê o índice que o indexador preenche em laço: a nota nova espera uma rodada.
+  await expect
+    .poll(() => searchIds(tenant, marker), SEARCH_INDEX_WAIT)
+    .toEqual([created.id]);
   const note = { tenant, id: created.id };
   await callToolTexts(client, "edit_note", {
     ...note,
