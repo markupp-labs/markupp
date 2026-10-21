@@ -9,6 +9,9 @@ Tenant = Data.define(:id, :name, :role, :notes_count, :last_note_at) do
   # Quem cria é owner; nome recusado pela API levanta InvalidRequest, a regra fica no servidor.
   def self.create(api, name) = from_api(api.post("/tenants", name:))
 
+  # Apaga de vez o tenant e as notas dele; só o owner pode, e a API decide.
+  def self.delete(api, id) = api.delete(MarkuppApi.path("tenants", id))
+
   def self.from_api(attributes)
     fields = attributes.symbolize_keys.slice(*members)
     new(**fields, last_note_at: fields[:last_note_at] && Time.zone.parse(fields[:last_note_at]))
@@ -18,6 +21,9 @@ Tenant = Data.define(:id, :name, :role, :notes_count, :last_note_at) do
 
   # viewer só lê notas; os outros papéis escrevem.
   def writer? = role != "viewer"
+
+  # Só o owner apaga o tenant.
+  def owner? = role == "owner"
 
   # owner e admin administram membros e convites.
   def admin? = %w[owner admin].include?(role)

@@ -21,7 +21,7 @@ Rails.application.routes.draw do
   resource :password_change, only: :create
   resource :email_verification, only: :create
   resource :email_confirmation, only: [ :new, :create ]
-  resources :tenants, only: [ :index, :new, :create ]
+  resources :tenants, only: [ :index, :new, :create, :destroy ]
   resource :current_tenant, only: :update
   resources :my_invites, only: [ :index, :update, :destroy ]
 

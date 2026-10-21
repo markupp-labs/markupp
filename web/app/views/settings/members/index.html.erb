@@ -14,4 +14,6 @@
     </li>
     <%= render partial: "settings/members/member", collection: tenant_members %>
   </ul>
+
+  <%= render "settings/members/danger_zone" if current_tenant.owner? %>
 </div>

@@ -49,6 +49,8 @@ module ShortcutsHelper
       Shortcut.of(:vim_keys_off, run: { form: { url: :vim_keys_path, params: { vim_keys: "off" }, turbo: false } }),
       Shortcut.of(:tenants, "g t", run: { href: :tenants_path }),
       Shortcut.of(:switch_tenant, run: { click: "button[popovertarget=tenant_switcher]" }),
+      # Só na Danger zone de Members, para o owner: abre a mesma confirmação com o nome do tenant.
+      Shortcut.of(:delete_tenant, run: { click: "#delete_tenant" }),
       Shortcut.of(:log_out, run: { form: { url: :session_path, method: :delete } })
     ],
     note: [

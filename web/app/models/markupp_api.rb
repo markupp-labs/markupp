@@ -11,6 +11,8 @@ class MarkuppApi
   class InviteNotFound < NotFound; end
   # A pessoa já não é membro do tenant: removida por outro admin ou saiu.
   class MemberNotFound < NotFound; end
+  # Tenant apagado, ou de que a conta não é membro: a API não distingue.
+  class TenantNotFound < NotFound; end
   # A troca deixaria o tenant sem owner.
   class LastOwner < Error; end
   class AlreadyMember < Error; end
@@ -57,7 +59,7 @@ class MarkuppApi
     "invalid_request" => InvalidRequest, "forbidden" => Forbidden, "local_auth_disabled" => LocalAuthDisabled,
     "read_only" => ReadOnly, "tenant_forbidden" => TenantUnavailable, "no_tenant" => TenantUnavailable, "tenant_required" => TenantUnavailable,
     "invite_not_found" => InviteNotFound, "already_member" => AlreadyMember,
-    "member_not_found" => MemberNotFound, "last_owner" => LastOwner, "role_above_own" => RoleAboveOwn,
+    "member_not_found" => MemberNotFound, "tenant_not_found" => TenantNotFound, "last_owner" => LastOwner, "role_above_own" => RoleAboveOwn,
     "invalid_invite" => InvalidToken, "invalid_token" => InvalidToken, "already_exists" => AccountExists,
     "email_unavailable" => EmailUnavailable, "email_already_verified" => EmailAlreadyVerified,
     "vault_forbidden" => VaultUnavailable, "request_not_found" => OAuthRequestNotFound

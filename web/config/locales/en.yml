@@ -117,6 +117,7 @@ en:
       vim_keys_off: "Vim key bindings: off"
       tenants: "All tenants"
       switch_tenant: "Switch tenant"
+      delete_tenant: "Delete tenant"
       log_out: "Log out"
       new_note: "New note"
       save: "Save"
@@ -215,6 +216,9 @@ en:
     create:
       created: "Created %{name}."
       invalid_name: "Use 1 to 100 characters."
+    destroy:
+      deleted: "Deleted %{name}."
+      gone: "That tenant no longer exists."
   invite_acceptances:
     new:
       title: "Accept an invite"
@@ -361,6 +365,12 @@ en:
       destroy:
         removed: "Member removed."
         left: "You left %{name}."
+      danger_zone:
+        title: "Danger zone"
+        delete_tenant: "Delete tenant"
+        hint: "This deletes the tenant and all of its notes for every member. There is no going back."
+        confirm: "Delete %{name}? This deletes the tenant and all of its notes for every member, and it can't be undone."
+        type_name: "Type %{name} to confirm"
       errors:
         last_owner: "A tenant needs at least one owner. Make someone else owner first."
         role_above_own: "You can't give or change a role above your own."

@@ -26,8 +26,26 @@ class TenantsController < ApplicationController
     render :index, status: :unprocessable_content
   end
 
+  # Só o owner apaga (a API recusa os outros papéis). Apagado, a sessão esquece o tenant e as origens do voltar, que
+  # apontavam para páginas dele, e a lista de tenants manda escolher outro.
+  # ponytail: destino fixo na lista de tenants; outro destino (o tenant que sobrar, por exemplo) se o usuário pedir.
+  def destroy
+    tenant = current_tenants.find { it.id == params[:id] } or raise MarkuppApi::TenantNotFound, "tenant #{params[:id].inspect} is not in /me/tenants"
+    Tenant.delete(credential.api, tenant.id)
+    leave_deleted_tenant(notice: t(".deleted", name: tenant.name))
+  rescue MarkuppApi::TenantNotFound => error
+    log_api_event("markupp_tenant_gone", error, tenant_id: params[:id])
+    leave_deleted_tenant(alert: t(".gone"))
+  end
+
   private
     def aside_area_path = "/tenants"
+
+    def leave_deleted_tenant(**flash)
+      credential.tenant_id = nil if credential.tenant_id == params[:id]
+      AREA_PATHS.each { session.delete(origin_key_of(it)) }
+      redirect_to tenants_path, flash:
+    end
 
     def pending_invites = @pending_invites ||= PendingInvite.mine(credential.api)
 end
