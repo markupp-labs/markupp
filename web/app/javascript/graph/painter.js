@@ -1,5 +1,5 @@
-// Desenho de um quadro do grafo no canvas, sem estado: ligações finas na cor line (a inferida tracejada), nós no matiz
-// da comunidade com o raio do PageRank, o título não resolvido só em contorno, a nota aberta com o anel no accent e a nota
+// Desenho de um quadro do grafo no canvas, sem estado: ligações finas na cor muted, que passa de 3:1 nos dois palcos e
+// nos dois temas (a inferida tracejada; a line, que quase some, fica para as apagadas), nós no matiz da comunidade com o raio do PageRank, o título não resolvido só em contorno, a nota aberta com o anel no accent e a nota
 // com o foco do teclado com o anel no ink. Com um nó em destaque (hover ou foco), ele e as vizinhas ficam e o resto apaga.
 // Os nomes aparecem nos mais centrais, no destaque e nas vizinhas, e em todos a partir de LABEL_ZOOM. Traço e fonte
 // dividem pela escala: ficam do mesmo tamanho na tela em qualquer zoom.
@@ -31,7 +31,7 @@ function litNodes({ active }) {
 function paintLinks(context, links, colors, k, lit) {
   for (const inferred of [ false, true ]) {
     context.setLineDash(inferred ? [ DASH_PX / k, DASH_PX / k ] : [])
-    strokeLinks(context, links.filter((link) => link.inferred == inferred), lit, { color: colors.line, width: 1 / k })
+    strokeLinks(context, links.filter((link) => link.inferred == inferred), lit, { color: lit ? colors.line : colors.muted, width: 1 / k })
     if (lit) strokeLinks(context, links.filter((link) => link.inferred == inferred && lit.has(link.source) && lit.has(link.target)), null,
                          { color: colors.accent, width: 1.5 / k })
   }
