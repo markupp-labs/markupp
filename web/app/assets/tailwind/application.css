@@ -137,9 +137,10 @@
     background: var(--modal-scrim);
   }
 
-  /* Barra de rolagem fina nos tokens do tema, sem o trilho cinza padrão no claro (lista da paleta, ajuda de atalhos). */
+  /* Barra de rolagem fina nos tokens do tema, sem o trilho cinza padrão no claro (lista da paleta, ajuda de atalhos). O
+     puxador fica no ink-muted nos dois temas, que contrasta com o fundo (4.79:1); o --line ficava apagado demais. */
   .scrollbar-theme {
-    scrollbar-color: var(--line) transparent;
+    scrollbar-color: var(--ink-muted) transparent;
     scrollbar-width: thin;
   }
 
