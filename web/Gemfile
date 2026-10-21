@@ -27,6 +27,11 @@ gem "bootsnap", require: false
 # Add HTTP asset caching/compression and X-Sendfile acceleration to Puma [https://github.com/basecamp/thruster/]
 gem "thruster", require: false
 
+# Traduções base do Rails (datas, números, erros de validação) [https://github.com/svenfuchs/rails-i18n]
+gem "rails-i18n"
+# Escolhe o idioma pelo Accept-Language do navegador [https://github.com/iain/http_accept_language]
+gem "http_accept_language"
+
 group :development, :test do
   # See https://guides.rubyonrails.org/debugging_rails_applications.html#debugging-with-the-debug-gem
   gem "debug", platforms: %i[ mri windows ], require: "debug/prelude"
@@ -39,6 +44,9 @@ group :development, :test do
 
   # Omakase Ruby styling [https://github.com/rails/rubocop-rails-omakase/]
   gem "rubocop-rails-omakase", require: false
+
+  # Aponta chaves de tradução faltando ou sem uso [https://github.com/glebm/i18n-tasks]
+  gem "i18n-tasks", require: false
 end
 
 group :development do
