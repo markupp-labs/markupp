@@ -34,6 +34,9 @@ module Web
     # in config/environments, which are processed later.
     #
     # config.time_zone = "Central Time (US & Canada)"
+
+    # Idiomas do painel; o padrão continua o inglês, e o Localized escolhe pelo Accept-Language.
+    config.i18n.available_locales = [ :en, :"pt-BR" ]
     # config.eager_load_paths << Rails.root.join("extras")
 
     # Os erros tratados (400, 404, 406, 422, 500) saem do próprio painel, pelo ErrorsController. O lambda resolve a classe
