@@ -11,7 +11,7 @@ class ShortcutsTest < ActionDispatch::IntegrationTest
     [ "Explorer view", "Alt O" ],
     [ "Focus region left", "Alt H" ], [ "Focus region below", "Alt J" ], [ "Focus region above", "Alt K" ], [ "Focus region right", "Alt L" ],
     [ "Light theme", "" ], [ "Dark theme", "" ], [ "Editor style: plain", "" ], [ "Editor style: styled", "" ],
-    [ "Vim keys: on", "" ], [ "Vim keys: off", "" ],
+    [ "Vim keys: on", "" ], [ "Vim keys: off", "" ], [ "Language: English", "" ], [ "Language: Português (Brasil)", "" ],
     [ "All tenants", "g t" ], [ "Switch tenant", "" ], [ "Tenant: General", "" ], [ "Delete tenant", "" ], [ "Log out", "" ],
     [ "Show or hide the graph filters", "f" ], [ "Show or hide orphan notes", "o" ], [ "Show or hide unresolved links", "u" ],
     [ "Show or hide inferred links", "i" ], [ "Next and previous community in the graph", "c" ], [ "Clear the graph filters", "x" ]

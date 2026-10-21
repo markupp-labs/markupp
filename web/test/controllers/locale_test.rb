@@ -1,6 +1,7 @@
 require "test_helper"
 
-# O idioma vem do Accept-Language do navegador; sem um que o painel fale, fica o inglês.
+# O idioma vem do cookie da escolha nas configurações, depois do Accept-Language do navegador; sem nenhum que o painel
+# fale, fica o inglês.
 class LocaleTest < ActionDispatch::IntegrationTest
   test "without Accept-Language the panel speaks English" do
     get new_session_path
@@ -33,6 +34,27 @@ class LocaleTest < ActionDispatch::IntegrationTest
     get new_session_path, headers: { "Accept-Language" => "pt-BR" }
 
     assert_equal :en, I18n.locale
+  end
+
+  test "the chosen locale beats the browser" do
+    cookies[:locale] = "pt-BR"
+    get new_session_path, headers: { "Accept-Language" => "en-US" }
+
+    assert_select "html[lang=pt-BR]"
+  end
+
+  test "choosing English beats a Portuguese browser" do
+    cookies[:locale] = "en"
+    get new_session_path, headers: { "Accept-Language" => "pt-BR" }
+
+    assert_select "html[lang=en]"
+  end
+
+  test "a cookie with a locale the panel does not speak is ignored" do
+    cookies[:locale] = "fr"
+    get new_session_path, headers: { "Accept-Language" => "pt-BR" }
+
+    assert_select "html[lang=pt-BR]"
   end
 
   test "flash messages follow the request locale" do

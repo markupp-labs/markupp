@@ -48,6 +48,32 @@ module Settings
       assert_select "main section", text: /Vim key/, count: 0
     end
 
+    test "show offers every locale by its own name and says it follows the browser without a choice" do
+      use_fake_api
+      sign_in_as
+
+      get settings_appearance_path
+
+      assert_select "main h2", "Language"
+      assert_select "main form[action=?][data-turbo=false] button[aria-pressed=false]", locale_path, count: 2
+      assert_select "main button", text: "English"
+      assert_select "main button", text: "Português (Brasil)"
+      assert_select "main", text: /Follows your browser language until you pick one/
+    end
+
+    test "show marks the locale in the cookie as pressed, in that locale" do
+      use_fake_api
+      sign_in_as
+      cookies[:locale] = "pt-BR"
+
+      get settings_appearance_path
+
+      assert_select "main h2", "Idioma"
+      assert_select "main button[aria-pressed=true]", text: "Português (Brasil)"
+      assert_select "main button[aria-pressed=false]", text: "English"
+      assert_select "main", text: /Segue o idioma do navegador/, count: 0
+    end
+
     test "picking a theme comes back to the appearance" do
       use_fake_api
       sign_in_as
