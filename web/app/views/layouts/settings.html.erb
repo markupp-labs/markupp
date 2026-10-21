@@ -21,11 +21,14 @@
         <%= settings_nav_link("accounts", settings_account_path) %>
         <%= settings_nav_link("appearances", settings_appearance_path) %>
         <%= settings_nav_link("editors", settings_editor_path) %>
-        <% if current_tenant&.admin? %>
+        <% if current_tenant %>
           <div class="hidden min-w-0 px-2 pt-3 md:block">
             <p class="text-xs text-ink-muted"><%= t("settings.nav.tenant") %></p>
             <p class="truncate text-ink-muted" title="<%= current_tenant.name %>"><%= current_tenant.name %></p>
           </div>
+          <%= settings_nav_link("general", settings_general_path) %>
+        <% end %>
+        <% if current_tenant&.admin? %>
           <%= settings_nav_link("members", settings_members_path) %>
           <%= settings_nav_link("invites", settings_invites_path) %>
         <% end %>

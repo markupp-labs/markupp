@@ -1,5 +1,5 @@
-# Configurações unificadas, como no VS Code e no Obsidian: Conta, Aparência e Editor para todos, Membros e Convites
-# para owner e admin. Aqui o tenant é opcional: sem ele (onboarding) a navegação mostra só as seções de todos.
+# Configurações unificadas, como no VS Code e no Obsidian: Conta, Aparência e Editor para todos, a General do tenant para
+# todo membro, Membros e Convites para owner e admin. Aqui o tenant é opcional: sem ele (onboarding) a navegação mostra só as seções de todos.
 module Settings
   class BaseController < ApplicationController
     include AsideArea
