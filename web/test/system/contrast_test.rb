@@ -63,6 +63,19 @@ class ContrastTest < ApplicationSystemTestCase
     end
   end
 
+  # O hover da linha usa o surface-sunken: o [x] na cor do accent não chega ao AA sobre ele no tema claro. O headless
+  # não tem ponteiro que paire (hover: none, e o CDP não emula essa media), então o teste pinta o fundo do hover.
+  test "a checked graph filter reads clearly under the pointer" do
+    visit graph_path(note: "1")
+    assert_selector "main canvas[data-graph-canvas]:focus"
+    send_keys "f"
+    row = find("#graph_filters label.graph-filter", text: "Orphans")
+    row.hover
+    row.execute_script("this.style.background = 'var(--surface-sunken)'")
+
+    assert_readable row.find(".graph-filter-box", visible: :all), pseudo: "::before"
+  end
+
   private
     def assert_code_tokens_readable
       assert_selector ".note-preview pre code"
