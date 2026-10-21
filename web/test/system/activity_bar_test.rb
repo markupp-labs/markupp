@@ -130,6 +130,19 @@ class ActivityBarTest < ApplicationSystemTestCase
     assert_selector "[role=tab][aria-label=Links][aria-selected=true]:focus"
   end
 
+  # Com o CapsLock o key vem maiúsculo e sem Shift; a tecla vale pelo code, como no resto do painel.
+  test "j and k walk the icons by the key code, also with caps lock on" do
+    visit root_path
+    assert_selector "[role=tab][aria-label=Explorer][aria-selected=true]"
+    tab("Explorer").execute_script("this.focus()")
+
+    press_through_cdp("J", "KeyJ", keycode: 74)
+    assert_selector "[role=tab][aria-label=Links]:focus"
+    press_through_cdp("K", "KeyK", keycode: 75)
+
+    assert_selector "[role=tab][aria-label=Explorer]:focus"
+  end
+
   test "alt+h goes from the tree to the bar and alt+l back" do
     visit note_path("1")
     send_keys [ :control, :shift, "e" ]
