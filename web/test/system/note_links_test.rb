@@ -49,6 +49,20 @@ class NoteLinksTest < ApplicationSystemTestCase
     assert_field "Path", with: "/roadmap"
   end
 
+  # O texto só para leitor de tela da ligação não resolvida é absoluto: fora de uma linha posicionada, ele escapa para o
+  # fim da barra lateral e a faz rolar inteira, com o cabeçalho junto. A janela baixa põe as linhas abaixo da dobra.
+  test "the unresolved links keep the sidebar from scrolling as a whole" do
+    page.current_window.resize_to(1400, 240)
+    send_keys [ :control, :shift, "l" ]
+    assert_selector "#links_outgoing .link-unresolved", text: "Ghost", visible: :all
+
+    overflow = evaluate_script("(s => s.scrollHeight - s.clientHeight)(document.querySelector('nav#sidebar'))")
+
+    assert_equal 0, overflow, "expected nav#sidebar not to scroll, it overflows by #{overflow}px"
+  ensure
+    page.current_window.resize_to(1400, 900)
+  end
+
   test "enter folds a section and j skips its rows" do
     send_keys [ :control, :shift, "l" ]
     assert_selector "#links_backlinks summary:focus"
