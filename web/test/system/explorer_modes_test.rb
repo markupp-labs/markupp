@@ -27,6 +27,13 @@ class ExplorerModesTest < ApplicationSystemTestCase
     assert_selector "[data-explorer-mode=linked] [role=treeitem][aria-current=page]", text: "hub"
   end
 
+  test "the folder and the number of a flat row sit on the baseline of the title" do
+    select "Most linked", from: "Explorer view"
+    row = find("[data-explorer-mode=linked] [role=treeitem]", text: "hub")
+
+    assert_equal "baseline", evaluate_script("getComputedStyle(arguments[0]).alignItems", row)
+  end
+
   test "j and k walk the flat rows and enter opens one" do
     select "Most central", from: "Explorer view"
     assert_selector "[data-explorer-mode=central] [role=treeitem][tabindex='0']", text: "leaf"
