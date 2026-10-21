@@ -40,10 +40,10 @@ export default class extends Controller {
     target.focus()
   }
 
-  // Clique num ícone da barra de atividades, como no VS Code: o da visão à vista recolhe a barra; outro troca a visão e,
-  // com a barra recolhida, a abre nela. Na gaveta do celular só troca.
+  // Clique num ícone da barra de atividades, como no VS Code: o da visão à vista recolhe a barra (no celular, fecha a
+  // gaveta); outro troca a visão e, com a barra recolhida, a abre nela.
   selectView({ params: { view } }) {
-    if (desktop.matches && !this.isHidden && view == this.currentView) return this.toggle()
+    if (!this.isHidden && view == this.currentView) return this.toggle()
 
     this.showView(view)
     if (desktop.matches && this.isHidden) this.toggle()
