@@ -69,6 +69,8 @@ services:
       # Segredos gerados no banco na primeira subida (ADR-0041). A URL pública acompanha
       # a porta publicada no host; o servidor MCP fica nela em /mcp, encaminhado pelo Go.
       MARKUPP_PUBLIC_URL: ${MARKUPP_PUBLIC_URL:-http://localhost:${MARKUPP_PORT:-8080}}
+      # O login e o consentimento do OAuth acontecem no painel do serviço web.
+      MARKUPP_PANEL_URL: ${MARKUPP_PANEL_URL:-http://localhost:${WEB_PORT:-3000}}
       MARKUPP_MCP_UPSTREAM_URL: http://mcp:3000
       MARKUPP_MCP_SECRET_PATH: /run/markupp-mcp/secret
     volumes:
