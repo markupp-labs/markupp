@@ -39,6 +39,11 @@ export default class extends Controller {
     target.focus()
   }
 
+  // Quem precisa de uma visão à vista pede pelo evento (o Alt+O do seletor do Explorer), sem mudar o foco.
+  reveal({ detail: { view } }) {
+    this.openView(view)
+  }
+
   // Mostra a visão, abrindo a barra (ou a gaveta) fechada.
   openView(view) {
     this.showView(view)

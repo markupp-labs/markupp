@@ -10,7 +10,7 @@
   <%# Ctrl+Shift+E, L e G (Cmd no Mac) mostram a visão da barra lateral e levam o foco a ela (sidebar_controller.js); g e depois t abre a lista de tenants. %>
   <%# Alt+h/j/k/l levam o foco à região vizinha pela geometria (region_nav_controller.js); na captura, antes do editor e do Vim. %>
   <%# Alt+G abre o grafo do cofre em tela cheia (full_graph_shortcut_controller.js), a partir da nota aberta. %>
-  <% shortcuts = "keydown.ctrl+b@window->sidebar#toggleFromShortcut keydown.meta+b@window->sidebar#toggleFromShortcut keydown@window->settings-shortcut#open keydown@window->sidebar#focusView keydown@window->tenants-shortcut#open keydown@window->region-nav#navigate:capture turbo:before-render@document->area-transition#mark" %>
+  <% shortcuts = "keydown.ctrl+b@window->sidebar#toggleFromShortcut keydown.meta+b@window->sidebar#toggleFromShortcut keydown@window->settings-shortcut#open keydown@window->sidebar#focusView explorer-mode:reveal->sidebar#reveal keydown@window->tenants-shortcut#open keydown@window->region-nav#navigate:capture turbo:before-render@document->area-transition#mark" %>
   <% shortcuts += " keydown.ctrl+k@window->search#open:prevent keydown.meta+k@window->search#open:prevent keydown@window->full-graph-shortcut#open" if current_tenant %>
   <body class="app-shell min-h-dvh bg-surface font-mono text-sm text-ink"
         <%= tag.attributes(data: { controller: [ "sidebar", "settings-shortcut", "region-nav", "tenants-shortcut", "area-transition", ("search" if current_tenant), ("full-graph-shortcut" if current_tenant) ].compact.join(" "), action: shortcuts,
