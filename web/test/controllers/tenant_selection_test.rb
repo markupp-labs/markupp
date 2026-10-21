@@ -49,14 +49,14 @@ class TenantSelectionTest < ActionDispatch::IntegrationTest
     assert_select "#tenant_cards button[aria-current=true]", count: 1, text: /Home lab/
   end
 
-  test "owner and admin cards lead to the members by the gear and to the invites by the envelope, the others don't" do
+  test "owner and admin cards lead to the general settings by the gear and to the invites by the envelope, the others don't" do
     use_fake_api(tenants: TWO_TENANTS)
     sign_in_as
 
     get tenants_path
 
     assert_select "#tenant_cards > li", text: /Acme research/ do
-      assert_select "form:has(input[name=to][value=members]) button[aria-label=?] svg[data-icon=gear-six]", "Members of Acme research"
+      assert_select "form:has(input[name=to][value=general]) button[aria-label=?] svg[data-icon=gear-six]", "Settings of Acme research"
       assert_select "form:has(input[name=to][value=invites]) button[aria-label=?] svg[data-icon=envelope-simple]", "Invites of Acme research"
     end
     assert_select "#tenant_cards > li", text: /Home lab/ do
@@ -68,8 +68,8 @@ class TenantSelectionTest < ActionDispatch::IntegrationTest
     use_fake_api(tenants: TWO_TENANTS)
     sign_in_as
 
-    patch current_tenant_path, params: { tenant_id: "tenant-1", to: "members" }
-    assert_redirected_to settings_members_path
+    patch current_tenant_path, params: { tenant_id: "tenant-1", to: "general" }
+    assert_redirected_to settings_general_path
     patch current_tenant_path, params: { tenant_id: "tenant-1", to: "invites" }
     assert_redirected_to settings_invites_path
     patch current_tenant_path, params: { tenant_id: "tenant-1", to: "settings" }
