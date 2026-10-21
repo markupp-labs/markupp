@@ -136,7 +136,6 @@
 
   .community-notes {
     margin-left: calc(0.5rem + 3px);
-    border-left: 2px solid var(--community, var(--line));
   }
 
   /* Seletor da visão: o select nativo com a cara de uma linha da árvore. Onde há o select personalizável
