@@ -38,13 +38,13 @@ async function consentRequestId(authorizeUrl: URL): Promise<string> {
   await expectStatus(response, 302, `GET ${authorizeUrl.pathname}`);
   const location = response.headers.get("location") ?? "";
   const path = new URL(location, authorizeUrl).pathname;
-  const match = /^\/oauth\/authorize\/([^/]+)$/.exec(path);
-  if (!match) {
+  const id = /^\/oauth\/authorize\/([^/]+)$/.exec(path)?.[1];
+  if (!id) {
     throw new Error(
       `authorize redirecionou para ${location}, esperado o painel em /oauth/authorize/<id>`,
     );
   }
-  return decodeURIComponent(match[1]);
+  return decodeURIComponent(id);
 }
 
 // approveInPanel aprova o pedido como a conta logada e devolve o redirect ao cliente,
