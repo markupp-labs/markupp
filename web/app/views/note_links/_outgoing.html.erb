@@ -6,7 +6,7 @@
   <li class="links-item">
     <%= link_to note_path(item.inferred_target), title: "#{reason}, #{maybe}", data: { links_item: "" }, class: "tree-row links-row link-unresolved" do %>
       <%= render "note_links/unresolved_title", cited_title: item.cited_title, reason: %>
-      <span class="links-row-maybe truncate"><%= maybe %></span>
+      <span class="links-row-maybe"><%= maybe %></span>
     <% end %>
   </li>
 <% elsif item.unresolved? %>

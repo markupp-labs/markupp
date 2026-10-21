@@ -75,8 +75,9 @@
     @apply cursor-pointer;
   }
 
+  /* Só o título citado trunca: o maybe fica inteiro. */
   .links-row-maybe {
-    @apply text-xs text-ink-muted;
+    @apply shrink-0 text-xs whitespace-nowrap text-ink-muted;
   }
 
   /* Show more: o frame dele ocupa a linha; depois de carregar, a lista da página seguinte segue a da seção. */
