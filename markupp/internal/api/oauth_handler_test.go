@@ -30,6 +30,9 @@ type fakeOAuthService struct {
 	err        error
 
 	authorizations []oauth.AuthorizationView
+	registration   oauth.RegistrationResponse
+
+	gotRegistration *oauth.RegistrationRequest
 
 	gotParams          oauth.AuthorizeParams
 	gotGrant           oauth.CodeGrant
@@ -92,6 +95,11 @@ func (f *fakeOAuthService) RevokeAuthorization(_ context.Context, userID, author
 	return f.err
 }
 
+func (f *fakeOAuthService) RegisterClient(_ context.Context, r oauth.RegistrationRequest) (oauth.RegistrationResponse, error) {
+	f.gotRegistration = &r
+	return f.registration, f.err
+}
+
 func oauthRouter(svc *fakeOAuthService) http.Handler {
 	return oauthRouterComOrigens(svc, nil)
 }
@@ -100,7 +108,7 @@ func oauthRouter(svc *fakeOAuthService) http.Handler {
 func oauthRouterComOrigens(svc *fakeOAuthService, origins []string) http.Handler {
 	return api.NewRouter(api.RouterDeps{
 		Tokens: &fakeTokenValidator{claims: auth.Claims{Subject: "u1"}}, Probe: &fakeProbe{}, AllowedOrigins: origins,
-		OAuth: svc, OAuthMetadata: &api.OAuthMetadata{Issuer: issuerDeTeste},
+		OAuth: svc, OAuthMetadata: &api.OAuthMetadata{Issuer: issuerDeTeste, DynamicRegistration: true},
 	})
 }
 

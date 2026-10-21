@@ -60,16 +60,16 @@ func auditoriasOAuth(t *testing.T, pool *pgxpool.Pool, result string) int {
 func TestPostgresOAuthRepo_GetClient_DevolveCliente(t *testing.T) {
 	repo, _ := repoOAuth(t)
 
-	client, err := repo.GetClient(context.Background(), "c1")
+	client, err := repo.GetClient(context.Background(), "c1", time.Time{})
 
 	require.NoError(t, err)
-	assert.Equal(t, oauth.Client{ID: "c1", Name: "Agente", RedirectURIs: []string{"http://127.0.0.1/cb"}}, client)
+	assert.Equal(t, oauth.Client{ID: "c1", Name: "Agente", RedirectURIs: []string{"http://127.0.0.1/cb"}, Source: oauth.ClientSourceDCR}, client)
 }
 
 func TestPostgresOAuthRepo_GetClient_Inexistente(t *testing.T) {
 	repo, _ := repoOAuth(t)
 
-	_, err := repo.GetClient(context.Background(), "c-nenhum")
+	_, err := repo.GetClient(context.Background(), "c-nenhum", time.Time{})
 
 	require.ErrorIs(t, err, oauth.ErrClientNotFound)
 }
@@ -81,7 +81,7 @@ func TestPostgresOAuthRepo_ClientIDLongo_ChegaLimitadoAoErro(t *testing.T) {
 	pedido := pedidoOAuth("r1", oauth.ScopeNotesRead)
 	pedido.ClientID = longo
 	casos := map[string]func() error{
-		"cliente inexistente":           func() error { _, err := repo.GetClient(ctx, longo); return err },
+		"cliente inexistente":           func() error { _, err := repo.GetClient(ctx, longo, time.Time{}); return err },
 		"pedido de cliente inexistente": func() error { return repo.CreateRequest(ctx, pedido) },
 		"autorização inexistente":       func() error { _, err := repo.ActiveAuthorization(ctx, "u1", longo); return err },
 	}
@@ -110,6 +110,16 @@ func TestPostgresOAuthRepo_CreateRequest_PendenteVoltaIgual(t *testing.T) {
 	assert.Equal(t, pedido.Resource, got.Resource)
 	assert.True(t, pedido.ExpiresAt.Equal(got.ExpiresAt))
 	assert.Empty(t, got.UserID)
+}
+
+func TestPostgresOAuthRepo_CreateRequest_ClienteInexistente_DevolveErrClientNotFound(t *testing.T) {
+	repo, _ := repoOAuth(t)
+	pedido := pedidoOAuth("r1", oauth.ScopeNotesRead)
+	pedido.ClientID = "c-apagado"
+
+	err := repo.CreateRequest(context.Background(), pedido)
+
+	require.ErrorIs(t, err, oauth.ErrClientNotFound)
 }
 
 func TestPostgresOAuthRepo_GetPendingRequest_Inexistente(t *testing.T) {

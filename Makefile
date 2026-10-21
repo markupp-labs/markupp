@@ -3,7 +3,7 @@ DOCKER_COMPOSE=docker compose
 META_COVERAGE=90
 PERFIL_COVERAGE=markupp/cover.out
 
-.PHONY: all test smoke-kind kind-up kind-painel kind-down compose-config compose-env docker-up docker-down run hooks test-scripts coverage coverage-check
+.PHONY: all test e2e-mcp smoke-kind kind-up kind-painel kind-down compose-config compose-env docker-up docker-down run hooks test-scripts coverage coverage-check
 
 all: compose-env compose-config test
 
@@ -11,6 +11,12 @@ all: compose-env compose-config test
 # para o testcontainers subir o PostgreSQL de teste
 test:
 	cd markupp && go test ./...
+
+# Testa o servidor MCP de ponta a ponta contra o Go no compose, num projeto à parte
+# (markupp-e2e) que é apagado no fim. Precisa de Node 26 com npm ci feito em mcp/ e de
+# Docker; MARKUPP_PORT e MAILPIT_PORT mudam as portas se a stack de dev ocupar as padrão
+e2e-mcp:
+	cd mcp && npm run e2e
 
 # Smoke descartável da stack dev num kind com os requisitos do cluster de produção.
 # Precisa de Docker, kind, helm, kubectl e Pulumi, e apaga o cluster no fim
@@ -36,9 +42,7 @@ compose-config:
 # Configura variáveis de ambiente no ambiente do Compose
 compose-env:
 	@if [ ! -f .env ]; then \
-		printf 'MARKUPP_PORT=8080\nPOSTGRES_VOLUME=postgres_data\nGO_MOD_CACHE=go_mod_cache\nMARKUPP_AUTH_SECRET=%s\n' "$$(openssl rand -hex 32)" > .env; \
-	elif ! grep -q '^MARKUPP_AUTH_SECRET=' .env; then \
-		printf 'MARKUPP_AUTH_SECRET=%s\n' "$$(openssl rand -hex 32)" >> .env; \
+		printf 'MARKUPP_PORT=8080\nPOSTGRES_VOLUME=postgres_data\nGO_MOD_CACHE=go_mod_cache\n' > .env; \
 	fi
 	@echo ".env criado/atualizado com sucesso."
 

@@ -19,7 +19,7 @@ func (s *Service) DescribeRequest(ctx context.Context, requestID, userID string)
 	if err != nil {
 		return RequestView{}, fmt.Errorf("oauth: buscando o pedido %s: %w", ClientValue(requestID), err)
 	}
-	client, err := s.repo.GetClient(ctx, req.ClientID)
+	client, err := s.repo.GetClient(ctx, req.ClientID, s.dcrPendingCutoff(s.clock()))
 	if errors.Is(err, ErrClientNotFound) {
 		return RequestView{}, clientGoneErr(requestID)
 	}
@@ -31,7 +31,7 @@ func (s *Service) DescribeRequest(ctx context.Context, requestID, userID string)
 		return RequestView{}, err
 	}
 	return RequestView{
-		ID: req.ID, ClientID: client.ID, ClientName: client.Name, RedirectHost: redirectHost(req.RedirectURI),
+		ID: req.ID, ClientID: client.ID, ClientName: client.Name, ClientSource: client.Source, RedirectHost: redirectHost(req.RedirectURI),
 		Scopes: req.Scopes, AlreadyAuthorized: authorized, ExpiresAt: req.ExpiresAt.UTC().Format(time.RFC3339),
 	}, nil
 }
@@ -60,11 +60,20 @@ func (s *Service) alreadyAuthorized(ctx context.Context, userID string, req Auth
 	return true, nil
 }
 
-// redirectHost devolve o host (com porta, se houver) da redirect_uri já validada.
+// redirectHost devolve o host (com porta, se houver) da redirect_uri já validada. No
+// esquema privado, o esquema vai junto (evilapp://claude.ai), para o host não se passar
+// por um site, e sozinho com dois-pontos quando não há host, para a tela nunca mostrar
+// vazio.
 func redirectHost(redirectURI string) string {
 	parsed, err := url.Parse(redirectURI)
 	if err != nil {
 		return ""
+	}
+	if parsed.Host == "" {
+		return parsed.Scheme + ":"
+	}
+	if parsed.Scheme != "http" && parsed.Scheme != "https" {
+		return parsed.Scheme + "://" + parsed.Host
 	}
 	return parsed.Host
 }
@@ -76,7 +85,7 @@ func (s *Service) Approve(ctx context.Context, requestID, userID string) (string
 	now := s.clock()
 	req, err := s.repo.ApproveRequest(ctx, Approval{
 		RequestID: requestID, UserID: userID, CodeHash: auth.HashOpaqueToken(code),
-		CodeExpiresAt: now.Add(s.cfg.CodeTTL), DecidedAt: now,
+		CodeExpiresAt: now.Add(s.cfg.CodeTTL), DecidedAt: now, DCRPendingCutoff: s.dcrPendingCutoff(now),
 	})
 	if err != nil {
 		return "", fmt.Errorf("oauth: aprovando o pedido %s: %w", ClientValue(requestID), err)

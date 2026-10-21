@@ -28,7 +28,7 @@ func assertNotaInvisivel(ctx context.Context, t *testing.T, repo *storage.Postgr
 	lista, err := repo.ListNotes(ctx)
 	require.NoError(t, err)
 	assert.Empty(t, lista)
-	achadas, err := repo.SearchNotes(ctx, "segredo", 0, 10)
+	achadas, err := repo.SearchNotes(ctx, "segredo", "", 0, 10)
 	require.NoError(t, err)
 	assert.Empty(t, achadas)
 	_, err = repo.Update(ctx, id, "invadida.md", "x", time.Now(), time.Time{}, true)
@@ -38,10 +38,10 @@ func assertNotaInvisivel(ctx context.Context, t *testing.T, repo *storage.Postgr
 
 func TestNotesRLS_OutroTenant_NaoEnxergaNemAlteraNota(t *testing.T) {
 	db := setupTestDB(t)
-	repo := storage.NewPostgresNotesRepository(db)
+	repo := storage.NewPostgresNotesRepository(db, "simple")
 	ctxA := storagetest.SeedMember(t, db, identity.Actor{UserID: "ua", TenantID: "t1", Role: "member"}, "va")
 	ctxB := storagetest.SeedMember(t, db, identity.Actor{UserID: "ub", TenantID: "t2", Role: "admin"}, "vb")
-	require.NoError(t, repo.Save(ctxA, notaNoCofre("n1", "a.md", "va")))
+	storagetest.SaveNote(ctxA, t, repo, notaNoCofre("n1", "a.md", "va"))
 
 	assertNotaInvisivel(ctxB, t, repo, "n1")
 
@@ -51,27 +51,29 @@ func TestNotesRLS_OutroTenant_NaoEnxergaNemAlteraNota(t *testing.T) {
 
 func TestNotesRLS_MesmoTenantForaDoCofre_NaoEnxergaNota(t *testing.T) {
 	db := setupTestDB(t)
-	repo := storage.NewPostgresNotesRepository(db)
+	repo := storage.NewPostgresNotesRepository(db, "simple")
 	ctxA := storagetest.SeedMember(t, db, identity.Actor{UserID: "ua", TenantID: "t1", Role: "member"}, "va")
 	ctxB := storagetest.SeedMember(t, db, identity.Actor{UserID: "ub", TenantID: "t1", Role: "admin"}, "vb")
-	require.NoError(t, repo.Save(ctxA, notaNoCofre("n1", "a.md", "va")))
+	storagetest.SaveNote(ctxA, t, repo, notaNoCofre("n1", "a.md", "va"))
 
 	assertNotaInvisivel(ctxB, t, repo, "n1")
 }
 
 func TestNotesRLS_CofreSemAcesso_RecusaEscrita(t *testing.T) {
 	db := setupTestDB(t)
-	repo := storage.NewPostgresNotesRepository(db)
+	repo := storage.NewPostgresNotesRepository(db, "simple")
 	storagetest.SeedMember(t, db, identity.Actor{UserID: "ua", TenantID: "t1", Role: "member"}, "va")
 	ctxB := storagetest.SeedMember(t, db, identity.Actor{UserID: "ub", TenantID: "t1", Role: "member"}, "vb")
 
-	assert.ErrorIs(t, repo.Save(ctxB, notaNoCofre("n1", "a.md", "va")), notes.ErrVaultForbidden)
-	assert.ErrorIs(t, repo.Save(ctxB, notaNoCofre("n2", "b.md", "inexistente")), notes.ErrVaultForbidden)
+	_, err := repo.Save(ctxB, notaNoCofre("n1", "a.md", "va"))
+	assert.ErrorIs(t, err, notes.ErrVaultForbidden)
+	_, err = repo.Save(ctxB, notaNoCofre("n2", "b.md", "inexistente"))
+	assert.ErrorIs(t, err, notes.ErrVaultForbidden)
 }
 
 func TestNotesRLS_DefaultVaultID_DevolveOCofreMaisAntigoDoAtor(t *testing.T) {
 	db := setupTestDB(t)
-	repo := storage.NewPostgresNotesRepository(db)
+	repo := storage.NewPostgresNotesRepository(db, "simple")
 	ator := identity.Actor{UserID: "ua", TenantID: "t1", Role: "member"}
 	storagetest.SeedMember(t, db, ator, "primeiro")
 	ctx := storagetest.SeedMember(t, db, ator, "segundo")
@@ -84,7 +86,7 @@ func TestNotesRLS_DefaultVaultID_DevolveOCofreMaisAntigoDoAtor(t *testing.T) {
 
 func TestNotesRLS_DefaultVaultID_AtorSemCofre_RecusaComErrVaultForbidden(t *testing.T) {
 	db := setupTestDB(t)
-	repo := storage.NewPostgresNotesRepository(db)
+	repo := storage.NewPostgresNotesRepository(db, "simple")
 	ctx := identity.WithActor(context.Background(), identity.Actor{UserID: "orfao", TenantID: "t1", Role: "member"})
 
 	_, err := repo.DefaultVaultID(ctx)
@@ -94,18 +96,19 @@ func TestNotesRLS_DefaultVaultID_AtorSemCofre_RecusaComErrVaultForbidden(t *test
 
 func TestNotesRLS_MesmoCaminhoEmCofresDiferentes_Permitido(t *testing.T) {
 	db := setupTestDB(t)
-	repo := storage.NewPostgresNotesRepository(db)
+	repo := storage.NewPostgresNotesRepository(db, "simple")
 	ator := identity.Actor{UserID: "ua", TenantID: "t1", Role: "member"}
 	storagetest.SeedMember(t, db, ator, "va")
 	ctx := storagetest.SeedMember(t, db, ator, "vb")
 
-	require.NoError(t, repo.Save(ctx, notaNoCofre("n1", "igual.md", "va")))
-	require.NoError(t, repo.Save(ctx, notaNoCofre("n2", "igual.md", "vb")))
-	assert.ErrorIs(t, repo.Save(ctx, notaNoCofre("n3", "igual.md", "va")), notes.ErrDuplicatePath)
+	storagetest.SaveNote(ctx, t, repo, notaNoCofre("n1", "igual.md", "va"))
+	storagetest.SaveNote(ctx, t, repo, notaNoCofre("n2", "igual.md", "vb"))
+	_, err := repo.Save(ctx, notaNoCofre("n3", "igual.md", "va"))
+	assert.ErrorIs(t, err, notes.ErrDuplicatePath)
 }
 
 func TestNotesRepo_SemAtorNoContexto_RecusaComErrNoActor(t *testing.T) {
-	repo := storage.NewPostgresNotesRepository(setupTestDB(t))
+	repo := storage.NewPostgresNotesRepository(setupTestDB(t), "simple")
 
 	_, err := repo.ListNotes(context.Background())
 
@@ -131,10 +134,10 @@ func comoPapelDaAplicacao(t *testing.T, db *pgxpool.Pool, ator identity.Actor, s
 
 func TestRLS_PapelDaAplicacaoSemFiltro_SoEnxergaOProprioTenant(t *testing.T) {
 	db := setupTestDB(t)
-	repo := storage.NewPostgresNotesRepository(db)
+	repo := storage.NewPostgresNotesRepository(db, "simple")
 	ctxA := storagetest.SeedMember(t, db, identity.Actor{UserID: "ua", TenantID: "t1", Role: "member"}, "va")
 	storagetest.SeedMember(t, db, identity.Actor{UserID: "ub", TenantID: "t2", Role: "member"}, "vb")
-	require.NoError(t, repo.Save(ctxA, notaNoCofre("n1", "a.md", "va")))
+	storagetest.SaveNote(ctxA, t, repo, notaNoCofre("n1", "a.md", "va"))
 
 	consultasDoCofreAlheio := []string{
 		"SELECT count(*) FROM notes WHERE vault_id = 'va'",
@@ -181,15 +184,16 @@ func TestRLS_PapelDaAplicacaoComoMembro_VeOsColegasMasNaoOsConvites(t *testing.T
 
 func TestNotesRLS_Viewer_LeMasNaoEscreve(t *testing.T) {
 	db := setupTestDB(t)
-	repo := storage.NewPostgresNotesRepository(db)
+	repo := storage.NewPostgresNotesRepository(db, "simple")
 	ctxDona := storagetest.SeedMember(t, db, identity.Actor{UserID: "dona", TenantID: "t1", Role: "owner"}, "va")
 	storagetest.SeedMember(t, db, identity.Actor{UserID: "leitora", TenantID: "t1", Role: "viewer"}, "va")
 	ctxLeitora := identity.WithActor(context.Background(), identity.Actor{UserID: "leitora", TenantID: "t1", Role: "viewer"})
-	require.NoError(t, repo.Save(ctxDona, notaNoCofre("n1", "a.md", "va")))
+	storagetest.SaveNote(ctxDona, t, repo, notaNoCofre("n1", "a.md", "va"))
 
 	_, err := repo.GetNoteByID(ctxLeitora, "n1")
 	require.NoError(t, err, "viewer le as notas do cofre")
-	assert.ErrorIs(t, repo.Save(ctxLeitora, notaNoCofre("n2", "b.md", "va")), notes.ErrVaultForbidden)
+	_, err = repo.Save(ctxLeitora, notaNoCofre("n2", "b.md", "va"))
+	assert.ErrorIs(t, err, notes.ErrVaultForbidden)
 	_, err = repo.Update(ctxLeitora, "n1", "a.md", "alterada", time.Now(), time.Time{}, true)
 	assert.ErrorIs(t, err, notes.ErrNotFound)
 	assert.ErrorIs(t, repo.Delete(ctxLeitora, "n1"), notes.ErrNotFound)
@@ -200,7 +204,7 @@ func TestNotesRLS_Viewer_LeMasNaoEscreve(t *testing.T) {
 
 func TestNotesRLS_DefaultVaultID_ContaEmDoisTenants_UsaOCofreDoTenantDaSessao(t *testing.T) {
 	db := setupTestDB(t)
-	repo := storage.NewPostgresNotesRepository(db)
+	repo := storage.NewPostgresNotesRepository(db, "simple")
 	storagetest.SeedMember(t, db, identity.Actor{UserID: "bia", TenantID: "t1", Role: "member"}, "cofre-antigo-t1")
 	ctxT2 := storagetest.SeedMember(t, db, identity.Actor{UserID: "bia", TenantID: "t2", Role: "owner"}, "cofre-t2")
 

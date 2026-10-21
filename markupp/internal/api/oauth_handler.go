@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"maps"
 	"mime"
 	"net/http"
@@ -27,6 +28,7 @@ type OAuthService interface {
 	RevokeToken(ctx context.Context, r oauth.RevokeRequest) error
 	ListAuthorizations(ctx context.Context, userID string) ([]oauth.AuthorizationView, error)
 	RevokeAuthorization(ctx context.Context, userID, authorizationID string) error
+	RegisterClient(ctx context.Context, r oauth.RegistrationRequest) (oauth.RegistrationResponse, error)
 }
 
 const (
@@ -62,13 +64,14 @@ func mountOAuthServerRoutes(r chi.Router, d RouterDeps) {
 		m.Options("/", openPreflight(http.MethodGet, "Content-Type, "+mcpProtocolVersionHeader))
 	})
 	if d.OAuth != nil {
-		mountOAuthProtocolRoutes(r, &oauthHandler{svc: d.OAuth, issuer: d.OAuthMetadata.Issuer})
+		mountOAuthProtocolRoutes(r, &oauthHandler{svc: d.OAuth, issuer: d.OAuthMetadata.Issuer}, d.OAuthMetadata.DynamicRegistration)
 	}
 }
 
 // mountOAuthProtocolRoutes deixa o authorize, aberto por navegação, sem CORS, e o resto
-// de /oauth com CORS aberto, inclusive no 404 e no 405.
-func mountOAuthProtocolRoutes(r chi.Router, h *oauthHandler) {
+// de /oauth com CORS aberto, inclusive no 404 e no 405. O registro dinâmico só entra
+// quando ligado.
+func mountOAuthProtocolRoutes(r chi.Router, h *oauthHandler, dynamicRegistration bool) {
 	r.Route(oauthAuthorizePath, func(a chi.Router) {
 		a.Get("/", h.authorize)
 	})
@@ -80,6 +83,10 @@ func mountOAuthProtocolRoutes(r chi.Router, h *oauthHandler) {
 		p.Options("/token", openPreflight(http.MethodPost, "Content-Type"))
 		p.Post("/revoke", h.revoke)
 		p.Options("/revoke", openPreflight(http.MethodPost, "Content-Type"))
+		if dynamicRegistration {
+			p.Post("/register", h.register)
+			p.Options("/register", openPreflight(http.MethodPost, "Content-Type"))
+		}
 	})
 }
 
@@ -130,6 +137,9 @@ func (h *oauthHandler) writeAuthorizeError(w http.ResponseWriter, r *http.Reques
 	if !errors.As(err, &protoErr) {
 		writeOAuthInternal(w, "iniciar autorizacao oauth", err)
 		return
+	}
+	if cause := protoErr.Unwrap(); cause != nil {
+		slog.Warn("recusa do oauth com causa interna", "operacao", "iniciar autorizacao oauth", "code", protoErr.Code, "error", cause)
 	}
 	if protoErr.RedirectURI == "" {
 		writeOAuthError(w, protoErr)

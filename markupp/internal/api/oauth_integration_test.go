@@ -42,6 +42,20 @@ var semSeguirRedirect = &http.Client{CheckRedirect: func(*http.Request, []*http.
 
 func setupOAuthIntegrationServer(t *testing.T) (*httptest.Server, *pgxpool.Pool) {
 	t.Helper()
+	return setupOAuthIntegrationServerWith(t, opcoesDeIntegracaoOAuth{})
+}
+
+// opcoesDeIntegracaoOAuth ajustam o servidor de integração: o fetcher de documentos
+// CIMD, o tempo do cache negativo e se o registro dinâmico fica ligado.
+type opcoesDeIntegracaoOAuth struct {
+	metadata   oauth.ClientMetadataFetcher
+	failureTTL time.Duration
+	dcr        bool
+}
+
+// setupOAuthIntegrationServerWith monta o servidor de integração com as opções dadas.
+func setupOAuthIntegrationServerWith(t *testing.T, opcoes opcoesDeIntegracaoOAuth) (*httptest.Server, *pgxpool.Pool) {
+	t.Helper()
 	pool := storagetest.EmptyPool(t)
 	require.NoError(t, storage.Migrate(context.Background(), pool))
 	_, err := pool.Exec(context.Background(), `INSERT INTO oauth_clients (id, source, name, redirect_uris)
@@ -51,10 +65,10 @@ func setupOAuthIntegrationServer(t *testing.T) (*httptest.Server, *pgxpool.Pool)
 	codec := auth.NewTokenCodec("segredo-para-teste-de-integracao-de-oauth", 15*time.Minute, time.Now)
 	authCfg := auth.ServiceConfig{DefaultTenantID: "default", LocalEnabled: true, RefreshExpirationPeriod: 24 * time.Hour}
 	authSvc := auth.NewService(storage.NewPostgresAuthRepository(pool), codec, auth.NewBcryptHasher(), authCfg, time.Now)
-	notesSvc := notes.NewService(storage.NewPostgresNotesRepository(pool), integrationMaxNoteSize)
+	notesSvc := notes.NewService(storage.NewPostgresNotesRepository(pool, "simple"), integrationMaxNoteSize)
 	router := api.NewRouter(api.RouterDeps{
 		Auth: authSvc, Notes: notesSvc, Tokens: codec, Tenants: authSvc, Probe: pool,
-		OAuthMetadata: &api.OAuthMetadata{Issuer: issuerDeIntegracao}, OAuth: oauthServiceDeIntegracao(pool, codec),
+		OAuthMetadata: &api.OAuthMetadata{Issuer: issuerDeIntegracao, DynamicRegistration: opcoes.dcr}, OAuth: oauthServiceDeIntegracao(pool, codec, opcoes),
 	})
 
 	server := httptest.NewServer(router)
@@ -63,12 +77,13 @@ func setupOAuthIntegrationServer(t *testing.T) (*httptest.Server, *pgxpool.Pool)
 }
 
 // oauthServiceDeIntegracao monta o serviço OAuth com um resource e o segredo dele.
-func oauthServiceDeIntegracao(pool *pgxpool.Pool, codec *auth.TokenCodec) *oauth.Service {
+func oauthServiceDeIntegracao(pool *pgxpool.Pool, codec *auth.TokenCodec, opcoes opcoesDeIntegracaoOAuth) *oauth.Service {
 	return oauth.NewService(storage.NewPostgresOAuthRepository(pool), oauth.ServiceConfig{
 		Issuer: issuerDeIntegracao, PanelURL: painelDeIntegracao, Resources: []string{resourceDeIntegracao},
 		AccessTTL: time.Hour, RefreshTTL: 24 * time.Hour, RequestTTL: 10 * time.Minute, CodeTTL: time.Minute, ExchangeTTL: 5 * time.Minute,
-		ResourceSecrets: map[string]string{resourceDeIntegracao: segredoDoResource},
-	}, codec, time.Now, uuid.NewString, func() string { return uuid.NewString() + uuid.NewString() })
+		ResourceSecrets: map[string]string{resourceDeIntegracao: segredoDoResource}, CIMDFailureTTL: opcoes.failureTTL,
+		DCRMaxPending: 1000, DCRPendingTTL: 24 * time.Hour,
+	}, codec, opcoes.metadata, time.Now, uuid.NewString, func() string { return uuid.NewString() + uuid.NewString() })
 }
 
 func loginDeIntegracao(t *testing.T, server *httptest.Server) string {
@@ -83,13 +98,26 @@ func loginDeIntegracao(t *testing.T, server *httptest.Server) string {
 
 func iniciarAutorizacao(t *testing.T, server *httptest.Server, scope string) string {
 	t.Helper()
+	return iniciarAutorizacaoDe(t, server, "agente", scope)
+}
+
+// pedirAutorizacao faz o GET /oauth/authorize do cliente sem seguir o redirect.
+func pedirAutorizacao(t *testing.T, server *httptest.Server, clientID, scope string) *http.Response {
+	t.Helper()
 	query := url.Values{
-		"response_type": {"code"}, "client_id": {"agente"}, "redirect_uri": {retornoDoAgente},
+		"response_type": {"code"}, "client_id": {clientID}, "redirect_uri": {retornoDoAgente},
 		"scope": {scope}, "state": {"estado-1"}, "resource": {resourceDeIntegracao},
 		"code_challenge": {challengeDaRFC}, "code_challenge_method": {"S256"},
 	}
 	resp, err := semSeguirRedirect.Get(server.URL + "/oauth/authorize?" + query.Encode())
 	require.NoError(t, err)
+	return resp
+}
+
+// iniciarAutorizacaoDe pede a autorização do cliente e devolve o pedido do consentimento.
+func iniciarAutorizacaoDe(t *testing.T, server *httptest.Server, clientID, scope string) string {
+	t.Helper()
+	resp := pedirAutorizacao(t, server, clientID, scope)
 	defer func() { _ = resp.Body.Close() }()
 	require.Equal(t, http.StatusFound, resp.StatusCode)
 	consent, err := url.Parse(resp.Header.Get("Location"))
@@ -117,9 +145,14 @@ func aprovarPedido(t *testing.T, server *httptest.Server, accountToken, requestI
 
 func trocarCodigo(t *testing.T, server *httptest.Server, code string) (int, map[string]any) {
 	t.Helper()
+	return trocarCodigoDe(t, server, "agente", code)
+}
+
+func trocarCodigoDe(t *testing.T, server *httptest.Server, clientID, code string) (int, map[string]any) {
+	t.Helper()
 	form := url.Values{
 		"grant_type": {"authorization_code"}, "code": {code}, "code_verifier": {verifierDaRFC},
-		"client_id": {"agente"}, "redirect_uri": {retornoDoAgente}, "resource": {resourceDeIntegracao},
+		"client_id": {clientID}, "redirect_uri": {retornoDoAgente}, "resource": {resourceDeIntegracao},
 	}
 	resp := postarFormOAuth(t, server, "/oauth/token", form)
 	defer func() { _ = resp.Body.Close() }()

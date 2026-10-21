@@ -19,9 +19,15 @@ type fakeOAuthRepository struct {
 	consumed       oauth.TokenGrant
 	found          oauth.TokenGrant
 	summaries      []oauth.AuthorizationSummary
+	// freshCIMD são os clientes CIMD com documento em cache ainda válido.
+	freshCIMD map[string]oauth.Client
+	// pendingDCRCreatedAt é quando foi criado cada cliente DCR pendente: criado no
+	// limite dos pendentes ou antes, conta como inexistente.
+	pendingDCRCreatedAt map[string]time.Time
 
 	getClientErr, createErr, approveErr, activeErr, redeemErr, saveErr              error
 	consumeErr, saveRefreshedErr, revokeAuditedErr, findErr, listErr, revokeAuthErr error
+	getFreshCIMDErr, saveCIMDErr, registerDCRErr                                    error
 
 	created     []oauth.AuthorizationRequest
 	pendingNow  []time.Time
@@ -44,6 +50,26 @@ type fakeOAuthRepository struct {
 	findCalls      []string
 	listCalls      []string
 	revokedAuths   []revokedAuthorization
+	getClientCalls []string
+	// getClientCutoffs guarda o limite dos pendentes de cada chamada a GetClient.
+	getClientCutoffs []time.Time
+	freshCIMDCalls   []freshCIMDLookup
+	savedCIMD        []savedCIMDClient
+	// dcrRegistrations guarda cada chamada a RegisterDCRClient.
+	dcrRegistrations []oauth.DCRRegistration
+}
+
+// freshCIMDLookup é uma chamada a GetFreshCIMDClient.
+type freshCIMDLookup struct {
+	ID  string
+	Now time.Time
+}
+
+// savedCIMDClient é uma chamada a SaveCIMDClient.
+type savedCIMDClient struct {
+	Client    oauth.Client
+	ExpiresAt time.Time
+	Now       time.Time
 }
 
 // auditedRevoke é uma chamada a RevokeAuthorizationTokensAudited.
@@ -66,19 +92,30 @@ func newFakeOAuthRepository() *fakeOAuthRepository {
 		clients:        map[string]oauth.Client{},
 		requests:       map[string]oauth.AuthorizationRequest{},
 		authorizations: map[string]oauth.Authorization{},
+		freshCIMD:      map[string]oauth.Client{},
+
+		pendingDCRCreatedAt: map[string]time.Time{},
 	}
+}
+
+// expiredPendingDCR diz se o cliente é DCR pendente criado no limite ou antes.
+func (f *fakeOAuthRepository) expiredPendingDCR(clientID string, cutoff time.Time) bool {
+	createdAt, pending := f.pendingDCRCreatedAt[clientID]
+	return pending && !createdAt.After(cutoff)
 }
 
 func authorizationKey(userID, clientID string) string {
 	return userID + "|" + clientID
 }
 
-func (f *fakeOAuthRepository) GetClient(_ context.Context, id string) (oauth.Client, error) {
+func (f *fakeOAuthRepository) GetClient(_ context.Context, id string, dcrPendingCutoff time.Time) (oauth.Client, error) {
+	f.getClientCalls = append(f.getClientCalls, id)
+	f.getClientCutoffs = append(f.getClientCutoffs, dcrPendingCutoff)
 	if f.getClientErr != nil {
 		return oauth.Client{}, f.getClientErr
 	}
 	client, ok := f.clients[id]
-	if !ok {
+	if !ok || f.expiredPendingDCR(id, dcrPendingCutoff) {
 		return oauth.Client{}, oauth.ErrClientNotFound
 	}
 	return client, nil
@@ -104,7 +141,7 @@ func (f *fakeOAuthRepository) ApproveRequest(_ context.Context, approval oauth.A
 		return oauth.AuthorizationRequest{}, f.approveErr
 	}
 	req, ok := f.requests[approval.RequestID]
-	if !ok {
+	if !ok || f.expiredPendingDCR(req.ClientID, approval.DCRPendingCutoff) {
 		return oauth.AuthorizationRequest{}, oauth.ErrRequestNotFound
 	}
 	return req, nil
@@ -185,4 +222,26 @@ func (f *fakeOAuthRepository) RevokeAuthorization(_ context.Context, userID, aut
 func (f *fakeOAuthRepository) RecordAuditEvent(_ context.Context, event oauth.AuditEvent) error {
 	f.recordedEvents = append(f.recordedEvents, event)
 	return f.recordErr
+}
+
+func (f *fakeOAuthRepository) GetFreshCIMDClient(_ context.Context, id string, now time.Time) (oauth.Client, error) {
+	f.freshCIMDCalls = append(f.freshCIMDCalls, freshCIMDLookup{ID: id, Now: now})
+	if f.getFreshCIMDErr != nil {
+		return oauth.Client{}, f.getFreshCIMDErr
+	}
+	client, ok := f.freshCIMD[id]
+	if !ok {
+		return oauth.Client{}, oauth.ErrClientNotFound
+	}
+	return client, nil
+}
+
+func (f *fakeOAuthRepository) RegisterDCRClient(_ context.Context, reg oauth.DCRRegistration) error {
+	f.dcrRegistrations = append(f.dcrRegistrations, reg)
+	return f.registerDCRErr
+}
+
+func (f *fakeOAuthRepository) SaveCIMDClient(_ context.Context, client oauth.Client, expiresAt, now time.Time) error {
+	f.savedCIMD = append(f.savedCIMD, savedCIMDClient{Client: client, ExpiresAt: expiresAt, Now: now})
+	return f.saveCIMDErr
 }

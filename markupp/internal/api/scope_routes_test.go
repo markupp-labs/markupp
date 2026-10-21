@@ -57,7 +57,7 @@ func serveScopedWith(route scopedRoute, scope string, tenants api.TenantResolver
 // routerWithAllServices monta o roteador com todos os serviços falsos ligados.
 func routerWithAllServices(tokens api.TokenValidator, tenants api.TenantResolver) chi.Router {
 	return api.NewRouter(api.RouterDeps{
-		Notes: &fakeService{}, Auth: &fakeAuthService{}, Admin: &fakeAdminService{},
+		Notes: &fakeService{}, Graph: &fakeNoteGraph{}, Auth: &fakeAuthService{}, Admin: &fakeAdminService{},
 		AccountEmail: &fakeAccountEmailService{}, OAuth: &fakeOAuthService{},
 		OAuthMetadata: &api.OAuthMetadata{Issuer: issuerDeTeste}, Probe: &fakeProbe{},
 		Tokens: tokens, Tenants: tenants,

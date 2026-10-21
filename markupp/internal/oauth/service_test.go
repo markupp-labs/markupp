@@ -37,6 +37,7 @@ func testServiceConfig() oauth.ServiceConfig {
 		CodeTTL:         time.Minute,
 		ResourceSecrets: map[string]string{testResource: testResourceSecret},
 		ExchangeTTL:     5 * time.Minute,
+		DCRPendingTTL:   testDCRPendingTTL,
 	}
 }
 
@@ -61,7 +62,7 @@ func newTestServiceWithIssuer(repo *fakeOAuthRepository, scoped oauth.ScopedToke
 	ids := &sequenceSource{prefix: "pedido"}
 	tokens := &sequenceSource{prefix: "token"}
 	clock := func() time.Time { return testNow }
-	return oauth.NewService(repo, testServiceConfig(), scoped, clock, ids.next, tokens.next)
+	return oauth.NewService(repo, testServiceConfig(), scoped, nil, clock, ids.next, tokens.next)
 }
 
 func testChallenge(verifier string) string {
@@ -70,7 +71,7 @@ func testChallenge(verifier string) string {
 }
 
 func testClient() oauth.Client {
-	return oauth.Client{ID: testClientID, Name: "Cliente de teste", RedirectURIs: []string{testRedirectURI}}
+	return oauth.Client{ID: testClientID, Name: "Cliente de teste", RedirectURIs: []string{testRedirectURI}, Source: oauth.ClientSourceCIMD}
 }
 
 func testRepositoryWithClient() *fakeOAuthRepository {

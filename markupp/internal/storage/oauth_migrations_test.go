@@ -75,7 +75,7 @@ func TestMigracao00032_TabelasOAuth_SemPrivilegioParaPapeis(t *testing.T) {
 	pool := bancoComOAuthSobDefaultPrivileges(t)
 
 	for _, papel := range papeisSemAcessoOAuth {
-		for _, tabela := range tabelasOAuth {
+		for _, tabela := range append(tabelasOAuth, "oauth_pending_dcr_clients") {
 			assert.Equal(t, 0, privilegiosOAuth(t, pool, papel, tabela), "%s não pode tocar em %s", papel, tabela)
 		}
 	}
@@ -105,6 +105,22 @@ func TestMigracao00032_SourceInvalido_Rejeitado(t *testing.T) {
 	_, err := pool.Exec(context.Background(), `INSERT INTO oauth_clients (id, source, name, redirect_uris)
 		VALUES ('c2', 'manual', 'Agente', ARRAY['http://127.0.0.1/cb'])`)
 
+	assert.Error(t, err)
+}
+
+// O CHECK é o que garante que GetFreshCIMDClient nunca devolve cliente de outra origem:
+// só o cimd tem validade de documento.
+func TestMigracao00032_ValidadeDoDocumento_SoEmClienteCIMD(t *testing.T) {
+	pool := bancoComOAuth(t)
+	inserir := func(id, source string) error {
+		_, err := pool.Exec(context.Background(), `INSERT INTO oauth_clients (id, source, name, redirect_uris, metadata_expires_at)
+			VALUES ($1, $2, 'Agente', ARRAY['http://127.0.0.1/cb'], now() + interval '1 hour')`, id, source)
+		return err
+	}
+
+	assert.Error(t, inserir("c2", "dcr"))
+	assert.NoError(t, inserir("https://agente.example/c.json", "cimd"))
+	_, err := pool.Exec(context.Background(), `UPDATE oauth_clients SET metadata_expires_at = now() WHERE id = 'c1'`)
 	assert.Error(t, err)
 }
 
