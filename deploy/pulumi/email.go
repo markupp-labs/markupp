@@ -34,6 +34,24 @@ func withEmailSecret(secretValues pulumi.StringMap, args MarkuppArgs) pulumi.Str
 	return secretValues
 }
 
+// withoutEmptyEmail trata o bloco de email vazio como ausente: o Pulumi YAML não
+// omite propriedade, e a stack sem email passa o bloco vazio.
+func withoutEmptyEmail(args MarkuppArgs) MarkuppArgs {
+	if args.Email != nil && args.Email.SMTPURL == nil && args.Email.From == "" && args.Email.PanelURL == "" {
+		args.Email = nil
+	}
+	return args
+}
+
+// validateEmailServer recusa o bloco de email sem servidor, que desligaria o envio
+// sem aviso.
+func validateEmailServer(args MarkuppArgs) error {
+	if args.Email == nil || args.Email.SMTPURL != nil {
+		return nil
+	}
+	return fmt.Errorf("campo email.smtpUrl vazio com email.from=%q, esperado smtp://usuario:senha@host:porta ou smtps://", args.Email.From)
+}
+
 // validateEmailSender recusa o remetente que o notificador recusaria ao subir.
 func validateEmailSender(args MarkuppArgs) error {
 	if args.Email == nil {
