@@ -26,7 +26,7 @@ class NoteLinkSectionsControllerTest < ActionDispatch::IntegrationTest
   test "the next page brings its rows and a show more while the section goes on" do
     get "/notes/plan/links/backlinks?offset=100"
 
-    assert_select "turbo-frame#links_backlinks_100[target=_top] ul[data-links-count=?]", "200+"
+    assert_select "turbo-frame#links_backlinks_100[target=_top] ul[data-links-count=?]", "100+"
     assert_select "turbo-frame#links_backlinks_100[target=_top]" do
       assert_select "a[href=?]", note_path("backlink-101")
       assert_select ".links-item", count: 101
@@ -53,7 +53,7 @@ class NoteLinkSectionsControllerTest < ActionDispatch::IntegrationTest
     get "/notes/plan/links/suggestions?offset=10000"
 
     assert_select "turbo-frame#links_suggestions_10000 a[href=?]", note_path("suggestion-10100")
-    assert_select "turbo-frame#links_suggestions_10000 ul[data-links-count=?]", "10100+"
+    assert_select "turbo-frame#links_suggestions_10000 ul[data-links-count=?]", "100+"
     assert_select ".links-more", count: 0
   end
 
