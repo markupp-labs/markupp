@@ -87,9 +87,10 @@ func limitAccountAttempts(l *AccountRateLimiter) func(http.Handler) http.Handler
 }
 
 func (l *AccountRateLimiter) allowRequest(r *http.Request) (time.Duration, bool) {
-	keys := []string{r.URL.Path + " ip " + l.clientIP(r)}
+	route := unversionedPath(r.URL.Path)
+	keys := []string{route + " ip " + l.clientIP(r)}
 	if email := peekEmail(r); email != "" {
-		keys = append(keys, r.URL.Path+" email "+email)
+		keys = append(keys, route+" email "+email)
 	}
 	for _, key := range keys {
 		if wait, ok := l.Allow(key); !ok {
@@ -174,4 +175,13 @@ func writeRateLimited(w http.ResponseWriter, wait time.Duration) {
 	seconds := max(1, int(math.Ceil(wait.Seconds())))
 	w.Header().Set("Retry-After", strconv.Itoa(seconds))
 	writeError(w, "rate_limited", "tentativas demais, aguarde "+strconv.Itoa(seconds)+"s", http.StatusTooManyRequests)
+}
+
+// unversionedPath tira o prefixo /v1 do caminho, para a rota sob /v1 e o alias obsoleto
+// sem prefixo contarem no mesmo limite.
+func unversionedPath(path string) string {
+	if rest, ok := strings.CutPrefix(path, currentVersionPrefix+"/"); ok {
+		return "/" + rest
+	}
+	return path
 }
