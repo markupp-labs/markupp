@@ -4,10 +4,11 @@ import { replaceQuery } from "controllers/url_query"
 // Filtros do grafo cheio (graphs/_filters), como os do graph view do Obsidian. Cada troca é um passo do histórico com os
 // filtros na query da página (pushState, sem visita: o foco fica onde estava, e recarregar ou compartilhar o endereço
 // desenha igual) e pede ao canvas (outlet graph-view) o grafo filtrado. O voltar e o avançar entre esses passos marcam o
-// painel pela query e redesenham, sem o Turbo carregar a página de novo: os passos da tela não levam o estado do Turbo
-// (sem ele, o Turbo deixa o popstate passar), e o passo de onde se sai para outra página o ganha antes da visita, para o
-// voltar de lá restaurar a tela pelo Turbo. A página não entra no cache do Turbo (graphs/show): a restauração sempre
-// pede a página da query, nunca uma cópia com outros filtros. Teclas pelo code que a view tira do registro único
+// painel pela query e redesenham, sem o Turbo carregar a página de novo: cada passo repete o estado do Turbo da entrada
+// (a mesma visita para ele), e o voltar que chega a um passo desta visita para antes do Turbo (history:pop, de
+// controllers/history_pop). Os de outra visita, ou com a tela já em outra página, seguem para o Turbo restaurar. A
+// página não entra no cache do Turbo (graphs/show): a restauração sempre pede a página da query, nunca uma cópia com
+// outros filtros. Teclas pelo code que a view tira do registro único
 // (ShortcutsHelper): a do painel abre e fecha, a de cada filtro liga e desliga, a da comunidade vai para a próxima e,
 // com Shift, para a anterior, e a de limpar mostra tudo (como o botão do vazio pelos filtros, no canvas). Valem com o
 // foco na tela do grafo, ou no body, de onde a paleta repete a tecla, e não num campo de texto. Esc com o painel aberto o fecha antes de o Esc voltar à nota (area-back pula a camada data-esc-layer
@@ -18,29 +19,22 @@ export default class extends Controller {
   static values = { code: String, clearCode: String }
 
   connect() {
-    forgetTurboState()
+    this.visitId = turboVisitId(window.history.state)
   }
 
   change() {
     const query = this.query()
-    window.history.pushState(null, "", replaceQuery(new URL(window.location.href), query))
+    window.history.pushState(window.history.state, "", replaceQuery(new URL(window.location.href), query))
     this.show(query)
   }
 
-  // Passo desta tela (sem o estado do Turbo, que o Turbo põe ao passar por ele e sai de novo aqui).
-  restore({ state }) {
-    if (state?.turbo) return
+  // Passo desta visita: o Turbo não o vê. ponytail: lê o restorationIdentifier do estado do History do Turbo 8.
+  restore(event) {
+    if (!this.visitId || turboVisitId(event.detail.state) != this.visitId) return
 
-    forgetTurboState()
+    event.preventDefault()
     this.mark(new URLSearchParams(window.location.search))
     this.show(this.query())
-  }
-
-  // Antes de uma visita do Turbo para outra página, o passo atual ganha o estado dele, para o voltar restaurar a tela.
-  // ponytail: o formato do estado ({ turbo: { restorationIdentifier, restorationIndex } }) é o do History do Turbo 8;
-  // o índice só dá o sentido da transição. Rever se o Turbo mudar o formato.
-  keepForTurbo() {
-    window.history.replaceState({ turbo: { restorationIdentifier: crypto.randomUUID(), restorationIndex: 0 } }, "", window.location.href)
   }
 
   // Painel como a query diz: marcado o filtro que não vem false, e a comunidade dela (ou All).
@@ -116,8 +110,6 @@ export default class extends Controller {
   }
 }
 
-function forgetTurboState() {
-  window.history.replaceState(null, "", window.location.href)
-}
+const turboVisitId = (state) => state?.turbo?.restorationIdentifier
 
 const activeCount = (query) => Object.values(query).filter((value) => value != null).length
