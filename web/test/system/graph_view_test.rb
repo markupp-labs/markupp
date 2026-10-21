@@ -160,6 +160,20 @@ class GraphViewTest < ApplicationSystemTestCase
     assert_selector "main canvas[data-graph-canvas]:focus"
   end
 
+  test "a list only for screen readers links the drawn notes in the order of j and follows the filters" do
+    send_keys [ :control, :shift, "g" ]
+    assert_selector "#sidebar_view_graph [data-graph-nodes='3']"
+
+    assert_equal [ [ "plan", note_path("plan") ], [ "roadmap", note_path("roadmap") ] ], screen_reader_notes("#sidebar_view_graph")
+    visit graph_path(note: "plan")
+    assert_selector "main [data-graph-nodes='1']"
+    assert_equal [ [ "roadmap", note_path("roadmap") ] ], screen_reader_notes("main")
+    send_keys "o"
+    assert_selector "main [data-graph-nodes='0']"
+
+    assert_empty screen_reader_notes("main")
+  end
+
   test "on a phone the full graph fits the screen, status line included, without scrolling the page" do
     page.current_window.resize_to(390, 844)
     visit graph_path(note: "plan")
@@ -206,6 +220,11 @@ class GraphViewTest < ApplicationSystemTestCase
 
   private
     def page_query = Rack::Utils.parse_query(URI(current_url).query)
+
+    # Os links da lista do leitor de tela, que fica fora da vista e fora do Tab.
+    def screen_reader_notes(scope)
+      all("#{scope} ul.sr-only[aria-label='Notes in the graph'] a[tabindex='-1']", visible: :hidden).map { [ it.text(:all), URI(it[:href]).path ] }
+    end
 
     def graph_module_requested?
       evaluate_script("performance.getEntriesByType('resource').some((entry) => /d3-force|graph\\/scene/.test(entry.name))")
