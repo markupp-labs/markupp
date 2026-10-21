@@ -18,6 +18,7 @@ en:
       full: "Full graph"
     canvas_label: "Graph of the notes. j and k move between the notes, Enter opens one, plus and minus zoom, 0 fits."
     roledescription: "graph"
+    list_label: "Notes in the graph"
     status: "%{nodes} nodes  %{links} links"
     capped: "%{shown} of %{total} nodes, the most central  %{links} links"
     empty:

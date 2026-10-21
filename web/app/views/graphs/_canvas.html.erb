@@ -1,6 +1,7 @@
 <%# Canvas do grafo (graph_view_controller.js), na visão Graph e na tela cheia: o controller só baixa o módulo do grafo
     e pede o json (url) quando o canvas aparece. O canvas recebe o foco (j/k andam pelas notas, Enter abre, + e - dão
-    zoom, 0 enquadra); o status diz quantos nós e ligações estão desenhados, e o aviso falado diz a nota com o foco.
+    zoom, 0 enquadra); o status diz quantos nós e ligações estão desenhados, e o aviso falado diz a nota com o foco. A
+    lista, só para o leitor de tela, traz um link por nota desenhada, na ordem do j.
     Vazio, recusado ou sem servidor, o estado vazio de cada caso toma o lugar do canvas. region: a região do Alt+hjkl;
     toolbar: os controles acima do canvas, dentro do controller (o seletor de saltos da visão Graph). %>
 <% region = local_assigns[:region] %>
@@ -27,4 +28,5 @@
   </div>
   <p role="status" data-graph-view-target="status" class="graph-status"></p>
   <p aria-live="polite" data-graph-view-target="announce" class="sr-only"></p>
+  <ul aria-label="<%= t("graphs.list_label") %>" data-graph-view-target="list" class="sr-only"></ul>
 <% end %>

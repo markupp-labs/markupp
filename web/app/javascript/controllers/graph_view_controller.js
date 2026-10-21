@@ -6,7 +6,8 @@ import { replaceQuery } from "controllers/url_query"
 // vista o controller baixa a cena (graph/scene.js, que traz o d3-force) e pede o json; antes disso nada baixa. Fora da
 // vista a cena pausa. O canvas tem o foco: j/k e as setas andam pelas notas do mais central ao menos, Enter abre, + e -
 // dão zoom e 0 enquadra, teclas pelo code. O elemento diz em data-graph-nodes, -links, -running, -zoom e -focus o que
-// está desenhado (os testes leem dali); o status diz o mesmo em texto, e o aviso falado diz a nota com o foco.
+// está desenhado (os testes leem dali); o status diz o mesmo em texto, e o aviso falado diz a nota com o foco. Uma lista
+// só para o leitor de tela (sr-only) traz um link por nota desenhada, refeita a cada desenho, com os filtros.
 const ACTIONS = {
   KeyJ: [ "step", 1 ], ArrowDown: [ "step", 1 ], KeyK: [ "step", -1 ], ArrowUp: [ "step", -1 ], Enter: [ "openFocused" ],
   Equal: [ "zoom", 1 ], NumpadAdd: [ "zoom", 1 ], Minus: [ "zoom", -1 ], NumpadSubtract: [ "zoom", -1 ], Digit0: [ "fit" ], Numpad0: [ "fit" ]
@@ -15,7 +16,7 @@ const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)")
 const darkScheme = window.matchMedia("(prefers-color-scheme: dark)")
 
 export default class extends Controller {
-  static targets = [ "canvas", "empty", "refused", "failure", "status", "announce" ]
+  static targets = [ "canvas", "empty", "refused", "failure", "status", "announce", "list" ]
   static values = { url: String, autofocus: Boolean, labels: Object }
 
   connect() {
@@ -84,16 +85,28 @@ export default class extends Controller {
     this.reveal(graph.nodes.length ? null : this.emptyTarget)
     Object.assign(this.element.dataset, { graphNodes: graph.nodes.length, graphLinks: graph.links.length })
     this.statusTarget.textContent = this.statusOf(graph)
+    this.listNotes([])
     if (!graph.nodes.length) return
 
     this.scene = createGraphScene(this.canvasTarget, graph, {
       reducedMotion: reducedMotion.matches, onState: (state) => this.mirror(state), onOpen: (url) => Turbo.visit(url)
     })
+    this.listNotes(this.scene.walk)
+  }
+
+  // A lista do leitor de tela: um link por nota desenhada, na ordem do j, fora do Tab (o canvas anda pelas notas).
+  listNotes(notes) {
+    this.listTarget.replaceChildren(...notes.map(({ title, url }) => {
+      const item = document.createElement("li")
+      item.append(Object.assign(document.createElement("a"), { href: url, textContent: title, tabIndex: -1 }))
+      return item
+    }))
   }
 
   showFailure(error, url) {
     console.error(JSON.stringify({ event: "markupp_graph_load_failed", url: String(url), status: error.status ?? null, message: error.message }))
     this.reveal(error.status == 403 ? this.refusedTarget : this.failureTarget)
+    this.listNotes([])
     this.statusTarget.textContent = ""
   }
 
