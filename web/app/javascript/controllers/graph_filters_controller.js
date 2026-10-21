@@ -9,8 +9,8 @@ import { replaceQuery } from "controllers/url_query"
 // voltar de lá restaurar a tela pelo Turbo. A página não entra no cache do Turbo (graphs/show): a restauração sempre
 // pede a página da query, nunca uma cópia com outros filtros. Teclas pelo code que a view tira do registro único
 // (ShortcutsHelper): a do painel abre e fecha, a de cada filtro liga e desliga, a da comunidade vai para a próxima e,
-// com Shift, para a anterior, e a de limpar mostra tudo (como o botão do vazio pelos filtros, no canvas). Valem com o foco na tela do grafo, ou no body, de onde a paleta repete a tecla, e não num
-// campo de texto. Esc com o painel aberto o fecha antes de o Esc voltar à nota (area-back pula a camada data-esc-layer
+// com Shift, para a anterior, e a de limpar mostra tudo (como o botão do vazio pelos filtros, no canvas). Valem com o
+// foco na tela do grafo, ou no body, de onde a paleta repete a tecla, e não num campo de texto. Esc com o painel aberto o fecha antes de o Esc voltar à nota (area-back pula a camada data-esc-layer
 // aberta); com o foco dentro do painel, ele volta ao summary, e fora dele (o canvas, depois do f) fica onde estava.
 export default class extends Controller {
   static targets = [ "toggle", "community", "count" ]
@@ -51,7 +51,7 @@ export default class extends Controller {
   }
 
   show(query) {
-    const active = Object.values(query).filter((value) => value != null).length
+    const active = activeCount(query)
     this.countTarget.textContent = active ? `[${active}]` : ""
     if (!this.hasGraphViewOutlet) return
 
@@ -61,10 +61,9 @@ export default class extends Controller {
 
   // Tudo marcado e todas as comunidades; sem filtro ligado, nada muda.
   clear() {
-    if (!Object.values(this.query()).some((value) => value != null)) return
+    if (!activeCount(this.query())) return
 
-    this.toggleTargets.forEach((toggle) => { toggle.checked = true })
-    this.communityTarget.value = ""
+    this.mark(new URLSearchParams())
     this.change()
   }
 
@@ -120,3 +119,5 @@ export default class extends Controller {
 function forgetTurboState() {
   window.history.replaceState(null, "", window.location.href)
 }
+
+const activeCount = (query) => Object.values(query).filter((value) => value != null).length
