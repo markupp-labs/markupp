@@ -13,6 +13,6 @@ class NoteLinksController < ApplicationController
     @backlinks = Link.to_note(api, note_id, limit: LIST_LIMIT)
     @outgoing = Link.from_note(api, note_id, limit: LIST_LIMIT)
     @mentions = Mention.citing(api, note_id, limit: LIST_LIMIT)
-    @suggestions = LinkSuggestion.for_note(api, note_id)
+    @suggestions = LinkSuggestion.for_note(api, note_id, limit: LIST_LIMIT)
   end
 end
