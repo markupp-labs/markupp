@@ -64,6 +64,20 @@ class GraphsControllerTest < ActionDispatch::IntegrationTest
     assert_select "nav#sidebar [role=treeitem]", text: /roadmap/
   end
 
+  test "the full graph page opened from a note shows that note in the Links and Graph views of the sidebar" do
+    get graph_path(note: "roadmap")
+
+    assert_select "#sidebar_view_links turbo-frame#note_links[src=?]", note_links_path("roadmap")
+    assert_select "#sidebar_view_graph [data-controller=graph-view][data-graph-view-url-value=?]", note_graph_path("roadmap", format: :json)
+  end
+
+  test "the full graph page without a note leaves the Links and Graph views empty" do
+    get graph_path
+
+    assert_select "#sidebar_view_links", text: /Open a note to see its links/
+    assert_select "#sidebar_view_graph", text: /Open a note to see its graph/
+  end
+
   test "the full graph page without a note goes back to the start, and an empty tenant has nothing to draw" do
     get graph_path
 
