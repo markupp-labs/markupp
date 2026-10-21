@@ -85,6 +85,17 @@ class GraphViewTest < ApplicationSystemTestCase
     assert_operator find("main [data-graph-zoom]")["data-graph-zoom"].to_f, :<, fitted.to_f
   end
 
+  test "on a phone the full graph fits the screen, status line included, without scrolling the page" do
+    page.current_window.resize_to(390, 844)
+    visit graph_path(note: "plan")
+    assert_selector "main [data-graph-nodes='1']"
+
+    assert_equal evaluate_script("window.innerHeight"), evaluate_script("document.documentElement.scrollHeight")
+    assert_operator edge(find("main [role=status]"), "bottom"), :<=, evaluate_script("window.innerHeight")
+  ensure
+    page.current_window.resize_to(1400, 900)
+  end
+
   test "with reduced motion the layout is worked out at once and drawn still" do
     send_keys [ :control, :shift, "g" ]
 
