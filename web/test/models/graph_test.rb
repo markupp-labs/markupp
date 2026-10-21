@@ -46,6 +46,14 @@ class GraphTest < ActiveSupport::TestCase
     assert_equal 2, graph.nodes.size
   end
 
+  test "each stored graph expires a few hours after it was written" do
+    @api.change_graph!("vault-1", VAULT_GRAPH, etag: 'W/"1"')
+
+    Graph.of_vault(@api, "vault-1", store: @store)
+
+    assert_equal [ 6.hours ], @store.expiries.values
+  end
+
   test "replaces the stored graph when its version changes" do
     @api.change_graph!("vault-1", VAULT_GRAPH, etag: 'W/"1"')
     Graph.of_vault(@api, "vault-1", store: @store)
