@@ -14,7 +14,7 @@ class ShortcutsTest < ActionDispatch::IntegrationTest
     [ "Vim keys: on", "" ], [ "Vim keys: off", "" ],
     [ "All tenants", "g t" ], [ "Switch tenant", "" ], [ "Tenant settings", "" ], [ "Delete tenant", "" ], [ "Log out", "" ],
     [ "Show or hide the graph filters", "f" ], [ "Show or hide orphan notes", "o" ], [ "Show or hide unresolved links", "u" ],
-    [ "Show or hide inferred links", "i" ], [ "Next and previous community in the graph", "c" ]
+    [ "Show or hide inferred links", "i" ], [ "Next and previous community in the graph", "c" ], [ "Clear the graph filters", "x" ]
   ].freeze
 
   setup do
@@ -36,6 +36,7 @@ class ShortcutsTest < ActionDispatch::IntegrationTest
       "Next and previous note in the graph" => [ "j", "k", "↓", "↑" ], "Zoom the graph in and out" => [ "+", "-" ], "Fit the graph" => [ "0" ],
       "Show or hide the graph filters" => [ "f" ], "Show or hide orphan notes" => [ "o" ], "Show or hide unresolved links" => [ "u" ],
       "Show or hide inferred links" => [ "i" ], "Next and previous community in the graph" => [ "c", "Shift+C" ],
+      "Clear the graph filters" => [ "x" ],
       "Focus region left" => [ "Alt+H" ], "Focus region right" => [ "Alt+L" ],
       "Next row" => [ "j", "↓" ], "All tenants" => [ "g t" ], "Filter tenants" => [ "/" ],
       "Move between tenants" => [ "hjkl", "←↓↑→" ], "Indent and outdent in the content" => [ "Tab", "Shift+Tab" ],
