@@ -108,7 +108,7 @@ class TenantsControllerTest < ActionDispatch::IntegrationTest
     sign_in_as
     patch current_tenant_path, params: { tenant_id: "tenant-1" }
 
-    delete "/tenants/tenant-1"
+    delete "/tenants/tenant-1", params: { confirm_name: "Acme research" }
 
     assert_redirected_to tenants_path
     follow_redirect!
@@ -124,9 +124,9 @@ class TenantsControllerTest < ActionDispatch::IntegrationTest
     sign_in_as
     patch current_tenant_path, params: { tenant_id: "tenant-2" }
 
-    delete "/tenants/tenant-2", headers: { "Referer" => "http://www.example.com/settings/members" }
+    delete "/tenants/tenant-2", params: { confirm_name: "Home lab" }, headers: { "Referer" => "http://www.example.com/settings/general" }
 
-    assert_redirected_to "/settings/members"
+    assert_redirected_to "/settings/general"
     assert_equal "Your role in this tenant can't do that.", flash[:alert]
     get tenants_path
     assert_select "main #tenant_cards > li", count: 2
