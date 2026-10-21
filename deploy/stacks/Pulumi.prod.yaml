@@ -1,6 +1,7 @@
 # Enterprise no cluster de produção. Ainda faltam, para o primeiro deploy: a
 # imagem, que o deploy define a cada versão com pulumi config set image, e o
-# email ACME, ou o existingGateway se o cluster oferecer um Gateway compartilhado.
+# email ACME, ou o existingGateway se o cluster oferecer um Gateway compartilhado, e o
+# email, que o deploy define com pulumi config set --path.
 config:
   markupp:host: markupp.negoci.online
   markupp:storageClass: longhorn-fast
