@@ -26,6 +26,18 @@ module Settings
       assert_select "main nav a[href=?][aria-current=page]", GENERAL, text: "General"
     end
 
+    # O nome já está no grupo Tenant da navegação e no campo Tenant name: o cabeçalho da General não o repete.
+    test "the general heading has no tenant subtitle, while members keeps it" do
+      use_fake_api(tenants: [ ACME ])
+      sign_in_as
+
+      get GENERAL
+      assert_select "main section h1 + p", count: 0
+
+      get settings_members_path
+      assert_select "main section h1 + p", "Acme research"
+    end
+
     # No celular o rótulo do grupo também aparece, para a General não parecer configuração do app.
     test "the tenant group label shows at every width" do
       use_fake_api(tenants: [ ACME ])
