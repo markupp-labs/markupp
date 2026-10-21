@@ -29,6 +29,7 @@ class NoteLinksShowMoreTest < ApplicationSystemTestCase
   end
 
   test "the count says 100+ while the section goes on and the real number once show more reaches the last page" do
+    send_keys [ :control, :shift, "l" ]
     assert_selector "#links_backlinks summary .links-section-count", text: "100+"
 
     find("#links_backlinks .links-more a", text: "Show more").click
