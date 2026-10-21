@@ -68,6 +68,15 @@
     }
   }
 
+  /* Com a nota que o indexador inferiu, a linha abre essa nota: o maybe vai apagado depois do título citado. */
+  a.link-unresolved {
+    @apply cursor-pointer;
+  }
+
+  .links-row-maybe {
+    @apply text-xs text-ink-muted;
+  }
+
   .links-copy {
     @apply shrink-0 rounded-md p-1 text-ink-muted hover:bg-accent-soft hover:text-ink focus-visible:text-ink;
   }

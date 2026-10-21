@@ -11,5 +11,6 @@ en:
       mentions: "No unlinked mentions"
       suggestions: "No suggestions"
     unresolved: "No note named %{title}"
+    maybe: "maybe %{title}"
     copy: "Copy %{wikilink}"
     copy_title: "Copy wikilink (%{keys})"
