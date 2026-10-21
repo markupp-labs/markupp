@@ -1,6 +1,7 @@
 import { Controller } from "@hotwired/stimulus"
 import { playOnce } from "motion/play_once"
 import { inVimEditor } from "controllers/typing"
+import { desktop } from "controllers/viewport"
 
 // Barra lateral estilo VS Code. No desktop recolhe/expande (Ctrl+B ou Cmd+B) e redimensiona pela alça na borda;
 // a barra de atividades troca a visão dela (Explorer, Links, Graph). Estado, largura e visão vão para cookies
@@ -11,7 +12,6 @@ const KEY_STEP = 16
 const VIEW_KEYS = { KeyE: "explorer", KeyL: "links", KeyG: "graph" }
 // Setas e j/k (h/l na linha da gaveta) andam entre os ícones da barra de atividades, dando a volta nas pontas; teclas pelo code.
 const TAB_STEPS = { ArrowDown: 1, ArrowRight: 1, KeyJ: 1, KeyL: 1, ArrowUp: -1, ArrowLeft: -1, KeyK: -1, KeyH: -1 }
-const desktop = window.matchMedia("(width >= 48rem)")
 
 export default class extends Controller {
   static targets = [ "panel", "handle", "toggle", "tab", "view" ]
