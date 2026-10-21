@@ -1,7 +1,8 @@
 # Grafo para desenhar: nós (notas e títulos não resolvidos) e ligações como pares de índices em nodes.
 # O corpo fica guardado em store com a ETag da API, por rota e filtros, e cada leitura revalida: no 304 vale o guardado.
 # Guardar por rota não vaza entre contas: a API confere o acesso ao cofre antes de responder 304.
-# ponytail: uma entrada por combinação de filtros, sem limite além do store; podar se os filtros variarem muito.
+# Cada entrada vence em Graph::STORED_FOR, e o cache de produção tem teto de tamanho (config/environments/production.rb): as
+# combinações de filtros que ninguém mais pede saem sozinhas.
 Graph = Data.define(:nodes, :links) do
   # O cofre inteiro; orphans, unresolved e inferred false escondem, community recorta.
   def self.of_vault(api, vault_id, store: Rails.cache, **filters)
@@ -19,7 +20,7 @@ Graph = Data.define(:nodes, :links) do
     revision = api.conditional_get(path, etag: kept&.fetch("etag"))
     return from_api(kept.fetch("body")) if revision.nil?
 
-    store.write(key, { "etag" => revision.etag, "body" => revision.body }) if revision.etag
+    store.write(key, { "etag" => revision.etag, "body" => revision.body }, expires_in: Graph::STORED_FOR) if revision.etag
     from_api(revision.body)
   end
 
@@ -47,6 +48,9 @@ Graph = Data.define(:nodes, :links) do
       [ kept, *ranked ].compact.first(limit).sort
     end
 end
+
+# Quanto tempo o corpo guardado vale antes de sair do cache, mesmo sem a API ter mudado de versão.
+Graph::STORED_FOR = 6.hours
 
 # Nó do grafo: nota, ou título citado sem nota (unresolved, com id e path nil).
 Graph::Node = Data.define(:id, :title, :path, :degree, :pagerank, :community, :unresolved)
