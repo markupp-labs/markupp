@@ -102,3 +102,93 @@
     scale: 0.98;
   }
 }
+
+/* Filtros do grafo cheio (graphs/_filters): o summary no cabeçalho, como uma dobra do Vim (▸ que gira para ▾) com a
+   contagem dos filtros ligados entre colchetes; aberto, o painel desce por cima do canvas, no canto direito, e entra
+   como as camadas do Hyprland (sem animar com reduced-motion). Cada filtro é uma linha de terminal: a caixa em texto,
+   [x] mostrado e [ ] escondido, o nome e a tecla. */
+@layer components {
+  .graph-filters {
+    @apply relative ml-auto text-xs md:ml-0;
+  }
+
+  .graph-filters-heading {
+    @apply flex cursor-pointer list-none items-center gap-1.5 rounded-sm px-1.5 leading-6 text-ink-muted select-none hover:text-ink focus-visible:text-ink;
+
+    &::-webkit-details-marker {
+      display: none;
+    }
+
+    &::before {
+      content: "▸";
+      display: inline-block;
+      transition: rotate var(--motion-fade) var(--ease-out-quint);
+    }
+
+    [open] > &::before {
+      rotate: 90deg;
+    }
+
+    [open] > & {
+      @apply text-ink;
+    }
+  }
+
+  .graph-filters-count {
+    @apply text-accent tabular-nums;
+  }
+
+  /* z-10: o painel fica acima do canvas e dos avisos do palco, que vêm depois no documento. */
+  .graph-filters-body {
+    @apply absolute top-full right-0 z-10 mt-1 flex w-56 flex-col gap-0.5 rounded-md border border-line bg-surface p-2 shadow-sm;
+    transform-origin: top right;
+    transition: opacity var(--motion-layer-in) var(--ease-out-quint), transform var(--motion-layer-in) var(--ease-out-quint);
+
+    @starting-style {
+      opacity: 0;
+      transform: scale(var(--popin-scale));
+    }
+  }
+
+  .graph-filters-legend {
+    @apply mb-0.5 px-1 text-ink-muted;
+  }
+
+  .graph-filter,
+  .graph-filter-community {
+    @apply flex cursor-pointer items-center gap-2 rounded-sm px-1 leading-6 text-ink hover:bg-surface-sunken;
+
+    & kbd {
+      @apply text-ink-muted;
+    }
+  }
+
+  .graph-filter-community {
+    @apply mt-1.5;
+  }
+
+  .graph-filter-box {
+    @apply text-ink-muted tabular-nums;
+
+    &::before {
+      content: "[ ]";
+      white-space: pre;
+    }
+
+    .peer:checked + & {
+      @apply text-accent;
+
+      &::before {
+        content: "[x]";
+      }
+    }
+
+    .peer:focus-visible + & {
+      @apply rounded-sm outline-2 outline-offset-1 outline-accent;
+    }
+  }
+
+  .graph-filter-select {
+    @apply w-full rounded-sm border border-line bg-surface-sunken px-1 py-0.5 text-ink;
+  }
+}

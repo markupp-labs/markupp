@@ -1,0 +1,41 @@
+<%# Filtros do grafo cheio, como os do graph view do Obsidian (graph_filters_controller.js): um painel recolhível no
+    cabeçalho que abre por cima do canvas. Marcado é mostrado; desmarcar esconde as órfãs, os nós sem nota ou as ligações
+    inferidas, e a comunidade recorta. filters: os da query (GraphsController#graph_filters), que o painel repete;
+    communities: as do cofre, as maiores primeiro. A tecla de cada controle vem do registro único (ShortcutsHelper). %>
+<% title = t(".title") %>
+<% code = ->(shortcut) { "Key#{shortcut_key(shortcut).upcase}" } %>
+<% community_options = [ [ t(".all_communities"), "" ],
+                         *communities.map { [ t(".community_option", hub: it.hub.title, size: it.size), it.id ] } ] %>
+<%= tag.details id: "graph_filters", class: "graph-filters",
+                data: { controller: "graph-filters", graph_filters_graph_view_outlet: "#vault_graph",
+                        graph_filters_code_value: code.(:graph_filters), focus_region: "graph-filters", focus_region_target: "summary",
+                        action: "change->graph-filters#change keydown@window->graph-filters#press keydown.esc->graph-filters#close" } do %>
+  <%= tag.summary class: "graph-filters-heading", title: "#{title} (#{shortcut_key(:graph_filters)})",
+                  aria: { keyshortcuts: shortcut_key(:graph_filters).upcase } do %>
+    <span><%= title %></span>
+    <span data-graph-filters-target="count" class="graph-filters-count"><%= "[#{filters.size}]" if filters.any? %></span>
+  <% end %>
+  <div class="graph-filters-body">
+    <fieldset class="contents">
+      <legend class="graph-filters-legend"><%= t(".show") %></legend>
+      <% GraphsController::HIDING_FILTERS.each do |name| %>
+        <% shortcut = :"graph_#{name}" %>
+        <label class="graph-filter">
+          <%= check_box_tag name, "true", !filters.key?(name), id: "graph_filter_#{name}", class: "peer sr-only",
+                            aria: { keyshortcuts: shortcut_key(shortcut).upcase },
+                            data: { graph_filters_target: "toggle", graph_filters_code: code.(shortcut) } %>
+          <span aria-hidden="true" class="graph-filter-box"></span>
+          <span class="flex-1"><%= t(".#{name}") %></span>
+          <kbd aria-hidden="true"><%= shortcut_key(shortcut) %></kbd>
+        </label>
+      <% end %>
+    </fieldset>
+    <label for="graph_filter_community" class="graph-filter-community">
+      <span class="flex-1"><%= t(".community") %></span>
+      <kbd aria-hidden="true"><%= shortcut_keys(:graph_community).join(" ") %></kbd>
+    </label>
+    <%= select_tag :community, options_for_select(community_options, filters[:community]), id: "graph_filter_community", class: "graph-filter-select",
+                   aria: { keyshortcuts: shortcut_keys(:graph_community).map(&:upcase).join(" ") },
+                   data: { graph_filters_target: "community", graph_filters_code: code.(:graph_community) } %>
+  </div>
+<% end %>

@@ -3,6 +3,15 @@ en:
     show:
       title: "Graph"
       keys: "j k move  ↵ open  + - zoom  0 fit  esc back"
+    filters:
+      title: "Filters"
+      show: "show"
+      orphans: "Orphans"
+      unresolved: "Unresolved links"
+      inferred: "Inferred links"
+      community: "Community"
+      all_communities: "All communities"
+      community_option: "%{hub} (%{size})"
     local:
       depth: "Depth"
       depth_prompt: "depth"

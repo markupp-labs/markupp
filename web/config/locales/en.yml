@@ -166,6 +166,11 @@ en:
       graph_zoom: "Zoom the graph in and out"
       graph_fit: "Fit the graph"
       graph_back: "Back from the full graph"
+      graph_filters: "Show or hide the graph filters"
+      graph_orphans: "Show or hide orphan notes"
+      graph_unresolved: "Show or hide unresolved links"
+      graph_inferred: "Show or hide inferred links"
+      graph_community: "Next and previous community in the graph"
   markupp_api:
     errors:
       session_expired: "Your session expired. Log in again."

@@ -19,6 +19,8 @@ module ShortcutsHelper
 
   # Visão da barra lateral pelo atalho dela (sidebar_controller.js), que a paleta repete; só com a visão na página.
   SIDEBAR_VIEW_PRESS = ->(view, letter) { { press: { key: letter, code: "Key#{letter}", ctrlKey: true, shiftKey: true }, when: "#sidebar_view_#{view}" } }
+  # Filtros do grafo cheio pela tecla deles (graph_filters_controller.js), que a paleta repete; só na tela do grafo.
+  GRAPH_FILTER_PRESS = ->(letter) { { press: { key: letter.downcase, code: "Key#{letter}" }, when: "#graph_filters" } }
 
   SHORTCUT_GROUPS = {
     general: [
@@ -116,7 +118,13 @@ module ShortcutsHelper
       Shortcut.of(:graph_open, "Enter"),
       Shortcut.of(:graph_zoom, "+", "-"),
       Shortcut.of(:graph_fit, "0"),
-      Shortcut.of(:graph_back, "Esc")
+      Shortcut.of(:graph_back, "Esc"),
+      # Filtros do grafo cheio (graphs/_filters), com o foco na tela do grafo fora de campo de texto.
+      Shortcut.of(:graph_filters, "f", run: GRAPH_FILTER_PRESS.("F")),
+      Shortcut.of(:graph_orphans, "o", run: GRAPH_FILTER_PRESS.("O")),
+      Shortcut.of(:graph_unresolved, "u", run: GRAPH_FILTER_PRESS.("U")),
+      Shortcut.of(:graph_inferred, "i", run: GRAPH_FILTER_PRESS.("I")),
+      Shortcut.of(:graph_community, "c", "Shift+C", run: GRAPH_FILTER_PRESS.("C"))
     ]
   }.freeze
 
