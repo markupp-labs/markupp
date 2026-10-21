@@ -20,10 +20,10 @@ module NoteLinksHelper
     end
   end
 
-  # Contagem da seção até a página que começa em offset: a API não dá o total, então a página cheia diz que há mais (100+)
-  # e a que não enche dá o número real.
+  # Contagem da seção até a página que começa em offset: a API não dá o total, então toda página cheia diz só que há mais
+  # (100+, sem subir para 200+) e a que não enche dá o número real.
   def links_count(items, offset)
-    "#{offset + items.size}#{"+" if items.size == NoteLinkSection::PAGE_SIZE}"
+    items.size == NoteLinkSection::PAGE_SIZE ? "#{NoteLinkSection::PAGE_SIZE}+" : (offset + items.size).to_s
   end
 
   # Frame de uma página da seção a partir de offset: o Show more da página anterior e, depois de carregar, as linhas.
