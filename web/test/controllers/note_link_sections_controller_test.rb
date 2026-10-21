@@ -15,6 +15,7 @@ class NoteLinkSectionsControllerTest < ActionDispatch::IntegrationTest
 
     NoteLinkSection::NAMES.each do |name|
       assert_select "#links_#{name} .links-item", count: 101
+      assert_select "#links_#{name} summary .links-section-count", text: "100+"
       assert_select "#links_#{name} li.links-more turbo-frame#links_#{name}_100[target=_top]" do
         assert_select "a[href=?][data-turbo-frame=links_#{name}_100][data-links-item]", "/notes/plan/links/#{name}?offset=100", text: "Show more"
         assert_select ".busy-spinner[data-busy-spinner-busy-when-value=?]", "#links_#{name}_100[aria-busy]"
@@ -25,6 +26,7 @@ class NoteLinkSectionsControllerTest < ActionDispatch::IntegrationTest
   test "the next page brings its rows and a show more while the section goes on" do
     get "/notes/plan/links/backlinks?offset=100"
 
+    assert_select "turbo-frame#links_backlinks_100[target=_top] ul[data-links-count=?]", "200+"
     assert_select "turbo-frame#links_backlinks_100[target=_top]" do
       assert_select "a[href=?]", note_path("backlink-101")
       assert_select ".links-item", count: 101
@@ -35,6 +37,7 @@ class NoteLinkSectionsControllerTest < ActionDispatch::IntegrationTest
   test "the last page has no show more" do
     get "/notes/plan/links/suggestions?offset=200"
 
+    assert_select "turbo-frame#links_suggestions_200 ul[data-links-count=?]", "230"
     assert_select "turbo-frame#links_suggestions_200" do
       assert_select ".links-item", count: 30
       assert_select "a[href=?][data-wikilink=?]", note_path("suggestion-230"), "[[suggestion 230]]"
@@ -50,6 +53,7 @@ class NoteLinkSectionsControllerTest < ActionDispatch::IntegrationTest
     get "/notes/plan/links/suggestions?offset=10000"
 
     assert_select "turbo-frame#links_suggestions_10000 a[href=?]", note_path("suggestion-10100")
+    assert_select "turbo-frame#links_suggestions_10000 ul[data-links-count=?]", "10100+"
     assert_select ".links-more", count: 0
   end
 
