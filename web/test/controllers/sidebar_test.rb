@@ -57,13 +57,13 @@ class SidebarTest < ActionDispatch::IntegrationTest
     assert_select ".activity-bar-side a[href=?][aria-label=Settings]", settings_path
   end
 
-  test "the notes scroll in the sidebar" do
+  test "the notes scroll in the sidebar, with the thin scrollbar of the theme" do
     use_fake_api(notes: [ { id: "1", path: "plan.md", content: "" } ])
     sign_in_as
 
     get root_path
 
-    assert_select "nav > .sidebar-scroll [role=treeitem]", text: "└── plan"
+    assert_select "nav > .sidebar-scroll.scrollbar-theme [role=treeitem]", text: "└── plan"
   end
 
   test "the theme toggle shows the sun or the moon of the theme it switches to" do
