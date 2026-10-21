@@ -183,6 +183,11 @@
       }
     }
 
+    /* Sobre o surface-sunken do hover, o accent não chega ao AA no tema claro (3.95:1): o [x] passa à cor do texto. */
+    .graph-filter:hover > .peer:checked + & {
+      @apply text-ink;
+    }
+
     .peer:focus-visible + & {
       @apply rounded-sm outline-2 outline-offset-1 outline-accent;
     }
