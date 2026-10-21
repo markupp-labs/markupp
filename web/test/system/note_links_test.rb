@@ -7,12 +7,14 @@ class NoteLinksTest < ApplicationSystemTestCase
   ROADMAP = { id: "roadmap", title: "roadmap", path: "roadmap.md" }.freeze
   IDEAS = { id: "ideas", title: "ideas", path: "ideas.md" }.freeze
   LONG_CITED_TITLE = "Road map for the next quarters with every milestone the whole team agreed on".freeze
+  QUARTERLY = { id: "quarterly", title: "Quarterly roadmap with every milestone agreed", path: "Quarterly roadmap with every milestone agreed.md" }.freeze
   NOTES = [ PLAN, ROADMAP, IDEAS ].map { { id: it[:id], path: it[:path], content: "# #{it[:title]}\n" } }.freeze
   GRAPH = {
     backlinks: { "plan" => [ { source: ROADMAP, target: PLAN, cited_title: "plan", type: "explicit", predicate: nil, inferred_target: nil } ],
                  "roadmap" => [ { source: IDEAS, target: ROADMAP, cited_title: "roadmap", type: "explicit", predicate: nil, inferred_target: nil } ] },
     links: { "plan" => [ { source: PLAN, target: nil, cited_title: "Ghost", type: "explicit", predicate: nil, inferred_target: nil },
-                         { source: PLAN, target: nil, cited_title: LONG_CITED_TITLE, type: "explicit", predicate: nil, inferred_target: ROADMAP } ] },
+                         { source: PLAN, target: nil, cited_title: LONG_CITED_TITLE, type: "explicit", predicate: nil, inferred_target: ROADMAP },
+                         { source: PLAN, target: nil, cited_title: LONG_CITED_TITLE, type: "explicit", predicate: nil, inferred_target: QUARTERLY } ] },
     suggestions: { "plan" => [ { note: IDEAS, score: 0.03, resource_allocation: 0.5, cosine: 0.2 } ] }
   }.freeze
 
@@ -61,6 +63,20 @@ class NoteLinksTest < ApplicationSystemTestCase
 
     assert_operator title[0], :>, title[1], "expected the cited title to truncate, its scroll and client widths are #{title}"
     assert_operator maybe[0], :<=, maybe[1], "expected the maybe to fit whole, its scroll and client widths are #{maybe}"
+  end
+
+  # Com o título da nota inferida também longo, o maybe trunca no lugar de empurrar a linha: as duas partes ficam à vista.
+  test "an unresolved link with a long inferred title keeps both parts visible and the sidebar from scrolling sideways" do
+    send_keys [ :control, :shift, "l" ]
+    assert_selector "#links_outgoing .links-row-maybe", text: "maybe Quarterly roadmap"
+
+    widths = %w[title maybe].to_h do |part|
+      [ part, evaluate_script("document.querySelector('#links_outgoing a[href$=\"quarterly\"] .links-row-#{part}').clientWidth") ]
+    end
+    overflow = evaluate_script("(s => s.scrollWidth - s.clientWidth)(document.querySelector('.sidebar-scroll'))")
+
+    assert_equal 0, overflow, "expected .sidebar-scroll not to scroll sideways, it overflows by #{overflow}px"
+    assert widths.values.all? { it >= 40 }, "expected the cited title and the maybe to keep at least 40px each, got #{widths}"
   end
 
   # O texto só para leitor de tela da ligação não resolvida é absoluto: fora de uma linha posicionada, ele escapa para o
