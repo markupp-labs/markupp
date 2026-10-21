@@ -11,6 +11,9 @@ class NoteLinkSectionsController < ApplicationController
   private
     def read_section_page
       @section = params[:section]
-      @offset = params[:offset].to_i
+      @offset = Integer(params[:offset].to_s, 10, exception: false)
+      return if @offset&.between?(0, NoteLinkSection::MAX_OFFSET)
+
+      render plain: "Unknown offset #{params[:offset].inspect}, expected 0 to #{NoteLinkSection::MAX_OFFSET}", status: :bad_request
     end
 end

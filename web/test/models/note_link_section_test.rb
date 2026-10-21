@@ -19,4 +19,8 @@ class NoteLinkSectionTest < ActiveSupport::TestCase
 
     assert_equal [ "suggestion 101", "suggestion 130" ], [ rest.first.note.title, rest.last.note.title ]
   end
+
+  test "next offset follows the page until the last offset the api serves" do
+    assert_equal [ 100, 10_000, nil ], [ 0, 9_900, 10_000 ].map { NoteLinkSection.next_offset(it) }
+  end
 end
