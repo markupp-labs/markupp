@@ -86,6 +86,7 @@ type DatabaseArgs struct {
 
 // NewMarkupp declara a instalação completa sob o componente name.
 func NewMarkupp(ctx *pulumi.Context, name string, args MarkuppArgs, opts ...pulumi.ResourceOption) (*Markupp, error) {
+	args = withoutEmptyEmail(args)
 	if err := validate(args); err != nil {
 		return nil, err
 	}
@@ -146,6 +147,9 @@ func validate(args MarkuppArgs) error {
 			return fmt.Errorf("campo %s vazio, esperado texto não vazio (namespace=%q image=%q host=%q certificateIssuer=%q acmeEmail=%q)",
 				r.field, args.Namespace, args.Image, args.Host, args.CertificateIssuer, args.AcmeEmail)
 		}
+	}
+	if err := validateEmailServer(args); err != nil {
+		return err
 	}
 	return validateEmailSender(args)
 }

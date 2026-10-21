@@ -24,6 +24,9 @@ config:
   apiReplicas:
     type: integer
     default: 2
+  email:
+    type: object
+    default: {}
 
 resources:
   markupp:
@@ -35,6 +38,7 @@ resources:
       certificateIssuer: ${certificateIssuer}
       acmeEmail: ${acmeEmail}
       apiReplicas: ${apiReplicas}
+      email: ${email}
       database:
         storageClass: ${storageClass}
 
