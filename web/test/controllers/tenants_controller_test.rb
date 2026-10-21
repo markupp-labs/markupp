@@ -119,6 +119,21 @@ class TenantsControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to tenants_path
   end
 
+  test "destroy with a name that is missing or not exactly the tenant's keeps the tenant without asking the API" do
+    use_fake_api(tenants: [ ACME, HOME ])
+    sign_in_as
+    patch current_tenant_path, params: { tenant_id: "tenant-1" }
+
+    [ nil, "acme research", "Acme research " ].each do |typed|
+      delete "/tenants/tenant-1", params: { confirm_name: typed }.compact, headers: { "Referer" => "http://www.example.com/settings/general" }
+
+      assert_redirected_to "/settings/general"
+      assert_equal "The name doesn't match. Nothing was deleted.", flash[:alert]
+    end
+    get tenants_path
+    assert_select "main #tenant_cards > li", text: /Acme research/, count: 1
+  end
+
   test "destroy by a role below owner is refused and keeps the tenant" do
     use_fake_api(tenants: [ ACME, HOME ])
     sign_in_as
