@@ -2,8 +2,9 @@
 // pelo + e -, sempre em volta de um ponto da tela; fit enquadra os nós com uma margem.
 const MIN_ZOOM = 0.1
 const MAX_ZOOM = 4
-// Enquadrar um grafo de um ou dois nós não o põe do tamanho da tela.
+// Enquadrar um grafo de um ou dois nós não o põe do tamanho da tela; com mais, só a margem e o MAX_ZOOM limitam.
 const FIT_MAX_ZOOM = 2
+const FIT_CAPPED_NODES = 2
 const FIT_MARGIN = 16
 
 export class Camera {
@@ -41,7 +42,8 @@ export class Camera {
   fit(nodes) {
     const { minX, minY, maxX, maxY } = boundsOf(nodes)
     const room = (size) => Math.max(size - 2 * FIT_MARGIN, 1)
-    this.k = clamp(Math.min(room(this.width) / (maxX - minX || 1), room(this.height) / (maxY - minY || 1)), MIN_ZOOM, FIT_MAX_ZOOM)
+    const ceiling = nodes.length <= FIT_CAPPED_NODES ? FIT_MAX_ZOOM : MAX_ZOOM
+    this.k = clamp(Math.min(room(this.width) / (maxX - minX || 1), room(this.height) / (maxY - minY || 1)), MIN_ZOOM, ceiling)
     this.centerOn((minX + maxX) / 2, (minY + maxY) / 2)
   }
 
