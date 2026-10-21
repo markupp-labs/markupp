@@ -42,6 +42,24 @@ class NoteLinkSectionsControllerTest < ActionDispatch::IntegrationTest
     assert_select ".links-more", count: 0
   end
 
+  # A API trava o offset em 10000 e devolveria a mesma página para sempre: a página cheia nesse teto não oferece mais.
+  test "a full page at the last offset the api serves has no show more" do
+    use_fake_api(notes: [ { id: "plan", path: "plan.md", content: "" } ], graph: FakeCrowdedNoteLinks.new(PLAN, count: 10_100).graph)
+    sign_in_as
+
+    get "/notes/plan/links/suggestions?offset=10000"
+
+    assert_select "turbo-frame#links_suggestions_10000 a[href=?]", note_path("suggestion-10100")
+    assert_select ".links-more", count: 0
+  end
+
+  test "an offset past the last one the api serves is refused" do
+    get "/notes/plan/links/backlinks?offset=10100"
+
+    assert_response :bad_request
+    assert_equal "Unknown offset \"10100\", expected 0 to 10000", response.body
+  end
+
   test "a section that is not one of the view is not found" do
     get "/notes/plan/links/graph?offset=100"
 
