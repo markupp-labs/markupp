@@ -35,9 +35,14 @@ export default class extends Controller {
     if (!target) return
 
     event.preventDefault()
+    this.openView(view)
+    target.focus()
+  }
+
+  // Mostra a visão, abrindo a barra (ou a gaveta) fechada.
+  openView(view) {
     this.showView(view)
     if (this.isHidden) this.toggle()
-    target.focus()
   }
 
   // Clique num ícone da barra de atividades, como no VS Code: o da visão à vista recolhe a barra (no celular, fecha a
