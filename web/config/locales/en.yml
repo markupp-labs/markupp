@@ -305,6 +305,23 @@ en:
     errors:
       invite_not_found: "That invite is no longer valid."
       already_member: "You are already a member of that tenant."
+  oauth_authorizations:
+    # Escopos do authorization server (notas:leitura vira notas_leitura): o que o cliente vai poder fazer.
+    scopes:
+      notas_leitura: "Read your notes"
+      notas_escrita: "Create, edit and delete your notes"
+      administracao: "Manage your tenants, members and invites"
+    show:
+      title: "%{client} wants to access your markupp"
+      signed_in_as: "Signed in as %{email}"
+      returns_to: "Returns to"
+      abilities: "It will be able to"
+      approve: "Approve"
+      deny: "Deny"
+      keys: "↵ approve  esc deny"
+    gone:
+      title: "This authorization request is no longer valid"
+      hint: "It expired or was already answered. Go back to the app and connect again."
   settings:
     nav:
       title: "Settings"

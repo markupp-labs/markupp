@@ -17,6 +17,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/api"
@@ -26,6 +27,7 @@ import (
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/indexing"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/notes"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/notify"
+	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/oauth"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/storage"
 )
 
@@ -220,12 +222,20 @@ func serve(ctx context.Context, logger *slog.Logger, cfg config.Config) error {
 	}
 	defer pool.Close()
 
-	server := newServer(cfg.Port, newHandler(cfg, pool, logger))
+	cfg, err = prepareInstance(ctx, cfg, storage.NewPostgresInstanceSecrets(pool))
+	if err != nil {
+		return fmt.Errorf("preparar a instancia: %w", err)
+	}
+	handler, err := newHandler(cfg, pool, logger)
+	if err != nil {
+		return err
+	}
+	server := newServer(cfg.Port, handler)
 	logger.Info("servidor subindo", "addr", server.Addr)
 	return server.ListenAndServe()
 }
 
-func newHandler(cfg config.Config, pool *pgxpool.Pool, logger *slog.Logger) http.Handler {
+func newHandler(cfg config.Config, pool *pgxpool.Pool, logger *slog.Logger) (http.Handler, error) {
 	repo := storage.NewPostgresNotesRepository(pool, cfg.SearchConfig)
 	notesSvc := notes.NewService(repo, cfg.MaxNoteSize)
 	authSvc, codec := newAuthService(cfg, pool)
@@ -235,13 +245,73 @@ func newHandler(cfg config.Config, pool *pgxpool.Pool, logger *slog.Logger) http
 	accountEmail := auth.NewAccountEmailService(storage.NewPostgresAccountEmailRepository(pool), auth.NewBcryptHasher(), time.Now, auth.AccountEmailOptions{
 		EmailEnabled: emailEnabled, LocalEnabled: cfg.LocalAuthEnabled, Background: runDetached, Logger: logger,
 	})
+	oauthSvc, err := newOAuthService(cfg, pool, codec)
+	if err != nil {
+		return nil, err
+	}
 	return api.NewRouter(api.RouterDeps{
 		Notes: notesSvc, Graph: storage.NewPostgresNoteGraph(pool, cfg.SearchConfig), Auth: authSvc, Admin: adminSvc, AccountEmail: accountEmail,
 		Tokens: codec, Tenants: authSvc, Probe: pool, AllowedOrigins: cfg.AllowedOrigins,
-	})
+		OAuthMetadata: oauthMetadataFrom(cfg), OAuth: oauthSvc, MCPUpstreamURL: cfg.MCPUpstreamURL,
+	}), nil
 }
 
-func newAuthService(cfg config.Config, pool *pgxpool.Pool) (*auth.Service, api.TokenValidator) {
+// newOAuthService monta o authorization server só com o OAuth ligado. Devolve nil de
+// interface, e não um *oauth.Service nil, para o roteador não montar as rotas.
+func newOAuthService(cfg config.Config, pool *pgxpool.Pool, scoped oauth.ScopedTokenIssuer) (api.OAuthService, error) {
+	if !cfg.OAuthEnabled() {
+		return nil, nil
+	}
+	metadata, err := newCIMDClientMetadataFetcher(cimdLimitsFrom(cfg))
+	if err != nil {
+		return nil, err
+	}
+	repo := storage.NewPostgresOAuthRepository(pool)
+	return oauth.NewService(repo, oauthServiceConfigFrom(cfg), scoped, metadata, time.Now, uuid.NewString, newOAuthToken), nil
+}
+
+// newOAuthToken gera os tokens opacos do OAuth. A leitura de crypto/rand não falha num
+// sistema saudável, então a falha derruba o processo em vez de emitir token fraco.
+func newOAuthToken() string {
+	token, err := auth.NewOpaqueToken()
+	if err != nil {
+		panic(fmt.Sprintf("oauth: gerar token opaco: %v", err))
+	}
+	return token
+}
+
+// oauthServiceConfigFrom traduz a config do processo para o serviço OAuth.
+func oauthServiceConfigFrom(cfg config.Config) oauth.ServiceConfig {
+	resources := make([]string, 0, len(cfg.OAuthResources))
+	secrets := make(map[string]string, len(cfg.OAuthResources))
+	for _, resource := range cfg.OAuthResources {
+		resources = append(resources, resource.URL)
+		secrets[resource.URL] = resource.Secret
+	}
+	return oauth.ServiceConfig{
+		Issuer: cfg.PublicURL, PanelURL: cfg.PanelURL, Resources: resources, ResourceSecrets: secrets,
+		AccessTTL:   time.Duration(cfg.OAuthAccessMinutes) * time.Minute,
+		RefreshTTL:  time.Duration(cfg.OAuthRefreshDays) * 24 * time.Hour,
+		RequestTTL:  time.Duration(cfg.OAuthRequestMinutes) * time.Minute,
+		CodeTTL:     time.Duration(cfg.OAuthCodeSeconds) * time.Second,
+		ExchangeTTL: time.Duration(cfg.OAuthExchangeMinutes) * time.Minute,
+		// A falha da busca fica lembrada pelo menor tempo de cache do documento.
+		CIMDFailureTTL: time.Duration(cfg.OAuthCIMDCacheMinMinutes) * time.Minute,
+		DCRMaxPending:  cfg.OAuthDCRMaxPending,
+		DCRPendingTTL:  time.Duration(cfg.OAuthDCRPendingHours) * time.Hour,
+	}
+}
+
+// oauthMetadataFrom publica a metadata do authorization server só quando a
+// MARKUPP_PUBLIC_URL liga o OAuth, com o registro dinâmico conforme a config.
+func oauthMetadataFrom(cfg config.Config) *api.OAuthMetadata {
+	if !cfg.OAuthEnabled() {
+		return nil
+	}
+	return &api.OAuthMetadata{Issuer: cfg.PublicURL, DynamicRegistration: cfg.OAuthDCREnabled}
+}
+
+func newAuthService(cfg config.Config, pool *pgxpool.Pool) (*auth.Service, *auth.TokenCodec) {
 	authRepo := storage.NewPostgresAuthRepository(pool)
 	codec := auth.NewTokenCodec(cfg.AuthSecret, time.Duration(cfg.JWTExpirationMinutes)*time.Minute, time.Now)
 	hasher := auth.NewBcryptHasher()

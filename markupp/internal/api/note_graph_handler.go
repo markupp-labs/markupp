@@ -28,14 +28,14 @@ type NoteGraph interface {
 }
 
 func mountNoteGraphRoutes(r chi.Router, graph NoteGraph) {
-	r.Get("/v1/notes/{id}/links", serveList(readLinkFilter, graph.Links))
-	r.Get("/v1/notes/{id}/backlinks", serveList(readLinkFilter, graph.Backlinks))
-	r.Get("/v1/vaults/{id}/links", serveList(readVaultLinkQuery, graph.VaultLinks))
-	r.Get("/v1/notes/{id}/mentions", serveList(readPage, graph.Mentions))
-	r.Get("/v1/notes/{id}/backmentions", serveList(readPage, graph.Backmentions))
-	r.Get("/v1/notes/{id}/suggestions", serveList(readPage, graph.Suggestions))
-	r.Get("/v1/vaults/{id}/communities", serveList(readPage, graph.Communities))
-	r.Get("/v1/vaults/{id}/communities/{cid}", serveCommunity(graph))
+	r.Get("/notes/{id}/links", serveList(readLinkFilter, graph.Links))
+	r.Get("/notes/{id}/backlinks", serveList(readLinkFilter, graph.Backlinks))
+	r.Get("/vaults/{id}/links", serveList(readVaultLinkQuery, graph.VaultLinks))
+	r.Get("/notes/{id}/mentions", serveList(readPage, graph.Mentions))
+	r.Get("/notes/{id}/backmentions", serveList(readPage, graph.Backmentions))
+	r.Get("/notes/{id}/suggestions", serveList(readPage, graph.Suggestions))
+	r.Get("/vaults/{id}/communities", serveList(readPage, graph.Communities))
+	r.Get("/vaults/{id}/communities/{cid}", serveCommunity(graph))
 	mountGraphViewRoutes(r, graph)
 }
 

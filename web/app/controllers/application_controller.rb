@@ -42,12 +42,15 @@ class ApplicationController < ActionController::Base
 
     # Sessão nova contra fixação, a partir do par de tokens do login ou do aceite de convite; devolve a página pedida antes.
     def start_session(pair)
-      return_to = session[:return_to] || root_path
+      return_to = panel_path(session[:return_to]) || root_path
       reset_session
       credential.sign_in(pair)
       credential.account = credential.api.get("/auth/me")
       return_to
     end
+
+    # Só caminho do próprio painel: //host e /\host o navegador lê como outro site.
+    def panel_path(path) = (path if path.to_s.match?(%r{\A/(?![/\\])}))
 
     # Logout de verdade: o refresh é revogado na API antes de a sessão do Rails sumir.
     def end_session

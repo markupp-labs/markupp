@@ -14,3 +14,8 @@
 # ActiveSupport::Inflector.inflections(:en) do |inflect|
 #   inflect.acronym "RESTful"
 # end
+
+# Os nomes do consentimento OAuth (OAuthRequest, OAuthAuthorizationsController) seguem a grafia do protocolo.
+ActiveSupport::Inflector.inflections(:en) do |inflect|
+  inflect.acronym "OAuth"
+end
