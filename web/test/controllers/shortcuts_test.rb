@@ -12,7 +12,7 @@ class ShortcutsTest < ActionDispatch::IntegrationTest
     [ "Focus region left", "Alt H" ], [ "Focus region below", "Alt J" ], [ "Focus region above", "Alt K" ], [ "Focus region right", "Alt L" ],
     [ "Light theme", "" ], [ "Dark theme", "" ], [ "Editor style: plain", "" ], [ "Editor style: styled", "" ],
     [ "Vim keys: on", "" ], [ "Vim keys: off", "" ],
-    [ "All tenants", "g t" ], [ "Switch tenant", "" ], [ "Delete tenant", "" ], [ "Log out", "" ],
+    [ "All tenants", "g t" ], [ "Switch tenant", "" ], [ "Tenant settings", "" ], [ "Delete tenant", "" ], [ "Log out", "" ],
     [ "Show or hide the graph filters", "f" ], [ "Show or hide orphan notes", "o" ], [ "Show or hide unresolved links", "u" ],
     [ "Show or hide inferred links", "i" ], [ "Next and previous community in the graph", "c" ]
   ].freeze

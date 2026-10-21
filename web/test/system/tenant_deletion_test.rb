@@ -1,6 +1,6 @@
 require "application_system_test_case"
 
-# Apagar o tenant, como no GitHub: a Danger zone no fim de Members, só para o owner, abre o diálogo do painel, que pede o
+# Apagar o tenant, como no GitHub: a Danger zone no fim da General do tenant, só para o owner, abre o diálogo do painel, que pede o
 # nome exato do tenant antes de liberar o botão. Esc fecha sem apagar; apagado, o painel leva à lista de tenants.
 class TenantDeletionTest < ApplicationSystemTestCase
   EMAIL = FakeMarkuppAccounts::DEFAULT_EMAIL
@@ -12,7 +12,7 @@ class TenantDeletionTest < ApplicationSystemTestCase
     sign_in_through_form
     visit tenants_path
     within("#tenant_cards > li", text: "Acme research") { click_on "Acme research" }
-    visit settings_members_path
+    visit "/settings/general"
     assert_selector "#danger_zone"
   end
 
@@ -37,7 +37,7 @@ class TenantDeletionTest < ApplicationSystemTestCase
     send_keys "Acme research", :escape
 
     assert_no_selector "dialog#confirm_dialog[open]"
-    assert_current_path settings_members_path
+    assert_current_path "/settings/general"
     assert_selector "#delete_tenant:focus"
   end
 
@@ -63,7 +63,7 @@ class TenantDeletionTest < ApplicationSystemTestCase
     assert_selector "[role=status]", text: "Deleted Acme research."
   end
 
-  test "the command palette offers delete tenant on the members page and it opens the same dialog" do
+  test "the command palette offers delete tenant on the general page and it opens the same dialog" do
     send_keys [ :control, :shift, "p" ]
     assert_selector "dialog#command_palette[open] input:focus"
     send_keys "delete tenant", :enter
@@ -71,9 +71,11 @@ class TenantDeletionTest < ApplicationSystemTestCase
     assert_selector "dialog#confirm_dialog[open] input:focus"
   end
 
-  test "a later confirmation on the page asks without the name field and with its button on" do
+  test "a later confirmation, after going to members, asks without the name field and with its button on" do
     click_on "Delete tenant"
     send_keys "Acme", :escape
+    within("main nav") { click_on "Members" }
+    assert_selector "h1", text: "Members"
     within("li", text: "caio@markupp.dev") { click_on "Remove" }
 
     within("dialog#confirm_dialog[open][aria-label=Remove]") do
