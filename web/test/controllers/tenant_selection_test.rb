@@ -49,18 +49,20 @@ class TenantSelectionTest < ActionDispatch::IntegrationTest
     assert_select "#tenant_cards button[aria-current=true]", count: 1, text: /Home lab/
   end
 
-  test "owner and admin cards lead to the general settings by the gear and to the invites by the envelope, the others don't" do
+  test "every card leads to the general settings by the gear, and only owner and admin cards to the invites by the envelope" do
     use_fake_api(tenants: TWO_TENANTS)
     sign_in_as
 
     get tenants_path
 
     assert_select "#tenant_cards > li", text: /Acme research/ do
-      assert_select "form:has(input[name=to][value=general]) button[aria-label=?] svg[data-icon=gear-six]", "Settings of Acme research"
+      assert_select "form:has(input[name=to][value=general]) button[aria-label=?][title=?] svg[data-icon=gear-six]",
+                    "Acme research settings", "Acme research settings"
       assert_select "form:has(input[name=to][value=invites]) button[aria-label=?] svg[data-icon=envelope-simple]", "Invites of Acme research"
     end
     assert_select "#tenant_cards > li", text: /Home lab/ do
-      assert_select "input[name=to]", count: 0
+      assert_select "form:has(input[name=to][value=general]) button[aria-label=?] svg[data-icon=gear-six]", "Home lab settings"
+      assert_select "input[name=to][value=invites]", count: 0
     end
   end
 

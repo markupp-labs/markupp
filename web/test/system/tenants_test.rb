@@ -130,8 +130,8 @@ class TenantsTest < ApplicationSystemTestCase
   test "the gear of a card enters that tenant on its general settings and the envelope on its invites" do
     use_fake_api(tenants: THREE_TENANTS)
     sign_in_through_form
-    assert_selector "button[aria-label='Settings of Acme research']"
-    click_on "Settings of Acme research"
+    assert_selector "button[aria-label='Acme research settings']"
+    click_on "Acme research settings"
 
     assert_selector "main h1", text: "General"
     assert_selector "nav #current_tenant", text: /Acme research.*owner/m
@@ -139,6 +139,17 @@ class TenantsTest < ApplicationSystemTestCase
     click_on "Invites of Acme research"
 
     assert_selector "main h1", text: "Invites"
+  end
+
+  test "the gear of a viewer card enters that tenant on its general settings too" do
+    use_fake_api(tenants: THREE_TENANTS)
+    sign_in_through_form
+    assert_selector "button[aria-label='Field notes settings']"
+    assert_no_selector "button[aria-label='Invites of Field notes']"
+    click_on "Field notes settings"
+
+    assert_selector "main h1", text: "General"
+    assert_selector "nav #current_tenant", text: /Field notes.*viewer/m
   end
 
   test "g then t opens the tenants from a note, and so does all tenants in the switcher" do
