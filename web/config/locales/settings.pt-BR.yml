@@ -30,6 +30,8 @@ pt-BR:
         light: "Claro"
         dark: "Escuro"
         follows_system: "Segue o tema do sistema até você escolher um."
+        language: "Idioma"
+        follows_browser: "Segue o idioma do navegador até você escolher um."
     editors:
       show:
         title: "Editor"

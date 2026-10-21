@@ -40,6 +40,8 @@ pt-BR:
       editor_style_styled: "Estilo do editor: estilizado"
       vim_keys_on: "Atalhos do Vim: ligados"
       vim_keys_off: "Atalhos do Vim: desligados"
+      language_en: "Idioma: English"
+      language_pt_br: "Idioma: Português (Brasil)"
       tenants: "Todos os tenants"
       switch_tenant: "Trocar de tenant"
       tenant_general: "Tenant: Geral"

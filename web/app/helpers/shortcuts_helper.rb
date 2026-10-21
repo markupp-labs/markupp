@@ -49,6 +49,8 @@ module ShortcutsHelper
       Shortcut.of(:editor_style_styled, run: { form: { url: :editor_style_path, params: { editor_style: "styled" }, turbo: false } }),
       Shortcut.of(:vim_keys_on, run: { form: { url: :vim_keys_path, params: { vim_keys: "on" }, turbo: false } }),
       Shortcut.of(:vim_keys_off, run: { form: { url: :vim_keys_path, params: { vim_keys: "off" }, turbo: false } }),
+      Shortcut.of(:language_en, run: { form: { url: :locale_path, params: { locale: "en" }, turbo: false } }),
+      Shortcut.of(:language_pt_br, run: { form: { url: :locale_path, params: { locale: "pt-BR" }, turbo: false } }),
       Shortcut.of(:tenants, "g t", run: { href: :tenants_path }),
       Shortcut.of(:switch_tenant, run: { click: "button[popovertarget=tenant_switcher]" }),
       # Seção General do tenant ativo nas configurações; só com tenant, que é quando o seletor está na barra.

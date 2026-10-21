@@ -1,4 +1,6 @@
 en:
+  # Nome do idioma nele mesmo, para o seletor das configurações (t("language_name", locale:)).
+  language_name: "English"
   rate_limited:
     one: "Too many attempts. Try again in %{count} minute."
     other: "Too many attempts. Try again in %{count} minutes."

@@ -1,4 +1,6 @@
 pt-BR:
+  # Nome do idioma nele mesmo, para o seletor das configurações (t("language_name", locale:)).
+  language_name: "Português (Brasil)"
   rate_limited:
     one: "Tentativas demais. Tente de novo em %{count} minuto."
     other: "Tentativas demais. Tente de novo em %{count} minutos."

@@ -30,6 +30,8 @@ en:
         light: "Light"
         dark: "Dark"
         follows_system: "Follows your system theme until you pick one."
+        language: "Language"
+        follows_browser: "Follows your browser language until you pick one."
     editors:
       show:
         title: "Editor"

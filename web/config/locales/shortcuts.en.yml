@@ -40,6 +40,8 @@ en:
       editor_style_styled: "Editor style: styled"
       vim_keys_on: "Vim keys: on"
       vim_keys_off: "Vim keys: off"
+      language_en: "Language: English"
+      language_pt_br: "Language: Português (Brasil)"
       tenants: "All tenants"
       switch_tenant: "Switch tenant"
       tenant_general: "Tenant: General"
