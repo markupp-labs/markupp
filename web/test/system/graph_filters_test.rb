@@ -60,6 +60,25 @@ class GraphFiltersTest < ApplicationSystemTestCase
     assert_selector "#graph_filters input[name=orphans]:checked", visible: :all
   end
 
+  test "back from a note opened by the filtered graph shows it filtered, and the next back undoes the filter" do
+    visit graph_path(note: "plan")
+    assert_selector "main [data-graph-nodes='1']"
+    send_keys "i"
+    assert_equal({ "note" => "plan", "inferred" => "false" }, page_query)
+    send_keys "j", :enter
+    assert_field "Path", with: "/roadmap"
+
+    go_back
+    assert_selector "main [data-graph-nodes='1']"
+    assert_selector "#graph_filters input[name=inferred]:not(:checked)", visible: :all
+    execute_script("document.querySelector('#vault_graph').dataset.samePage = 'yes'")
+    go_back
+
+    assert_equal({ "note" => "plan" }, page_query)
+    assert_selector "#vault_graph[data-same-page=yes]"
+    assert_selector "#graph_filters input[name=inferred]:checked", visible: :all
+  end
+
   private
     def page_query = Rack::Utils.parse_query(URI(current_url).query)
 end
