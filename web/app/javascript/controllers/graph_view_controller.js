@@ -29,8 +29,11 @@ export default class extends Controller {
     if (this.autofocusValue) this.canvasTarget.focus()
   }
 
+  // O pedido em andamento fica sem dono (draw descarta) e uma reconexão volta a desenhar.
   disconnect() {
-    [ this.visibility, this.sizing, this.themeObserver ].forEach((observer) => observer.disconnect())
+    this.request = null
+    this.drawn = null
+    for (const observer of [ this.visibility, this.sizing, this.themeObserver ]) observer.disconnect()
     darkScheme.removeEventListener("change", this.recolor)
     this.scene?.destroy()
     this.scene = null
