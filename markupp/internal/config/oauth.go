@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"net/url"
 	"strings"
+
+	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/oauth"
 )
 
 // OAuthResource é um servidor de recursos que aceita os tokens do authorization
@@ -14,6 +16,9 @@ type OAuthResource struct {
 }
 
 const minOAuthResourceSecretBytes = 32
+
+// defaultPanelURL é onde o painel roda fora do compose (ADR-0041).
+const defaultPanelURL = "http://localhost:3999"
 
 // oauthURLRule descreve o que cada variável de URL do OAuth aceita além do esquema.
 type oauthURLRule struct {
@@ -31,19 +36,34 @@ var (
 		expected: "url=segredo com url https://host[:porta][/caminho] sem query nem fragmento (http so em localhost, 127.0.0.1 ou [::1])"}
 )
 
-// OAuthEnabled diz se o authorization server está ligado, o que MARKUPP_PUBLIC_URL decide.
+// OAuthEnabled diz se o authorization server está ligado. Depois do Load ele sempre
+// está, porque MARKUPP_PUBLIC_URL tem padrão (ADR-0041).
 func (c Config) OAuthEnabled() bool {
 	return c.PublicURL != ""
 }
 
-// loadOAuthSettings lê o authorization server (ADR-0046). Sem MARKUPP_PUBLIC_URL ele
-// fica desligado e as demais variáveis nem são lidas.
+// setOAuthDefaults preenche as durações e os limites do OAuth usados nas variáveis não
+// definidas.
+func setOAuthDefaults(cfg *Config) {
+	cfg.OAuthAccessMinutes = 60
+	cfg.OAuthRefreshDays = 30
+	cfg.OAuthRequestMinutes = 10
+	cfg.OAuthCodeSeconds = 60
+	cfg.OAuthExchangeMinutes = 5
+	cfg.OAuthCIMDTimeoutSeconds = 5
+	cfg.OAuthCIMDMaxKB = 64
+	cfg.OAuthCIMDCacheMinMinutes = 5
+	cfg.OAuthCIMDCacheMaxHours = 24
+	cfg.OAuthDCREnabled = false
+	cfg.OAuthDCRMaxPending = 1000
+	cfg.OAuthDCRPendingHours = 24
+}
+
+// loadOAuthSettings lê o authorization server (ADR-0046). Sem MARKUPP_PUBLIC_URL, o
+// issuer é o próprio servidor em localhost (ADR-0041).
 func loadOAuthSettings(lookup LookupFunc, cfg *Config) error {
-	var public string
+	public := fmt.Sprintf("http://localhost:%d", cfg.Port)
 	readString(lookup, publicURLRule.key, &public)
-	if public == "" {
-		return nil
-	}
 	var err error
 	if cfg.PublicURL, err = normalizeOAuthURL(public, publicURLRule); err != nil {
 		return err
@@ -51,24 +71,78 @@ func loadOAuthSettings(lookup LookupFunc, cfg *Config) error {
 	if err = loadPanelURL(lookup, cfg); err != nil {
 		return err
 	}
-	cfg.OAuthResources, err = readOAuthResources(lookup)
-	return err
+	if cfg.OAuthResources, err = readOAuthResources(lookup); err != nil {
+		return err
+	}
+	return loadOAuthLimits(lookup, cfg)
 }
 
-// loadPanelURL exige o painel, para onde o authorization server manda o login e o consentimento.
-func loadPanelURL(lookup LookupFunc, cfg *Config) error {
-	var panel string
-	readString(lookup, panelURLRule.key, &panel)
-	if panel == "" {
-		return fmt.Errorf("MARKUPP_PANEL_URL vazia, esperado %s quando MARKUPP_PUBLIC_URL existe", panelURLRule.expected)
+// loadOAuthLimits lê as validades, os limites e a chave do registro dinâmico, que só
+// valem com o OAuth ligado.
+func loadOAuthLimits(lookup LookupFunc, cfg *Config) error {
+	if err := loadOAuthDurations(lookup, cfg); err != nil {
+		return err
 	}
+	if err := readBool(lookup, "MARKUPP_OAUTH_DCR_ENABLED", &cfg.OAuthDCREnabled); err != nil {
+		return err
+	}
+	return cfg.checkCIMDCacheBounds()
+}
+
+// oauthDuration liga uma variável de duração do OAuth à sua faixa e ao campo da Config.
+type oauthDuration struct {
+	key             string
+	lowest, highest int64
+	target          *int
+}
+
+// loadOAuthDurations lê as validades e os limites do OAuth; variável ausente mantém o padrão.
+func loadOAuthDurations(lookup LookupFunc, cfg *Config) error {
+	durations := []oauthDuration{
+		{"MARKUPP_OAUTH_ACCESS_MINUTES", 1, 1440, &cfg.OAuthAccessMinutes},
+		{"MARKUPP_OAUTH_REFRESH_DAYS", 1, 365, &cfg.OAuthRefreshDays},
+		{"MARKUPP_OAUTH_REQUEST_MINUTES", 1, 60, &cfg.OAuthRequestMinutes},
+		{"MARKUPP_OAUTH_CODE_SECONDS", 10, 600, &cfg.OAuthCodeSeconds},
+		{"MARKUPP_OAUTH_EXCHANGE_MINUTES", 1, 15, &cfg.OAuthExchangeMinutes},
+		{"MARKUPP_OAUTH_CIMD_TIMEOUT_SECONDS", 1, 30, &cfg.OAuthCIMDTimeoutSeconds},
+		{"MARKUPP_OAUTH_CIMD_MAX_KB", 1, 1024, &cfg.OAuthCIMDMaxKB},
+		{"MARKUPP_OAUTH_CIMD_CACHE_MIN_MINUTES", 1, 60, &cfg.OAuthCIMDCacheMinMinutes},
+		{"MARKUPP_OAUTH_CIMD_CACHE_MAX_HOURS", 1, 168, &cfg.OAuthCIMDCacheMaxHours},
+		{"MARKUPP_OAUTH_DCR_MAX_PENDING", 1, 100000, &cfg.OAuthDCRMaxPending},
+		{"MARKUPP_OAUTH_DCR_PENDING_HOURS", 1, 168, &cfg.OAuthDCRPendingHours},
+	}
+	for _, duration := range durations {
+		value := int64(*duration.target)
+		faixa := fmt.Sprintf("de %d a %d", duration.lowest, duration.highest)
+		if err := readBounded(lookup, duration.key, duration.lowest, duration.highest, faixa, &value); err != nil {
+			return err
+		}
+		*duration.target = int(value)
+	}
+	return nil
+}
+
+// checkCIMDCacheBounds recusa o mínimo do cache dos documentos CIMD acima do máximo.
+func (c Config) checkCIMDCacheBounds() error {
+	if c.OAuthCIMDCacheMinMinutes <= c.OAuthCIMDCacheMaxHours*60 {
+		return nil
+	}
+	return fmt.Errorf("MARKUPP_OAUTH_CIMD_CACHE_MIN_MINUTES=%d acima de MARKUPP_OAUTH_CIMD_CACHE_MAX_HOURS=%d, esperado minimo ate o maximo",
+		c.OAuthCIMDCacheMinMinutes, c.OAuthCIMDCacheMaxHours)
+}
+
+// loadPanelURL lê o painel, para onde o authorization server manda o login e o
+// consentimento, com o painel local como padrão (ADR-0041).
+func loadPanelURL(lookup LookupFunc, cfg *Config) error {
+	panel := defaultPanelURL
+	readString(lookup, panelURLRule.key, &panel)
 	var err error
 	cfg.PanelURL, err = normalizeOAuthURL(panel, panelURLRule)
 	return err
 }
 
-// normalizeOAuthURL valida raw pela regra e a devolve com esquema e host em
-// minúsculas, sem a porta padrão do esquema e sem barra final. O erro mostra a URL com a senha mascarada.
+// normalizeOAuthURL valida raw pela regra e a devolve na forma canônica de
+// oauth.CanonicalURL. O erro mostra a URL com a senha mascarada.
 func normalizeOAuthURL(raw string, rule oauthURLRule) (string, error) {
 	parsed, err := url.Parse(raw)
 	if err != nil {
@@ -77,19 +151,7 @@ func normalizeOAuthURL(raw string, rule oauthURLRule) (string, error) {
 	if !oauthURLAllowed(parsed, rule) || strings.Contains(raw, "#") {
 		return "", fmt.Errorf("%s=%q, esperado %s", rule.key, parsed.Redacted(), rule.expected)
 	}
-	parsed.Host = withoutDefaultPort(strings.ToLower(parsed.Host), parsed.Scheme)
-	parsed.Path = strings.TrimRight(parsed.Path, "/")
-	parsed.RawPath = strings.TrimRight(parsed.RawPath, "/")
-	return parsed.String(), nil
-}
-
-// defaultPorts é a porta implícita de cada esquema aceito, que a normalização remove.
-var defaultPorts = map[string]string{"https": "443", "http": "80"}
-
-// withoutDefaultPort tira de host a porta padrão do esquema, para que
-// https://h:443 e https://h virem a mesma URL.
-func withoutDefaultPort(host, scheme string) string {
-	return strings.TrimSuffix(host, ":"+defaultPorts[scheme])
+	return oauth.CanonicalURL(parsed), nil
 }
 
 // oauthURLAllowed confere esquema, host e ausência de userinfo e de query e, conforme
@@ -133,9 +195,6 @@ func readOAuthResources(lookup LookupFunc) ([]OAuthResource, error) {
 		if resources, err = appendUniqueResource(resources, resource); err != nil {
 			return nil, err
 		}
-	}
-	if len(resources) == 0 {
-		return nil, fmt.Errorf("MARKUPP_OAUTH_RESOURCES vazia, esperado ao menos um par url=segredo quando MARKUPP_PUBLIC_URL existe")
 	}
 	return resources, nil
 }

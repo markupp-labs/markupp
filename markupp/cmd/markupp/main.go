@@ -1,11 +1,14 @@
 // Command markupp sobe o servidor HTTP de notas, aplica as migrações do banco
-// com o subcomando migrate, ou indexa os cofres pendentes com index (um cofre, para
-// o Job do KEDA) e index-loop (em laço, para o compose).
+// com o subcomando migrate, indexa os cofres pendentes com index (um cofre, para
+// o Job do KEDA) e index-loop (em laço, para o compose), ou reenfileira notas para
+// reindexar com reindex.
 package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"os"
@@ -14,6 +17,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/api"
@@ -23,6 +27,7 @@ import (
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/indexing"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/notes"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/notify"
+	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/oauth"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/storage"
 )
 
@@ -35,7 +40,8 @@ const (
 
 // command é o subcomando do binário: serve sobe a API, migrate aplica o schema
 // e sai, index indexa um cofre pendente e sai, index-loop indexa em laço, e
-// notify-loop entrega a fila de email em laço.
+// notify-loop entrega a fila de email em laço, e reindex reenfileira as notas de
+// um cofre ou da instalação.
 type command string
 
 const (
@@ -44,6 +50,7 @@ const (
 	indexCommand      command = "index"
 	indexLoopCommand  command = "index-loop"
 	notifyLoopCommand command = "notify-loop"
+	reindexCommand    command = "reindex"
 )
 
 // notifyInterval é a espera do notify-loop com a fila vazia. A primeira nova
@@ -66,6 +73,9 @@ func run(ctx context.Context, logger *slog.Logger, args []string) error {
 	if cmd == indexCommand || cmd == indexLoopCommand {
 		return runIndexer(ctx, logger, cmd)
 	}
+	if cmd == reindexCommand {
+		return reindexVaults(ctx, logger, args[2:])
+	}
 	cfg, err := config.Load(os.LookupEnv)
 	if err != nil {
 		return fmt.Errorf("carregar config: %w", err)
@@ -84,11 +94,54 @@ func parseCommand(args []string) (command, error) {
 		return serveCommand, nil
 	}
 	switch cmd := command(args[1]); cmd {
-	case serveCommand, migrateCommand, indexCommand, indexLoopCommand, notifyLoopCommand:
+	case serveCommand, migrateCommand, indexCommand, indexLoopCommand, notifyLoopCommand, reindexCommand:
 		return cmd, nil
 	}
-	return "", fmt.Errorf("subcomando %q desconhecido, esperado %q, %q, %q, %q ou %q",
-		args[1], serveCommand, migrateCommand, indexCommand, indexLoopCommand, notifyLoopCommand)
+	return "", fmt.Errorf("subcomando %q desconhecido, esperado %q, %q, %q, %q, %q ou %q",
+		args[1], serveCommand, migrateCommand, indexCommand, indexLoopCommand, notifyLoopCommand, reindexCommand)
+}
+
+const reindexUsage = "esperado reindex --vault <id> para um cofre ou reindex --all para a instalacao"
+
+// parseReindexScope lê o escopo do reindex: devolve o cofre de --vault, ou vazio com
+// --all. Exige exatamente um dos dois, para a instalação inteira nunca ser o padrão.
+func parseReindexScope(args []string) (string, error) {
+	flags := flag.NewFlagSet(string(reindexCommand), flag.ContinueOnError)
+	flags.SetOutput(io.Discard)
+	vaultID := flags.String("vault", "", "cofre a reindexar")
+	all := flags.Bool("all", false, "reindexa todos os cofres da instalacao")
+	if err := flags.Parse(args); err != nil {
+		return "", fmt.Errorf("argumentos %q do reindex invalidos, %s: %w", args, reindexUsage, err)
+	}
+	if flags.NArg() > 0 || (*vaultID != "") == *all {
+		return "", fmt.Errorf("argumentos %q do reindex, %s", args, reindexUsage)
+	}
+	return *vaultID, nil
+}
+
+// reindexVaults reenfileira as notas do escopo para o indexador refazer o índice,
+// como depois de trocar MARKUPP_SEARCH_CONFIG. Usa a config do indexador: só
+// precisa do banco, com o papel dono.
+func reindexVaults(ctx context.Context, logger *slog.Logger, args []string) error {
+	vaultID, err := parseReindexScope(args)
+	if err != nil {
+		return err
+	}
+	cfg, err := config.LoadIndexer(os.LookupEnv)
+	if err != nil {
+		return fmt.Errorf("carregar config do indexador: %w", err)
+	}
+	pool, err := storage.OpenPool(ctx, cfg.DatabaseURL)
+	if err != nil {
+		return fmt.Errorf("abrir banco: %w", err)
+	}
+	defer pool.Close()
+	requeued, err := storage.RequeueNotes(ctx, pool, vaultID)
+	if err != nil {
+		return err
+	}
+	logger.Info("reindexacao enfileirada", "cofre", vaultID, "notas", requeued)
+	return nil
 }
 
 // deliverNotifications entrega a fila de email em laço: é o Deployment que o KEDA
@@ -131,7 +184,7 @@ func indexVaults(ctx context.Context, logger *slog.Logger, cfg config.Config, cm
 		return fmt.Errorf("abrir banco: %w", err)
 	}
 	defer pool.Close()
-	indexer, err := storage.NewPostgresVaultIndexer(ctx, pool, cfg.SearchConfig)
+	indexer, err := storage.NewPostgresVaultIndexer(ctx, pool, cfg.SearchConfig, logger)
 	if err != nil {
 		return err
 	}
@@ -169,13 +222,21 @@ func serve(ctx context.Context, logger *slog.Logger, cfg config.Config) error {
 	}
 	defer pool.Close()
 
-	server := newServer(cfg.Port, newHandler(cfg, pool, logger))
+	cfg, err = prepareInstance(ctx, cfg, storage.NewPostgresInstanceSecrets(pool))
+	if err != nil {
+		return fmt.Errorf("preparar a instancia: %w", err)
+	}
+	handler, err := newHandler(cfg, pool, logger)
+	if err != nil {
+		return err
+	}
+	server := newServer(cfg.Port, handler)
 	logger.Info("servidor subindo", "addr", server.Addr)
 	return server.ListenAndServe()
 }
 
-func newHandler(cfg config.Config, pool *pgxpool.Pool, logger *slog.Logger) http.Handler {
-	repo := storage.NewPostgresNotesRepository(pool)
+func newHandler(cfg config.Config, pool *pgxpool.Pool, logger *slog.Logger) (http.Handler, error) {
+	repo := storage.NewPostgresNotesRepository(pool, cfg.SearchConfig)
 	notesSvc := notes.NewService(repo, cfg.MaxNoteSize)
 	authSvc, codec := newAuthService(cfg, pool)
 	// A API não recebe o SMTP: o booleano diz que há quem entregue os emails dela.
@@ -184,23 +245,73 @@ func newHandler(cfg config.Config, pool *pgxpool.Pool, logger *slog.Logger) http
 	accountEmail := auth.NewAccountEmailService(storage.NewPostgresAccountEmailRepository(pool), auth.NewBcryptHasher(), time.Now, auth.AccountEmailOptions{
 		EmailEnabled: emailEnabled, LocalEnabled: cfg.LocalAuthEnabled, Background: runDetached, Logger: logger,
 	})
+	oauthSvc, err := newOAuthService(cfg, pool, codec)
+	if err != nil {
+		return nil, err
+	}
 	return api.NewRouter(api.RouterDeps{
-		Notes: notesSvc, Auth: authSvc, Admin: adminSvc, AccountEmail: accountEmail,
+		Notes: notesSvc, Graph: storage.NewPostgresNoteGraph(pool, cfg.SearchConfig), Auth: authSvc, Admin: adminSvc, AccountEmail: accountEmail,
 		Tokens: codec, Tenants: authSvc, Probe: pool, AllowedOrigins: cfg.AllowedOrigins,
-		OAuthMetadata: oauthMetadataFrom(cfg),
-	})
+		OAuthMetadata: oauthMetadataFrom(cfg), OAuth: oauthSvc, MCPUpstreamURL: cfg.MCPUpstreamURL,
+	}), nil
+}
+
+// newOAuthService monta o authorization server só com o OAuth ligado. Devolve nil de
+// interface, e não um *oauth.Service nil, para o roteador não montar as rotas.
+func newOAuthService(cfg config.Config, pool *pgxpool.Pool, scoped oauth.ScopedTokenIssuer) (api.OAuthService, error) {
+	if !cfg.OAuthEnabled() {
+		return nil, nil
+	}
+	metadata, err := newCIMDClientMetadataFetcher(cimdLimitsFrom(cfg))
+	if err != nil {
+		return nil, err
+	}
+	repo := storage.NewPostgresOAuthRepository(pool)
+	return oauth.NewService(repo, oauthServiceConfigFrom(cfg), scoped, metadata, time.Now, uuid.NewString, newOAuthToken), nil
+}
+
+// newOAuthToken gera os tokens opacos do OAuth. A leitura de crypto/rand não falha num
+// sistema saudável, então a falha derruba o processo em vez de emitir token fraco.
+func newOAuthToken() string {
+	token, err := auth.NewOpaqueToken()
+	if err != nil {
+		panic(fmt.Sprintf("oauth: gerar token opaco: %v", err))
+	}
+	return token
+}
+
+// oauthServiceConfigFrom traduz a config do processo para o serviço OAuth.
+func oauthServiceConfigFrom(cfg config.Config) oauth.ServiceConfig {
+	resources := make([]string, 0, len(cfg.OAuthResources))
+	secrets := make(map[string]string, len(cfg.OAuthResources))
+	for _, resource := range cfg.OAuthResources {
+		resources = append(resources, resource.URL)
+		secrets[resource.URL] = resource.Secret
+	}
+	return oauth.ServiceConfig{
+		Issuer: cfg.PublicURL, PanelURL: cfg.PanelURL, Resources: resources, ResourceSecrets: secrets,
+		AccessTTL:   time.Duration(cfg.OAuthAccessMinutes) * time.Minute,
+		RefreshTTL:  time.Duration(cfg.OAuthRefreshDays) * 24 * time.Hour,
+		RequestTTL:  time.Duration(cfg.OAuthRequestMinutes) * time.Minute,
+		CodeTTL:     time.Duration(cfg.OAuthCodeSeconds) * time.Second,
+		ExchangeTTL: time.Duration(cfg.OAuthExchangeMinutes) * time.Minute,
+		// A falha da busca fica lembrada pelo menor tempo de cache do documento.
+		CIMDFailureTTL: time.Duration(cfg.OAuthCIMDCacheMinMinutes) * time.Minute,
+		DCRMaxPending:  cfg.OAuthDCRMaxPending,
+		DCRPendingTTL:  time.Duration(cfg.OAuthDCRPendingHours) * time.Hour,
+	}
 }
 
 // oauthMetadataFrom publica a metadata do authorization server só quando a
-// MARKUPP_PUBLIC_URL liga o OAuth.
+// MARKUPP_PUBLIC_URL liga o OAuth, com o registro dinâmico conforme a config.
 func oauthMetadataFrom(cfg config.Config) *api.OAuthMetadata {
 	if !cfg.OAuthEnabled() {
 		return nil
 	}
-	return &api.OAuthMetadata{Issuer: cfg.PublicURL}
+	return &api.OAuthMetadata{Issuer: cfg.PublicURL, DynamicRegistration: cfg.OAuthDCREnabled}
 }
 
-func newAuthService(cfg config.Config, pool *pgxpool.Pool) (*auth.Service, api.TokenValidator) {
+func newAuthService(cfg config.Config, pool *pgxpool.Pool) (*auth.Service, *auth.TokenCodec) {
 	authRepo := storage.NewPostgresAuthRepository(pool)
 	codec := auth.NewTokenCodec(cfg.AuthSecret, time.Duration(cfg.JWTExpirationMinutes)*time.Minute, time.Now)
 	hasher := auth.NewBcryptHasher()

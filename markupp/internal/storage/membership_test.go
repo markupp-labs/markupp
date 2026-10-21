@@ -64,7 +64,7 @@ func TestAuthRepo_CreateTenantTx_CriadorViraOwnerComCofreEAuditoria(t *testing.T
 	require.NoError(t, err)
 	assert.Equal(t, auth.Membership{TenantID: "novo", TenantName: "Acme Ltda", Role: "owner"}, m)
 	ctx := identity.WithActor(context.Background(), identity.Actor{UserID: "u1", TenantID: "novo", Role: "owner"})
-	padrao, err := storage.NewPostgresNotesRepository(db).DefaultVaultID(ctx)
+	padrao, err := storage.NewPostgresNotesRepository(db, "simple").DefaultVaultID(ctx)
 	require.NoError(t, err)
 	assert.Equal(t, "cofre-novo", padrao)
 	var auditados int

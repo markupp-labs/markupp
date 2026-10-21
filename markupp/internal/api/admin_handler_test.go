@@ -30,6 +30,9 @@ type fakeAdminService struct {
 	memberErr   error
 
 	revokedInvite string
+
+	tenantDeletedBy *identity.Actor
+	deleteTenantErr error
 }
 
 func (f *fakeAdminService) ListMembers(ctx context.Context) ([]auth.Member, error) {

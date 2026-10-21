@@ -1,0 +1,110 @@
+import { afterEach, describe, expect, it } from "vitest";
+import { FakeMarkuppApi } from "../testing/fake-markupp-api.js";
+import { MarkuppToolClient } from "../testing/markupp-tool-client.js";
+
+let client: MarkuppToolClient;
+
+afterEach(async () => {
+  await client.close();
+});
+
+describe("list_notes", () => {
+  it("devolve id, path e updated_at de cada nota, em ordem de path", async () => {
+    const api = new FakeMarkuppApi().withTenant("t1");
+    const second = api.withNote("t1", "b/plano.md", "x");
+    const first = api.withNote("t1", "a.md", "y");
+    client = await MarkuppToolClient.connect(api);
+    const result = await client.call("list_notes", { tenant: "t1" });
+    expect(JSON.parse(result.text)).toEqual([
+      { id: first.id, path: "a.md", updated_at: first.updated_at },
+      { id: second.id, path: "b/plano.md", updated_at: second.updated_at },
+    ]);
+  });
+});
+
+describe("search_notes", () => {
+  it("devolve só id, path e updated_at, da mais recente para a mais antiga", async () => {
+    const api = new FakeMarkuppApi().withTenant("t1");
+    const older = api.withNote("t1", "a.md", "plano de Viagem");
+    const newer = api.withNote("t1", "b.md", "outra viagem");
+    api.withNote("t1", "c.md", "nada a ver");
+    client = await MarkuppToolClient.connect(api);
+    const result = await client.call("search_notes", {
+      tenant: "t1",
+      query: "viagem",
+    });
+    expect(JSON.parse(result.text)).toEqual([
+      { id: newer.id, path: "b.md", updated_at: newer.updated_at },
+      { id: older.id, path: "a.md", updated_at: older.updated_at },
+    ]);
+  });
+
+  it("pagina com limit e offset", async () => {
+    const api = new FakeMarkuppApi().withTenant("t1");
+    api.withNote("t1", "a.md", "x");
+    const middle = api.withNote("t1", "b.md", "x");
+    api.withNote("t1", "c.md", "x");
+    client = await MarkuppToolClient.connect(api);
+    const result = await client.call("search_notes", {
+      tenant: "t1",
+      query: "x",
+      limit: 1,
+      offset: 1,
+    });
+    expect(JSON.parse(result.text)).toEqual([
+      { id: middle.id, path: "b.md", updated_at: middle.updated_at },
+    ]);
+  });
+
+  it("aponta list_tenants quando o tenant não é da conta", async () => {
+    client = await MarkuppToolClient.connect(new FakeMarkuppApi());
+    const result = await client.call("search_notes", {
+      tenant: "outro",
+      query: "x",
+    });
+    expect(result.isError).toBe(true);
+    expect(result.text).toMatch(/^tenant_forbidden: .*Call list_tenants/);
+  });
+});
+
+describe("read_note", () => {
+  it("devolve os metadados e depois o markdown cru", async () => {
+    const api = new FakeMarkuppApi().withTenant("t1");
+    const note = api.withNote("t1", "a.md", '# Título\n\n"aspas" e \\barra');
+    client = await MarkuppToolClient.connect(api);
+    const result = await client.call("read_note", {
+      tenant: "t1",
+      id: note.id,
+    });
+    const [metadata, content] = result.parts;
+    expect(JSON.parse(metadata ?? "")).toEqual({
+      id: note.id,
+      path: "a.md",
+      created_at: note.created_at,
+      updated_at: note.updated_at,
+    });
+    expect(content).toBe(note.content);
+  });
+
+  it("aponta search_notes quando a nota não existe", async () => {
+    client = await MarkuppToolClient.connect(
+      new FakeMarkuppApi().withTenant("t1"),
+    );
+    const result = await client.call("read_note", {
+      tenant: "t1",
+      id: "sumiu",
+    });
+    expect(result.isError).toBe(true);
+    expect(result.text).toMatch(/^not_found: .*search_notes/);
+  });
+
+  it("anuncia que só lê", async () => {
+    client = await MarkuppToolClient.connect(new FakeMarkuppApi());
+    expect((await client.tool("read_note")).annotations).toMatchObject({
+      readOnlyHint: true,
+    });
+    expect((await client.tool("search_notes")).annotations).toMatchObject({
+      readOnlyHint: true,
+    });
+  });
+});

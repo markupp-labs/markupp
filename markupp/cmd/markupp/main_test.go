@@ -2,8 +2,12 @@ package main
 
 import (
 	"context"
+	"crypto/x509"
+	"encoding/json"
 	"log/slog"
 	"net/http"
+	"net/http/httptest"
+	"net/netip"
 	"net/url"
 	"testing"
 	"time"
@@ -11,6 +15,8 @@ import (
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/config"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/identity"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/notes"
+	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/oauth"
+	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/oauth/cimd"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/storage"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/storage/storagetest"
 	"github.com/jackc/pgx/v5"
@@ -90,7 +96,7 @@ func TestParseCommand_Desconhecido_ListaTodosOsSubcomandos(t *testing.T) {
 	_, err := parseCommand([]string{"markupp", "indexar"})
 
 	require.Error(t, err)
-	for _, esperado := range []string{"indexar", "serve", "migrate", "index", "index-loop"} {
+	for _, esperado := range []string{"indexar", "serve", "migrate", "index", "index-loop", "reindex"} {
 		assert.Contains(t, err.Error(), esperado)
 	}
 }
@@ -103,13 +109,16 @@ func TestRun_Index_IndexaOCofrePendenteESai(t *testing.T) {
 	t.Cleanup(pool.Close)
 	ctx := storagetest.SeedMember(t, pool, identity.Actor{UserID: "ua", TenantID: "t1", Role: "member"}, "va")
 	agora := time.Now()
-	require.NoError(t, storage.NewPostgresNotesRepository(pool).Save(ctx,
-		notes.Note{ID: "n1", VaultID: "va", Path: "a.md", Content: "oi", CreatedAt: agora, UpdatedAt: agora}))
+	storagetest.SaveNote(ctx, t, storage.NewPostgresNotesRepository(pool, "simple"),
+		notes.Note{ID: "n1", VaultID: "va", Path: "a.md", Content: "oi", CreatedAt: agora, UpdatedAt: agora})
+
 	t.Setenv("MARKUPP_DATABASE_URL", url)
 	t.Setenv("MARKUPP_AUTH_SECRET", "")
 
-	require.NoError(t, run(context.Background(), slog.New(slog.DiscardHandler), []string{"markupp", "index"}),
-		"o Job do indexador nao recebe o segredo dos JWT")
+	for range 2 {
+		require.NoError(t, run(context.Background(), slog.New(slog.DiscardHandler), []string{"markupp", "index"}),
+			"o Job do indexador nao recebe o segredo dos JWT; o segundo reescolhe os termos com o df do primeiro")
+	}
 
 	var pendentes int
 	require.NoError(t, pool.QueryRow(context.Background(), "SELECT markupp_pending_vaults()").Scan(&pendentes))
@@ -161,6 +170,82 @@ func TestRun_NotifyLoopComSMTPEBancoInalcancavel_RetornaErroDoBanco(t *testing.T
 	assert.Contains(t, err.Error(), "abrir banco")
 }
 
+func TestParseCommand_Reindex_RetornaReindexacao(t *testing.T) {
+	cmd, err := parseCommand([]string{"markupp", "reindex", "--all"})
+
+	require.NoError(t, err)
+	assert.Equal(t, reindexCommand, cmd)
+}
+
+func TestParseReindexScope_Vault_RetornaOCofre(t *testing.T) {
+	vaultID, err := parseReindexScope([]string{"--vault", "va"})
+
+	require.NoError(t, err)
+	assert.Equal(t, "va", vaultID)
+}
+
+func TestParseReindexScope_All_RetornaCofreVazio(t *testing.T) {
+	vaultID, err := parseReindexScope([]string{"--all"})
+
+	require.NoError(t, err)
+	assert.Empty(t, vaultID, "cofre vazio reenfileira a instalacao inteira")
+}
+
+func TestParseReindexScope_EscopoAusenteOuAmbiguo_RetornaErroComAsFlags(t *testing.T) {
+	casos := [][]string{{}, {"--vault", "va", "--all"}, {"--vault", ""}, {"--all", "sobra"}}
+	for _, args := range casos {
+		_, err := parseReindexScope(args)
+
+		require.Error(t, err, "args %q", args)
+		assert.Contains(t, err.Error(), "--vault", "args %q", args)
+		assert.Contains(t, err.Error(), "--all", "args %q", args)
+	}
+}
+
+func TestParseReindexScope_FlagDesconhecida_RetornaErroComAFlag(t *testing.T) {
+	_, err := parseReindexScope([]string{"--cofre", "va"})
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "cofre")
+}
+
+func TestRun_ReindexDeUmCofre_ReenfileiraSoEle(t *testing.T) {
+	url := storagetest.DatabaseURL(t)
+	require.NoError(t, migrateDatabase(context.Background(), url, ""))
+	pool, err := storage.OpenPool(context.Background(), url)
+	require.NoError(t, err)
+	t.Cleanup(pool.Close)
+	agora := time.Now()
+	repo := storage.NewPostgresNotesRepository(pool, "simple")
+	for _, cofre := range []struct{ tenant, vault string }{{"t1", "va"}, {"t2", "vb"}} {
+		ctx := storagetest.SeedMember(t, pool, identity.Actor{UserID: "u" + cofre.vault, TenantID: cofre.tenant, Role: "member"}, cofre.vault)
+		storagetest.SaveNote(ctx, t, repo, notes.Note{ID: "n-" + cofre.vault, VaultID: cofre.vault, Path: "a.md", Content: "oi", CreatedAt: agora, UpdatedAt: agora})
+	}
+	_, err = pool.Exec(context.Background(), "DELETE FROM note_index_queue")
+	require.NoError(t, err)
+	t.Setenv("MARKUPP_DATABASE_URL", url)
+	t.Setenv("MARKUPP_AUTH_SECRET", "")
+
+	require.NoError(t, run(context.Background(), slog.New(slog.DiscardHandler), []string{"markupp", "reindex", "--vault", "va"}),
+		"a reindexacao manual nao recebe o segredo dos JWT")
+
+	var pendente string
+	require.NoError(t, pool.QueryRow(context.Background(), "SELECT string_agg(note_id, ',') FROM note_index_queue").Scan(&pendente))
+	assert.Equal(t, "n-va", pendente)
+}
+
+func TestRun_ReindexDeCofreInexistente_RetornaErroComOId(t *testing.T) {
+	url := storagetest.DatabaseURL(t)
+	require.NoError(t, migrateDatabase(context.Background(), url, ""))
+	t.Setenv("MARKUPP_DATABASE_URL", url)
+	t.Setenv("MARKUPP_AUTH_SECRET", "")
+
+	err := run(context.Background(), slog.New(slog.DiscardHandler), []string{"markupp", "reindex", "--vault", "fantasma"})
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), `"fantasma"`)
+}
+
 func TestOAuthMetadataFrom_SemPublicURL_DesligaAMetadata(t *testing.T) {
 	assert.Nil(t, oauthMetadataFrom(config.Config{}))
 }
@@ -172,4 +257,224 @@ func TestOAuthMetadataFrom_ComPublicURL_UsaComoIssuer(t *testing.T) {
 
 	require.NotNil(t, meta)
 	assert.Equal(t, "https://notas.markupp.dev", meta.Issuer)
+}
+
+func TestOAuthServiceConfigFrom_ConverteDuracoesEListaOsResources(t *testing.T) {
+	cfg := config.Config{
+		PublicURL: "https://notas.markupp.dev", PanelURL: "https://painel.markupp.dev",
+		OAuthResources:     []config.OAuthResource{{URL: "https://mcp.markupp.dev", Secret: "s"}},
+		OAuthAccessMinutes: 60, OAuthRefreshDays: 30, OAuthRequestMinutes: 10, OAuthCodeSeconds: 60,
+	}
+
+	got := oauthServiceConfigFrom(cfg)
+
+	assert.Equal(t, "https://notas.markupp.dev", got.Issuer)
+	assert.Equal(t, "https://painel.markupp.dev", got.PanelURL)
+	assert.Equal(t, []string{"https://mcp.markupp.dev"}, got.Resources)
+	assert.Equal(t, time.Hour, got.AccessTTL)
+	assert.Equal(t, 30*24*time.Hour, got.RefreshTTL)
+	assert.Equal(t, 10*time.Minute, got.RequestTTL)
+	assert.Equal(t, time.Minute, got.CodeTTL)
+}
+
+func TestOAuthMetadataFrom_RegistroDinamico_SegueAConfig(t *testing.T) {
+	for _, ligado := range []bool{true, false} {
+		meta := oauthMetadataFrom(config.Config{PublicURL: "https://notas.markupp.dev", OAuthDCREnabled: ligado})
+
+		require.NotNil(t, meta)
+		assert.Equal(t, ligado, meta.DynamicRegistration)
+	}
+}
+
+func TestOAuthServiceConfigFrom_ConverteOTetoEOPrazoDoDCR(t *testing.T) {
+	got := oauthServiceConfigFrom(config.Config{OAuthDCRMaxPending: 1000, OAuthDCRPendingHours: 24})
+
+	assert.Equal(t, 1000, got.DCRMaxPending)
+	assert.Equal(t, 24*time.Hour, got.DCRPendingTTL)
+}
+
+func TestOAuthServiceConfigFrom_CacheNegativoDoCIMDUsaOMinimoDoCache(t *testing.T) {
+	got := oauthServiceConfigFrom(config.Config{OAuthCIMDCacheMinMinutes: 7})
+
+	assert.Equal(t, 7*time.Minute, got.CIMDFailureTTL)
+}
+
+func TestOAuthServiceConfigFrom_MapeiaOsSegredosEAValidadeDaTroca(t *testing.T) {
+	cfg := config.Config{
+		OAuthResources: []config.OAuthResource{
+			{URL: "https://mcp.markupp.dev/mcp", Secret: "segredo-um"}, // #nosec G101 -- valor fictício de teste
+			{URL: "https://outro.markupp.dev", Secret: "segredo-dois"}, // #nosec G101 -- valor fictício de teste
+		},
+		OAuthExchangeMinutes: 5,
+	}
+
+	got := oauthServiceConfigFrom(cfg)
+
+	assert.Equal(t, map[string]string{
+		"https://mcp.markupp.dev/mcp": "segredo-um", "https://outro.markupp.dev": "segredo-dois",
+	}, got.ResourceSecrets)
+	assert.Equal(t, 5*time.Minute, got.ExchangeTTL)
+}
+
+func TestNewOAuthService_SemPublicURL_DevolveNilDeInterface(t *testing.T) {
+	svc, err := newOAuthService(config.Config{}, nil, nil)
+
+	require.NoError(t, err)
+	assert.Nil(t, svc)
+}
+
+func TestCIMDLimitsFrom_ConverteAConfigEmDuracoesEBytes(t *testing.T) {
+	cfg := config.Config{
+		OAuthCIMDTimeoutSeconds: 5, OAuthCIMDMaxKB: 64, OAuthCIMDCacheMinMinutes: 5, OAuthCIMDCacheMaxHours: 24,
+	}
+
+	assert.Equal(t, cimdLimits{
+		Timeout: 5 * time.Second, MaxBodyBytes: 64 << 10, MinTTL: 5 * time.Minute, MaxTTL: 24 * time.Hour,
+	}, cimdLimitsFrom(cfg))
+}
+
+// fakeCIMDServer publica um Client ID Metadata Document em https no loopback.
+type fakeCIMDServer struct {
+	*httptest.Server
+	status int
+	delay  time.Duration
+}
+
+func newFakeCIMDServer(t *testing.T, status int) *fakeCIMDServer {
+	srv := &fakeCIMDServer{status: status}
+	srv.Server = httptest.NewTLSServer(http.HandlerFunc(srv.serveDocument))
+	t.Cleanup(srv.Close)
+	return srv
+}
+
+func (s *fakeCIMDServer) clientID() string { return s.URL + "/cliente.json" }
+
+// allowedPort libera no fetcher a porta aleatória do servidor de teste.
+func (s *fakeCIMDServer) allowedPort(t *testing.T) cimd.Option {
+	u, err := url.Parse(s.URL)
+	require.NoError(t, err)
+	return cimd.WithAllowedPort(u.Port())
+}
+
+func (s *fakeCIMDServer) roots() *x509.CertPool {
+	pool := x509.NewCertPool()
+	pool.AddCert(s.Certificate())
+	return pool
+}
+
+func (s *fakeCIMDServer) serveDocument(w http.ResponseWriter, r *http.Request) {
+	select {
+	case <-time.After(s.delay):
+	case <-r.Context().Done():
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "max-age=60")
+	w.WriteHeader(s.status)
+	_ = json.NewEncoder(w).Encode(struct {
+		ClientID     string   `json:"client_id"`
+		ClientName   string   `json:"client_name"`
+		RedirectURIs []string `json:"redirect_uris"`
+	}{s.clientID(), "Cliente de Teste", []string{"https://cliente.markupp.dev/cb"}})
+}
+
+// allowLoopback libera o servidor de teste e mantém o resto da política padrão.
+func allowLoopback(ip netip.Addr) error {
+	if ip.IsLoopback() {
+		return nil
+	}
+	return cimd.PublicOnly(ip)
+}
+
+var testCIMDLimits = cimdLimits{Timeout: 5 * time.Second, MaxBodyBytes: 64 << 10, MinTTL: 5 * time.Minute, MaxTTL: time.Hour}
+
+func TestCIMDClientMetadataFetcher_DocumentoValido_ConverteOsMetadadosComOsLimites(t *testing.T) {
+	srv := newFakeCIMDServer(t, http.StatusOK)
+	fetcher, err := newCIMDClientMetadataFetcher(testCIMDLimits, cimd.WithRootCAs(srv.roots()), srv.allowedPort(t), cimd.WithIPPolicy(allowLoopback))
+	require.NoError(t, err)
+
+	meta, err := fetcher.FetchClientMetadata(context.Background(), srv.clientID())
+
+	require.NoError(t, err)
+	assert.Equal(t, oauth.ClientMetadata{
+		ClientID: srv.clientID(), Name: "Cliente de Teste",
+		RedirectURIs: []string{"https://cliente.markupp.dev/cb"}, TTL: 5 * time.Minute,
+	}, meta, "o max-age de 60 s sobe ao minimo de 5 min dos limites")
+}
+
+func TestCIMDClientMetadataFetcher_BuscaFalha_EmbrulhaOErroComOClientID(t *testing.T) {
+	srv := newFakeCIMDServer(t, http.StatusNotFound)
+	fetcher, err := newCIMDClientMetadataFetcher(testCIMDLimits, cimd.WithRootCAs(srv.roots()), srv.allowedPort(t), cimd.WithIPPolicy(allowLoopback))
+	require.NoError(t, err)
+
+	_, err = fetcher.FetchClientMetadata(context.Background(), srv.clientID())
+
+	require.ErrorIs(t, err, cimd.ErrFetchFailed)
+	assert.Contains(t, err.Error(), oauth.ClientValue(srv.clientID()))
+}
+
+func TestCIMDClientMetadataFetcher_ClientIDRecusadoAntesDaBusca_EmbrulhaOErroDoContrato(t *testing.T) {
+	srv := newFakeCIMDServer(t, http.StatusOK)
+	fetcher, err := newCIMDClientMetadataFetcher(testCIMDLimits, cimd.WithRootCAs(srv.roots()), cimd.WithIPPolicy(allowLoopback))
+	require.NoError(t, err)
+
+	_, err = fetcher.FetchClientMetadata(context.Background(), srv.clientID())
+
+	require.ErrorIs(t, err, oauth.ErrInvalidMetadataClientID, "a porta aleatória do teste não é a 443")
+	require.ErrorIs(t, err, cimd.ErrInvalidClientID)
+}
+
+func TestCIMDClientMetadataFetcher_BuscaFalha_NaoMarcaClientIDRecusado(t *testing.T) {
+	srv := newFakeCIMDServer(t, http.StatusNotFound)
+	fetcher, err := newCIMDClientMetadataFetcher(testCIMDLimits, cimd.WithRootCAs(srv.roots()), srv.allowedPort(t), cimd.WithIPPolicy(allowLoopback))
+	require.NoError(t, err)
+
+	_, err = fetcher.FetchClientMetadata(context.Background(), srv.clientID())
+
+	require.ErrorIs(t, err, cimd.ErrFetchFailed)
+	assert.NotErrorIs(t, err, oauth.ErrInvalidMetadataClientID)
+}
+
+func TestNewCIMDClientMetadataFetcher_SemTrocarAPolitica_RecusaLoopback(t *testing.T) {
+	srv := newFakeCIMDServer(t, http.StatusOK)
+	fetcher, err := newCIMDClientMetadataFetcher(testCIMDLimits, cimd.WithRootCAs(srv.roots()), srv.allowedPort(t))
+	require.NoError(t, err)
+
+	_, err = fetcher.FetchClientMetadata(context.Background(), srv.clientID())
+
+	require.ErrorIs(t, err, cimd.ErrBlockedAddress, "esperada a politica PublicOnly")
+}
+
+func TestNewCIMDClientMetadataFetcher_LimitesInvalidos_RetornaErro(t *testing.T) {
+	_, err := newCIMDClientMetadataFetcher(cimdLimits{Timeout: time.Second, MaxBodyBytes: 1, MinTTL: time.Hour, MaxTTL: time.Minute})
+
+	require.ErrorIs(t, err, cimd.ErrInvalidOption)
+}
+
+func TestNewCIMDClientMetadataFetcher_LimiteDeCorpo_ChegaAoFetcher(t *testing.T) {
+	srv := newFakeCIMDServer(t, http.StatusOK)
+	limits := testCIMDLimits
+	limits.MaxBodyBytes = 16
+	fetcher, err := newCIMDClientMetadataFetcher(limits, cimd.WithRootCAs(srv.roots()), srv.allowedPort(t), cimd.WithIPPolicy(allowLoopback))
+	require.NoError(t, err)
+
+	_, err = fetcher.FetchClientMetadata(context.Background(), srv.clientID())
+
+	require.ErrorIs(t, err, cimd.ErrFetchFailed)
+	assert.Contains(t, err.Error(), "mais de 16 bytes")
+}
+
+func TestNewCIMDClientMetadataFetcher_Timeout_ChegaAoFetcher(t *testing.T) {
+	srv := newFakeCIMDServer(t, http.StatusOK)
+	srv.delay = 2 * time.Second
+	limits := testCIMDLimits
+	limits.Timeout = 100 * time.Millisecond
+	fetcher, err := newCIMDClientMetadataFetcher(limits, cimd.WithRootCAs(srv.roots()), srv.allowedPort(t), cimd.WithIPPolicy(allowLoopback))
+	require.NoError(t, err)
+	inicio := time.Now()
+
+	_, err = fetcher.FetchClientMetadata(context.Background(), srv.clientID())
+
+	require.ErrorIs(t, err, cimd.ErrFetchFailed)
+	assert.Less(t, time.Since(inicio), time.Second, "o timeout dos limites encerra a busca antes do atraso")
 }

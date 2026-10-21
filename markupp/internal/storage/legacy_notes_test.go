@@ -43,13 +43,13 @@ func TestMigracao_NotaDaRC1_PrimeiroAdminEnxergaNoCofreImportadas(t *testing.T) 
 	require.NoError(t, err)
 
 	ctx := identity.WithActor(context.Background(), identity.Actor{UserID: params.User.ID, TenantID: "default", Role: "admin"})
-	lista, err := storage.NewPostgresNotesRepository(db).ListNotes(ctx)
+	lista, err := storage.NewPostgresNotesRepository(db, "simple").ListNotes(ctx)
 
 	require.NoError(t, err)
 	require.Len(t, lista, 1)
 	assert.Equal(t, "antiga.md", lista[0].Path)
 	assert.Equal(t, "importadas", lista[0].VaultID)
-	padrao, err := storage.NewPostgresNotesRepository(db).DefaultVaultID(ctx)
+	padrao, err := storage.NewPostgresNotesRepository(db, "simple").DefaultVaultID(ctx)
 	require.NoError(t, err)
 	assert.Equal(t, params.InitialVaultID, padrao, "nota nova sem cofre vai para o Principal, nao para o importado")
 }
@@ -67,7 +67,7 @@ func TestCreateAccountTx_SegundoUsuario_NaoEntraNosCofresExistentes(t *testing.T
 	require.NoError(t, err)
 
 	ctx := identity.WithActor(context.Background(), identity.Actor{UserID: membro.User.ID, TenantID: "default", Role: "member"})
-	lista, err := storage.NewPostgresNotesRepository(db).ListNotes(ctx)
+	lista, err := storage.NewPostgresNotesRepository(db, "simple").ListNotes(ctx)
 
 	require.NoError(t, err)
 	assert.Empty(t, lista, "so o primeiro admin herda o cofre importado")
@@ -90,7 +90,7 @@ func TestMigracao_TenantPadraoConfigurado_PrimeiroAdminLevaOCofreImportado(t *te
 	require.NoError(t, err)
 
 	ctx := identity.WithActor(context.Background(), identity.Actor{UserID: params.User.ID, TenantID: "empresa", Role: "admin"})
-	lista, err := storage.NewPostgresNotesRepository(db).ListNotes(ctx)
+	lista, err := storage.NewPostgresNotesRepository(db, "simple").ListNotes(ctx)
 
 	require.NoError(t, err)
 	require.Len(t, lista, 1, "MARKUPP_DEFAULT_TENANT_ID diferente de default nao pode esconder as notas da rc1")

@@ -45,13 +45,19 @@ type fakeService struct {
 
 	createdVaultID string
 
+	vaultListArgs struct {
+		vaultID string
+		query   notes.VaultNotesQuery
+	}
+
 	searchResult []notes.SearchResult
 	searchErr    error
 	searchArgs   struct {
-		query  string
-		offset int
-		limit  int
-		called bool
+		query   string
+		vaultID string
+		offset  int
+		limit   int
+		called  bool
 	}
 }
 
@@ -85,8 +91,14 @@ func (f *fakeService) ListNotes(ctx context.Context) ([]notes.Note, error) {
 	return f.listResult, f.listErr
 }
 
-func (f *fakeService) SearchNotes(ctx context.Context, query string, offset, limit int) ([]notes.SearchResult, error) {
+func (f *fakeService) ListVaultNotes(ctx context.Context, vaultID string, q notes.VaultNotesQuery) ([]notes.Note, error) {
+	f.vaultListArgs.vaultID, f.vaultListArgs.query = vaultID, q
+	return f.listResult, f.listErr
+}
+
+func (f *fakeService) SearchNotes(ctx context.Context, query, vaultID string, offset, limit int) ([]notes.SearchResult, error) {
 	f.searchArgs.called = true
+	f.searchArgs.vaultID = vaultID
 	f.searchArgs.query = query
 	f.searchArgs.offset = offset
 	f.searchArgs.limit = limit
@@ -190,6 +202,17 @@ func TestPostNotes_ErrInvalidPath_Retorna400(t *testing.T) {
 	var resp map[string]any
 	require.NoError(t, json.NewDecoder(rec.Body).Decode(&resp))
 	assert.Equal(t, "invalid_path", resp["error"])
+}
+
+func TestPostNotes_ErrInvalidPathComDetalhe_DevolveOCaminhoNaMensagem(t *testing.T) {
+	svc := &fakeService{err: fmt.Errorf("%w: caminho %q sem titulo", notes.ErrInvalidPath, "pasta/.md")}
+	rec := doPost(t, svc, `{"path":"pasta/.md","content":"x"}`)
+
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+	var resp map[string]any
+	require.NoError(t, json.NewDecoder(rec.Body).Decode(&resp))
+	assert.Equal(t, "invalid_path", resp["error"])
+	assert.Contains(t, resp["message"], "pasta/.md")
 }
 
 func TestPostNotes_ErrInvalidContent_Retorna400(t *testing.T) {
@@ -347,8 +370,8 @@ func (s *stubRepository) DefaultVaultID(ctx context.Context) (string, error) {
 	return "cofre-stub", nil
 }
 
-func (s *stubRepository) Save(ctx context.Context, n notes.Note) error {
-	return nil
+func (s *stubRepository) Save(ctx context.Context, n notes.Note) (notes.Note, error) {
+	return n, nil
 }
 
 func (s *stubRepository) Update(ctx context.Context, id, path, content string, updatedAt, lastModifiedAt time.Time, force bool) (notes.Note, error) {
@@ -367,7 +390,11 @@ func (s *stubRepository) ListNotes(ctx context.Context) ([]notes.Note, error) {
 	return s.listResult, s.listErr
 }
 
-func (s *stubRepository) SearchNotes(ctx context.Context, query string, offset, limit int32) ([]notes.SearchResult, error) {
+func (s *stubRepository) ListVaultNotes(ctx context.Context, vaultID string, q notes.VaultNotesQuery) ([]notes.Note, error) {
+	return nil, nil
+}
+
+func (s *stubRepository) SearchNotes(ctx context.Context, query, vaultID string, offset, limit int32) ([]notes.SearchResult, error) {
 	return nil, nil
 }
 
@@ -473,7 +500,7 @@ func TestListNotes_ServiceRetornaErro_Retorna500(t *testing.T) {
 func TestSearchNotes_QueryValido_Retorna200(t *testing.T) {
 	now := time.Now()
 	svc := &fakeService{searchResult: []notes.SearchResult{
-		{ID: "id-1", Path: "a.md", UpdatedAt: now},
+		{ID: "id-1", Path: "a.md", UpdatedAt: now, Snippet: "o \u0002go\u0003 compila"},
 		{ID: "id-2", Path: "b.md", UpdatedAt: now},
 	}}
 
@@ -492,6 +519,7 @@ func TestSearchNotes_QueryValido_Retorna200(t *testing.T) {
 	assert.Equal(t, "a.md", resp[0]["path"])
 	assert.Equal(t, "id-2", resp[1]["id"])
 	assert.Equal(t, "b.md", resp[1]["path"])
+	assert.Equal(t, "o \u0002go\u0003 compila", resp[0]["snippet"])
 	assert.True(t, svc.searchArgs.called)
 	assert.Equal(t, "go", svc.searchArgs.query)
 	assert.Equal(t, 1, svc.searchArgs.offset)
@@ -545,4 +573,25 @@ func TestPostNotes_CofreSemAcesso_Retorna403(t *testing.T) {
 
 	assert.Equal(t, http.StatusForbidden, rec.Code)
 	assert.Contains(t, rec.Body.String(), "vault_forbidden")
+}
+
+func TestGetNotes_ExpoeContentSHA256(t *testing.T) {
+	svc := &fakeService{note: notes.Note{ID: "id-x", Path: "x.md", Content: "y", ContentSHA256: "ab01"}}
+
+	rec := doGet(t, svc, "id-x")
+
+	var resp map[string]any
+	require.NoError(t, json.NewDecoder(rec.Body).Decode(&resp))
+	assert.Equal(t, "ab01", resp["content_sha256"])
+}
+
+func TestListNotes_ExpoeContentSHA256DeCadaNota(t *testing.T) {
+	svc := &fakeService{listResult: []notes.Note{{ID: "id-1", ContentSHA256: "cd02"}}}
+
+	rec := doListNotes(t, svc)
+
+	var resp []map[string]any
+	require.NoError(t, json.NewDecoder(rec.Body).Decode(&resp))
+	require.Len(t, resp, 1)
+	assert.Equal(t, "cd02", resp[0]["content_sha256"])
 }

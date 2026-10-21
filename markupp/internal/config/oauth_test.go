@@ -1,6 +1,7 @@
 package config_test
 
 import (
+	"strconv"
 	"strings"
 	"testing"
 
@@ -34,18 +35,26 @@ func TestDefault_SemPublicURL_OAuthDesligado(t *testing.T) {
 	assert.Empty(t, cfg.OAuthResources)
 }
 
-func TestLoad_SemPublicURL_IgnoraPainelERecursos(t *testing.T) {
-	env := fakeEnv{
-		"MARKUPP_DATABASE_URL": urlDeTeste, "MARKUPP_AUTH_SECRET": segredoDeTesteValido,
-		"MARKUPP_PANEL_URL": "ftp://invalido", "MARKUPP_OAUTH_RESOURCES": "lixo",
-	}
+func TestLoad_SoComOBanco_LigaOOAuthComOsPadroesDoSelfHost(t *testing.T) {
+	env := fakeEnv{"MARKUPP_DATABASE_URL": urlDeTeste}
 
 	cfg, err := config.Load(env.Lookup)
 
-	require.NoError(t, err, "sem MARKUPP_PUBLIC_URL o OAuth fica desligado e o resto nem e lido")
-	assert.False(t, cfg.OAuthEnabled())
-	assert.Empty(t, cfg.PanelURL)
-	assert.Empty(t, cfg.OAuthResources)
+	require.NoError(t, err)
+	assert.True(t, cfg.OAuthEnabled())
+	assert.Equal(t, "http://localhost:8080", cfg.PublicURL)
+	assert.Equal(t, "http://localhost:3999", cfg.PanelURL)
+	assert.Empty(t, cfg.OAuthResources, "o resource padrao recebe o segredo do banco na subida")
+	assert.Equal(t, "http://localhost:8080/mcp", cfg.DefaultMCPResourceURL())
+}
+
+func TestLoad_SemPublicURL_UsaAPortaDoServidor(t *testing.T) {
+	env := fakeEnv{"MARKUPP_DATABASE_URL": urlDeTeste, "MARKUPP_PORT": "9000"}
+
+	cfg, err := config.Load(env.Lookup)
+
+	require.NoError(t, err)
+	assert.Equal(t, "http://localhost:9000", cfg.PublicURL)
 }
 
 func TestLoad_OAuthCompleto_LeOsTresCampos(t *testing.T) {
@@ -110,15 +119,14 @@ func TestLoad_PublicURLComSenha_RetornaErroSemVazarASenha(t *testing.T) {
 	assert.NotContains(t, err.Error(), "segredo")
 }
 
-func TestLoad_OAuthSemPainel_RetornaErroNomeandoAVariavel(t *testing.T) {
+func TestLoad_OAuthSemPainel_UsaOPainelLocal(t *testing.T) {
 	env := envComOAuth()
 	delete(env, "MARKUPP_PANEL_URL")
 
-	_, err := config.Load(env.Lookup)
+	cfg, err := config.Load(env.Lookup)
 
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "MARKUPP_PANEL_URL")
-	assert.Contains(t, err.Error(), "MARKUPP_PUBLIC_URL", "a mensagem diz por que o painel e obrigatorio")
+	require.NoError(t, err)
+	assert.Equal(t, "http://localhost:3999", cfg.PanelURL)
 }
 
 func TestLoad_PainelForaDoFormato_RetornaErroComOValor(t *testing.T) {
@@ -138,16 +146,15 @@ func TestLoad_PainelForaDoFormato_RetornaErroComOValor(t *testing.T) {
 	}
 }
 
-func TestLoad_OAuthSemRecursos_RetornaErroNomeandoAVariavel(t *testing.T) {
+func TestLoad_OAuthSemRecursos_DeixaOPadraoParaASubida(t *testing.T) {
 	for _, valor := range []string{"", " , "} {
 		env := envComOAuth()
 		env["MARKUPP_OAUTH_RESOURCES"] = valor
 
-		_, err := config.Load(env.Lookup)
+		cfg, err := config.Load(env.Lookup)
 
-		require.Error(t, err, valor)
-		assert.Contains(t, err.Error(), "MARKUPP_OAUTH_RESOURCES")
-		assert.Contains(t, err.Error(), "url=segredo")
+		require.NoError(t, err, valor)
+		assert.Empty(t, cfg.OAuthResources, valor)
 	}
 }
 
@@ -327,4 +334,81 @@ func TestLoad_RecursoRepetidoComPortaPadrao_RetornaErro(t *testing.T) {
 
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "par 2")
+}
+
+func TestDefault_DuracoesDoOAuth(t *testing.T) {
+	cfg := config.Default()
+
+	assert.Equal(t, 60, cfg.OAuthAccessMinutes)
+	assert.Equal(t, 30, cfg.OAuthRefreshDays)
+	assert.Equal(t, 10, cfg.OAuthRequestMinutes)
+	assert.Equal(t, 60, cfg.OAuthCodeSeconds)
+	assert.Equal(t, 5, cfg.OAuthExchangeMinutes)
+}
+
+func TestLoad_OAuthSemDuracoes_UsaOPadrao(t *testing.T) {
+	cfg, err := config.Load(envComOAuth().Lookup)
+
+	require.NoError(t, err)
+	assert.Equal(t, 60, cfg.OAuthAccessMinutes)
+	assert.Equal(t, 30, cfg.OAuthRefreshDays)
+	assert.Equal(t, 10, cfg.OAuthRequestMinutes)
+	assert.Equal(t, 60, cfg.OAuthCodeSeconds)
+	assert.Equal(t, 5, cfg.OAuthExchangeMinutes)
+}
+
+func TestLoad_DuracoesDoOAuthNosLimites_Aceita(t *testing.T) {
+	for _, limite := range []struct{ acesso, refresh, pedido, codigo, troca int }{
+		{1, 1, 1, 10, 1}, {1440, 365, 60, 600, 15},
+	} {
+		env := envComOAuth()
+		env["MARKUPP_OAUTH_ACCESS_MINUTES"] = strconv.Itoa(limite.acesso)
+		env["MARKUPP_OAUTH_REFRESH_DAYS"] = strconv.Itoa(limite.refresh)
+		env["MARKUPP_OAUTH_REQUEST_MINUTES"] = strconv.Itoa(limite.pedido)
+		env["MARKUPP_OAUTH_CODE_SECONDS"] = strconv.Itoa(limite.codigo)
+		env["MARKUPP_OAUTH_EXCHANGE_MINUTES"] = strconv.Itoa(limite.troca)
+
+		cfg, err := config.Load(env.Lookup)
+
+		require.NoError(t, err, limite)
+		assert.Equal(t, limite.acesso, cfg.OAuthAccessMinutes)
+		assert.Equal(t, limite.refresh, cfg.OAuthRefreshDays)
+		assert.Equal(t, limite.pedido, cfg.OAuthRequestMinutes)
+		assert.Equal(t, limite.codigo, cfg.OAuthCodeSeconds)
+		assert.Equal(t, limite.troca, cfg.OAuthExchangeMinutes)
+	}
+}
+
+func TestLoad_DuracaoDoOAuthInvalida_RetornaErroComVariavelEValor(t *testing.T) {
+	casos := []struct{ chave, valor, faixa string }{
+		{"MARKUPP_OAUTH_ACCESS_MINUTES", "0", "de 1 a 1440"},
+		{"MARKUPP_OAUTH_ACCESS_MINUTES", "1441", "de 1 a 1440"},
+		{"MARKUPP_OAUTH_REFRESH_DAYS", "366", "de 1 a 365"},
+		{"MARKUPP_OAUTH_REQUEST_MINUTES", "61", "de 1 a 60"},
+		{"MARKUPP_OAUTH_CODE_SECONDS", "9", "de 10 a 600"},
+		{"MARKUPP_OAUTH_CODE_SECONDS", "601", "de 10 a 600"},
+		{"MARKUPP_OAUTH_CODE_SECONDS", "um minuto", "de 10 a 600"},
+		{"MARKUPP_OAUTH_EXCHANGE_MINUTES", "0", "de 1 a 15"},
+		{"MARKUPP_OAUTH_EXCHANGE_MINUTES", "16", "de 1 a 15"},
+	}
+	for _, caso := range casos {
+		env := envComOAuth()
+		env[caso.chave] = caso.valor
+
+		_, err := config.Load(env.Lookup)
+
+		require.Error(t, err, caso)
+		assert.Contains(t, err.Error(), caso.chave)
+		assert.Contains(t, err.Error(), caso.valor)
+		assert.Contains(t, err.Error(), caso.faixa)
+	}
+}
+
+func TestLoad_SemPublicURL_AindaLeAsDuracoesDoOAuth(t *testing.T) {
+	env := fakeEnv{"MARKUPP_DATABASE_URL": urlDeTeste, "MARKUPP_OAUTH_ACCESS_MINUTES": "0"}
+
+	_, err := config.Load(env.Lookup)
+
+	require.Error(t, err, "o OAuth vem ligado pela URL publica padrao")
+	assert.Contains(t, err.Error(), "MARKUPP_OAUTH_ACCESS_MINUTES")
 }

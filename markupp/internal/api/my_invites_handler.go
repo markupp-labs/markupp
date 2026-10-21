@@ -23,7 +23,7 @@ func (h *authHandler) myInvites(w http.ResponseWriter, r *http.Request) {
 	actor, _ := identity.ActorFrom(r.Context())
 	invites, err := h.svc.ListMyInvites(r.Context(), actor.UserID)
 	if err != nil {
-		writeInternal(w, "listar convites da conta", err)
+		writeMyInvitesInternal(w, "listar convites da conta", err)
 		return
 	}
 	out := make([]pendingInviteResponse, 0, len(invites))
@@ -60,6 +60,10 @@ func writeAnswerError(w http.ResponseWriter, err error) {
 	case errors.Is(err, auth.ErrAlreadyMember):
 		writeError(w, "already_member", "a conta ja e membro desse tenant", http.StatusConflict)
 	default:
-		writeInternal(w, "responder convite", err)
+		writeMyInvitesInternal(w, "responder convite", err)
 	}
+}
+
+func writeMyInvitesInternal(w http.ResponseWriter, operation string, err error) {
+	writeLoggedInternal(w, "falha nos convites da conta", operation, err)
 }
