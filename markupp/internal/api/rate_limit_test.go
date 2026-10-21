@@ -76,6 +76,15 @@ func TestRateLimit_OutroIP_TemLimiteProprio(t *testing.T) {
 	assert.NotEqual(t, http.StatusTooManyRequests, rec.Code)
 }
 
+func TestRateLimit_RotaSemPrefixoESobV1_DividemOLimite(t *testing.T) {
+	router := newLimitedRouter(&fakeRateClock{current: time.Unix(1_000_000, 0)})
+	esgotaLimite(t, router, "/auth/refresh", "10.0.0.1:1234", `{}`)
+
+	rec := limitedPost(router, "/v1/auth/refresh", "10.0.0.1:1234", `{}`)
+
+	assert.Equal(t, http.StatusTooManyRequests, rec.Code, "o alias sem prefixo nao dobra o limite")
+}
+
 func TestRateLimit_MesmoIPOutraPorta_ContaComoOMesmoIP(t *testing.T) {
 	router := newLimitedRouter(&fakeRateClock{current: time.Unix(1_000_000, 0)})
 	esgotaLimite(t, router, "/auth/refresh", "10.0.0.1:1234", `{}`)
