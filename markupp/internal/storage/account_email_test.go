@@ -81,6 +81,20 @@ func TestAccountEmail_AutoRegistroSemVerificacao_NaoEnfileira(t *testing.T) {
 	assert.Zero(t, countRows(t, db, "SELECT count(*) FROM notifications"))
 }
 
+func TestAccountEmail_GetUserByID_DevolveEmailVerificado(t *testing.T) {
+	db := setupTestDB(t)
+	repo := storage.NewPostgresAuthRepository(db)
+
+	contaAutoRegistrada(t, db, "u1", "nova@markupp.dev", true)
+
+	primeira, err := repo.GetUserByID(context.Background(), "primeira")
+	require.NoError(t, err)
+	assert.True(t, primeira.EmailVerified, "o primeiro acesso nasce verificado")
+	nova, err := repo.GetUserByID(context.Background(), "u1")
+	require.NoError(t, err)
+	assert.False(t, nova.EmailVerified, "o auto-registro nasce sem verificar")
+}
+
 // venceTokens empurra a validade de todo token da conta para o passado, no relógio
 // do banco, que é o que grava e confere a validade.
 func venceTokens(t *testing.T, db *pgxpool.Pool) {

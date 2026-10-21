@@ -65,6 +65,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/RateLimited'
   /auth/refresh:
     post:
       summary: Troca o refresh token por um novo par
@@ -91,6 +93,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/RateLimited'
   /auth/logout:
     post:
       summary: Revoga o refresh token da sessão
@@ -138,6 +142,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/RateLimited'
   /auth/email/verification:
     post:
       summary: Envia de novo o email de verificação da conta
@@ -161,6 +167,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/RateLimited'
   /auth/email/verify:
     post:
       summary: Verifica o email da conta logada com o token recebido por email
@@ -220,6 +228,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/RateLimited'
   /auth/password/reset:
     post:
       summary: Troca a senha com o token recebido por email
@@ -248,6 +258,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/RateLimited'
   /users:
     get:
       summary: Lista os membros do tenant
@@ -477,13 +489,15 @@ paths:
       description: Os valores de id são os que vão no cabeçalho X-Markupp-Tenant.
       responses:
         '200':
-          description: Tenants da conta, por nome, com o papel em cada um
+          description: >
+            Tenants da conta, por nome, com o papel e o resumo das notas que a conta lê em
+            cada um
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/TenantResponse'
+                  $ref: '#/components/schemas/MyTenantResponse'
         '401':
           $ref: '#/components/responses/Unauthorized'
   /me/invites:
@@ -1833,6 +1847,20 @@ components:
         type: string
         enum: [gzip]
   responses:
+    RateLimited:
+      description: >
+        Tentativas demais (rate_limited). Cada rota de conta aceita 5 por minuto por IP e,
+        quando o corpo traz email, 5 por minuto por email, ajustável em
+        MARKUPP_RATE_LIMIT_PER_MINUTE. Com várias réplicas, o limite vale por réplica.
+      headers:
+        Retry-After:
+          description: Segundos até a janela do limite acabar
+          schema:
+            type: integer
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
     Unauthorized:
       description: Token ausente, inválido ou expirado (unauthorized)
       content:
@@ -1951,6 +1979,21 @@ components:
           type: string
         role:
           $ref: '#/components/schemas/Role'
+    MyTenantResponse:
+      allOf:
+        - $ref: '#/components/schemas/TenantResponse'
+        - type: object
+          properties:
+            notes_count:
+              type: integer
+              description: >
+                Notas do tenant que a conta lê, as dos cofres de que é membro lá, como em
+                GET /notes com o tenant no cabeçalho
+            last_note_at:
+              type: string
+              format: date-time
+              nullable: true
+              description: Última alteração entre essas notas, null quando não há nenhuma
     MemberResponse:
       type: object
       properties:
@@ -2083,6 +2126,12 @@ components:
           format: uuid
         email:
           type: string
+        email_verified:
+          type: boolean
+          description: Se a conta já confirmou o email. Lido do estado atual da conta.
+        password_login:
+          type: boolean
+          description: true quando o login local (email e senha) está ligado no servidor; não consulta a identidade da conta, porque toda conta nasce com identidade local.
     NoteRequest:
       type: object
       required:

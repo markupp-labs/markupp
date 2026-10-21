@@ -19,14 +19,15 @@ type Deliverer struct {
 	outbox   Outbox
 	mailer   Mailer
 	from     string
+	panelURL string
 	newToken func() (string, error)
 	clock    func() time.Time
 }
 
-// NewDeliverer monta a entrega sobre a fila, o servidor de email, o remetente, o
-// gerador de token e o relógio dados.
-func NewDeliverer(outbox Outbox, mailer Mailer, from string, newToken func() (string, error), clock func() time.Time) *Deliverer {
-	return &Deliverer{outbox: outbox, mailer: mailer, from: from, newToken: newToken, clock: clock}
+// NewDeliverer monta a entrega sobre a fila, o servidor de email, o remetente, a URL
+// base do painel (vazia deixa o email sem link), o gerador de token e o relógio dados.
+func NewDeliverer(outbox Outbox, mailer Mailer, from, panelURL string, newToken func() (string, error), clock func() time.Time) *Deliverer {
+	return &Deliverer{outbox: outbox, mailer: mailer, from: from, panelURL: panelURL, newToken: newToken, clock: clock}
 }
 
 // DeliverNext reserva a próxima notificação vencida, envia fora de transação e grava
@@ -57,7 +58,7 @@ func (d *Deliverer) attempt(ctx context.Context, claim Claim, token string) Outc
 	if claim.Attempt > maxAttempts {
 		return Outcome{GiveUp: true, Error: fmt.Sprintf("tentativa %d, esperado no maximo %d", claim.Attempt, maxAttempts)}
 	}
-	if err := d.mailer.Send(ctx, compose(claim.Details, token, d.from)); err != nil {
+	if err := d.mailer.Send(ctx, compose(claim.Details, token, d.from, d.panelURL)); err != nil {
 		return d.failure(claim.Attempt, err)
 	}
 	return Outcome{Sent: true}
@@ -68,7 +69,7 @@ func (d *Deliverer) failure(attempts int, err error) Outcome {
 	return Outcome{GiveUp: !retry, RetryAt: retryAt, Error: err.Error()}
 }
 
-func composerFor(kind Kind) (func(TokenDetails, string, string) Message, error) {
+func composerFor(kind Kind) (func(TokenDetails, string, string, string) Message, error) {
 	switch kind {
 	case KindInvite:
 		return InviteMessage, nil

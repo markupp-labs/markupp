@@ -6,6 +6,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"time"
 
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/auth"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/identity"
@@ -19,7 +20,7 @@ type AuthService interface {
 	RefreshToken(ctx context.Context, rawRefreshToken string) (auth.TokenPair, error)
 	RevokeSession(ctx context.Context, rawRefreshToken string) error
 	GetAccount(ctx context.Context, userID string) (auth.User, error)
-	ListTenants(ctx context.Context, userID string) ([]auth.Membership, error)
+	ListTenants(ctx context.Context, userID string) ([]auth.TenantSummary, error)
 	CreateTenant(ctx context.Context, userID, name string) (auth.Membership, error)
 	ListMyInvites(ctx context.Context, userID string) ([]auth.PendingInvite, error)
 	AcceptMyInvite(ctx context.Context, userID, inviteID string) (auth.Membership, error)
@@ -47,14 +48,23 @@ type refreshRequest struct {
 }
 
 type userResponse struct {
-	ID    string `json:"id"`
-	Email string `json:"email"`
+	ID            string `json:"id"`
+	Email         string `json:"email"`
+	EmailVerified bool   `json:"email_verified"`
+	PasswordLogin bool   `json:"password_login"`
 }
 
 type tenantResponse struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`
 	Role string `json:"role"`
+}
+
+// myTenantResponse é o tenant de GET /me/tenants com o resumo das notas que a conta lê.
+type myTenantResponse struct {
+	tenantResponse
+	NotesCount int        `json:"notes_count"`
+	LastNoteAt *time.Time `json:"last_note_at"`
 }
 
 // decodeJSONBody lê o corpo JSON pequeno das rotas de conta em dst, limitado a
@@ -141,7 +151,7 @@ func (h *authHandler) me(w http.ResponseWriter, r *http.Request) {
 		writeError(w, "internal", "erro interno", http.StatusInternalServerError)
 		return
 	}
-	writeJSON(w, http.StatusOK, userResponse{ID: user.ID, Email: user.Email})
+	writeJSON(w, http.StatusOK, userResponse{ID: user.ID, Email: user.Email, EmailVerified: user.EmailVerified, PasswordLogin: user.PasswordLogin})
 }
 
 func (h *authHandler) createTenant(w http.ResponseWriter, r *http.Request) {
@@ -167,15 +177,19 @@ func (h *authHandler) createTenant(w http.ResponseWriter, r *http.Request) {
 
 func (h *authHandler) myTenants(w http.ResponseWriter, r *http.Request) {
 	actor, _ := identity.ActorFrom(r.Context())
-	memberships, err := h.svc.ListTenants(r.Context(), actor.UserID)
+	summaries, err := h.svc.ListTenants(r.Context(), actor.UserID)
 	if err != nil {
 		h.logError("falha ao listar tenants", err)
 		writeError(w, "internal", "erro interno", http.StatusInternalServerError)
 		return
 	}
-	out := make([]tenantResponse, 0, len(memberships))
-	for _, m := range memberships {
-		out = append(out, tenantResponse{ID: m.TenantID, Name: m.TenantName, Role: m.Role})
+	out := make([]myTenantResponse, 0, len(summaries))
+	for _, m := range summaries {
+		out = append(out, myTenantResponse{
+			tenantResponse: tenantResponse{ID: m.TenantID, Name: m.TenantName, Role: m.Role},
+			NotesCount:     m.NotesCount,
+			LastNoteAt:     m.LastNoteAt,
+		})
 	}
 	writeJSON(w, http.StatusOK, out)
 }

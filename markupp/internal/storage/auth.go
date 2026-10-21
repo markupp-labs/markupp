@@ -297,6 +297,31 @@ func (r *PostgresAuthRepository) ListMemberships(ctx context.Context, userID str
 	return out, nil
 }
 
+// ListTenantSummaries devolve os tenants de userID, por nome, com o resumo das notas
+// que a conta lê em cada um.
+func (r *PostgresAuthRepository) ListTenantSummaries(ctx context.Context, userID string) ([]auth.TenantSummary, error) {
+	rows, err := r.q.ListTenantSummaries(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("resumir tenants de %q: %w", userID, err)
+	}
+	out := make([]auth.TenantSummary, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, toTenantSummary(row))
+	}
+	return out, nil
+}
+
+func toTenantSummary(row gen.ListTenantSummariesRow) auth.TenantSummary {
+	summary := auth.TenantSummary{
+		Membership: auth.Membership{TenantID: row.TenantID, TenantName: row.TenantName, Role: row.Role},
+		NotesCount: int(row.NotesCount),
+	}
+	if row.LastNoteAt.Valid {
+		summary.LastNoteAt = &row.LastNoteAt.Time
+	}
+	return summary
+}
+
 // GetUserByID busca a conta por ID, retornando ErrUserNotFound se inexistente.
 func (r *PostgresAuthRepository) GetUserByID(ctx context.Context, id string) (auth.User, error) {
 	row, err := r.q.GetUserByID(ctx, id)
@@ -310,7 +335,7 @@ func (r *PostgresAuthRepository) GetUserByID(ctx context.Context, id string) (au
 }
 
 func toAuthUser(row gen.GetUserByIDRow) auth.User {
-	return auth.User(row)
+	return auth.User{ID: row.ID, Email: row.Email, EmailVerified: row.EmailVerified, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}
 }
 
 // GetUserIdentity busca o vínculo de autenticação externa ou credencial local.

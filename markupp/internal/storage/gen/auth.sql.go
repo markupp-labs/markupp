@@ -370,14 +370,15 @@ func (q *Queries) GetRefreshToken(ctx context.Context, tokenHash string) (Refres
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, email, created_at, updated_at FROM users WHERE id = $1
+SELECT id, email, email_verified, created_at, updated_at FROM users WHERE id = $1
 `
 
 type GetUserByIDRow struct {
-	ID        string
-	Email     string
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	ID            string
+	Email         string
+	EmailVerified bool
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
 }
 
 func (q *Queries) GetUserByID(ctx context.Context, id string) (GetUserByIDRow, error) {
@@ -386,6 +387,7 @@ func (q *Queries) GetUserByID(ctx context.Context, id string) (GetUserByIDRow, e
 	err := row.Scan(
 		&i.ID,
 		&i.Email,
+		&i.EmailVerified,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -496,6 +498,59 @@ func (q *Queries) ListPendingInvites(ctx context.Context, arg ListPendingInvites
 			&i.TenantName,
 			&i.Role,
 			&i.ExpiresAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listTenantSummaries = `-- name: ListTenantSummaries :many
+WITH visible AS (
+    SELECT n.tenant_id, count(*) AS notes_count, max(n.updated_at)::timestamptz AS last_note_at
+    FROM notes n JOIN vault_members vm ON vm.vault_id = n.vault_id
+    WHERE vm.user_id = $1
+    GROUP BY n.tenant_id
+)
+SELECT m.tenant_id, t.name AS tenant_name, m.role,
+       coalesce(v.notes_count, 0)::int AS notes_count, v.last_note_at
+FROM tenant_memberships m
+JOIN tenants t ON t.id = m.tenant_id
+LEFT JOIN visible v ON v.tenant_id = m.tenant_id
+WHERE m.user_id = $1
+ORDER BY t.name, m.tenant_id
+`
+
+type ListTenantSummariesRow struct {
+	TenantID   string
+	TenantName string
+	Role       string
+	NotesCount int32
+	LastNoteAt pgtype.Timestamptz
+}
+
+// Roda fora do RLS, que só enxerga um tenant por transação, e por isso repete a regra de
+// notes_read: a conta lê a nota do cofre de que é membro, no tenant desse cofre, que a
+// chave estrangeira de notes amarra ao tenant_id da nota.
+func (q *Queries) ListTenantSummaries(ctx context.Context, userID string) ([]ListTenantSummariesRow, error) {
+	rows, err := q.db.Query(ctx, listTenantSummaries, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListTenantSummariesRow
+	for rows.Next() {
+		var i ListTenantSummariesRow
+		if err := rows.Scan(
+			&i.TenantID,
+			&i.TenantName,
+			&i.Role,
+			&i.NotesCount,
+			&i.LastNoteAt,
 		); err != nil {
 			return nil, err
 		}

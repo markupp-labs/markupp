@@ -34,7 +34,7 @@ type fakeAuthService struct {
 	acceptPair   auth.TokenPair
 	acceptErr    error
 	acceptToken  string
-	tenants      []auth.Membership
+	tenants      []auth.TenantSummary
 
 	pending            []auth.PendingInvite
 	acceptedMembership auth.Membership
@@ -86,7 +86,7 @@ func (f *fakeAuthService) RevokeSession(ctx context.Context, rawRefreshToken str
 	return f.revokeErr
 }
 
-func (f *fakeAuthService) ListTenants(ctx context.Context, userID string) ([]auth.Membership, error) {
+func (f *fakeAuthService) ListTenants(ctx context.Context, userID string) ([]auth.TenantSummary, error) {
 	return f.tenants, nil
 }
 
@@ -315,6 +315,21 @@ func TestAuthHandler_Me_Sucesso(t *testing.T) {
 	assert.Equal(t, "user-id-42", resp["id"])
 	assert.Equal(t, "admin@markupp.dev", resp["email"])
 	assert.NotContains(t, resp, "tenant_id", "a conta e global")
+	assert.Equal(t, false, resp["email_verified"], "conta sem email verificado")
+}
+
+func TestAuthHandler_Me_EmailVerificado_DevolveTrue(t *testing.T) {
+	svc := &fakeAuthService{accountUser: auth.User{ID: "user-id-42", Email: "admin@markupp.dev", EmailVerified: true}}
+	router := setupAuthRouter(svc, &fakeTokenValidator{claims: auth.Claims{Subject: "user-id-42"}})
+
+	req := httptest.NewRequest(http.MethodGet, "/auth/me", nil)
+	req.Header.Set("Authorization", "Bearer token-valido")
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	var resp map[string]any
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &resp))
+	assert.Equal(t, true, resp["email_verified"])
 }
 
 func TestAuthHandler_Login_EmailOuSenhaVazios_Retorna400(t *testing.T) {
@@ -429,9 +444,9 @@ func TestAuthHandler_AcceptInvite_EmailJaTemConta_Retorna409(t *testing.T) {
 }
 
 func TestAuthHandler_MeusTenants_ListaVinculos(t *testing.T) {
-	svc := &fakeAuthService{tenants: []auth.Membership{
-		{TenantID: "t1", TenantName: "Acme", Role: "owner"},
-		{TenantID: "t2", TenantName: "Globex", Role: "viewer"},
+	svc := &fakeAuthService{tenants: []auth.TenantSummary{
+		{Membership: auth.Membership{TenantID: "t1", TenantName: "Acme", Role: "owner"}},
+		{Membership: auth.Membership{TenantID: "t2", TenantName: "Globex", Role: "viewer"}},
 	}}
 	router := setupAuthRouter(svc, &fakeTokenValidator{claims: auth.Claims{Subject: "u1"}})
 	req := httptest.NewRequest(http.MethodGet, "/me/tenants", nil)
@@ -444,7 +459,23 @@ func TestAuthHandler_MeusTenants_ListaVinculos(t *testing.T) {
 	var resp []map[string]any
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &resp))
 	require.Len(t, resp, 2)
-	assert.Equal(t, map[string]any{"id": "t2", "name": "Globex", "role": "viewer"}, resp[1])
+	assert.Equal(t, map[string]any{"id": "t2", "name": "Globex", "role": "viewer", "notes_count": float64(0), "last_note_at": nil}, resp[1])
+}
+
+func TestAuthHandler_MeusTenants_ResumeAsNotasEmRFC3339(t *testing.T) {
+	ultima := time.Date(2026, 10, 2, 9, 30, 0, 0, time.UTC)
+	svc := &fakeAuthService{tenants: []auth.TenantSummary{
+		{Membership: auth.Membership{TenantID: "t1", TenantName: "Acme", Role: "owner"}, NotesCount: 3, LastNoteAt: &ultima},
+	}}
+	router := setupAuthRouter(svc, &fakeTokenValidator{claims: auth.Claims{Subject: "u1"}})
+	req := httptest.NewRequest(http.MethodGet, "/me/tenants", nil)
+	req.Header.Set("Authorization", "Bearer token-valido")
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.JSONEq(t, `[{"id":"t1","name":"Acme","role":"owner","notes_count":3,"last_note_at":"2026-10-02T09:30:00Z"}]`, rec.Body.String())
 }
 
 func postTenant(svc *fakeAuthService, body string) *httptest.ResponseRecorder {
