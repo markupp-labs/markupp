@@ -1,0 +1,49 @@
+<%# Tenants à moda das organizações do Langfuse: busca e New tenant no cabeçalho, convites pendentes acima, um card
+    por tenant. Teclado (tenant_grid_controller.js): / vai à busca, Alt+N abre o tenant novo, setas ou h/j/k/l andam
+    entre os cards e Enter entra no tenant. Com tenant ativo, o voltar (e o Esc) leva à página de onde a lista foi aberta;
+    sem ele não há para onde voltar, a raiz traria de novo para cá. Na captura, o Alt+N daqui passa à frente do da árvore. %>
+<% content_for :title, t("tenants.index.title") %>
+
+<div class="max-w-5xl" data-controller="tenant-grid" data-tenant-grid-open-new-value="<%= @open_new_tenant.present? %>"
+     data-action="keydown@window->tenant-grid#shortcut:capture">
+  <header class="flex flex-wrap items-center gap-2 border-b border-line pb-2">
+    <%= render "layouts/area_back" if current_tenant %>
+    <div class="mr-auto flex items-baseline gap-2">
+      <span aria-hidden="true" class="text-accent">$</span><h1 class="font-semibold"><%= t("tenants.index.title") %></h1>
+    </div>
+    <label class="relative order-last flex w-full items-center sm:order-none sm:w-56">
+      <%= icon("magnifying-glass", class: "pointer-events-none absolute left-2 size-4 text-ink-muted") %>
+      <input type="search" autocomplete="off" spellcheck="false" placeholder="<%= t("tenants.index.filter") %>"
+             aria-label="<%= t("tenants.index.filter") %>" aria-keyshortcuts="<%= shortcut_key(:filter_tenants) %>" title="<%= t("tenants.index.filter_title", keys: shortcut_key(:filter_tenants)) %>"
+             data-tenant-grid-target="filter" data-action="input->tenant-grid#filter keydown->tenant-grid#leaveFilter"
+             class="peer w-full rounded-md border border-line bg-surface py-1 pr-7 pl-7">
+      <kbd aria-hidden="true" class="pointer-events-none absolute right-2 hidden text-xs text-ink-muted sm:peer-placeholder-shown:block sm:peer-focus:hidden"><%= shortcut_key(:filter_tenants) %></kbd>
+    </label>
+    <button type="button" class="btn" aria-haspopup="dialog" aria-keyshortcuts="<%= shortcut_key(:new_tenant) %>" title="<%= t("tenants.index.new_tenant_title", keys: shortcut_key(:new_tenant)) %>"
+            data-action="tenant-grid#openNew">
+      <%= icon("plus") %><%= t("tenants.new_tenant_form.new_tenant") %>
+      <kbd aria-hidden="true" class="hidden text-xs text-ink-muted sm:inline"><%= shortcut_label(shortcut_key(:new_tenant)) %></kbd>
+    </button>
+  </header>
+
+  <% if pending_invites.any? %>
+    <section id="pending_invites" aria-labelledby="pending_invites_title" class="mt-4 rounded-md border border-line bg-surface-sunken p-2">
+      <h2 id="pending_invites_title" class="md-heading px-2 font-semibold"><%= t("tenants.index.pending_invites") %></h2>
+      <ul class="mt-1 grid gap-1 md:grid-cols-2">
+        <%= render partial: "my_invites/invite", collection: pending_invites %>
+      </ul>
+    </section>
+  <% end %>
+
+  <ul id="tenant_cards" class="mt-4 grid grid-cols-[repeat(auto-fill,minmax(17rem,1fr))] gap-3" data-action="keydown->tenant-grid#navigate"
+      data-focus-region="tenants" data-focus-region-target="[aria-current=true]; .tenant-card-open">
+    <%= render partial: "tenants/card", collection: current_tenants, as: :tenant %>
+  </ul>
+  <p hidden data-tenant-grid-target="empty" class="mt-4 text-ink-muted"><%= t("tenants.index.no_match") %></p>
+
+  <dialog id="new_tenant" closedby="any" aria-labelledby="new_tenant_title" data-tenant-grid-target="newTenant"
+          class="layer mx-auto mt-[15vh] w-[min(28rem,calc(100vw-2rem))] layer-panel p-4">
+    <h2 id="new_tenant_title" class="font-semibold"><%= t("tenants.new_tenant_form.new_tenant") %></h2>
+    <%= render "tenants/new_tenant_form", cancel: true, class: "mt-3" %>
+  </dialog>
+</div>

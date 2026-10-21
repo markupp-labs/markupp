@@ -1,0 +1,17 @@
+en:
+  note_links:
+    sections:
+      backlinks: "Backlinks"
+      outgoing: "Outgoing links"
+      mentions: "Unlinked mentions"
+      suggestions: "Suggestions"
+    none:
+      backlinks: "No backlinks yet"
+      outgoing: "No outgoing links"
+      mentions: "No unlinked mentions"
+      suggestions: "No suggestions"
+    unresolved: "No note named %{title}"
+    maybe: "maybe %{title}"
+    show_more: "Show more"
+    copy: "Copy %{wikilink}"
+    copy_title: "Copy wikilink (%{keys})"

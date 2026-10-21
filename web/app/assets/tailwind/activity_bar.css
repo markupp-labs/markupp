@@ -1,0 +1,126 @@
+/* Barra de atividades (layouts/_activity_bar), no tamanho da do VS Code: ícones de 24px em quadrados de 48px, e no pé, de baixo para cima, configurações, conta e tema. No desktop é a coluna colada à esquerda da barra lateral, no fundo e na linha dela, presa ao topo e à vista
+   também com a barra recolhida (a lombada sai da borda dela, application.css). A linha da borda é sombra por dentro,
+   não border, para os ícones terem os 48px inteiros. No celular é a linha do topo da gaveta. O ícone ativo leva a marca no accent na
+   borda de fora (a esquerda na coluna, a de baixo na linha); com a barra recolhida nenhum fica marcado, como no VS Code.
+   Hover e foco sobem o ícone para o accent, como na lombada: do ink-muted ao ink a diferença no claro não aparece. */
+.activity-bar {
+  display: flex;
+  background: var(--surface-sunken);
+}
+
+.activity-bar-side {
+  display: none;
+}
+
+@media (width >= 48rem) {
+  :root:has(.activity-bar-side) {
+    --activity-width: 3rem;
+  }
+
+  .app-shell > .activity-bar-side {
+    grid-column: 1;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    height: 100dvh;
+    padding-block: 0.25rem;
+    box-shadow: inset -1px 0 var(--line);
+  }
+
+  .activity-bar-drawer {
+    display: none;
+  }
+}
+
+.activity-bar-drawer {
+  border-bottom: 1px solid var(--line);
+}
+
+/* As visões em cima (à esquerda na gaveta) e o pé com tema, conta e configurações no fundo (à direita na gaveta). */
+.activity-views,
+.activity-bar-actions {
+  display: flex;
+}
+
+.activity-bar-side :is(.activity-views, .activity-bar-actions) {
+  flex-direction: column;
+}
+
+.activity-bar-actions {
+  margin-block-start: auto;
+}
+
+.activity-bar-drawer .activity-views {
+  flex: 1;
+}
+
+.activity-bar-drawer .activity-bar-actions {
+  margin-block-start: 0;
+}
+
+/* Largura inteira também dentro do form do tema: botão não estica sozinho como o link. */
+.activity-tab {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 3rem;
+  color: var(--ink-muted);
+}
+
+.activity-bar-side .activity-tab svg {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+.activity-bar-drawer .activity-tab {
+  flex: 1;
+  height: 2.5rem;
+}
+
+.activity-bar-drawer .activity-bar-actions .activity-tab {
+  width: 2.5rem;
+}
+
+.activity-tab:is([aria-selected="true"], [aria-current="page"]) {
+  color: var(--ink);
+}
+
+.activity-tab:is(:hover, :focus-visible) {
+  color: var(--accent);
+}
+
+.activity-tab:focus-visible {
+  outline-offset: -2px;
+}
+
+.activity-tab::before {
+  content: "";
+  position: absolute;
+  inset: 0.375rem auto 0.375rem 0;
+  width: 2px;
+  background: var(--accent);
+  opacity: 0;
+}
+
+.activity-bar-drawer .activity-tab::before {
+  inset: auto 0.5rem 0 0.5rem;
+  width: auto;
+  height: 2px;
+}
+
+.activity-tab[aria-selected="true"]::before {
+  opacity: 1;
+}
+
+:root[data-sidebar="closed"] .activity-bar-side .activity-tab[aria-selected="true"] {
+  &:not(:hover, :focus-visible) {
+    color: var(--ink-muted);
+  }
+
+  &::before {
+    opacity: 0;
+  }
+}

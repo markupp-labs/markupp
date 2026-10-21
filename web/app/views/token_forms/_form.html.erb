@@ -1,0 +1,32 @@
+<%# locals: (token_form:, scope:, url:, submit:, password: nil, base_link: nil) -%>
+<%# Formulário dos tokens que chegam por email. password é o rótulo do campo de senha (nil, sem senha); base_link acompanha o erro geral. %>
+<% token_error, password_error, base_error = [ :token, :password, :base ].map { token_form.errors[it].first } %>
+<% field_class = "w-full rounded-md border border-line bg-surface px-2 py-1 aria-invalid:border-danger" %>
+
+<%= form_with model: token_form, scope:, url:, class: "mt-3 flex flex-col gap-3 rounded-md border border-line p-3" do |form| %>
+  <div>
+    <%= form.label :token, class: "block text-ink-muted" %>
+    <%= form.text_field :token, required: true, autofocus: token_form.token.blank? || token_error.present?, autocomplete: "off", spellcheck: false,
+                        aria: { invalid: token_error.present?, describedby: ("#{scope}_token_error" if token_error) }, class: field_class %>
+    <% if token_error %>
+      <p id="<%= scope %>_token_error" class="text-danger"><%= token_error %></p>
+    <% end %>
+  </div>
+  <% if password %>
+    <div>
+      <%= form.label :password, password, class: "block text-ink-muted" %>
+      <%= form.password_field :password, required: true, autofocus: token_form.token.present? && token_error.blank?, autocomplete: "new-password",
+                              aria: { invalid: password_error.present?, describedby: ("#{scope}_password_error" if password_error) }, class: field_class %>
+      <% if password_error %>
+        <p id="<%= scope %>_password_error" class="text-danger"><%= password_error %></p>
+      <% end %>
+    </div>
+  <% end %>
+  <% if base_error %>
+    <p role="alert" class="text-danger">
+      <%= base_error %>
+      <%= base_link %>
+    </p>
+  <% end %>
+  <%= form.button submit, class: "btn self-start" %>
+<% end %>

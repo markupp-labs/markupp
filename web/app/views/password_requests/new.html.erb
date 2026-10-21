@@ -1,0 +1,22 @@
+<% content_for :title, t(".title") %>
+
+<%= render "sessions/back_to_login" %>
+<h1 class="text-base font-semibold"><%= t(".title") %></h1>
+
+<%= form_with scope: :password_request, url: password_request_path, class: "mt-3 flex flex-col gap-3 rounded-md border border-line p-3" do |form| %>
+  <div>
+    <%= form.label :email, class: "block text-ink-muted" %>
+    <%= form.email_field :email, value: @email, required: true, autofocus: true, autocomplete: "username",
+                         aria: { invalid: @email_error.present?, describedby: ("password_request_email_error" if @email_error) },
+                         class: "w-full rounded-md border border-line bg-surface px-2 py-1 aria-invalid:border-danger" %>
+    <% if @email_error %>
+      <p id="password_request_email_error" class="text-danger"><%= @email_error %></p>
+    <% end %>
+  </div>
+  <%= form.button t(".submit"), class: "btn self-start" %>
+<% end %>
+
+<p class="mt-3 text-ink-muted">
+  <%= t(".token_hint") %>
+  <%= link_to t(".have_token"), new_password_reset_path, class: "text-accent underline" %>
+</p>

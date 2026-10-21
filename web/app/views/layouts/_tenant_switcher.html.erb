@@ -1,0 +1,35 @@
+<%# Marca: o mascote ao lado do nome do tenant, e os dois levam para a tela padrão; o seletor abre num popover nativo ancorado no cabeçalho (sem suporte a âncora, fica no canto). %>
+<%# Folgas apertadas (px-1 no link e no botão, gap-1.5 e gap-0.5) para um nome de uns 20 caracteres caber inteiro a 288px. %>
+<div id="current_tenant" class="mb-2 flex items-start gap-0.5 [anchor-name:--tenant-switcher]">
+  <%= link_to root_path, class: "tree-row flex min-w-0 flex-1 items-center gap-1.5 px-1" do %>
+    <%= mascot(:small) %>
+    <span class="min-w-0">
+      <span class="block truncate" title="<%= current_tenant.name %>"><%= current_tenant.name %></span>
+      <span class="block text-xs text-ink-muted"><%= t("tenants.roles.#{current_tenant.role}") %></span>
+    </span>
+  <% end %>
+  <button type="button" popovertarget="tenant_switcher" aria-label="<%= t(".switch") %>" title="<%= t(".switch") %>" class="btn-icon mt-0.5 px-1">
+    <%= icon("caret-up-down") %>
+  </button>
+</div>
+
+<div id="tenant_switcher" popover
+     class="layer m-0 w-64 origin-top layer-panel p-1 [inset:auto] [position-anchor:--tenant-switcher] [position-area:bottom_span-right]">
+  <ul class="space-y-px">
+    <% current_tenants.each do |tenant| %>
+      <li><%= render "tenants/choice", tenant: %></li>
+    <% end %>
+  </ul>
+  <%# Preguiçoso: o popover fechado não aparece na tela, então a lista só carrega quando ele abre. %>
+  <%= turbo_frame_tag "my_invites", src: my_invites_path, loading: :lazy, target: "_top" do %>
+    <%= busy_spinner(busy_when: "#my_invites[aria-busy]", class: "flex px-2 not-empty:mt-1 not-empty:border-t not-empty:border-line not-empty:py-1") %>
+  <% end %>
+  <div class="mt-1 border-t border-line pt-1">
+    <%= link_to new_tenant_path, class: "tree-row flex items-center gap-2" do %>
+      <%= icon("plus") %><%= t(".new_tenant") %>
+    <% end %>
+    <%= link_to tenants_path, title: t(".all_tenants_title"), class: "tree-row flex items-center gap-2" do %>
+      <%= icon("list") %><%= t(".all_tenants") %>
+    <% end %>
+  </div>
+</div>

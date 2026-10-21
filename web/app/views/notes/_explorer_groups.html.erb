@@ -1,0 +1,21 @@
+<%# Linhas planas do Explorer, sem as guias da árvore: o título, a pasta apagada e, nas mais ligadas e nas recentes, o
+    número à direita. Por comunidade, cada uma é um role=group com o nome falado e, para os olhos, a marca e a borda na
+    cor dela (a mesma do grafo, ExplorerHelper#community_hue) e a contagem. %>
+<% grouped = mode == "communities" %>
+<% groups.each do |group| %>
+  <% if grouped %>
+    <% label = group.community ? t("explorer.community", hub: group.notes.first.title, count: group.notes.size) : t("explorer.no_community", count: group.notes.size) %>
+    <%= tag.li role: "none", class: "community", style: community_style(group.community) do %>
+      <div aria-hidden="true" class="community-heading">
+        <span class="community-swatch"></span>
+        <span class="truncate"><%= group.community ? group.notes.first.title : t("explorer.no_community_heading") %></span>
+        <span class="ml-auto"><%= group.notes.size %></span>
+      </div>
+      <ul role="group" aria-label="<%= label %>" class="community-notes">
+        <%= render partial: "notes/explorer_row", collection: group.notes, as: :note, locals: { current:, mode: } %>
+      </ul>
+    <% end %>
+  <% else %>
+    <%= render partial: "notes/explorer_row", collection: group.notes, as: :note, locals: { current:, mode: } %>
+  <% end %>
+<% end %>

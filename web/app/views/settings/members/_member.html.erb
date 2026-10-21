@@ -1,0 +1,28 @@
+<%# O select fica na coluna de papel e entra no formulário do Save pelo atributo form. %>
+<% changeable = member.changeable_by?(current_tenant) %>
+<% form_id = "member_role_form_#{member.id}" %>
+<li class="border-t border-line px-2 py-2 md:col-span-4 md:grid md:grid-cols-subgrid md:items-center">
+  <p class="[overflow-wrap:anywhere]">
+    <%= member.email %>
+    <% if member.id == credential.account_id %><span class="text-ink-muted"><%= t(".you") %></span><% end %>
+  </p>
+  <div class="mt-1 md:mt-0">
+    <% if changeable %>
+      <%= label_tag "member_role_#{member.id}", t(".role_for", email: member.email), class: "block text-ink-muted md:sr-only" %>
+      <%= select_tag "member[role]", options_for_select(role_options(current_tenant), member.role),
+                     id: "member_role_#{member.id}", form: form_id, class: "w-full rounded-md border border-line bg-surface px-2 py-1" %>
+    <% else %>
+      <%= t("tenants.roles.#{member.role}") %>
+    <% end %>
+  </div>
+  <p class="text-ink-muted"><span class="md:sr-only"><%= t(".joined") %></span> <%= l(member.joined_at.to_date, format: :short) %></p>
+  <div class="mt-1 flex gap-2 md:mt-0">
+    <% if changeable %>
+      <%= form_with url: settings_member_path(member.id), method: :patch, id: form_id do |form| %>
+        <%= form.button t(".save"), class: "btn" %>
+      <% end %>
+      <%= button_to t(".remove"), settings_member_path(member.id), method: :delete, class: "btn btn-danger",
+                    data: { confirm_button: t(".remove"), turbo_confirm: t(".confirm_remove", email: member.email, tenant: current_tenant.name) } %>
+    <% end %>
+  </div>
+</li>

@@ -1,0 +1,22 @@
+<%# Card do tenant: o botão do nome cobre o card inteiro (::after) e entra no tenant, na nota padrão. O ativo leva o *
+    do git branch. A engrenagem entra no tenant já em General, para todo papel; o envelope, só para owner e admin, em
+    Invites. %>
+<% active = tenant.id == credential.tenant_id %>
+<li data-tenant-grid-target="card" data-tenant-name="<%= tenant.name.downcase %>"
+    class="tenant-card relative flex min-w-0 flex-col gap-2 rounded-md border border-line p-3 hover:border-accent has-[[aria-current=true]]:border-accent">
+  <div class="flex min-w-0 items-baseline gap-2">
+    <span aria-hidden="true" class="w-2 shrink-0 text-accent"><%= "*" if active %></span>
+    <%= button_to current_tenant_path, method: :patch, params: { tenant_id: tenant.id }, form: { class: "min-w-0 flex-1" },
+                  title: tenant.name, aria: { current: (true if active) },
+                  class: "tenant-card-open block w-full truncate text-left font-semibold after:absolute after:inset-0" do %><%= tenant.name %><% end %>
+    <span class="ascii-brackets shrink-0 text-xs text-ink-muted"><%= t("tenants.roles.#{tenant.role}") %></span>
+  </div>
+  <div class="mt-auto flex min-h-7 items-center gap-2 pl-4">
+    <p class="tenant-stats min-w-0 flex-1 text-xs text-ink-muted"><%= tenant_stats(tenant) %></p>
+    <% { general: "gear-six", invites: ("envelope-simple" if tenant.admin?) }.compact.each do |to, icon_name| %>
+      <% label = t("tenants.card.#{to}", name: tenant.name) %>
+      <%= button_to current_tenant_path, method: :patch, params: { tenant_id: tenant.id, to: }, form: { class: "relative" },
+                    class: "btn-icon", title: label, aria: { label: } do %><%= icon(icon_name) %><% end %>
+    <% end %>
+  </div>
+</li>

@@ -1,0 +1,253 @@
+/* Movimento à moda do Hyprland com a config do omarchy (looknfeel.conf): entrada na curva easeOutQuint, saída curta e
+   linear, janela entra com popin de 87% e fade. Os tempos são os do Hyprland, que conta em décimos de segundo
+   (windows 4.79, windowsIn 4.1, windowsOut 1.49, layers 3.81, fade 1.73). Com prefers-reduced-motion tudo vira 0s:
+   a troca é instantânea e nenhuma transição chega a começar. Só transform e opacity animam. */
+:root {
+  --ease-out-quint: cubic-bezier(0.23, 1, 0.32, 1);
+  --popin-scale: 0.87;
+  --motion-window: 480ms;
+  --motion-window-in: 410ms;
+  --motion-window-out: 150ms;
+  --motion-layer-in: 380ms;
+  --motion-layer-out: 150ms;
+  --motion-fade: 170ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-window: 0s;
+    --motion-window-in: 0s;
+    --motion-window-out: 0s;
+    --motion-layer-in: 0s;
+    --motion-layer-out: 0s;
+    --motion-fade: 0s;
+  }
+}
+
+/* Camadas (popover e dialog nativos: seletor de tenant, busca, gaveta do celular) entram como os layers do Hyprland,
+   popin e fade na easeOutQuint, e saem rápido e lineares. overlay e display allow-discrete seguram a camada no top
+   layer até o fim da saída. */
+.layer {
+  transition: opacity var(--motion-layer-out) linear, transform var(--motion-layer-out) linear,
+    overlay var(--motion-layer-out) linear allow-discrete, display var(--motion-layer-out) linear allow-discrete;
+}
+
+.layer:not(:popover-open, [open]) {
+  opacity: 0;
+  transform: scale(var(--popin-scale));
+}
+
+.layer:is(:popover-open, [open]) {
+  transition-duration: var(--motion-layer-in);
+  transition-timing-function: var(--ease-out-quint);
+}
+
+@starting-style {
+  .layer:is(:popover-open, [open]) {
+    opacity: 0;
+    transform: scale(var(--popin-scale));
+  }
+}
+
+.layer::backdrop {
+  transition: opacity var(--motion-fade) linear, overlay var(--motion-fade) linear allow-discrete,
+    display var(--motion-fade) linear allow-discrete;
+}
+
+.layer:not(:popover-open, [open])::backdrop {
+  opacity: 0;
+}
+
+@starting-style {
+  .layer:is(:popover-open, [open])::backdrop {
+    opacity: 0;
+  }
+}
+
+/* Gaveta do celular: em vez do popin, desliza inteira da borda esquerda (sem fade) sobre o fundo escurecido, com os
+   tempos das camadas (saída rápida e linear). */
+@media (width < 48rem) {
+  .sidebar.layer:not(:popover-open) {
+    opacity: 1;
+    transform: translateX(-100%);
+  }
+
+  @starting-style {
+    .sidebar.layer:popover-open {
+      opacity: 1;
+      transform: translateX(-100%);
+    }
+  }
+
+  .sidebar::backdrop {
+    background: var(--scrim);
+  }
+}
+
+/* Barra lateral no desktop: recolher e expandir deslizam como a troca de workspace do Hyprland. A barra sai ou entra
+   pela esquerda (transform) e a coluna dela no grid do body encolhe ou cresce no mesmo tempo e curva, colada na borda
+   da barra: o main acompanha só pela borda esquerda. Assim nada salta: o que encosta à direita (o seletor de modo da
+   nota) fica parado e o que encosta à esquerda anda junto com a barra. Um transform no main deslocaria também o lado
+   direito, que já nasce na largura nova (o seletor saía da tela e voltava). O preço é refazer o layout do main a cada
+   quadro durante o deslize, como no Obsidian. A barra para e parte com a borda sobre a linha da barra de atividades,
+   por baixo dela, que a cobre sem emenda. Fechando, a barra fica fixa por cima durante a saída e só depois some
+   (allow-discrete). O data-sidebar-moved no body (sidebar_controller.js) limita o movimento ao clique: carregar, navegar
+   ou arrastar a alça não anima. */
+@media (width >= 48rem) {
+  .sidebar.layer {
+    opacity: 1;
+    transform: none;
+    transition: transform var(--motion-window) var(--ease-out-quint);
+  }
+
+  :root[data-sidebar="closed"] .sidebar.layer {
+    position: fixed;
+    left: var(--activity-width, 0px);
+    transform: translateX(-100%);
+    transition: transform var(--motion-window-out) linear, display var(--motion-window-out) linear allow-discrete;
+  }
+
+  @starting-style {
+    body[data-sidebar-moved] .sidebar.layer {
+      transform: translateX(-100%);
+    }
+  }
+
+  body[data-sidebar-moved].app-shell {
+    transition: grid-template-columns var(--motion-window) var(--ease-out-quint);
+  }
+
+  :root[data-sidebar="closed"] body[data-sidebar-moved].app-shell {
+    transition: grid-template-columns var(--motion-window-out) linear;
+  }
+
+  /* A lombada anda junto: a aba fechada vai à borda da tela por transform (application.css). */
+  .sidebar-spine {
+    transition: transform var(--motion-window) var(--ease-out-quint);
+  }
+
+  :root[data-sidebar="closed"] .sidebar-spine {
+    transition: transform var(--motion-window-out) linear;
+  }
+}
+
+/* Marca da visão ativa na barra de atividades (activity_bar.css): ao trocar de visão, a do ícone novo cresce a partir do
+   meio na curva das janelas e a do antigo encolhe rápida e linear, como o foco passando de uma janela a outra. */
+.activity-tab::before {
+  transform: scaleY(0);
+  transition: transform var(--motion-window-out) linear, opacity var(--motion-window-out) linear;
+}
+
+.activity-bar-drawer .activity-tab::before {
+  transform: scaleX(0);
+}
+
+.activity-tab[aria-selected="true"]::before {
+  transform: none;
+  transition-duration: var(--motion-window-in);
+  transition-timing-function: var(--ease-out-quint);
+}
+
+/* Troca de modo da nota (data-mode-switched, note_mode_controller.js; abrir a nota não anima): o painel que entra
+   surge com popin e fade; o que sai some na hora, sem animação, para não cruzar por cima do que entra. */
+.note-form[data-mode-switched] :is(.note-editor-pane, .note-preview) {
+  transition: opacity var(--motion-window-in) var(--ease-out-quint), transform var(--motion-window-in) var(--ease-out-quint);
+}
+
+@starting-style {
+  .note-form[data-mode-switched] :is(.note-editor-pane, .note-preview) {
+    opacity: 0;
+    transform: scale(var(--popin-scale));
+  }
+}
+
+/* Indicador de carregamento: os quadros braille de 80ms, como o spinner "dots" dos terminais. content muda de quadro
+   em quadro (step-end); com reduced-motion não há animação e ficam os três pontos parados (application.css). O braille
+   vem da fonte de reserva, menor que a Fira Code: 1.4em deixa a célula do tamanho de uma letra. Os quadros só usam as três
+   fileiras de cima da célula de quatro, então a tinta fica acima do meio; o translate a desce até o centro. */
+@media (prefers-reduced-motion: no-preference) {
+  .busy-spinner-glyph {
+    font-size: 1.4em;
+    translate: 0 0.2em;
+  }
+
+  .busy-spinner-glyph::before {
+    content: "⠋";
+    animation: braille-spin 800ms step-end infinite;
+  }
+}
+
+@keyframes braille-spin {
+  0% { content: "⠋"; }
+  10% { content: "⠙"; }
+  20% { content: "⠹"; }
+  30% { content: "⠸"; }
+  40% { content: "⠼"; }
+  50% { content: "⠴"; }
+  60% { content: "⠦"; }
+  70% { content: "⠧"; }
+  80% { content: "⠇"; }
+  90% { content: "⠏"; }
+}
+
+/* Troca de área (area_transition_controller.js): entrar e sair das configurações, da lista de tenants e das telas
+   públicas desliza como a troca de workspace do Hyprland, de leve. A página que sai some rápida e linear andando para a
+   esquerda; a que entra vem da direita com fade, na easeOutQuint. A barra lateral e a lombada são grupos à parte:
+   iguais dos dois lados, ficam paradas; só de um lado (login e logout), saem ou entram junto. Sem a marca (nota para nota) nada anima e
+   a view transition acaba no ato. Com reduced-motion o Turbo nem começa a view transition. */
+:root {
+  --area-shift: 1.5rem;
+}
+
+.sidebar {
+  view-transition-name: sidebar;
+}
+
+.sidebar-spine {
+  view-transition-name: sidebar-spine;
+}
+
+.activity-bar-side {
+  view-transition-name: activity-bar;
+}
+
+::view-transition-group(*),
+::view-transition-old(*),
+::view-transition-new(*) {
+  animation: none;
+}
+
+:root[data-area-moved]::view-transition-old(root),
+:root[data-area-moved]::view-transition-old(sidebar):only-child,
+:root[data-area-moved]::view-transition-old(sidebar-spine):only-child,
+:root[data-area-moved]::view-transition-old(activity-bar):only-child {
+  animation: area-out var(--motion-window-out) linear both;
+}
+
+:root[data-area-moved]::view-transition-new(root),
+:root[data-area-moved]::view-transition-new(sidebar):only-child,
+:root[data-area-moved]::view-transition-new(sidebar-spine):only-child,
+:root[data-area-moved]::view-transition-new(activity-bar):only-child {
+  animation: area-in var(--motion-window-in) var(--ease-out-quint) both;
+}
+
+/* Ir a uma área anterior na ordem fixa (notas, tenants, configurações; data-area-moved="back") é o workspace de
+   número menor: o mesmo deslize, para o lado oposto. Os pseudo-elementos da view transition herdam o --area-shift do
+   :root. */
+:root[data-area-moved="back"] {
+  --area-shift: -1.5rem;
+}
+
+@keyframes area-out {
+  to {
+    opacity: 0;
+    transform: translateX(calc(-1 * var(--area-shift)));
+  }
+}
+
+@keyframes area-in {
+  from {
+    opacity: 0;
+    transform: translateX(var(--area-shift));
+  }
+}

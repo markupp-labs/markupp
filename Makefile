@@ -3,7 +3,7 @@ DOCKER_COMPOSE=docker compose
 META_COVERAGE=90
 PERFIL_COVERAGE=markupp/cover.out
 
-.PHONY: all test e2e-mcp smoke-kind kind-up kind-painel kind-down compose-config compose-env docker-up docker-down run hooks test-scripts coverage coverage-check
+.PHONY: all test test-web e2e-mcp smoke-kind kind-up kind-painel kind-down compose-config compose-env docker-up docker-down run hooks test-scripts coverage coverage-check
 
 all: compose-env compose-config test
 
@@ -50,11 +50,15 @@ compose-env:
 docker-up:
 	$(DOCKER_COMPOSE) -f $(COMPOSE_FILE) up -d --build
 
+# Roda os testes do painel dentro do container
+test-web:
+	$(DOCKER_COMPOSE) -f $(COMPOSE_FILE) run --rm --no-deps web sh -c "bundle check || bundle install && bin/rails test"
+
 # Desce e remove o container Docker usado nos testes
 docker-down:
 	$(DOCKER_COMPOSE) -f $(COMPOSE_FILE) down
 
-# Roda a stack completa (servidor com air, indexador, notificador e Mailpit) via Docker
+# Roda a stack completa (servidor com air, indexador, notificador, Mailpit e painel) via Docker
 run: compose-env compose-config
 	$(DOCKER_COMPOSE) -f $(COMPOSE_FILE) up --build
 

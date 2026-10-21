@@ -1,0 +1,8 @@
+<%# Página de erro com o código na frente, como num terminal ("404: Nothing at /x"). O layout das notas põe o mascote ao %>
+<%# lado da mensagem pelo content_for :mascot; o público já tem o seu. back, quando vem, é [rótulo, caminho] do link de volta. %>
+<% content_for :mascot, mascot(:large, class: "hidden md:block") %>
+<h1 class="text-base font-semibold break-words text-danger"><%= code %>: <%= title %></h1>
+<p class="mt-2 max-w-[65ch] text-ink-muted"><%= hint %></p>
+<% if local_assigns[:back] %>
+  <%= link_to back.last, class: "btn mt-6" do %><%= icon("arrow-left") %><%= back.first %><% end %>
+<% end %>

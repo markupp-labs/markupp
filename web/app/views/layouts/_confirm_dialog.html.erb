@@ -1,0 +1,24 @@
+<%# Confirmação de ação destrutiva no lugar do confirm() do navegador: o data-turbo-confirm de um form ou botão abre
+    esta camada com a pergunta (confirm_dialog_controller.js). O foco começa no Cancel; Enter responde com o botão
+    focado, Esc ou clicar fora cancela. O botão da ação e o nome do diálogo levam o data-confirm-button de quem pediu (Remove, Revoke) ou Delete; o Cancel, o data-confirm-cancel (Stay) ou Cancel.
+    Com data-confirm-match (apagar o tenant), o campo aparece com o foco e o botão da ação só libera com o texto exato;
+    Enter no campo confirma quando bate. %>
+<dialog id="confirm_dialog" role="alertdialog" closedby="any" aria-describedby="confirm_dialog_message"
+        data-controller="confirm-dialog" data-action="close->confirm-dialog#answer" data-confirm-dialog-default-button-value="<%= t(".delete") %>"
+        data-confirm-dialog-default-cancel-value="<%= t(".cancel") %>"
+        class="layer mx-auto mt-[20vh] w-[min(28rem,calc(100vw-2rem))] layer-panel p-4">
+  <p id="confirm_dialog_message" data-confirm-dialog-target="message"></p>
+  <div hidden data-confirm-dialog-target="match" class="mt-3">
+    <label for="confirm_dialog_match" data-confirm-dialog-target="matchLabel" class="block text-ink-muted"></label>
+    <input type="text" id="confirm_dialog_match" autocomplete="off" spellcheck="false" data-confirm-dialog-target="matchInput"
+           data-action="input->confirm-dialog#checkMatch keydown.enter->confirm-dialog#confirmMatch"
+           class="mt-1 w-full rounded-md border border-line bg-surface px-2 py-1">
+  </div>
+  <form method="dialog" class="mt-4 flex justify-end gap-2">
+    <button value="cancel" class="btn" autofocus data-confirm-dialog-target="cancel"><%= t(".cancel") %></button>
+    <%# Vazio até a pergunta: o controller põe o rótulo de quem pediu, e a página não ganha um Delete fora de contexto. %>
+    <%# Desligado enquanto o texto do data-confirm-match não bate: borda e texto apagados, sem o hover do danger. %>
+    <button value="confirm" class="btn btn-danger disabled:cursor-not-allowed disabled:border-line disabled:bg-transparent disabled:text-ink-muted"
+            data-confirm-dialog-target="confirm"></button>
+  </form>
+</dialog>

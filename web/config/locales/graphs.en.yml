@@ -1,0 +1,33 @@
+en:
+  graphs:
+    show:
+      title: "Graph"
+      keys: "j k move  ↵ open  + - zoom  0 fit  esc back"
+    filters:
+      title: "Filters"
+      show: "show"
+      orphans: "Orphans"
+      unresolved: "Unresolved links"
+      inferred: "Inferred links"
+      community: "Community"
+      all_communities: "All communities"
+      community_option: "%{hub} (%{size})"
+    local:
+      depth: "Depth"
+      depth_prompt: "depth"
+      full: "Full graph"
+    canvas_label: "Graph of the notes. j and k move between the notes, Enter opens one, plus and minus zoom, 0 fits."
+    roledescription: "graph"
+    list_label: "Notes in the graph"
+    status: "%{nodes} nodes  %{links} links"
+    capped: "%{shown} of %{total} nodes, the most central  %{links} links"
+    empty:
+      title: "No notes to draw yet"
+      hint: "Notes and the links between them show up here."
+    filtered:
+      title: "No notes match these filters"
+      hint: "Clear the filters to see every note."
+      clear: "Clear filters"
+    refused:
+      title: "Can't open this graph"
+      hint: "You may no longer have access to these notes."

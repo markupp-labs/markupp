@@ -1,0 +1,9 @@
+<%# Sem Turbo: ele troca só o body, e o tema mora no data-theme do html. Cada botão mostra o tema para o qual leva. %>
+<% button_class = local_assigns.fetch(:button_class, "btn-icon ascii-brackets") %>
+<% { "light" => :sun, "dark" => :moon }.each do |theme, glyph| %>
+  <% label = t("layouts.application.#{theme}_theme") %>
+  <%= button_to theme_path, method: :patch, params: { theme: theme }, form_class: "theme-to-#{theme}",
+        aria: { label: }, title: label, class: button_class, form: { data: { turbo: false } } do %>
+    <%= icon(glyph) %>
+  <% end %>
+<% end %>

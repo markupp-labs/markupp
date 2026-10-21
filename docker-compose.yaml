@@ -69,6 +69,8 @@ services:
       # Segredos gerados no banco na primeira subida (ADR-0041). A URL pública acompanha
       # a porta publicada no host; o servidor MCP fica nela em /mcp, encaminhado pelo Go.
       MARKUPP_PUBLIC_URL: ${MARKUPP_PUBLIC_URL:-http://localhost:${MARKUPP_PORT:-8080}}
+      # O login e o consentimento do OAuth acontecem no painel do serviço web.
+      MARKUPP_PANEL_URL: ${MARKUPP_PANEL_URL:-http://localhost:${WEB_PORT:-3000}}
       MARKUPP_MCP_UPSTREAM_URL: http://mcp:3000
       MARKUPP_MCP_SECRET_PATH: /run/markupp-mcp/secret
     volumes:
@@ -80,6 +82,21 @@ services:
     depends_on:
       migrate:
         condition: service_completed_successfully
+
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile.dev
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+    environment:
+      BINDING: 0.0.0.0
+      MARKUPP_API_URL: http://markupp:8080
+    volumes:
+      - ./web:/rails
+      - ${BUNDLE_CACHE:-bundle_cache}:/usr/local/bundle
+    depends_on:
+      - markupp
 
   # Servidor MCP (ADR-0045): descobre o issuer pelo Go e lê o segredo que o Go escreve no
   # volume compartilhado. Os agentes chegam a ele pelo /mcp do Go.
@@ -98,4 +115,5 @@ services:
 volumes:
   postgres_data:
   go_mod_cache:
+  bundle_cache:
   mcp_secret:

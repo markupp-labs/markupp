@@ -1,0 +1,14 @@
+class CurrentTenantsController < ApplicationController
+  # Para onde o card leva depois de trocar: a engrenagem abre a General do tenant e o envelope os convites; sem
+  # destino, ou com um desconhecido, a nota padrão.
+  DESTINATIONS = { "general" => :settings_general_path, "invites" => :settings_invites_path }.freeze
+
+  # Só grava tenant que a API lista para a conta.
+  def update
+    tenant = current_tenants.find { it.id == params[:tenant_id] }
+    return redirect_to(tenants_path, alert: t("markupp_api.errors.tenant_unavailable")) unless tenant
+
+    credential.tenant_id = tenant.id
+    redirect_to send(DESTINATIONS.fetch(params[:to].to_s, :root_path))
+  end
+end

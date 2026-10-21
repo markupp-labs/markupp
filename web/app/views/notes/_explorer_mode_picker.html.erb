@@ -1,0 +1,13 @@
+<%# Seletor da visão do Explorer: trocar envia o form ao frame explorer_list, que volta com a lista e grava a escolha
+    (explorer_mode_controller.js). Alt+O (Option+O, pela tecla) de qualquer lugar abre a lista de visões. %>
+<% label = t("explorer.mode_label") %>
+<%= form_with url: explorer_path, method: :get, class: "explorer-mode mb-1 flex items-center gap-2",
+              data: { turbo_frame: "explorer_list", controller: "explorer-mode", action: "keydown@window->explorer-mode#open" } do |form| %>
+  <%= hidden_field_tag :current, current&.id, id: nil %>
+  <%= form.select :mode, ExplorerListing::MODES.map { [ t("explorer.modes.#{it}"), it ] }, { selected: mode },
+                  id: "explorer_mode", title: "#{label} (#{shortcut_key(:explorer_mode)})",
+                  aria: { label:, keyshortcuts: "Alt+O" },
+                  data: { explorer_mode_target: "select", action: "change->explorer-mode#submit" }, class: "explorer-mode-select" %>
+  <%= busy_spinner(busy_when: "#explorer_list[aria-busy]", class: "busy-spinner-quiet") %>
+  <kbd aria-hidden="true" class="ml-auto hidden pr-2 text-xs text-ink-muted md:inline"><%= shortcut_label(shortcut_key(:explorer_mode)) %></kbd>
+<% end %>

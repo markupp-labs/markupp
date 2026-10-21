@@ -1,0 +1,26 @@
+<%# Paleta de comandos, como a do VS Code: Ctrl+Shift+P (Cmd+Shift+P), F1 ou ":" fora de campo de texto abrem, a busca fuzzy filtra as ações do
+    ShortcutsHelper, cada uma com a sua tecla; setas ou Ctrl+J e Ctrl+K andam, Enter roda, Esc ou clicar fora fecha
+    (command_palette_controller.js). O > na frente é o prompt de comando da paleta do VS Code. O foco do campo é a linha
+    de baixo no accent, como na paleta do VS Code: o contorno global (:focus-visible, fora de @layer) vence os utilitários,
+    então só o style inline o tira. %>
+<% commands = palette_commands %>
+<dialog id="command_palette" aria-label="<%= t("shortcuts.palette.label") %>" closedby="any" data-controller="command-palette"
+        data-action="keydown@window->command-palette#openFromKey turbo:before-cache@document->command-palette#close"
+        class="layer mx-auto mt-[15vh] w-[min(36rem,calc(100vw-2rem))] layer-panel">
+  <div class="flex items-center border-b border-line has-focus-visible:border-accent">
+    <span aria-hidden="true" class="pl-3 text-accent">&gt;</span>
+    <input type="text" role="combobox" autocomplete="off" spellcheck="false" placeholder="<%= t("shortcuts.palette.placeholder") %>"
+           aria-label="<%= t("shortcuts.palette.label") %>" aria-controls="command_palette_options" aria-expanded="true" aria-autocomplete="list"
+           data-command-palette-target="input" data-action="input->command-palette#filter keydown->command-palette#navigate"
+           style="outline: none" class="w-full border-0 bg-transparent py-2 pr-3 pl-2">
+  </div>
+  <ul id="command_palette_options" role="listbox" aria-label="<%= t("shortcuts.palette.label") %>" class="scrollbar-theme max-h-[50dvh] overflow-y-auto p-1">
+    <% commands.each do |command| %>
+      <%= command_option(command) %>
+    <% end %>
+  </ul>
+  <p hidden data-command-palette-target="empty" class="px-3 py-2 text-ink-muted"><%= t("shortcuts.palette.empty") %></p>
+  <% commands.select { it.run[:form] }.each do |command| %>
+    <%= command_form(command) %>
+  <% end %>
+</dialog>

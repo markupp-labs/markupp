@@ -1,0 +1,113 @@
+<%# Nota nova é New note na aba até salvar, mesmo com caminho digitado (e devolvido pelo servidor num erro). %>
+<% content_for :title, @note.persisted? ? @note.title.presence : t("notes.sidebar.new_note") %>
+<%# Sem cache do Turbo: voltar para a nota busca a versão atual, e o editor não é clonado no snapshot. %>
+<% content_for :head, tag.meta(name: "turbo-cache-control", content: "no-cache") %>
+<% content_for :sidebar, render("notes/sidebar", tree: @tree, current: @note) %>
+<% content_for :note_links, note_links_frame(@note) if @note.persisted? %>
+<% content_for :note_graph, render("graphs/local", note: @note) if @note.persisted? %>
+<%# viewer só lê: caminho e texto readonly, sem salvar nem apagar; o editor lê o readonly do textarea. %>
+<% writer = current_tenant.writer? %>
+<% mode = current_note_mode(@note) %>
+
+<%# data-mode escolhe os painéis visíveis (CSS .note-form); Ctrl+E e Ctrl+\ trocam o modo (note_mode_controller.js). %>
+<%= form_with model: @note, class: "note-form flex min-h-0 flex-1 flex-col gap-3",
+              data: { controller: "editor note-form note-mode", mode:, note_form_leave_message_value: t(".leave"), confirm_button: t(".leave_button"), confirm_cancel: t(".stay"), note_form_new_value: !@note.persisted?,
+                      note_form_blank_title_value: ActiveModel::Error.new(@note, :title, :blank).full_message,
+                      note_mode_wikilinks_value: wikilink_targets(@tree), note_mode_folder_value: @note.folder,
+                      note_mode_missing_note_value: t(".missing_note"), note_mode_copied_value: t(".copied"),
+                      note_mode_copy_failed_value: t(".copy_failed"), note_form_root_url_value: root_path, note_form_notes_url_value: notes_path,
+                      action: "keydown.ctrl+s@window->note-form#save:prevent keydown.meta+s@window->note-form#save:prevent " \
+                              "keydown@window->note-mode#shortcut input->note-mode#render highlight:grammar-loaded@document->note-mode#render turbo:load@document->note-mode#scrollToHash click->note-mode#followAnchor scroll->note-mode#followScroll:capture " \
+                              "input->note-form#track submit->note-form#submit turbo:submit-start@document->note-form#allowLeavingOnDelete " \
+                              "beforeunload@window->note-form#warnBeforeUnload turbo:before-visit@document->note-form#confirmVisit " \
+                              "keydown.shift+tab->note-form#focusPath note-form:heading->editor#replaceStart " \
+                              "vim:write->note-form#writeFromVim vim:quit->note-form#quitFromVim vim:open->note-form#openFromVim vim:mode->note-mode#chooseFromVim" } do |form| %>
+  <%# Erro de caminho (API) ou de nome em branco: os dois aparecem sob o campo. %>
+  <% path_error = @note.errors.full_messages_for(:path).first || @note.errors.full_messages_for(:title).first %>
+  <%# items-start: o erro sob o campo cresce o bloco dele sem descer os controles. O campo (38px) sobe 4px no desktop
+      para os controles (30px) ficarem no meio dele, como no items-center. %>
+  <header class="flex flex-wrap items-start gap-x-3 gap-y-1">
+    <%# Pasta e nome num campo só: o caminho inteiro sem .md (/work/plano). Editar é renomear e mover, como o :e do Vim,
+        com a pasta da nota como diretório atual (Note#resolve); a origem vai escondida para o servidor resolver. Nota nova
+        abre com a pasta de onde veio e o foco no fim; Tab vai para o fim do conteúdo. Num erro o campo volta como foi
+        digitado. No celular ganha a linha inteira e os controles descem para a linha de baixo, sem cortar o campo. %>
+    <div class="min-w-0 flex-1 max-md:basis-full md:-mt-1">
+      <%= form.label :path, class: "sr-only" %>
+      <%= form.text_field :path, value: @typed_path || @note.location, autofocus: writer && !@note.persisted?,
+                          spellcheck: false, autocomplete: "off", readonly: !writer,
+                          aria: { invalid: path_error.present?, describedby: ("note_path_error" if path_error) },
+                          data: { focus_region: "path", focus_region_exits: "down right", note_form_target: "path", action: "input->note-form#syncHeading input->note-form#clearBlankName keydown.tab->editor#focusEnd" },
+                          class: "w-full rounded-md border border-transparent bg-transparent px-1 py-0.5 text-2xl font-semibold text-ink " \
+                                 "hover:border-line focus:border-accent focus-visible:outline-none aria-invalid:border-danger" %>
+      <%= hidden_field_tag :origin_path, @origin_path || @note.path, id: nil %>
+      <%# Sempre presente: o note-form mostra aqui o nome em branco sem ir ao servidor. É alerta porque o Ctrl+S pode vir
+          do próprio campo, e aí devolver o foco a ele não anuncia nada. Fica no bloco do campo: no celular os controles
+          descem para a linha de baixo e o erro continua colado ao campo. %>
+      <%= tag.p path_error, id: "note_path_error", role: "alert", hidden: path_error.blank?, class: "px-1 text-danger",
+                            data: { note_form_target: [ "pathError", ("pending" if path_error) ].compact.join(" ") } %>
+    </div>
+    <div role="group" aria-label="<%= t(".mode") %>" class="flex items-center rounded-md border border-line">
+      <% NoteModeHelper::NOTE_MODES.each do |name| %>
+        <%= note_mode_button(name, current: mode) %>
+      <% end %>
+    </div>
+    <%# No celular o texto fica só para o leitor de tela; quem enxerga vê o ponto no Save. %>
+    <span data-note-form-target="unsaved" hidden class="py-1 text-ink-muted max-md:sr-only"><%= t(".unsaved") %></span>
+    <% if writer %>
+      <%# Só aparece com mudança (o note-form mostra); com conflito ou erro de caminho já há o que salvar. %>
+      <%# Abaixo do md só o ícone: o rótulo vira sr-only e o title nomeia para quem passa o mouse. O Save só aparece com
+          mudança, então o ponto no canto é o "Unsaved changes" no celular. %>
+      <%= form.button class: "btn relative max-md:px-1.5", title: "#{t(".save")} (Ctrl+S)", aria: { keyshortcuts: "Control+S Meta+S" }, hidden: !(@conflict || path_error), data: { note_form_target: "save" } do %>
+        <%= icon("floppy-disk") %><span class="max-md:sr-only"><%= t(".save") %></span>
+        <span data-unsaved-dot aria-hidden="true" class="absolute -top-1 -right-1 size-2 rounded-full bg-accent md:hidden"></span>
+      <% end %>
+    <% else %>
+      <p class="py-1 text-ink-muted"><%= t(".read_only") %></p>
+    <% end %>
+    <% if writer && @note.persisted? %>
+      <%# Fora do form de salvar (form não aninha): o botão aponta para o form de excluir pelo atributo form. %>
+      <%= tag.button form: "delete_note", title: t(".delete"), data: { turbo_confirm: t(".confirm_delete", path: @note.location) }, class: "btn btn-danger max-md:px-1.5" do %>
+        <%= icon("trash") %><span class="max-md:sr-only"><%= t(".delete") %></span>
+      <% end %>
+    <% end %>
+  </header>
+
+  <% if @conflict %>
+    <div role="alert" data-note-form-target="pending" class="flex flex-wrap items-center gap-3 rounded-md border border-danger p-2">
+      <p class="flex-1 text-danger"><%= t(".conflict") %></p>
+      <%= link_to t(".reload"), note_path(@note), data: { action: "note-form#allowLeaving" },
+                  class: "btn" %>
+      <%= form.button t(".overwrite"), name: "force", value: "true", class: "btn btn-danger" %>
+    </div>
+  <% end %>
+
+  <%= hidden_field_tag :last_modified_at, @note.updated_at&.iso8601(3), id: nil %>
+  <%= hidden_field_tag :crlf, @note.crlf?, id: nil %>
+  <div class="note-panes min-h-0 flex-1 gap-6">
+    <%# O editor monta o CodeMirror aqui, ao lado do textarea. Na nota nova o caminho ainda não existe: rótulo Content. %>
+    <div class="note-editor-pane flex min-w-0 flex-col" data-focus-region="editor" data-focus-region-target=".cm-content">
+      <%= form.text_area :content, data: { editor_target: "source", note_form_target: "source", note_mode_target: "source" }, aria: { label: @note.persisted? ? @note.path : Note.human_attribute_name(:content) },
+                         readonly: !writer, class: "min-h-[60dvh] w-full flex-1 rounded-md border border-line bg-surface p-2" %>
+    </div>
+    <%# Markdown renderizado e sanitizado no navegador (editor/render_markdown.js). Fora do Tab (tabindex -1): o foco chega
+        pelo Alt+h/j/k/l e aí as setas rolam o painel. %>
+    <%# Cabeçalho de cada bloco de código da leitura (linguagem e copiar), clonado depois do render (editor/code_blocks.js). %>
+    <template data-note-mode-target="codeTools">
+      <div class="code-header">
+        <span class="code-language"></span>
+        <span class="code-tools">
+          <span role="status" aria-live="polite" class="code-copy-status"></span>
+          <button type="button" class="btn-icon" aria-label="<%= t(".copy_code") %>" title="<%= t(".copy_code") %>"
+                  data-action="note-mode#copyCode"><%= icon("copy") %></button>
+        </span>
+      </div>
+    </template>
+    <%# Indicador de carregamento de cada ![[nota]] enquanto o conteúdo não chega, clonado pelo editor/note_embeds.js. %>
+    <template data-note-mode-target="embedSpinner"><%= busy_spinner %></template>
+    <article data-note-mode-target="preview" data-focus-region="preview" tabindex="-1" aria-label="<%= t(".preview") %>" class="note-preview markdown-body min-w-0"></article>
+  </div>
+<% end %>
+
+<% if writer && @note.persisted? %>
+  <%= form_with url: note_path(@note), method: :delete, id: "delete_note", hidden: true do %><% end %>
+<% end %>
