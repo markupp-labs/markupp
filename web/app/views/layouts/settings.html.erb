@@ -1,4 +1,5 @@
-<%# Configurações como no VS Code e no Obsidian: navegação à esquerda, seção à direita; no celular a navegação vira uma linha acima. %>
+<%# Configurações como no VS Code e no Obsidian: navegação à esquerda, seção à direita; no celular a navegação vira uma linha acima,
+    com o grupo Tenant numa linha própria para a General não parecer configuração do app. %>
 <%# Com tenant a barra lateral é a das notas, árvore e New note; sem ele (onboarding) fica só a marca e o rodapé. %>
 <% content_for :area, "settings" %>
 <% if current_tenant %>
@@ -22,7 +23,7 @@
         <%= settings_nav_link("appearances", settings_appearance_path) %>
         <%= settings_nav_link("editors", settings_editor_path) %>
         <% if current_tenant %>
-          <div class="hidden min-w-0 px-2 pt-3 md:block">
+          <div class="min-w-0 basis-full px-2 pt-3 md:basis-auto">
             <p class="text-xs text-ink-muted"><%= t("settings.nav.tenant") %></p>
             <p class="truncate text-ink-muted" title="<%= current_tenant.name %>"><%= current_tenant.name %></p>
           </div>
