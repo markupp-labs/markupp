@@ -102,6 +102,16 @@ class GraphViewTest < ApplicationSystemTestCase
     assert_operator find("main [data-graph-zoom]")["data-graph-zoom"].to_f, :<, fitted.to_f
   end
 
+  test "a full graph of more than two notes fills the canvas, past the zoom that keeps one or two notes small" do
+    star = (0..10).map { { id: "n#{it}", title: "n#{it}", path: "n#{it}.md", degree: 1, pagerank: 0.1, community: 1, unresolved: false } }
+    use_fake_api(notes: NOTES, graph: { graph: { "vault-1" => { nodes: star, links: (1..10).map { { source: 0, target: it, type: "explicit" } } } } })
+    sign_in_through_form
+    visit graph_path(note: "plan")
+
+    assert_selector "main [data-graph-nodes='11'][data-graph-running=false][data-graph-zoom]"
+    assert_operator find("main [data-graph-zoom]")["data-graph-zoom"].to_f, :>, 2
+  end
+
   test "on a phone the full graph fits the screen, status line included, without scrolling the page" do
     page.current_window.resize_to(390, 844)
     visit graph_path(note: "plan")
