@@ -1,7 +1,7 @@
 class CurrentTenantsController < ApplicationController
-  # Para onde o card leva depois de trocar: a engrenagem abre os membros do tenant e o envelope os convites; sem
+  # Para onde o card leva depois de trocar: a engrenagem abre a General do tenant e o envelope os convites; sem
   # destino, ou com um desconhecido, a nota padrão.
-  DESTINATIONS = { "members" => :settings_members_path, "invites" => :settings_invites_path }.freeze
+  DESTINATIONS = { "general" => :settings_general_path, "invites" => :settings_invites_path }.freeze
 
   # Só grava tenant que a API lista para a conta.
   def update

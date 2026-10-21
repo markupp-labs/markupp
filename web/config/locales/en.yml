@@ -213,7 +213,7 @@ en:
       create: "Create"
       cancel: "Cancel"
     card:
-      members: "Members of %{name}"
+      general: "Settings of %{name}"
       invites: "Invites of %{name}"
       no_notes: "No notes yet"
       notes:
