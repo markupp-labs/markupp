@@ -32,18 +32,19 @@ export async function loginByPassword(issuer: string): Promise<string> {
 }
 
 // consentRequestId segue o authorize até a tela de consentimento do painel e lê o id
-// do pedido, que vem em ?pedido=.
+// do pedido, que vem no caminho /oauth/authorize/<id>.
 async function consentRequestId(authorizeUrl: URL): Promise<string> {
   const response = await fetch(authorizeUrl, { redirect: "manual" });
   await expectStatus(response, 302, `GET ${authorizeUrl.pathname}`);
   const location = response.headers.get("location") ?? "";
-  const id = new URL(location, authorizeUrl).searchParams.get("pedido");
-  if (!id) {
+  const path = new URL(location, authorizeUrl).pathname;
+  const match = /^\/oauth\/authorize\/([^/]+)$/.exec(path);
+  if (!match) {
     throw new Error(
-      `authorize redirecionou para ${location}, esperado o painel com ?pedido=<id>`,
+      `authorize redirecionou para ${location}, esperado o painel em /oauth/authorize/<id>`,
     );
   }
-  return id;
+  return decodeURIComponent(match[1]);
 }
 
 // approveInPanel aprova o pedido como a conta logada e devolve o redirect ao cliente,
