@@ -37,3 +37,8 @@ DELETE FROM tenant_memberships WHERE user_id = $1;
 -- Revogar só vale para convite ainda sem resposta.
 -- name: RevokeInvite :execrows
 DELETE FROM user_invites WHERE id = $1 AND accepted_at IS NULL AND declined_at IS NULL;
+
+-- Só o owner passa pela política. O tenant fica explícito para o apagar não depender só
+-- do RLS.
+-- name: DeleteTenant :execrows
+DELETE FROM tenants WHERE id = $1;

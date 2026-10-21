@@ -165,3 +165,16 @@ func TestMigracao00015_DownEUpComPedidosDaConta(t *testing.T) {
 	_, err = provider.Up(context.Background())
 	require.NoError(t, err)
 }
+
+func TestMigracao00035_DownEUpComTenantSemeado(t *testing.T) {
+	pool := storagetest.EmptyPool(t)
+	provider := gooseProvider(t, pool)
+	_, err := provider.Up(context.Background())
+	require.NoError(t, err)
+	storagetest.SeedMember(t, pool, identity.Actor{UserID: "dona", TenantID: "t1", Role: "owner"}, "va")
+
+	_, err = provider.DownTo(context.Background(), 34)
+	require.NoError(t, err)
+	_, err = provider.Up(context.Background())
+	require.NoError(t, err)
+}

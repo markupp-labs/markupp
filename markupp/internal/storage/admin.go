@@ -173,3 +173,19 @@ func (r *PostgresAdminRepository) RevokeInviteTx(ctx context.Context, inviteID s
 		return q.CreateAuditEvent(ctx, toCreateAuditEventParams(event))
 	})
 }
+
+// DeleteTenantTx apaga de vez o tenant do evento, que é o do ator, e audita junto. As
+// chaves estrangeiras levam o que pertence a ele. Devolve auth.ErrMembershipNotFound
+// quando nada foi apagado: o tenant já não existe ou o ator não é owner dele.
+func (r *PostgresAdminRepository) DeleteTenantTx(ctx context.Context, event auth.AuditEventRecord) error {
+	return inActorTx(ctx, r.pool, func(q *gen.Queries) error {
+		rows, err := q.DeleteTenant(ctx, event.TenantID)
+		if err != nil {
+			return fmt.Errorf("apagar tenant %q: %w", event.TenantID, err)
+		}
+		if rows == 0 {
+			return fmt.Errorf("%w: tenant %q sem owner %q", auth.ErrMembershipNotFound, event.TenantID, event.ActorID)
+		}
+		return q.CreateAuditEvent(ctx, toCreateAuditEventParams(event))
+	})
+}
