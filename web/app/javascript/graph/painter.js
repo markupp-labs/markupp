@@ -7,6 +7,10 @@ const LABEL_ZOOM = 1.6
 const FADED = 0.3
 const FONT_PX = 11
 const DASH_PX = 3
+const LABEL_GAP_PX = 3
+// Anéis em px da tela: a distância da borda do nó ao meio do traço e a largura do traço.
+const CURRENT_RING = { gap: 3, width: 2 }
+const FOCUS_RING = { gap: 6, width: 1.5 }
 
 export function paintGraph(context, { nodes, links, colors, camera, ratio, emphasis }) {
   context.setTransform(ratio, 0, 0, ratio, 0, 0)
@@ -58,8 +62,8 @@ function paintNode(context, node, colors, k, lit) {
     context.fillStyle = node.hue == null ? colors.muted : colors.communities[node.hue]
     context.fill()
   }
-  if (node.current) ring(context, node, colors.accent, 3 / k, 2 / k)
-  if (node.focused) ring(context, node, colors.ink, 6 / k, 1.5 / k)
+  if (node.current) ring(context, node, colors.accent, CURRENT_RING.gap / k, CURRENT_RING.width / k)
+  if (node.focused) ring(context, node, colors.ink, FOCUS_RING.gap / k, FOCUS_RING.width / k)
 }
 
 function ring(context, node, color, gap, width) {
@@ -83,10 +87,17 @@ function paintLabels(context, nodes, colors, camera, emphasis, lit) {
 
     context.globalAlpha = 1
     context.fillStyle = node == emphasis.active || node.focused ? colors.ink : colors.muted
-    const y = node.y + node.radius + 3 / k
+    const y = node.y + labelOffset(node, k)
     context.strokeText(node.title, node.x, y)
     context.fillText(node.title, node.x, y)
   }
+}
+
+// Do centro do nó ao topo do nome: passa da borda do anel mais de fora (o do foco, senão o da nota aberta) e deixa LABEL_GAP_PX.
+function labelOffset(node, k) {
+  const ring = node.focused ? FOCUS_RING : node.current ? CURRENT_RING : null
+  const outer = ring ? (ring.gap + ring.width / 2) / k : 0
+  return node.radius + outer + LABEL_GAP_PX / k
 }
 
 function labelled(node, k, emphasis, lit) {
