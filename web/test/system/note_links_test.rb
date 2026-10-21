@@ -10,7 +10,8 @@ class NoteLinksTest < ApplicationSystemTestCase
   GRAPH = {
     backlinks: { "plan" => [ { source: ROADMAP, target: PLAN, cited_title: "plan", type: "explicit", predicate: nil, inferred_target: nil } ],
                  "roadmap" => [ { source: IDEAS, target: ROADMAP, cited_title: "roadmap", type: "explicit", predicate: nil, inferred_target: nil } ] },
-    links: { "plan" => [ { source: PLAN, target: nil, cited_title: "Ghost", type: "explicit", predicate: nil, inferred_target: nil } ] },
+    links: { "plan" => [ { source: PLAN, target: nil, cited_title: "Ghost", type: "explicit", predicate: nil, inferred_target: nil },
+                         { source: PLAN, target: nil, cited_title: "Road map", type: "explicit", predicate: nil, inferred_target: ROADMAP } ] },
     suggestions: { "plan" => [ { note: IDEAS, score: 0.03, resource_allocation: 0.5, cosine: 0.2 } ] }
   }.freeze
 
@@ -35,6 +36,17 @@ class NoteLinksTest < ApplicationSystemTestCase
 
     assert_field "Path", with: "/roadmap"
     assert_selector "#links_backlinks a", text: "ideas"
+  end
+
+  test "enter on an unresolved link with an inferred note opens that note" do
+    send_keys [ :control, :shift, "l" ]
+    assert_selector "#links_backlinks summary:focus"
+
+    send_keys "j", "j", "j", "j"
+    assert_selector "#links_outgoing a.link-unresolved:focus", text: "maybe roadmap"
+    send_keys :enter
+
+    assert_field "Path", with: "/roadmap"
   end
 
   test "enter folds a section and j skips its rows" do

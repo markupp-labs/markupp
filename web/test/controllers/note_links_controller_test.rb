@@ -14,7 +14,8 @@ class NoteLinksControllerTest < ActionDispatch::IntegrationTest
                              { source: ALICE, target: PLAN, cited_title: "plan", type: "typed", predicate: "owner", inferred_target: nil } ] },
     links: { "plan" => [ { source: PLAN, target: ALICE, cited_title: "alice", type: "typed", predicate: "author", inferred_target: nil },
                          { source: PLAN, target: nil, cited_title: "Ghost", type: "explicit", predicate: nil, inferred_target: nil },
-                         { source: PLAN, target: ROADMAP, cited_title: "roadmap", type: "embed", predicate: nil, inferred_target: nil } ] },
+                         { source: PLAN, target: ROADMAP, cited_title: "roadmap", type: "embed", predicate: nil, inferred_target: nil } ],
+             "draft" => [ { source: DRAFT, target: nil, cited_title: "Road map", type: "explicit", predicate: nil, inferred_target: ROADMAP } ] },
     backmentions: { "plan" => [ { note: DRAFT, cited_title: "plan", prior: 0.5 } ] },
     suggestions: { "plan" => [ { note: IDEAS, score: 0.03, resource_allocation: 0.5, cosine: 0.2 } ] }
   }.freeze
@@ -54,6 +55,16 @@ class NoteLinksControllerTest < ActionDispatch::IntegrationTest
     assert_select "#links_outgoing .link-unresolved[title=?][tabindex='-1']", "No note named Ghost" do
       assert_select ".links-row-title", text: "Ghost"
       assert_select ".sr-only", text: "(No note named Ghost)"
+    end
+  end
+
+  test "an unresolved link with an inferred note says maybe and opens that note" do
+    get note_links_path("draft")
+
+    assert_select "#links_outgoing a.link-unresolved[href=?][title=?]", note_path("roadmap"), "No note named Road map, maybe roadmap" do
+      assert_select ".links-row-title", text: "Road map"
+      assert_select ".links-row-maybe", text: "maybe roadmap"
+      assert_select ".sr-only", text: "(No note named Road map)"
     end
   end
 
