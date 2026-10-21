@@ -160,6 +160,21 @@ class GraphViewTest < ApplicationSystemTestCase
     assert_selector "main canvas[data-graph-canvas]:focus"
   end
 
+  test "esc with the filters opened by f closes them first, keeps the canvas focused and the next esc goes back" do
+    visit graph_path(note: "plan")
+    assert_selector "main canvas[data-graph-canvas]:focus"
+    send_keys "f"
+    assert_selector "#graph_filters[open]"
+
+    send_keys :escape
+    assert_selector "#graph_filters:not([open])"
+    assert_selector "main canvas[data-graph-canvas]:focus"
+    assert_selector "main h1", text: "Graph"
+    send_keys :escape
+
+    assert_field "Path", with: "/work/plan"
+  end
+
   test "a list only for screen readers links the drawn notes in the order of j and follows the filters" do
     send_keys [ :control, :shift, "g" ]
     assert_selector "#sidebar_view_graph [data-graph-nodes='3']"
