@@ -172,6 +172,31 @@ module Settings
       assert_select "h1", "Create your first tenant"
     end
 
+    test "an owner sees the danger zone at the end, with the delete that asks for the tenant name" do
+      use_fake_api(accounts: ACCOUNTS, tenants: [ ACME ])
+      sign_in_as
+
+      get settings_members_path
+
+      assert_select "main section#danger_zone:last-child h2", "Danger zone"
+      assert_select "#danger_zone", text: /deletes the tenant and all of its notes for every member/
+      assert_select "#danger_zone form[action=?][method=post] input[name=_method][value=delete]", "/tenants/tenant-1"
+      assert_select "#danger_zone button#delete_tenant.btn-danger[data-confirm-match=?][data-confirm-button=?]", "Acme research", "Delete tenant",
+                    text: "Delete tenant"
+      assert_select "#delete_tenant[data-turbo-confirm*=?]", "can't be undone"
+    end
+
+    test "an admin has no danger zone" do
+      use_fake_api(accounts: ACCOUNTS, tenants: [ ACME ])
+      sign_in_as(BIA)
+
+      get settings_members_path
+
+      assert_response :success
+      assert_select "#danger_zone", count: 0
+      assert_select "#delete_tenant", count: 0
+    end
+
     test "answers bad gateway when the API is unreachable" do
       api = use_fake_api(accounts: ACCOUNTS, tenants: [ ACME ])
       sign_in_as

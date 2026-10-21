@@ -82,4 +82,33 @@ class TenantTest < ActiveSupport::TestCase
 
     assert_equal 'unknown role "auditor", expected one of owner, admin, member, viewer', error.message
   end
+
+  test "owner? is true only for the owner role" do
+    owner, viewer = Tenant.mine(@api)
+
+    assert_respond_to owner, :owner?
+    assert_predicate owner, :owner?
+    assert_not viewer.owner?
+  end
+
+  test "delete removes the tenant from the tenants of the account" do
+    assert_respond_to Tenant, :delete
+    Tenant.delete(@api, "tenant-1")
+
+    assert_equal [ "tenant-2" ], Tenant.mine(@api).map(&:id)
+  end
+
+  test "delete by a role below owner is refused and keeps the tenant" do
+    assert_respond_to Tenant, :delete
+    assert_raises(MarkuppApi::Forbidden) { Tenant.delete(@api, "tenant-2") }
+
+    assert_equal %w[tenant-1 tenant-2], Tenant.mine(@api).map(&:id)
+  end
+
+  test "delete of a tenant the account is not in raises a kind of NotFound" do
+    assert_respond_to Tenant, :delete
+    error = assert_raises(MarkuppApi::NotFound) { Tenant.delete(@api, "tenant-9") }
+
+    assert_equal "MarkuppApi::TenantNotFound", error.class.name
+  end
 end

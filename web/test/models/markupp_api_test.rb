@@ -191,6 +191,12 @@ class MarkuppApiTest < ActiveSupport::TestCase
     assert_equal "MarkuppApi::OAuthRequestNotFound", error.class.name
   end
 
+  test "maps the tenant that is gone to TenantNotFound, a kind of NotFound" do
+    error = assert_answer_raises(MarkuppApi::NotFound, '{"error":"tenant_not_found","message":"tenant inexistente"}', "404 Not Found") { it.delete("/tenants/t1") }
+
+    assert_equal "MarkuppApi::TenantNotFound", error.class.name
+  end
+
   test "an unknown 401 is Unauthorized and an unknown 403 is Forbidden" do
     assert_post_raises(MarkuppApi::Unauthorized, "not json", status: "401 Unauthorized")
     assert_post_raises(MarkuppApi::Forbidden, '{"error":"something_new"}', status: "403 Forbidden")

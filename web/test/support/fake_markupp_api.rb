@@ -7,7 +7,7 @@ class FakeMarkuppApi
   delegate :put_requests, :post_requests, to: :@notes
   delegate :expire_access_tokens!, :revoke_refresh_tokens!, :refresh_token_valid?, to: :@accounts
   delegate :disable_local_auth!, :hold_refreshes_together!, to: :@auth
-  delegate :assign_role!, :deny_notes_in!, to: :@tenants
+  delegate :assign_role!, :deny_notes_in!, :delete_tenant!, to: :@tenants
   delegate :sent_tokens, to: :@account_email
   delegate :received_etags, :graph_queries, :change_graph!, to: :@graph
   delegate :decisions, to: :@oauth_requests, prefix: :oauth
@@ -21,6 +21,7 @@ class FakeMarkuppApi
     @tenants = FakeMarkuppTenants.new(tenants, invites)
     @auth = FakeMarkuppAuth.new(@accounts, @tenants)
     @tenant_admin = FakeMarkuppTenantAdmin.new(@tenants, @accounts, email_enabled:)
+    @tenant_deletion = FakeMarkuppTenantDeletion.new(@tenants)
     @account_email = FakeMarkuppAccountEmail.new(@accounts, @auth, email_enabled:)
     @notes = FakeMarkuppNotes.new(notes:, conflict:)
     @note_index = FakeMarkuppNoteIndex.new(@notes)
@@ -101,6 +102,7 @@ class FakeMarkuppApi
       return @account_email if path.start_with?("/auth/password/", "/auth/email/")
       return @auth if path.start_with?("/auth/")
       return @tenants if path.start_with?("/me/") || path == "/tenants"
+      return @tenant_deletion if FakeMarkuppTenantDeletion::TENANT_PATH.match?(path)
       return @tenant_admin if path.start_with?("/users")
 
       raise ArgumentError, "fake API has no route for #{call}, expected /notes, /v1, /auth, /me, /tenants or /users"

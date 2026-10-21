@@ -71,6 +71,12 @@ class FakeMarkuppTenants
   # Cenário: a conta perde o tenant entre o GET /me/tenants e a chamada de notas da mesma página.
   def deny_notes_in!(tenant_id) = @notes_denied << tenant_id
 
+  # Tenant apagado pelo owner (FakeMarkuppTenantDeletion), ou por outra sessão no meio do cenário: some com os convites.
+  def delete_tenant!(id)
+    @tenants.reject! { it["id"] == id }
+    @invites.reject! { it["tenant_id"] == id }
+  end
+
   private
     # Como a API: nome sem espaços nas pontas, de 1 a 100 bytes; quem cria é owner. Os ids seguem a ordem: tenant-2...
     def create_tenant(body, account)

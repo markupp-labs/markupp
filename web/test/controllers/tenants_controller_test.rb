@@ -98,4 +98,61 @@ class TenantsControllerTest < ActionDispatch::IntegrationTest
     assert_response :bad_gateway
     assert_select "main", text: /Can't reach the markupp server/
   end
+
+  ACME = { id: "tenant-1", name: "Acme research", members: { FakeMarkuppAccounts::DEFAULT_EMAIL => "owner" } }.freeze
+  HOME = { id: "tenant-2", name: "Home lab", members: { FakeMarkuppAccounts::DEFAULT_EMAIL => "member" } }.freeze
+  LAB = { id: "tenant-3", name: "Field lab", members: { FakeMarkuppAccounts::DEFAULT_EMAIL => "owner" } }.freeze
+
+  test "destroy by the owner deletes the tenant, forgets it and lands on the tenant list" do
+    use_fake_api(tenants: [ ACME, HOME, LAB ])
+    sign_in_as
+    patch current_tenant_path, params: { tenant_id: "tenant-1" }
+
+    delete "/tenants/tenant-1"
+
+    assert_redirected_to tenants_path
+    follow_redirect!
+    assert_select "[role=status]", "Deleted Acme research."
+    assert_select "main #tenant_cards > li", count: 2
+    assert_select "main #tenant_cards > li", text: /Acme research/, count: 0
+    get root_path
+    assert_redirected_to tenants_path
+  end
+
+  test "destroy by a role below owner is refused and keeps the tenant" do
+    use_fake_api(tenants: [ ACME, HOME ])
+    sign_in_as
+    patch current_tenant_path, params: { tenant_id: "tenant-2" }
+
+    delete "/tenants/tenant-2", headers: { "Referer" => "http://www.example.com/settings/members" }
+
+    assert_redirected_to "/settings/members"
+    assert_equal "Your role in this tenant can't do that.", flash[:alert]
+    get tenants_path
+    assert_select "main #tenant_cards > li", count: 2
+  end
+
+  test "destroy of a tenant that is already gone says so and forgets it" do
+    api = use_fake_api(tenants: [ ACME, HOME, LAB ])
+    sign_in_as
+    patch current_tenant_path, params: { tenant_id: "tenant-1" }
+    api.delete_tenant!("tenant-1")
+
+    delete "/tenants/tenant-1"
+
+    assert_redirected_to tenants_path
+    follow_redirect!
+    assert_select "[role=alert]", "That tenant no longer exists."
+  end
+
+  test "destroy answers bad gateway when the API is unreachable" do
+    api = use_fake_api(tenants: [ ACME ])
+    sign_in_as
+    api.cut_connection!
+
+    delete "/tenants/tenant-1"
+
+    assert_response :bad_gateway
+    assert_select "main", text: /Can't reach the markupp server/
+  end
 end
