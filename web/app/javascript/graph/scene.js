@@ -1,6 +1,6 @@
 import { createForceLayout } from "graph/force_layout"
 import { Camera } from "graph/camera"
-import { paintGraph } from "graph/painter"
+import { drawnRadius, paintGraph } from "graph/painter"
 import { attachPointerGestures } from "graph/pointer_gestures"
 import { readThemeColors } from "graph/theme_colors"
 
@@ -88,7 +88,7 @@ class GraphScene {
     const [ wx, wy ] = this.camera.toWorld(px, py)
     const slop = HIT_SLOP_PX / this.camera.k
     const node = this.layout.nearest(wx, wy, (RADIUS_MIN + RADIUS_SPREAD) + slop)
-    return node && Math.hypot(node.x - wx, node.y - wy) <= node.radius + slop ? node : null
+    return node && Math.hypot(node.x - wx, node.y - wy) <= drawnRadius(node, this.camera.k) + slop ? node : null
   }
 
   hover(node) {

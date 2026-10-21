@@ -12,6 +12,14 @@ const LABEL_GAP_PX = 3
 // Anéis em px da tela: a distância da borda do nó ao meio do traço e a largura do traço.
 const CURRENT_RING = { gap: 3, width: 2 }
 const FOCUS_RING = { gap: 6, width: 1.5 }
+// Zoom a partir do qual a bolinha para de crescer na tela: o enquadramento aproxima o grafo para ocupar o canvas, e
+// sem o teto as bolinhas ficariam enormes num cofre pequeno.
+const NODE_GROWTH_ZOOM = 2
+
+// Raio do nó no mundo: o do PageRank até NODE_GROWTH_ZOOM, encolhendo depois para manter o tamanho na tela.
+export function drawnRadius(node, k) {
+  return node.radius * Math.min(1, NODE_GROWTH_ZOOM / k)
+}
 
 export function paintGraph(context, { nodes, links, colors, camera, ratio, emphasis }) {
   context.setTransform(ratio, 0, 0, ratio, 0, 0)
@@ -54,7 +62,7 @@ function strokeLinks(context, links, lit, { color, width }) {
 function paintNode(context, node, colors, k, lit) {
   context.globalAlpha = lit && !lit.has(node) ? FADED : 1
   context.beginPath()
-  context.arc(node.x, node.y, node.radius, 0, 2 * Math.PI)
+  context.arc(node.x, node.y, drawnRadius(node, k), 0, 2 * Math.PI)
   if (node.unresolved) {
     context.lineWidth = 1 / k
     context.strokeStyle = colors.muted
@@ -63,13 +71,13 @@ function paintNode(context, node, colors, k, lit) {
     context.fillStyle = node.hue == null ? colors.muted : colors.communities[node.hue]
     context.fill()
   }
-  if (node.current) ring(context, node, colors.accent, CURRENT_RING.gap / k, CURRENT_RING.width / k)
-  if (node.focused) ring(context, node, colors.ink, FOCUS_RING.gap / k, FOCUS_RING.width / k)
+  if (node.current) ring(context, node, drawnRadius(node, k), colors.accent, CURRENT_RING.gap / k, CURRENT_RING.width / k)
+  if (node.focused) ring(context, node, drawnRadius(node, k), colors.ink, FOCUS_RING.gap / k, FOCUS_RING.width / k)
 }
 
-function ring(context, node, color, gap, width) {
+function ring(context, node, radius, color, gap, width) {
   context.beginPath()
-  context.arc(node.x, node.y, node.radius + gap, 0, 2 * Math.PI)
+  context.arc(node.x, node.y, radius + gap, 0, 2 * Math.PI)
   context.lineWidth = width
   context.strokeStyle = color
   context.stroke()
@@ -98,7 +106,7 @@ function paintLabels(context, nodes, colors, camera, emphasis, lit) {
 function labelOffset(node, k) {
   const ring = node.focused ? FOCUS_RING : node.current ? CURRENT_RING : null
   const outer = ring ? (ring.gap + ring.width / 2) / k : 0
-  return node.radius + outer + LABEL_GAP_PX / k
+  return drawnRadius(node, k) + outer + LABEL_GAP_PX / k
 }
 
 function labelled(node, k, emphasis, lit) {
