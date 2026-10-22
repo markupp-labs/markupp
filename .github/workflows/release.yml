@@ -19,6 +19,8 @@ jobs:
             context: ./markupp
           - image: markupp-web
             context: ./web
+          - image: markupp-mcp
+            context: ./mcp
     permissions:
       contents: read
       packages: write
@@ -133,4 +135,5 @@ jobs:
           pulumi stack select hana-org/prod --non-interactive
           pulumi config set image "$IMAGE:${TAG#v}"
           pulumi config set --path panel.image "$IMAGE-web:${TAG#v}"
+          pulumi config set --path mcp.image "$IMAGE-mcp:${TAG#v}"
           pulumi up --yes --non-interactive
