@@ -29,9 +29,10 @@ func declareMigrationJob(ctx *pulumi.Context, names resourceNames, args MarkuppA
 		Spec: batchv1.JobSpecArgs{
 			BackoffLimit: pulumi.Int(migrationBackoff),
 			Template: corev1.PodTemplateSpecArgs{Spec: corev1.PodSpecArgs{
-				RestartPolicy:   pulumi.String("Never"),
-				SecurityContext: nonRootPod(),
-				Containers:      corev1.ContainerArray{container},
+				EnableServiceLinks: noServiceLinks(),
+				RestartPolicy:      pulumi.String("Never"),
+				SecurityContext:    nonRootPod(),
+				Containers:         corev1.ContainerArray{container},
 			}},
 		},
 	}, parent, pulumi.DependsOn([]pulumi.Resource{db}))
@@ -67,8 +68,9 @@ func singleReplicaDeploymentArgs(name, namespace string, uid int, container core
 			Template: corev1.PodTemplateSpecArgs{
 				Metadata: metav1.ObjectMetaArgs{Labels: appLabels(name)},
 				Spec: corev1.PodSpecArgs{
-					SecurityContext: corev1.PodSecurityContextArgs{RunAsNonRoot: pulumi.Bool(true), RunAsUser: pulumi.Int(uid)},
-					Containers:      corev1.ContainerArray{container},
+					EnableServiceLinks: noServiceLinks(),
+					SecurityContext:    corev1.PodSecurityContextArgs{RunAsNonRoot: pulumi.Bool(true), RunAsUser: pulumi.Int(uid)},
+					Containers:         corev1.ContainerArray{container},
 				},
 			},
 		},
@@ -121,7 +123,7 @@ func serverDeploymentArgs(name string, args MarkuppArgs, replicas pulumi.IntPtrI
 			Selector: metav1.LabelSelectorArgs{MatchLabels: appLabels(name)},
 			Template: corev1.PodTemplateSpecArgs{
 				Metadata: metav1.ObjectMetaArgs{Labels: appLabels(name)},
-				Spec:     corev1.PodSpecArgs{SecurityContext: nonRootPod(), Containers: corev1.ContainerArray{container}},
+				Spec:     corev1.PodSpecArgs{EnableServiceLinks: noServiceLinks(), SecurityContext: nonRootPod(), Containers: corev1.ContainerArray{container}},
 			},
 		},
 	}
@@ -155,6 +157,13 @@ func healthzProbe() corev1.ProbeArgs {
 		Path: pulumi.String("/v1/healthz"),
 		Port: pulumi.Int(apiPort),
 	}}
+}
+
+// noServiceLinks desliga as variáveis que o kubelet injeta com o nome de cada Service
+// do namespace: o Service markupp-mcp viraria MARKUPP_MCP_PORT=tcp://..., que colide
+// com a configuração do servidor MCP. Os pods acham os Services pelo DNS.
+func noServiceLinks() pulumi.BoolPtrInput {
+	return pulumi.Bool(false)
 }
 
 // nonRootPod usa o uid numérico do usuário da imagem: com nome de usuário o
