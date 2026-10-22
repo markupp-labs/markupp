@@ -72,14 +72,23 @@ func inviteByEmailEnv(args MarkuppArgs) corev1.EnvVarArray {
 	return corev1.EnvVarArray{plainEnv("MARKUPP_INVITE_BY_EMAIL", "true")}
 }
 
+// emailPanelURL é o painel dos links dos emails: o informado no email, ou o painel
+// da instalação.
+func emailPanelURL(args MarkuppArgs) string {
+	if args.Email.PanelURL != "" {
+		return args.Email.PanelURL
+	}
+	return panelURL(args)
+}
+
 // smtpEnv dá ao notificador o servidor, o remetente e, quando informada, a URL do painel.
 func smtpEnv(names resourceNames, args MarkuppArgs) corev1.EnvVarArray {
 	env := corev1.EnvVarArray{
 		secretEnv("MARKUPP_SMTP_URL", names.dbSecret, smtpURLKey),
 		plainEnv("MARKUPP_SMTP_FROM", args.Email.From),
 	}
-	if args.Email.PanelURL != "" {
-		env = append(env, plainEnv("MARKUPP_PANEL_URL", args.Email.PanelURL))
+	if url := emailPanelURL(args); url != "" {
+		env = append(env, plainEnv("MARKUPP_PANEL_URL", url))
 	}
 	return env
 }

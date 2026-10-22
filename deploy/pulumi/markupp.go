@@ -57,6 +57,9 @@ type MarkuppArgs struct {
 	// TrustedProxies são os CIDRs dos proxies cujo X-Forwarded-For a API usa no
 	// limite de tentativas (MARKUPP_TRUSTED_PROXIES). Vazio, vale o IP da conexão.
 	TrustedProxies []string `pulumi:"trustedProxies,optional"`
+	// Panel liga o painel web num host próprio. Sem ele, a API manda o consentimento
+	// do OAuth para o painel local padrão.
+	Panel *PanelArgs `pulumi:"panel,optional"`
 	// RateLimitPerMinute troca as 5 tentativas por minuto das rotas de conta
 	// (MARKUPP_RATE_LIMIT_PER_MINUTE).
 	RateLimitPerMinute *int `pulumi:"rateLimitPerMinute,optional"`
@@ -86,7 +89,7 @@ type DatabaseArgs struct {
 
 // NewMarkupp declara a instalação completa sob o componente name.
 func NewMarkupp(ctx *pulumi.Context, name string, args MarkuppArgs, opts ...pulumi.ResourceOption) (*Markupp, error) {
-	args = withoutEmptyGateway(withoutEmptyEmail(args))
+	args = withoutEmptyBlocks(args)
 	if err := validate(args); err != nil {
 		return nil, err
 	}
@@ -117,6 +120,9 @@ func declareResources(ctx *pulumi.Context, name string, args MarkuppArgs, parent
 		return err
 	}
 	if err := declareWorkers(ctx, names, args, pulumi.Composite(parent, afterMigration)); err != nil {
+		return err
+	}
+	if err := declarePanel(ctx, names, args, parent); err != nil {
 		return err
 	}
 	return declareIngress(ctx, names, args, parent)
@@ -151,6 +157,9 @@ func validate(args MarkuppArgs) error {
 	if err := validateEmailServer(args); err != nil {
 		return err
 	}
+	if err := validatePanel(args); err != nil {
+		return err
+	}
 	return validateEmailSender(args)
 }
 
@@ -167,6 +176,12 @@ func ingressRequiredFields(args MarkuppArgs) ([]requiredField, error) {
 		return nil, nil
 	}
 	return nil, fmt.Errorf("certificateIssuer=%q, esperado %q ou %q", args.CertificateIssuer, issuerACME, issuerSelfSigned)
+}
+
+// withoutEmptyBlocks trata como ausentes os blocos opcionais vazios, que a stack em
+// Pulumi YAML passa por não conseguir omitir propriedade.
+func withoutEmptyBlocks(args MarkuppArgs) MarkuppArgs {
+	return withoutEmptyPanel(withoutEmptyGateway(withoutEmptyEmail(args)))
 }
 
 func withDefaults(args MarkuppArgs) MarkuppArgs {
@@ -188,7 +203,7 @@ func withDefaults(args MarkuppArgs) MarkuppArgs {
 
 // resourceNames centraliza os nomes que um recurso usa para achar outro.
 type resourceNames struct {
-	component, database, dbSecret, api, indexer, notifier, scaler, gateway, issuer, tlsSecret string
+	component, database, dbSecret, api, panel, panelTLS, indexer, notifier, scaler, gateway, issuer, tlsSecret string
 }
 
 func newResourceNames(component string) resourceNames {
@@ -197,6 +212,8 @@ func newResourceNames(component string) resourceNames {
 		database:  component + "-db",
 		dbSecret:  component + "-db-app",
 		api:       component + "-api",
+		panel:     component + "-panel",
+		panelTLS:  component + "-panel-tls",
 		indexer:   component + "-indexer",
 		notifier:  component + "-notifier",
 		scaler:    component + "-scaler",

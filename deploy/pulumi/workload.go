@@ -56,6 +56,7 @@ func apiDeploymentArgs(names resourceNames, args MarkuppArgs) *appsv1.Deployment
 	env := append(databaseURLEnv(names), inviteByEmailEnv(args)...)
 	env = append(env, publicURLEnv(args))
 	env = append(env, rateLimitEnv(args)...)
+	env = append(env, panelURLEnv(args)...)
 	container.Env = env
 	container.Ports = corev1.ContainerPortArray{corev1.ContainerPortArgs{ContainerPort: pulumi.Int(apiPort)}}
 	container.ReadinessProbe = healthzProbe()
