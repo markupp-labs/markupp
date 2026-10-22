@@ -65,3 +65,64 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+
+  deploy-prod:
+    name: Deploy na stack prod
+    needs: publish-image
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+    concurrency:
+      group: deploy-prod
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Set up Go
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version-file: deploy/pulumi/go.mod
+          cache-dependency-path: deploy/pulumi/go.sum
+
+      - name: Instala o Pulumi
+        uses: pulumi/actions@8e5e406f4007fca908480587cb9893c07090f58d # v7
+
+      # O token só existe neste passo, e o kubeconfig montado com ele é apagado no fim.
+      - name: Pulumi up com a imagem da tag
+        working-directory: deploy/stacks
+        env:
+          PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+          KUBE_TOKEN: ${{ secrets.KUBE_TOKEN }}
+          KUBE_SERVER: ${{ vars.KUBE_SERVER }}
+          KUBE_CA_DATA: ${{ vars.KUBE_CA_DATA }}
+          IMAGE: ghcr.io/${{ github.repository_owner }}/markupp
+          TAG: ${{ github.ref_name }}
+        run: |
+          export KUBECONFIG="$RUNNER_TEMP/kubeconfig"
+          trap 'rm -f "$KUBECONFIG"' EXIT
+          umask 077
+          cat > "$KUBECONFIG" <<KUBECONFIG
+          apiVersion: v1
+          kind: Config
+          clusters:
+            - name: prod
+              cluster:
+                server: $KUBE_SERVER
+                certificate-authority-data: $KUBE_CA_DATA
+          users:
+            - name: markupp-deployer
+              user:
+                token: $KUBE_TOKEN
+          contexts:
+            - name: prod
+              context:
+                cluster: prod
+                namespace: markupp
+                user: markupp-deployer
+          current-context: prod
+          KUBECONFIG
+          pulumi stack select hana-org/prod --non-interactive
+          pulumi config set image "$IMAGE:${TAG#v}"
+          pulumi up --yes --non-interactive
