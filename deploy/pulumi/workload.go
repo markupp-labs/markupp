@@ -41,14 +41,38 @@ func declareAPI(ctx *pulumi.Context, names resourceNames, args MarkuppArgs, opts
 	if _, err := appsv1.NewDeployment(ctx, names.api, apiDeploymentArgs(names, args), opts...); err != nil {
 		return err
 	}
-	_, err := corev1.NewService(ctx, names.api, &corev1.ServiceArgs{
-		Metadata: namespaced(names.api, args.Namespace),
+	return declareService(ctx, names.api, args.Namespace, apiPort, opts...)
+}
+
+// declareService expõe na porta os pods do Deployment de mesmo nome.
+func declareService(ctx *pulumi.Context, name, namespace string, port int, opts ...pulumi.ResourceOption) error {
+	_, err := corev1.NewService(ctx, name, &corev1.ServiceArgs{
+		Metadata: namespaced(name, namespace),
 		Spec: corev1.ServiceSpecArgs{
-			Selector: appLabels(names.api),
-			Ports:    corev1.ServicePortArray{corev1.ServicePortArgs{Port: pulumi.Int(apiPort)}},
+			Selector: appLabels(name),
+			Ports:    corev1.ServicePortArray{corev1.ServicePortArgs{Port: pulumi.Int(port)}},
 		},
 	}, opts...)
 	return err
+}
+
+// singleReplicaDeploymentArgs é o Deployment de uma réplica, sem root, dos processos
+// que guardam estado na memória: o painel e o servidor MCP.
+func singleReplicaDeploymentArgs(name, namespace string, uid int, container corev1.ContainerArgs) *appsv1.DeploymentArgs {
+	return &appsv1.DeploymentArgs{
+		Metadata: namespaced(name, namespace),
+		Spec: appsv1.DeploymentSpecArgs{
+			Replicas: pulumi.Int(1),
+			Selector: metav1.LabelSelectorArgs{MatchLabels: appLabels(name)},
+			Template: corev1.PodTemplateSpecArgs{
+				Metadata: metav1.ObjectMetaArgs{Labels: appLabels(name)},
+				Spec: corev1.PodSpecArgs{
+					SecurityContext: corev1.PodSecurityContextArgs{RunAsNonRoot: pulumi.Bool(true), RunAsUser: pulumi.Int(uid)},
+					Containers:      corev1.ContainerArray{container},
+				},
+			},
+		},
+	}
 }
 
 func apiDeploymentArgs(names resourceNames, args MarkuppArgs) *appsv1.DeploymentArgs {
@@ -56,6 +80,8 @@ func apiDeploymentArgs(names resourceNames, args MarkuppArgs) *appsv1.Deployment
 	env := append(databaseURLEnv(names), inviteByEmailEnv(args)...)
 	env = append(env, publicURLEnv(args))
 	env = append(env, rateLimitEnv(args)...)
+	env = append(env, panelURLEnv(args)...)
+	env = append(env, mcpProxyEnv(names, args)...)
 	container.Env = env
 	container.Ports = corev1.ContainerPortArray{corev1.ContainerPortArgs{ContainerPort: pulumi.Int(apiPort)}}
 	container.ReadinessProbe = healthzProbe()

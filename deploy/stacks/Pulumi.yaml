@@ -27,6 +27,15 @@ config:
   email:
     type: object
     default: {}
+  existingGateway:
+    type: object
+    default: {}
+  panel:
+    type: object
+    default: {}
+  mcp:
+    type: object
+    default: {}
 
 resources:
   markupp:
@@ -39,6 +48,9 @@ resources:
       acmeEmail: ${acmeEmail}
       apiReplicas: ${apiReplicas}
       email: ${email}
+      existingGateway: ${existingGateway}
+      panel: ${panel}
+      mcp: ${mcp}
       database:
         storageClass: ${storageClass}
 
