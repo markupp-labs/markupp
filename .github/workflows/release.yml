@@ -10,8 +10,17 @@ permissions:
 
 jobs:
   publish-image:
-    name: Publica imagem no GHCR
+    name: Publica a imagem ${{ matrix.image }} no GHCR
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - image: markupp
+            context: ./markupp
+          - image: markupp-web
+            context: ./web
+          - image: markupp-mcp
+            context: ./mcp
     permissions:
       contents: read
       packages: write
@@ -50,7 +59,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ github.repository_owner }}/markupp
+          images: ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}
           tags: |
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
@@ -59,8 +68,8 @@ jobs:
       - name: Build e push
         uses: docker/build-push-action@v6
         with:
-          context: ./markupp
-          file: ./markupp/Dockerfile
+          context: ${{ matrix.context }}
+          file: ${{ matrix.context }}/Dockerfile
           platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
@@ -125,4 +134,6 @@ jobs:
           KUBECONFIG
           pulumi stack select hana-org/prod --non-interactive
           pulumi config set image "$IMAGE:${TAG#v}"
+          pulumi config set --path panel.image "$IMAGE-web:${TAG#v}"
+          pulumi config set --path mcp.image "$IMAGE-mcp:${TAG#v}"
           pulumi up --yes --non-interactive
