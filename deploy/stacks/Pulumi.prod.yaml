@@ -1,7 +1,12 @@
-# Enterprise no cluster de produção. Ainda faltam, para o primeiro deploy: a
-# imagem, que o deploy define a cada versão com pulumi config set image, e o
-# email ACME, ou o existingGateway se o cluster oferecer um Gateway compartilhado, e o
-# email, que o deploy define com pulumi config set --path.
+# Enterprise no cluster do IFSC, atrás do Gateway da feira de jogos, que tem o
+# listener e o certificado do host. A imagem muda a cada tag pelo deploy do
+# workflow de release, e o email entra com pulumi config set --path quando
+# houver SMTP.
 config:
-  markupp:host: markupp.negoci.online
+  markupp:host: markupp.k8s.sj.ifsc.edu.br
+  markupp:image: ghcr.io/markupp-labs/markupp:1.0.0-rc.2
   markupp:storageClass: longhorn-fast
+  markupp:existingGateway:
+    name: gateway-feira-de-jogos
+    namespace: feira-de-jogos
+    sectionName: https-markupp
