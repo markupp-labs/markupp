@@ -33,6 +33,9 @@ config:
   panel:
     type: object
     default: {}
+  mcp:
+    type: object
+    default: {}
 
 resources:
   markupp:
@@ -47,6 +50,7 @@ resources:
       email: ${email}
       existingGateway: ${existingGateway}
       panel: ${panel}
+      mcp: ${mcp}
       database:
         storageClass: ${storageClass}
 
