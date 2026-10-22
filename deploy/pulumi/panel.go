@@ -5,7 +5,6 @@ import (
 
 	appsv1 "github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/apps/v1"
 	corev1 "github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/core/v1"
-	metav1 "github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/meta/v1"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
@@ -14,10 +13,7 @@ const (
 	// root para abrir, e o painel roda sem root.
 	panelPort = 8080
 	// panelUID é o uid do usuário rails criado no Dockerfile do painel.
-	panelUID = 1000
-	// panelReplicas fica em uma: a renovação do token mora na memória do processo,
-	// e mais réplicas pedem afinidade por cookie no Gateway (web/config/puma.rb).
-	panelReplicas       = 1
+	panelUID            = 1000
 	panelListener       = "https-panel"
 	secretKeyBaseKey    = "secret-key-base"
 	secretKeyBaseLength = 128
@@ -78,17 +74,13 @@ func declarePanel(ctx *pulumi.Context, names resourceNames, args MarkuppArgs, pa
 	if err := declarePanelSecret(ctx, names, args, parent); err != nil {
 		return err
 	}
-	if _, err := appsv1.NewDeployment(ctx, names.panel, panelDeploymentArgs(names, args), parent); err != nil {
+	// Uma réplica: a renovação do token mora na memória do processo, e mais réplicas
+	// pedem afinidade por cookie no Gateway (web/config/puma.rb).
+	deployment := singleReplicaDeploymentArgs(names.panel, args.Namespace, panelUID, panelContainer(names, args))
+	if _, err := appsv1.NewDeployment(ctx, names.panel, deployment, parent); err != nil {
 		return err
 	}
-	_, err := corev1.NewService(ctx, names.panel, &corev1.ServiceArgs{
-		Metadata: namespaced(names.panel, args.Namespace),
-		Spec: corev1.ServiceSpecArgs{
-			Selector: appLabels(names.panel),
-			Ports:    corev1.ServicePortArray{corev1.ServicePortArgs{Port: pulumi.Int(panelPort)}},
-		},
-	}, parent)
-	return err
+	return declareService(ctx, names.panel, args.Namespace, panelPort, parent)
 }
 
 // declarePanelSecret guarda a secret_key_base, que cifra o cookie de sessão.
@@ -102,23 +94,6 @@ func declarePanelSecret(ctx *pulumi.Context, names resourceNames, args MarkuppAr
 		StringData: pulumi.StringMap{secretKeyBaseKey: keyBase},
 	}, parent)
 	return err
-}
-
-func panelDeploymentArgs(names resourceNames, args MarkuppArgs) *appsv1.DeploymentArgs {
-	return &appsv1.DeploymentArgs{
-		Metadata: namespaced(names.panel, args.Namespace),
-		Spec: appsv1.DeploymentSpecArgs{
-			Replicas: pulumi.Int(panelReplicas),
-			Selector: metav1.LabelSelectorArgs{MatchLabels: appLabels(names.panel)},
-			Template: corev1.PodTemplateSpecArgs{
-				Metadata: metav1.ObjectMetaArgs{Labels: appLabels(names.panel)},
-				Spec: corev1.PodSpecArgs{
-					SecurityContext: corev1.PodSecurityContextArgs{RunAsNonRoot: pulumi.Bool(true), RunAsUser: pulumi.Int(panelUID)},
-					Containers:      corev1.ContainerArray{panelContainer(names, args)},
-				},
-			},
-		},
-	}
 }
 
 // panelContainer fala com a API pelo Service, do lado do servidor: o navegador
