@@ -29,6 +29,15 @@ func declareIngress(ctx *pulumi.Context, names resourceNames, args MarkuppArgs, 
 	return declareRoute(ctx, names, args, gatewayRef(names, args, httpsListener), parent)
 }
 
+// withoutEmptyGateway trata o bloco de existingGateway vazio como ausente: o Pulumi
+// YAML não omite propriedade, e a stack sem Gateway existente passa o bloco vazio.
+func withoutEmptyGateway(args MarkuppArgs) MarkuppArgs {
+	if args.ExistingGateway != nil && *args.ExistingGateway == (GatewayRefArgs{}) {
+		args.ExistingGateway = nil
+	}
+	return args
+}
+
 func declareIssuer(ctx *pulumi.Context, names resourceNames, args MarkuppArgs, parent pulumi.ResourceOption) error {
 	spec := pulumi.Map{"selfSigned": pulumi.Map{}}
 	if args.CertificateIssuer == issuerACME {
