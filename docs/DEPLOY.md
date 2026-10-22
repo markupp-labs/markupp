@@ -40,7 +40,7 @@ namespace informado:
 Em qualquer linguagem do Pulumi, inclusive YAML:
 
 ```sh
-pulumi package add github.com/markupp-labs/markupp/deploy/pulumi@v1.1.0
+pulumi package add github.com/markupp-labs/markupp/deploy/pulumi@v1.0.0-rc.2
 ```
 
 ```yaml
@@ -49,7 +49,7 @@ resources:
     type: markupp:index:Markupp
     properties:
       namespace: markupp
-      image: ghcr.io/markupp-labs/markupp:1.1.0
+      image: ghcr.io/markupp-labs/markupp:1.0.0-rc.2
       host: notas.exemplo.com
       acmeEmail: ops@exemplo.com
       database:
