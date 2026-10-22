@@ -99,6 +99,11 @@ O projeto em `deploy/stacks` usa o componente pelo caminho local e tem duas stac
 - `dev`: um cluster kind que o CI sobe em cada PR e a cada push em dev para testar a implantação, com
   certificado autoassinado
 
+A cada tag `v*`, o workflow de release publica a imagem e, com aprovação no environment
+`production` do GitHub, roda `pulumi up` na stack prod com a imagem da tag. O environment guarda
+os secrets `KUBE_TOKEN` (token de uma ServiceAccount com Role só no namespace do markupp) e
+`PULUMI_ACCESS_TOKEN`, e as variáveis `KUBE_SERVER` e `KUBE_CA_DATA`.
+
 As duas sobem sem email. Para ligar numa stack, com a URL do SMTP cifrada no arquivo da stack:
 
 ```sh
