@@ -86,7 +86,7 @@ type DatabaseArgs struct {
 
 // NewMarkupp declara a instalação completa sob o componente name.
 func NewMarkupp(ctx *pulumi.Context, name string, args MarkuppArgs, opts ...pulumi.ResourceOption) (*Markupp, error) {
-	args = withoutEmptyEmail(args)
+	args = withoutEmptyGateway(withoutEmptyEmail(args))
 	if err := validate(args); err != nil {
 		return nil, err
 	}
