@@ -60,6 +60,8 @@ type MarkuppArgs struct {
 	// Panel liga o painel web num host próprio. Sem ele, a API manda o consentimento
 	// do OAuth para o painel local padrão.
 	Panel *PanelArgs `pulumi:"panel,optional"`
+	// MCP liga o servidor MCP na mesma origem da API, em /mcp.
+	MCP *MCPArgs `pulumi:"mcp,optional"`
 	// RateLimitPerMinute troca as 5 tentativas por minuto das rotas de conta
 	// (MARKUPP_RATE_LIMIT_PER_MINUTE).
 	RateLimitPerMinute *int `pulumi:"rateLimitPerMinute,optional"`
@@ -125,6 +127,9 @@ func declareResources(ctx *pulumi.Context, name string, args MarkuppArgs, parent
 	if err := declarePanel(ctx, names, args, parent); err != nil {
 		return err
 	}
+	if err := declareMCP(ctx, names, args, parent); err != nil {
+		return err
+	}
 	return declareIngress(ctx, names, args, parent)
 }
 
@@ -181,7 +186,7 @@ func ingressRequiredFields(args MarkuppArgs) ([]requiredField, error) {
 // withoutEmptyBlocks trata como ausentes os blocos opcionais vazios, que a stack em
 // Pulumi YAML passa por não conseguir omitir propriedade.
 func withoutEmptyBlocks(args MarkuppArgs) MarkuppArgs {
-	return withoutEmptyPanel(withoutEmptyGateway(withoutEmptyEmail(args)))
+	return withoutEmptyMCP(withoutEmptyPanel(withoutEmptyGateway(withoutEmptyEmail(args))))
 }
 
 func withDefaults(args MarkuppArgs) MarkuppArgs {
@@ -203,7 +208,7 @@ func withDefaults(args MarkuppArgs) MarkuppArgs {
 
 // resourceNames centraliza os nomes que um recurso usa para achar outro.
 type resourceNames struct {
-	component, database, dbSecret, api, panel, panelTLS, indexer, notifier, scaler, gateway, issuer, tlsSecret string
+	component, database, dbSecret, api, panel, panelTLS, mcp, indexer, notifier, scaler, gateway, issuer, tlsSecret string
 }
 
 func newResourceNames(component string) resourceNames {
@@ -214,6 +219,7 @@ func newResourceNames(component string) resourceNames {
 		api:       component + "-api",
 		panel:     component + "-panel",
 		panelTLS:  component + "-panel-tls",
+		mcp:       component + "-mcp",
 		indexer:   component + "-indexer",
 		notifier:  component + "-notifier",
 		scaler:    component + "-scaler",

@@ -81,6 +81,7 @@ func apiDeploymentArgs(names resourceNames, args MarkuppArgs) *appsv1.Deployment
 	env = append(env, publicURLEnv(args))
 	env = append(env, rateLimitEnv(args)...)
 	env = append(env, panelURLEnv(args)...)
+	env = append(env, mcpProxyEnv(names, args)...)
 	container.Env = env
 	container.Ports = corev1.ContainerPortArray{corev1.ContainerPortArgs{ContainerPort: pulumi.Int(apiPort)}}
 	container.ReadinessProbe = healthzProbe()
