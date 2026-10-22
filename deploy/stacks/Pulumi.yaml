@@ -30,6 +30,9 @@ config:
   existingGateway:
     type: object
     default: {}
+  panel:
+    type: object
+    default: {}
 
 resources:
   markupp:
@@ -43,6 +46,7 @@ resources:
       apiReplicas: ${apiReplicas}
       email: ${email}
       existingGateway: ${existingGateway}
+      panel: ${panel}
       database:
         storageClass: ${storageClass}
 
