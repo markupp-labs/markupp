@@ -1,0 +1,19 @@
+<%# A própria conta sai (Leave vault, que vale para todo papel); as outras, só quem escreve remove. %>
+<% me = vault_member.id == credential.account_id %>
+<li class="border-t border-line px-2 py-2 md:col-span-4 md:grid md:grid-cols-subgrid md:items-center">
+  <p class="[overflow-wrap:anywhere]">
+    <%= vault_member.email %>
+    <% if me %><span class="text-ink-muted"><%= t("settings.members.member.you") %></span><% end %>
+  </p>
+  <p class="mt-1 md:mt-0"><%= t("tenants.roles.#{vault_member.role}") %></p>
+  <p class="text-ink-muted"><span class="md:sr-only"><%= t(".joined") %></span> <%= l(vault_member.joined_at.to_date, format: :short) %></p>
+  <div class="mt-1 flex gap-2 md:mt-0">
+    <% if me %>
+      <%= button_to t(".leave"), settings_vault_member_path(vault_member.id), method: :delete, class: "btn btn-danger",
+                    data: { confirm_button: t(".leave"), turbo_confirm: t(".confirm_leave", vault: current_vault.name) } %>
+    <% elsif current_tenant.writer? %>
+      <%= button_to t(".remove"), settings_vault_member_path(vault_member.id), method: :delete, class: "btn btn-danger",
+                    data: { confirm_button: t(".remove"), turbo_confirm: t(".confirm_remove", email: vault_member.email, vault: current_vault.name) } %>
+    <% end %>
+  </div>
+</li>

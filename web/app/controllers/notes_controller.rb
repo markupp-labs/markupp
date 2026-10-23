@@ -90,11 +90,6 @@ class NotesController < ApplicationController
 
     def creating? = current_tenant.writer? && current_vault.present?
 
-    # Sem cofre a nota nova não tem onde cair: a página padrão mostra o estado vazio com New vault.
-    def require_vault
-      redirect_to root_path, alert: t("markupp_api.errors.no_vault") unless current_vault
-    end
-
     def set_tree
       @tree = load_note_tree
     end

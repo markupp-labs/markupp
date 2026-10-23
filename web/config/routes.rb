@@ -27,7 +27,7 @@ Rails.application.routes.draw do
   resources :tenants, only: [ :index, :new, :create, :destroy ]
   resource :current_tenant, only: :update
   resource :current_vault, only: :update
-  resources :vaults, only: :create
+  resources :vaults, only: [ :create, :update, :destroy ]
   resources :my_invites, only: [ :index, :update, :destroy ]
 
   # Consentimento OAuth: o servidor manda o navegador para cá com o id do pedido.
@@ -46,6 +46,8 @@ Rails.application.routes.draw do
     resource :general, only: :show, controller: "general"
     resources :members, only: [ :index, :update, :destroy ]
     resources :invites, only: [ :index, :create, :destroy ]
+    resource :vault, only: :show, controller: "vault_general"
+    resources :vault_members, path: "vault/members", only: [ :index, :create, :destroy ]
   end
 
   # Páginas de erro: o ShowExceptions pede /<status> (config.exceptions_app). O resto que não casa com rota nenhuma é o

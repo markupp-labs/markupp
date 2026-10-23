@@ -96,6 +96,11 @@ class ApplicationController < ActionController::Base
       @current_vault
     end
 
+    # Nas páginas que agem no cofre ativo: sem ele, a tela padrão mostra o estado vazio com New vault.
+    def require_vault
+      redirect_to root_path, alert: t("markupp_api.errors.no_vault") unless current_vault
+    end
+
     # Árvore da barra lateral, das notas do cofre ativo: as páginas de notas e as configurações desenham a mesma.
     def load_note_tree = Note::Tree.build(current_vault ? Note.every_in_vault(credential.api, current_vault.id) : [])
 
