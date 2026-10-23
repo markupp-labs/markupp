@@ -163,13 +163,16 @@ module Settings
       end
     end
 
+    # A exceção é o Vault settings do seletor de cofres, um item do menu dele.
     test "the settings links live only in the settings nav, not in the sidebar" do
       use_fake_api
       sign_in_as
 
       get settings_account_path
 
-      assert_select "nav#sidebar .sidebar-scroll a[href^='/settings']", count: 0
+      assert_select "nav#sidebar .sidebar-scroll a[href^='/settings']:not([role=menuitem])", count: 0
+      assert_select "nav#sidebar .sidebar-scroll a[href^='/settings']", count: 1
+      assert_select "#vault_switcher a[role=menuitem][href=?]", settings_vault_path
     end
 
     test "the settings icon of the activity bar is marked as current" do
