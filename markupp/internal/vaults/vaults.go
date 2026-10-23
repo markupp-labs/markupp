@@ -13,6 +13,8 @@ var (
 	ErrMemberNotFound     = errors.New("conta nao e membro do cofre")
 	ErrNotTenantMember    = errors.New("conta nao pertence ao tenant")
 	ErrAlreadyVaultMember = errors.New("conta ja e membro do cofre")
+	ErrInvalidName        = errors.New("nome de cofre invalido")
+	ErrReadOnly           = errors.New("o papel viewer nao gerencia cofres")
 )
 
 // Vault é o cofre como a conta o vê.
