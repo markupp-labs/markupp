@@ -695,6 +695,17 @@ func TestCreateTenant_NomeVazio_RecusaComErrInvalidTenantName(t *testing.T) {
 	require.ErrorIs(t, err, auth.ErrInvalidTenantName)
 }
 
+func TestCreateTenant_NomeAcentuado_ContaCaracteresNaoBytes(t *testing.T) {
+	svc := setupAuthService(newFakeRepository(defaultClock()), false, defaultClock())
+
+	_, err := svc.CreateTenant(context.Background(), "u1", strings.Repeat("é", 100))
+	require.NoError(t, err, "100 letras acentuadas cabem no limite")
+
+	_, err = svc.CreateTenant(context.Background(), "u1", strings.Repeat("é", 101))
+	require.ErrorIs(t, err, auth.ErrInvalidTenantName)
+	assert.Contains(t, err.Error(), "de 1 a 100 caracteres")
+}
+
 func (f *fakeRepository) ListPendingInvites(ctx context.Context, userID string, now time.Time) ([]auth.PendingInvite, error) {
 	return f.pendingForUser, nil
 }
