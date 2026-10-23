@@ -72,6 +72,16 @@ module Settings
       assert_select "main nav a[href=?]", settings_vault_path, count: 0
     end
 
+    # O viewer não cria cofre: o aviso diz o que ele pode fazer, como o estado vazio (vaults/_empty).
+    test "a viewer without a vault is told to ask for one, not to create it" do
+      sign_in_with(role: "viewer", vaults: [])
+
+      get settings_vault_path
+
+      assert_redirected_to root_path
+      assert_equal "Ask a member of a vault to add you.", flash[:alert]
+    end
+
     test "rename gives the vault the new name" do
       sign_in_with
 
