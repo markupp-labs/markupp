@@ -27,6 +27,10 @@ export const roleParameter = z
   .enum(["owner", "admin", "member", "viewer"])
   .describe("Role to grant, up to your own: owner > admin > member > viewer.");
 
+// nameParameter é o nome de tenant ou de cofre: o servidor apara e limita a 100
+// caracteres, e o schema já recusa o que passa disso.
+export const nameParameter = z.string().trim().min(1).max(100);
+
 // readOnlyAnnotations marca as ferramentas que só leem; writeAnnotations é a base das
 // escritas, que cada ferramenta ajusta.
 export const readOnlyAnnotations = { readOnlyHint: true, openWorldHint: false };
