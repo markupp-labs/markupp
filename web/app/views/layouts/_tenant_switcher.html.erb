@@ -27,24 +27,29 @@
   </div>
 </div>
 
-<div id="tenant_switcher" popover
+<%# Anda pelo teclado como o seletor de cofres (layouts/_vault_switcher): setas ou j/k, Home e End, Esc e Tab fecham; os
+    convites que chegam no frame e as ações do fim também são itens. %>
+<div id="tenant_switcher" popover data-controller="context-menu"
+     data-action="keydown->context-menu#navigate toggle->context-menu#returnFocus toggle->context-menu#focusFirst click@document->context-menu#rememberInvokerClick"
      class="layer m-0 w-64 origin-top layer-panel p-1 [inset:auto] [position-anchor:--tenant-switcher] [position-area:bottom_span-right]">
-  <ul class="space-y-px">
-    <% current_tenants.each do |tenant| %>
-      <li><%= render "tenants/choice", tenant: %></li>
+  <div role="menu" tabindex="-1" aria-label="<%= t(".label") %>">
+    <ul role="none" class="space-y-px">
+      <% current_tenants.each do |tenant| %>
+        <li role="none"><%= render "tenants/choice", tenant: %></li>
+      <% end %>
+    </ul>
+    <%# Preguiçoso: o popover fechado não aparece na tela, então a lista só carrega quando ele abre. %>
+    <%= turbo_frame_tag "my_invites", src: my_invites_path, loading: :lazy, target: "_top" do %>
+      <%= busy_spinner(busy_when: "#my_invites[aria-busy]", class: "flex px-2 not-empty:mt-1 not-empty:border-t not-empty:border-line not-empty:py-1") %>
     <% end %>
-  </ul>
-  <%# Preguiçoso: o popover fechado não aparece na tela, então a lista só carrega quando ele abre. %>
-  <%= turbo_frame_tag "my_invites", src: my_invites_path, loading: :lazy, target: "_top" do %>
-    <%= busy_spinner(busy_when: "#my_invites[aria-busy]", class: "flex px-2 not-empty:mt-1 not-empty:border-t not-empty:border-line not-empty:py-1") %>
-  <% end %>
-  <div class="mt-1 border-t border-line pt-1">
-    <%= link_to new_tenant_path, class: "tree-row flex items-center gap-2" do %>
-      <%= icon("plus") %><%= t(".new_tenant") %>
-    <% end %>
-    <%= link_to tenants_path, title: t(".all_tenants_title"), class: "tree-row flex items-center gap-2" do %>
-      <%= icon("list") %><%= t(".all_tenants") %>
-    <% end %>
+    <div class="mt-1 border-t border-line pt-1">
+      <%= link_to new_tenant_path, role: "menuitem", tabindex: -1, class: "tree-row context-menu-item flex items-center justify-start gap-2" do %>
+        <%= icon("plus") %><%= t(".new_tenant") %>
+      <% end %>
+      <%= link_to tenants_path, role: "menuitem", tabindex: -1, title: t(".all_tenants_title"), class: "tree-row context-menu-item flex items-center justify-start gap-2" do %>
+        <%= icon("list") %><%= t(".all_tenants") %>
+      <% end %>
+    </div>
   </div>
 </div>
 

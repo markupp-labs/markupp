@@ -66,6 +66,7 @@ en:
       settings: "Settings"
       settings_shortcut: "Settings (%{keys})"
     tenant_switcher:
+      label: "Tenants"
       home: "Home"
       switch: "Switch tenant: %{name}"
       switch_vault: "Switch vault: %{name}"

@@ -23,8 +23,9 @@
     <% end %>
   <% end %>
 
-  <%# Grade no desktop, blocos empilhados no celular, como a lista de membros do tenant. %>
-  <ul id="vault_members" class="mt-4 md:grid md:grid-cols-[1fr_9rem_7rem_auto] md:gap-x-3">
+  <%# Grade no desktop, blocos empilhados no celular, como a lista de membros do tenant, e pelo teclado do mesmo jeito:
+      j/k entre as linhas, Delete na linha com o foco remove (ou sai, na da própria conta). %>
+  <ul id="vault_members" data-controller="context-menu" data-action="keydown->context-menu#navigate keydown->context-menu#deleteFocused" class="mt-4 md:grid md:grid-cols-[1fr_9rem_7rem_auto] md:gap-x-3">
     <li aria-hidden="true" class="hidden px-2 py-1 text-ink-muted md:col-span-4 md:grid md:grid-cols-subgrid">
       <span><%= t(".email") %></span>
       <span><%= t(".role") %></span>
