@@ -124,6 +124,39 @@ class VaultSwitcherTest < ActionDispatch::IntegrationTest
     assert_equal "Use 1 to 100 characters.", flash[:alert]
   end
 
+  test "create answers bad gateway when the API is unreachable" do
+    api = use_fake_api(vaults: VAULTS)
+    sign_in_as
+    api.cut_connection!
+
+    post vaults_path, params: { vault: { name: "Field notes" } }
+
+    assert_response :bad_gateway
+    assert_select "main h1", "502: Can't reach the markupp server"
+  end
+
+  test "switching answers bad gateway when the API is unreachable" do
+    api = use_fake_api(vaults: VAULTS)
+    sign_in_as
+    api.cut_connection!
+
+    patch current_vault_path, params: { vault_id: "vault-2" }
+
+    assert_response :bad_gateway
+    assert_select "main h1", "502: Can't reach the markupp server"
+  end
+
+  test "switching answers bad gateway when only the vault listing fails" do
+    api = use_fake_api(vaults: VAULTS)
+    sign_in_as
+    api.cut_vaults!
+
+    patch current_vault_path, params: { vault_id: "vault-2" }
+
+    assert_response :bad_gateway
+    assert_select "#current_tenant .text-danger", text: "Vaults unavailable"
+  end
+
   test "create by a viewer goes back with the read only alert" do
     use_fake_api(vaults: VAULTS, tenants: VIEWER)
     sign_in_as
