@@ -49,6 +49,12 @@ func contarAuditoria(t *testing.T, db *pgxpool.Pool, action string) int {
 	return n
 }
 
+// emUTC tira o fuso local que o pgx põe no instante, para comparar só o momento.
+func emUTC(m vaults.Member) vaults.Member {
+	m.JoinedAt = m.JoinedAt.UTC()
+	return m
+}
+
 func idsDosCofres(t *testing.T, repo *storage.PostgresVaultsRepository, ctx context.Context) []string {
 	t.Helper()
 	lista, err := repo.List(ctx)
@@ -130,7 +136,7 @@ func TestVaultsRepo_AddMemberTx_ColegaPassaAVerOCofre(t *testing.T) {
 	m, err := repo.AddMemberTx(ctx, "va", "colega", instanteDoCofre, eventoDeCofre(donaDoCofre, "vaults.members.add", "colega"))
 
 	require.NoError(t, err)
-	assert.Equal(t, vaults.Member{UserID: "colega", Email: "colega@markupp.dev", Role: "member", JoinedAt: instanteDoCofre}, m)
+	assert.Equal(t, vaults.Member{UserID: "colega", Email: "colega@markupp.dev", Role: "member", JoinedAt: instanteDoCofre}, emUTC(m))
 	assert.ElementsMatch(t, []string{"va", "vb"}, idsDosCofres(t, repo, identity.WithActor(context.Background(), colega)))
 	assert.Equal(t, 1, contarAuditoria(t, db, "vaults.members.add"))
 }
@@ -169,7 +175,7 @@ func TestVaultsRepo_ListMembers_ComEmailEPapelNoTenant(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, membros, 2)
 	assert.Equal(t, "dona@markupp.dev", membros[0].Email)
-	assert.Equal(t, vaults.Member{UserID: "leitora", Email: "leitora@markupp.dev", Role: "viewer", JoinedAt: instanteDoCofre}, membros[1])
+	assert.Equal(t, vaults.Member{UserID: "leitora", Email: "leitora@markupp.dev", Role: "viewer", JoinedAt: instanteDoCofre}, emUTC(membros[1]))
 }
 
 func TestVaultsRepo_ListMembers_CofreAlheio_NaoEncontra(t *testing.T) {
