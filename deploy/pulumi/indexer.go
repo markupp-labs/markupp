@@ -59,9 +59,10 @@ func indexerPodTemplate(names resourceNames, args MarkuppArgs) corev1.PodTemplat
 	container.Args = pulumi.StringArray{pulumi.String("index")}
 	container.Env = corev1.EnvVarArray{secretEnv("MARKUPP_DATABASE_URL", names.dbSecret, dbSecretKey)}
 	return corev1.PodTemplateSpecArgs{Spec: corev1.PodSpecArgs{
-		RestartPolicy:   pulumi.String("Never"),
-		SecurityContext: nonRootPod(),
-		Containers:      corev1.ContainerArray{container},
+		EnableServiceLinks: noServiceLinks(),
+		RestartPolicy:      pulumi.String("Never"),
+		SecurityContext:    nonRootPod(),
+		Containers:         corev1.ContainerArray{container},
 	}}
 }
 
