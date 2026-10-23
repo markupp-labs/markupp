@@ -119,5 +119,8 @@ class FakeMarkuppVaults
       vault["members"] = member_emails(vault) - [ email ]
     end
 
-    def colleagues(tenant_id) = tenant_members(tenant_id).keys.sort.map { { "id" => @accounts.id_for(it), "email" => it } }
+    # Como a API, aberta a qualquer membro do tenant, no mesmo formato dos membros do tenant para todo papel.
+    def colleagues(tenant_id)
+      tenant_members(tenant_id).sort.map { |email, role| { "id" => @accounts.id_for(email), "email" => email, "role" => role, "joined_at" => CREATED_AT } }
+    end
 end

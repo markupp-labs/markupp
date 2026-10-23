@@ -12,8 +12,9 @@ module Settings
                { id: "vault-2", tenant_id: "tenant-1", name: "Drafts", members: [ ANA ] } ].freeze
 
     def sign_in_with(role: "member", vaults: VAULTS)
-      use_fake_api(tenants: [ ACME.merge(members: ACME[:members].merge(ANA => role)) ], vaults:)
+      api = use_fake_api(tenants: [ ACME.merge(members: ACME[:members].merge(ANA => role)) ], vaults:)
       sign_in_as
+      api
     end
 
     test "the members of the vault show with their tenant role, the account marked with Leave vault" do
@@ -41,6 +42,16 @@ module Settings
         assert_equal [ [ "account-caio", CAIO ] ], css_select("select[name='member[user_id]'] option").map { [ it["value"], it.text ] }
         assert_select "button", text: "Add"
       end
+    end
+
+    # GET /v1/users é aberta a todo membro do tenant: o member que não é admin escolhe entre os colegas do mesmo jeito.
+    test "a member who is not admin picks the colleagues from the tenant users" do
+      api = sign_in_with(role: "member")
+
+      get settings_vault_members_path
+
+      assert_includes api.received_credentials.pluck(:call), "GET /v1/users"
+      assert_select "form#vault_member_add select option", text: CAIO
     end
 
     test "with every colleague already in the vault the form gives way to a hint" do
