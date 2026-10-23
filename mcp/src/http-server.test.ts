@@ -80,6 +80,14 @@ describe("servidor HTTP", () => {
     });
   });
 
+  it("atende por IPv6, como nos pods de um cluster de pilha dupla", async () => {
+    running = await new RunningHttpServer().start();
+    const response = await fetch(
+      `http://[::1]:${running.config.port}/.well-known/oauth-protected-resource/mcp`,
+    );
+    expect(response.status).toBe(200);
+  });
+
   it("responde 401 com o desafio Bearer quando falta o token", async () => {
     running = await new RunningHttpServer().start();
     const response = await fetch(running.url("/mcp"), {
