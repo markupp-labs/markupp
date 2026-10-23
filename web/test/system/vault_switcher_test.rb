@@ -56,6 +56,18 @@ class VaultSwitcherTest < ApplicationSystemTestCase
     assert_selector "[role=status]", text: "You left Research."
   end
 
+  # Sem colega fora do cofre não há o que adicionar, e a página já diz isso: v a não a recarrega à toa.
+  test "v then a on the vault members with nobody left to add keeps the page as it is" do
+    visit settings_vault_members_path
+    assert_selector "main h1", text: "Members"
+    execute_script("window.visited = false; document.addEventListener('turbo:visit', () => { window.visited = true })")
+
+    send_keys "v", "a"
+
+    assert_selector "main h1", text: "Members"
+    assert_not evaluate_script("window.visited"), "v a recarregou a página de membros"
+  end
+
   test "Vault settings in the vault switcher opens the vault general" do
     send_keys "g", "v"
     assert_selector "#vault_switcher:popover-open"
