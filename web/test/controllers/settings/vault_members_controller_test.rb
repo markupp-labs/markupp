@@ -60,10 +60,10 @@ module Settings
 
       get settings_vault_members_path(focus: "add")
       assert_select "form#vault_member_add select[autofocus][data-vault-action=a]"
-      assert_select "button[autofocus]", count: 0
+      assert_select "#vault_members button[autofocus]", count: 0
 
       get settings_vault_members_path(focus: "leave")
-      assert_select "button[autofocus][data-vault-action=q]", text: "Leave vault"
+      assert_select "#vault_members button[autofocus][data-vault-action=q]", text: "Leave vault"
       assert_select "select[autofocus]", count: 0
     end
 
