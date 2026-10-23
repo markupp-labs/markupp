@@ -1,0 +1,17 @@
+<%# Danger zone, como a do GitHub: apagar de vez o que a seção configura (o tenant, o cofre). O botão pede pelo diálogo do
+    painel (layouts/_confirm_dialog), que só libera a ação com o nome exato digitado (data-confirm-match) e o manda no
+    pedido como confirm_name (data-confirm-match-param), para o painel conferir de novo antes de chamar a API.
+    Locals: id do botão, action (rótulo), hint, confirm (a pergunta), name (o que digitar) e path (o DELETE). %>
+<section id="danger_zone" aria-labelledby="danger_zone_title" class="mt-8">
+  <h2 id="danger_zone_title" class="md-heading font-semibold text-danger"><%= t("settings.danger_zone.title") %></h2>
+  <div class="mt-2 flex flex-col gap-3 rounded-md border border-danger p-3 md:flex-row md:items-center md:justify-between">
+    <div class="min-w-0">
+      <p class="font-semibold"><%= action %></p>
+      <p class="text-ink-muted"><%= hint %></p>
+    </div>
+    <%= button_to action, path, method: :delete, id:,
+                  class: "btn btn-danger shrink-0 self-start md:self-auto", form: { class: "shrink-0" },
+                  data: { turbo_confirm: confirm, confirm_button: action, confirm_match: name, confirm_match_param: "confirm_name",
+                          confirm_match_label: t("settings.danger_zone.type_name", name:) } %>
+  </div>
+</section>

@@ -362,15 +362,15 @@ en:
         editor_style_hint: "Plain shows the markdown at one size, like VS Code. Styled makes headings larger, like the Obsidian source mode."
         vim_keys: "Vim key bindings"
         vim_keys_hint: "Vim key bindings give the editor the normal, insert and visual modes of Vim, with :w, :q and :e. Esc twice, then Tab, leaves the editor."
+    danger_zone:
+      title: "Danger zone"
+      type_name: "Type %{name} to confirm"
     general:
       show:
         tenant_name: "Tenant name"
-      danger_zone:
-        title: "Danger zone"
         delete_tenant: "Delete tenant"
-        hint: "This deletes the tenant and all of its notes for every member. There is no going back."
-        confirm: "Delete %{name}? This deletes the tenant and all of its notes for every member, and it can't be undone."
-        type_name: "Type %{name} to confirm"
+        delete_hint: "This deletes the tenant and all of its notes for every member. There is no going back."
+        confirm_delete: "Delete %{name}? This deletes the tenant and all of its notes for every member, and it can't be undone."
     members:
       index:
         email: "Email"

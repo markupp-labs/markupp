@@ -7,5 +7,9 @@
     <dd class="[overflow-wrap:anywhere]"><%= current_tenant.name %></dd>
   </dl>
 
-  <%= render "settings/general/danger_zone" if current_tenant.owner? %>
+  <% if current_tenant.owner? %>
+    <% name = current_tenant.name %>
+    <%= render "settings/danger_zone", id: "delete_tenant", action: t(".delete_tenant"), hint: t(".delete_hint"), name:,
+                                       confirm: t(".confirm_delete", name:), path: tenant_path(current_tenant.id) %>
+  <% end %>
 </div>
