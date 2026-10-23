@@ -7,7 +7,7 @@ import (
 
 // RedirectURIShape descreve a redirect_uri aceita, para a mensagem de erro de quem a
 // recusa.
-const RedirectURIShape = "https com host, http em 127.0.0.1 ou [::1], ou esquema privado (RFC 8252, secao 7.1) " +
+const RedirectURIShape = "https com host, http em 127.0.0.1, [::1] ou localhost, ou esquema privado (RFC 8252, secao 7.1) " +
 	"fora de javascript, data, vbscript e file, sem fragmento e sem credenciais"
 
 // forbiddenRedirectSchemes são os esquemas que executam código ou leem arquivo local; o
@@ -29,6 +29,12 @@ func RedirectURIProblem(raw string) string {
 	return redirectSchemeProblem(parsed)
 }
 
+// LoopbackHost diz se o host é o loopback que a RFC 8252 aceita em http. localhost entra,
+// embora a RFC prefira o IP: é o que clientes como o Claude Code registram.
+func LoopbackHost(host string) bool {
+	return host == "127.0.0.1" || host == "::1" || host == "localhost"
+}
+
 // redirectSchemeProblem aceita qualquer esquema privado, com ou sem ponto, fora dos
 // proibidos. URL opaca de http/https sai sem host.
 func redirectSchemeProblem(parsed *url.URL) string {
@@ -38,8 +44,8 @@ func redirectSchemeProblem(parsed *url.URL) string {
 			return "https sem host"
 		}
 	case "http":
-		if host := parsed.Hostname(); host != "127.0.0.1" && host != "::1" {
-			return "http fora de 127.0.0.1 e [::1]"
+		if !LoopbackHost(parsed.Hostname()) {
+			return "http fora de 127.0.0.1, [::1] e localhost"
 		}
 	default:
 		if forbiddenRedirectSchemes[parsed.Scheme] {
