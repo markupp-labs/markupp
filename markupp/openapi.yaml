@@ -263,7 +263,10 @@ paths:
   /users:
     get:
       summary: Lista os membros do tenant
-      description: Exige papel owner ou admin no tenant.
+      description: >
+        Aberta a qualquer membro do tenant, viewer inclusive, com o mesmo formato para
+        todos; é onde se acha o id do colega a pôr num cofre. Token OAuth precisa do escopo
+        notas:leitura ou administracao.
       parameters:
         - $ref: '#/components/parameters/TenantHeader'
       responses:
@@ -436,6 +439,7 @@ paths:
                 name:
                   type: string
                   maxLength: 100
+                  description: Aparado nas pontas, de 1 a 100 caracteres (não bytes)
       responses:
         '201':
           description: Tenant criado
@@ -2231,14 +2235,14 @@ components:
       properties:
         name:
           type: string
-          description: Aparado nas pontas, de 1 a 100 caracteres
+          description: Aparado nas pontas, de 1 a 100 caracteres (não bytes)
     VaultMemberRequest:
       type: object
       required: [user_id]
       properties:
         user_id:
           type: string
-          description: Id de uma conta do tenant, como GET /users devolve
+          description: Id de uma conta do tenant, como GET /v1/users devolve
     PendingInviteResponse:
       type: object
       properties:
