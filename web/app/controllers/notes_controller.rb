@@ -113,9 +113,11 @@ class NotesController < ApplicationController
 
     def path_error_status = @note.errors.of_kind?(:path, :taken) ? :conflict : :unprocessable_content
 
+    # A nota some antes da árvore (find_note vem primeiro), então o 404 carrega a do cofre ativo.
     def render_not_found
       return head :not_found if request.format.json?
 
+      @tree ||= load_note_tree
       render :not_found, status: :not_found, formats: :html
     end
 end
