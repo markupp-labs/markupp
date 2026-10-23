@@ -58,6 +58,39 @@ class VaultSwitcherTest < ActionDispatch::IntegrationTest
     assert_select "#vault_switcher [role=menuitem]", count: 1, text: /New vault/
   end
 
+  # Regressão: o layout pedia a lista de novo dentro do render_unreachable e a página caía num 500.
+  test "the default page answers bad gateway when the vault listing fails, with a short warning in the trail" do
+    api = use_fake_api(vaults: VAULTS)
+    sign_in_as
+    api.cut_vaults!
+
+    get root_path
+
+    assert_response :bad_gateway
+    assert_select "main h1", "502: Can't reach the markupp server"
+    assert_select "#current_tenant" do
+      assert_select "button[popovertarget=tenant_switcher]", text: "Acme research"
+      assert_select ".text-danger", text: "Vaults unavailable"
+      assert_select "button[popovertarget=vault_switcher]", count: 0
+    end
+    assert_select "#vault_switcher", count: 0
+  end
+
+  test "the settings still work when the vault listing fails, with the warning in the trail and no vault group" do
+    api = use_fake_api(vaults: VAULTS)
+    sign_in_as
+    api.cut_vaults!
+
+    get settings_account_path
+
+    assert_response :success
+    assert_select "main h1", "Account"
+    assert_select "#current_tenant .text-danger", text: "Vaults unavailable"
+    assert_select "nav#sidebar .sidebar-scroll p", text: "Can't reach the markupp server"
+    assert_select "main nav a[href=?]", settings_vault_path, count: 0
+    assert_select "main nav a[href=?]", settings_general_path
+  end
+
   test "a viewer gets neither New vault nor its dialog" do
     use_fake_api(vaults: VAULTS, tenants: VIEWER)
     sign_in_as

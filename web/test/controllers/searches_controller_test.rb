@@ -85,6 +85,18 @@ class SearchesControllerTest < ActionDispatch::IntegrationTest
     assert_select "turbo-frame#search_results", text: /Can't reach the markupp server/
   end
 
+  # Sem a lista de cofres a busca não sabe onde procurar: avisa a falha em vez de parecer que nada casou.
+  test "show says the server is unreachable when only the vault listing fails" do
+    api = use_fake_api(notes: [ { id: "1", path: "plan.md", content: "ship it" } ])
+    sign_in_as
+    api.cut_vaults!
+
+    get search_path(q: "ship")
+
+    assert_response :bad_gateway
+    assert_select "turbo-frame#search_results", text: /Can't reach the markupp server/
+  end
+
   test "a tenant the API refuses during the search is forgotten with the notice inside the results frame" do
     api = use_fake_api(tenants: TWO_TENANTS)
     sign_in_as

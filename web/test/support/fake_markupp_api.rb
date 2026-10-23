@@ -50,6 +50,9 @@ class FakeMarkuppApi
   # Cenário: só a listagem de notas cai; login, tenants e conta seguem respondendo.
   def cut_notes! = @notes_unreachable = true
 
+  # Cenário: só a listagem de cofres (GET /v1/vaults) cai; o resto segue respondendo.
+  def cut_vaults! = @vaults_unreachable = true
+
   # Cenário: um bug no meio da chamada, que não é erro da API e o painel não trata.
   def break_with_bug! = @bug = true
 
@@ -73,13 +76,15 @@ class FakeMarkuppApi
       call = "#{verb} #{path}"
       @slow_calls.pass(call)
       raise "fake API bug on #{call}" if @bug
-      raise MarkuppApi::Error, "fake API unreachable on #{call}" if @unreachable || (@notes_unreachable && notes_path?(path))
+      raise MarkuppApi::Error, "fake API unreachable on #{call}" if unreachable?(call, path)
 
       @received_credentials << @credentials.merge(call:) if @credentials
       account = authenticate(call)
       membership = tenant_membership(path, account, call) || {}
       fake_for(call, path).public_send(method, path, *body, account:, role: membership["role"], tenant_id: membership["id"], **options)
     end
+
+    def unreachable?(call, path) = @unreachable || (@notes_unreachable && notes_path?(path)) || (@vaults_unreachable && call == "GET /v1/vaults")
 
     def notes_path?(path) = path.start_with?("/notes") || FakeMarkuppNoteIndex::VAULT_NOTES.match?(path)
 
