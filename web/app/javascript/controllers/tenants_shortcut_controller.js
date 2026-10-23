@@ -33,12 +33,18 @@ export default class extends Controller {
     opener.click()
   }
 
-  // O Leave vault pede a confirmação dele (data-turbo-confirm); o nome e a escolha do colega só recebem o foco.
+  // O Leave vault pede a confirmação dele (data-turbo-confirm); o nome e a escolha do colega só recebem o foco. Na
+  // página da ação sem o alvo (todo colega já é membro), ela mesma já diz o porquê e não há o que abrir.
   runVaultAction(event) {
     event.preventDefault()
     const target = document.querySelector(`[data-vault-action="${event.key}"]`)
-    if (!target) return Turbo.visit(this.vaultActionsValue[event.key])
+    const path = this.vaultActionsValue[event.key]
+    if (!target) return this.onPageOf(path) || Turbo.visit(path)
 
     target.matches("button") ? target.click() : target.focus()
+  }
+
+  onPageOf(path) {
+    return new URL(path, location.href).pathname == location.pathname
   }
 }
