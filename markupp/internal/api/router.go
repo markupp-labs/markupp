@@ -15,6 +15,7 @@ type RouterDeps struct {
 	Graph          NoteGraph
 	Auth           AuthService
 	Admin          AdminService
+	Vaults         VaultService
 	AccountEmail   AccountEmailService
 	Tokens         TokenValidator
 	Tenants        TenantResolver
@@ -63,8 +64,8 @@ func mustHaveRouterDeps(d RouterDeps) {
 	if d.Tokens == nil {
 		panic("api: Tokens obrigatorio para proteger as rotas")
 	}
-	if d.Tenants == nil && (d.Notes != nil || d.Graph != nil || d.Admin != nil) {
-		panic("api: Tenants obrigatorio para as rotas de notas, do grafo e de administracao")
+	if d.Tenants == nil && (d.Notes != nil || d.Graph != nil || d.Admin != nil || d.Vaults != nil) {
+		panic("api: Tenants obrigatorio para as rotas de notas, do grafo, de administracao e de cofres")
 	}
 	if d.OAuth != nil && d.OAuthMetadata == nil {
 		panic("api: OAuthMetadata obrigatorio para as rotas OAuth, que usam o Issuer")
@@ -96,10 +97,13 @@ func newVersionRoutes(d RouterDeps, current bool) chi.Router {
 }
 
 // mountV1OnlyRoutes monta as rotas que nasceram depois da transição e não têm o alias
-// sem prefixo.
+// sem prefixo: o grafo e a gestão de cofres.
 func mountV1OnlyRoutes(r chi.Router, d RouterDeps) {
 	if d.Graph != nil {
 		mountProtectedGraphRoutes(r, d.Graph, d.Tokens, d.Tenants)
+	}
+	if d.Vaults != nil {
+		mountVaultRoutes(r, d.Vaults, d.Tokens, d.Tenants)
 	}
 }
 
