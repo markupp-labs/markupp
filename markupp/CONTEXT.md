@@ -74,7 +74,8 @@ _Avoid_: cluster, tema quando se refere a este tipo
 
 **Cofre**:
 O namespace e a unidade de acesso. A nota pertence a exatamente um cofre, e quem é membro do
-cofre lê e escreve todas as notas dele.
+cofre lê e escreve todas as notas dele, salvo o viewer, que só lê. O membro entra adicionado
+por outro membro, entre as contas que já têm vínculo com o tenant.
 _Avoid_: workspace, projeto, biblioteca, espaço
 
 **Tenant**:
@@ -119,8 +120,8 @@ _Avoid_: usuário do tenant, perfil
 
 **Vínculo**:
 A participação de uma conta num tenant, com um papel: owner, admin, member ou viewer. Owner e
-admin administram o tenant, só o owner apaga o tenant, e o viewer só lê nos cofres de que é membro. O acesso às notas
-continua sendo pelo cofre.
+admin administram o tenant, só o owner apaga o tenant, e o viewer só lê nos cofres de que é
+membro, sem gerenciar cofre, mas pode sair dele. O acesso às notas continua sendo pelo cofre.
 _Avoid_: associação, assinatura, membership
 
 **Convite**:
