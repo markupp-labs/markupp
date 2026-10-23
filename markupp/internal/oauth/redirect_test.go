@@ -17,6 +17,8 @@ func TestMatchRedirectURI_Compativel_Aceita(t *testing.T) {
 		"loopback ipv4 troca de porta":  {"http://127.0.0.1:8080/cb", "http://127.0.0.1:9090/cb"},
 		"loopback ipv6 com outra porta": {"http://[::1]/cb", "http://[::1]:51234/cb"},
 		"loopback com query igual":      {"http://127.0.0.1/cb?x=1", "http://127.0.0.1:4000/cb?x=1"},
+		"localhost com outra porta":     {"http://localhost:3000/cb", "http://localhost:4000/cb"},
+		"localhost do claude code":      {"http://localhost/callback", "http://localhost:53682/callback"},
 	}
 	for nome, caso := range casos {
 		t.Run(nome, func(t *testing.T) {
@@ -34,12 +36,13 @@ func TestMatchRedirectURI_Diferente_Recusa(t *testing.T) {
 		"fragmento":                     {"https://app.exemplo.dev/cb", "https://app.exemplo.dev/cb#x"},
 		"fragmento vazio":               {"https://app.exemplo.dev/cb", "https://app.exemplo.dev/cb#"},
 		"fragmento registrado igual":    {"https://app.exemplo.dev/cb#x", "https://app.exemplo.dev/cb#x"},
-		"localhost com outra porta":     {"http://localhost:3000/cb", "http://localhost:4000/cb"},
 		"loopback com outro caminho":    {"http://127.0.0.1/cb", "http://127.0.0.1:4000/outro"},
 		"loopback com outra query":      {"http://127.0.0.1/cb?x=1", "http://127.0.0.1:4000/cb?x=2"},
 		"loopback com fragmento":        {"http://127.0.0.1/cb", "http://127.0.0.1:4000/cb#x"},
 		"loopback ipv4 para ipv6":       {"http://127.0.0.1/cb", "http://[::1]:4000/cb"},
 		"loopback para localhost":       {"http://127.0.0.1/cb", "http://localhost:4000/cb"},
+		"localhost para loopback":       {"http://localhost/cb", "http://127.0.0.1:4000/cb"},
+		"localhost em caixa alta":       {"http://localhost/cb", "http://LOCALHOST:4000/cb"},
 		"loopback com https":            {"https://127.0.0.1/cb", "https://127.0.0.1:4000/cb"},
 		"loopback de http para https":   {"http://127.0.0.1/cb", "https://127.0.0.1:4000/cb"},
 		"loopback com esquema em caixa": {"http://127.0.0.1/cb", "HTTP://127.0.0.1:4000/cb"},
