@@ -55,6 +55,15 @@ module ShortcutsHelper
       Shortcut.of(:tenant_general, run: { href: :settings_general_path, when: "button[popovertarget=tenant_switcher]" }),
       # Só na Danger zone da General do tenant, para o owner: abre a mesma confirmação com o nome do tenant.
       Shortcut.of(:delete_tenant, run: { click: "#delete_tenant" }),
+      # g e depois v abre o seletor de cofres da trilha (tenants_shortcut_controller.js), com o foco no primeiro.
+      Shortcut.of(:switch_vault, "g v", run: { click: "button[popovertarget=vault_switcher]" }),
+      # O diálogo do layout, pelo New vault do seletor; só para quem escreve, que é quem tem o botão.
+      Shortcut.of(:new_vault, run: { click: "button[commandfor=new_vault]" }),
+      # As seções do cofre ativo; só com cofre, que é quando o nome dele está na trilha.
+      Shortcut.of(:vault_settings, run: { href: :settings_vault_path, when: "[data-current-vault]" }),
+      Shortcut.of(:vault_members, run: { href: :settings_vault_members_path, when: "[data-current-vault]" }),
+      # Só na Danger zone da General do cofre, para quem escreve: abre a mesma confirmação com o nome do cofre.
+      Shortcut.of(:delete_vault, run: { click: "#delete_vault" }),
       Shortcut.of(:log_out, run: { form: { url: :session_path, method: :delete } })
     ],
     note: [

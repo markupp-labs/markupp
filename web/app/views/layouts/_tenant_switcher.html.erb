@@ -14,7 +14,7 @@
               class="tree-row min-w-8 shrink-[999] truncate px-1 text-xs text-ink-muted"><%= current_tenant.name %></button>
       <span aria-hidden="true" class="shrink-0 text-ink-muted">/</span>
       <% vault_name = current_vault&.name %>
-      <button type="button" popovertarget="vault_switcher" title="<%= vault_name %>"
+      <button type="button" popovertarget="vault_switcher" title="<%= vault_name %>" <%= "data-current-vault" if vault_name %>
               aria-label="<%= vault_name ? t(".switch_vault", name: vault_name) : t(".no_vault") %>"
               class="tree-row min-w-0 truncate px-1 <%= vault_name ? "font-semibold text-ink" : "text-ink-muted" %>"><%= vault_name || t(".no_vault") %></button>
     </p>

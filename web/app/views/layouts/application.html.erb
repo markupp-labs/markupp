@@ -7,7 +7,7 @@
   <%# Sem tenant ativo (onboarding) não há notas para buscar: sem busca, sem seletor. %>
   <%# Ctrl+B/Cmd+B recolhe a barra lateral como no VS Code; o grid e o fechado vêm do CSS (.app-shell). %>
   <%# Ctrl+, e Cmd+, abrem as configurações; o Stimulus não tem filtro para a vírgula, o controller confere a tecla. %>
-  <%# Ctrl+Shift+E, L e G (Cmd no Mac) mostram a visão da barra lateral e levam o foco a ela (sidebar_controller.js); g e depois t abre a lista de tenants. %>
+  <%# Ctrl+Shift+E, L e G (Cmd no Mac) mostram a visão da barra lateral e levam o foco a ela (sidebar_controller.js); g e depois t abre a lista de tenants, e g e depois v o seletor de cofres. %>
   <%# Alt+h/j/k/l levam o foco à região vizinha pela geometria (region_nav_controller.js); na captura, antes do editor e do Vim. %>
   <%# Alt+G abre o grafo do cofre em tela cheia (full_graph_shortcut_controller.js), a partir da nota aberta. %>
   <% shortcuts = "keydown.ctrl+b@window->sidebar#toggleFromShortcut keydown.meta+b@window->sidebar#toggleFromShortcut keydown@window->settings-shortcut#open keydown@window->sidebar#focusView explorer-mode:reveal->sidebar#reveal keydown@window->tenants-shortcut#open keydown@window->region-nav#navigate:capture turbo:before-render@document->area-transition#mark" %>
