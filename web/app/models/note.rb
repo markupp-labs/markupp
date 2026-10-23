@@ -25,6 +25,16 @@ class Note
   # Notas do cofre sem o conteúdo, com a organização derivada; a query filtra (orphan, community) e ordena (sort, direction).
   def self.in_vault(api, vault_id, **query) = list_from(api, "vaults", vault_id, "notes", **query)
 
+  # O máximo que a API devolve numa página.
+  PAGE_LIMIT = 100
+
+  # Todas as notas do cofre, página a página, com a mesma query do in_vault.
+  # ponytail: uma chamada por página de 100, sem teto; cofre de milhares de notas pede paginar a própria lista.
+  def self.every_in_vault(api, vault_id, page_limit: PAGE_LIMIT, **query)
+    pages = (0..).lazy.map { in_vault(api, vault_id, **query, offset: it * page_limit, limit: page_limit) }
+    pages.slice_after { it.size < page_limit }.first.flatten
+  end
+
   # Também monta a nota resumida (id, título e caminho) que vem dentro de ligação, menção, comunidade e busca.
   def self.from_api(attributes) = new(attributes.slice(*attribute_names))
 
