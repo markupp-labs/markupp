@@ -14,9 +14,9 @@ class FakeMarkuppApi
 
   # email_enabled: false é o servidor sem SMTP, que devolve o token do convite emitido e recusa os fluxos de email da conta.
   # graph é o cenário das ligações, comunidades e grafos sob /v1 (ver FakeMarkuppGraph); oauth_requests, o dos pedidos
-  # de autorização OAuth (ver FakeMarkuppOAuthRequests).
+  # de autorização OAuth (ver FakeMarkuppOAuthRequests); vaults, o dos cofres de cada tenant (ver FakeMarkuppVaults).
   def initialize(notes: [], unreachable: false, conflict: false, accounts: FakeMarkuppAccounts::DEFAULT_ACCOUNTS,
-                 tenants: FakeMarkuppTenants::DEFAULT_TENANTS, invites: [], email_enabled: true, graph: {}, oauth_requests: [])
+                 tenants: FakeMarkuppTenants::DEFAULT_TENANTS, invites: [], email_enabled: true, graph: {}, oauth_requests: [], vaults: nil)
     @accounts = FakeMarkuppAccounts.new(accounts)
     @tenants = FakeMarkuppTenants.new(tenants, invites)
     @auth = FakeMarkuppAuth.new(@accounts, @tenants)
@@ -27,6 +27,7 @@ class FakeMarkuppApi
     @note_index = FakeMarkuppNoteIndex.new(@notes)
     @graph = FakeMarkuppGraph.new(graph)
     @oauth_requests = FakeMarkuppOAuthRequests.new(oauth_requests)
+    @vaults = FakeMarkuppVaults.new(vaults, @tenants, @accounts)
     @unreachable = unreachable
     @slow_calls = FakeSlowCalls.new(timeout: 10)
     @received_credentials = []
@@ -95,7 +96,8 @@ class FakeMarkuppApi
     end
 
     def fake_for(call, path)
-      return @notes if path.start_with?("/notes")
+      return @notes if path.start_with?("/notes") || (call.start_with?("POST ") && FakeMarkuppNoteIndex::VAULT_NOTES.match?(path))
+      return @vaults if FakeMarkuppVaults::ROUTE.match?(path)
       return @oauth_requests if path.start_with?(OAUTH_REQUESTS)
       return @note_index if path.start_with?("/v1/search/") || FakeMarkuppNoteIndex::VAULT_NOTES.match?(path)
       return @graph if path.start_with?("/v1/")
