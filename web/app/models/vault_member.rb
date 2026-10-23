@@ -2,6 +2,7 @@
 # sair do cofre, a única escrita que o viewer faz.
 VaultMember = Data.define(:id, :email, :role, :joined_at) do
   extend V1Listing
+  extend TimestampedFromApi
 
   # Colega do tenant que ainda pode entrar no cofre, como GET /v1/users devolve.
   self::Candidate = Data.define(:id, :email)
@@ -18,8 +19,5 @@ VaultMember = Data.define(:id, :email, :role, :joined_at) do
     api.get(MarkuppApi.path("v1", "users")).filter_map { self::Candidate.new(**it.symbolize_keys.slice(:id, :email)) unless ids.include?(it["id"]) }
   end
 
-  def self.from_api(attributes)
-    fields = attributes.symbolize_keys.slice(*members)
-    new(**fields, joined_at: Time.zone.parse(fields.fetch(:joined_at)))
-  end
+  def self.from_api(attributes) = timestamped_from(attributes, :joined_at)
 end

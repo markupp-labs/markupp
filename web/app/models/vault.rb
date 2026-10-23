@@ -2,6 +2,7 @@
 # decide é a API (viewer não escreve); o painel só espelha.
 Vault = Data.define(:id, :name, :created_at) do
   extend V1Listing
+  extend TimestampedFromApi
 
   def self.mine(api) = list_from(api, "vaults")
 
@@ -15,11 +16,11 @@ Vault = Data.define(:id, :name, :created_at) do
 
   def self.vault_path(id) = MarkuppApi.path("v1", "vaults", id)
 
-  def self.from_api(attributes)
-    fields = attributes.symbolize_keys.slice(*members)
-    new(**fields, created_at: Time.zone.parse(fields.fetch(:created_at)))
-  end
+  def self.from_api(attributes) = timestamped_from(attributes, :created_at)
 
   # Cofre ativo: o da sessão enquanto estiver na lista; sem ele, o primeiro que houver.
-  def self.pick(vaults, id) = vaults.find { it.id == id } || vaults.first
+  def self.pick(vaults, id) = listed(vaults, id) || vaults.first
+
+  # O cofre da lista com esse id, ou nil: só vale cofre que a API listou para a conta.
+  def self.listed(vaults, id) = vaults.find { it.id == id }
 end

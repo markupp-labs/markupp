@@ -4,7 +4,7 @@ class CurrentVaultsController < ApplicationController
 
   # Só grava cofre que a API lista para a conta no tenant ativo.
   def update
-    vault = current_vaults.find { it.id == params[:vault_id] }
+    vault = Vault.listed(current_vaults, params[:vault_id])
     return redirect_to(root_path, alert: t("markupp_api.errors.vault_unavailable")) unless vault
 
     credential.vault_id = vault.id
