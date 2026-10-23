@@ -1,11 +1,13 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
-import type { FastMCP } from "fastmcp";
 import { createServer } from "node:net";
 import { afterEach, describe, expect, it } from "vitest";
 import type { HttpConfig } from "./config.js";
-import { createHttpServer, startHttpServer } from "./http-server.js";
-import type { MarkuppSession } from "./session.js";
+import {
+  createHttpServer,
+  startHttpServer,
+  type HttpServerStop,
+} from "./http-server.js";
 import { FakeClock } from "./testing/fake-clock.js";
 import { FakeFetch } from "./testing/fake-fetch.js";
 import { RecordingAuthLog } from "./testing/recording-auth-log.js";
@@ -29,7 +31,7 @@ function freePort(): Promise<number> {
 class RunningHttpServer {
   readonly upstream = new FakeFetch();
   readonly log = new RecordingAuthLog();
-  private server: FastMCP<MarkuppSession> | undefined;
+  private stopServer: HttpServerStop | undefined;
   config!: HttpConfig;
 
   async start(): Promise<this> {
@@ -47,8 +49,10 @@ class RunningHttpServer {
       clock: new FakeClock().now,
       log: this.log.write,
     };
-    this.server = createHttpServer(this.config, deps);
-    await startHttpServer(this.server, this.config);
+    this.stopServer = await startHttpServer(
+      createHttpServer(this.config, deps),
+      this.config,
+    );
     return this;
   }
 
@@ -57,7 +61,7 @@ class RunningHttpServer {
   }
 
   async stop(): Promise<void> {
-    await this.server?.stop();
+    await this.stopServer?.();
   }
 }
 
@@ -78,6 +82,14 @@ describe("servidor HTTP", () => {
       resource: running.config.resourceUrl,
       authorization_servers: ["https://markupp.exemplo"],
     });
+  });
+
+  it("atende por IPv6, como nos pods de um cluster de pilha dupla", async () => {
+    running = await new RunningHttpServer().start();
+    const response = await fetch(
+      `http://[::1]:${running.config.port}/.well-known/oauth-protected-resource/mcp`,
+    );
+    expect(response.status).toBe(200);
   });
 
   it("responde 401 com o desafio Bearer quando falta o token", async () => {

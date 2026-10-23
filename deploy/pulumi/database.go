@@ -147,7 +147,7 @@ func postgresStatefulSetArgs(names resourceNames, args MarkuppArgs, labels pulum
 			Selector:    metav1.LabelSelectorArgs{MatchLabels: labels},
 			Template: corev1.PodTemplateSpecArgs{
 				Metadata: metav1.ObjectMetaArgs{Labels: labels},
-				Spec:     corev1.PodSpecArgs{Containers: corev1.ContainerArray{postgresContainer(names)}},
+				Spec:     corev1.PodSpecArgs{EnableServiceLinks: noServiceLinks(), Containers: corev1.ContainerArray{postgresContainer(names)}},
 			},
 			VolumeClaimTemplates: corev1.PersistentVolumeClaimTypeArray{postgresVolumeClaim(args)},
 		},

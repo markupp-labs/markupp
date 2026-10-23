@@ -28,15 +28,16 @@ process.exitCode = await runCli(process.argv.slice(2), process.env, {
     // O prazo do login não segura o processo depois que o callback chega.
     timeout: (ms) => sleep(ms, undefined, { ref: false }),
   },
-  serveHttp: (config) =>
-    startHttpServer(
+  serveHttp: async (config) => {
+    await startHttpServer(
       createHttpServer(config, {
         fetch,
         clock: Date.now,
         log: (entry) => console.error(JSON.stringify(entry)),
       }),
       config,
-    ),
+    );
+  },
   serveStdio: (config) =>
     startStdioServer(
       createStdioServer(config, {

@@ -5,15 +5,15 @@
 # houver SMTP.
 config:
   markupp:host: api.markupp.k8s.sj.ifsc.edu.br
-  markupp:image: ghcr.io/markupp-labs/markupp:1.0.0-rc.3
+  markupp:image: ghcr.io/markupp-labs/markupp:1.0.0-rc.4
   markupp:storageClass: longhorn-fast
   markupp:existingGateway:
     name: gateway-feira-de-jogos
     namespace: feira-de-jogos
     sectionName: https-markupp-api
   markupp:panel:
-    image: ghcr.io/markupp-labs/markupp-web:1.0.0-rc.3
+    image: ghcr.io/markupp-labs/markupp-web:1.0.0-rc.4
     host: markupp.k8s.sj.ifsc.edu.br
     sectionName: https-markupp
   markupp:mcp:
-    image: ghcr.io/markupp-labs/markupp-mcp:1.0.0-rc.3
+    image: ghcr.io/markupp-labs/markupp-mcp:1.0.0-rc.4
