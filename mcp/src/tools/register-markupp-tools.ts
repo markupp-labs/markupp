@@ -1,5 +1,6 @@
 import type { FastMCP } from "fastmcp";
 import type { MarkuppSession } from "../session.js";
+import { addAccountTools } from "./account-tools.js";
 import { addInviteTools } from "./invite-tools.js";
 import { addMemberTools } from "./member-tools.js";
 import { addMyInviteTools } from "./my-invite-tools.js";
@@ -13,13 +14,14 @@ import { addVaultTools } from "./vault-tools.js";
 
 export type { MarkuppApiFactory } from "./tool-support.js";
 
-// registerMarkuppTools registra as ferramentas de tenants, cofres, notas, membros e
+// registerMarkuppTools registra as ferramentas da conta, de tenants, cofres, notas, membros e
 // convites e o template de resource das notas. factory monta o cliente da API a cada
 // chamada, com o JWT da sessão MCP que chamou.
 export function registerMarkuppTools(
   server: FastMCP<MarkuppSession>,
   factory: MarkuppApiFactory,
 ): void {
+  addAccountTools(server, factory);
   addTenantTools(server, factory);
   addVaultTools(server, factory);
   addVaultMemberTools(server, factory);

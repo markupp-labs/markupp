@@ -19,6 +19,9 @@ export type FoundNote = Omit<NoteSummary, "updated_at"> & {
   updated_at?: string;
 };
 
+// Account é a conta do token, como GET /v1/auth/me devolve, sem os campos de login.
+export type Account = { id: string; email: string };
+
 // Vault é um cofre de que a conta é membro, como GET /v1/vaults devolve.
 export type Vault = { id: string; name: string; created_at: string };
 
@@ -73,6 +76,7 @@ export type PendingInvite = {
 // MarkuppApi é a fatia da API REST do markupp que as ferramentas MCP usam. tenant é o
 // id do tenant em que a chamada age; vault, quando vem, restringe a nota a esse cofre.
 export interface MarkuppApi {
+  getAccount(): Promise<Account>;
   listTenants(): Promise<TenantMembership[]>;
   listNotes(tenant: string, vault?: string): Promise<NoteSummary[]>;
   searchNotes(
@@ -163,6 +167,15 @@ export class HttpMarkuppApi implements MarkuppApi {
 
   constructor(private readonly options: HttpMarkuppApiOptions) {
     this.baseUrl = options.baseUrl.replace(/\/+$/, "");
+  }
+
+  // getAccount lê a conta em /v1/auth/me, que aceita token OAuth de qualquer escopo.
+  async getAccount(): Promise<Account> {
+    const { id, email } = await this.json<Account>({
+      method: "GET",
+      path: "/v1/auth/me",
+    });
+    return { id, email };
   }
 
   listTenants(): Promise<TenantMembership[]> {

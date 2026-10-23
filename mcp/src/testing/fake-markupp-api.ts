@@ -1,6 +1,7 @@
 import type { ApiTokenSource } from "../session.js";
 import {
   MarkuppApiError,
+  type Account,
   noteSummary,
   type FoundNote,
   type IssuedInvite,
@@ -16,7 +17,7 @@ import {
   type TenantMembership,
   type Vault,
 } from "../markupp-api.js";
-import { FakeAccountId, FakeVaults } from "./fake-vaults.js";
+import { FakeAccountEmail, FakeAccountId, FakeVaults } from "./fake-vaults.js";
 
 // FakeApiTokens entrega os JWTs na ordem dada e repete o último quando acabam.
 export class FakeApiTokens {
@@ -132,6 +133,10 @@ export class FakeMarkuppApi implements MarkuppApi {
 
   stored(tenant: string, id: string): Note {
     return this.find(tenant, id);
+  }
+
+  async getAccount(): Promise<Account> {
+    return { id: FakeAccountId, email: FakeAccountEmail };
   }
 
   async listTenants(): Promise<TenantMembership[]> {

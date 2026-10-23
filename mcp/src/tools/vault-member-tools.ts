@@ -74,7 +74,7 @@ function addRemoveVaultMember(
   server.addTool({
     name: "remove_vault_member",
     description:
-      "Removes an account from a vault, after list_vault_members, when the user asked for it. Your own user id leaves the vault, which even the viewer role may do. The vault and its notes stay for the other members.",
+      "Removes an account from a vault, after list_vault_members, when the user asked for it. Your own user id, from whoami, leaves the vault, which even the viewer role may do. The vault and its notes stay for the other members.",
     parameters: vaultMemberLocator,
     annotations: {
       ...writeAnnotations,
