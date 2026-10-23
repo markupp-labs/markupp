@@ -15,19 +15,20 @@ import (
 )
 
 // oauthRoutePolicy é o que a rota aceita: public não passa pelo RequireAuth, anyScope
-// aceita token OAuth com qualquer escopo e scope exige aquele escopo. Rota fora de
+// aceita token OAuth com qualquer escopo e scopes exige um daqueles escopos. Rota fora de
 // declaredOAuthPolicies tem de recusar todo token OAuth com first_party_only.
 type oauthRoutePolicy struct {
 	public, anyScope bool
-	scope            string
+	scopes           []string
 }
 
 var (
 	publicRoute   = oauthRoutePolicy{public: true}
 	anyScopeRoute = oauthRoutePolicy{anyScope: true}
-	notesRead     = oauthRoutePolicy{scope: "notas:leitura"}
-	notesWrite    = oauthRoutePolicy{scope: "notas:escrita"}
-	adminScope    = oauthRoutePolicy{scope: "administracao"}
+	notesRead     = oauthRoutePolicy{scopes: []string{"notas:leitura"}}
+	notesWrite    = oauthRoutePolicy{scopes: []string{"notas:escrita"}}
+	adminScope    = oauthRoutePolicy{scopes: []string{"administracao"}}
+	readOrAdmin   = oauthRoutePolicy{scopes: []string{"notas:leitura", "administracao"}}
 )
 
 // declaredOAuthPolicies lista, por método e padrão do chi, as rotas que não são só de
@@ -51,7 +52,7 @@ var declaredOAuthPolicies = map[string]oauthRoutePolicy{
 	"GET /v1/vaults":           notesRead, "POST /v1/vaults": notesWrite, "PATCH /v1/vaults/{id}": notesWrite,
 	"DELETE /v1/vaults/{id}": notesWrite, "GET /v1/vaults/{id}/members": notesRead,
 	"POST /v1/vaults/{id}/members": notesWrite, "DELETE /v1/vaults/{id}/members/{user_id}": notesWrite,
-	"GET /v1/users": adminScope, "GET /v1/users/invites": adminScope, "POST /v1/users/invites": adminScope,
+	"GET /v1/users": readOrAdmin, "GET /v1/users/invites": adminScope, "POST /v1/users/invites": adminScope,
 	"PATCH /v1/users/{id}": adminScope, "DELETE /v1/users/{id}": adminScope, "DELETE /v1/users/invites/{id}": adminScope,
 	"POST /v1/tenants": adminScope, "GET /v1/me/invites": adminScope,
 	"POST /v1/me/invites/{id}/accept": adminScope, "POST /v1/me/invites/{id}/decline": adminScope,
@@ -118,8 +119,8 @@ func assertOAuthRoutePolicy(t *testing.T, route scopedRoute, policy oauthRoutePo
 		assertPublicRoute(t, route)
 	case policy.anyScope:
 		assertAcceptsEachScope(t, route)
-	case policy.scope != "":
-		assertNeedsScope(t, route, policy.scope)
+	case len(policy.scopes) > 0:
+		assertNeedsScope(t, route, policy.scopes)
 	default:
 		assertFirstPartyOnly(t, []scopedRoute{route}, allOAuthScopes)
 	}
@@ -145,11 +146,16 @@ func assertAcceptsEachScope(t *testing.T, route scopedRoute) {
 	}
 }
 
-// assertNeedsScope prova que a rota passa com o escopo exigido e recusa os outros.
-func assertNeedsScope(t *testing.T, route scopedRoute, required string) {
+// assertNeedsScope prova que a rota passa com cada escopo aceito e recusa os outros,
+// quando sobra algum.
+func assertNeedsScope(t *testing.T, route scopedRoute, accepted []string) {
 	t.Helper()
-	assertNotRefused(t, route, required)
-	assertRoutesNeedScope(t, []scopedRoute{route}, otherScopes(required), required)
+	for _, scope := range accepted {
+		assertNotRefused(t, route, scope)
+	}
+	if others := otherScopes(accepted); others != "" {
+		assertRoutesNeedScope(t, []scopedRoute{route}, others, strings.Join(accepted, " "))
+	}
 }
 
 func assertNotRefused(t *testing.T, route scopedRoute, scope string) {
@@ -159,10 +165,11 @@ func assertNotRefused(t *testing.T, route scopedRoute, scope string) {
 	assert.NotContains(t, []int{http.StatusUnauthorized, http.StatusForbidden}, rec.Code, "%s %s com scope %q", route.method, route.path, scope)
 }
 
-// otherScopes são os escopos que não satisfazem required; notas:escrita satisfaz notas:leitura.
-func otherScopes(required string) string {
+// otherScopes são os escopos que não satisfazem nenhum aceito; notas:escrita satisfaz
+// notas:leitura.
+func otherScopes(accepted []string) string {
 	others := slices.DeleteFunc(strings.Fields(allOAuthScopes), func(s string) bool {
-		return s == required || (required == "notas:leitura" && s == "notas:escrita")
+		return slices.Contains(accepted, s) || (slices.Contains(accepted, "notas:leitura") && s == "notas:escrita")
 	})
 	return strings.Join(others, " ")
 }

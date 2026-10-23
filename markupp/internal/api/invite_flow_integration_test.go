@@ -62,8 +62,9 @@ func TestIntegration_ConviteAteNotaIsolada(t *testing.T) {
 	assert.Equal(t, 1, countNotes(t, url, tokenMembro))
 	assert.Equal(t, 0, countNotes(t, url, tokenAdmin), "admin nao e membro do cofre do convidado")
 
-	status, _ = sendJSON(t, http.MethodGet, url+"/users", tokenMembro, "")
-	assert.Equal(t, http.StatusForbidden, status)
+	status, _ = sendJSON(t, http.MethodGet, url+"/users/invites", tokenMembro, "")
+	assert.Equal(t, http.StatusForbidden, status, "convites seguem so para admin")
+	assert.NotEmpty(t, idDaConta(t, url, tokenMembro, "admin@markupp.dev"), "member lista os colegas")
 	status, _ = sendJSON(t, http.MethodPost, url+"/auth/login", "", `{"email":"membro@markupp.dev","password":"senhaMembro"}`)
 	assert.Equal(t, http.StatusOK, status, "convidado entra depois com a senha escolhida")
 }
@@ -156,8 +157,10 @@ func TestIntegration_ContaGlobalEmDoisTenantsComPapeis(t *testing.T) {
 	status, _ = sendAs(t, http.MethodPost, url+"/notes", tokenA, tenantB["id"].(string), `{"path":"da-ana.md","content":"x"}`)
 	assert.Equal(t, http.StatusForbidden, status, "viewer nao escreve")
 
-	status, _ = sendAs(t, http.MethodGet, url+"/users", tokenA, tenantB["id"].(string), "")
+	status, _ = sendAs(t, http.MethodGet, url+"/users/invites", tokenA, tenantB["id"].(string), "")
 	assert.Equal(t, http.StatusForbidden, status, "viewer nao administra")
+	status, _ = sendAs(t, http.MethodGet, url+"/users", tokenA, tenantB["id"].(string), "")
+	assert.Equal(t, http.StatusOK, status, "viewer lista os colegas")
 	status, _ = sendAs(t, http.MethodDelete, url+"/users/"+sessaoUserID(t, url, tokenB), tokenB, tenantB["id"].(string), "")
 	assert.Equal(t, http.StatusConflict, status, "o ultimo owner nao sai")
 }
