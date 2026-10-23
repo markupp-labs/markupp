@@ -207,8 +207,8 @@ export class FakeMarkuppApi implements MarkuppApi {
     list.splice(list.indexOf(this.find(tenant, id)), 1);
   }
 
+  // listMembers serve a qualquer membro do tenant, que escolhe ali quem pôr no cofre.
   async listMembers(tenant: string): Promise<Member[]> {
-    this.requireAdmin(tenant);
     return this.membersIn(tenant);
   }
 
