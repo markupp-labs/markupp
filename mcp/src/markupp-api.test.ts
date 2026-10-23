@@ -41,6 +41,25 @@ describe("HttpMarkuppApi", () => {
     expect(request.headers.has("x-markupp-tenant")).toBe(false);
   });
 
+  it("lê a conta do token em /v1/auth/me e devolve só id e email", async () => {
+    const me = {
+      id: "u1",
+      email: "ana@x.dev",
+      email_verified: true,
+      password_login: false,
+    };
+    const fake = new FakeFetch().respondWith(200, me);
+    expect(await apiWith(fake).getAccount()).toEqual({
+      id: "u1",
+      email: "ana@x.dev",
+    });
+    const request = onlyRequest(fake);
+    expect(`${request.method} ${request.url}`).toBe(
+      "GET http://api.test/v1/auth/me",
+    );
+    expect(request.headers.has("x-markupp-tenant")).toBe(false);
+  });
+
   it("busca notas com query, limit e offset na query string e o tenant no cabeçalho", async () => {
     const fake = new FakeFetch().respondWith(200, []);
     await apiWith(fake).searchNotes("t1", "a b&c", { limit: 5, offset: 10 });

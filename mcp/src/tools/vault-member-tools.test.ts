@@ -131,4 +131,10 @@ describe("remove_vault_member", () => {
       (await client.tool("remove_vault_member")).annotations,
     ).toMatchObject({ destructiveHint: true, idempotentHint: true });
   });
+
+  it("aponta whoami para achar o próprio id antes de sair do cofre", async () => {
+    client = await MarkuppToolClient.connect(new FakeMarkuppApi());
+    const tool = await client.tool("remove_vault_member");
+    expect(tool.description).toMatch(/whoami/);
+  });
 });
