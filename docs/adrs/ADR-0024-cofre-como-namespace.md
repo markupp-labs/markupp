@@ -14,11 +14,13 @@ administrar e fácil de errar
 
 O cofre é a unidade de namespace e de acesso. A nota pertence a exatamente um cofre, e o acesso
 à nota é consequência de ser membro do cofre. Membro é binário: quem é membro lê e escreve,
-salvo o viewer do tenant, que pode ser membro e só lê. Quem não é viewer cria, renomeia e apaga
-cofre, e adiciona e remove membro. O membro adicionado é uma conta que já tem vínculo com o
-tenant; quem é de fora entra antes pelo convite do tenant. Qualquer membro, viewer inclusive,
-sai do cofre. Todo usuário recebe um cofre na criação, que é um cofre comum. O nome do cofre
-não é único. O `path` é único por cofre, e ligação não atravessa cofre
+salvo o viewer do tenant, que pode ser membro e só lê. Quem não é viewer cria cofre, e o membro
+do cofre que não é viewer renomeia e apaga o cofre e adiciona e remove membro, porque pertencer
+ao cofre é requisito. O membro adicionado é uma conta que já tem vínculo com o tenant; quem é de
+fora entra antes pelo convite do tenant. Para escolher quem adicionar, qualquer membro do tenant
+vê a lista de colegas. Qualquer membro, viewer inclusive, sai do cofre. Todo usuário recebe um
+cofre ao entrar num tenant, que é um cofre comum. O nome do cofre não é único. O `path` é único
+por cofre, e ligação não atravessa cofre
 
 ## Alternativas consideradas
 
@@ -41,10 +43,10 @@ não é único. O `path` é único por cofre, e ligação não atravessa cofre
   por tenant do ADR-0016
 - Mover nota entre cofres é apagar na origem e criar no destino, então a nota recebe id novo e
   não leva histórico junto
-- Qualquer membro remove qualquer membro, inclusive quem criou o cofre, e um cofre pode acabar
-  sem nenhum membro
-- O cofre criado junto com o usuário é comum, então "pessoal" é convenção de uso e não garantia
-  do sistema
+- Qualquer membro que não é viewer remove qualquer membro, inclusive quem criou o cofre, e um
+  cofre pode acabar sem nenhum membro
+- O cofre criado quando o usuário entra no tenant é comum, então "pessoal" é convenção de uso e
+  não garantia do sistema
 - Nome repetido não revela que existe cofre de que a conta não é membro, ao custo de dois
   cofres poderem aparecer com o mesmo nome
 - Apagar o cofre apaga as notas dele e o dado derivado delas, e o último cofre da conta também
