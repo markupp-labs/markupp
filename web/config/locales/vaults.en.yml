@@ -1,5 +1,7 @@
 en:
   layouts:
+    tenant_switcher:
+      vaults_unreachable: "Vaults unavailable"
     vault_switcher:
       label: "Vaults"
       new_vault: "New vault"

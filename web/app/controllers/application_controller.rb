@@ -84,25 +84,44 @@ class ApplicationController < ActionController::Base
 
     def current_tenants = @current_tenants ||= Tenant.mine(credential.api)
 
-    def current_vaults = @current_vaults ||= Vault.mine(credential.api)
+    # Cofres do tenant ativo, pedidos uma vez por página. nil quando a listagem cai (API fora): a falha fica guardada,
+    # o layout mostra um aviso curto na trilha e não pede de novo (dentro do render_unreachable, viraria um 500).
+    def current_vaults
+      return @current_vaults if defined?(@current_vaults)
+
+      @current_vaults = Vault.mine(credential.api)
+    rescue MarkuppApi::Error => error
+      raise unless error.instance_of?(MarkuppApi::Error)
+
+      log_api_event("markupp_vaults_unreachable", error, level: :error)
+      @vaults_failure = error
+      @current_vaults = nil
+    end
+
+    # Para quem não segue sem a lista: a falha guardada sobe para o render_unreachable da página.
+    def reachable_vaults = current_vaults || raise(@vaults_failure)
 
     # Cofre ativo do tenant ativo, a cada página como o tenant: o da sessão enquanto a conta for membro dele, senão o
-    # primeiro, que fica gravado; nil quando a conta não tem cofre no tenant.
+    # primeiro, que fica gravado; nil quando a conta não tem cofre no tenant ou a lista não veio (a sessão o mantém).
     def current_vault
       return @current_vault if defined?(@current_vault)
+      return unless current_vaults
 
       @current_vault = Vault.pick(current_vaults, credential.vault_id)
       credential.vault_id = @current_vault&.id
       @current_vault
     end
 
+    # O cofre ativo para quem age nele: com a lista fora, a falha sobe em vez de parecer que a conta não tem cofre.
+    def reachable_vault = reachable_vaults && current_vault
+
     # Nas páginas que agem no cofre ativo: sem ele, a tela padrão mostra o estado vazio com New vault.
     def require_vault
-      redirect_to root_path, alert: t("markupp_api.errors.no_vault") unless current_vault
+      redirect_to root_path, alert: t("markupp_api.errors.no_vault") unless reachable_vault
     end
 
     # Árvore da barra lateral, das notas do cofre ativo: as páginas de notas e as configurações desenham a mesma.
-    def load_note_tree = Note::Tree.build(current_vault ? Note.every_in_vault(credential.api, current_vault.id) : [])
+    def load_note_tree = Note::Tree.build(reachable_vault ? Note.every_in_vault(credential.api, current_vault.id) : [])
 
     # Notas de uma visão plana do Explorer, no cofre ativo. nil quando a API não responde ou recusa o cofre: a barra
     # mostra a falha no lugar da lista e a página segue.

@@ -22,7 +22,7 @@ class VaultsController < ApplicationController
   # Só com o nome do cofre digitado exato, que o painel confere antes de chamar a API, como o apagar do tenant. Apagado,
   # a sessão esquece o cofre e a próxima página ativa o primeiro que sobrar.
   def destroy
-    vault = Vault.listed(current_vaults, params[:id]) or raise MarkuppApi::VaultUnavailable, "vault #{params[:id].inspect} is not in /v1/vaults"
+    vault = Vault.listed(reachable_vaults, params[:id]) or raise MarkuppApi::VaultUnavailable, "vault #{params[:id].inspect} is not in /v1/vaults"
     return redirect_to(settings_vault_path, alert: t(".name_mismatch")) unless params[:confirm_name] == vault.name
 
     Vault.delete(credential.api, vault.id)

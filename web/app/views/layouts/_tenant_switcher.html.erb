@@ -13,10 +13,15 @@
               aria-label="<%= t(".switch", name: current_tenant.name) %>"
               class="tree-row min-w-8 shrink-[999] truncate px-1 text-xs text-ink-muted"><%= current_tenant.name %></button>
       <span aria-hidden="true" class="shrink-0 text-ink-muted">/</span>
-      <% vault_name = current_vault&.name %>
-      <button type="button" popovertarget="vault_switcher" title="<%= vault_name %>" <%= "data-current-vault" if vault_name %>
-              aria-label="<%= vault_name ? t(".switch_vault", name: vault_name) : t(".no_vault") %>"
-              class="tree-row min-w-0 truncate px-1 <%= vault_name ? "font-semibold text-ink" : "text-ink-muted" %>"><%= vault_name || t(".no_vault") %></button>
+      <%# Sem a lista de cofres (API fora) não há o que escolher: só o aviso curto, e a página ao lado diz o resto. %>
+      <% if current_vaults.nil? %>
+        <span class="truncate px-1 text-danger"><%= t(".vaults_unreachable") %></span>
+      <% else %>
+        <% vault_name = current_vault&.name %>
+        <button type="button" popovertarget="vault_switcher" title="<%= vault_name %>" <%= "data-current-vault" if vault_name %>
+                aria-label="<%= vault_name ? t(".switch_vault", name: vault_name) : t(".no_vault") %>"
+                class="tree-row min-w-0 truncate px-1 <%= vault_name ? "font-semibold text-ink" : "text-ink-muted" %>"><%= vault_name || t(".no_vault") %></button>
+      <% end %>
     </p>
     <span class="block px-1 text-xs text-ink-muted"><%= t("tenants.roles.#{current_tenant.role}") %></span>
   </div>
@@ -43,4 +48,4 @@
   </div>
 </div>
 
-<%= render "layouts/vault_switcher" %>
+<%= render "layouts/vault_switcher" if current_vaults %>

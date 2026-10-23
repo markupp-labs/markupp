@@ -6,7 +6,7 @@ class SearchesController < ApplicationController
 
   # Busca ranqueada no cofre ativo, do mais relevante ao menos, com o trecho de cada nota; sem cofre, nada.
   def show
-    vault = current_vault if params[:q].present?
+    vault = reachable_vault if params[:q].present?
     @hits = vault ? SearchHit.search(credential.api, params[:q], vault: vault.id, limit: RESULT_LIMIT) : []
   end
 end
