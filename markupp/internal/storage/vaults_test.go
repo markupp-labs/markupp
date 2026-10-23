@@ -55,7 +55,7 @@ func emUTC(m vaults.Member) vaults.Member {
 	return m
 }
 
-func idsDosCofres(t *testing.T, repo *storage.PostgresVaultsRepository, ctx context.Context) []string {
+func idsDosCofres(ctx context.Context, t *testing.T, repo *storage.PostgresVaultsRepository) []string {
 	t.Helper()
 	lista, err := repo.List(ctx)
 	require.NoError(t, err)
@@ -74,7 +74,7 @@ func TestVaultsRepo_CreateTx_QuemCriaViraMembroEAuditoriaFica(t *testing.T) {
 	novo := vaults.Vault{ID: "vn", Name: "Pesquisa", CreatedAt: instanteDoCofre}
 	require.NoError(t, repo.CreateTx(ctx, novo, eventoDeCofre(donaDoCofre, "vaults.create", "vn")))
 
-	assert.ElementsMatch(t, []string{"va", "vn"}, idsDosCofres(t, repo, ctx))
+	assert.ElementsMatch(t, []string{"va", "vn"}, idsDosCofres(ctx, t, repo))
 	assert.Equal(t, 1, contarAuditoria(t, db, "vaults.create"))
 }
 
@@ -82,7 +82,7 @@ func TestVaultsRepo_List_SoCofresDaContaNoTenantDaSessao(t *testing.T) {
 	db := setupTestDB(t)
 	ctx := semearTenantDeCofres(t, db)
 
-	assert.Equal(t, []string{"va"}, idsDosCofres(t, storage.NewPostgresVaultsRepository(db), ctx))
+	assert.Equal(t, []string{"va"}, idsDosCofres(ctx, t, storage.NewPostgresVaultsRepository(db)))
 }
 
 func TestVaultsRepo_RenameTx_TrocaONome(t *testing.T) {
@@ -137,7 +137,7 @@ func TestVaultsRepo_AddMemberTx_ColegaPassaAVerOCofre(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Equal(t, vaults.Member{UserID: "colega", Email: "colega@markupp.dev", Role: "member", JoinedAt: instanteDoCofre}, emUTC(m))
-	assert.ElementsMatch(t, []string{"va", "vb"}, idsDosCofres(t, repo, identity.WithActor(context.Background(), colega)))
+	assert.ElementsMatch(t, []string{"va", "vb"}, idsDosCofres(identity.WithActor(context.Background(), colega), t, repo))
 	assert.Equal(t, 1, contarAuditoria(t, db, "vaults.members.add"))
 }
 
@@ -196,7 +196,7 @@ func TestVaultsRepo_RemoveMemberTx_TiraAColega(t *testing.T) {
 
 	require.NoError(t, repo.RemoveMemberTx(ctx, "va", "colega", eventoDeCofre(donaDoCofre, "vaults.members.remove", "colega")))
 
-	assert.Equal(t, []string{"vb"}, idsDosCofres(t, repo, identity.WithActor(context.Background(), colega)))
+	assert.Equal(t, []string{"vb"}, idsDosCofres(identity.WithActor(context.Background(), colega), t, repo))
 	assert.Equal(t, 1, contarAuditoria(t, db, "vaults.members.remove"))
 }
 
@@ -210,7 +210,7 @@ func TestVaultsRepo_RemoveMemberTx_LeitoraSaiSozinha(t *testing.T) {
 
 	require.NoError(t, repo.RemoveMemberTx(ctxLeitora, "va", "leitora", eventoDeCofre(leitora, "vaults.members.remove", "leitora")))
 
-	assert.Equal(t, []string{"vl"}, idsDosCofres(t, repo, ctxLeitora))
+	assert.Equal(t, []string{"vl"}, idsDosCofres(ctxLeitora, t, repo))
 }
 
 func TestVaultsRepo_RemoveMemberTx_QuemNaoEMembro_NaoEncontra(t *testing.T) {
