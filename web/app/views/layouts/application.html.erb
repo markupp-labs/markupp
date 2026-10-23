@@ -92,6 +92,7 @@
     <%= render "layouts/command_palette" %>
     <%= render "layouts/shortcut_help" %>
     <%= render "layouts/confirm_dialog" %>
+    <%= render "vaults/new_dialog" if current_tenant&.writer? %>
 
     <%# @container: o lado a lado escolhe colunas ou pilha pela largura do main (application.css). md:pl-10 deixa a lombada (21px) fora do conteúdo.
         Com a nota, o main vira coluna e o form fica com o que sobra depois do aviso, sem rolar a página por ele. %>

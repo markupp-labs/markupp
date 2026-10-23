@@ -1,0 +1,24 @@
+<%# Seletor de cofres, aberto pelo nome do cofre na trilha (layouts/_tenant_switcher) ou pelo g v: anda pelo teclado como
+    os menus da árvore e da conta (context_menu_controller.js), setas ou j/k, Home e End, Esc e Tab fecham. O ativo leva o
+    mesmo realce da nota atual. New vault fica no fim, só para quem escreve, e abre o diálogo do layout. %>
+<div id="vault_switcher" popover data-controller="context-menu"
+     data-action="keydown->context-menu#navigate toggle->context-menu#returnFocus toggle->context-menu#focusFirst click@document->context-menu#rememberInvokerClick"
+     class="layer m-0 w-64 origin-top layer-panel p-1 [inset:auto] [position-anchor:--tenant-switcher] [position-area:bottom_span-right]">
+  <% if current_vaults.empty? && !current_tenant.writer? %>
+    <p class="px-2 py-1 text-ink-muted"><%= t("vaults.empty.title") %></p>
+  <% end %>
+  <div role="menu" tabindex="-1" aria-label="<%= t(".label") %>" class="space-y-px">
+    <% current_vaults.each do |vault| %>
+      <%= button_to vault.name, current_vault_path, method: :patch, params: { vault_id: vault.id }, role: "menuitem", tabindex: -1,
+                    title: vault.name, aria: { current: (true if vault == current_vault) },
+                    class: "tree-row context-menu-item block w-full truncate text-left aria-[current=true]:bg-accent-soft aria-[current=true]:text-ink" %>
+    <% end %>
+    <% if current_tenant.writer? %>
+      <% if current_vaults.any? %><div role="separator" class="my-1 border-t border-line"></div><% end %>
+      <button type="button" role="menuitem" tabindex="-1" commandfor="new_vault" command="show-modal"
+              class="tree-row context-menu-item flex w-full items-center gap-2">
+        <%= icon("plus") %><%= t(".new_vault") %>
+      </button>
+    <% end %>
+  </div>
+</div>

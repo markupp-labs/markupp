@@ -1,5 +1,17 @@
 en:
+  layouts:
+    vault_switcher:
+      label: "Vaults"
+      new_vault: "New vault"
   vaults:
+    invalid_name: "Use 1 to 100 characters."
+    new_dialog:
+      title: "New vault"
+      name: "Name"
+      create: "Create"
+      cancel: "Cancel"
+    create:
+      created: "Created %{name}."
     empty:
       title: "No vault yet"
       hint: "A vault holds notes you share with people of this tenant. Create one to start writing."

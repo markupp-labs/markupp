@@ -77,7 +77,7 @@ class BusySpinnerTest < ApplicationSystemTestCase
     visit tenants_path
     @api.hold_calls!("GET /v1/vaults/vault-1/notes")
 
-    assert_spinner_after_threshold(".tenant-card-open[aria-busy=true]") { click_on "Acme research" }
+    assert_spinner_after_threshold(".tenant-card-open[aria-busy=true]") { within("main") { click_on "Acme research" } }
     assert_selector ".tenant-card-open[aria-busy=true]", text: "Acme research"
 
     @api.release_calls!

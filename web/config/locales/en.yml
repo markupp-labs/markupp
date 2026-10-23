@@ -66,7 +66,10 @@ en:
       settings: "Settings"
       settings_shortcut: "Settings (%{keys})"
     tenant_switcher:
-      switch: "Switch tenant"
+      home: "Home"
+      switch: "Switch tenant: %{name}"
+      switch_vault: "Switch vault: %{name}"
+      no_vault: "No vault"
       new_tenant: "New tenant"
       all_tenants: "All tenants"
       all_tenants_title: "All tenants (g t)"

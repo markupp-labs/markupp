@@ -1,16 +1,25 @@
-<%# Marca: o mascote ao lado do nome do tenant, e os dois levam para a tela padrão; o seletor abre num popover nativo ancorado no cabeçalho (sem suporte a âncora, fica no canto). %>
-<%# Folgas apertadas (px-1 no link e no botão, gap-1.5 e gap-0.5) para um nome de uns 20 caracteres caber inteiro a 288px. %>
+<%# Marca e trilha: o mascote leva à tela padrão; ao lado, "tenant / cofre", o tenant menor e apagado (e o primeiro a
+    encolher quando falta largura), o cofre em destaque,
+    e o papel no tenant embaixo. Cada nome abre o seu seletor num popover nativo ancorado no cabeçalho (sem suporte a
+    âncora, fica no canto): o de tenants aqui, o de cofres em layouts/_vault_switcher. O title mostra o nome inteiro
+    quando a largura corta. %>
 <div id="current_tenant" class="mb-2 flex items-start gap-0.5 [anchor-name:--tenant-switcher]">
-  <%= link_to root_path, class: "tree-row flex min-w-0 flex-1 items-center gap-1.5 px-1" do %>
+  <%= link_to root_path, class: "tree-row shrink-0 px-1", aria: { label: t(".home") }, title: t(".home") do %>
     <%= mascot(:small) %>
-    <span class="min-w-0">
-      <span class="block truncate" title="<%= current_tenant.name %>"><%= current_tenant.name %></span>
-      <span class="block text-xs text-ink-muted"><%= t("tenants.roles.#{current_tenant.role}") %></span>
-    </span>
   <% end %>
-  <button type="button" popovertarget="tenant_switcher" aria-label="<%= t(".switch") %>" title="<%= t(".switch") %>" class="btn-icon mt-0.5 px-1">
-    <%= icon("caret-up-down") %>
-  </button>
+  <div class="min-w-0 flex-1">
+    <p class="flex min-w-0 items-baseline">
+      <button type="button" popovertarget="tenant_switcher" title="<%= current_tenant.name %>"
+              aria-label="<%= t(".switch", name: current_tenant.name) %>"
+              class="tree-row min-w-8 shrink-[999] truncate px-1 text-xs text-ink-muted"><%= current_tenant.name %></button>
+      <span aria-hidden="true" class="shrink-0 text-ink-muted">/</span>
+      <% vault_name = current_vault&.name %>
+      <button type="button" popovertarget="vault_switcher" title="<%= vault_name %>"
+              aria-label="<%= vault_name ? t(".switch_vault", name: vault_name) : t(".no_vault") %>"
+              class="tree-row min-w-0 truncate px-1 <%= vault_name ? "font-semibold text-ink" : "text-ink-muted" %>"><%= vault_name || t(".no_vault") %></button>
+    </p>
+    <span class="block px-1 text-xs text-ink-muted"><%= t("tenants.roles.#{current_tenant.role}") %></span>
+  </div>
 </div>
 
 <div id="tenant_switcher" popover
@@ -33,3 +42,5 @@
     <% end %>
   </div>
 </div>
+
+<%= render "layouts/vault_switcher" %>

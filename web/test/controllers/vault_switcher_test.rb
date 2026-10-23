@@ -14,7 +14,7 @@ class VaultSwitcherTest < ActionDispatch::IntegrationTest
     get root_path
 
     assert_select "nav #current_tenant" do
-      assert_select "a[href=?] svg", root_path
+      assert_select "a[href=?][aria-label=Home] [data-mascot=small]", root_path
       assert_select "button[popovertarget=tenant_switcher][title=?][aria-label=?].text-xs", "Acme research", "Switch tenant: Acme research", text: "Acme research"
       assert_select "[aria-hidden=true]", text: "/"
       assert_select "button[popovertarget=vault_switcher][title=?][aria-label=?].font-semibold", "Research", "Switch vault: Research", text: "Research"
