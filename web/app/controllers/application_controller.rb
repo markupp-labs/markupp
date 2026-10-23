@@ -115,9 +115,12 @@ class ApplicationController < ActionController::Base
     # O cofre ativo para quem age nele: com a lista fora, a falha sobe em vez de parecer que a conta não tem cofre.
     def reachable_vault = reachable_vaults && current_vault
 
-    # Nas páginas que agem no cofre ativo: sem ele, a tela padrão mostra o estado vazio com New vault.
+    # Nas páginas que agem no cofre ativo: sem ele, a tela padrão mostra o estado vazio, e o aviso segue o papel como
+    # ele (vaults/_empty): quem escreve cria um cofre, o viewer pede a um membro.
     def require_vault
-      redirect_to root_path, alert: t("markupp_api.errors.no_vault") unless reachable_vault
+      return if reachable_vault
+
+      redirect_to root_path, alert: t(current_tenant.writer? ? "markupp_api.errors.no_vault" : "vaults.empty.viewer_hint")
     end
 
     # Árvore da barra lateral, das notas do cofre ativo: as páginas de notas e as configurações desenham a mesma.
