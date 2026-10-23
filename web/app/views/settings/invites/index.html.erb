@@ -2,7 +2,7 @@
 <% field_class = "w-full rounded-md border border-line bg-surface px-2 py-1 aria-invalid:border-danger" %>
 
 <div class="max-w-4xl">
-  <%= render "settings/tenant_heading", title: t("settings.nav.invites") %>
+  <%= render "settings/section_heading", title: t("settings.nav.invites") %>
 
   <% if @token %>
     <%# Sem snapshot do Turbo: Voltar depois de sair da página não traz o token de volta. %>
