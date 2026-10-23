@@ -107,6 +107,15 @@ func TestCreate_NomeCom100Caracteres_Aceita(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestCreate_NomeAcentuado_ContaCaracteresNaoBytes(t *testing.T) {
+	_, err := novoServico(&fakeVaultsRepository{}).Create(context.Background(), membroAtor, strings.Repeat("é", 100))
+	require.NoError(t, err, "100 letras acentuadas cabem no limite")
+
+	_, err = novoServico(&fakeVaultsRepository{}).Create(context.Background(), membroAtor, strings.Repeat("é", 101))
+	require.ErrorIs(t, err, vaults.ErrInvalidName)
+	assert.Contains(t, err.Error(), "de 1 a 100 caracteres")
+}
+
 func TestRename_GravaONomeAparadoEAudita(t *testing.T) {
 	repo := &fakeVaultsRepository{}
 
