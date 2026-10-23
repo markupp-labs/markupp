@@ -1,0 +1,7 @@
+en:
+  vaults:
+    empty:
+      title: "No vault yet"
+      hint: "A vault holds notes you share with people of this tenant. Create one to start writing."
+      viewer_hint: "Ask a member of a vault to add you."
+      new_vault: "New vault"

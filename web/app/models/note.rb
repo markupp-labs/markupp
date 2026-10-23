@@ -15,11 +15,6 @@ class Note
   attribute :pagerank, :float
   attribute :community, :integer
 
-  # ponytail: GET /notes traz o conteúdo de todas as notas, paginar quando a API paginar
-  def self.all(api)
-    api.get("/notes").map { from_api(it) }
-  end
-
   def self.find(api, id) = from_api(api.get(api_path(id)))
 
   # Notas do cofre sem o conteúdo, com a organização derivada; a query filtra (orphan, community) e ordena (sort, direction).
@@ -113,7 +108,8 @@ class Note
     # A barra no fim fica como nome vazio ("work/" é título em branco na pasta work).
     def path_segments = Note.vim_normalized(path.to_s).split("/", -1)
 
-    def post(api) = api.post("/notes", path:, content:)
+    # A nota nova cai no cofre dela (vault_id), o ativo de quem cria.
+    def post(api) = api.post(MarkuppApi.path("v1", "vaults", vault_id, "notes"), path:, content:)
 
     def refusing_blank_title = title.empty? && errors.add(:title, :blank)
 

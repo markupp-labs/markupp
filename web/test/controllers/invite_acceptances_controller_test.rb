@@ -53,7 +53,7 @@ class InviteAcceptancesControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select "#account_menu", text: /#{NEW_EMAIL}/
     assert_select "nav #current_tenant", text: /Acme research.*member/m
-    assert_equal "tenant-1", api.received_credentials.reverse.find { it[:call] == "GET /notes" }[:tenant_id]
+    assert_equal "tenant-1", api.received_credentials.reverse.find { it[:call].start_with?("GET /v1/vaults/") }[:tenant_id]
   end
 
   test "create with a token the API refuses says so under the field and keeps the token" do

@@ -26,6 +26,7 @@ Rails.application.routes.draw do
   resource :email_confirmation, only: [ :new, :create ]
   resources :tenants, only: [ :index, :new, :create, :destroy ]
   resource :current_tenant, only: :update
+  resource :current_vault, only: :update
   resources :my_invites, only: [ :index, :update, :destroy ]
 
   # Consentimento OAuth: o servidor manda o navegador para cá com o id do pedido.

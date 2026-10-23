@@ -1,15 +1,6 @@
 require "test_helper"
 
 class NoteTest < ActiveSupport::TestCase
-  test "all builds notes from the API listing" do
-    api = FakeMarkuppApi.new(notes: [ { id: "1", path: "work/plan.md", content: "# Plan", updated_at: "2026-09-30T12:00:00Z" } ])
-
-    note = Note.all(api).sole
-    assert_equal "1", note.id
-    assert_equal "work/plan.md", note.path
-    assert_equal Time.utc(2026, 9, 30, 12), note.updated_at
-  end
-
   test "find builds the note with the given id" do
     api = FakeMarkuppApi.new(notes: [ { id: "1", path: "a.md", content: "x" }, { id: "2", path: "b.md", content: "# B\n" } ])
 

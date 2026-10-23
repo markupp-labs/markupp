@@ -258,5 +258,5 @@ class TenantSelectionTest < ActionDispatch::IntegrationTest
   end
 
   private
-    def notes_tenant_sent(api) = api.received_credentials.reverse.find { it[:call] == "GET /notes" }[:tenant_id]
+    def notes_tenant_sent(api) = api.received_credentials.reverse.find { it[:call].start_with?("GET /v1/vaults/") }[:tenant_id]
 end

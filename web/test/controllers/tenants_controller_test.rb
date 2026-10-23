@@ -64,7 +64,7 @@ class TenantsControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select "[role=status]", "Created Acme research."
     assert_select "nav #current_tenant", text: /Acme research.*owner/m
-    assert_equal "tenant-1", api.received_credentials.reverse.find { it[:call] == "GET /notes" }[:tenant_id]
+    assert_equal "tenant-1", api.received_credentials.reverse.find { it[:call].start_with?("GET /v1/vaults/") }[:tenant_id]
   end
 
   test "create with a blank name keeps the form and says the rule under the field" do

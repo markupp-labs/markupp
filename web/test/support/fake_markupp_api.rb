@@ -73,13 +73,15 @@ class FakeMarkuppApi
       call = "#{verb} #{path}"
       @slow_calls.pass(call)
       raise "fake API bug on #{call}" if @bug
-      raise MarkuppApi::Error, "fake API unreachable on #{call}" if @unreachable || (@notes_unreachable && path.start_with?("/notes"))
+      raise MarkuppApi::Error, "fake API unreachable on #{call}" if @unreachable || (@notes_unreachable && notes_path?(path))
 
       @received_credentials << @credentials.merge(call:) if @credentials
       account = authenticate(call)
       membership = tenant_membership(path, account, call) || {}
       fake_for(call, path).public_send(method, path, *body, account:, role: membership["role"], tenant_id: membership["id"], **options)
     end
+
+    def notes_path?(path) = path.start_with?("/notes") || FakeMarkuppNoteIndex::VAULT_NOTES.match?(path)
 
     # Só notas, grafo e administração agem num tenant; chamada de confiança, sem conta, não tem papel. Os pedidos OAuth
     # são da conta, sem tenant.

@@ -75,7 +75,7 @@ class BusySpinnerTest < ApplicationSystemTestCase
 
   test "a slow tenant card spins inside the card that was chosen" do
     visit tenants_path
-    @api.hold_calls!("GET /notes")
+    @api.hold_calls!("GET /v1/vaults/vault-1/notes")
 
     assert_spinner_after_threshold(".tenant-card-open[aria-busy=true]") { click_on "Acme research" }
     assert_selector ".tenant-card-open[aria-busy=true]", text: "Acme research"
@@ -103,7 +103,7 @@ class BusySpinnerTest < ApplicationSystemTestCase
   # O menu fecha ao escolher; a espera vai para a linha sobre a qual ele agiu.
   test "a slow action from the tree menu spins on the row it acts on" do
     visit note_path("1")
-    @api.hold_calls!("GET /notes")
+    @api.hold_calls!("GET /v1/vaults/vault-1/notes")
     find("nav [role=treeitem]", text: "ideas").right_click
 
     assert_spinner_after_threshold(busy_row("ideas")) { click_on "New note here" }
@@ -202,7 +202,7 @@ class BusySpinnerTest < ApplicationSystemTestCase
     visit note_path("1")
     gear = find(".activity-bar-side a[aria-label=Settings]")
     icon_box = gear.evaluate_script("JSON.stringify(this.querySelector('svg').getBoundingClientRect())")
-    @api.hold_calls!("GET /notes")
+    @api.hold_calls!("GET /v1/vaults/vault-1/notes")
 
     assert_spinner_after_threshold(".activity-bar-side a[aria-label=Settings][aria-busy=true]") { gear.click }
     busy = find(".activity-bar-side a[aria-label=Settings][aria-busy=true]")

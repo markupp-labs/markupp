@@ -3,14 +3,16 @@ class NotesController < ApplicationController
 
   before_action :require_tenant
   before_action :require_writer, only: :new
+  before_action :require_vault, only: %i[new create]
   before_action :set_tree, except: :destroy, unless: -> { request.format.json? }
   before_action :set_typed_path, only: %i[create update]
 
-  # A tela padrão é uma nota nova em branco; viewer não cria, então só escolhe na árvore. Com path, o :e do modo Vim.
+  # A tela padrão é uma nota nova em branco; viewer não cria, e sem cofre não há onde criar, então só escolhe na árvore.
+  # Com path, o :e do modo Vim.
   def index
     return open_typed_path if params.key?(:path)
 
-    @note = Note.blank(nil) if current_tenant.writer?
+    @note = Note.blank(nil) if creating?
   end
 
   # Em json só caminho e conteúdo: o ![[nota]] da leitura busca daqui a nota embutida (editor/note_embeds.js),
@@ -28,7 +30,7 @@ class NotesController < ApplicationController
   end
 
   def create
-    @note = Note.new(path: resolved_path, content: note_content_param)
+    @note = Note.new(path: resolved_path, content: note_content_param, vault_id: current_vault.id)
     if @note.save(credential.api)
       redirect_to saved_note_destination, notice: t(".created")
     else
@@ -73,7 +75,7 @@ class NotesController < ApplicationController
       existing = @tree.notes_within.find { it.path == path }
       return redirect_to(note_path(existing)) if existing
 
-      @note = Note.new(path:).tap { it.content = "# #{it.title}\n\n" } if current_tenant.writer?
+      @note = Note.new(path:).tap { it.content = "# #{it.title}\n\n" } if creating?
     end
 
     # O :wq do modo Vim salva e sai para a nota padrão.
@@ -84,6 +86,13 @@ class NotesController < ApplicationController
     # A API recusaria o POST; o formulário vazio nem abre.
     def require_writer
       redirect_to root_path, alert: t("markupp_api.errors.read_only") unless current_tenant.writer?
+    end
+
+    def creating? = current_tenant.writer? && current_vault.present?
+
+    # Sem cofre a nota nova não tem onde cair: a página padrão mostra o estado vazio com New vault.
+    def require_vault
+      redirect_to root_path, alert: t("markupp_api.errors.no_vault") unless current_vault
     end
 
     def set_tree

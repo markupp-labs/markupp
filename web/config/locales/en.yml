@@ -179,6 +179,8 @@ en:
       forbidden: "Your role in this tenant can't do that."
       read_only: "Your role in this tenant is viewer, it can only read notes."
       tenant_unavailable: "You no longer have access to that tenant."
+      vault_unavailable: "You no longer have access to that vault."
+      no_vault: "Create a vault first, then add notes to it."
   sessions:
     back_to_login:
       label: "Back to log in"

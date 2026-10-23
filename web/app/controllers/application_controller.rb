@@ -9,7 +9,7 @@ class ApplicationController < ActionController::Base
   class_attribute :markupp_api_factory
 
   before_action :require_login
-  helper_method :credential, :current_tenant, :current_tenants, :explorer_groups
+  helper_method :credential, :current_tenant, :current_tenants, :current_vault, :current_vaults, :explorer_groups
 
   # O Rails procura do último para o primeiro: os específicos vêm depois do genérico.
   rescue_from MarkuppApi::Error, with: :render_unreachable
@@ -84,15 +84,25 @@ class ApplicationController < ActionController::Base
 
     def current_tenants = @current_tenants ||= Tenant.mine(credential.api)
 
-    # Árvore da barra lateral, das notas do tenant ativo: as páginas de notas e as configurações desenham a mesma.
-    def load_note_tree = Note::Tree.build(Note.all(credential.api))
+    def current_vaults = @current_vaults ||= Vault.mine(credential.api)
 
-    # Notas de uma visão plana do Explorer, no cofre da nota aberta ou, sem ela, no da primeira nota da árvore. nil quando
-    # a API não responde ou recusa o cofre: a barra mostra a falha no lugar da lista e a página segue.
-    # ponytail: o cofre ativo é o da nota; seletor de cofre quando um tenant tiver mais de um.
-    def explorer_groups(tree, current, mode)
-      vault_id = (current || tree.notes_within.first)&.vault_id
-      vault_id ? ExplorerListing.load(credential.api, vault_id, mode) : []
+    # Cofre ativo do tenant ativo, a cada página como o tenant: o da sessão enquanto a conta for membro dele, senão o
+    # primeiro, que fica gravado; nil quando a conta não tem cofre no tenant.
+    def current_vault
+      return @current_vault if defined?(@current_vault)
+
+      @current_vault = Vault.pick(current_vaults, credential.vault_id)
+      credential.vault_id = @current_vault&.id
+      @current_vault
+    end
+
+    # Árvore da barra lateral, das notas do cofre ativo: as páginas de notas e as configurações desenham a mesma.
+    def load_note_tree = Note::Tree.build(current_vault ? Note.every_in_vault(credential.api, current_vault.id) : [])
+
+    # Notas de uma visão plana do Explorer, no cofre ativo. nil quando a API não responde ou recusa o cofre: a barra
+    # mostra a falha no lugar da lista e a página segue.
+    def explorer_groups(mode)
+      current_vault ? ExplorerListing.load(credential.api, current_vault.id, mode) : []
     rescue MarkuppApi::Error => error
       raise unless error.instance_of?(MarkuppApi::Error) || error.is_a?(MarkuppApi::VaultUnavailable)
 

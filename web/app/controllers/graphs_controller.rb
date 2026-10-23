@@ -1,6 +1,5 @@
 # Grafo do cofre inteiro em tela cheia, como o graph view do Obsidian: a página desenha o canvas, que pede os nós e as
-# ligações em json. O cofre é o da nota de onde a tela foi aberta (note) ou, sem ela, o da primeira nota da árvore; o
-# Esc volta a essa nota, ou ao começo. Os filtros vêm na query da página e do json, com os nomes da API: orphans,
+# ligações em json. O cofre é o ativo; o Esc volta à nota de onde a tela foi aberta (note), ou ao começo. Os filtros vêm na query da página e do json, com os nomes da API: orphans,
 # unresolved e inferred false escondem, community recorta; valor que a API não aceita fica de fora.
 class GraphsController < ApplicationController
   include GraphDrawing
@@ -23,7 +22,8 @@ class GraphsController < ApplicationController
     def load_page
       @tree = load_note_tree
       @origin = @tree.notes_within.find { it.id == params[:note] }
-      @vault_id = (@origin || @tree.notes_within.first)&.vault_id
+      # Cofre sem notas não tem o que desenhar: a página mostra o vazio no lugar do canvas.
+      @vault_id = current_vault&.id if @tree.notes_within.any?
       @filters = graph_filters
       @communities = vault_communities
     end
