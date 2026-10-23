@@ -8,17 +8,21 @@ import { addNoteResource } from "./note-resource.js";
 import { addNoteWriteTools } from "./note-write-tools.js";
 import { addTenantTools } from "./tenant-tools.js";
 import type { MarkuppApiFactory } from "./tool-support.js";
+import { addVaultMemberTools } from "./vault-member-tools.js";
+import { addVaultTools } from "./vault-tools.js";
 
 export type { MarkuppApiFactory } from "./tool-support.js";
 
-// registerMarkuppTools registra as ferramentas de tenants, notas, membros e convites e o
-// template de resource das notas. factory monta o cliente da API a cada chamada, com o
-// JWT da sessão MCP que chamou.
+// registerMarkuppTools registra as ferramentas de tenants, cofres, notas, membros e
+// convites e o template de resource das notas. factory monta o cliente da API a cada
+// chamada, com o JWT da sessão MCP que chamou.
 export function registerMarkuppTools(
   server: FastMCP<MarkuppSession>,
   factory: MarkuppApiFactory,
 ): void {
   addTenantTools(server, factory);
+  addVaultTools(server, factory);
+  addVaultMemberTools(server, factory);
   addNoteReadTools(server, factory);
   addNoteWriteTools(server, factory);
   addNoteResource(server, factory);
