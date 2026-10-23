@@ -35,6 +35,13 @@ class VaultTest < ActiveSupport::TestCase
     assert_nil Vault.pick([], "vault-1")
   end
 
+  test "listed answers the vault of the list with that id, and nil for one outside it" do
+    vaults = Vault.mine(api_as(ANA))
+
+    assert_equal "vault-2", Vault.listed(vaults, "vault-2").id
+    assert_nil Vault.listed(vaults, "vault-9")
+  end
+
   test "create answers the new vault, which the account is a member of" do
     api = api_as(ANA)
     vault = Vault.create(api, "Field notes")
