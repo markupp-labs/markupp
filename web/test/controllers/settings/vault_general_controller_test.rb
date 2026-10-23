@@ -41,6 +41,17 @@ module Settings
       end
     end
 
+    # Pelo v r de qualquer página: a General abre com o foco no nome.
+    test "with focus rename the name field takes the focus" do
+      sign_in_with
+
+      get settings_vault_path(focus: "rename")
+      assert_select "form#vault_rename input[name='vault[name]'][autofocus][data-vault-action=r]"
+
+      get settings_vault_path
+      assert_select "form#vault_rename input[autofocus]", count: 0
+    end
+
     test "a writer gets the danger zone that deletes the vault once its name is typed" do
       sign_in_with(role: "member")
 

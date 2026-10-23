@@ -36,6 +36,43 @@ class VaultSwitcherTest < ActionDispatch::IntegrationTest
     end
   end
 
+  test "the vault switcher has Vault settings right before New vault" do
+    use_fake_api(vaults: VAULTS)
+    sign_in_as
+
+    get root_path
+
+    items = css_select("#vault_switcher [role=menuitem]").map { it.text.strip }
+    assert_equal [ "Research", "Drafts", "Vault settings", "New vault" ], items
+    assert_select "#vault_switcher a[role=menuitem][href=?]", settings_vault_path, text: /Vault settings/
+  end
+
+  test "a viewer still gets Vault settings, and without a vault there is none" do
+    use_fake_api(vaults: VAULTS, tenants: VIEWER)
+    sign_in_as
+    get root_path
+    assert_select "#vault_switcher a[role=menuitem][href=?]", settings_vault_path
+
+    use_fake_api(vaults: [])
+    sign_in_as
+    get root_path
+    assert_select "#vault_switcher a[href=?]", settings_vault_path, count: 0
+  end
+
+  # v r, v a e v q abrem a página da ação com o foco nela; renomear e adicionar só para quem escreve.
+  test "the vault shortcuts get the pages of their actions, rename and add only for a writer" do
+    use_fake_api(vaults: VAULTS)
+    sign_in_as
+    get root_path
+    assert_equal({ "q" => settings_vault_members_path(focus: "leave"), "r" => settings_vault_path(focus: "rename"),
+                   "a" => settings_vault_members_path(focus: "add") }, vault_actions)
+
+    use_fake_api(vaults: VAULTS, tenants: VIEWER)
+    sign_in_as
+    get root_path
+    assert_equal({ "q" => settings_vault_members_path(focus: "leave") }, vault_actions)
+  end
+
   test "the new vault dialog posts a name of up to 100 characters" do
     use_fake_api(vaults: VAULTS)
     sign_in_as
@@ -166,4 +203,7 @@ class VaultSwitcherTest < ActionDispatch::IntegrationTest
     assert_redirected_to root_path
     assert_equal "Your role in this tenant is viewer, it can only read notes.", flash[:alert]
   end
+
+  private
+    def vault_actions = JSON.parse(css_select("body").first["data-tenants-shortcut-vault-actions-value"])
 end

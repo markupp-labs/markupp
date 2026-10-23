@@ -40,6 +40,31 @@ class VaultSwitcherTest < ApplicationSystemTestCase
     assert_selector "#current_tenant button[popovertarget=vault_switcher]:focus"
   end
 
+  test "v then r from a note opens the vault settings with the focus on the name" do
+    send_keys "v", "r"
+
+    assert_selector "main h1", text: "General"
+    assert_selector "input[name='vault[name]']:focus"
+  end
+
+  test "v then q on the vault members asks to leave the vault" do
+    visit settings_vault_members_path
+    assert_selector "main h1", text: "Members"
+
+    accept_panel_confirm("Leave Research?", button: "Leave vault") { send_keys "v", "q" }
+
+    assert_selector "[role=status]", text: "You left Research."
+  end
+
+  test "Vault settings in the vault switcher opens the vault general" do
+    send_keys "g", "v"
+    assert_selector "#vault_switcher:popover-open"
+
+    send_keys :end, "k", :enter
+
+    assert_selector "main h1", text: "General"
+  end
+
   test "the palette opens New vault, and the new vault becomes the active one" do
     send_keys [ :control, :shift, "p" ]
     send_keys "new vault", :enter

@@ -54,6 +54,19 @@ module Settings
       assert_select "form#vault_member_add select option", text: CAIO
     end
 
+    # Pelo v a e pelo v q de qualquer página: Members abre com o foco na escolha do colega ou no Leave vault.
+    test "with focus add or leave the colleague select or Leave vault takes the focus" do
+      sign_in_with
+
+      get settings_vault_members_path(focus: "add")
+      assert_select "form#vault_member_add select[autofocus][data-vault-action=a]"
+      assert_select "button[autofocus]", count: 0
+
+      get settings_vault_members_path(focus: "leave")
+      assert_select "button[autofocus][data-vault-action=q]", text: "Leave vault"
+      assert_select "select[autofocus]", count: 0
+    end
+
     test "with every colleague already in the vault the form gives way to a hint" do
       sign_in_with(vaults: [ VAULTS.first.merge(members: [ ANA, BIA, CAIO ]) ])
 
