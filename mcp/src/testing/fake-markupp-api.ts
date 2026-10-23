@@ -150,7 +150,7 @@ export class FakeMarkuppApi implements MarkuppApi {
       .filter((note) => note.content.toLowerCase().includes(needle))
       .sort((a, b) => b.updated_at.localeCompare(a.updated_at))
       .slice(offset, offset + (page.limit ?? 10))
-      .map(noteSummary);
+      .map((note) => (vault === undefined ? noteSummary(note) : found(note)));
   }
 
   async listNotes(tenant: string, vault?: string): Promise<NoteSummary[]> {
@@ -450,6 +450,12 @@ export class FakeMarkuppApi implements MarkuppApi {
     this.clockTick += 1;
     return new Date(Date.UTC(2026, 0, 1, 0, 0, this.clockTick)).toISOString();
   }
+}
+
+// found é a nota como a busca num cofre devolve, sem updated_at.
+function found(note: Note): FoundNote {
+  const { id, vault_id, path } = note;
+  return { id, vault_id, path };
 }
 
 function inviteNotFound(): MarkuppApiError {
