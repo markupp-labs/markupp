@@ -13,10 +13,12 @@ administrar e fácil de errar
 ## Decisão
 
 O cofre é a unidade de namespace e de acesso. A nota pertence a exatamente um cofre, e o acesso
-à nota é consequência de ser membro do cofre. Membro é binário: quem é membro lê e escreve.
-Qualquer usuário cria cofre, e qualquer membro adiciona e remove membro. Todo usuário recebe um
-cofre na criação, que é um cofre comum. O `path` é único por cofre, e ligação não atravessa
-cofre
+à nota é consequência de ser membro do cofre. Membro é binário: quem é membro lê e escreve,
+salvo o viewer do tenant, que pode ser membro e só lê. Quem não é viewer cria, renomeia e apaga
+cofre, e adiciona e remove membro. O membro adicionado é uma conta que já tem vínculo com o
+tenant; quem é de fora entra antes pelo convite do tenant. Qualquer membro, viewer inclusive,
+sai do cofre. Todo usuário recebe um cofre na criação, que é um cofre comum. O nome do cofre
+não é único. O `path` é único por cofre, e ligação não atravessa cofre
 
 ## Alternativas consideradas
 
@@ -43,3 +45,7 @@ cofre
   sem nenhum membro
 - O cofre criado junto com o usuário é comum, então "pessoal" é convenção de uso e não garantia
   do sistema
+- Nome repetido não revela que existe cofre de que a conta não é membro, ao custo de dois
+  cofres poderem aparecer com o mesmo nome
+- Apagar o cofre apaga as notas dele e o dado derivado delas, e o último cofre da conta também
+  pode ser apagado ou abandonado
