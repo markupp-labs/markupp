@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/auth"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/identity"
@@ -102,13 +103,14 @@ func (s *Service) event(actor identity.Actor, action, target string) auth.AuditE
 	}
 }
 
-// checkWrite barra o viewer e devolve o nome aparado, de 1 a maxNameLength caracteres.
+// checkWrite barra o viewer e devolve o nome aparado, de 1 a maxNameLength caracteres
+// contados como runas, não bytes.
 func checkWrite(actor identity.Actor, name string) (string, error) {
 	if err := checkWriter(actor); err != nil {
 		return "", err
 	}
 	trimmed := strings.TrimSpace(name)
-	if trimmed == "" || len(trimmed) > maxNameLength {
+	if trimmed == "" || utf8.RuneCountInString(trimmed) > maxNameLength {
 		return "", fmt.Errorf("%w: %q, esperado de 1 a %d caracteres", ErrInvalidName, name, maxNameLength)
 	}
 	return trimmed, nil
