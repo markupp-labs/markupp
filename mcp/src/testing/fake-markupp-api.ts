@@ -138,6 +138,8 @@ export class FakeMarkuppApi implements MarkuppApi {
     return [...this.tenants];
   }
 
+  // ponytail: casa substring e ordena por data, um substituto da busca de texto
+  // completo por relevância da API; os testes não dependem do ranking dela.
   async searchNotes(
     tenant: string,
     query: string,
@@ -146,7 +148,7 @@ export class FakeMarkuppApi implements MarkuppApi {
   ): Promise<FoundNote[]> {
     const offset = page.offset ?? 0;
     const needle = query.toLowerCase();
-    return this.notesOf(tenant, vault)
+    return this.searchable(tenant, vault)
       .filter((note) => note.content.toLowerCase().includes(needle))
       .sort((a, b) => b.updated_at.localeCompare(a.updated_at))
       .slice(offset, offset + (page.limit ?? 10))
@@ -412,6 +414,18 @@ export class FakeMarkuppApi implements MarkuppApi {
     if (vault === undefined) return all;
     if (vault !== DefaultVaultId) this.vaults.find(tenant, vault);
     return all.filter((note) => note.vault_id === vault);
+  }
+
+  // searchable são as notas em que a busca procura: cofre fora do alcance não casa nada,
+  // como o RLS da busca da API, em vez de responder vault_forbidden.
+  private searchable(tenant: string, vault?: string): Note[] {
+    try {
+      return this.notesOf(tenant, vault);
+    } catch (error) {
+      if (error instanceof MarkuppApiError && error.code === "vault_forbidden")
+        return [];
+      throw error;
+    }
   }
 
   private notesIn(tenant: string): Note[] {
