@@ -3,12 +3,14 @@ package oauth
 import (
 	"net/url"
 	"strings"
+
+	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/oauth/cimd"
 )
 
 // MatchRedirectURI diz se a redirect_uri pedida bate com alguma das registradas pelo
-// cliente. A comparação é de string exata; a única exceção é o loopback por IP da
-// RFC 8252 (http em 127.0.0.1 ou [::1]), em que a porta é ignorada. localhost por nome
-// nunca ganha a exceção, e fragmento na pedida sempre recusa.
+// cliente. A comparação é de string exata; a única exceção é o loopback da RFC 8252
+// (http em 127.0.0.1, [::1] ou localhost), em que a porta é ignorada. O host continua
+// igual ao registrado, e fragmento na pedida sempre recusa.
 func MatchRedirectURI(registered []string, requested string) bool {
 	if requested == "" || strings.Contains(requested, "#") {
 		return false
@@ -32,7 +34,8 @@ func matchLoopbackIgnoringPort(registered, requested string) bool {
 }
 
 // loopbackWithoutPort devolve a URI sem a porta quando ela é http, sem credencial e
-// com host 127.0.0.1 ou [::1] escrito literalmente; ok falso em qualquer outro caso.
+// com host 127.0.0.1, [::1] ou localhost escrito literalmente; ok falso em qualquer
+// outro caso.
 // O resto da string (caminho e query) segue intacto, sem normalização.
 func loopbackWithoutPort(raw string) (string, bool) {
 	const scheme = "http://"
@@ -40,15 +43,11 @@ func loopbackWithoutPort(raw string) (string, bool) {
 		return "", false
 	}
 	parsed, err := url.Parse(raw)
-	if err != nil || parsed.User != nil || !loopbackIP(parsed.Hostname()) {
+	if err != nil || parsed.User != nil || !cimd.LoopbackHost(parsed.Hostname()) {
 		return "", false
 	}
 	rest := strings.TrimPrefix(raw, scheme+parsed.Host)
 	return scheme + bracketIPv6(parsed.Hostname()) + rest, true
-}
-
-func loopbackIP(host string) bool {
-	return host == "127.0.0.1" || host == "::1"
 }
 
 func bracketIPv6(host string) string {
