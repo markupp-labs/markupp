@@ -50,6 +50,16 @@ class GraphsControllerTest < ActionDispatch::IntegrationTest
     assert_response :bad_gateway
   end
 
+  # Sem a lista de cofres a tela cheia não sabe que cofre desenhar: dá a página de servidor fora, não um erro.
+  test "the full graph page says the server is unreachable when only the vault listing fails" do
+    @api.cut_vaults!
+
+    get graph_path
+
+    assert_response :bad_gateway
+    assert_select "main", text: /Can't reach the markupp server/
+  end
+
   test "the full graph page draws the canvas of the vault of the note it came from, with esc back to that note" do
     get graph_path(note: "roadmap")
 
