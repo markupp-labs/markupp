@@ -2,6 +2,7 @@ import type { ApiTokenSource } from "../session.js";
 import {
   MarkuppApiError,
   noteSummary,
+  type FoundNote,
   type IssuedInvite,
   type MarkuppApi,
   type Member,
@@ -13,7 +14,9 @@ import {
   type SearchPage,
   type TenantInvite,
   type TenantMembership,
+  type Vault,
 } from "../markupp-api.js";
+import { FakeAccountId, FakeVaults } from "./fake-vaults.js";
 
 // FakeApiTokens entrega os JWTs na ordem dada e repete o último quando acabam.
 export class FakeApiTokens {
@@ -31,9 +34,13 @@ export class FakeApiTokens {
 
 type PendingWrite = { id: string; content: string };
 
-// FakeMarkuppApi guarda tenants, notas, membros e convites em memória e responde com os
-// mesmos códigos de erro da API: tenant_forbidden, read_only, not_found, duplicate_path,
-// conflict, forbidden, member_not_found, invite_not_found e already_member.
+// DefaultVaultId é o cofre das notas criadas sem cofre, fora da lista de cofres.
+const DefaultVaultId = "vault-default";
+
+// FakeMarkuppApi guarda tenants, notas, membros, convites e cofres em memória e responde
+// com os mesmos códigos de erro da API: tenant_forbidden, read_only, not_found,
+// duplicate_path, conflict, forbidden, member_not_found, invite_not_found,
+// already_member e os dos cofres, que FakeVaults descreve.
 export class FakeMarkuppApi implements MarkuppApi {
   readonly revisions: NoteRevision[] = [];
   private readonly tenants: TenantMembership[] = [];
@@ -43,6 +50,7 @@ export class FakeMarkuppApi implements MarkuppApi {
   private readonly myInvites: PendingInvite[] = [];
   private clockTick = 0;
   private pendingWrite: PendingWrite | null = null;
+  private readonly vaults = new FakeVaults(() => this.tick());
 
   withTenant(id: string, role = "member", name = id): this {
     this.tenants.push({ id, name, role });
@@ -98,9 +106,20 @@ export class FakeMarkuppApi implements MarkuppApi {
     return [...this.invitesOf(tenant)];
   }
 
+  // withVault grava o cofre direto, sem conferir papel, com a conta como membro.
+  withVault(tenant: string, name: string): Vault {
+    this.notesIn(tenant);
+    return this.vaults.create(tenant, name, this.roleIn(tenant) ?? "");
+  }
+
   // withNote grava a nota direto, sem conferir papel, para montar o cenário.
-  withNote(tenant: string, path: string, content: string): Note {
-    const note = this.newNote(path, content);
+  withNote(
+    tenant: string,
+    path: string,
+    content: string,
+    vault = DefaultVaultId,
+  ): Note {
+    const note = this.newNote(path, content, vault);
     this.notesIn(tenant).push(note);
     return note;
   }
@@ -123,18 +142,19 @@ export class FakeMarkuppApi implements MarkuppApi {
     tenant: string,
     query: string,
     page: SearchPage = {},
-  ): Promise<NoteSummary[]> {
+    vault?: string,
+  ): Promise<FoundNote[]> {
     const offset = page.offset ?? 0;
     const needle = query.toLowerCase();
-    return this.notesIn(tenant)
+    return this.notesOf(tenant, vault)
       .filter((note) => note.content.toLowerCase().includes(needle))
       .sort((a, b) => b.updated_at.localeCompare(a.updated_at))
       .slice(offset, offset + (page.limit ?? 10))
       .map(noteSummary);
   }
 
-  async listNotes(tenant: string): Promise<NoteSummary[]> {
-    return this.notesIn(tenant).map(noteSummary);
+  async listNotes(tenant: string, vault?: string): Promise<NoteSummary[]> {
+    return this.notesOf(tenant, vault).map(noteSummary);
   }
 
   async getNote(tenant: string, id: string): Promise<Note> {
@@ -147,12 +167,15 @@ export class FakeMarkuppApi implements MarkuppApi {
     tenant: string,
     path: string,
     content: string,
+    vault?: string,
   ): Promise<Note> {
     this.requireWriter(tenant);
-    if (this.notesIn(tenant).some((note) => note.path === path)) {
+    const target = vault ?? DefaultVaultId;
+    const inVault = this.notesOf(tenant, target);
+    if (inVault.some((note) => note.path === path)) {
       throw new MarkuppApiError(409, "duplicate_path", "path já existe");
     }
-    return { ...this.withNote(tenant, path, content) };
+    return { ...this.withNote(tenant, path, content, target) };
   }
 
   async updateNote(
@@ -266,6 +289,59 @@ export class FakeMarkuppApi implements MarkuppApi {
     this.takeMyInvite(inviteId);
   }
 
+  async listVaults(tenant: string): Promise<Vault[]> {
+    this.notesIn(tenant);
+    return this.vaults.list(tenant);
+  }
+
+  async createVault(tenant: string, name: string): Promise<Vault> {
+    this.requireWriter(tenant);
+    return this.withVault(tenant, name);
+  }
+
+  async renameVault(
+    tenant: string,
+    vault: string,
+    name: string,
+  ): Promise<Vault> {
+    this.requireWriter(tenant);
+    return this.vaults.rename(tenant, vault, name);
+  }
+
+  // deleteVault leva as notas do cofre junto, como o ON DELETE CASCADE do banco.
+  async deleteVault(tenant: string, vault: string): Promise<void> {
+    this.requireWriter(tenant);
+    this.vaults.delete(tenant, vault);
+    const kept = this.notesIn(tenant).filter((n) => n.vault_id !== vault);
+    this.notes.set(tenant, kept);
+  }
+
+  async listVaultMembers(tenant: string, vault: string): Promise<Member[]> {
+    this.notesIn(tenant);
+    return this.vaults.members(tenant, vault);
+  }
+
+  async addVaultMember(
+    tenant: string,
+    vault: string,
+    userId: string,
+  ): Promise<void> {
+    this.requireWriter(tenant);
+    const member = this.membersOf(tenant).find((m) => m.id === userId);
+    this.vaults.add(tenant, vault, userId, member);
+  }
+
+  // removeVaultMember deixa o viewer tirar só a si mesmo, que é sair do cofre.
+  async removeVaultMember(
+    tenant: string,
+    vault: string,
+    userId: string,
+  ): Promise<void> {
+    if (userId === FakeAccountId) this.notesIn(tenant);
+    else this.requireWriter(tenant);
+    this.vaults.remove(tenant, vault, userId);
+  }
+
   private takeMyInvite(inviteId: string): PendingInvite {
     const index = this.myInvites.findIndex((invite) => invite.id === inviteId);
     const [invite] = index < 0 ? [] : this.myInvites.splice(index, 1);
@@ -317,14 +393,25 @@ export class FakeMarkuppApi implements MarkuppApi {
 
   private requireWriter(tenant: string): void {
     this.notesIn(tenant);
-    const role = this.tenants.find((t) => t.id === tenant)?.role;
-    if (role === "viewer") {
+    if (this.roleIn(tenant) === "viewer") {
       throw new MarkuppApiError(
         403,
         "read_only",
         "o papel viewer so le as notas",
       );
     }
+  }
+
+  private roleIn(tenant: string): string | undefined {
+    return this.tenants.find((t) => t.id === tenant)?.role;
+  }
+
+  // notesOf devolve as notas do tenant ou, com vault, só as do cofre que a conta alcança.
+  private notesOf(tenant: string, vault?: string): Note[] {
+    const all = this.notesIn(tenant);
+    if (vault === undefined) return all;
+    if (vault !== DefaultVaultId) this.vaults.find(tenant, vault);
+    return all.filter((note) => note.vault_id === vault);
   }
 
   private notesIn(tenant: string): Note[] {
@@ -345,12 +432,12 @@ export class FakeMarkuppApi implements MarkuppApi {
     return note;
   }
 
-  private newNote(path: string, content: string): Note {
+  private newNote(path: string, content: string, vault: string): Note {
     const at = this.tick();
     const id = `note-${this.clockTick}`;
     return {
       id,
-      vault_id: "vault-default",
+      vault_id: vault,
       path,
       content,
       created_at: at,

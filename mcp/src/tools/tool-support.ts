@@ -3,8 +3,8 @@ import { z } from "zod";
 import { isAgentTokenRefused } from "../auth/token-exchange.js";
 import {
   MarkuppApiError,
+  type FoundNote,
   type MarkuppApi,
-  type NoteSummary,
 } from "../markupp-api.js";
 import type { MarkuppSession } from "../session.js";
 
@@ -54,7 +54,7 @@ export const noteLocator = z.object({
 
 // noteHeader é o que as ferramentas devolvem de cada nota quando o conteúdo não importa:
 // na busca o agente abre a nota com read_note, na escrita ele já sabe o que mandou.
-export function noteHeader(note: NoteSummary): string {
+export function noteHeader(note: FoundNote): string {
   const { id, path, updated_at } = note;
   return JSON.stringify({ id, path, updated_at });
 }
