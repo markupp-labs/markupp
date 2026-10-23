@@ -95,6 +95,8 @@ module ShortcutsHelper
       Shortcut.of(:list_move, "↓", "↑"),
       Shortcut.of(:palette_move, "Ctrl+J", "Ctrl+K"),
       Shortcut.of(:menu_move, "j", "k"),
+      # Nas listas de membros do cofre e do tenant (context_menu_controller.js), com o foco numa linha: pede confirmação.
+      Shortcut.of(:list_remove_member, "Delete"),
       Shortcut.of(:list_choose, "Enter"),
       Shortcut.of(:list_close, "Esc")
     ],
@@ -110,6 +112,13 @@ module ShortcutsHelper
       Shortcut.of(:vim_split, ":split"),
       Shortcut.of(:vim_leave_editor, "Esc Esc Tab"),
       Shortcut.of(:vim_back_to_path, "Esc Esc Shift+Tab")
+    ],
+    # v e depois uma letra, fora de campo de texto (tenants_shortcut_controller.js): a ação do cofre ativo na página dela,
+    # que abre com o foco na ação se não for a aberta. Renomear e adicionar só para quem escreve.
+    vault: [
+      Shortcut.of(:vault_rename, "v r", run: { href: :vault_rename_shortcut_path, when: "[data-vault-writer]" }),
+      Shortcut.of(:vault_add_member, "v a", run: { href: :vault_add_member_shortcut_path, when: "[data-vault-writer]" }),
+      Shortcut.of(:vault_leave, "v q", run: { href: :vault_leave_shortcut_path, when: "[data-current-vault]" })
     ],
     tenants: [
       Shortcut.of(:filter_tenants, "/"),
@@ -141,6 +150,21 @@ module ShortcutsHelper
   }.freeze
 
   SHORTCUTS_BY_NAME = SHORTCUT_GROUPS.values.flatten.index_by(&:name).freeze
+
+  # Destinos dos atalhos do cofre ativo, com a tecla depois do v: o da página da ação, que abre com o foco nela. Sem
+  # cofre, nenhum; o viewer só sai.
+  def vault_shortcut_paths
+    return {} unless current_tenant && current_vault
+
+    leave = { q: vault_leave_shortcut_path }
+    current_tenant.writer? ? leave.merge(r: vault_rename_shortcut_path, a: vault_add_member_shortcut_path) : leave
+  end
+
+  def vault_rename_shortcut_path = settings_vault_path(focus: "rename")
+
+  def vault_add_member_shortcut_path = settings_vault_members_path(focus: "add")
+
+  def vault_leave_shortcut_path = settings_vault_members_path(focus: "leave")
 
   # Área da página (notas, configurações, tenants), que a view diz com content_for :area; sem ela, são as notas. O layout
   # a põe no data-area do body.

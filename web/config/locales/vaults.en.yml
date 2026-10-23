@@ -5,6 +5,15 @@ en:
     vault_switcher:
       label: "Vaults"
       new_vault: "New vault"
+      vault_settings: "Vault settings"
+  shortcuts:
+    groups:
+      vault: "Vault"
+    names:
+      list_remove_member: "Remove the member in focus, in a member list"
+      vault_rename: "Rename the vault"
+      vault_add_member: "Add a member to the vault"
+      vault_leave: "Leave the vault"
   vaults:
     invalid_name: "Use 1 to 100 characters."
     new_dialog:

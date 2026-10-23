@@ -13,7 +13,8 @@
                     class: "mt-3 flex flex-col gap-3 rounded-md border border-line p-3 md:flex-row md:items-end" do |form| %>
         <div class="md:flex-1">
           <%= form.label :user_id, t(".colleague"), class: "block text-ink-muted" %>
-          <%= form.select :user_id, vault_candidates.map { [ it.email, it.id ] }, {},
+          <%# O v a chega com focus=add; aqui mesmo, o atalho foca a escolha. %>
+          <%= form.select :user_id, vault_candidates.map { [ it.email, it.id ] }, {}, autofocus: params[:focus] == "add", data: { vault_action: "a" },
                           class: "w-full rounded-md border border-line bg-surface px-2 py-1" %>
         </div>
         <%= form.button t(".add"), class: "btn self-start md:self-auto" %>

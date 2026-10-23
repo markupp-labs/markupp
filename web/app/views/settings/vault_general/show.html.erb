@@ -8,7 +8,9 @@
                   class: "mt-3 flex flex-col gap-3 md:flex-row md:items-end" do |form| %>
       <div class="md:flex-1">
         <%= form.label :name, t(".vault_name"), class: "block text-ink-muted" %>
+        <%# O v r de qualquer página chega com focus=rename (ShortcutsHelper); aqui mesmo, o atalho foca o campo. %>
         <%= form.text_field :name, value: vault.name, required: true, maxlength: 100, autocomplete: "off", spellcheck: false,
+                            autofocus: params[:focus] == "rename", data: { vault_action: "r" },
                             class: "w-full rounded-md border border-line bg-surface px-2 py-1" %>
       </div>
       <%= form.button t(".save"), class: "btn self-start md:self-auto" %>

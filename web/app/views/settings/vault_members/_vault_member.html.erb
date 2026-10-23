@@ -10,8 +10,10 @@
   <p class="text-ink-muted"><span class="md:sr-only"><%= t(".joined") %></span> <%= l(vault_member.joined_at.to_date, format: :short) %></p>
   <div class="mt-1 flex gap-2 md:mt-0">
     <% if me %>
+      <%# O v q chega com focus=leave; aqui mesmo, o atalho aperta o botão, que pede confirmação. %>
       <%= button_to t(".leave"), settings_vault_member_path(vault_member.id), method: :delete, class: "btn btn-danger",
-                    data: { context_menu_delete: "", confirm_button: t(".leave"), turbo_confirm: t(".confirm_leave", vault: current_vault.name) } %>
+                    autofocus: params[:focus] == "leave",
+                    data: { vault_action: "q", context_menu_delete: "", confirm_button: t(".leave"), turbo_confirm: t(".confirm_leave", vault: current_vault.name) } %>
     <% elsif current_tenant.writer? %>
       <%= button_to t(".remove"), settings_vault_member_path(vault_member.id), method: :delete, class: "btn btn-danger",
                     data: { context_menu_delete: "", confirm_button: t(".remove"), turbo_confirm: t(".confirm_remove", email: vault_member.email, vault: current_vault.name) } %>
