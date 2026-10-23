@@ -4,6 +4,7 @@ class NotesController < ApplicationController
   before_action :require_tenant
   before_action :require_writer, only: :new
   before_action :require_vault, only: %i[new create]
+  before_action :find_note, only: :show
   before_action :set_tree, except: :destroy, unless: -> { request.format.json? }
   before_action :set_typed_path, only: %i[create update]
 
@@ -18,7 +19,6 @@ class NotesController < ApplicationController
   # Em json só caminho e conteúdo: o ![[nota]] da leitura busca daqui a nota embutida (editor/note_embeds.js),
   # com a sessão, o tenant e o papel de quem lê, sem a árvore.
   def show
-    @note = Note.find(credential.api, params[:id])
     respond_to do |format|
       format.html
       format.json { render json: @note.attributes.slice("path", "content") }
@@ -89,6 +89,23 @@ class NotesController < ApplicationController
     end
 
     def creating? = current_tenant.writer? && current_vault.present?
+
+    # A nota pedida vem antes da árvore: aberta como página, o cofre dela vira o ativo (follow_vault_of). Embutida (json)
+    # não é abrir, e o cofre fica.
+    def find_note
+      @note = Note.find(credential.api, params[:id])
+      follow_vault_of(@note) if request.format.html?
+    end
+
+    # Link direto ou wikilink para nota de outro cofre: árvore, Explorer e grafo seguem a nota, mas só para cofre de que
+    # a conta é membro no tenant ativo.
+    def follow_vault_of(note)
+      vault = Vault.listed(reachable_vaults, note.vault_id)
+      return if vault.nil? || vault == current_vault
+
+      credential.vault_id = vault.id
+      @current_vault = vault
+    end
 
     def set_tree
       @tree = load_note_tree
