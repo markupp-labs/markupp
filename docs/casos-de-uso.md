@@ -66,17 +66,37 @@ agrupado.
 
 Ator: cliente.
 
-Qualquer cliente autenticado cria um cofre e vira membro dele. O cofre nasce vazio, com
-namespace de caminho próprio.
+Qualquer cliente autenticado que não é viewer no tenant cria um cofre e vira membro dele. O
+cofre nasce vazio, com namespace de caminho próprio, e o nome não precisa ser único.
 
-## Convidar membro para o cofre
+## Renomear cofre
 
 Ator: cliente.
 
-Um membro convida outro usuário. O servidor grava a notificação como pendente, e o worker a
-envia pelo provedor de email configurado, fora do caminho da requisição. Sem provedor
-configurado o convite não sai. Quem aceita passa a ler e escrever todas as notas do cofre, e
-pode remover qualquer membro, inclusive quem criou.
+Um membro que não é viewer troca o nome do cofre. Caminhos e notas não mudam.
+
+## Apagar cofre
+
+Ator: cliente.
+
+Um membro que não é viewer apaga o cofre, e as notas e o dado derivado delas vão junto. Vale
+também para o último cofre da conta, que passa a não ter nenhum.
+
+## Adicionar membro ao cofre
+
+Ator: cliente.
+
+Um membro que não é viewer escolhe, numa lista das contas do tenant, quem entra no cofre. Só
+entra conta que já tem vínculo com o tenant; quem é de fora entra antes pelo convite do
+tenant. O novo membro lê as notas do cofre e, se não for viewer, escreve e gerencia o cofre
+como qualquer outro, inclusive removendo quem o criou.
+
+## Sair do cofre
+
+Ator: cliente.
+
+Qualquer membro, viewer inclusive, remove a si mesmo do cofre e deixa de ver as notas dele.
+O cofre pode acabar sem nenhum membro.
 
 ## Configurar provedores externos
 
