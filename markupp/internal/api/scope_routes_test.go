@@ -19,9 +19,12 @@ type scopedRoute struct{ method, path string }
 var (
 	notesReadRoutes = []scopedRoute{
 		{http.MethodGet, "/v1/notes"}, {http.MethodGet, "/v1/notes/search?query=x"}, {http.MethodGet, "/v1/notes/n1"},
+		{http.MethodGet, "/v1/vaults"}, {http.MethodGet, "/v1/vaults/v1/members"},
 	}
 	notesWriteRoutes = []scopedRoute{
 		{http.MethodPost, "/v1/notes"}, {http.MethodPut, "/v1/notes/n1"}, {http.MethodDelete, "/v1/notes/n1"},
+		{http.MethodPost, "/v1/vaults"}, {http.MethodPatch, "/v1/vaults/v1"}, {http.MethodDelete, "/v1/vaults/v1"},
+		{http.MethodPost, "/v1/vaults/v1/members"}, {http.MethodDelete, "/v1/vaults/v1/members/u2"},
 	}
 	adminScopeRoutes = []scopedRoute{
 		{http.MethodGet, "/v1/users"}, {http.MethodGet, "/v1/users/invites"}, {http.MethodPost, "/v1/users/invites"},
@@ -58,7 +61,7 @@ func serveScopedWith(route scopedRoute, scope string, tenants api.TenantResolver
 func routerWithAllServices(tokens api.TokenValidator, tenants api.TenantResolver) chi.Router {
 	return api.NewRouter(api.RouterDeps{
 		Notes: &fakeService{}, Graph: &fakeNoteGraph{}, Auth: &fakeAuthService{}, Admin: &fakeAdminService{},
-		AccountEmail: &fakeAccountEmailService{}, OAuth: &fakeOAuthService{},
+		AccountEmail: &fakeAccountEmailService{}, OAuth: &fakeOAuthService{}, Vaults: &fakeVaultService{},
 		OAuthMetadata: &api.OAuthMetadata{Issuer: issuerDeTeste}, Probe: &fakeProbe{},
 		Tokens: tokens, Tenants: tenants,
 	})
