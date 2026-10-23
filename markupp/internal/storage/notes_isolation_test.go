@@ -84,14 +84,14 @@ func TestNotesRLS_DefaultVaultID_DevolveOCofreMaisAntigoDoAtor(t *testing.T) {
 	assert.Equal(t, "primeiro", vaultID)
 }
 
-func TestNotesRLS_DefaultVaultID_AtorSemCofre_RecusaComErrVaultForbidden(t *testing.T) {
+func TestNotesRLS_DefaultVaultID_AtorSemCofre_RecusaComErrNoVault(t *testing.T) {
 	db := setupTestDB(t)
 	repo := storage.NewPostgresNotesRepository(db, "simple")
 	ctx := identity.WithActor(context.Background(), identity.Actor{UserID: "orfao", TenantID: "t1", Role: "member"})
 
 	_, err := repo.DefaultVaultID(ctx)
 
-	assert.ErrorIs(t, err, notes.ErrVaultForbidden)
+	assert.ErrorIs(t, err, notes.ErrNoVault)
 }
 
 func TestNotesRLS_MesmoCaminhoEmCofresDiferentes_Permitido(t *testing.T) {
