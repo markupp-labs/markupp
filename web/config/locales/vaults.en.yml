@@ -1,0 +1,70 @@
+en:
+  layouts:
+    tenant_switcher:
+      vaults_unreachable: "Vaults unavailable"
+    vault_switcher:
+      label: "Vaults"
+      new_vault: "New vault"
+      vault_settings: "Vault settings"
+  shortcuts:
+    groups:
+      vault: "Vault"
+    names:
+      list_remove_member: "Remove the member in focus, in a member list"
+      vault_rename: "Rename the vault"
+      vault_add_member: "Add a member to the vault"
+      vault_leave: "Leave the vault"
+  vaults:
+    invalid_name: "Use 1 to 100 characters."
+    new_dialog:
+      title: "New vault"
+      name: "Name"
+      create: "Create"
+      cancel: "Cancel"
+    create:
+      created: "Created %{name}."
+    empty:
+      title: "No vault yet"
+      hint: "A vault holds notes you share with people of this tenant. Create one to start writing."
+      viewer_hint: "Ask a member of a vault to add you."
+      new_vault: "New vault"
+    update:
+      renamed: "Renamed to %{name}."
+    destroy:
+      deleted: "Deleted %{name}."
+      name_mismatch: "The name doesn't match. Nothing was deleted."
+  settings:
+    nav:
+      vault: "Vault"
+      vault_general: "General"
+      vault_members: "Members"
+    vault_general:
+      show:
+        vault_name: "Vault name"
+        save: "Save"
+        delete_vault: "Delete vault"
+        delete_hint: "This deletes the vault and all of its notes for every member. There is no going back."
+        confirm_delete: "Delete %{name}? This deletes the vault and all of its notes for every member, and it can't be undone."
+    vault_members:
+      index:
+        colleague: "Person from this tenant"
+        add: "Add"
+        everyone_in: "Everyone in %{tenant} is already a member. Invite more people to the tenant first."
+        email: "Email"
+        role: "Role in the tenant"
+        joined: "Joined"
+      vault_member:
+        joined: "Joined"
+        remove: "Remove"
+        leave: "Leave vault"
+        confirm_remove: "Remove %{email} from %{vault}?"
+        confirm_leave: "Leave %{vault}? You lose its notes until a member adds you back."
+      create:
+        added: "Member added."
+      destroy:
+        removed: "Member removed."
+        left: "You left %{name}."
+      errors:
+        not_tenant_member: "Only people of this tenant can join its vaults. Invite them to the tenant first."
+        already_vault_member: "That person is already a member of this vault."
+        vault_member_not_found: "That person is no longer a member of this vault."

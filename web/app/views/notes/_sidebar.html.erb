@@ -1,6 +1,8 @@
 <%# O aviso é curto; a página ao lado continua funcionando. Sem árvore (a listagem falhou) não há nota nova nem menu. %>
 <% if tree.nil? %>
   <p class="px-2 py-1 text-danger"><%= t("notes.unreachable.title") %></p>
+<% elsif current_vault.nil? %>
+  <%= render "vaults/empty", writer: current_tenant.writer? %>
 <% else %>
   <%# Nota nova sem botão: Alt+N de qualquer lugar, na pasta da nota aberta (ou da linha com o foco), ou "New note here"
       no menu de contexto (note_tree_controller.js). Só quem escreve recebe o url, e com ele as ações que mudam notas. %>

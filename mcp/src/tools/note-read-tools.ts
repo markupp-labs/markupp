@@ -9,6 +9,7 @@ import {
   noteLocator,
   readOnlyAnnotations,
   tenantParameter,
+  vaultIdParameter,
   type MarkuppApiFactory,
 } from "./tool-support.js";
 
@@ -30,12 +31,19 @@ function addListNotes(
   server.addTool({
     name: "list_notes",
     description:
-      "Lists every note in the tenant as id, path and updated_at, sorted by path. Use it to find a note by its path; to find notes by what they say, use search_notes.",
-    parameters: z.object({ tenant: tenantParameter }),
+      "Lists every note in the tenant, or only in one vault, as id, path and updated_at, sorted by path. Use it to find a note by its path; to find notes by what they say, use search_notes.",
+    parameters: z.object({
+      tenant: tenantParameter,
+      vault_id: vaultIdParameter
+        .optional()
+        .describe(
+          "Vault id from list_vaults to list only that vault; omit for every vault you belong to.",
+        ),
+    }),
     annotations: readOnlyAnnotations,
-    execute: async ({ tenant }, context) => {
+    execute: async ({ tenant, vault_id }, context) => {
       const api = apiFor(factory, context);
-      const notes = await callApi(() => api.listNotes(tenant));
+      const notes = await callApi(() => api.listNotes(tenant, vault_id));
       notes.sort((a, b) => a.path.localeCompare(b.path));
       return `[${notes.map(noteHeader).join(",")}]`;
     },
@@ -48,7 +56,7 @@ const searchNotesParameters = z.object({
     .string()
     .min(1)
     .describe(
-      "Text the note content contains, case-insensitive. Search one word or short phrase per call.",
+      'Words to find in the note content; every word must appear. Takes a "quoted phrase", OR between words and -word to exclude, as in a web search.',
     ),
   limit: z
     .number()
@@ -64,10 +72,15 @@ const searchNotesParameters = z.object({
     .max(10000)
     .optional()
     .describe("Results to skip, to page past the first ones."),
+  vault_id: vaultIdParameter
+    .optional()
+    .describe(
+      "Vault id from list_vaults to search only that vault; its results come without updated_at, and a vault you do not belong to finds nothing.",
+    ),
 });
 
-// A busca da API casa substring do conteúdo, sem trecho; por isso a ferramenta devolve
-// só id, path e updated_at e o agente abre com read_note as que interessarem.
+// A busca da API é de texto completo, ordenada por relevância; a ferramenta devolve só
+// id, path e updated_at e o agente abre com read_note as que interessarem.
 function addSearchNotes(
   server: FastMCP<MarkuppSession>,
   factory: MarkuppApiFactory,
@@ -75,13 +88,13 @@ function addSearchNotes(
   server.addTool({
     name: "search_notes",
     description:
-      "Searches note content for a text, case-insensitive, newest first. Returns id, path and updated_at of each match; open the relevant ones with read_note.",
+      "Searches note content with full-text search, most relevant first. It matches words, not substrings. Returns id, path and updated_at of each match; open the relevant ones with read_note.",
     parameters: searchNotesParameters,
     annotations: readOnlyAnnotations,
-    execute: async ({ tenant, query, limit, offset }, context) => {
+    execute: async ({ tenant, query, limit, offset, vault_id }, context) => {
       const api = apiFor(factory, context);
       const found = await callApi(() =>
-        api.searchNotes(tenant, query, { limit, offset }),
+        api.searchNotes(tenant, query, { limit, offset }, vault_id),
       );
       return `[${found.map(noteHeader).join(",")}]`;
     },

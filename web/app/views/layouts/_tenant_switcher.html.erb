@@ -1,35 +1,57 @@
-<%# Marca: o mascote ao lado do nome do tenant, e os dois levam para a tela padrão; o seletor abre num popover nativo ancorado no cabeçalho (sem suporte a âncora, fica no canto). %>
-<%# Folgas apertadas (px-1 no link e no botão, gap-1.5 e gap-0.5) para um nome de uns 20 caracteres caber inteiro a 288px. %>
+<%# Marca e trilha: o mascote leva à tela padrão; ao lado, "tenant / cofre", o tenant menor e apagado (e o primeiro a
+    encolher quando falta largura), o cofre em destaque,
+    e o papel no tenant embaixo. Cada nome abre o seu seletor num popover nativo ancorado no cabeçalho (sem suporte a
+    âncora, fica no canto): o de tenants aqui, o de cofres em layouts/_vault_switcher. O title mostra o nome inteiro
+    quando a largura corta. %>
 <div id="current_tenant" class="mb-2 flex items-start gap-0.5 [anchor-name:--tenant-switcher]">
-  <%= link_to root_path, class: "tree-row flex min-w-0 flex-1 items-center gap-1.5 px-1" do %>
+  <%= link_to root_path, class: "tree-row shrink-0 px-1", aria: { label: t(".home") }, title: t(".home") do %>
     <%= mascot(:small) %>
-    <span class="min-w-0">
-      <span class="block truncate" title="<%= current_tenant.name %>"><%= current_tenant.name %></span>
-      <span class="block text-xs text-ink-muted"><%= t("tenants.roles.#{current_tenant.role}") %></span>
-    </span>
   <% end %>
-  <button type="button" popovertarget="tenant_switcher" aria-label="<%= t(".switch") %>" title="<%= t(".switch") %>" class="btn-icon mt-0.5 px-1">
-    <%= icon("caret-up-down") %>
-  </button>
-</div>
-
-<div id="tenant_switcher" popover
-     class="layer m-0 w-64 origin-top layer-panel p-1 [inset:auto] [position-anchor:--tenant-switcher] [position-area:bottom_span-right]">
-  <ul class="space-y-px">
-    <% current_tenants.each do |tenant| %>
-      <li><%= render "tenants/choice", tenant: %></li>
-    <% end %>
-  </ul>
-  <%# Preguiçoso: o popover fechado não aparece na tela, então a lista só carrega quando ele abre. %>
-  <%= turbo_frame_tag "my_invites", src: my_invites_path, loading: :lazy, target: "_top" do %>
-    <%= busy_spinner(busy_when: "#my_invites[aria-busy]", class: "flex px-2 not-empty:mt-1 not-empty:border-t not-empty:border-line not-empty:py-1") %>
-  <% end %>
-  <div class="mt-1 border-t border-line pt-1">
-    <%= link_to new_tenant_path, class: "tree-row flex items-center gap-2" do %>
-      <%= icon("plus") %><%= t(".new_tenant") %>
-    <% end %>
-    <%= link_to tenants_path, title: t(".all_tenants_title"), class: "tree-row flex items-center gap-2" do %>
-      <%= icon("list") %><%= t(".all_tenants") %>
-    <% end %>
+  <div class="min-w-0 flex-1">
+    <p class="flex min-w-0 items-baseline">
+      <button type="button" popovertarget="tenant_switcher" title="<%= current_tenant.name %>"
+              aria-label="<%= t(".switch", name: current_tenant.name) %>"
+              class="tree-row min-w-8 shrink-[999] truncate px-1 text-xs text-ink-muted"><%= current_tenant.name %></button>
+      <span aria-hidden="true" class="shrink-0 text-ink-muted">/</span>
+      <%# Sem a lista de cofres (API fora) não há o que escolher: só o aviso curto, e a página ao lado diz o resto. %>
+      <% if current_vaults.nil? %>
+        <span class="truncate px-1 text-danger"><%= t(".vaults_unreachable") %></span>
+      <% else %>
+        <% vault_name = current_vault&.name %>
+        <%# data-current-vault e data-vault-writer dizem à paleta quais ações do cofre valem (ShortcutsHelper). %>
+        <button type="button" popovertarget="vault_switcher" title="<%= vault_name %>" <%= "data-current-vault" if vault_name %> <%= "data-vault-writer" if vault_name && current_tenant.writer? %>
+                aria-label="<%= vault_name ? t(".switch_vault", name: vault_name) : t(".no_vault") %>"
+                class="tree-row min-w-0 truncate px-1 <%= vault_name ? "font-semibold text-ink" : "text-ink-muted" %>"><%= vault_name || t(".no_vault") %></button>
+      <% end %>
+    </p>
+    <span class="block px-1 text-xs text-ink-muted"><%= t("tenants.roles.#{current_tenant.role}") %></span>
   </div>
 </div>
+
+<%# Anda pelo teclado como o seletor de cofres (layouts/_vault_switcher): setas ou j/k, Home e End, Esc e Tab fecham; os
+    convites que chegam no frame e as ações do fim também são itens. %>
+<div id="tenant_switcher" popover data-controller="context-menu"
+     data-action="keydown->context-menu#navigate toggle->context-menu#returnFocus toggle->context-menu#focusFirst click@document->context-menu#rememberInvokerClick"
+     class="layer m-0 w-64 origin-top layer-panel p-1 [inset:auto] [position-anchor:--tenant-switcher] [position-area:bottom_span-right]">
+  <div role="menu" tabindex="-1" aria-label="<%= t(".label") %>">
+    <ul role="none" class="space-y-px">
+      <% current_tenants.each do |tenant| %>
+        <li role="none"><%= render "tenants/choice", tenant: %></li>
+      <% end %>
+    </ul>
+    <%# Preguiçoso: o popover fechado não aparece na tela, então a lista só carrega quando ele abre. %>
+    <%= turbo_frame_tag "my_invites", src: my_invites_path, loading: :lazy, target: "_top" do %>
+      <%= busy_spinner(busy_when: "#my_invites[aria-busy]", class: "flex px-2 not-empty:mt-1 not-empty:border-t not-empty:border-line not-empty:py-1") %>
+    <% end %>
+    <div class="mt-1 border-t border-line pt-1">
+      <%= link_to new_tenant_path, role: "menuitem", tabindex: -1, class: "tree-row context-menu-item flex items-center justify-start gap-2" do %>
+        <%= icon("plus") %><%= t(".new_tenant") %>
+      <% end %>
+      <%= link_to tenants_path, role: "menuitem", tabindex: -1, title: t(".all_tenants_title"), class: "tree-row context-menu-item flex items-center justify-start gap-2" do %>
+        <%= icon("list") %><%= t(".all_tenants") %>
+      <% end %>
+    </div>
+  </div>
+</div>
+
+<%= render "layouts/vault_switcher" if current_vaults %>

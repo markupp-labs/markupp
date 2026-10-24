@@ -19,12 +19,17 @@ type scopedRoute struct{ method, path string }
 var (
 	notesReadRoutes = []scopedRoute{
 		{http.MethodGet, "/v1/notes"}, {http.MethodGet, "/v1/notes/search?query=x"}, {http.MethodGet, "/v1/notes/n1"},
+		{http.MethodGet, "/v1/vaults"}, {http.MethodGet, "/v1/vaults/v1/members"},
 	}
 	notesWriteRoutes = []scopedRoute{
 		{http.MethodPost, "/v1/notes"}, {http.MethodPut, "/v1/notes/n1"}, {http.MethodDelete, "/v1/notes/n1"},
+		{http.MethodPost, "/v1/vaults"}, {http.MethodPatch, "/v1/vaults/v1"}, {http.MethodDelete, "/v1/vaults/v1"},
+		{http.MethodPost, "/v1/vaults/v1/members"}, {http.MethodDelete, "/v1/vaults/v1/members/u2"},
 	}
+	// memberListRoutes é a lista de colegas do tenant, lida com notas:leitura ou administracao.
+	memberListRoutes = []scopedRoute{{http.MethodGet, "/v1/users"}}
 	adminScopeRoutes = []scopedRoute{
-		{http.MethodGet, "/v1/users"}, {http.MethodGet, "/v1/users/invites"}, {http.MethodPost, "/v1/users/invites"},
+		{http.MethodGet, "/v1/users/invites"}, {http.MethodPost, "/v1/users/invites"},
 		{http.MethodPatch, "/v1/users/u2"}, {http.MethodDelete, "/v1/users/u2"}, {http.MethodDelete, "/v1/users/invites/c1"},
 		{http.MethodPost, "/v1/tenants"}, {http.MethodGet, "/v1/me/invites"},
 		{http.MethodPost, "/v1/me/invites/c1/accept"}, {http.MethodPost, "/v1/me/invites/c1/decline"},
@@ -58,7 +63,7 @@ func serveScopedWith(route scopedRoute, scope string, tenants api.TenantResolver
 func routerWithAllServices(tokens api.TokenValidator, tenants api.TenantResolver) chi.Router {
 	return api.NewRouter(api.RouterDeps{
 		Notes: &fakeService{}, Graph: &fakeNoteGraph{}, Auth: &fakeAuthService{}, Admin: &fakeAdminService{},
-		AccountEmail: &fakeAccountEmailService{}, OAuth: &fakeOAuthService{},
+		AccountEmail: &fakeAccountEmailService{}, OAuth: &fakeOAuthService{}, Vaults: &fakeVaultService{},
 		OAuthMetadata: &api.OAuthMetadata{Issuer: issuerDeTeste}, Probe: &fakeProbe{},
 		Tokens: tokens, Tenants: tenants,
 	})
@@ -85,7 +90,7 @@ func assertRoutesNeedScope(t *testing.T, routes []scopedRoute, scope, required s
 }
 
 func TestScopeRoutes_TokenDeLogin_AlcancaTodosOsGrupos(t *testing.T) {
-	for _, routes := range [][]scopedRoute{notesReadRoutes, notesWriteRoutes, adminScopeRoutes, anyScopeRoutes, loginOnlyRoutes} {
+	for _, routes := range [][]scopedRoute{notesReadRoutes, notesWriteRoutes, memberListRoutes, adminScopeRoutes, anyScopeRoutes, loginOnlyRoutes} {
 		assertRoutesPass(t, routes, "")
 	}
 }
@@ -106,6 +111,12 @@ func TestScopeRoutes_Administracao_SoAdministra(t *testing.T) {
 	assertRoutesPass(t, adminScopeRoutes, "administracao")
 	assertRoutesNeedScope(t, notesReadRoutes, "administracao", "notas:leitura")
 	assertRoutesNeedScope(t, notesWriteRoutes, "administracao", "notas:escrita")
+}
+
+func TestScopeRoutes_ListaDeColegas_ValeComLeituraOuAdministracao(t *testing.T) {
+	for _, scope := range []string{"notas:leitura", "notas:escrita", "administracao"} {
+		assertRoutesPass(t, memberListRoutes, scope)
+	}
 }
 
 func TestScopeRoutes_ContaETenants_ValemComQualquerEscopo(t *testing.T) {
@@ -142,7 +153,7 @@ func TestScopeRoutes_EscopoDasNotas_FalhaAntesDoTenant(t *testing.T) {
 }
 
 func TestScopeRoutes_ScopeSoDeEspacos_RecusadoEmTodaRota(t *testing.T) {
-	for _, route := range slices.Concat(notesReadRoutes, notesWriteRoutes, adminScopeRoutes, anyScopeRoutes, loginOnlyRoutes) {
+	for _, route := range slices.Concat(notesReadRoutes, notesWriteRoutes, memberListRoutes, adminScopeRoutes, anyScopeRoutes, loginOnlyRoutes) {
 		rec := serveScoped(route, "  \t ")
 
 		assert.Equal(t, http.StatusUnauthorized, rec.Code, "%s %s", route.method, route.path)

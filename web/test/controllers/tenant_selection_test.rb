@@ -215,7 +215,7 @@ class TenantSelectionTest < ActionDispatch::IntegrationTest
 
     get root_path
 
-    assert_select "nav #current_tenant", text: /Acme research\s*owner/
+    assert_select "nav #current_tenant", text: %r{Acme research\s*/\s*Notes\s*owner}
   end
 
   test "the switcher lists every tenant with the active one marked" do
@@ -258,5 +258,5 @@ class TenantSelectionTest < ActionDispatch::IntegrationTest
   end
 
   private
-    def notes_tenant_sent(api) = api.received_credentials.reverse.find { it[:call] == "GET /notes" }[:tenant_id]
+    def notes_tenant_sent(api) = api.received_credentials.reverse.find { it[:call].start_with?("GET /v1/vaults/") }[:tenant_id]
 end

@@ -2,8 +2,8 @@
 
 Quatro fluxos, escolhidos porque cada um atravessa uma fronteira que os outros documentos
 descrevem parada: a separação entre plano de registro e plano de recuperação, a troca com o
-provedor de identidade, a fusão dos dois ramos de busca e a saída de email fora do caminho
-da requisição.
+provedor de identidade, a fusão dos dois ramos de busca e a entrada num cofre, que depende do
+vínculo com o tenant.
 
 ## Indexação de nota
 
@@ -86,29 +86,24 @@ banco recorta o resultado antes da fusão.
 
 Sem provedor de embedding, a busca não quebra, encolhe para o ramo léxico.
 
-## Convite para cofre com email
+## Adicionar membro ao cofre
 
 ```mermaid
 flowchart TD
-  A(["Um membro convida um usuário"]) --> B{"Quem convida é membro do cofre?"}
-  B -- não --> C(["Convite recusado"])
-  B -- sim --> D["Grava o convite e a linha de auditoria na mesma transação"]
-  D --> E["Grava a notificação como pendente"]
-  E --> F(["Resposta a quem convidou"])
-  E --> G["Worker de notificação sobe"]
-  G --> H{"Provedor de email configurado?"}
-  H -- não --> I(["Convite fica pendente, sem email"])
-  H -- sim --> J["Gera o token e envia pelo SMTP configurado"]
-  J --> K{"Entrega aceita?"}
-  K -- não --> L["Repete com espera crescente"]
-  L --> J
-  K -- sim --> M["Convidado usa o token do email e aceita"]
-  M --> N(["Passa a ler e escrever as notas do cofre"])
+  A(["Um membro escolhe uma conta do tenant"]) --> B{"Quem adiciona é membro do cofre?"}
+  B -- não --> C(["Cofre fora do alcance"])
+  B -- sim --> D{"Quem adiciona é viewer?"}
+  D -- sim --> E(["Recusado, viewer só lê"])
+  D -- não --> F{"A conta tem vínculo com o tenant?"}
+  F -- não --> G(["Recusado, a conta entra antes pelo convite do tenant"])
+  F -- sim --> H{"A conta já é membro do cofre?"}
+  H -- sim --> I(["Recusado, já é membro"])
+  H -- não --> J["Grava o membro e a linha de auditoria na mesma transação"]
+  J --> K(["Passa a ver as notas do cofre"])
 ```
 
-O convite é gravado e auditado na mesma transação, e o email sai depois, por um worker
-separado que repete com espera crescente. Um servidor de email lento atrasa a chegada do
-convite, não a resposta de quem convidou.
+Não há email nem aceite: a conta já faz parte do tenant e entra no cofre na hora. Quem é de
+fora passa antes pelo convite do tenant, que é onde o email acontece.
 
-Sem provedor de email configurado o convite fica gravado e não é entregue, o que é o
-comportamento declarado no ADR-0021 para todo fluxo que depende de envio.
+As verificações acontecem na rota e de novo na política de linha do banco, então uma falha
+na rota sozinha não basta para gravar o membro.

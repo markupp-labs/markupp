@@ -1,12 +1,13 @@
 <div class="max-w-4xl">
-  <%= render "settings/tenant_heading", title: t("settings.nav.members") %>
+  <%= render "settings/section_heading", title: t("settings.nav.members") %>
 
   <% if @refusal %>
     <p role="alert" class="mt-3 text-danger"><%= @refusal %></p>
   <% end %>
 
-  <%# Grade no desktop, blocos empilhados no celular; cada bloco repete o rótulo que o cabeçalho dá no desktop. %>
-  <ul class="mt-3 md:grid md:grid-cols-[1fr_9rem_7rem_auto] md:gap-x-3">
+  <%# Grade no desktop, blocos empilhados no celular; cada bloco repete o rótulo que o cabeçalho dá no desktop. Pelo
+      teclado como a lista de membros do cofre: j/k entre as linhas, Delete na linha com o foco remove. %>
+  <ul id="tenant_members" data-controller="context-menu" data-action="keydown->context-menu#navigate keydown->context-menu#deleteFocused" class="mt-3 md:grid md:grid-cols-[1fr_9rem_7rem_auto] md:gap-x-3">
     <li aria-hidden="true" class="hidden px-2 py-1 text-ink-muted md:col-span-4 md:grid md:grid-cols-subgrid">
       <span><%= t(".email") %></span>
       <span><%= t(".role") %></span>

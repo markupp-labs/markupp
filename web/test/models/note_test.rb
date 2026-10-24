@@ -1,15 +1,6 @@
 require "test_helper"
 
 class NoteTest < ActiveSupport::TestCase
-  test "all builds notes from the API listing" do
-    api = FakeMarkuppApi.new(notes: [ { id: "1", path: "work/plan.md", content: "# Plan", updated_at: "2026-09-30T12:00:00Z" } ])
-
-    note = Note.all(api).sole
-    assert_equal "1", note.id
-    assert_equal "work/plan.md", note.path
-    assert_equal Time.utc(2026, 9, 30, 12), note.updated_at
-  end
-
   test "find builds the note with the given id" do
     api = FakeMarkuppApi.new(notes: [ { id: "1", path: "a.md", content: "x" }, { id: "2", path: "b.md", content: "# B\n" } ])
 
@@ -58,13 +49,14 @@ class NoteTest < ActiveSupport::TestCase
     assert_equal "mine", Note.find(api, "1").content
   end
 
-  test "save posts path and content and takes the id and version from the API" do
+  test "save posts path and content to the vault of the note and takes the id and version from the API" do
     api = FakeMarkuppApi.new(notes: [])
-    note = Note.new(path: "work/plan.md", content: "# Plan\n")
+    note = Note.new(path: "work/plan.md", content: "# Plan\n", vault_id: "vault-2")
 
     note.save(api)
 
     assert_equal [ { path: "work/plan.md", content: "# Plan\n" } ], api.post_requests
+    assert_equal [ "created-1" ], Note.in_vault(api, "vault-2").map(&:id)
     assert_equal "created-1", note.id
     assert_equal Time.utc(2026, 10, 1, 12), note.updated_at
   end
@@ -81,7 +73,7 @@ class NoteTest < ActiveSupport::TestCase
   test "save flags a taken path after a single try" do
     api = FakeMarkuppApi.new(notes: [ { id: "1", path: "plan.md" } ])
 
-    note = Note.new(path: "plan.md", content: "")
+    note = Note.new(path: "plan.md", content: "", vault_id: "vault-1")
 
     assert_not note.save(api)
     assert note.errors.of_kind?(:path, :taken)

@@ -41,6 +41,25 @@ describe("HttpMarkuppApi", () => {
     expect(request.headers.has("x-markupp-tenant")).toBe(false);
   });
 
+  it("lê a conta do token em /v1/auth/me e devolve só id e email", async () => {
+    const me = {
+      id: "u1",
+      email: "ana@x.dev",
+      email_verified: true,
+      password_login: false,
+    };
+    const fake = new FakeFetch().respondWith(200, me);
+    expect(await apiWith(fake).getAccount()).toEqual({
+      id: "u1",
+      email: "ana@x.dev",
+    });
+    const request = onlyRequest(fake);
+    expect(`${request.method} ${request.url}`).toBe(
+      "GET http://api.test/v1/auth/me",
+    );
+    expect(request.headers.has("x-markupp-tenant")).toBe(false);
+  });
+
   it("busca notas com query, limit e offset na query string e o tenant no cabeçalho", async () => {
     const fake = new FakeFetch().respondWith(200, []);
     await apiWith(fake).searchNotes("t1", "a b&c", { limit: 5, offset: 10 });
@@ -254,5 +273,111 @@ describe("HttpMarkuppApi na conta", () => {
     );
     expect(request.headers.has("x-markupp-tenant")).toBe(false);
     expect(body === null ? null : await request.json()).toEqual(body);
+  });
+});
+
+describe("HttpMarkuppApi nos cofres", () => {
+  it.each<[string, AdminCall, string, unknown]>([
+    ["lista os cofres", (api) => api.listVaults("t1"), "GET /v1/vaults", null],
+    [
+      "cria o cofre",
+      (api) => api.createVault("t1", "Projeto"),
+      "POST /v1/vaults",
+      { name: "Projeto" },
+    ],
+    [
+      "renomeia o cofre",
+      (api) => api.renameVault("t1", "v/1", "Novo"),
+      "PATCH /v1/vaults/v%2F1",
+      { name: "Novo" },
+    ],
+    [
+      "apaga o cofre",
+      (api) => api.deleteVault("t1", "v1"),
+      "DELETE /v1/vaults/v1",
+      null,
+    ],
+    [
+      "lista os membros do cofre",
+      (api) => api.listVaultMembers("t1", "v1"),
+      "GET /v1/vaults/v1/members",
+      null,
+    ],
+    [
+      "adiciona conta do tenant ao cofre",
+      (api) => api.addVaultMember("t1", "v1", "u1"),
+      "POST /v1/vaults/v1/members",
+      { user_id: "u1" },
+    ],
+    [
+      "tira a conta do cofre",
+      (api) => api.removeVaultMember("t1", "v1", "u/1"),
+      "DELETE /v1/vaults/v1/members/u%2F1",
+      null,
+    ],
+  ])("%s com o tenant no cabeçalho", async (_name, call, line, body) => {
+    const fake = new FakeFetch().respondWith(200, []);
+    await call(apiWith(fake));
+    const request = onlyRequest(fake);
+    expect(`${request.method} ${request.url}`).toBe(
+      line.replace(" ", " http://api.test"),
+    );
+    expect(request.headers.get("x-markupp-tenant")).toBe("t1");
+    expect(body === null ? null : await request.json()).toEqual(body);
+  });
+
+  it("cria a nota no cofre pela rota do cofre", async () => {
+    const fake = new FakeFetch().respondWith(201, note);
+    await apiWith(fake).createNote("t1", "ideias.md", "# Ideias", "v1");
+    const request = onlyRequest(fake);
+    expect(`${request.method} ${request.url}`).toBe(
+      "POST http://api.test/v1/vaults/v1/notes",
+    );
+    expect(await request.json()).toEqual({
+      path: "ideias.md",
+      content: "# Ideias",
+    });
+  });
+
+  it("lista as notas do cofre página a página até a página incompleta", async () => {
+    const item = (id: string) => ({
+      id,
+      title: id,
+      path: `${id}.md`,
+      updated_at: "2026-10-20T11:00:00Z",
+      content_sha256: "abc",
+    });
+    const full = Array.from({ length: 100 }, (_, i) => item(`n${i}`));
+    const fake = new FakeFetch()
+      .respondWith(200, full)
+      .respondWith(200, [item("ultima")]);
+    const listed = await apiWith(fake).listNotes("t1", "v1");
+    expect(fake.requests.map((r) => r.url)).toEqual([
+      "http://api.test/v1/vaults/v1/notes?limit=100&offset=0",
+      "http://api.test/v1/vaults/v1/notes?limit=100&offset=100",
+    ]);
+    expect(listed).toHaveLength(101);
+    expect(listed[100]).toEqual({
+      id: "ultima",
+      vault_id: "v1",
+      path: "ultima.md",
+      updated_at: "2026-10-20T11:00:00Z",
+    });
+  });
+
+  it("busca no cofre pela rota de busca com vault e devolve id, cofre e path", async () => {
+    const hit = {
+      note: { id: "n1", title: "a", path: "a.md" },
+      vault_id: "v1",
+      rank: 0.5,
+      snippet: "...",
+    };
+    const fake = new FakeFetch().respondWith(200, [hit]);
+    const page = { limit: 5 };
+    const found = await apiWith(fake).searchNotes("t1", "a b", page, "v1");
+    expect(onlyRequest(fake).url).toBe(
+      "http://api.test/v1/search/notes?q=a+b&vault=v1&limit=5",
+    );
+    expect(found).toEqual([{ id: "n1", vault_id: "v1", path: "a.md" }]);
   });
 });

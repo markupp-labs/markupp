@@ -1,0 +1,37 @@
+<%# Membros do cofre ativo. Quem escreve adiciona um colega do tenant que ainda não está no cofre; quem entra no tenant
+    pelo convite aparece aqui depois. Cada linha tem Remove, e a da própria conta, Leave vault (o viewer só sai). %>
+<div class="max-w-4xl">
+  <%= render "settings/section_heading", title: t("settings.nav.vault_members"), subtitle: current_vault.name %>
+
+  <% if @refusal %>
+    <p role="alert" class="mt-3 text-danger"><%= @refusal %></p>
+  <% end %>
+
+  <% if current_tenant.writer? %>
+    <% if vault_candidates.any? %>
+      <%= form_with scope: :member, url: settings_vault_members_path, id: "vault_member_add",
+                    class: "mt-3 flex flex-col gap-3 rounded-md border border-line p-3 md:flex-row md:items-end" do |form| %>
+        <div class="md:flex-1">
+          <%= form.label :user_id, t(".colleague"), class: "block text-ink-muted" %>
+          <%# O v a chega com focus=add; aqui mesmo, o atalho foca a escolha. %>
+          <%= form.select :user_id, vault_candidates.map { [ it.email, it.id ] }, {}, autofocus: params[:focus] == "add", data: { vault_action: "a" },
+                          class: "w-full rounded-md border border-line bg-surface px-2 py-1" %>
+        </div>
+        <%= form.button t(".add"), class: "btn self-start md:self-auto" %>
+      <% end %>
+    <% else %>
+      <p class="mt-3 text-ink-muted"><%= t(".everyone_in", tenant: current_tenant.name) %></p>
+    <% end %>
+  <% end %>
+
+  <%# Grade no desktop, blocos empilhados no celular, como a lista de membros do tenant, e pelo teclado do mesmo jeito:
+      j/k entre as linhas, Delete na linha com o foco remove (ou sai, na da própria conta). %>
+  <ul id="vault_members" data-controller="context-menu" data-action="keydown->context-menu#navigate keydown->context-menu#deleteFocused" class="mt-4 md:grid md:grid-cols-[1fr_9rem_7rem_auto] md:gap-x-3">
+    <li aria-hidden="true" class="hidden px-2 py-1 text-ink-muted md:col-span-4 md:grid md:grid-cols-subgrid">
+      <span><%= t(".email") %></span>
+      <span><%= t(".role") %></span>
+      <span><%= t(".joined") %></span>
+    </li>
+    <%= render partial: "settings/vault_members/vault_member", collection: vault_members %>
+  </ul>
+</div>

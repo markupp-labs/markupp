@@ -66,7 +66,11 @@ en:
       settings: "Settings"
       settings_shortcut: "Settings (%{keys})"
     tenant_switcher:
-      switch: "Switch tenant"
+      label: "Tenants"
+      home: "Home"
+      switch: "Switch tenant: %{name}"
+      switch_vault: "Switch vault: %{name}"
+      no_vault: "No vault"
       new_tenant: "New tenant"
       all_tenants: "All tenants"
       all_tenants_title: "All tenants (g t)"
@@ -119,6 +123,11 @@ en:
       switch_tenant: "Switch tenant"
       tenant_general: "Tenant: General"
       delete_tenant: "Delete tenant"
+      switch_vault: "Switch vault"
+      new_vault: "New vault"
+      vault_settings: "Vault settings"
+      vault_members: "Vault members"
+      delete_vault: "Delete vault"
       log_out: "Log out"
       new_note: "New note"
       save: "Save"
@@ -179,6 +188,8 @@ en:
       forbidden: "Your role in this tenant can't do that."
       read_only: "Your role in this tenant is viewer, it can only read notes."
       tenant_unavailable: "You no longer have access to that tenant."
+      vault_unavailable: "You no longer have access to that vault."
+      no_vault: "Create a vault first, then add notes to it."
   sessions:
     back_to_login:
       label: "Back to log in"
@@ -357,15 +368,15 @@ en:
         editor_style_hint: "Plain shows the markdown at one size, like VS Code. Styled makes headings larger, like the Obsidian source mode."
         vim_keys: "Vim key bindings"
         vim_keys_hint: "Vim key bindings give the editor the normal, insert and visual modes of Vim, with :w, :q and :e. Esc twice, then Tab, leaves the editor."
+    danger_zone:
+      title: "Danger zone"
+      type_name: "Type %{name} to confirm"
     general:
       show:
         tenant_name: "Tenant name"
-      danger_zone:
-        title: "Danger zone"
         delete_tenant: "Delete tenant"
-        hint: "This deletes the tenant and all of its notes for every member. There is no going back."
-        confirm: "Delete %{name}? This deletes the tenant and all of its notes for every member, and it can't be undone."
-        type_name: "Type %{name} to confirm"
+        delete_hint: "This deletes the tenant and all of its notes for every member. There is no going back."
+        confirm_delete: "Delete %{name}? This deletes the tenant and all of its notes for every member, and it can't be undone."
     members:
       index:
         email: "Email"

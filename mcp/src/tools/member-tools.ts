@@ -7,6 +7,7 @@ import {
   callApi,
   readOnlyAnnotations,
   roleParameter,
+  tenantParameter,
   writeAnnotations,
   type MarkuppApiFactory,
 } from "./tool-support.js";
@@ -21,8 +22,8 @@ const memberLocator = z.object({
   user_id: userIdParameter,
 });
 
-// addMemberTools registra list_members, change_member_role e remove_member, as rotas
-// /v1/users que pedem papel owner ou admin no tenant.
+// addMemberTools registra list_members, que qualquer membro do tenant chama para achar
+// um colega, e change_member_role e remove_member, que pedem papel owner ou admin.
 export function addMemberTools(
   server: FastMCP<MarkuppSession>,
   factory: MarkuppApiFactory,
@@ -39,8 +40,8 @@ function addListMembers(
   server.addTool({
     name: "list_members",
     description:
-      "Lists the tenant's members with user id, email, role and joined_at. Call it for the user id that change_member_role and remove_member take.",
-    parameters: z.object({ tenant: adminTenantParameter }),
+      "Lists the tenant's members by user id and email. Any member can call it to find a colleague's user id for add_vault_member; owners and admins also call it for change_member_role and remove_member.",
+    parameters: z.object({ tenant: tenantParameter }),
     annotations: readOnlyAnnotations,
     execute: async ({ tenant }, context) => {
       const api = apiFor(factory, context);

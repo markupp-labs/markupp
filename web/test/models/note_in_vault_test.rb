@@ -10,10 +10,6 @@ class NoteInVaultTest < ActiveSupport::TestCase
     ])
   end
 
-  test "all keeps the vault of each note, the way the panel learns the vault" do
-    assert_equal %w[vault-1 vault-1 vault-1 vault-2], Note.all(@api).map(&:vault_id)
-  end
-
   test "in_vault lists the notes of the vault without content, by path, with the derived organization" do
     notes = Note.in_vault(@api, "vault-1")
 
@@ -41,5 +37,10 @@ class NoteInVaultTest < ActiveSupport::TestCase
 
   test "in_vault pages with offset and limit" do
     assert_equal [ "1" ], Note.in_vault(@api, "vault-1", offset: 1, limit: 1).map(&:id)
+  end
+
+  test "every_in_vault walks the pages until a short one, with the query of in_vault" do
+    assert_equal %w[3 1 2], Note.every_in_vault(@api, "vault-1", page_limit: 1).map(&:id)
+    assert_equal %w[3 1], Note.every_in_vault(@api, "vault-1", page_limit: 1, orphan: false).map(&:id)
   end
 end

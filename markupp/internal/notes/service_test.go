@@ -646,13 +646,13 @@ func TestCreate_SemCofre_GravaNoCofrePadraoDoAtor(t *testing.T) {
 	assert.Equal(t, "cofre-padrao", repo.saved.VaultID)
 }
 
-func TestCreate_AtorSemCofre_PropagaErrVaultForbidden(t *testing.T) {
-	repo := &fakeRepo{defaultVaultErr: notes.ErrVaultForbidden}
+func TestCreate_AtorSemCofre_PropagaErrNoVault(t *testing.T) {
+	repo := &fakeRepo{defaultVaultErr: notes.ErrNoVault}
 	svc := newServiceForTest(repo)
 
 	_, err := svc.Create(context.Background(), "", "a.md", "x")
 
-	require.ErrorIs(t, err, notes.ErrVaultForbidden)
+	require.ErrorIs(t, err, notes.ErrNoVault)
 	assert.False(t, repo.called)
 }
 

@@ -21,12 +21,17 @@ describe("list_members", () => {
     expect(JSON.parse(result.text)).toEqual([ana]);
   });
 
-  it("manda usar um tenant de owner ou admin quando o papel não administra", async () => {
-    const api = new FakeMarkuppApi().withTenant("t1", "member");
+  it("deixa qualquer membro achar o id do colega para add_vault_member", async () => {
+    const api = new FakeMarkuppApi().withTenant("t1", "viewer");
+    const ana = api.withMember("t1", "u1", "ana@x.dev", "member");
     client = await MarkuppToolClient.connect(api);
     const result = await client.call("list_members", { tenant: "t1" });
-    expect(result.isError).toBe(true);
-    expect(result.text).toMatch(/^forbidden: .*role owner or admin/);
+    expect(JSON.parse(result.text)).toEqual([ana]);
+    const tool = await client.tool("list_members");
+    expect(tool.description).toMatch(/add_vault_member/);
+    expect(tool.inputSchema.properties?.tenant).toMatchObject({
+      description: "Tenant id from list_tenants.",
+    });
   });
 
   it("anuncia que só lê", async () => {

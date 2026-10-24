@@ -4,14 +4,30 @@
 
 A nota pertence a exatamente um cofre.
 
-Quem é membro de um cofre lê e escreve todas as notas dele. Não existe permissão por nota.
+Quem é membro de um cofre lê e escreve todas as notas dele, salvo o viewer, que só lê. Não
+existe permissão por nota.
 
-Qualquer usuário cria cofre, e qualquer membro adiciona e remove membro, inclusive quem
-criou o cofre.
+O viewer do tenant pode ser membro de cofre e só lê: não escreve nota, não cria, não renomeia
+nem apaga cofre e não adiciona nem remove membro.
 
-Um cofre pode acabar sem nenhum membro.
+Qualquer usuário que não é viewer cria cofre, e qualquer membro que não é viewer renomeia e
+apaga o cofre e adiciona e remove membro, inclusive quem criou o cofre.
 
-Todo usuário recebe um cofre ao criar a conta, e esse cofre é comum como qualquer outro.
+O membro adicionado é uma conta que já tem vínculo com o tenant. Quem é de fora entra antes
+pelo convite do tenant.
+
+Qualquer membro do tenant vê a lista de colegas do tenant para escolher quem adicionar ao
+cofre.
+
+Qualquer membro, viewer inclusive, sai do cofre removendo a si mesmo.
+
+O nome do cofre não é único no tenant.
+
+Apagar um cofre apaga as notas dele e todo o dado derivado delas.
+
+Um cofre pode acabar sem nenhum membro, e uma conta pode ficar sem nenhum cofre.
+
+Todo usuário recebe um cofre ao entrar num tenant, e esse cofre é comum como qualquer outro.
 
 Mover uma nota entre cofres é apagar na origem e criar no destino, então ela recebe
 identificador novo e não leva histórico junto.

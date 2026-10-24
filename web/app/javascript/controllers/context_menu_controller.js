@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { isTyping } from "controllers/typing"
 
 // Menu de contexto num popover (role=menu): abre num ponto da tela; pelo teclado o foco vai ao primeiro item, pelo mouse
 // fica no próprio menu, sem item (um Enter logo depois não roda nada, e as setas entram por uma das pontas). Setas ou
@@ -8,10 +9,14 @@ import { Controller } from "@hotwired/stimulus"
 // Também abre por um botão com popovertarget (menu da conta na barra de atividades): o toggle leva o foco para dentro (o detail do click
 // no botão diz se foi o mouse), e o botão passa a ser quem abriu; clicar nele de novo fecha. Aberto pelo open(), quem abriu ganha data-menu-open até o menu fechar,
 // para a linha da árvore mostrar sobre quem o menu age (tree.css).
+// Fora de popover, numa lista (os membros nas configurações), anda do mesmo jeito pelas linhas marcadas como item, sem
+// fechar nada no Tab e no Esc; Delete na linha com o foco aperta o botão de remover dela (data-context-menu-delete).
 const STEPS = { ArrowDown: 1, j: 1, ArrowUp: -1, k: -1 }
 const EDGE_GAP = 4
 
 export default class extends Controller {
+  static targets = [ "item" ]
+
   open({ x, y, opener, fromKeyboard = false }) {
     this.opener = opener
     opener.toggleAttribute("data-menu-open", true)
@@ -49,15 +54,24 @@ export default class extends Controller {
   }
 
   navigate(event) {
-    if (event.key == "Tab" || event.key == "Escape") return this.closeFromKey(event)
+    if ((event.key == "Tab" || event.key == "Escape") && this.isPopover) return this.closeFromKey(event)
     const step = STEPS[event.key]
     const edge = { Home: 0, End: this.items.length - 1 }[event.key]
-    if ((step === undefined && edge === undefined) || event.ctrlKey || event.metaKey || event.altKey) return
+    if ((step === undefined && edge === undefined) || event.ctrlKey || event.metaKey || event.altKey || isTyping(event.target)) return
 
     event.preventDefault()
-    const current = this.items.indexOf(document.activeElement)
+    const current = this.items.indexOf(this.focusedItem)
     const from = current < 0 && step < 0 ? 0 : current
     this.items[edge ?? (from + step + this.items.length) % this.items.length].focus()
+  }
+
+  // A remoção pede a confirmação do próprio botão (data-turbo-confirm); num campo (o papel do membro) o Delete é do campo.
+  deleteFocused(event) {
+    const button = this.focusedItem?.querySelector("[data-context-menu-delete]")
+    if (event.key != "Delete" || !button || isTyping(event.target)) return
+
+    event.preventDefault()
+    button.click()
   }
 
   closeFromKey(event) {
@@ -89,7 +103,16 @@ export default class extends Controller {
     return this.element.matches("[role=menu]") ? this.element : this.element.querySelector("[role=menu]")
   }
 
+  get isPopover() {
+    return this.element.hasAttribute("popover")
+  }
+
+  // Item com o foco nele ou dentro dele (o botão de uma linha da lista).
+  get focusedItem() {
+    return this.items.find((item) => item.contains(document.activeElement))
+  }
+
   get items() {
-    return [ ...this.element.querySelectorAll("[role=menuitem]:not([hidden])") ]
+    return this.hasItemTarget ? this.itemTargets : [ ...this.element.querySelectorAll("[role=menuitem]:not([hidden])") ]
   }
 }

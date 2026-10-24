@@ -3,8 +3,8 @@ import { z } from "zod";
 import { isAgentTokenRefused } from "../auth/token-exchange.js";
 import {
   MarkuppApiError,
+  type FoundNote,
   type MarkuppApi,
-  type NoteSummary,
 } from "../markupp-api.js";
 import type { MarkuppSession } from "../session.js";
 
@@ -27,6 +27,10 @@ export const roleParameter = z
   .enum(["owner", "admin", "member", "viewer"])
   .describe("Role to grant, up to your own: owner > admin > member > viewer.");
 
+// nameParameter é o nome de tenant ou de cofre: o servidor apara e limita a 100
+// caracteres, e o schema já recusa o que passa disso.
+export const nameParameter = z.string().trim().min(1).max(100);
+
 // readOnlyAnnotations marca as ferramentas que só leem; writeAnnotations é a base das
 // escritas, que cada ferramenta ajusta.
 export const readOnlyAnnotations = { readOnlyHint: true, openWorldHint: false };
@@ -42,6 +46,17 @@ export const noteIdParameter = z
   .min(1)
   .describe("Note id from list_notes, search_notes or create_note.");
 
+export const vaultIdParameter = z
+  .string()
+  .min(1)
+  .describe("Vault id from list_vaults.");
+
+// vaultLocator aponta um cofre: o tenant e o id dele.
+export const vaultLocator = z.object({
+  tenant: tenantParameter,
+  vault_id: vaultIdParameter,
+});
+
 // noteLocator aponta uma nota: o tenant e o id dela.
 export const noteLocator = z.object({
   tenant: tenantParameter,
@@ -50,7 +65,7 @@ export const noteLocator = z.object({
 
 // noteHeader é o que as ferramentas devolvem de cada nota quando o conteúdo não importa:
 // na busca o agente abre a nota com read_note, na escrita ele já sabe o que mandou.
-export function noteHeader(note: NoteSummary): string {
+export function noteHeader(note: FoundNote): string {
   const { id, path, updated_at } = note;
   return JSON.stringify({ id, path, updated_at });
 }
@@ -84,6 +99,15 @@ const nextStepByCode = {
     "Act only on members and roles up to your own role in list_tenants, or ask an owner.",
   already_member:
     "They already belong to the tenant: see list_members, or list_tenants for your own account.",
+  vault_forbidden: "Call list_vaults and use one of the ids it returns.",
+  invalid_name: "Use a name of 1 to 100 characters.",
+  not_tenant_member:
+    "Only accounts of the tenant join a vault: find their user id with list_members, or bring them into the tenant with invite_member first.",
+  already_vault_member:
+    "They already belong to the vault: see list_vault_members.",
+  vault_member_not_found: "Find the current user id with list_vault_members.",
+  no_vault:
+    "The tenant has no vault for you: create one with create_vault, or pass vault_id from list_vaults.",
 } as const satisfies Record<string, string>;
 
 // apiFor devolve o cliente da API da sessão que chamou a ferramenta ou leu o resource.

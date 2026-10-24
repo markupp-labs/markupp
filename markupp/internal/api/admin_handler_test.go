@@ -59,9 +59,16 @@ func adminRequest(svc api.AdminService, role, method, path, body string) *httpte
 	return rec
 }
 
+// adminOnlyRoutes são as rotas de membros e convites que só owner e admin alcançam;
+// listar os colegas, em GET /users, fica aberto a todo membro do tenant.
+var adminOnlyRoutes = [][2]string{
+	{http.MethodGet, "/users/invites"}, {http.MethodPost, "/users/invites"}, {http.MethodDelete, "/users/invites/c1"},
+	{http.MethodPatch, "/users/u2"}, {http.MethodDelete, "/users/u2"},
+}
+
 func TestAdminRoutes_PapelSemAdministracao_Retorna403(t *testing.T) {
 	for _, papel := range []string{"member", "viewer"} {
-		for _, rota := range [][2]string{{http.MethodGet, "/users"}, {http.MethodGet, "/users/invites"}, {http.MethodPost, "/users/invites"}} {
+		for _, rota := range adminOnlyRoutes {
 			rec := adminRequest(&fakeAdminService{}, papel, rota[0], rota[1], `{}`)
 
 			assert.Equal(t, http.StatusForbidden, rec.Code, "%s %s %s", papel, rota[0], rota[1])
@@ -70,9 +77,20 @@ func TestAdminRoutes_PapelSemAdministracao_Retorna403(t *testing.T) {
 }
 
 func TestAdminRoutes_Owner_Administra(t *testing.T) {
-	rec := adminRequest(&fakeAdminService{}, "owner", http.MethodGet, "/users", "")
+	rec := adminRequest(&fakeAdminService{}, "owner", http.MethodGet, "/users/invites", "")
 
 	assert.Equal(t, http.StatusOK, rec.Code)
+}
+
+func TestMembersList_QualquerPapelDoTenant_ListaOsColegasNoMesmoFormato(t *testing.T) {
+	entrou := time.Date(2026, 10, 1, 9, 0, 0, 0, time.UTC)
+	svc := &fakeAdminService{members: []auth.Member{{UserID: "u2", Email: "colega@markupp.dev", Role: "member", JoinedAt: entrou}}}
+	for _, papel := range []string{"viewer", "member", "admin", "owner"} {
+		rec := adminRequest(svc, papel, http.MethodGet, "/v1/users", "")
+
+		assert.Equal(t, http.StatusOK, rec.Code, papel)
+		assert.JSONEq(t, `[{"id":"u2","email":"colega@markupp.dev","role":"member","joined_at":"2026-10-01T09:00:00Z"}]`, rec.Body.String(), papel)
+	}
 }
 
 func TestAdminRoutes_SemToken_Retorna401(t *testing.T) {
