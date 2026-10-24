@@ -90,3 +90,16 @@ func TestIntegration_MemberSemAdministracao_AdicionaColegaAoProprioCofre(t *test
 
 	assertColegaPassaALer(t, url, vaultURL, notaURL, tokenMembro, tokenAdmin, "admin@markupp.dev", "do membro")
 }
+
+func TestIntegration_ContaQueEntraNoTenant_GanhaOCofreDefault(t *testing.T) {
+	url, _, tokenMembro := adminEMembroConvidado(t)
+
+	resp := getWithAuth(t, url+"/v1/vaults", tokenMembro)
+	defer func() { _ = resp.Body.Close() }()
+
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	var cofres []map[string]any
+	require.NoError(t, json.NewDecoder(resp.Body).Decode(&cofres))
+	require.Len(t, cofres, 1)
+	assert.Equal(t, "Default", cofres[0]["name"])
+}
