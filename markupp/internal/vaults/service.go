@@ -111,14 +111,14 @@ func checkWrite(actor identity.Actor, name string) (string, error) {
 	}
 	trimmed := strings.TrimSpace(name)
 	if trimmed == "" || utf8.RuneCountInString(trimmed) > maxNameLength {
-		return "", fmt.Errorf("%w: %q, esperado de 1 a %d caracteres", ErrInvalidName, name, maxNameLength)
+		return "", fmt.Errorf("%w %q: expected 1 to %d characters", ErrInvalidName, name, maxNameLength)
 	}
 	return trimmed, nil
 }
 
 func checkWriter(actor identity.Actor) error {
 	if actor.Role == identity.RoleViewer {
-		return fmt.Errorf("%w: papel %q", ErrReadOnly, actor.Role)
+		return fmt.Errorf("%w: role %q", ErrReadOnly, actor.Role)
 	}
 	return nil
 }
