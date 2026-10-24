@@ -32,7 +32,7 @@ type SMTPMailer struct {
 func NewSMTPMailer(rawURL string) (*SMTPMailer, error) {
 	parsed, err := url.Parse(rawURL)
 	if err != nil || (parsed.Scheme != "smtp" && parsed.Scheme != "smtps") || parsed.Hostname() == "" {
-		return nil, fmt.Errorf("servidor de email %q, esperado smtp://usuario:senha@host:porta ou smtps://", redacted(rawURL))
+		return nil, fmt.Errorf("email server %q, expected smtp://user:password@host:port or smtps://", redacted(rawURL))
 	}
 	plaintext, err := allowsPlaintext(parsed)
 	if err != nil {
@@ -57,7 +57,7 @@ func allowsPlaintext(u *url.URL) (bool, error) {
 	if mode == "none" && u.Scheme == "smtp" {
 		return true, nil
 	}
-	return false, fmt.Errorf("servidor de email %q com tls=%q, esperado sem o parametro ou tls=none com smtp://", u.Redacted(), mode)
+	return false, fmt.Errorf("email server %q with tls=%q, expected no tls parameter or tls=none with smtp://", u.Redacted(), mode)
 }
 
 func portOrDefault(u *url.URL) string {
@@ -81,15 +81,15 @@ func redacted(rawURL string) string {
 func (m *SMTPMailer) Send(ctx context.Context, msg Message) error {
 	sender, err := mail.ParseAddress(msg.From)
 	if err != nil {
-		return fmt.Errorf("remetente %q, esperado usuario@dominio ou Nome <usuario@dominio>: %w", msg.From, err)
+		return fmt.Errorf("sender %q, expected user@domain or Name <user@domain>: %w", msg.From, err)
 	}
 	client, err := m.connect(ctx, senderDomain(sender))
 	if err != nil {
-		return fmt.Errorf("conectar ao servidor de email %s: %w", m.addr, err)
+		return fmt.Errorf("connect to email server %s: %w", m.addr, err)
 	}
 	defer func() { _ = client.Close() }()
 	if err := deliver(client, sender, msg); err != nil {
-		return fmt.Errorf("entregar a %q por %s: %w", msg.To, m.addr, err)
+		return fmt.Errorf("deliver to %q through %s: %w", msg.To, m.addr, err)
 	}
 	// O servidor já aceitou a mensagem no fim do DATA. Tratar a falha do QUIT como
 	// falha da entrega reenviaria o convite com outro token e mataria o deste email.
@@ -136,7 +136,7 @@ func (m *SMTPMailer) greet(client *smtp.Client, heloName string) error {
 		return err
 	}
 	if err := m.secure(client); err != nil {
-		return fmt.Errorf("proteger a conexao com %s: %w", m.addr, err)
+		return fmt.Errorf("secure connection to %s: %w", m.addr, err)
 	}
 	return nil
 }
@@ -160,7 +160,7 @@ func (m *SMTPMailer) startTLS(client *smtp.Client) error {
 		return nil
 	}
 	if ok, _ := client.Extension("STARTTLS"); !ok {
-		return fmt.Errorf("servidor sem STARTTLS, esperado STARTTLS, smtps:// ou smtp://...?tls=none para servidor local")
+		return fmt.Errorf("server without STARTTLS, expected STARTTLS, smtps:// or smtp://...?tls=none for a local server")
 	}
 	return client.StartTLS(&tls.Config{ServerName: m.host, MinVersion: tls.VersionTLS12})
 }
