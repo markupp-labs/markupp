@@ -15,10 +15,10 @@ import (
 )
 
 // ErrInvalidOption indica uma opção do construtor fora da faixa aceita.
-var ErrInvalidOption = errors.New("opcao do fetcher invalida")
+var ErrInvalidOption = errors.New("invalid fetcher option")
 
 // ErrFetchFailed indica que a busca do documento falhou antes de chegar ao JSON.
-var ErrFetchFailed = errors.New("busca do documento de metadados falhou")
+var ErrFetchFailed = errors.New("metadata document fetch failed")
 
 // Padrões do Fetcher, ajustáveis pelas opções do construtor.
 const (
@@ -90,17 +90,17 @@ func NewFetcher(opts ...Option) (*Fetcher, error) {
 // a conexão sem política de IP (o Control entraria em pânico no dial).
 func (f *Fetcher) validateOptions() error {
 	if f.policy == nil {
-		return fmt.Errorf("%w: politica de IP nil; esperado IPPolicy nao nula", ErrInvalidOption)
+		return fmt.Errorf("%w: nil IP policy; expected a non-nil IPPolicy", ErrInvalidOption)
 	}
 	if f.timeout <= 0 {
-		return fmt.Errorf("%w: timeout %s; esperado maior que zero", ErrInvalidOption, f.timeout)
+		return fmt.Errorf("%w: timeout %s; expected greater than zero", ErrInvalidOption, f.timeout)
 	}
 	if f.maxBody <= 0 || f.maxBody == math.MaxInt64 {
-		return fmt.Errorf("%w: limite de corpo %d bytes; esperado entre 1 e %d",
+		return fmt.Errorf("%w: body limit %d bytes; expected between 1 and %d",
 			ErrInvalidOption, f.maxBody, int64(math.MaxInt64-1))
 	}
 	if f.minTTL <= 0 || f.minTTL > f.maxTTL {
-		return fmt.Errorf("%w: TTL minimo %s e maximo %s; esperado 0 < minimo <= maximo",
+		return fmt.Errorf("%w: minimum TTL %s and maximum %s; expected 0 < minimum <= maximum",
 			ErrInvalidOption, f.minTTL, f.maxTTL)
 	}
 	return nil
@@ -155,7 +155,7 @@ func (f *Fetcher) checkClientID(clientID string) error {
 		port = DefaultAllowedPort
 	}
 	if port != f.port {
-		return invalidClientID(clientID, "com porta "+port+" (aceita so a "+f.port+")")
+		return invalidClientID(clientID, "uses port "+port+" (only "+f.port+" is accepted)")
 	}
 	return nil
 }
@@ -180,13 +180,13 @@ func (f *Fetcher) download(ctx context.Context, target string) (body []byte, cac
 
 func checkResponse(resp *http.Response) error {
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("%w: status %d em %s; esperado 200 sem redirecionamento",
+		return fmt.Errorf("%w: status %d at %s; expected 200 without redirect",
 			ErrFetchFailed, resp.StatusCode, resp.Request.URL)
 	}
 	contentType := resp.Header.Get("Content-Type")
 	mediaType, _, err := mime.ParseMediaType(contentType)
 	if err != nil || mediaType != "application/json" {
-		return fmt.Errorf("%w: Content-Type %q; esperado application/json", ErrFetchFailed, contentType)
+		return fmt.Errorf("%w: Content-Type %q; expected application/json", ErrFetchFailed, contentType)
 	}
 	return nil
 }
@@ -194,10 +194,10 @@ func checkResponse(resp *http.Response) error {
 func readLimited(body io.Reader, limit int64) ([]byte, error) {
 	content, err := io.ReadAll(io.LimitReader(body, limit+1))
 	if err != nil {
-		return nil, fmt.Errorf("%w: leitura do corpo: %w", ErrFetchFailed, err)
+		return nil, fmt.Errorf("%w: read body: %w", ErrFetchFailed, err)
 	}
 	if int64(len(content)) > limit {
-		return nil, fmt.Errorf("%w: corpo com mais de %d bytes; esperado ate %d", ErrFetchFailed, limit, limit)
+		return nil, fmt.Errorf("%w: body larger than %d bytes; expected at most %d", ErrFetchFailed, limit, limit)
 	}
 	return content, nil
 }
