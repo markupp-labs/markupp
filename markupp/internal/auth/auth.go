@@ -116,8 +116,9 @@ func normalizeEmail(email string) string {
 	return strings.ToLower(strings.TrimSpace(email))
 }
 
-// InitialVaultName é o nome do cofre que toda conta ganha ao ser criada.
-const InitialVaultName = "Principal"
+// InitialVaultName é o nome do cofre que toda conta ganha ao entrar num tenant. O painel
+// é em inglês, e o nome nasce na mesma língua.
+const InitialVaultName = "Default"
 
 // PendingInvite é o convite que aguarda resposta da conta convidada.
 type PendingInvite struct {
