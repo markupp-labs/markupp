@@ -34,7 +34,8 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
-    "prepack": "npm run build",
+    "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\"",
+    "prepack": "npm run clean && npm run build",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "e2e": "tsc -p e2e && npm run build && vitest run --config e2e/vitest.config.ts",
