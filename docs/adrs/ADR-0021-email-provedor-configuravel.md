@@ -6,9 +6,9 @@ Aceita
 
 ## Contexto
 
-Convite de usuário, recuperação de acesso por credencial local, recibo e aviso de cobrança e
-alerta de operação dependem de envio de mensagem. O self-host não pode depender de serviço de
-terceiro para funcionar, e o Enterprise precisa de entrega confiável e mensurável
+Convite de usuário, recuperação de acesso por credencial local e alerta de operação dependem
+de envio de mensagem. O self-host não pode depender de serviço de terceiro para funcionar,
+e o Enterprise precisa de entrega confiável e mensurável
 
 ## Decisão
 
