@@ -12,9 +12,18 @@ import (
 )
 
 func TestPostgresOAuthRepo_ClienteEmbutido_ExisteDeFabricaComRedirectEmLoopback(t *testing.T) {
+	assertClienteEmbutidoDeFabrica(t, oauth.BuiltinMCPClientID)
+}
+
+func TestPostgresOAuthRepo_ClienteEmbutidoDoCLI_ExisteDeFabricaComRedirectEmLoopback(t *testing.T) {
+	assertClienteEmbutidoDeFabrica(t, oauth.BuiltinCLIClientID)
+}
+
+func assertClienteEmbutidoDeFabrica(t *testing.T, clientID string) {
+	t.Helper()
 	repo, _ := repoOAuth(t)
 
-	client, err := repo.GetClient(context.Background(), oauth.BuiltinMCPClientID, time.Now())
+	client, err := repo.GetClient(context.Background(), clientID, time.Now())
 
 	require.NoError(t, err)
 	assert.Equal(t, oauth.ClientSourceBuiltin, client.Source)
