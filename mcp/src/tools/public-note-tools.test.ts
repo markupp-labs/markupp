@@ -111,6 +111,17 @@ describe("search_public_notes", () => {
       },
     ]);
   });
+
+  it("troca os marcadores de realce do trecho por negrito markdown", async () => {
+    const api = docsVault();
+    api.withNote("docs", "Agentes.md", "conectar o \u0002agente\u0003");
+    client = await MarkuppToolClient.connectPublic(api);
+    const result = await client.call("search_public_notes", {
+      vault: "docs",
+      query: "agente",
+    });
+    expect(JSON.parse(result.text)[0].snippet).toBe("conectar o **agente**");
+  });
 });
 
 describe("read_public_note", () => {
