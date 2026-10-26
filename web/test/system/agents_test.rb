@@ -1,7 +1,7 @@
 require "application_system_test_case"
 
 # Página Agents: o botão Copy de cada trecho copia o texto do pre, sem entidades de HTML, e o status diz o resultado por
-# 2 segundos (snippet_copy_controller.js).
+# 2 segundos (snippet_copy_controller.js). Trecho longo quebra a linha dentro da caixa, sem estourar a largura.
 class AgentsTest < ApplicationSystemTestCase
   INSTANCE_URL = "https://notas.exemplo.com.br".freeze
   CURSOR_CONFIG = "{\n  \"mcpServers\": {\n    \"markupp\": {\n      \"url\": \"#{INSTANCE_URL}/mcp\"\n    }\n  }\n}".freeze
@@ -50,6 +50,13 @@ class AgentsTest < ApplicationSystemTestCase
 
       assert_selector "[role=status]", exact_text: "", visible: :all
     end
+  end
+
+  test "a long snippet wraps inside its box instead of running past it" do
+    visit settings_agents_path
+    snippet = find("pre", text: "claude mcp add --transport http markupp #{INSTANCE_URL}/mcp")
+
+    assert_operator evaluate_script("arguments[0].scrollWidth", snippet), :<=, evaluate_script("arguments[0].clientWidth", snippet)
   end
 
   private
