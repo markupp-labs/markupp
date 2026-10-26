@@ -5,15 +5,18 @@ import { homedir } from "node:os";
 import { setTimeout as sleep } from "node:timers/promises";
 import { runCli } from "./cli.js";
 import { createHttpServer, startHttpServer } from "./http-server.js";
+import { SERVER_INFO } from "./server-info.js";
 import { NodeLocalFiles } from "./stdio/local-files.js";
 import { listenOnLoopback } from "./stdio/loopback-callback.js";
 import { createBrowserOpener } from "./stdio/open-browser.js";
 import { createStdioServer, startStdioServer } from "./stdio/stdio-server.js";
 
 // Liga o CLI ao processo: stderr em texto para a pessoa, log em JSON também no stderr,
-// e o stdout livre para o protocolo MCP do stdio.
+// e o stdout livre para o protocolo MCP do stdio (fora a ajuda e a versão).
 process.exitCode = await runCli(process.argv.slice(2), process.env, {
   writeError: (line) => console.error(line),
+  writeOutput: (line) => console.log(line),
+  version: SERVER_INFO.version,
   startup: {
     fetch,
     readFile: (path) => readFile(path, "utf8"),
