@@ -39,7 +39,7 @@ var declaredOAuthPolicies = map[string]oauthRoutePolicy{
 	"GET /v1/healthz": publicRoute, "POST /v1/auth/login": publicRoute, "POST /v1/auth/refresh": publicRoute,
 	"POST /v1/auth/logout": publicRoute, "POST /v1/auth/invites/accept": publicRoute,
 	"POST /v1/auth/password/forgot": publicRoute, "POST /v1/auth/password/reset": publicRoute,
-	"GET /v1/auth/me": anyScopeRoute, "GET /v1/me/tenants": anyScopeRoute, "GET /v1/me/notifications": anyScopeRoute,
+	"GET /v1/auth/me": anyScopeRoute, "GET /v1/me/tenants": anyScopeRoute,
 	"GET /v1/notes": notesRead, "GET /v1/notes/search": notesRead, "GET /v1/notes/{id}": notesRead,
 	"POST /v1/notes": notesWrite, "PUT /v1/notes/{id}": notesWrite, "DELETE /v1/notes/{id}": notesWrite,
 	"GET /v1/vaults/{id}/notes": notesRead, "POST /v1/vaults/{id}/notes": notesWrite, "GET /v1/search/notes": notesRead,
@@ -50,7 +50,7 @@ var declaredOAuthPolicies = map[string]oauthRoutePolicy{
 	"GET /v1/notes/{id}/graph": notesRead,
 	"GET /v1/users":            adminScope, "GET /v1/users/invites": adminScope, "POST /v1/users/invites": adminScope,
 	"PATCH /v1/users/{id}": adminScope, "DELETE /v1/users/{id}": adminScope, "DELETE /v1/users/invites/{id}": adminScope,
-	"POST /v1/tenants": adminScope, "GET /v1/me/invites": adminScope,
+	"POST /v1/tenants": adminScope, "GET /v1/me/invites": adminScope, "GET /v1/me/notifications": adminScope,
 	"POST /v1/me/invites/{id}/accept": adminScope, "POST /v1/me/invites/{id}/decline": adminScope,
 }
 
