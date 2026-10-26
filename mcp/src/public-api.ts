@@ -47,12 +47,16 @@ export interface PublicMarkuppApi {
 export type HttpPublicMarkuppApiOptions = {
   baseUrl: string;
   fetch: FetchFunction;
-  // forwardedFor é o X-Forwarded-For que o agente trouxe, repassado para o Go contar o
-  // limite por IP do agente quando o MCP está em MARKUPP_TRUSTED_PROXIES.
+  // forwardedFor é o X-Forwarded-For que chegou em /mcp/public, com o salto que o Go
+  // escreveu ao encaminhar, repassado para o Go contar o limite por IP do agente.
   forwardedFor?: string;
+  // relayAuthorization é o HTTP Basic do MCP como resource: só com ele o Go conta o
+  // limite pelo X-Forwarded-For repassado (ADR-0051).
+  relayAuthorization?: string;
 };
 
-// HttpPublicMarkuppApi fala só com as rotas /v1/public/vaults/{slug}, sem token.
+// HttpPublicMarkuppApi fala só com as rotas /v1/public/vaults/{slug}, sem o token do
+// agente.
 export class HttpPublicMarkuppApi implements PublicMarkuppApi {
   private readonly baseUrl: string;
 
@@ -97,6 +101,8 @@ export class HttpPublicMarkuppApi implements PublicMarkuppApi {
     const headers: Record<string, string> = { accept: "application/json" };
     if (this.options.forwardedFor)
       headers["x-forwarded-for"] = this.options.forwardedFor;
+    if (this.options.relayAuthorization)
+      headers.authorization = this.options.relayAuthorization;
     const response = await this.options.fetch(this.baseUrl + path, { headers });
     if (!response.ok) throw await toApiError({ method: "GET", path }, response);
     return (await response.json()) as T;

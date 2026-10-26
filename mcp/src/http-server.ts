@@ -49,7 +49,7 @@ export function createHttpServer(
 ): HttpServers {
   return {
     authenticated: createAuthenticatedServer(config, deps),
-    anonymous: createPublicServer(config.apiUrl, deps.fetch),
+    anonymous: createPublicServer(config, deps.fetch),
   };
 }
 

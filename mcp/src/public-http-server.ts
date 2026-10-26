@@ -1,5 +1,7 @@
 import type { IncomingMessage } from "node:http";
 import { FastMCP } from "fastmcp";
+import { resourceBasicAuth } from "./auth/token-exchange.js";
+import type { HttpConfig } from "./config.js";
 import { freeLoopbackPort } from "./dual-stack-forwarder.js";
 import type { FetchFunction } from "./markupp-api.js";
 import { HttpPublicMarkuppApi } from "./public-api.js";
@@ -10,12 +12,23 @@ import { registerPublicTools } from "./tools/register-public-tools.js";
 const PUBLIC_INSTRUCTIONS =
   "Reads markupp vaults that their owners published for anyone, without an account. Every tool takes the vault slug, the {slug} of its public URL /p/{slug}: ask the user for it when unknown. Start with list_public_notes sorted by pagerank or with search_public_notes, then read_public_note.";
 
+// PublicServerConfig é a API do Go e a credencial de resource do MCP, que ele manda à
+// leitura pública para o Go contar o limite pelo IP do agente.
+export type PublicServerConfig = Pick<
+  HttpConfig,
+  "apiUrl" | "resourceUrl" | "resourceSecret"
+>;
+
 // createPublicServer monta o FastMCP de /mcp/public (ADR-0051): sem OAuth, com só as
 // ferramentas de leitura dos cofres publicados, que chamam /v1/public no Go.
 export function createPublicServer(
-  apiUrl: string,
+  config: PublicServerConfig,
   fetcher: FetchFunction,
 ): FastMCP<PublicSession> {
+  const relayAuthorization = resourceBasicAuth(
+    config.resourceUrl,
+    config.resourceSecret,
+  );
   const server = new FastMCP<PublicSession>({
     ...SERVER_INFO,
     name: `${SERVER_INFO.name}-public`,
@@ -26,9 +39,10 @@ export function createPublicServer(
     server,
     (session) =>
       new HttpPublicMarkuppApi({
-        baseUrl: apiUrl,
+        baseUrl: config.apiUrl,
         fetch: fetcher,
         forwardedFor: session?.forwardedFor,
+        relayAuthorization,
       }),
   );
   return server;
