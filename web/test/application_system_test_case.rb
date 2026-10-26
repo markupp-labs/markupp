@@ -60,6 +60,12 @@ class ApplicationSystemTestCase < ActionDispatch::SystemTestCase
     assert_selector "button[aria-label=Account][title='#{email}']", visible: :all, minimum: 1, wait: 10
   end
 
+  # Deixa a página ler e escrever no clipboard sem o pedido de permissão do navegador.
+  def grant_clipboard
+    page.driver.browser.execute_cdp("Browser.grantPermissions", origin: Capybara.current_session.server.base_url,
+                                                                permissions: %w[clipboardReadWrite clipboardSanitizedWrite])
+  end
+
   def edge(element, side) = evaluate_script("arguments[0].getBoundingClientRect().#{side}", element)
 
   # Cor computada de um valor CSS (um token como var(--accent)), para comparar com a de um elemento.

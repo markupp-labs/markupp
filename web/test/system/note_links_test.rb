@@ -105,8 +105,7 @@ class NoteLinksTest < ApplicationSystemTestCase
   end
 
   test "y on a suggestion and its button copy the wikilink" do
-    page.driver.browser.execute_cdp("Browser.grantPermissions", origin: Capybara.current_session.server.base_url,
-                                                                permissions: %w[clipboardReadWrite clipboardSanitizedWrite])
+    grant_clipboard
     send_keys [ :control, :shift, "l" ]
     assert_selector "#links_suggestions a", text: "ideas"
     find("#links_suggestions a", text: "ideas").execute_script("this.focus()")
