@@ -28,3 +28,14 @@ func (q *Queries) EnterActor(ctx context.Context, arg EnterActorParams) error {
 	_, err := q.db.Exec(ctx, enterActor, arg.TenantID, arg.UserID, arg.Role)
 	return err
 }
+
+const enterPublicReader = `-- name: EnterPublicReader :exec
+SELECT set_config('role', 'markupp_reader', true)
+`
+
+// Troca para o papel da leitura sem conta (ADR-0048), que só enxerga os cofres
+// publicados. Nada na sessão identifica alguém: não há tenant, usuário nem papel.
+func (q *Queries) EnterPublicReader(ctx context.Context) error {
+	_, err := q.db.Exec(ctx, enterPublicReader)
+	return err
+}

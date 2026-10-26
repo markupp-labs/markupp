@@ -273,6 +273,15 @@ type VaultMember struct {
 	CreatedAt time.Time
 }
 
+type VaultPublication struct {
+	VaultID     string
+	TenantID    string
+	Slug        string
+	Title       string
+	PublishedBy string
+	PublishedAt time.Time
+}
+
 type VaultSecondStageQueue struct {
 	VaultID  string
 	Revision int64
