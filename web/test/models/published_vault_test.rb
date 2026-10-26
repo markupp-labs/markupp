@@ -32,6 +32,32 @@ class PublishedVaultTest < ActiveSupport::TestCase
     assert_equal [ [ "guide", "guides/setup.md" ], [ "start", "start.md" ] ], notes.map { [ it.id, it.path ] }
   end
 
+  test "find keeps the vault in the store for a short while, without asking the API again" do
+    reader = @api.as(forwarded_for: "203.0.113.9")
+    store = CacheWithoutExpiry.new
+    PublishedVault.find(reader, "docs", store:)
+
+    vault = PublishedVault.find(reader, "docs", store:)
+
+    assert_equal "Markupp docs", vault.title
+    assert_equal [ "GET /v1/public/vaults/docs" ], reader.received_credentials.pluck(:call)
+    assert_equal [ PublishedVault::STORED_FOR ], store.expiries.values
+    assert_operator PublishedVault::STORED_FOR, :<=, 1.minute
+  end
+
+  test "notes keeps the listing in the store by the graph version, and lists again when the version changes" do
+    reader = @api.as(forwarded_for: "203.0.113.9")
+    store = CacheWithoutExpiry.new
+    vault = PublishedVault.find(@api, "docs")
+    vault.notes(reader, store:)
+
+    assert_equal %w[guide start], vault.notes(reader, store:).map(&:id)
+    assert_equal 1, reader.received_credentials.size
+    vault.with(graph_version: 2).notes(reader, store:)
+    assert_equal 2, reader.received_credentials.size
+    assert_equal [ PublishedVault::STORED_FOR ], store.expiries.values.uniq
+  end
+
   test "note reads one note of the vault with its content" do
     note = PublishedVault.find(@api, "docs").note(@api, "start")
 
