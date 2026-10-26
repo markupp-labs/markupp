@@ -1,5 +1,5 @@
 import { execFile } from "node:child_process";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -8,6 +8,8 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 const run = promisify(execFile);
 const PACKAGE_DIR = fileURLToPath(new URL("..", import.meta.url));
+// STALE_BUILD é um .js que sobrou de um build antigo, como o de um módulo já apagado em src.
+const STALE_BUILD = "dist/sobra-de-build-antigo.js";
 
 // PackedTarball é o que o npm pack --json conta de cada tarball gerado.
 type PackedTarball = { filename: string; files: { path: string }[] };
@@ -31,6 +33,12 @@ async function packInto(destination: string): Promise<PackedTarball> {
     throw new Error(`npm pack sem tarball: ${stdout}, esperado um item`);
   }
   return report;
+}
+
+// leaveStaleBuild simula um dist sujo na máquina de quem publica à mão.
+async function leaveStaleBuild(): Promise<void> {
+  await mkdir(join(PACKAGE_DIR, "dist"), { recursive: true });
+  await writeFile(join(PACKAGE_DIR, STALE_BUILD), "export {};\n");
 }
 
 // installTarball instala o tarball como faria quem roda npx markupp-mcp.
@@ -64,12 +72,14 @@ async function runPackedBin(args: string[]): Promise<BinOutcome> {
 
 beforeAll(async () => {
   workdir = await mkdtemp(join(tmpdir(), "markupp-mcp-pack-"));
+  await leaveStaleBuild();
   packed = await packInto(workdir);
   await installTarball(workdir, packed.filename);
 });
 
 afterAll(async () => {
   await rm(workdir, { recursive: true, force: true });
+  await rm(join(PACKAGE_DIR, STALE_BUILD), { force: true });
 });
 
 describe("tarball do npm", () => {
@@ -85,6 +95,11 @@ describe("tarball do npm", () => {
       .map((file) => file.path)
       .filter((path) => /\.test\.js$|^dist\/testing\//.test(path));
     expect(leaked).toEqual([]);
+  });
+
+  it("deixa de fora o que sobrou de um build antigo no dist", () => {
+    const paths = packed.files.map((file) => file.path);
+    expect(paths).not.toContain(STALE_BUILD);
   });
 });
 
