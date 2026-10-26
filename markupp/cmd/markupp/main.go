@@ -266,7 +266,13 @@ func addVaultPublication(deps *api.RouterDeps, cfg config.Config, pool *pgxpool.
 	deps.Publications = publication.NewService(storage.NewPostgresVaultPublications(pool), time.Now)
 	deps.PublicVaults = storage.NewPostgresPublicVaults(pool, cfg.SearchConfig)
 	deps.PublicRateLimiter = api.NewAccountRateLimiter(cfg.PublicRateLimitPerMinute, time.Minute, time.Now, cfg.TrustedProxies)
+	// O servidor MCP se autentica com o segredo de resource dele e repassa o IP do agente
+	// de /mcp/public (ADR-0051). Sem OAuth não há resource, e o limite fica na conexão.
+	deps.PublicRelay, _ = deps.OAuth.(api.RelayAuthenticator)
 }
+
+// O *oauth.Service confere o servidor MCP da leitura pública.
+var _ api.RelayAuthenticator = (*oauth.Service)(nil)
 
 // newOAuthService monta o authorization server só com o OAuth ligado. Devolve nil de
 // interface, e não um *oauth.Service nil, para o roteador não montar as rotas.

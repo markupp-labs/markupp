@@ -41,6 +41,14 @@ func (s *Service) authenticateResource(g ExchangeGrant) (string, error) {
 	return resource, nil
 }
 
+// AuthenticatesResource diz se o par é a URL de um resource configurado e o segredo
+// dele, com a mesma conferência da troca de token. A leitura pública usa isso para
+// confiar no IP do agente que o servidor MCP repassa (ADR-0051).
+func (s *Service) AuthenticatesResource(resourceID, secret string) bool {
+	_, err := s.authenticateResource(ExchangeGrant{ResourceID: resourceID, ResourceSecret: secret})
+	return err == nil
+}
+
 // sameSecret compara os resumos SHA-256 dos dois segredos em tempo constante. Os resumos
 // têm sempre o mesmo tamanho, então nem o tamanho do segredo nem um resource desconhecido
 // (segredo vazio) mudam o tempo da comparação.

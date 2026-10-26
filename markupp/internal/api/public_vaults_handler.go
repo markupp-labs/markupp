@@ -45,7 +45,7 @@ type publicVaultsHandler struct {
 // mountPublicVaultRoutes monta a leitura sem conta, fora do CORS por lista de origens:
 // qualquer origem lê, sem credenciais, e cada IP tem um limite só para todas as rotas.
 // O preflight fica fora do limite.
-func mountPublicVaultRoutes(r chi.Router, reader PublicVaultReader, limiter *AccountRateLimiter) {
+func mountPublicVaultRoutes(r chi.Router, reader PublicVaultReader, limit func(http.Handler) http.Handler) {
 	if reader == nil {
 		return
 	}
@@ -53,7 +53,7 @@ func mountPublicVaultRoutes(r chi.Router, reader PublicVaultReader, limiter *Acc
 	r.Route(publicVaultPath, func(p chi.Router) {
 		p.Use(allowAnyOrigin, exposePublicHeaders)
 		p.Options("/*", openPreflight(http.MethodGet, "If-None-Match"))
-		limited := p.With(limitPublicReads(limiter))
+		limited := p.With(limit)
 		limited.Get("/", h.vault)
 		limited.Get("/notes", h.listNotes)
 		limited.Get("/notes/{id}", h.readNote)

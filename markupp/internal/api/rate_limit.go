@@ -95,14 +95,14 @@ func limitRequests(allow func(*http.Request) (time.Duration, bool)) func(http.Ha
 // para todas as rotas, para o slug e o id da nota não abrirem limites novos.
 const publicReadsKey = "public ip "
 
-// limitPublicReads limita a leitura pública sem conta por IP (ADR-0048). Limitador nil
-// deixa as rotas livres.
-func limitPublicReads(l *AccountRateLimiter) func(http.Handler) http.Handler {
+// limitPublicReads limita a leitura pública sem conta por IP (ADR-0048), o do agente
+// quando o pedido vem do relay autenticado. Limitador nil deixa as rotas livres.
+func limitPublicReads(l *AccountRateLimiter, relay RelayAuthenticator) func(http.Handler) http.Handler {
 	if l == nil {
 		return passThrough
 	}
 	return limitRequests(func(r *http.Request) (time.Duration, bool) {
-		return l.Allow(publicReadsKey + l.clientIP(r))
+		return l.Allow(publicReadsKey + l.publicClientIP(r, relay))
 	})
 }
 

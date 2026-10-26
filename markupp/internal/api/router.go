@@ -30,6 +30,9 @@ type RouterDeps struct {
 	PublicVaults PublicVaultReader
 	// PublicRateLimiter limita a leitura pública por IP. Nil deixa as rotas livres.
 	PublicRateLimiter *AccountRateLimiter
+	// PublicRelay confere o servidor MCP, cujo X-Forwarded-For conta no limite da leitura
+	// pública como o IP do agente. Nil não confia em nenhum relay.
+	PublicRelay RelayAuthenticator
 	// Publications publica e despublica os cofres do tenant.
 	Publications VaultPublisher
 }
@@ -46,7 +49,7 @@ func NewRouter(d RouterDeps) chi.Router {
 	r.Use(middleware.Recoverer)
 	mountOAuthServerRoutes(r, d)
 	mountMCPProxy(r, d.MCPUpstreamURL)
-	mountPublicVaultRoutes(r, d.PublicVaults, d.PublicRateLimiter)
+	mountPublicVaultRoutes(r, d.PublicVaults, limitPublicReads(d.PublicRateLimiter, d.PublicRelay))
 	r.Group(func(g chi.Router) {
 		g.Use(allowOrigins(d.AllowedOrigins))
 		mountAPIRoutes(g, d)
