@@ -3,6 +3,8 @@ require "application_system_test_case"
 # Sino no pé da barra de atividades (ADR-0049): o contador dos convites pendentes, que se atualiza sozinho, e a lista
 # num popover, onde aceitar ou recusar responde como no seletor de tenant.
 class NotificationsTest < ApplicationSystemTestCase
+  include ContrastAssertions
+
   EMAIL = FakeMarkuppAccounts::DEFAULT_EMAIL
   TENANTS = [ { id: "tenant-1", name: "Acme research", members: { EMAIL => "owner" } },
               { id: "tenant-2", name: "Home lab", members: { "bia@markupp.dev" => "owner" } } ].freeze
@@ -43,7 +45,7 @@ class NotificationsTest < ApplicationSystemTestCase
   test "an invite that arrives later shows up when the tab comes back" do
     api = use_fake_api(tenants: TENANTS)
     sign_in_through_form
-    assert_selector "#{BELL} turbo-frame[complete]"
+    assert_selector "#{BELL} turbo-frame[complete]", visible: :all
     assert_no_selector "#{BELL} .notification-badge"
 
     api.receive_invite!(INVITE)
@@ -75,5 +77,17 @@ class NotificationsTest < ApplicationSystemTestCase
 
     assert_no_selector "#notification_menu:popover-open"
     assert_selector "#{BELL}:focus"
+  end
+
+  test "the count reads clearly on the bell in the light and the dark theme" do
+    use_fake_api(tenants: TENANTS, invites: [ INVITE ])
+    sign_in_through_form
+    %w[Light Dark].each do |theme|
+      visit settings_appearance_path
+      within("main") { click_on theme }
+      assert_selector "main button[aria-pressed=true]", text: theme
+
+      assert_readable find("#{BELL} .notification-badge")
+    end
   end
 end
