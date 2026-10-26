@@ -142,4 +142,13 @@ describe("read_public_note", () => {
     expect(result.isError).toBe(true);
     expect(result.text).toMatch(/^not_found: .*list_public_notes/);
   });
+
+  it("recusa o id '..', que o fetch normalizaria para a rota do cofre", async () => {
+    const api = docsVault();
+    client = await MarkuppToolClient.connectPublic(api);
+    await expect(
+      client.call("read_public_note", { vault: "docs", id: ".." }),
+    ).rejects.toThrow(/id: .*"\.\.".*a-z/);
+    expect(api.calls).toEqual([]);
+  });
 });

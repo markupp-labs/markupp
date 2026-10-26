@@ -28,4 +28,22 @@ describe("resource markupp-public://{vault}/notes/{id}", () => {
       client.read("markupp-public://sumiu/notes/n1"),
     ).rejects.toThrow(/not_found: .*slug/);
   });
+
+  it("recusa o id '..' antes de chamar a API", async () => {
+    const api = new FakePublicMarkuppApi().withVault("docs");
+    client = await MarkuppToolClient.connectPublic(api);
+    await expect(client.read("markupp-public://docs/notes/..")).rejects.toThrow(
+      /id "\.\." .*a-z/,
+    );
+    expect(api.calls).toEqual([]);
+  });
+
+  it("recusa o vault fora do formato do slug antes de chamar a API", async () => {
+    const api = new FakePublicMarkuppApi().withVault("docs");
+    client = await MarkuppToolClient.connectPublic(api);
+    await expect(client.read("markupp-public://../notes/n1")).rejects.toThrow(
+      /vault "\.\." .*a-z/,
+    );
+    expect(api.calls).toEqual([]);
+  });
 });
