@@ -2,8 +2,8 @@
 
 ![Implantação do Enterprise no cluster de produção](diagrama-de-implantacao.drawio.svg)
 
-Diagrama de implantação no estilo C4, com os ícones do Kubernetes. Mostra o que a stack prod
-cria no cluster de produção e o que ela usa sem criar. O desenho por serviço está nos
+Diagrama de implantação no estilo C4, com os ícones do Kubernetes. Mostra o que o componente
+Pulumi cria num cluster de produção e o que ele usa sem criar. O desenho por serviço está nos
 [diagramas de blocos](diagramas-de-blocos.md).
 
 ## O que já existe no cluster

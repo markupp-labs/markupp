@@ -103,20 +103,18 @@ Para subir o servidor MCP, informe `mcp` com `image`. Ele atende na mesma origem
 resource, que vai para a API em `MARKUPP_OAUTH_RESOURCES` e para o MCP em
 `MARKUPP_MCP_RESOURCE_SECRET`.
 
-### Stacks da equipe
+### Stack dev
 
-O projeto em `deploy/stacks` usa o componente pelo caminho local e tem duas stacks:
+O projeto em `deploy/stacks` usa o componente pelo caminho local e tem uma stack, `dev`: um
+cluster kind que o CI sobe em cada PR e a cada push em dev para testar a implantação, com
+certificado autoassinado.
 
-- `prod`: o Enterprise no cluster de produção, com Let's Encrypt
-- `dev`: um cluster kind que o CI sobe em cada PR e a cada push em dev para testar a implantação, com
-  certificado autoassinado
+A cada tag `v*`, o workflow de release publica as imagens do servidor, do painel e do MCP. A
+instância oficial é operada fora deste repositório e consome essas imagens e o componente pela
+tag, como qualquer instalação self-host. Se o secret `CLOUD_DISPATCH_TOKEN` existir, o release
+avisa essa operação da tag nova; sem ele (forks e instalações self-host), o passo é pulado.
 
-A cada tag `v*`, o workflow de release publica as imagens do servidor, do painel e do MCP e, com aprovação no environment
-`production` do GitHub, roda `pulumi up` na stack prod com as imagens da tag. O environment guarda
-os secrets `KUBE_TOKEN` (token de uma ServiceAccount com Role só no namespace do markupp) e
-`PULUMI_ACCESS_TOKEN`, e as variáveis `KUBE_SERVER` e `KUBE_CA_DATA`.
-
-As duas sobem sem email. Para ligar numa stack, com a URL do SMTP cifrada no arquivo da stack:
+A stack sobe sem email. Para ligar numa stack, com a URL do SMTP cifrada no arquivo da stack:
 
 ```sh
 pulumi config set --path --secret email.smtpUrl 'smtps://usuario:senha@host:465'
