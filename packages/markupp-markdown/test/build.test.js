@@ -1,6 +1,18 @@
+import { execFile } from "node:child_process"
 import { readFile } from "node:fs/promises"
+import { fileURLToPath } from "node:url"
+import { promisify } from "node:util"
 import { describe, expect, it } from "vitest"
 import { DIST_DIR, EDITOR_DIR, PACKAGED_EDITOR_MODULES, rewriteEditorImports } from "../scripts/build.js"
+
+const PACKAGE_DIR = fileURLToPath(new URL("..", import.meta.url))
+const REPOSITORY_LICENSE = new URL("../../../LICENSE", import.meta.url)
+const PACKAGE_LICENSE = new URL("../LICENSE", import.meta.url)
+
+async function listTarballFiles() {
+  const { stdout } = await promisify(execFile)("npm", [ "pack", "--dry-run", "--json", "--ignore-scripts" ], { cwd: PACKAGE_DIR })
+  return JSON.parse(stdout)[0].files.map((file) => file.path)
+}
 
 const readModule = (dir, name) => readFile(new URL(`${name}.js`, dir), "utf8")
 
@@ -30,4 +42,14 @@ describe("dist gerado do editor do painel", () => {
 
     await expect(readFile(new URL(`../${manifest.exports["."]}`, import.meta.url), "utf8")).resolves.toContain("createMarkdownRenderer")
   })
+})
+
+describe("licença do pacote", () => {
+  it("o build copia o LICENSE AGPL da raiz do repositório para o pacote", async () => {
+    expect(await readFile(PACKAGE_LICENSE, "utf8")).toBe(await readFile(REPOSITORY_LICENSE, "utf8"))
+  })
+
+  it("o tarball do npm leva o LICENSE", async () => {
+    expect(await listTarballFiles()).toContain("LICENSE")
+  }, 30000)
 })
