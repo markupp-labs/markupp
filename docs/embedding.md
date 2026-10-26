@@ -9,7 +9,7 @@ Configuração planejada, ainda não implementada. A razão de ser plugável est
 | `none` | nenhum | zero | Padrão do self-host. Busca léxica e grafo funcionam sem vetor |
 | `openai-compat` | máquina de quem hospeda | elétrico | Self-host que quer busca semântica sem serviço externo |
 | `openai-compat` | API da OpenAI | por token | Quem já tem chave e não quer rodar modelo |
-| `bedrock` | AWS | por token | Padrão do Enterprise |
+| `bedrock` | AWS | por token | Padrão do Multi-tenant |
 | `local` | dentro do indexador de embedding | elétrico | Self-host sem nenhum serviço externo, nem container extra |
 
 ## Como funciona
@@ -93,7 +93,7 @@ Alternativa com mais qualidade e mais RAM: `mxbai-embed-large`, 1024 dimensões.
 
 ## bedrock
 
-Padrão do Enterprise. Sem chave no arquivo: a credencial vem da identidade do pod.
+Padrão do Multi-tenant. Sem chave no arquivo: a credencial vem da identidade do pod.
 
 ```json
 {

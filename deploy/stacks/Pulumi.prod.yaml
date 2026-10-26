@@ -1,4 +1,4 @@
-# Enterprise no cluster do IFSC, atrás do Gateway da feira de jogos, que tem os
+# Multi-tenant no cluster do IFSC, atrás do Gateway da feira de jogos, que tem os
 # listeners e os certificados dos hosts: o painel no host principal e a API, com o
 # MCP em /mcp, no subdomínio api. As imagens mudam a cada tag pelo deploy do
 # workflow de release, e o email entra com pulumi config set --path quando

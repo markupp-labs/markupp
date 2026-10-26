@@ -1,6 +1,6 @@
 # Diagrama de implantação
 
-![Implantação do Enterprise no cluster de produção](diagrama-de-implantacao.drawio.svg)
+![Implantação do Multi-tenant no cluster de produção](diagrama-de-implantacao.drawio.svg)
 
 Diagrama de implantação no estilo C4, com os ícones do Kubernetes. Mostra o que a stack prod
 cria no cluster de produção e o que ela usa sem criar. O desenho por serviço está nos

@@ -107,7 +107,7 @@ resource, que vai para a API em `MARKUPP_OAUTH_RESOURCES` e para o MCP em
 
 O projeto em `deploy/stacks` usa o componente pelo caminho local e tem duas stacks:
 
-- `prod`: o Enterprise no cluster de produção, com Let's Encrypt
+- `prod`: o Multi-tenant no cluster de produção, com Let's Encrypt
 - `dev`: um cluster kind que o CI sobe em cada PR e a cada push em dev para testar a implantação, com
   certificado autoassinado
 
