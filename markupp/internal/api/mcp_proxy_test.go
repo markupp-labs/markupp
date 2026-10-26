@@ -72,3 +72,13 @@ func TestMCPProxy_UpstreamFora_Responde502(t *testing.T) {
 
 	assert.Equal(t, http.StatusBadGateway, rec.Code)
 }
+
+func TestMCPProxy_EncaminhaOEndpointPublicoSemToken(t *testing.T) {
+	upstream := newFakeMCPUpstream(t)
+	rec := httptest.NewRecorder()
+
+	routerWithMCP(upstream.server.URL).ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/mcp/public", strings.NewReader(`{}`)))
+
+	require.Equal(t, http.StatusAccepted, rec.Code)
+	assert.Equal(t, "POST /mcp/public ", rec.Header().Get("X-Recebido"))
+}
