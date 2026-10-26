@@ -6,7 +6,7 @@ Substituída pelo ADR-0034
 
 ## Contexto
 
-O Enterprise é uma instância única compartilhada, com divisão lógica por cliente, para
+O Multi-tenant é uma instância única compartilhada, com divisão lógica por cliente, para
 aproveitar economia de escala e não deixar recurso ocioso. É preciso garantir que a consulta
 de um cliente nunca alcance dado de outro, inclusive em travessia de grafo, onde até a
 contagem de backlinks entrega a existência de nota alheia
@@ -34,6 +34,6 @@ repete filtro em query nenhuma. O self-host é o mesmo desenho com um único ten
 - A aplicação precisa conectar com papel que não seja dono da tabela, e a tabela precisa de
   `FORCE ROW LEVEL SECURITY`, porque dono e superusuário ignoram política por padrão
 - A política de isolamento precisa de teste próprio: uma política errada vaza tudo de uma vez
-- Self-host e Enterprise compartilham o mesmo caminho de código, sem modo alternativo
+- Self-host e Multi-tenant compartilham o mesmo caminho de código, sem modo alternativo
 - Cliente grande e cliente pequeno dividem o mesmo índice, e vizinho ruidoso só se resolve
   depois, com particionamento por `tenant_id`

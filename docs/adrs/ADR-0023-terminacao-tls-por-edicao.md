@@ -7,18 +7,18 @@ Substituída pelo ADR-0027
 ## Contexto
 
 O ADR-0005 tirou TLS do escopo do MVP. O acesso agora precisa ser cifrado nas duas edições, e
-elas têm topologia diferente: o Enterprise tem balanceador na frente da aplicação, e o
+elas têm topologia diferente: o Multi-tenant tem balanceador na frente da aplicação, e o
 self-host não tem nada na frente
 
 ## Decisão
 
 No self-host o próprio servidor termina TLS, obtendo certificado do Let's Encrypt
-automaticamente. No Enterprise o balanceador termina, com certificado do ACM, e o tráfego entre
+automaticamente. No Multi-tenant o balanceador termina, com certificado do ACM, e o tráfego entre
 o balanceador e a aplicação é HTTP
 
 ## Alternativas consideradas
 
-- Servidor terminando TLS também no Enterprise: duplica o que o balanceador já faz, sem ganho,
+- Servidor terminando TLS também no Multi-tenant: duplica o que o balanceador já faz, sem ganho,
   e obriga a distribuir e renovar certificado em cada instância
 - Exigir proxy reverso no self-host: joga para quem hospeda uma configuração que o servidor
   resolve sozinho, e é a barreira que mais afasta quem instala pela primeira vez
@@ -31,6 +31,6 @@ o balanceador e a aplicação é HTTP
   que o Let's Encrypt valida o domínio
 - Instalação em rede interna, sem domínio público, fica sem TLS pelo servidor e volta a
   depender de proxy reverso
-- No Enterprise o certificado renova sozinho pelo ACM, sem código na aplicação
+- No Multi-tenant o certificado renova sozinho pelo ACM, sem código na aplicação
 - Atrás do balanceador a aplicação precisa confiar no cabeçalho de protocolo original, senão
   gera link com esquema errado

@@ -7,7 +7,7 @@ Substituída pelo ADR-0029
 ## Contexto
 
 Busca semântica e sugestão de ligação precisam de vetor por nota ou por trecho. As duas
-edições têm restrições opostas: o Enterprise roda indexação em Lambda (ADR-0018), onde
+edições têm restrições opostas: o Multi-tenant roda indexação em Lambda (ADR-0018), onde
 carregar pesos de modelo significa imagem grande e cold start, e o self-host não deve depender
 de serviço de terceiro para funcionar
 
@@ -15,7 +15,7 @@ de serviço de terceiro para funcionar
 
 A geração de embedding fica atrás de uma interface com provedor escolhido por configuração.
 Duas implementações: cliente HTTP compatível com a API da OpenAI, e cliente do Amazon Bedrock.
-O padrão do Enterprise é Bedrock. No self-host, o cliente compatível com OpenAI aponta para
+O padrão do Multi-tenant é Bedrock. No self-host, o cliente compatível com OpenAI aponta para
 Ollama, LocalAI, llama.cpp ou vLLM no próprio compose, e busca semântica vem desligada até que
 um provedor seja configurado
 
@@ -39,5 +39,5 @@ um provedor seja configurado
   instância tem um modelo ativo, registrado junto dos vetores, e trocar de modelo obriga a
   reconstruir a tabela de vetores inteira
 - Reconstruir é seguro porque vetor é dado derivado (ADR-0012), mas custa uma passada de
-  embedding sobre todas as notas, o que no Enterprise é custo por chamada
-- Trocar o provedor padrão do Enterprise não muda a arquitetura
+  embedding sobre todas as notas, o que no Multi-tenant é custo por chamada
+- Trocar o provedor padrão do Multi-tenant não muda a arquitetura

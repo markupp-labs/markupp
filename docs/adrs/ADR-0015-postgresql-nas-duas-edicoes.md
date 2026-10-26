@@ -6,14 +6,14 @@ Aceita
 
 ## Contexto
 
-A edição Enterprise vai rodar como instância única em nuvem, com divisão lógica por cliente,
+A edição Multi-tenant vai rodar como instância única em nuvem, com divisão lógica por cliente,
 e a indexação vai rodar sob demanda em processo separado. SQLite é embarcado e de escritor
 único: dois processos não escrevem o mesmo arquivo com segurança fora do mesmo host, e o
 travamento dele não sobrevive a filesystem de rede
 
 ## Decisão
 
-PostgreSQL nas duas edições, self-host e Enterprise. O `sqlc` passa a gerar para Postgres e o
+PostgreSQL nas duas edições, self-host e Multi-tenant. O `sqlc` passa a gerar para Postgres e o
 self-host recebe o banco como serviço no compose
 
 ## Alternativas consideradas
