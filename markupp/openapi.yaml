@@ -524,8 +524,9 @@ paths:
         O que pede a atenção da conta, para o sino do painel (ADR-0049). Hoje a única fonte
         é o convite pendente, o mesmo de GET /me/invites, derivado na leitura e sem estado
         de lido: unread é o número de itens que ainda pedem resposta e cai quando a conta
-        aceita ou recusa. Aceita token de login e token OAuth com qualquer escopo, porque só
-        devolve o que já é da própria conta. Não usa o cabeçalho de tenant. Existe só sob /v1.
+        aceita ou recusa. Aceita token de login e token OAuth com o escopo administracao,
+        o mesmo de GET /me/invites, porque revela organizações de que a conta ainda não é
+        membro. Não usa o cabeçalho de tenant. Existe só sob /v1.
       responses:
         '200':
           description: Notificações da conta, das mais antigas para as mais novas

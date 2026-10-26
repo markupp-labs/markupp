@@ -127,7 +127,8 @@ func mountProtectedGraphRoutes(r chi.Router, graph NoteGraph, tokenValidator Tok
 }
 
 // mountAuthRoutes monta login, sessão e as rotas da conta; as notificações, nascidas
-// depois da transição, só na versão atual (current).
+// depois da transição, só na versão atual (current). Elas trazem os convites de
+// GET /me/invites, então pedem o mesmo escopo administracao ao token OAuth.
 func mountAuthRoutes(r chi.Router, authSvc AuthService, tokenValidator TokenValidator, limit func(http.Handler) http.Handler, current bool) {
 	h := &authHandler{svc: authSvc}
 	r.With(limit).Post("/auth/login", h.login)
@@ -143,6 +144,6 @@ func mountAuthRoutes(r chi.Router, authSvc AuthService, tokenValidator TokenVali
 	admin.Post("/me/invites/{id}/accept", h.acceptMyInvite)
 	admin.Post("/me/invites/{id}/decline", h.declineMyInvite)
 	if current {
-		account.Get("/me/notifications", h.myNotifications)
+		admin.Get("/me/notifications", h.myNotifications)
 	}
 }

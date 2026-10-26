@@ -22,8 +22,8 @@ type notificationFeedResponse struct {
 	Unread int                    `json:"unread"`
 }
 
-// myNotifications lista o que pede a atenção da conta, com qualquer token dela: só
-// devolve o que já é da própria conta (ADR-0049).
+// myNotifications lista o que pede a atenção da conta (ADR-0049). Traz os convites
+// pendentes, os mesmos de GET /me/invites, então o token OAuth precisa de administracao.
 func (h *authHandler) myNotifications(w http.ResponseWriter, r *http.Request) {
 	actor, _ := identity.ActorFrom(r.Context())
 	feed, err := h.svc.ListMyNotifications(r.Context(), actor.UserID)
