@@ -90,6 +90,18 @@ describe("HttpPublicMarkuppApi", () => {
     );
   });
 
+  it("manda o HTTP Basic do MCP, para o Go confiar no X-Forwarded-For repassado", async () => {
+    const upstream = new FakeFetch().respondWith(200, []);
+    await new HttpPublicMarkuppApi({
+      baseUrl: BASE,
+      fetch: upstream.fetch,
+      relayAuthorization: "Basic cmVsYXk=",
+    }).listNotes("docs");
+    expect(upstream.requests[0]?.headers.get("authorization")).toBe(
+      "Basic cmVsYXk=",
+    );
+  });
+
   it("traduz o erro da API em MarkuppApiError com o código", async () => {
     const upstream = new FakeFetch().respondWith(404, {
       error: "not_found",

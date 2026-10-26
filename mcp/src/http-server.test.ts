@@ -2,6 +2,7 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { createServer } from "node:net";
 import { afterEach, describe, expect, it } from "vitest";
+import { resourceBasicAuth } from "./auth/token-exchange.js";
 import type { HttpConfig } from "./config.js";
 import {
   createHttpServer,
@@ -155,7 +156,7 @@ describe("servidor HTTP em /mcp/public", () => {
     ]);
   });
 
-  it("chama a leitura pública do Go sem Authorization, com o X-Forwarded-For do agente", async () => {
+  it("chama a leitura pública do Go com o Basic do MCP e o X-Forwarded-For do agente", async () => {
     running = await new RunningHttpServer().start();
     running.upstream.respondWith(200, []);
     const client = await publicClient({ "x-forwarded-for": "203.0.113.7" });
@@ -169,7 +170,12 @@ describe("servidor HTTP em /mcp/public", () => {
     expect(list?.url).toBe(
       "http://markupp.interno:8080/v1/public/vaults/docs/notes",
     );
-    expect(list?.headers.get("authorization")).toBeNull();
+    expect(list?.headers.get("authorization")).toBe(
+      resourceBasicAuth(
+        running.config.resourceUrl,
+        running.config.resourceSecret,
+      ),
+    );
     expect(list?.headers.get("x-forwarded-for")).toBe("203.0.113.7");
   });
 
