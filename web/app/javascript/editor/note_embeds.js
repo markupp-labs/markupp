@@ -4,14 +4,15 @@ import { renderMarkdown } from "editor/render_markdown"
 // renderMarkdown, logo pelo mesmo DOMPurify, marcada como embutida (sem embed dentro, sem ids, sem linhas do editor).
 // Sem conteúdo (erro, sessão vencida, nota apagada) o bloco fica só com o link para abrir a nota. spinner é o
 // <template> com o indicador de carregamento; afterFill recebe o corpo preenchido, para o que o preview ganha depois
-// do render (as ferramentas dos blocos de código).
-export function fillEmbeds(root, contentFor, env, { spinner, afterFill }) {
+// do render (as ferramentas dos blocos de código). render troca o renderMarkdown do painel, como o de
+// createMarkdownRenderer com a window de um JSDOM.
+export function fillEmbeds(root, contentFor, env, { spinner, afterFill, render = renderMarkdown }) {
   root.querySelectorAll(".note-embed[data-embed-url]").forEach(async (embed) => {
     const body = embed.querySelector(".note-embed-body")
     markLoading(body, spinner)
     const content = await contentFor(embed.dataset.embedUrl)
     body.removeAttribute("aria-busy")
-    body.innerHTML = content == null ? "" : renderMarkdown(content, { ...env, embedded: true })
+    body.innerHTML = content == null ? "" : render(content, { ...env, embedded: true })
     if (content != null) afterFill(body)
   })
 }
