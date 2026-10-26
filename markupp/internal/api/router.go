@@ -26,6 +26,10 @@ type RouterDeps struct {
 	MCPUpstreamURL string
 	// AccountRateLimiter limita as rotas de conta (ADR-0044). Nil deixa as rotas livres.
 	AccountRateLimiter *AccountRateLimiter
+	// PublicVaults lê os cofres publicados sem conta (ADR-0048).
+	PublicVaults PublicVaultReader
+	// PublicRateLimiter limita a leitura pública por IP. Nil deixa as rotas livres.
+	PublicRateLimiter *AccountRateLimiter
 	// Publications publica e despublica os cofres do tenant.
 	Publications VaultPublisher
 }
@@ -42,6 +46,7 @@ func NewRouter(d RouterDeps) chi.Router {
 	r.Use(middleware.Recoverer)
 	mountOAuthServerRoutes(r, d)
 	mountMCPProxy(r, d.MCPUpstreamURL)
+	mountPublicVaultRoutes(r, d.PublicVaults, d.PublicRateLimiter)
 	r.Group(func(g chi.Router) {
 		g.Use(allowOrigins(d.AllowedOrigins))
 		mountAPIRoutes(g, d)

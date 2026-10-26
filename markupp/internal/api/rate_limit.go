@@ -91,6 +91,21 @@ func limitRequests(allow func(*http.Request) (time.Duration, bool)) func(http.Ha
 	}
 }
 
+// publicReadsKey prefixa a chave do limite da leitura pública, que é uma só por IP
+// para todas as rotas, para o slug e o id da nota não abrirem limites novos.
+const publicReadsKey = "public ip "
+
+// limitPublicReads limita a leitura pública sem conta por IP (ADR-0048). Limitador nil
+// deixa as rotas livres.
+func limitPublicReads(l *AccountRateLimiter) func(http.Handler) http.Handler {
+	if l == nil {
+		return passThrough
+	}
+	return limitRequests(func(r *http.Request) (time.Duration, bool) {
+		return l.Allow(publicReadsKey + l.clientIP(r))
+	})
+}
+
 func passThrough(next http.Handler) http.Handler {
 	return next
 }
