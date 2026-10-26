@@ -137,3 +137,49 @@ jobs:
           pulumi config set --path panel.image "$IMAGE-web:${TAG#v}"
           pulumi config set --path mcp.image "$IMAGE-mcp:${TAG#v}"
           pulumi up --yes --non-interactive
+
+  # Publica o markupp-mcp no npm por trusted publishing: o npm troca o token OIDC do
+  # GitHub (id-token: write) por uma credencial de publicação, sem segredo guardado, e
+  # gera a provenance. A tag já passou pela validação de semver no publish-image.
+  publish-npm:
+    name: Publica o markupp-mcp no npm
+    needs: publish-image
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    defaults:
+      run:
+        working-directory: mcp
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Set up Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 26
+          registry-url: https://registry.npmjs.org
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npx vitest run
+
+      - name: Versão do pacote pela tag
+        env:
+          TAG: ${{ github.ref_name }}
+        run: npm version "${TAG#v}" --no-git-tag-version
+
+      # Prerelease vai para a dist-tag next: o npm recusa publicar prerelease sem --tag
+      # explícito, e quem roda npx markupp-mcp recebe só versões estáveis.
+      - name: Publica com provenance
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          case "$TAG" in
+            *-*) dist_tag=next ;;
+            *) dist_tag=latest ;;
+          esac
+          npm publish --provenance --access public --tag "$dist_tag"
