@@ -318,6 +318,18 @@ pelo Go e pelo arquivo do segredo. No cluster, com o MCP em subdomínio próprio
 `MARKUPP_OAUTH_RESOURCES` do Go e o `MARKUPP_MCP_RESOURCE_URL` e o `MARKUPP_MCP_RESOURCE_SECRET`
 do MCP vêm do Secret.
 
+O mesmo servidor atende, sem OAuth, a rota do endpoint seguida de `/public` (`/mcp/public` por
+padrão), que o Go também encaminha (ADR-0051). Ali o agente só lê os cofres publicados, pelas
+ferramentas `list_public_notes`, `read_public_note` e `search_public_notes`, que chamam as rotas
+`/v1/public/vaults/{slug}` da API sem token. O limite de `MARKUPP_PUBLIC_RATE_LIMIT_PER_MINUTE`
+vale também para elas, contado pelo IP de cada agente, sem configuração: o MCP repassa ao Go o
+X-Forwarded-For que recebeu em `/mcp/public` junto com o HTTP Basic do resource dele (a URL e o
+segredo que já usa na troca de token). Só com essa credencial o Go trata o último salto do
+header, o que ele mesmo escreveu ao encaminhar, como a conexão do agente, e segue dali a regra de
+`MARKUPP_TRUSTED_PROXIES`, como num pedido direto à API. Sem a credencial, o header é ignorado.
+Não exponha a porta do MCP fora da rede interna: quem a alcança sem passar pelo Go escolhe o IP
+que conta.
+
 ## Aviso
 
 Com o banco vazio, quem fizer o primeiro login vira owner do tenant inicial

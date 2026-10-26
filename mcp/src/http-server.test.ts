@@ -2,6 +2,7 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { createServer } from "node:net";
 import { afterEach, describe, expect, it } from "vitest";
+import { resourceBasicAuth } from "./auth/token-exchange.js";
 import type { HttpConfig } from "./config.js";
 import {
   createHttpServer,
@@ -129,5 +130,65 @@ describe("servidor HTTP", () => {
     expect(tenants?.url).toBe("http://markupp.interno:8080/v1/me/tenants");
     expect(tenants?.headers.get("authorization")).toBe("Bearer jwt-api");
     expect(JSON.stringify(result.content)).toContain("Casa");
+  });
+});
+
+describe("servidor HTTP em /mcp/public", () => {
+  async function publicClient(headers: Record<string, string> = {}) {
+    const client = new Client({ name: "teste", version: "0.0.0" });
+    const transport = new StreamableHTTPClientTransport(
+      new URL(running.url("/mcp/public")),
+      { requestInit: { headers } },
+    );
+    await client.connect(transport);
+    return client;
+  }
+
+  it("atende sem token e lista só as ferramentas públicas", async () => {
+    running = await new RunningHttpServer().start();
+    const client = await publicClient();
+    const { tools } = await client.listTools();
+    await client.close();
+    expect(tools.map((tool) => tool.name).sort()).toEqual([
+      "list_public_notes",
+      "read_public_note",
+      "search_public_notes",
+    ]);
+  });
+
+  it("chama a leitura pública do Go com o Basic do MCP e o X-Forwarded-For do agente", async () => {
+    running = await new RunningHttpServer().start();
+    running.upstream.respondWith(200, []);
+    const client = await publicClient({ "x-forwarded-for": "203.0.113.7" });
+    const result = await client.callTool({
+      name: "list_public_notes",
+      arguments: { vault: "docs" },
+    });
+    await client.close();
+    const [list] = running.upstream.requests;
+    expect(result.isError).toBeFalsy();
+    expect(list?.url).toBe(
+      "http://markupp.interno:8080/v1/public/vaults/docs/notes",
+    );
+    expect(list?.headers.get("authorization")).toBe(
+      resourceBasicAuth(
+        running.config.resourceUrl,
+        running.config.resourceSecret,
+      ),
+    );
+    expect(list?.headers.get("x-forwarded-for")).toBe("203.0.113.7");
+  });
+
+  it("mantém o desafio OAuth no endpoint autenticado", async () => {
+    running = await new RunningHttpServer().start();
+    const response = await fetch(running.url("/mcp"), {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        accept: "application/json, text/event-stream",
+      },
+      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "ping" }),
+    });
+    expect(response.status).toBe(401);
   });
 });

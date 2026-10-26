@@ -95,14 +95,14 @@ func limitRequests(allow func(*http.Request) (time.Duration, bool)) func(http.Ha
 // para todas as rotas, para o slug e o id da nota não abrirem limites novos.
 const publicReadsKey = "public ip "
 
-// limitPublicReads limita a leitura pública sem conta por IP (ADR-0048). Limitador nil
-// deixa as rotas livres.
-func limitPublicReads(l *AccountRateLimiter) func(http.Handler) http.Handler {
+// limitPublicReads limita a leitura pública sem conta por IP (ADR-0048), o do agente
+// quando o pedido vem do relay autenticado. Limitador nil deixa as rotas livres.
+func limitPublicReads(l *AccountRateLimiter, relay RelayAuthenticator) func(http.Handler) http.Handler {
 	if l == nil {
 		return passThrough
 	}
 	return limitRequests(func(r *http.Request) (time.Duration, bool) {
-		return l.Allow(publicReadsKey + l.clientIP(r))
+		return l.Allow(publicReadsKey + l.publicClientIP(r, relay))
 	})
 }
 
@@ -136,16 +136,27 @@ func (l *AccountRateLimiter) clientIP(r *http.Request) string {
 	if err != nil {
 		return host
 	}
-	if forwarded, ok := l.forwardedClient(r, remote.Unmap()); ok {
+	return l.keyBehind(remote.Unmap(), forwardedHops(r))
+}
+
+// keyBehind é a chave do cliente atrás de remote, a conexão vista, com os saltos do
+// X-Forwarded-For que chegaram nela.
+func (l *AccountRateLimiter) keyBehind(remote netip.Addr, hops []string) string {
+	if forwarded, ok := l.forwardedClient(hops, remote); ok {
 		return ipKey(forwarded)
 	}
-	return ipKey(remote.Unmap())
+	return ipKey(remote)
+}
+
+// forwardedHops junta os headers X-Forwarded-For numa lista de saltos, sempre com ao
+// menos um item, vazio quando o header falta.
+func forwardedHops(r *http.Request) []string {
+	return strings.Split(strings.Join(r.Header.Values("X-Forwarded-For"), ","), ",")
 }
 
 // forwardedClient percorre o X-Forwarded-For da direita para a esquerda enquanto o
 // salto anterior é proxy confiável. Entrada que não é IP invalida o header.
-func (l *AccountRateLimiter) forwardedClient(r *http.Request, remote netip.Addr) (netip.Addr, bool) {
-	hops := strings.Split(strings.Join(r.Header.Values("X-Forwarded-For"), ","), ",")
+func (l *AccountRateLimiter) forwardedClient(hops []string, remote netip.Addr) (netip.Addr, bool) {
 	for i := len(hops) - 1; i >= 0 && l.isTrusted(remote); i-- {
 		hop, err := netip.ParseAddr(strings.TrimSpace(hops[i]))
 		if err != nil {
