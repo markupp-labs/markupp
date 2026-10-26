@@ -30,12 +30,11 @@ export const publicNoteLocator = z.object({
 });
 
 // nextStepByPublicCode só aponta ferramentas públicas: o agente de /mcp/public não tem
-// as autenticadas.
+// as autenticadas. A API responde not_found igual para o slug sem cofre publicado e
+// para a nota fora dele (ADR-0048), então o passo cobre os dois.
 const nextStepByPublicCode = {
-  not_published:
-    "No published vault has this slug: check it with the user, from the public URL /p/{slug}.",
   not_found:
-    "The note is not in this vault: find its current id with list_public_notes or search_public_notes.",
+    "Either no vault is published with this slug, so check the slug with the user from the public URL /p/{slug}, or the note is not in it, so find its current id with list_public_notes or search_public_notes.",
   rate_limited:
     "Wait the seconds this message names before the next call, and read fewer notes per minute.",
 } as const satisfies Record<string, string>;
