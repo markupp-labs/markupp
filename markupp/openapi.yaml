@@ -11,8 +11,11 @@ info:
     continuam servidos sem prefixo, com os cabeçalhos Deprecation (RFC 9745) e
     Link rel="successor-version" apontando o caminho sob /v1; sem prefixo, a nota
     mantém a representação antiga, sem a organização derivada. As rotas /oauth/requests,
-    /me/authorizations, /vaults, /search e as sub-coleções de /notes/{id} nasceram
-    depois da transição e existem só sob /v1, sem o caminho sem prefixo.
+    /me/authorizations, /vaults, /search, /public e as sub-coleções de /notes/{id}
+    nasceram depois da transição e existem só sob /v1, sem o caminho sem prefixo.
+
+    As rotas /public/vaults/{slug} leem o cofre publicado sem autenticação
+    (ADR-0048), com CORS aberto para GET, limite por IP e ETag.
 
     Os endpoints do protocolo OAuth (/oauth/authorize, /oauth/token, /oauth/revoke e a
     metadata em /.well-known/oauth-authorization-server) ficam na raiz, fora de /v1, e
@@ -1636,6 +1639,346 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /vaults/{id}/publication:
+    get:
+      summary: Lê a publicação do cofre
+      description: |
+        A publicação do cofre para leitura sem conta (ADR-0048): o slug da URL pública,
+        o título e quem publicou primeiro, e quando. Todo membro do cofre lê, o viewer
+        inclusive. Existe só sob /v1.
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+        - $ref: '#/components/parameters/VaultID'
+      responses:
+        '200':
+          description: Cofre publicado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicationResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotPublished'
+        '500':
+          description: Erro interno do servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      summary: Publica o cofre para leitura sem conta
+      description: |
+        Publica o cofre com o slug e o título dados, ou troca os dois se ele já está
+        publicado; quem publicou primeiro e quando ficam. Só owner e admin do tenant
+        publicam, e só cofre de que são membros, com o escopo admin. O slug é único
+        entre todos os tenants, de 3 a 63 caracteres entre a-z, 0-9 e hífen, e o
+        primeiro a reservar fica com ele. Título vazio fica com o nome do cofre. Cada
+        publicação gera o evento de auditoria vaults.publish.
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+        - $ref: '#/components/parameters/VaultID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PublicationRequest'
+      responses:
+        '200':
+          description: Cofre publicado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicationResponse'
+        '400':
+          description: JSON inválido, ou slug ou título fora do formato (invalid_request), com o valor na mensagem
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: |
+            Papel member ou viewer (forbidden), ou cofre inexistente ou de que o
+            administrador não é membro (vault_forbidden)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Slug já usado por outro cofre, de qualquer tenant (slug_taken)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Erro interno do servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      summary: Despublica o cofre
+      description: |
+        Tira o cofre da leitura sem conta: as rotas /v1/public/vaults/{slug} passam a
+        responder 404 e o slug fica livre. Só owner e admin do tenant, com o escopo
+        admin. Gera o evento de auditoria vaults.unpublish.
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+        - $ref: '#/components/parameters/VaultID'
+      responses:
+        '204':
+          description: Cofre despublicado
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotPublished'
+        '500':
+          description: Erro interno do servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /public/vaults/{slug}:
+    get:
+      security: []
+      summary: Lê o cofre publicado, sem conta
+      description: |
+        Leitura sem autenticação do cofre publicado (ADR-0048), no papel de banco que só
+        enxerga os cofres publicados. Cofre inexistente e cofre não publicado respondem
+        igual, 404. Todas as rotas /v1/public liberam CORS para qualquer origem, sem
+        credenciais, e expõem ETag e Retry-After; somadas, aceitam
+        MARKUPP_PUBLIC_RATE_LIMIT_PER_MINUTE pedidos por minuto por IP, 300 por padrão.
+        A resposta vem com ETag do conteúdo e Cache-Control public, no-cache; com
+        If-None-Match igual, 304 sem corpo. graph_version muda quando o segundo estágio
+        do indexador roda e serve de chave para o cache de quem lê.
+      parameters:
+        - $ref: '#/components/parameters/PublicSlug'
+        - $ref: '#/components/parameters/PublicIfNoneMatch'
+      responses:
+        '200':
+          description: Cofre publicado
+          headers:
+            ETag:
+              $ref: '#/components/headers/PublicETag'
+            Cache-Control:
+              $ref: '#/components/headers/PublicCacheControl'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicVaultResponse'
+        '304':
+          $ref: '#/components/responses/PublicNotModified'
+        '404':
+          $ref: '#/components/responses/PublicVaultNotFound'
+        '429':
+          $ref: '#/components/responses/PublicRateLimited'
+  /public/vaults/{slug}/notes:
+    get:
+      security: []
+      summary: Lista as notas do cofre publicado, sem conta
+      description: |
+        As notas do cofre publicado com os mesmos filtros, ordens e página de
+        GET /v1/vaults/{id}/notes, sem o conteúdo. CORS, limite e ETag como em
+        GET /v1/public/vaults/{slug}.
+      parameters:
+        - $ref: '#/components/parameters/PublicSlug'
+        - $ref: '#/components/parameters/Orphan'
+        - $ref: '#/components/parameters/Community'
+        - $ref: '#/components/parameters/NoteSort'
+        - $ref: '#/components/parameters/SortDirection'
+        - $ref: '#/components/parameters/PageOffset'
+        - $ref: '#/components/parameters/PageLimit'
+        - $ref: '#/components/parameters/PublicIfNoneMatch'
+      responses:
+        '200':
+          description: Lista, vazia quando não há nenhum item
+          headers:
+            ETag:
+              $ref: '#/components/headers/PublicETag'
+            Cache-Control:
+              $ref: '#/components/headers/PublicCacheControl'
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/NoteListItem'
+        '304':
+          $ref: '#/components/responses/PublicNotModified'
+        '400':
+          description: Parâmetro de consulta inválido (invalid_request), com o parâmetro e o valor na mensagem
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          $ref: '#/components/responses/PublicVaultNotFound'
+        '429':
+          $ref: '#/components/responses/PublicRateLimited'
+  /public/vaults/{slug}/notes/{id}:
+    get:
+      security: []
+      summary: Lê a nota do cofre publicado, sem conta
+      description: |
+        A nota com o conteúdo e a organização derivada, sem o cofre. Nota que não é
+        do cofre do slug responde 404, mesmo que exista em outro cofre publicado. CORS,
+        limite e ETag como em GET /v1/public/vaults/{slug}.
+      parameters:
+        - $ref: '#/components/parameters/PublicSlug'
+        - $ref: '#/components/parameters/NoteID'
+        - $ref: '#/components/parameters/PublicIfNoneMatch'
+      responses:
+        '200':
+          description: Nota
+          headers:
+            ETag:
+              $ref: '#/components/headers/PublicETag'
+            Cache-Control:
+              $ref: '#/components/headers/PublicCacheControl'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicNoteResponse'
+        '304':
+          $ref: '#/components/responses/PublicNotModified'
+        '404':
+          $ref: '#/components/responses/PublicVaultNotFound'
+        '429':
+          $ref: '#/components/responses/PublicRateLimited'
+  /public/vaults/{slug}/search:
+    get:
+      security: []
+      summary: Busca no cofre publicado, sem conta
+      description: |
+        Busca por texto como GET /v1/search/notes, só nas notas do cofre publicado e
+        sem o cofre no resultado. A consulta tem no máximo 256 bytes. CORS, limite e
+        ETag como em GET /v1/public/vaults/{slug}.
+      parameters:
+        - $ref: '#/components/parameters/PublicSlug'
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+            maxLength: 256
+          description: Consulta na sintaxe de websearch_to_tsquery
+        - $ref: '#/components/parameters/PageOffset'
+        - $ref: '#/components/parameters/PageLimit'
+        - $ref: '#/components/parameters/PublicIfNoneMatch'
+      responses:
+        '200':
+          description: Resultados da busca, vazio quando nada casa
+          headers:
+            ETag:
+              $ref: '#/components/headers/PublicETag'
+            Cache-Control:
+              $ref: '#/components/headers/PublicCacheControl'
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PublicSearchHitResponse'
+        '304':
+          $ref: '#/components/responses/PublicNotModified'
+        '400':
+          description: q ausente ou longo demais, ou offset e limit não inteiros (invalid_request)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          $ref: '#/components/responses/PublicVaultNotFound'
+        '429':
+          $ref: '#/components/responses/PublicRateLimited'
+  /public/vaults/{slug}/graph:
+    get:
+      security: []
+      summary: Lê o grafo do cofre publicado, sem conta
+      description: |
+        O grafo para desenhar, com os filtros de GET /v1/vaults/{id}/graph, gzip quando
+        o cliente aceita e ETag fraco pela versão do grafo; com If-None-Match igual, o
+        grafo nem é lido. Cache-Control public, no-cache. CORS e limite como em
+        GET /v1/public/vaults/{slug}.
+      parameters:
+        - $ref: '#/components/parameters/PublicSlug'
+        - $ref: '#/components/parameters/GraphOrphans'
+        - $ref: '#/components/parameters/GraphUnresolved'
+        - $ref: '#/components/parameters/GraphInferred'
+        - $ref: '#/components/parameters/GraphCommunity'
+        - $ref: '#/components/parameters/GraphIfNoneMatch'
+      responses:
+        '200':
+          description: Grafo, com nós e ligações vazios quando não há nota
+          headers:
+            ETag:
+              $ref: '#/components/headers/GraphETag'
+            Cache-Control:
+              $ref: '#/components/headers/PublicCacheControl'
+            Content-Encoding:
+              $ref: '#/components/headers/GraphContentEncoding'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GraphResponse'
+        '304':
+          $ref: '#/components/responses/PublicNotModified'
+        '400':
+          description: Filtro inválido (invalid_request), com o valor e o formato esperado na mensagem
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          $ref: '#/components/responses/PublicVaultNotFound'
+        '429':
+          $ref: '#/components/responses/PublicRateLimited'
+  /public/vaults/{slug}/links:
+    get:
+      security: []
+      summary: Lista as ligações do cofre publicado, sem conta
+      description: |
+        As ligações das notas do cofre publicado, com os filtros e a página de
+        GET /v1/vaults/{id}/links. CORS, limite e ETag como em
+        GET /v1/public/vaults/{slug}.
+      parameters:
+        - $ref: '#/components/parameters/PublicSlug'
+        - $ref: '#/components/parameters/LinkStatus'
+        - $ref: '#/components/parameters/LinkType'
+        - $ref: '#/components/parameters/PageOffset'
+        - $ref: '#/components/parameters/PageLimit'
+        - $ref: '#/components/parameters/PublicIfNoneMatch'
+      responses:
+        '200':
+          description: Lista, vazia quando não há nenhum item
+          headers:
+            ETag:
+              $ref: '#/components/headers/PublicETag'
+            Cache-Control:
+              $ref: '#/components/headers/PublicCacheControl'
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LinkResponse'
+        '304':
+          $ref: '#/components/responses/PublicNotModified'
+        '400':
+          description: Parâmetro de consulta inválido (invalid_request), com o parâmetro e o valor na mensagem
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          $ref: '#/components/responses/PublicVaultNotFound'
+        '429':
+          $ref: '#/components/responses/PublicRateLimited'
   /healthz:
     get:
       security: []
@@ -1676,6 +2019,21 @@ components:
         minimum: 1
         maximum: 100
       description: Quantos resultados devolver. Valor fora da faixa é ajustado para o limite.
+    PublicSlug:
+      name: slug
+      in: path
+      required: true
+      description: Slug do cofre publicado, de 3 a 63 caracteres entre a-z, 0-9 e hífen
+      schema:
+        type: string
+        pattern: '^[a-z0-9-]{3,63}$'
+    PublicIfNoneMatch:
+      name: If-None-Match
+      in: header
+      required: false
+      description: ETag de uma resposta anterior da mesma URL; igual ao atual, a resposta é 304
+      schema:
+        type: string
     NoteID:
       name: id
       in: path
@@ -1846,6 +2204,18 @@ components:
       schema:
         type: string
         enum: [gzip]
+    PublicETag:
+      description: ETag do hash do corpo da resposta
+      schema:
+        type: string
+        example: '"9f86d081884c7d659a2feaa0c55ad015"'
+    PublicCacheControl:
+      description: |
+        public, no-cache: qualquer cache guarda a leitura pública, e revalida pelo ETag
+        antes de usar
+      schema:
+        type: string
+        example: public, no-cache
   responses:
     RateLimited:
       description: >
@@ -1857,6 +2227,38 @@ components:
           description: Segundos até a janela do limite acabar
           schema:
             type: integer
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    PublicRateLimited:
+      description: >
+        Pedidos demais (rate_limited). Cada IP tem um limite só para todas as rotas
+        /v1/public, MARKUPP_PUBLIC_RATE_LIMIT_PER_MINUTE por minuto, 300 por padrão.
+        Com várias réplicas, o limite vale por réplica.
+      headers:
+        Retry-After:
+          description: Segundos até a janela do limite acabar
+          schema:
+            type: integer
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    PublicVaultNotFound:
+      description: Cofre inexistente ou não publicado, sem distinção, ou nota fora do cofre (not_found)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    PublicNotModified:
+      description: If-None-Match traz o ETag atual; sem corpo
+      headers:
+        ETag:
+          schema:
+            type: string
+    NotPublished:
+      description: Cofre não publicado, ou fora do alcance do usuário (not_published)
       content:
         application/json:
           schema:
@@ -2500,6 +2902,90 @@ components:
           format: double
           description: Cosseno tf-idf com esta nota, zero fora da lista léxica
           example: 0.38
+    PublicationRequest:
+      type: object
+      required: [slug]
+      properties:
+        slug:
+          type: string
+          pattern: '^[a-z0-9-]{3,63}$'
+          description: Slug da URL pública, único entre todos os tenants
+          example: docs
+        title:
+          type: string
+          maxLength: 200
+          description: Título mostrado na leitura pública; vazio fica com o nome do cofre
+          example: Markupp docs
+    PublicationResponse:
+      type: object
+      properties:
+        vault_id:
+          type: string
+          description: Cofre publicado
+        slug:
+          type: string
+          example: docs
+        title:
+          type: string
+          example: Markupp docs
+        published_by:
+          type: string
+          description: Usuário que publicou o cofre pela primeira vez
+        published_at:
+          type: string
+          format: date-time
+          description: Quando o cofre foi publicado pela primeira vez
+    PublicVaultResponse:
+      type: object
+      description: O cofre publicado, sem o id interno, o tenant e quem publicou
+      properties:
+        slug:
+          type: string
+          example: docs
+        title:
+          type: string
+          example: Markupp docs
+        published_at:
+          type: string
+          format: date-time
+        graph_version:
+          type: integer
+          format: int64
+          description: Versão do grafo do cofre, zero antes do primeiro segundo estágio
+          example: 42
+    PublicNoteResponse:
+      description: A nota lida sem conta, sem o cofre
+      allOf:
+        - $ref: '#/components/schemas/NoteSummary'
+        - type: object
+          properties:
+            content:
+              type: string
+              description: Conteúdo markdown da nota
+            content_sha256:
+              type: string
+              pattern: '^[0-9a-f]{64}$'
+              description: SHA-256 dos bytes UTF-8 do conteúdo, em hexadecimal minúsculo
+            created_at:
+              type: string
+              format: date-time
+            updated_at:
+              type: string
+              format: date-time
+        - $ref: '#/components/schemas/NoteRank'
+    PublicSearchHitResponse:
+      type: object
+      description: O resultado da busca pública, sem o cofre
+      properties:
+        note:
+          $ref: '#/components/schemas/NoteSummary'
+        rank:
+          type: number
+          format: double
+          description: Relevância da nota para a consulta, que ordena a lista
+        snippet:
+          type: string
+          description: Trecho com os termos entre U+0002 e U+0003, como em SearchHitResponse
     HealthResponse:
       type: object
       properties:
