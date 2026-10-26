@@ -85,6 +85,14 @@ lista nunca tem o header lido. Liste só as redes dos proxies: um CIDR que cubra
 qualquer um deles escolher o IP que conta. No componente, `trustedProxies` recebe a lista de
 CIDRs e `rateLimitPerMinute` o limite, e os dois vão só para a API.
 
+A leitura sem conta dos cofres publicados (ADR-0048), nas rotas `/v1/public/vaults/{slug}`, tem
+limite próprio: 300 pedidos por minuto por IP, somadas todas essas rotas, trocado pela variável
+`MARKUPP_PUBLIC_RATE_LIMIT_PER_MINUTE`, de 1 a 10000. O IP segue as mesmas regras de
+`MARKUPP_TRUSTED_PROXIES`. Um site que renderiza as páginas no servidor lendo essas rotas faz
+todos os pedidos com o IP dele, então o limite precisa caber no tráfego do site, já descontado o
+que o cache por ETag dele economiza. A migração 00036 cria o papel `markupp_reader`, sem login,
+para essa leitura, com o mesmo CREATEROLE que a migração já exige para os outros papéis.
+
 Sem outra opção, o componente cria um Gateway próprio nas portas 80 e 443. Em cluster onde
 outro Gateway já ocupa essas portas, como o Cilium em hostNetwork, que exige porta única por
 Gateway, informe `existingGateway` com nome, namespace e listener. O componente cria só o
