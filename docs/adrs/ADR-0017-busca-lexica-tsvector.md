@@ -28,7 +28,7 @@ antes do grafo de ligações
 - FTS5 do SQLite, proposto no ADR-0014: traz BM25, que é ranking melhor, mas o ADR-0015 tirou o
   SQLite do projeto
 - ParadeDB com `pg_search`: entrega BM25 sobre Postgres, e o custo de extensão é baixo porque
-  pgvector já obriga a sair da imagem oficial. O impedimento é o Enterprise: `pg_search` não
+  pgvector já obriga a sair da imagem oficial. O impedimento é o Multi-tenant: `pg_search` não
   está na lista de extensões suportadas pelo RDS, enquanto pgvector está, então adotá-lo
   obrigaria a operar Postgres por conta própria ou a manter busca diferente por edição
 - Motor de busca externo (Elasticsearch, Meilisearch): mais um serviço para operar nas duas

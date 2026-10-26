@@ -6,7 +6,7 @@ Aceita
 
 ## Contexto
 
-O Enterprise atende vários clientes na mesma instância, e a mesma pessoa pode trabalhar para
+O Multi-tenant atende vários clientes na mesma instância, e a mesma pessoa pode trabalhar para
 mais de um. Com a conta presa a um tenant, essa pessoa precisaria de um email por cliente, e
 convidar um email que já tinha conta em outro cliente gerava convite impossível de aceitar. O
 Langfuse, cujo modelo de distribuição é o mesmo do markupp (ADR-0020), resolve isso com

@@ -15,7 +15,7 @@ Job sobe, carrega o modelo, processa o lote e termina
 
 Três implementações atrás da mesma interface: cliente HTTP compatível com a API da OpenAI,
 cliente do Amazon Bedrock, e modelo local carregado no processo do indexador de embedding. O
-Bedrock segue como padrão do Enterprise, e o modelo local passa a ser a opção de self-host sem
+Bedrock segue como padrão do Multi-tenant, e o modelo local passa a ser a opção de self-host sem
 depender de serviço de terceiro
 
 ## Alternativas consideradas

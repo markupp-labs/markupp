@@ -6,19 +6,19 @@ Aceita
 
 ## Contexto
 
-O Enterprise foi desenhado sobre Lambda e balanceador da AWS (ADR-0018, ADR-0023), enquanto o
+O Multi-tenant foi desenhado sobre Lambda e balanceador da AWS (ADR-0018, ADR-0023), enquanto o
 self-host roda por compose. São dois runtimes diferentes para o mesmo produto, e o serverless
 amarra o projeto a uma nuvem. Além disso, self-host é a identidade do projeto: o que a equipe
 opera na nuvem deveria ser o que qualquer pessoa consegue operar
 
 ## Decisão
 
-Kubernetes é a plataforma de execução do Enterprise e do self-host de porte maior, com as
+Kubernetes é a plataforma de execução do Multi-tenant e do self-host de porte maior, com as
 mesmas imagens de container usadas no compose. A indexação roda como Job criado sob demanda,
 com o gatilho ainda proposto no ADR-0032, e o TLS termina no Gateway. O compose continua sendo
 a via para instalação de um nó
 
-A implantação vem em duas fases. Na primeira, o Enterprise roda num cluster kubeadm on-premise,
+A implantação vem em duas fases. Na primeira, o Multi-tenant roda num cluster kubeadm on-premise,
 com Cilium, Gateway API, cert-manager e Longhorn. Na segunda, vai para nuvem pública, com a
 mesma instalação. O PostgreSQL roda numa instância só, dentro do namespace do markupp, sem nada
 acrescentado no nível do cluster para ele
