@@ -1,0 +1,46 @@
+{
+ "por_nota": {
+  "disco_kb": 61.3,
+  "ram_kb": 19.1,
+  "tokens_embedados": 1443
+ },
+ "Free": {
+  "teto_notas": 1000,
+  "custo_pior_caso": {
+   "ram": 0.11,
+   "disco": 0.0,
+   "embedding": 0.01,
+   "total": 0.13,
+   "importacao_unica": 0.03
+  },
+  "liquido_mensal": 0.0,
+  "liquido_anual_por_mes": 0.0,
+  "margem_pior_caso_anual": null
+ },
+ "Pro": {
+  "teto_notas": 20000,
+  "custo_pior_caso": {
+   "ram": 2.19,
+   "disco": 0.09,
+   "embedding": 0.29,
+   "total": 2.57,
+   "importacao_unica": 0.58
+  },
+  "liquido_mensal": 9.0,
+  "liquido_anual_por_mes": 7.56,
+  "margem_pior_caso_anual": "66%"
+ },
+ "Max": {
+  "teto_notas": 100000,
+  "custo_pior_caso": {
+   "ram": 10.96,
+   "disco": 0.47,
+   "embedding": 1.44,
+   "total": 12.87,
+   "importacao_unica": 2.89
+  },
+  "liquido_mensal": 46.05,
+  "liquido_anual_por_mes": 37.01,
+  "margem_pior_caso_anual": "65%"
+ }
+}

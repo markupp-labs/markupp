@@ -1,0 +1,20 @@
+{
+ "notas": 6498,
+ "markdown_bruto_kb": 33841,
+ "escrita_s": 46.6,
+ "notas_por_s": 139.4,
+ "indexacao_s": 272.5,
+ "banco_total_kb": 227592,
+ "bytes_banco_por_nota": 35865,
+ "por_tabela_kb": {
+  "note_search_index": 76752,
+  "vault_term_frequencies": 65296,
+  "note_terms": 40184,
+  "notes": 19336,
+  "note_links": 16120,
+  "note_titles": 4688,
+  "note_centrality": 2880,
+  "note_communities": 1728,
+  "note_index_queue": 608
+ }
+}

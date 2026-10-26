@@ -1,0 +1,21 @@
+{
+ "vetores": 10000,
+ "float32": {
+  "build_s": 5.7,
+  "tabela_mb": 53.4,
+  "indice_mb": 78.1,
+  "p50_ms": 1.28,
+  "p95_ms": 2.04,
+  "recall_at_10": 1.0,
+  "bytes_por_vetor_total": 13789
+ },
+ "halfvec": {
+  "build_s": 5.0,
+  "tabela_mb": 53.4,
+  "indice_mb": 26.1,
+  "p50_ms": 1.22,
+  "p95_ms": 1.86,
+  "recall_at_10": 1.0,
+  "bytes_por_vetor_total": 8336
+ }
+}
