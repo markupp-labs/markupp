@@ -15,6 +15,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/notes"
+	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/publication"
 )
 
 // NoteService é a fatia do serviço de notas que os handlers HTTP consomem.
@@ -242,6 +243,8 @@ func writeDomainError(w http.ResponseWriter, err error) {
 		writeError(w, "conflict", notes.ErrConflict.Error(), http.StatusConflict)
 	case errors.Is(err, notes.ErrNotFound):
 		writeError(w, "not_found", notes.ErrNotFound.Error(), http.StatusNotFound)
+	case errors.Is(err, publication.ErrNotPublished):
+		writeError(w, "not_found", "cofre publico nao encontrado", http.StatusNotFound)
 	case errors.Is(err, notes.ErrCommunityNotFound):
 		writeError(w, "not_found", notes.ErrCommunityNotFound.Error(), http.StatusNotFound)
 	case errors.Is(err, notes.ErrInvalidID):

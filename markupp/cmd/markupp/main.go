@@ -28,6 +28,7 @@ import (
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/notes"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/notify"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/oauth"
+	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/publication"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/storage"
 )
 
@@ -249,12 +250,22 @@ func newHandler(cfg config.Config, pool *pgxpool.Pool, logger *slog.Logger) (htt
 	if err != nil {
 		return nil, err
 	}
-	return api.NewRouter(api.RouterDeps{
+	deps := api.RouterDeps{
 		Notes: notesSvc, Graph: storage.NewPostgresNoteGraph(pool, cfg.SearchConfig), Auth: authSvc, Admin: adminSvc, AccountEmail: accountEmail,
 		Tokens: codec, Tenants: authSvc, Probe: pool, AllowedOrigins: cfg.AllowedOrigins,
 		OAuthMetadata: oauthMetadataFrom(cfg), OAuth: oauthSvc, MCPUpstreamURL: cfg.MCPUpstreamURL,
 		AccountRateLimiter: api.NewAccountRateLimiter(cfg.RateLimitPerMinute, time.Minute, time.Now, cfg.TrustedProxies),
-	}), nil
+	}
+	addVaultPublication(&deps, cfg, pool)
+	return api.NewRouter(deps), nil
+}
+
+// addVaultPublication liga a publicação dos cofres e a leitura sem conta deles
+// (ADR-0048), com limite por IP próprio.
+func addVaultPublication(deps *api.RouterDeps, cfg config.Config, pool *pgxpool.Pool) {
+	deps.Publications = publication.NewService(storage.NewPostgresVaultPublications(pool), time.Now)
+	deps.PublicVaults = storage.NewPostgresPublicVaults(pool, cfg.SearchConfig)
+	deps.PublicRateLimiter = api.NewAccountRateLimiter(cfg.PublicRateLimitPerMinute, time.Minute, time.Now, cfg.TrustedProxies)
 }
 
 // newOAuthService monta o authorization server só com o OAuth ligado. Devolve nil de

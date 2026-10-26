@@ -41,3 +41,15 @@ func inActorTx(ctx context.Context, pool *pgxpool.Pool, fn func(q *gen.Queries) 
 		return fn(q)
 	})
 }
+
+// inPublicTx roda fn numa transação no papel markupp_reader (ADR-0048), que só lê, e
+// só as notas e o plano de recuperação dos cofres publicados. É a única entrada de
+// dados sem ator, e não carrega nada do contexto para a sessão.
+func inPublicTx(ctx context.Context, pool *pgxpool.Pool, fn func(q *gen.Queries) error) error {
+	return inTx(ctx, pool, func(q *gen.Queries) error {
+		if err := q.EnterPublicReader(ctx); err != nil {
+			return fmt.Errorf("entrar no papel da leitura publica: %w", err)
+		}
+		return fn(q)
+	})
+}

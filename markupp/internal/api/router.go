@@ -26,6 +26,12 @@ type RouterDeps struct {
 	MCPUpstreamURL string
 	// AccountRateLimiter limita as rotas de conta (ADR-0044). Nil deixa as rotas livres.
 	AccountRateLimiter *AccountRateLimiter
+	// PublicVaults lê os cofres publicados sem conta (ADR-0048).
+	PublicVaults PublicVaultReader
+	// PublicRateLimiter limita a leitura pública por IP. Nil deixa as rotas livres.
+	PublicRateLimiter *AccountRateLimiter
+	// Publications publica e despublica os cofres do tenant.
+	Publications VaultPublisher
 }
 
 // NewRouter monta o roteador com sonda, rotas de autenticação, de notas e de
@@ -40,6 +46,7 @@ func NewRouter(d RouterDeps) chi.Router {
 	r.Use(middleware.Recoverer)
 	mountOAuthServerRoutes(r, d)
 	mountMCPProxy(r, d.MCPUpstreamURL)
+	mountPublicVaultRoutes(r, d.PublicVaults, d.PublicRateLimiter)
 	r.Group(func(g chi.Router) {
 		g.Use(allowOrigins(d.AllowedOrigins))
 		mountAPIRoutes(g, d)
@@ -63,8 +70,8 @@ func mustHaveRouterDeps(d RouterDeps) {
 	if d.Tokens == nil {
 		panic("api: Tokens obrigatorio para proteger as rotas")
 	}
-	if d.Tenants == nil && (d.Notes != nil || d.Graph != nil || d.Admin != nil) {
-		panic("api: Tenants obrigatorio para as rotas de notas, do grafo e de administracao")
+	if d.Tenants == nil && (d.Notes != nil || d.Graph != nil || d.Admin != nil || d.Publications != nil) {
+		panic("api: Tenants obrigatorio para as rotas de notas, do grafo, de administracao e de publicacao")
 	}
 	if d.OAuth != nil && d.OAuthMetadata == nil {
 		panic("api: OAuthMetadata obrigatorio para as rotas OAuth, que usam o Issuer")
@@ -86,13 +93,22 @@ func newVersionRoutes(d RouterDeps, current bool) chi.Router {
 	if d.Graph != nil && current {
 		mountProtectedGraphRoutes(r, d.Graph, d.Tokens, d.Tenants)
 	}
-	if d.Admin != nil {
-		mountAdminRoutes(r, d.Admin, d.Tokens, d.Tenants)
-	}
+	mountTenantAdminRoutes(r, d, current)
 	if d.AccountEmail != nil {
 		mountAccountEmailRoutes(r, d.AccountEmail, d.Tokens, limit)
 	}
 	return r
+}
+
+// mountTenantAdminRoutes monta a administração do tenant e a publicação dos cofres,
+// que nasceu depois da transição e existe só sob /v1.
+func mountTenantAdminRoutes(r chi.Router, d RouterDeps, current bool) {
+	if d.Admin != nil {
+		mountAdminRoutes(r, d.Admin, d.Tokens, d.Tenants)
+	}
+	if d.Publications != nil && current {
+		mountPublicationRoutes(r, d.Publications, d.Tokens, d.Tenants)
+	}
 }
 
 // mountProtectedNotesRoutes confere o escopo do token antes de resolver o tenant, para

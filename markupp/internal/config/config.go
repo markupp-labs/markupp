@@ -86,6 +86,9 @@ type Config struct {
 	// RateLimitPerMinute é quantas tentativas por minuto cada IP e cada email têm nas
 	// rotas de conta (ADR-0044).
 	RateLimitPerMinute int
+	// PublicRateLimitPerMinute é quantas leituras por minuto cada IP tem nas rotas
+	// públicas dos cofres publicados (ADR-0048), somadas todas as rotas.
+	PublicRateLimitPerMinute int
 	// TrustedProxies são as redes dos proxies cujo X-Forwarded-For o limite de
 	// tentativas aceita. Vazia, o limite usa só o IP da conexão.
 	TrustedProxies []netip.Prefix
@@ -94,17 +97,18 @@ type Config struct {
 // Default devolve a configuração usada nas variáveis não definidas.
 func Default() Config {
 	cfg := Config{
-		Port:                    8080,
-		MaxNoteSize:             50 * 1024 * 1024,
-		AuthSecret:              "",
-		DefaultTenantID:         "default",
-		JWTExpirationMinutes:    15,
-		RefreshExpirationDays:   7,
-		AuthRegistrationEnabled: false,
-		LocalAuthEnabled:        true,
-		SearchConfig:            "simple",
-		IndexInterval:           30 * time.Second,
-		RateLimitPerMinute:      5,
+		Port:                     8080,
+		MaxNoteSize:              50 * 1024 * 1024,
+		AuthSecret:               "",
+		DefaultTenantID:          "default",
+		JWTExpirationMinutes:     15,
+		RefreshExpirationDays:    7,
+		AuthRegistrationEnabled:  false,
+		LocalAuthEnabled:         true,
+		SearchConfig:             "simple",
+		IndexInterval:            30 * time.Second,
+		RateLimitPerMinute:       5,
+		PublicRateLimitPerMinute: 300,
 	}
 	setOAuthDefaults(&cfg)
 	return cfg
@@ -147,15 +151,18 @@ func loadServerSettings(lookup LookupFunc, cfg *Config) error {
 	if err := loadSMTPSettings(lookup, cfg); err != nil {
 		return err
 	}
-	if err := readRateLimit(lookup, &cfg.RateLimitPerMinute); err != nil {
+	if err := readRateLimit(lookup, "MARKUPP_RATE_LIMIT_PER_MINUTE", &cfg.RateLimitPerMinute); err != nil {
+		return err
+	}
+	if err := readRateLimit(lookup, "MARKUPP_PUBLIC_RATE_LIMIT_PER_MINUTE", &cfg.PublicRateLimitPerMinute); err != nil {
 		return err
 	}
 	return readTrustedProxies(lookup, &cfg.TrustedProxies)
 }
 
-func readRateLimit(lookup LookupFunc, target *int) error {
+func readRateLimit(lookup LookupFunc, key string, target *int) error {
 	limit := int64(*target)
-	if err := readBounded(lookup, "MARKUPP_RATE_LIMIT_PER_MINUTE", 1, 10000, "de 1 a 10000", &limit); err != nil {
+	if err := readBounded(lookup, key, 1, 10000, "de 1 a 10000", &limit); err != nil {
 		return err
 	}
 	*target = int(limit)
