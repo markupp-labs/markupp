@@ -1,5 +1,5 @@
 name: markupp
-description: Instalações do markupp que a equipe opera, uma por stack
+description: Stack dev do markupp, usada pelo smoke do CI e pelo ambiente local
 runtime: yaml
 
 packages:
