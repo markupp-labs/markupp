@@ -8,7 +8,7 @@ import type {
 } from "../public-api.js";
 
 // FakePublicMarkuppApi guarda cofres publicados em memória e responde como a leitura
-// pública da API: not_published para slug sem cofre e not_found para nota fora dele.
+// pública da API: not_found tanto para slug sem cofre quanto para nota fora dele.
 export class FakePublicMarkuppApi implements PublicMarkuppApi {
   readonly calls: string[] = [];
   private readonly vaults = new Map<string, PublicNote[]>();
@@ -84,8 +84,8 @@ export class FakePublicMarkuppApi implements PublicMarkuppApi {
     if (!notes)
       throw new MarkuppApiError(
         404,
-        "not_published",
-        `cofre "${slug}" não publicado`,
+        "not_found",
+        "cofre publico nao encontrado",
       );
     return notes;
   }

@@ -2,10 +2,10 @@ import { describe, expect, it } from "vitest";
 import { FakePublicMarkuppApi } from "./fake-public-markupp-api.js";
 
 describe("FakePublicMarkuppApi", () => {
-  it("recusa slug sem cofre publicado com not_published", async () => {
+  it("recusa slug sem cofre publicado com not_found, como a API", async () => {
     await expect(
       new FakePublicMarkuppApi().listNotes("sumiu"),
-    ).rejects.toMatchObject({ status: 404, code: "not_published" });
+    ).rejects.toMatchObject({ status: 404, code: "not_found" });
   });
 
   it("recusa nota fora do cofre com not_found", async () => {

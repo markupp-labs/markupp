@@ -26,6 +26,6 @@ describe("resource markupp-public://{vault}/notes/{id}", () => {
     client = await MarkuppToolClient.connectPublic(new FakePublicMarkuppApi());
     await expect(
       client.read("markupp-public://sumiu/notes/n1"),
-    ).rejects.toThrow(/not_published: .*slug/);
+    ).rejects.toThrow(/not_found: .*slug/);
   });
 });

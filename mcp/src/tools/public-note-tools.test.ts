@@ -79,7 +79,7 @@ describe("list_public_notes", () => {
     client = await MarkuppToolClient.connectPublic(new FakePublicMarkuppApi());
     const result = await client.call("list_public_notes", { vault: "sumiu" });
     expect(result.isError).toBe(true);
-    expect(result.text).toMatch(/^not_published: .*slug/);
+    expect(result.text).toMatch(/^not_found: .*slug/);
   });
 
   it("recusa slug fora do formato antes de chamar a API", async () => {

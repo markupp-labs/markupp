@@ -92,14 +92,14 @@ describe("HttpPublicMarkuppApi", () => {
 
   it("traduz o erro da API em MarkuppApiError com o código", async () => {
     const upstream = new FakeFetch().respondWith(404, {
-      error: "not_published",
-      message: 'cofre "x" nao publicado',
+      error: "not_found",
+      message: "cofre publico nao encontrado",
     });
     const failure = apiWith(upstream).getNote("x", "n1");
     await expect(failure).rejects.toBeInstanceOf(MarkuppApiError);
     await expect(failure).rejects.toMatchObject({
       status: 404,
-      code: "not_published",
+      code: "not_found",
     });
   });
 });

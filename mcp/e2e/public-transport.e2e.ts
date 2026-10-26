@@ -137,10 +137,10 @@ describe("transporte HTTP público, sem login", () => {
       .toEqual([note.id]);
   }, 120_000);
 
-  it("responde not_published depois que o cofre é despublicado", async () => {
+  it("responde not_found depois que o cofre é despublicado", async () => {
     await owner.unpublish(note.vaultId);
     await expect(
       callToolTexts(client, "read_public_note", { vault: slug, id: note.id }),
-    ).rejects.toThrow(/not_published/);
+    ).rejects.toThrow(/not_found/);
   });
 });
