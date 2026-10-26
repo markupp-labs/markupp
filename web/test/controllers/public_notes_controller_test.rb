@@ -74,6 +74,13 @@ class PublicNotesControllerTest < ActionDispatch::IntegrationTest
     assert_select "main a[href=?]", public_vault_path("docs")
   end
 
+  test "the 404 page takes the whole width, without the column of the tree" do
+    get public_vault_path("private")
+
+    assert_select "nav", count: 0
+    assert_select "body > div[class*=grid-cols]", count: 0
+  end
+
   test "a reader over the limit of the API gets the 429 page" do
     @api.limit_public_reads!
 
