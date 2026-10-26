@@ -63,6 +63,7 @@ en:
       links: "Links"
       graph: "Graph"
       account: "Account"
+      notifications: "Notifications"
       settings: "Settings"
       settings_shortcut: "Settings (%{keys})"
     tenant_switcher:
@@ -70,6 +71,8 @@ en:
       new_tenant: "New tenant"
       all_tenants: "All tenants"
       all_tenants_title: "All tenants (g t)"
+    notification_menu:
+      title: "Notifications"
     account_menu:
       label: "Account menu"
       signed_in_as: "Signed in as"

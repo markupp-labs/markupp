@@ -27,6 +27,7 @@ Rails.application.routes.draw do
   resources :tenants, only: [ :index, :new, :create, :destroy ]
   resource :current_tenant, only: :update
   resources :my_invites, only: [ :index, :update, :destroy ]
+  resource :notifications, only: :show
 
   # Consentimento OAuth: o servidor manda o navegador para cá com o id do pedido.
   resources :oauth_authorizations, path: "oauth/authorize", only: :show do

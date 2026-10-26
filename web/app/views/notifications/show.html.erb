@@ -1,0 +1,8 @@
+<% if turbo_frame_request? %>
+  <%= render layout: "notifications/frames", locals: { unread: @feed.unread } do %>
+    <%= render "notifications/list", feed: @feed %>
+  <% end %>
+<% else %>
+  <h1 class="mb-2 text-base font-semibold"><%= t(".title") %></h1>
+  <div class="max-w-md"><%= render "notifications/list", feed: @feed, id_prefix: "notification_page_invite" %></div>
+<% end %>

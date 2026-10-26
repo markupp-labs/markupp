@@ -1,5 +1,6 @@
 <%# Barra de atividades, como a do VS Code: um ícone por visão da barra lateral e, no pé, de baixo para cima, as
-    configurações, a conta (abre layouts/_account_menu) e o tema. No desktop (placement "side") é a coluna à esquerda da
+    configurações, a conta (abre layouts/_account_menu), o tema e o sino (abre layouts/_notification_menu), com o
+    contador num frame próprio de cada barra (notifications/_badge). No desktop (placement "side") é a coluna à esquerda da
     barra lateral, à vista também com ela recolhida; na gaveta do celular ("drawer"), a linha do topo, com o pé à
     direita. Sem tenant não há visões, só o pé. Setas e j/k andam entre as visões, Enter mostra a visão
     (sidebar_controller.js). %>
@@ -14,6 +15,11 @@
     </div>
   <% end %>
   <div class="activity-bar-actions">
+    <button type="button" popovertarget="notification_menu" aria-haspopup="dialog" title="<%= t(".notifications") %>"
+            class="activity-tab [anchor-name:--notification-menu]">
+      <%= icon("bell") %>
+      <%= render "notifications/badge", placement:, unread: 0, source: notifications_path %>
+    </button>
     <%= render "layouts/theme_buttons", button_class: "activity-tab" %>
     <button type="button" popovertarget="account_menu" aria-haspopup="menu" aria-label="<%= t(".account") %>"
             title="<%= credential.account_email %>" class="activity-tab [anchor-name:--account-menu]">
