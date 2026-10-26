@@ -7,10 +7,11 @@ AccountNotification = Data.define(:kind, :invite) do
 end
 
 # A lista da conta e quantas pedem resposta. O tipo que o painel ainda não sabe mostrar (API mais nova) fica fora da
-# lista; o unread é o da API.
+# lista e do unread, contado pelos itens que ficam, para o contador não anunciar o que o popover não mostra. Hoje todo
+# item que o painel mostra pede resposta, então unread é o tamanho da lista.
 AccountNotification::Feed = Data.define(:items, :unread) do
   def self.from_api(body)
     known = body.fetch("items").select { it["kind"] == "invite" }
-    new(items: known.map { AccountNotification.from_api(it) }, unread: body.fetch("unread"))
+    new(items: known.map { AccountNotification.from_api(it) }, unread: known.size)
   end
 end
