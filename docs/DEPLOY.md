@@ -93,7 +93,9 @@ todos os pedidos com o IP dele, então o limite precisa caber no tráfego do sit
 que o cache por ETag dele economiza. O painel é um desses sites: a leitura em `/p/{slug}` chama essas
 rotas e manda o IP de quem visita no X-Forwarded-For. Com a rede do painel em
 `MARKUPP_TRUSTED_PROXIES`, o limite conta cada visitante; sem ela, todos dividem o limite do IP do
-painel. A migração 00036 cria o papel `markupp_reader`, sem login,
+painel. O painel guarda o cofre e a lista das notas dele por um minuto, então cada página e cada
+`![[nota]]` embutida custa uma chamada (a da nota), e a árvore mostra nota nova ou a despublicação
+em até um minuto. A migração 00036 cria o papel `markupp_reader`, sem login,
 para essa leitura, com o mesmo CREATEROLE que a migração já exige para os outros papéis.
 
 Sem outra opção, o componente cria um Gateway próprio nas portas 80 e 443. Em cluster onde
