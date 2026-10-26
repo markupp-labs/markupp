@@ -72,6 +72,7 @@ test-scripts:
 	./scripts/verifica-coverage-test.sh
 	./scripts/govulncheck-modulos-test.sh
 	./scripts/release-npm-test.sh
+	./scripts/dist-tag-npm-test.sh
 
 # Mede o coverage do servidor e checa a meta minima
 coverage:
