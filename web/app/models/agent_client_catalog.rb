@@ -13,21 +13,27 @@ class AgentClientCatalog
     @placeholders = document.fetch("placeholders")
   end
 
-  def clients_for(instance_url)
-    urls = urls_for(instance_url)
+  # Sem mcp_url, o MCP fica em /mcp da instância, onde o Go o serve.
+  def clients_for(instance_url, mcp_url: nil)
+    urls = urls_for(instance_url, mcp_url)
     @templates.map { build_client(it, urls) }
   end
 
   private
-    # Valida a url e deriva a do MCP, que o Go serve em /mcp; a barra do fim sai, como no TypeScript.
-    def urls_for(raw_url)
+    def urls_for(raw_instance_url, raw_mcp_url)
+      instance_url = http_url(raw_instance_url, "url da instancia")
+      mcp_url = raw_mcp_url ? http_url(raw_mcp_url, "url do MCP") : "#{instance_url}/mcp"
+      { @placeholders.fetch("instanceUrl") => instance_url, @placeholders.fetch("mcpUrl") => mcp_url }
+    end
+
+    # Valida a url e tira a barra do fim, como no TypeScript.
+    def http_url(raw_url, label)
       uri = URI.parse(raw_url.to_s)
       raise URI::InvalidURIError unless uri.is_a?(URI::HTTP) && uri.host.present?
 
-      instance_url = raw_url.sub(%r{/+\z}, "")
-      { @placeholders.fetch("instanceUrl") => instance_url, @placeholders.fetch("mcpUrl") => "#{instance_url}/mcp" }
+      raw_url.sub(%r{/+\z}, "")
     rescue URI::InvalidURIError
-      raise ArgumentError, "url da instancia #{raw_url.inspect}, esperado http(s)://host[/caminho]"
+      raise ArgumentError, "#{label} #{raw_url.inspect}, esperado http(s)://host[/caminho]"
     end
 
     def build_client(template, urls)

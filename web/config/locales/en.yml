@@ -359,6 +359,8 @@ en:
         vim_keys: "Vim key bindings"
         vim_keys_hint: "Vim key bindings give the editor the normal, insert and visual modes of Vim, with :w, :q and :e. Esc twice, then Tab, leaves the editor."
     agents:
+      mcp_missing:
+        notice: "This instance has no MCP server, so AI agents cannot connect to it yet. Ask the administrator to turn on MCP (the mcp block of the Pulumi stack, or the mcp service of the compose) and to give the panel the MCP address in MARKUPP_MCP_URL."
       show:
         title: "Agents"
         intro: "Connect an AI agent to this markupp instance over MCP. Pick your client, copy the snippet, and sign in when the client asks: the agent acts with your account and your roles."
