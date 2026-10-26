@@ -1,7 +1,7 @@
 {
   "name": "markupp-markdown",
   "version": "0.0.0",
-  "description": "Renderizador de markdown das notas do markupp (wikilinks, notas embutidas, sanitização), para o navegador e o Node",
+  "description": "Markdown renderer of markupp notes (wikilinks, note embeds, sanitization) for the browser and Node",
   "license": "AGPL-3.0-only",
   "type": "module",
   "repository": {
