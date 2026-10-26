@@ -77,6 +77,16 @@ O namespace e a unidade de acesso. A nota pertence a exatamente um cofre, e quem
 cofre lê e escreve todas as notas dele.
 _Avoid_: workspace, projeto, biblioteca, espaço
 
+**Cofre público**:
+O cofre que owner ou admin do tenant publicou com um slug. Qualquer pessoa, com ou sem conta,
+lê as notas dele, e ninguém escreve nele por esse caminho.
+_Avoid_: tenant público, site, página pública
+
+**Publicação**:
+O ato de tornar um cofre público, e o registro desse ato, com slug, autor e data. Despublicar
+desfaz a publicação, e o cofre volta a ser lido só pelos membros.
+_Avoid_: compartilhamento, exportação, deploy
+
 **Tenant**:
 A unidade de isolamento dentro do banco. Toda linha de dado carrega o tenant a que
 pertence, e o self-host roda com um só. A conta entra num tenant por vínculo.
@@ -127,6 +137,11 @@ _Avoid_: associação, assinatura, membership
 O pedido de vínculo que owner ou admin emite para um email, com papel e validade. A conta
 desse email aceita ou recusa; quem ainda não tem conta se cadastra pelo token do convite.
 _Avoid_: cadastro, convocação, autorregistro
+
+**Notificação**:
+O que pede atenção da conta no painel, como um convite pendente. É da conta, não do tenant, e
+some quando a conta resolve o que a originou.
+_Avoid_: alerta, aviso, email
 
 **Autorização**:
 O consentimento de uma conta para um cliente agir em nome dela. A conta pode revogar a
