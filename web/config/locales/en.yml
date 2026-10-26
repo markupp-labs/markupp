@@ -324,6 +324,7 @@ en:
       accounts: "Account"
       appearances: "Appearance"
       editors: "Editor"
+      agents: "Agents"
       tenant: "Tenant"
       general: "General"
       members: "Members"
@@ -357,6 +358,33 @@ en:
         editor_style_hint: "Plain shows the markdown at one size, like VS Code. Styled makes headings larger, like the Obsidian source mode."
         vim_keys: "Vim key bindings"
         vim_keys_hint: "Vim key bindings give the editor the normal, insert and visual modes of Vim, with :w, :q and :e. Esc twice, then Tab, leaves the editor."
+    agents:
+      mcp_missing:
+        notice: "This instance has no MCP server, so AI agents cannot connect to it yet. Ask the administrator to turn on MCP (the mcp block of the Pulumi stack, or the mcp service of the compose) and to give the panel the MCP address in MARKUPP_MCP_URL."
+      show:
+        title: "Agents"
+        intro: "Connect an AI agent to this markupp instance over MCP. Pick your client, copy the snippet, and sign in when the client asks: the agent acts with your account and your roles."
+        clients_label: "MCP clients"
+        copy: "Copy"
+        copied: "Copied"
+        copy_failed: "Could not copy"
+        install: "Add to %{client}"
+        docs: "%{client} documentation"
+        snippets:
+          cli: "Run in a terminal"
+          login: "Then sign in"
+          config: "Or add to the MCP config of your client"
+          config_at: "Or add to %{path}"
+          url: "Server URL"
+        clients:
+          claude-code: "Run the command, then open /mcp in Claude Code and sign in to markupp in the browser."
+          codex: "Add the server, then sign in with codex mcp login, which opens markupp in the browser."
+          cursor: "Add the server in one click, or edit the config file. Cursor asks you to sign in to markupp when the server starts."
+          vscode: "Add the server in one click, from the command line or in a workspace file. VS Code asks you to sign in to markupp when the server starts."
+          claude-desktop: "In Claude Desktop or claude.ai, open Customize, then Connectors, choose Add custom connector and paste this URL. Claude connects from the Anthropic cloud, so the instance must be reachable from the internet."
+          gemini-cli: "Add the server with the command or in settings.json, then sign in with /mcp auth markupp inside Gemini CLI."
+          windsurf: "Add the server to the Windsurf MCP config, then refresh the MCP servers in Cascade."
+          stdio: "For clients that only run local servers. Sign in once with the first command (it needs Node.js), then point the client at npx markupp-mcp, which serves MCP over stdio with that login."
     general:
       show:
         tenant_name: "Tenant name"

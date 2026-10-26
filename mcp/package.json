@@ -14,7 +14,8 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
+    "build": "tsc -p tsconfig.build.json && node dist/clients/export-clients-json.js dist/clients.json",
+    "clients:sync": "npm run build && node dist/clients/export-clients-json.js ../web/config/agent_clients.json",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "e2e": "tsc -p e2e && npm run build && vitest run --config e2e/vitest.config.ts",

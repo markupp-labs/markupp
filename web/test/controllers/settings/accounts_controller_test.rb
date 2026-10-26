@@ -129,7 +129,7 @@ module Settings
       assert_select "nav#sidebar a", text: "Back to notes", count: 0
     end
 
-    test "a member sees account, appearance, editor and the tenant general, in that order, without members and invites" do
+    test "a member sees account, appearance, editor, agents and the tenant general, in that order, without members and invites" do
       use_fake_api(tenants: MEMBER_ONLY)
       sign_in_as
 
@@ -140,7 +140,7 @@ module Settings
         assert_select "a[href=?]:not([aria-current])", settings_appearance_path, text: "Appearance"
         assert_select "a[href='/settings/editor']:not([aria-current])", text: "Editor"
         assert_select "a" do |links|
-          assert_equal %w[Account Appearance Editor General], links.map { it.text.strip }
+          assert_equal %w[Account Appearance Editor Agents General], links.map { it.text.strip }
         end
         assert_select "a[href=?]", settings_members_path, count: 0
         assert_select "a[href=?]", settings_invites_path, count: 0
@@ -158,7 +158,7 @@ module Settings
         assert_select "a[href=?]", settings_members_path, text: "Members"
         assert_select "a[href=?]", settings_invites_path, text: "Invites"
         assert_select "a" do |links|
-          assert_equal %w[Account Appearance Editor General Members Invites], links.map { it.text.strip }
+          assert_equal %w[Account Appearance Editor Agents General Members Invites], links.map { it.text.strip }
         end
       end
     end
