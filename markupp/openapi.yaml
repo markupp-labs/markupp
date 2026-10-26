@@ -1658,6 +1658,12 @@ paths:
                 $ref: '#/components/schemas/PublicationResponse'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Cofre inexistente ou de que o ator não é membro (vault_forbidden)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '404':
           $ref: '#/components/responses/NotPublished'
         '500':
@@ -1724,7 +1730,8 @@ paths:
       description: |
         Tira o cofre da leitura sem conta: as rotas /v1/public/vaults/{slug} passam a
         responder 404 e o slug fica livre. Só owner e admin do tenant, com o escopo
-        admin. Gera o evento de auditoria vaults.unpublish.
+        admin, e só cofre de que são membros: fora dele, a resposta é 403 e o cofre
+        continua publicado. Gera o evento de auditoria vaults.unpublish.
       parameters:
         - $ref: '#/components/parameters/TenantHeader'
         - $ref: '#/components/parameters/VaultID'
@@ -1734,7 +1741,13 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
-          $ref: '#/components/responses/Forbidden'
+          description: |
+            Papel member ou viewer (forbidden), ou cofre inexistente ou de que o
+            administrador não é membro (vault_forbidden)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '404':
           $ref: '#/components/responses/NotPublished'
         '500':

@@ -64,9 +64,11 @@ type Repository interface {
 	// ErrSlugTaken quando outro cofre tem o slug e notes.ErrVaultForbidden quando o
 	// ator não enxerga o cofre.
 	PublishTx(ctx context.Context, p Publication, event auth.AuditEventRecord) (Publication, error)
-	// UnpublishTx apaga a publicação do cofre, ou devolve ErrNotPublished.
+	// UnpublishTx apaga a publicação do cofre, ou devolve ErrNotPublished, ou
+	// notes.ErrVaultForbidden quando o ator não alcança o cofre.
 	UnpublishTx(ctx context.Context, vaultID string, event auth.AuditEventRecord) error
-	// Publication lê a publicação do cofre, ou devolve ErrNotPublished.
+	// Publication lê a publicação do cofre, ou devolve ErrNotPublished, ou
+	// notes.ErrVaultForbidden quando o ator não alcança o cofre.
 	Publication(ctx context.Context, vaultID string) (Publication, error)
 }
 
