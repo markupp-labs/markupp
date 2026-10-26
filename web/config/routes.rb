@@ -46,8 +46,10 @@ Rails.application.routes.draw do
     resources :invites, only: [ :index, :create, :destroy ]
   end
 
-  # Cofre publicado, lido sem conta (ADR-0048). O caminho da nota vem inteiro, com barras e pontos, sem formato.
+  # Cofre publicado, lido sem conta (ADR-0048). O caminho da nota vem inteiro, com barras e pontos, sem formato; o grafo
+  # fica no slug com .json, que nenhum caminho de nota alcança (o slug não tem ponto).
   constraints slug: /[a-z0-9-]+/ do
+    get "p/:slug", to: "public_graphs#show", format: true, constraints: { format: :json }, as: :public_vault_graph
     get "p/:slug(/*path)", to: "public_notes#show", format: false, as: :public_vault
   end
 

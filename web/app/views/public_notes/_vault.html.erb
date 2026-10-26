@@ -1,6 +1,9 @@
-<%# Página do cofre publicado: o título e quantas notas. %>
+<%# Página do cofre publicado: o título, quantas notas e o grafo inteiro, só leitura; clicar num nó abre a nota. %>
 <h1 class="text-base font-semibold"><%= vault.title %></h1>
 <p class="text-ink-muted">
   <%= t(".summary", count: tree.notes_within.size, date: l(vault.published_at.to_date, format: :long)) %>
   <%= t(".hint") %>
 </p>
+<div class="mt-4 flex h-[70dvh] flex-col">
+  <%= render "graphs/canvas", id: "published_graph", url: public_vault_graph_path(vault.slug, format: :json), class: "graph-view-full" %>
+</div>
