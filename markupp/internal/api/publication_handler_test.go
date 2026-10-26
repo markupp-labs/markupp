@@ -140,6 +140,20 @@ func TestPublicacao_DespublicarNaoPublicado_Responde404(t *testing.T) {
 	assert.Contains(t, rec.Body.String(), `"not_published"`)
 }
 
+func TestPublicacao_DespublicarCofreForaDoAlcance_Responde403(t *testing.T) {
+	rec := pedePublicacao(t, &fakeVaultPublisher{err: notes.ErrVaultForbidden}, "owner", http.MethodDelete, "")
+
+	assert.Equal(t, http.StatusForbidden, rec.Code)
+	assert.Contains(t, rec.Body.String(), `"vault_forbidden"`)
+}
+
+func TestPublicacao_LerCofreForaDoAlcance_Responde403(t *testing.T) {
+	rec := pedePublicacao(t, &fakeVaultPublisher{err: notes.ErrVaultForbidden}, "admin", http.MethodGet, "")
+
+	assert.Equal(t, http.StatusForbidden, rec.Code)
+	assert.Contains(t, rec.Body.String(), `"vault_forbidden"`)
+}
+
 func TestPublicacao_ViewerLe_DevolveAPublicacao(t *testing.T) {
 	svc := &fakeVaultPublisher{}
 

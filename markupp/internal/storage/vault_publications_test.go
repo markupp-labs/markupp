@@ -128,15 +128,31 @@ func TestDespublicarCofre_NaoPublicado_DevolveNaoPublicado(t *testing.T) {
 	require.ErrorIs(t, err, publication.ErrNotPublished)
 }
 
-func TestDespublicarCofre_Viewer_NaoApaga(t *testing.T) {
+func TestDespublicarCofre_Viewer_RecusadoEContinuaPublicado(t *testing.T) {
 	db := setupTestDB(t)
 	ctx := storagetest.SeedMember(t, db, identity.Actor{UserID: "leitor", TenantID: "t1", Role: "viewer"}, "va")
 	publicaCofre(t, db, "t1", "va", "docs")
 
 	err := storage.NewPostgresVaultPublications(db).UnpublishTx(ctx, "va", eventoDePublicacao("e1", publication.ActionUnpublish, "va"))
 
-	require.ErrorIs(t, err, publication.ErrNotPublished)
+	require.ErrorIs(t, err, notes.ErrVaultForbidden)
 	assert.Equal(t, 1, countRows(t, db, "SELECT count(*) FROM vault_publications"))
+}
+
+// Regressão: owner que não é membro do cofre recebia "nao publicado" e o cofre
+// continuava público.
+func TestDespublicarCofre_OwnerForaDoCofre_RecusadoEContinuaPublicado(t *testing.T) {
+	db := setupTestDB(t)
+	ctx := storagetest.SeedMember(t, db, identity.Actor{UserID: "dono", TenantID: "t1", Role: "owner"}, "va")
+	storagetest.SeedMember(t, db, identity.Actor{UserID: "colega", TenantID: "t1", Role: "admin"}, "vc")
+	publicaCofre(t, db, "t1", "vc", "docs")
+
+	err := storage.NewPostgresVaultPublications(db).UnpublishTx(ctx, "vc", eventoDePublicacao("e1", publication.ActionUnpublish, "vc"))
+
+	require.ErrorIs(t, err, notes.ErrVaultForbidden)
+	assert.Contains(t, err.Error(), `"vc"`)
+	assert.Equal(t, 1, countRows(t, db, "SELECT count(*) FROM vault_publications WHERE vault_id = 'vc'"))
+	assert.Zero(t, countRows(t, db, "SELECT count(*) FROM audit_events"), "falha nao audita")
 }
 
 func TestLerPublicacao_ViewerDoCofre_Le(t *testing.T) {
@@ -151,12 +167,31 @@ func TestLerPublicacao_ViewerDoCofre_Le(t *testing.T) {
 	assert.Equal(t, "quem-publicou", p.PublishedBy)
 }
 
-func TestLerPublicacao_CofreAlheio_DevolveNaoPublicado(t *testing.T) {
+func TestLerPublicacao_CofreAlheio_Recusado(t *testing.T) {
 	db, ctx, repo := cofreDoAdmin(t)
 	storagetest.SeedMember(t, db, identity.Actor{UserID: "outro", TenantID: "t2", Role: "owner"}, "vb")
 	publicaCofre(t, db, "t2", "vb", "docs")
 
 	_, err := repo.Publication(ctx, "vb")
+
+	require.ErrorIs(t, err, notes.ErrVaultForbidden)
+}
+
+func TestLerPublicacao_AdminForaDoCofre_Recusado(t *testing.T) {
+	db, ctx, repo := cofreDoAdmin(t)
+	storagetest.SeedMember(t, db, identity.Actor{UserID: "colega", TenantID: "t1", Role: "admin"}, "vc")
+	publicaCofre(t, db, "t1", "vc", "docs")
+
+	_, err := repo.Publication(ctx, "vc")
+
+	require.ErrorIs(t, err, notes.ErrVaultForbidden)
+	assert.Contains(t, err.Error(), `"vc"`)
+}
+
+func TestLerPublicacao_NaoPublicado_DevolveNaoPublicado(t *testing.T) {
+	_, ctx, repo := cofreDoAdmin(t)
+
+	_, err := repo.Publication(ctx, "va")
 
 	require.ErrorIs(t, err, publication.ErrNotPublished)
 }
