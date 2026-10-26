@@ -1,6 +1,10 @@
 import type { FastMCP } from "fastmcp";
 import type { PublicSession } from "../session.js";
-import { callPublicApi, type PublicApiFactory } from "./public-tool-support.js";
+import {
+  callPublicApi,
+  checkPublicNoteArguments,
+  type PublicApiFactory,
+} from "./public-tool-support.js";
 
 // PUBLIC_NOTE_URI_TEMPLATE aponta uma nota publicada pelo slug do cofre e pelo id.
 export const PUBLIC_NOTE_URI_TEMPLATE = "markupp-public://{vault}/notes/{id}";
@@ -30,6 +34,7 @@ export function addPublicNoteResource(
       },
     ],
     load: async ({ vault, id }, session) => {
+      checkPublicNoteArguments(vault, id);
       const api = factory(session);
       const note = await callPublicApi(() => api.getNote(vault, id));
       return { text: note.content, mimeType: "text/markdown" };
