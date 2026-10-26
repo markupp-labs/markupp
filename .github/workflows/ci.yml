@@ -78,6 +78,37 @@ jobs:
       - name: Run tests
         run: npx vitest run
 
+  # O pacote do npm declara engines.node >=22.12: o piso roda a suíte unitária e os dois
+  # instalam o tarball do npm pack e chamam o binário pelo npx.
+  mcp-package:
+    name: Pacote npm do MCP no Node ${{ matrix.node }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: [22, 26]
+    defaults:
+      run:
+        working-directory: mcp
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+          cache-dependency-path: mcp/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests no piso do engines
+        if: matrix.node == 22
+        run: npx vitest run
+
+      - name: Empacota, instala e roda pelo npx
+        run: npm run test:pack
+
   pulumi-component-tests:
     name: Componente Pulumi (Go) tests
     runs-on: ubuntu-latest

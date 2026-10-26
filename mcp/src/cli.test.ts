@@ -25,6 +25,8 @@ const CREDENTIALS = "/home/ana/.config/markupp/credentials.json";
 // Go, o volume do segredo, o disco da pessoa e o navegador trocados por fakes.
 class RecordingCli implements CliDeps {
   readonly stderr: string[] = [];
+  readonly stdout: string[] = [];
+  readonly version = "1.2.3";
   readonly upstream = new FakeFetch();
   readonly files = new FakeFiles().write(SECRET_PATH, "s".repeat(32));
   private readonly clock = new FakeClock();
@@ -54,6 +56,10 @@ class RecordingCli implements CliDeps {
 
   readonly writeError = (line: string): void => {
     this.stderr.push(line);
+  };
+
+  readonly writeOutput = (line: string): void => {
+    this.stdout.push(line);
   };
 
   readonly serveHttp = async (config: HttpConfig): Promise<void> => {
@@ -183,5 +189,33 @@ describe("runCli uso", () => {
   it("não confunde método do objeto com subcomando", async () => {
     const cli = new RecordingCli();
     expect(await runCli(["toString"], {}, cli)).toBe(2);
+  });
+});
+
+describe("runCli ajuda e versão", () => {
+  it.each(["--help", "-h", "help"])(
+    "%s imprime o uso no stdout e sai com 0",
+    async (flag) => {
+      const cli = new RecordingCli();
+      expect(await runCli([flag], {}, cli)).toBe(0);
+      expect(cli.stdout).toEqual([USAGE]);
+      expect(cli.stderr).toEqual([]);
+      expect(cli.servedStdio).toBeUndefined();
+    },
+  );
+
+  it.each(["--version", "-v"])(
+    "%s imprime a versão no stdout e sai com 0",
+    async (flag) => {
+      const cli = new RecordingCli();
+      expect(await runCli([flag], {}, cli)).toBe(0);
+      expect(cli.stdout).toEqual(["1.2.3"]);
+      expect(cli.stderr).toEqual([]);
+    },
+  );
+
+  it("o uso lista as opções de ajuda e versão", () => {
+    expect(USAGE).toContain("--help");
+    expect(USAGE).toContain("--version");
   });
 });

@@ -137,3 +137,90 @@ jobs:
           pulumi config set --path panel.image "$IMAGE-web:${TAG#v}"
           pulumi config set --path mcp.image "$IMAGE-mcp:${TAG#v}"
           pulumi up --yes --non-interactive
+
+  # Testa e empacota o markupp-mcp sem o token OIDC: o npm ci e os testes rodam código
+  # das dependências, que assim não alcança a credencial de publicação. A tag já passou
+  # pela validação de semver no publish-image.
+  pack-npm:
+    name: Empacota o markupp-mcp para o npm
+    needs: publish-image
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: mcp
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Set up Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 26
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npx vitest run
+
+      - name: Versão do pacote pela tag
+        env:
+          TAG: ${{ github.ref_name }}
+        run: npm version "${TAG#v}" --no-git-tag-version
+
+      - name: Empacota o tarball
+        run: npm pack --pack-destination "$RUNNER_TEMP/npm"
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: markupp-mcp-tarball
+          path: ${{ runner.temp }}/npm/*.tgz
+          if-no-files-found: error
+          retention-days: 1
+
+  # Publica no npm por trusted publishing: o npm troca o token OIDC do GitHub
+  # (id-token: write) por uma credencial de publicação, sem segredo guardado, e gera a
+  # provenance. O job só baixa o tarball pronto e publica, sem instalar dependências
+  # nem rodar scripts do pacote enquanto o token existe.
+  publish-npm:
+    name: Publica o markupp-mcp no npm
+    needs: pack-npm
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          sparse-checkout: scripts/dist-tag-npm.sh
+          sparse-checkout-cone-mode: false
+
+      - name: Set up Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 26
+          registry-url: https://registry.npmjs.org
+
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: markupp-mcp-tarball
+          path: ${{ runner.temp }}/npm
+
+      # Prerelease vai para a dist-tag next: o npm recusa publicar prerelease sem --tag
+      # explícito, e quem roda npx markupp-mcp recebe só versões estáveis. Uma estável
+      # que não passa da latest atual (correção de uma linha antiga) vai para
+      # latest-MAJOR.MINOR, para não rebaixar o que o npx instala. Só o E404 do pacote
+      # ainda inexistente conta como sem latest; outra falha do npm view para o job.
+      - name: Publica com provenance
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          if ! atual=$(npm view markupp-mcp dist-tags.latest 2>"$RUNNER_TEMP/npm-view.err"); then
+            grep -q E404 "$RUNNER_TEMP/npm-view.err" || { cat "$RUNNER_TEMP/npm-view.err" >&2; exit 1; }
+            atual=
+          fi
+          dist_tag=$(scripts/dist-tag-npm.sh "${TAG#v}" "$atual")
+          printf 'publica %s com a dist-tag %s (latest atual: %s)\n' "${TAG#v}" "$dist_tag" "${atual:-nenhuma}"
+          npm publish "$RUNNER_TEMP"/npm/markupp-mcp-*.tgz --ignore-scripts --provenance --access public --tag "$dist_tag"
