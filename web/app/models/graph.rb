@@ -14,6 +14,11 @@ Graph = Data.define(:nodes, :links) do
     revalidated(api, MarkuppApi.path("v1", "notes", note_id, "graph", **filters), store)
   end
 
+  # O cofre publicado, lido sem conta (ADR-0048), sem filtros.
+  def self.of_published_vault(api, slug, store: Rails.cache)
+    revalidated(api, MarkuppApi.path("v1", "public", "vaults", slug, "graph"), store)
+  end
+
   def self.revalidated(api, path, store)
     key = "panel/graph#{path}"
     kept = store.read(key)

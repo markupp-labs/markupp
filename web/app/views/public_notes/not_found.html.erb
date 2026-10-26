@@ -1,0 +1,4 @@
+<%# O mesmo 404 para slug inexistente, cofre não publicado e caminho sem nota, sem dizer qual: o cofre achado leva de volta. %>
+<% content_for :title, t(".title") %>
+<%= render "application/error_page", code: 404, title: t(".title"), hint: t(".hint"),
+                                     back: ([ t(".back", title: @vault.title), public_vault_path(@vault.slug) ] if @vault) %>

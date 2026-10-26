@@ -1,0 +1,20 @@
+en:
+  layouts:
+    published_vault:
+      notes: "Notes"
+      published_with: "Published with markupp"
+  public_notes:
+    tree:
+      empty: "No notes yet."
+    vault:
+      summary:
+        one: "1 note, published on %{date}."
+        other: "%{count} notes, published on %{date}."
+      hint: "Pick a note on the side, or open one from the graph."
+    not_found:
+      title: "Nothing published here"
+      hint: "The vault is not published, or there is no note at this address. Check the link with whoever shared it."
+      back: "Back to %{title}"
+    rate_limited:
+      title: "Too many requests"
+      hint: "This address asked the server too often. Wait a minute and reload the page."

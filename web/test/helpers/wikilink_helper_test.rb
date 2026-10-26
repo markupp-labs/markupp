@@ -7,6 +7,13 @@ class WikilinkHelperTest < ActionView::TestCase
     assert_equal({ "inbox" => "/notes/1", "work/2026/plan" => "/notes/2", "data.txt" => "/notes/3" }, wikilink_targets(tree))
   end
 
+  test "wikilink_targets takes the url of each note from url_of" do
+    tree = Note::Tree.build([ note("1", "inbox.md"), note("2", "work/plan.md") ])
+
+    assert_equal({ "inbox" => "/p/docs/inbox", "work/plan" => "/p/docs/work/plan" },
+                 wikilink_targets(tree, url_of: ->(note) { "/p/docs#{note.location}" }))
+  end
+
   test "wikilink_targets is empty for an empty tree" do
     assert_empty wikilink_targets(Note::Tree.build([]))
   end
