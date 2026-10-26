@@ -192,6 +192,11 @@ jobs:
       contents: read
       id-token: write
     steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          sparse-checkout: scripts/dist-tag-npm.sh
+          sparse-checkout-cone-mode: false
+
       - name: Set up Node
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
@@ -204,13 +209,18 @@ jobs:
           path: ${{ runner.temp }}/npm
 
       # Prerelease vai para a dist-tag next: o npm recusa publicar prerelease sem --tag
-      # explícito, e quem roda npx markupp-mcp recebe só versões estáveis.
+      # explícito, e quem roda npx markupp-mcp recebe só versões estáveis. Uma estável
+      # que não passa da latest atual (correção de uma linha antiga) vai para
+      # latest-MAJOR.MINOR, para não rebaixar o que o npx instala. Só o E404 do pacote
+      # ainda inexistente conta como sem latest; outra falha do npm view para o job.
       - name: Publica com provenance
         env:
           TAG: ${{ github.ref_name }}
         run: |
-          case "$TAG" in
-            *-*) dist_tag=next ;;
-            *) dist_tag=latest ;;
-          esac
+          if ! atual=$(npm view markupp-mcp dist-tags.latest 2>"$RUNNER_TEMP/npm-view.err"); then
+            grep -q E404 "$RUNNER_TEMP/npm-view.err" || { cat "$RUNNER_TEMP/npm-view.err" >&2; exit 1; }
+            atual=
+          fi
+          dist_tag=$(scripts/dist-tag-npm.sh "${TAG#v}" "$atual")
+          printf 'publica %s com a dist-tag %s (latest atual: %s)\n' "${TAG#v}" "$dist_tag" "${atual:-nenhuma}"
           npm publish "$RUNNER_TEMP"/npm/markupp-mcp-*.tgz --ignore-scripts --provenance --access public --tag "$dist_tag"
