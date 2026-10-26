@@ -44,6 +44,7 @@ Rails.application.routes.draw do
     resource :general, only: :show, controller: "general"
     resources :members, only: [ :index, :update, :destroy ]
     resources :invites, only: [ :index, :create, :destroy ]
+    resource :publication, only: [ :show, :update, :destroy ]
   end
 
   # Cofre publicado, lido sem conta (ADR-0048). O caminho da nota vem inteiro, com barras e pontos, sem formato; o grafo
