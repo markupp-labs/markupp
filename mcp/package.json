@@ -28,10 +28,13 @@
     "markupp-mcp": "dist/bin.js"
   },
   "files": [
-    "dist"
+    "dist",
+    "!dist/**/*.test.js",
+    "!dist/testing"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
+    "prepack": "npm run build",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "e2e": "tsc -p e2e && npm run build && vitest run --config e2e/vitest.config.ts",
