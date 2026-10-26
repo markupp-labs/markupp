@@ -90,7 +90,10 @@ limite próprio: 300 pedidos por minuto por IP, somadas todas essas rotas, troca
 `MARKUPP_PUBLIC_RATE_LIMIT_PER_MINUTE`, de 1 a 10000. O IP segue as mesmas regras de
 `MARKUPP_TRUSTED_PROXIES`. Um site que renderiza as páginas no servidor lendo essas rotas faz
 todos os pedidos com o IP dele, então o limite precisa caber no tráfego do site, já descontado o
-que o cache por ETag dele economiza. A migração 00036 cria o papel `markupp_reader`, sem login,
+que o cache por ETag dele economiza. O painel é um desses sites: a leitura em `/p/{slug}` chama essas
+rotas e manda o IP de quem visita no X-Forwarded-For. Com a rede do painel em
+`MARKUPP_TRUSTED_PROXIES`, o limite conta cada visitante; sem ela, todos dividem o limite do IP do
+painel. A migração 00036 cria o papel `markupp_reader`, sem login,
 para essa leitura, com o mesmo CREATEROLE que a migração já exige para os outros papéis.
 
 Sem outra opção, o componente cria um Gateway próprio nas portas 80 e 443. Em cluster onde
