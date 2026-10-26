@@ -9,6 +9,9 @@ export const DIST_DIR = new URL("../dist/", import.meta.url)
 export const PACKAGED_EDITOR_MODULES = [ "render_markdown", "wikilinks", "note_embeds", "heading_ids", "highlight_code", "highlight_grammars", "code_blocks" ]
 
 const ENTRY_POINT = new URL("../src/index.js", import.meta.url)
+// A AGPL exige o texto da licença em cada cópia distribuída; o npm só põe no tarball o LICENSE da raiz do pacote.
+const REPOSITORY_LICENSE = new URL("../../../LICENSE", import.meta.url)
+const PACKAGE_LICENSE = new URL("../LICENSE", import.meta.url)
 const EDITOR_SPECIFIER = /(["'])editor\/([^"']+)\1/g
 
 export function rewriteEditorImports(source, fileName) {
@@ -25,6 +28,7 @@ export async function buildPackage() {
   await mkdir(DIST_DIR, { recursive: true })
   await Promise.all(PACKAGED_EDITOR_MODULES.map(copyEditorModule))
   await copyFile(ENTRY_POINT, new URL("index.js", DIST_DIR))
+  await copyFile(REPOSITORY_LICENSE, PACKAGE_LICENSE)
 }
 
 async function copyEditorModule(name) {
