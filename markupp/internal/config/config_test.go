@@ -424,6 +424,37 @@ func TestLoad_LimiteDeTentativasForaDaFaixa_RetornaErroComOValor(t *testing.T) {
 	}
 }
 
+func TestLoad_SemLimiteDaLeituraPublica_UsaTrezentosPorMinuto(t *testing.T) {
+	env := fakeEnv{"MARKUPP_DATABASE_URL": urlDeTeste, "MARKUPP_AUTH_SECRET": segredoDeTesteValido}
+
+	cfg, err := config.Load(env.Lookup)
+
+	require.NoError(t, err)
+	assert.Equal(t, 300, cfg.PublicRateLimitPerMinute)
+}
+
+func TestLoad_LimiteDaLeituraPublicaDefinido_LeOValor(t *testing.T) {
+	env := fakeEnv{"MARKUPP_DATABASE_URL": urlDeTeste, "MARKUPP_AUTH_SECRET": segredoDeTesteValido, "MARKUPP_PUBLIC_RATE_LIMIT_PER_MINUTE": "1200"}
+
+	cfg, err := config.Load(env.Lookup)
+
+	require.NoError(t, err)
+	assert.Equal(t, 1200, cfg.PublicRateLimitPerMinute)
+	assert.Equal(t, 5, cfg.RateLimitPerMinute, "o limite das rotas de conta segue o dele")
+}
+
+func TestLoad_LimiteDaLeituraPublicaForaDaFaixa_RetornaErroComOValor(t *testing.T) {
+	for _, valor := range []string{"0", "-1", "muitos", "10001"} {
+		env := fakeEnv{"MARKUPP_DATABASE_URL": urlDeTeste, "MARKUPP_AUTH_SECRET": segredoDeTesteValido, "MARKUPP_PUBLIC_RATE_LIMIT_PER_MINUTE": valor}
+
+		_, err := config.Load(env.Lookup)
+
+		require.Error(t, err, valor)
+		assert.Contains(t, err.Error(), "MARKUPP_PUBLIC_RATE_LIMIT_PER_MINUTE", valor)
+		assert.Contains(t, err.Error(), "de 1 a 10000", valor)
+	}
+}
+
 func TestLoad_SemProxiesConfiaveis_DeixaAListaVazia(t *testing.T) {
 	env := fakeEnv{"MARKUPP_DATABASE_URL": urlDeTeste, "MARKUPP_AUTH_SECRET": segredoDeTesteValido}
 
