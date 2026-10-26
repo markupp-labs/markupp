@@ -92,6 +92,26 @@ func TestNewMarkupp_ComPainel_DaAoPainelAURLPublicaDaInstancia(t *testing.T) {
 		envNamed(t, container, "MARKUPP_PUBLIC_URL")["value"].StringValue())
 }
 
+// Sem MCP a API não serve /mcp: o painel não recebe a URL do MCP e a página Agents avisa em vez de mostrar os trechos.
+func TestNewMarkupp_ComPainelSemMCP_NaoDaAoPainelAURLDoMCP(t *testing.T) {
+	monitor := deploy(t, argsComPainel())
+
+	container := firstContainer(t, deploymentNamed(t, monitor, "markupp-panel"))
+	assert.NotContains(t, envNames(container), "MARKUPP_MCP_URL")
+}
+
+func TestNewMarkupp_ComPainelEMCP_DaAoPainelAURLDoMCP(t *testing.T) {
+	args := argsComPainel()
+	args.MCP = argsComMCP().MCP
+
+	monitor := deploy(t, args)
+
+	container := firstContainer(t, deploymentNamed(t, monitor, "markupp-panel"))
+	mcp := firstContainer(t, deploymentNamed(t, monitor, "markupp-mcp"))
+	assert.Equal(t, envNamed(t, mcp, "MARKUPP_MCP_RESOURCE_URL")["value"].StringValue(),
+		envNamed(t, container, "MARKUPP_MCP_URL")["value"].StringValue())
+}
+
 func TestNewMarkupp_ComPainel_LeOSecretKeyBaseDeUmSecret(t *testing.T) {
 	monitor := deploy(t, argsComPainel())
 
