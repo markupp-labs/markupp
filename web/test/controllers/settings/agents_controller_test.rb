@@ -6,11 +6,12 @@ module Settings
     INSTANCE_URL = "https://notas.exemplo.com.br".freeze
 
     setup do
-      @original_instance_url = AgentsController.agent_instance_url
+      @original_urls = [ AgentsController.agent_instance_url, AgentsController.agent_mcp_url ]
       AgentsController.agent_instance_url = INSTANCE_URL
+      AgentsController.agent_mcp_url = "#{INSTANCE_URL}/mcp"
     end
 
-    teardown { AgentsController.agent_instance_url = @original_instance_url }
+    teardown { AgentsController.agent_instance_url, AgentsController.agent_mcp_url = @original_urls }
 
     test "show asks for login first" do
       get settings_agents_path
@@ -62,6 +63,22 @@ module Settings
       get settings_agents_path(client: "vscode")
 
       assert_select "main a[href^='vscode:mcp/install?']", text: "Add to VS Code"
+    end
+
+    # Sem MARKUPP_MCP_URL a instância não serve /mcp: a página avisa em vez de mostrar comandos que dariam 404.
+    test "show warns that the MCP is off when the instance has no MCP url" do
+      AgentsController.agent_mcp_url = nil
+      use_fake_api(tenants: [])
+      sign_in_as
+
+      get settings_agents_path(client: "cursor")
+
+      assert_response :success
+      assert_select "main h1", "Agents"
+      assert_select "main [role=note]", text: /This instance has no MCP server/
+      assert_select "main pre", count: 0
+      assert_select "main [aria-label='MCP clients']", count: 0
+      assert_select "main a[href^='cursor://']", count: 0
     end
 
     test "an unknown client goes back to the first tab" do
