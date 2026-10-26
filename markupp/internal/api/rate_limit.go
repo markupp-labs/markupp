@@ -72,18 +72,27 @@ func (l *AccountRateLimiter) sweepExpired(now time.Time) {
 // limitAccountAttempts limita a rota por IP e, quando o corpo traz email, também por
 // email. Limitador nil deixa a rota livre.
 func limitAccountAttempts(l *AccountRateLimiter) func(http.Handler) http.Handler {
+	if l == nil {
+		return passThrough
+	}
+	return limitRequests(l.allowRequest)
+}
+
+// limitRequests responde 429 ao pedido que allow recusa, com o tempo de espera.
+func limitRequests(allow func(*http.Request) (time.Duration, bool)) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
-		if l == nil {
-			return next
-		}
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if wait, ok := l.allowRequest(r); !ok {
+			if wait, ok := allow(r); !ok {
 				writeRateLimited(w, wait)
 				return
 			}
 			next.ServeHTTP(w, r)
 		})
 	}
+}
+
+func passThrough(next http.Handler) http.Handler {
+	return next
 }
 
 func (l *AccountRateLimiter) allowRequest(r *http.Request) (time.Duration, bool) {
