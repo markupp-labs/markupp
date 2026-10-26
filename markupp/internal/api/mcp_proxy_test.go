@@ -80,5 +80,5 @@ func TestMCPProxy_EncaminhaOEndpointPublicoSemToken(t *testing.T) {
 	routerWithMCP(upstream.server.URL).ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/mcp/public", strings.NewReader(`{}`)))
 
 	require.Equal(t, http.StatusAccepted, rec.Code)
-	assert.Equal(t, "POST /mcp/public ", rec.Header().Get("X-Recebido"))
+	assert.Equal(t, "POST /mcp/public", rec.Header().Get("X-Recebido"))
 }
