@@ -16,6 +16,4 @@ PublishedVault = Data.define(:slug, :title, :published_at, :graph_version) do
 
   # A nota com o conteúdo; nota de outro cofre levanta NotFound.
   def note(api, id) = Note.from_api(api.get(MarkuppApi.path("v1", "public", "vaults", slug, "notes", id)))
-
-  def graph(api, store: Rails.cache) = Graph.of_published_vault(api, slug, store:)
 end

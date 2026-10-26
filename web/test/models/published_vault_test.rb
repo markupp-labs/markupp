@@ -44,12 +44,11 @@ class PublishedVaultTest < ActiveSupport::TestCase
     assert_raises(MarkuppApi::NotFound) { vault.note(@api, "secret") }
   end
 
-  test "graph reads the graph of the vault and keeps it by its ETag" do
+  test "Graph.of_published_vault reads the graph of the vault and keeps it by its ETag" do
     store = CacheWithoutExpiry.new
-    vault = PublishedVault.find(@api, "docs")
-    vault.graph(@api, store:)
+    Graph.of_published_vault(@api, "docs", store:)
 
-    graph = vault.graph(@api, store:)
+    graph = Graph.of_published_vault(@api, "docs", store:)
 
     assert_equal [ nil, 'W/"3"' ], @api.received_etags
     assert_equal [ "start" ], graph.nodes.map(&:id)
