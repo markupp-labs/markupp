@@ -21,7 +21,8 @@ function snippetText(clientId: string, snippetId: string): string {
 
 function deeplinkHref(clientId: string): string {
   const [deeplink] = clientNamed(clientId).deeplinks;
-  if (deeplink === undefined) throw new Error(`deeplink de ${clientId} ausente`);
+  if (deeplink === undefined)
+    throw new Error(`deeplink de ${clientId} ausente`);
   return deeplink.href;
 }
 
