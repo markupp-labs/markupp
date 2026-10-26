@@ -35,6 +35,7 @@ type fakeRepository struct {
 	createdTenant auth.CreateTenantParams
 
 	pendingForUser   []auth.PendingInvite
+	pendingErr       error
 	acceptedByID     auth.AcceptInviteByIDParams
 	acceptByIDResult auth.Membership
 	acceptByIDErr    error
@@ -696,7 +697,7 @@ func TestCreateTenant_NomeVazio_RecusaComErrInvalidTenantName(t *testing.T) {
 }
 
 func (f *fakeRepository) ListPendingInvites(ctx context.Context, userID string, now time.Time) ([]auth.PendingInvite, error) {
-	return f.pendingForUser, nil
+	return f.pendingForUser, f.pendingErr
 }
 
 func (f *fakeRepository) AcceptInviteByIDTx(ctx context.Context, p auth.AcceptInviteByIDParams) (auth.Membership, error) {

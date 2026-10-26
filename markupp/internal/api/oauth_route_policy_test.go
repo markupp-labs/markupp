@@ -39,7 +39,7 @@ var declaredOAuthPolicies = map[string]oauthRoutePolicy{
 	"GET /v1/healthz": publicRoute, "POST /v1/auth/login": publicRoute, "POST /v1/auth/refresh": publicRoute,
 	"POST /v1/auth/logout": publicRoute, "POST /v1/auth/invites/accept": publicRoute,
 	"POST /v1/auth/password/forgot": publicRoute, "POST /v1/auth/password/reset": publicRoute,
-	"GET /v1/auth/me": anyScopeRoute, "GET /v1/me/tenants": anyScopeRoute,
+	"GET /v1/auth/me": anyScopeRoute, "GET /v1/me/tenants": anyScopeRoute, "GET /v1/me/notifications": anyScopeRoute,
 	"GET /v1/notes": notesRead, "GET /v1/notes/search": notesRead, "GET /v1/notes/{id}": notesRead,
 	"POST /v1/notes": notesWrite, "PUT /v1/notes/{id}": notesWrite, "DELETE /v1/notes/{id}": notesWrite,
 	"GET /v1/vaults/{id}/notes": notesRead, "POST /v1/vaults/{id}/notes": notesWrite, "GET /v1/search/notes": notesRead,
@@ -55,8 +55,9 @@ var declaredOAuthPolicies = map[string]oauthRoutePolicy{
 }
 
 // v1OnlyPrefixes são as rotas sem o alias obsoleto sem prefixo, já com os parâmetros
-// trocados por x1: as do OAuth e as da API orientada a recursos (ADR-0040).
-var v1OnlyPrefixes = []string{"/v1/me/authorizations", "/v1/oauth/requests", "/v1/vaults/", "/v1/search/", "/v1/notes/x1/"}
+// trocados por x1: as do OAuth, as da API orientada a recursos (ADR-0040) e as
+// notificações da conta (ADR-0049).
+var v1OnlyPrefixes = []string{"/v1/me/authorizations", "/v1/me/notifications", "/v1/oauth/requests", "/v1/vaults/", "/v1/search/", "/v1/notes/x1/"}
 
 const allOAuthScopes = "notas:leitura notas:escrita administracao"
 

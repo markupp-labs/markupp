@@ -29,7 +29,9 @@ var (
 		{http.MethodPost, "/v1/tenants"}, {http.MethodGet, "/v1/me/invites"},
 		{http.MethodPost, "/v1/me/invites/c1/accept"}, {http.MethodPost, "/v1/me/invites/c1/decline"},
 	}
-	anyScopeRoutes  = []scopedRoute{{http.MethodGet, "/v1/auth/me"}, {http.MethodGet, "/v1/me/tenants"}}
+	anyScopeRoutes = []scopedRoute{
+		{http.MethodGet, "/v1/auth/me"}, {http.MethodGet, "/v1/me/tenants"}, {http.MethodGet, "/v1/me/notifications"},
+	}
 	loginOnlyRoutes = []scopedRoute{
 		{http.MethodGet, "/v1/oauth/requests/p1"}, {http.MethodPost, "/v1/oauth/requests/p1/approve"},
 		{http.MethodPost, "/v1/oauth/requests/p1/deny"}, {http.MethodGet, "/v1/me/authorizations"},
