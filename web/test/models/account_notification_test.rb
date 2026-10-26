@@ -32,6 +32,14 @@ class AccountNotificationTest < ActiveSupport::TestCase
     assert_empty AccountNotification::Feed.from_api(body).items
   end
 
+  test "the count leaves out the kinds the panel does not show" do
+    invite = { "kind" => "invite", "id" => "invite-1", "tenant_id" => "tenant-2", "tenant_name" => "Home lab",
+               "role" => "member", "expires_at" => "2099-10-23T12:00:00Z" }
+    body = { "items" => [ invite, { "kind" => "mention", "id" => "m1" } ], "unread" => 2 }
+
+    assert_equal 1, AccountNotification::Feed.from_api(body).unread
+  end
+
   private
     def signed_in_api(invites: [ INVITE ])
       fake_api = FakeMarkuppApi.new(tenants: TENANTS, invites:)
