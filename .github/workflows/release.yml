@@ -75,6 +75,51 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
 
+  # Publica no npm pelo trusted publishing (OIDC, sem token guardado), com provenance ligando o pacote a este
+  # workflow. Depende do publish-image, que já validou o semver da tag. Prerelease (v1.0.0-rc.1) vai para a dist-tag
+  # next, para não virar a latest de quem instala.
+  publish-npm:
+    name: Publica o pacote ${{ matrix.package }} no npm
+    needs: publish-image
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - package: markupp-markdown
+            directory: packages/markupp-markdown
+    permissions:
+      contents: read
+      id-token: write
+    defaults:
+      run:
+        working-directory: ${{ matrix.directory }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 26
+          registry-url: https://registry.npmjs.org
+          cache: npm
+          cache-dependency-path: ${{ matrix.directory }}/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test
+
+      - name: Publica com a versão da tag
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          npm version "${TAG#v}" --no-git-tag-version
+          dist_tag=latest
+          case "$TAG" in *-*) dist_tag=next ;; esac
+          npm publish --provenance --access public --tag "$dist_tag"
+
   deploy-prod:
     name: Deploy na stack prod
     needs: publish-image
