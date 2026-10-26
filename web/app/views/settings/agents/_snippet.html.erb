@@ -1,0 +1,13 @@
+<%# Trecho para copiar: o rótulo diz onde ele entra, o botão copia o texto do pre e o status diz o resultado. %>
+<% heading_id = "agent_snippet_#{snippet.id}" %>
+<% label = snippet.path ? t("settings.agents.show.snippets.config_at", path: snippet.path) : t("settings.agents.show.snippets.#{snippet.id}") %>
+<div class="mt-4" data-controller="snippet-copy"
+     data-snippet-copy-copied-value="<%= t("settings.agents.show.copied") %>"
+     data-snippet-copy-copy-failed-value="<%= t("settings.agents.show.copy_failed") %>">
+  <div class="flex items-center gap-2">
+    <h3 id="<%= heading_id %>" class="min-w-0 flex-1 text-ink-muted [overflow-wrap:anywhere]"><%= label %></h3>
+    <span role="status" class="text-ink-muted" data-snippet-copy-target="status"></span>
+    <button type="button" class="btn" data-action="snippet-copy#copy" aria-describedby="<%= heading_id %>"><%= t("settings.agents.show.copy") %></button>
+  </div>
+  <pre class="mt-1 overflow-x-auto rounded-md border border-line bg-surface-sunken p-2" aria-labelledby="<%= heading_id %>" data-snippet-copy-target="source"><code><%= snippet.text %></code></pre>
+</div>

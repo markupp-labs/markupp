@@ -41,6 +41,7 @@ Rails.application.routes.draw do
     resource :account, only: :show
     resource :appearance, only: :show
     resource :editor, only: :show
+    resource :agents, only: :show
     resource :general, only: :show, controller: "general"
     resources :members, only: [ :index, :update, :destroy ]
     resources :invites, only: [ :index, :create, :destroy ]

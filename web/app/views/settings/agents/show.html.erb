@@ -1,0 +1,35 @@
+<% content_for :title, t(".title") %>
+<% client = chosen_agent_client %>
+
+<div class="max-w-[65ch]">
+  <h1 class="md-heading text-base font-semibold"><%= t(".title") %></h1>
+  <p class="mt-2 text-ink-muted"><%= t(".intro") %></p>
+
+  <%# Abas como links, uma página por cliente: a escolha fica na url e funciona sem JavaScript. %>
+  <nav aria-label="<%= t(".clients_label") %>" class="mt-4 flex flex-wrap gap-1 border-b border-line pb-2">
+    <% agent_clients.each do |each_client| %>
+      <%= link_to each_client.name, settings_agents_path(client: (each_client.id unless each_client == agent_clients.first)),
+                  aria: { current: ("page" if each_client == client) },
+                  class: "rounded px-2 py-0.5 text-ink-muted hover:bg-accent-soft hover:text-ink aria-[current=page]:bg-accent-soft aria-[current=page]:text-ink" %>
+    <% end %>
+  </nav>
+
+  <section aria-labelledby="agent_client_heading" class="mt-4">
+    <h2 id="agent_client_heading" class="font-semibold"><%= client.name %></h2>
+    <p class="mt-1 text-ink-muted"><%= t(".clients.#{client.id}") %></p>
+
+    <% if client.deeplinks.any? %>
+      <div class="mt-3 flex flex-wrap gap-2">
+        <% client.deeplinks.each do |deeplink| %>
+          <%= link_to t(".install", client: client.name), deeplink.href, class: "btn" %>
+        <% end %>
+      </div>
+    <% end %>
+
+    <%= render partial: "snippet", collection: client.snippets %>
+
+    <p class="mt-4">
+      <%= link_to t(".docs", client: client.name), client.docs_url, class: "text-accent underline", rel: "noopener", target: "_blank" %>
+    </p>
+  </section>
+</div>
