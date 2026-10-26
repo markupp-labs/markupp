@@ -8,6 +8,7 @@ import {
   vaultSlugParameter,
   type PublicApiFactory,
 } from "./public-tool-support.js";
+import { markdownHighlight } from "./snippet-highlight.js";
 import { readOnlyAnnotations } from "./tool-support.js";
 
 type PublicServer = FastMCP<PublicSession>;
@@ -105,7 +106,7 @@ function addSearchPublicNotes(
 }
 
 function searchHitView(hit: PublicSearchHit): Record<string, string> {
-  return { ...hit.note, snippet: hit.snippet };
+  return { ...hit.note, snippet: markdownHighlight(hit.snippet) };
 }
 
 function addReadPublicNote(
