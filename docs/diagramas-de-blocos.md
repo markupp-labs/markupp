@@ -31,8 +31,8 @@ O **servidor MCP** é a porta MCP dos mesmos clientes, com o mesmo conjunto de o
 uma rajada de tráfego própria. O isolamento é mútuo, e nenhum dos dois perfis de carga
 degrada o outro.
 
-O **plano de controle** cuida de cobrança, provisionamento e plano. Tráfego baixo e postura
-de segurança distinta dos outros três.
+O **plano de controle** atende o provisionamento externo de tenants pela API de admin. Tráfego
+baixo e postura de segurança distinta dos outros três.
 
 ## Escala a zero com KEDA
 
@@ -79,7 +79,7 @@ o código é o mesmo nos dois.
 ## O que muda no self-host
 
 O mesmo conjunto de imagens roda por compose num nó só, menos o plano de controle: com um
-tenant só, não há cobrança nem provisionamento. Embedding e notificação sobem por perfil, só
+tenant só, não há provisionamento externo. Embedding e notificação sobem por perfil, só
 quando configurados. Sem cluster, o TLS termina no próprio servidor, e o embedding pode vir de
 modelo local carregado no processo do indexador.
 

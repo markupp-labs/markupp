@@ -43,7 +43,7 @@ administração, e o viewer só lê nos cofres de que é membro
   custo de uma consulta de vínculo por requisição
 - Login, refresh e cadastro viram eventos da conta, auditados sem tenant
 - Restringir quem cria tenant, como a lista de criadores do Langfuse, fica para quando o
-  plano de controle ou a cobrança pedirem
+  provisionamento externo pela API de admin pedir
 - Sem verificação de email (ADR-0021), o token do convite é o que prova o email no cadastro. A
   conta de auto-registro fica fora do handshake até ter o email verificado, e com o
   auto-registro ligado qualquer pessoa ocupa um email alheio antes do dono

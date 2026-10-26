@@ -21,8 +21,8 @@ A divisão segue perfil de recurso, não entidade de domínio:
 - Indexador de embedding: perfil de recurso distinto, com acelerador quando houver modelo
   local, escala a zero
 - Worker de notificação: rajada com repetição, fora do caminho da requisição
-- Plano de controle: cobrança, provisionamento e plano, tráfego baixo e postura de segurança
-  distinta
+- Plano de controle: provisionamento externo de tenants pela API de admin, tráfego baixo e
+  postura de segurança distinta
 - Painel web: interface do usuário, com ritmo de release próprio e cliente da API como
   qualquer outro (ADR-0031)
 

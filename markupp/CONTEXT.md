@@ -17,7 +17,7 @@ _Avoid_: nuvem, SaaS, hospedado
 
 **Self-host**:
 A edição que qualquer pessoa instala e opera por conta própria, com um tenant só e sem
-plano de controle.
+provisionamento externo pela API de admin.
 _Avoid_: on-premise, comunidade, open source
 
 **Nota**:

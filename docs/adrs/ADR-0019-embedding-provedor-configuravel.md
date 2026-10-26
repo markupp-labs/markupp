@@ -40,6 +40,4 @@ um provedor seja configurado
   reconstruir a tabela de vetores inteira
 - Reconstruir é seguro porque vetor é dado derivado (ADR-0012), mas custa uma passada de
   embedding sobre todas as notas, o que no Enterprise é custo por chamada
-- O custo do Bedrock por nota e por reindexação completa ainda precisa ser medido numa prova de
-  conceito no free tier da AWS. Custo acima do previsto troca o provedor padrão do Enterprise,
-  sem mudança de arquitetura
+- Trocar o provedor padrão do Enterprise não muda a arquitetura
