@@ -67,6 +67,16 @@ func panelURLEnv(args MarkuppArgs) corev1.EnvVarArray {
 	return corev1.EnvVarArray{plainEnv("MARKUPP_PANEL_URL", panelURL(args))}
 }
 
+// panelMCPURLEnv dá ao painel o endereço do MCP só quando a API o encaminha: sem
+// ele, a página Agents avisa que o MCP está desligado em vez de anunciar um /mcp
+// que daria 404.
+func panelMCPURLEnv(args MarkuppArgs) corev1.EnvVarArray {
+	if args.MCP == nil {
+		return nil
+	}
+	return corev1.EnvVarArray{plainEnv("MARKUPP_MCP_URL", mcpResourceURL(args))}
+}
+
 func declarePanel(ctx *pulumi.Context, names resourceNames, args MarkuppArgs, parent pulumi.ResourceOption) error {
 	if args.Panel == nil {
 		return nil
@@ -97,18 +107,19 @@ func declarePanelSecret(ctx *pulumi.Context, names resourceNames, args MarkuppAr
 }
 
 // panelContainer fala com a API pelo Service, do lado do servidor: o navegador
-// nunca chama a API. A URL pública da API vai só para a página Agents, que mostra
-// aos clientes MCP o endereço /mcp da instância.
+// nunca chama a API. As URLs públicas da API e do MCP vão só para a página Agents,
+// que mostra aos clientes MCP o endereço do MCP da instância.
 func panelContainer(names resourceNames, args MarkuppArgs) corev1.ContainerArgs {
+	env := corev1.EnvVarArray{
+		plainEnv("MARKUPP_API_URL", fmt.Sprintf("http://%s:%d", names.api, apiPort)),
+		publicURLEnv(args),
+		secretEnv("SECRET_KEY_BASE", names.panel, secretKeyBaseKey),
+		plainEnv("HTTP_PORT", fmt.Sprint(panelPort)),
+	}
 	return corev1.ContainerArgs{
 		Name:  pulumi.String("panel"),
 		Image: pulumi.String(args.Panel.Image),
-		Env: corev1.EnvVarArray{
-			plainEnv("MARKUPP_API_URL", fmt.Sprintf("http://%s:%d", names.api, apiPort)),
-			publicURLEnv(args),
-			secretEnv("SECRET_KEY_BASE", names.panel, secretKeyBaseKey),
-			plainEnv("HTTP_PORT", fmt.Sprint(panelPort)),
-		},
+		Env:   append(env, panelMCPURLEnv(args)...),
 		Ports: corev1.ContainerPortArray{corev1.ContainerPortArgs{ContainerPort: pulumi.Int(panelPort)}},
 		ReadinessProbe: corev1.ProbeArgs{HttpGet: corev1.HTTPGetActionArgs{
 			Path: pulumi.String("/up"), Port: pulumi.Int(panelPort),
