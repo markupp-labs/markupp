@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<%# Cofre publicado lido sem conta (/p/:slug, ADR-0048): o título do cofre no topo, a árvore das notas ao lado e a nota
+    no meio, sem a barra de atividades, a busca nem os atalhos do painel. No celular a árvore vem antes da nota. As
+    páginas de erro pedem o mascote ao lado da mensagem (content_for :mascot), como no layout das notas. %>
+<%= tag.html lang: "en", data: { theme: chosen_theme } do %>
+  <%= render "layouts/head" %>
+
+  <body class="min-h-dvh bg-surface font-mono text-sm text-ink" data-area="published">
+    <%= busy_origin_spinner_template %>
+    <header class="flex items-center gap-3 border-b border-line px-4 py-2">
+      <%= mascot(:small) %>
+      <% if @vault %>
+        <%= link_to @vault.title, public_vault_path(@vault.slug), class: "truncate font-semibold" %>
+      <% else %>
+        <span>markupp</span>
+      <% end %>
+      <div class="ml-auto flex items-center gap-1"><%= render "layouts/theme_buttons" %></div>
+    </header>
+
+    <div class="md:grid md:grid-cols-[16rem_minmax(0,1fr)]">
+      <% if content_for?(:tree) %>
+        <nav aria-label="<%= t(".notes") %>" class="border-b border-line p-3 md:min-h-[calc(100dvh-2.75rem)] md:border-r md:border-b-0">
+          <%= yield :tree %>
+        </nav>
+      <% end %>
+      <main class="@container min-w-0 p-4 md:col-start-2 md:p-6">
+        <% page = yield %>
+        <% if content_for?(:mascot) %>
+          <div class="flex min-h-[60dvh] items-center justify-center gap-10">
+            <%= yield :mascot %><div class="min-w-0 max-w-[65ch]"><%= page %></div>
+          </div>
+        <% else %>
+          <%= page %>
+        <% end %>
+        <p class="mt-8 border-t border-line pt-3 text-xs text-ink-muted"><%= t(".published_with") %></p>
+      </main>
+    </div>
+  </body>
+<% end %>

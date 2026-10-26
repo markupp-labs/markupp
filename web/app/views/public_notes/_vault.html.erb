@@ -1,0 +1,6 @@
+<%# Página do cofre publicado: o título e quantas notas. %>
+<h1 class="text-base font-semibold"><%= vault.title %></h1>
+<p class="text-ink-muted">
+  <%= t(".summary", count: tree.notes_within.size, date: l(vault.published_at.to_date, format: :long)) %>
+  <%= t(".hint") %>
+</p>
