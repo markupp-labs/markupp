@@ -11,7 +11,7 @@ info:
     continuam servidos sem prefixo, com os cabeçalhos Deprecation (RFC 9745) e
     Link rel="successor-version" apontando o caminho sob /v1; sem prefixo, a nota
     mantém a representação antiga, sem a organização derivada. As rotas /oauth/requests,
-    /me/authorizations, /vaults, /search e as sub-coleções de /notes/{id} nasceram
+    /me/authorizations, /me/notifications, /vaults, /search e as sub-coleções de /notes/{id} nasceram
     depois da transição e existem só sob /v1, sem o caminho sem prefixo.
 
     Os endpoints do protocolo OAuth (/oauth/authorize, /oauth/token, /oauth/revoke e a
@@ -515,6 +515,24 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/PendingInviteResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /me/notifications:
+    get:
+      summary: Lista as notificações da conta
+      description: >
+        O que pede a atenção da conta, para o sino do painel (ADR-0049). Hoje a única fonte
+        é o convite pendente, o mesmo de GET /me/invites, derivado na leitura e sem estado
+        de lido: unread é o número de itens que ainda pedem resposta e cai quando a conta
+        aceita ou recusa. Aceita token de login e token OAuth com qualquer escopo, porque só
+        devolve o que já é da própria conta. Não usa o cabeçalho de tenant. Existe só sob /v1.
+      responses:
+        '200':
+          description: Notificações da conta, das mais antigas para as mais novas
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationFeedResponse'
         '401':
           $ref: '#/components/responses/Unauthorized'
   /me/invites/{id}/accept:
@@ -2009,6 +2027,40 @@ components:
     PendingInviteResponse:
       type: object
       properties:
+        id:
+          type: string
+        tenant_id:
+          type: string
+        tenant_name:
+          type: string
+        role:
+          $ref: '#/components/schemas/Role'
+        expires_at:
+          type: string
+          format: date-time
+    NotificationFeedResponse:
+      type: object
+      required: [items, unread]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/NotificationResponse'
+        unread:
+          type: integer
+          minimum: 0
+          description: Quantos itens ainda pedem resposta
+    NotificationResponse:
+      type: object
+      required: [kind, id]
+      description: >
+        Um item da lista. kind diz a fonte e quais campos vêm; o cliente ignora o kind que
+        não conhece. Com kind invite, os campos são os de PendingInviteResponse, e id é o do
+        convite, o mesmo de POST /me/invites/{id}/accept e /decline.
+      properties:
+        kind:
+          type: string
+          enum: [invite]
         id:
           type: string
         tenant_id:
