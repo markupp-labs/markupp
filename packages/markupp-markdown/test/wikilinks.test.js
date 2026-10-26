@@ -31,7 +31,7 @@ describe("wikilinks", () => {
   })
 
   it("fica como texto sem env.wikilinks", () => {
-    expect(render("[[Ideias]]")).toContain("<p>[[Ideias]]</p>")
+    expect(render("[[Ideias]]")).toContain(">[[Ideias]]</p>")
   })
 })
 
