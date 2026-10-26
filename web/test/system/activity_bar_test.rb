@@ -70,17 +70,19 @@ class ActivityBarTest < ApplicationSystemTestCase
     assert_equal "0", explorer.evaluate_script("getComputedStyle(this, '::before').opacity")
   end
 
-  # Como no VS Code: a engrenagem no fundo da coluna, a conta logo acima e o tema acima dela.
-  test "the foot of the bar holds, bottom up, the settings, the account and the theme, and the account opens its menu" do
+  # Como no VS Code: a engrenagem no fundo da coluna, a conta logo acima, o tema acima dela e o sino no topo do pé.
+  test "the foot of the bar holds, bottom up, the settings, the account, the theme and the bell, and the account opens its menu" do
     visit root_path
     assert_selector ".activity-bar-side a[aria-label=Settings]"
-    settings, account, theme = [ "a[aria-label=Settings]", "button[aria-label=Account]", "form:not([hidden]) button[aria-label$=theme]" ]
-                                 .map { find(".activity-bar-side #{it}", match: :first) }
+    settings, account, theme, bell = [ "a[aria-label=Settings]", "button[aria-label=Account]", "form:not([hidden]) button[aria-label$=theme]",
+                                       "button[popovertarget=notification_menu]" ]
+                                       .map { find(".activity-bar-side #{it}", match: :first) }
     assert_in_delta evaluate_script("innerHeight"), edge(settings, "bottom"), 4
     assert_operator edge(account, "bottom"), :<=, edge(settings, "top")
     assert_operator edge(theme, "bottom"), :<=, edge(account, "top")
+    assert_operator edge(bell, "bottom"), :<=, edge(theme, "top")
 
-    assert_equal [ [ 0, 48 ] ] * 3, [ settings, account, theme ].map { [ edge(it, "left"), edge(it, "right") ].map(&:round) }
+    assert_equal [ [ 0, 48 ] ] * 4, [ settings, account, theme, bell ].map { [ edge(it, "left"), edge(it, "right") ].map(&:round) }
 
     account.click
     within("#account_menu") { assert_text FakeMarkuppAccounts::DEFAULT_EMAIL }
