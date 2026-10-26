@@ -23,6 +23,7 @@ type AuthService interface {
 	ListTenants(ctx context.Context, userID string) ([]auth.TenantSummary, error)
 	CreateTenant(ctx context.Context, userID, name string) (auth.Membership, error)
 	ListMyInvites(ctx context.Context, userID string) ([]auth.PendingInvite, error)
+	ListMyNotifications(ctx context.Context, userID string) (auth.NotificationFeed, error)
 	AcceptMyInvite(ctx context.Context, userID, inviteID string) (auth.Membership, error)
 	DeclineMyInvite(ctx context.Context, userID, inviteID string) error
 	AcceptInvite(ctx context.Context, token, password string) (auth.TokenPair, error)
