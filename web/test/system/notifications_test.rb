@@ -54,6 +54,33 @@ class NotificationsTest < ApplicationSystemTestCase
     assert_selector "#{BELL} .notification-badge", text: "1"
   end
 
+  test "the count keeps polling after a reload that fails on the network" do
+    api = use_fake_api(tenants: TENANTS)
+    sign_in_through_form
+    assert_selector "#{BELL} turbo-frame[complete]", visible: :all
+
+    reload_bell_through_broken_fetch("Promise.reject(new TypeError('Failed to fetch'))")
+    api.receive_invite!(INVITE)
+    execute_script("document.dispatchEvent(new Event('visibilitychange'))")
+
+    assert_selector "#{BELL} .notification-badge", text: "1"
+  end
+
+  test "a reply without the frame keeps the count and the polling" do
+    api = use_fake_api(tenants: TENANTS)
+    sign_in_through_form
+    assert_selector "#{BELL} turbo-frame[complete]", visible: :all
+
+    reload_bell_through_broken_fetch("new Response('<html><body>Bad gateway</body></html>', " \
+                                     "{ status: 502, headers: { 'Content-Type': 'text/html' } })")
+    within(BELL) { assert_no_text :all, "Content missing" }
+    api.receive_invite!(INVITE)
+    execute_script("document.dispatchEvent(new Event('visibilitychange'))")
+
+    assert_selector "#{BELL} .notification-badge", text: "1"
+    within(BELL) { assert_no_text :all, "Content missing" }
+  end
+
   test "the popover shows the invite that arrived after it was first opened" do
     api = use_fake_api(tenants: TENANTS)
     sign_in_through_form
@@ -90,4 +117,18 @@ class NotificationsTest < ApplicationSystemTestCase
       assert_readable find("#{BELL} .notification-badge")
     end
   end
+
+  private
+    # Recarrega o contador (volta da aba) com o fetch do navegador trocado pela resposta dada, como uma rede que caiu
+    # ou um proxy que devolve a própria página de erro, e espera os frames das duas barras terminarem o pedido.
+    def reload_bell_through_broken_fetch(reply)
+      execute_script(<<~JS)
+        window.realFetch = window.fetch
+        window.fetch = () => { document.body.dataset.brokenFetches = "done"; return #{reply} }
+        document.dispatchEvent(new Event("visibilitychange"))
+      JS
+      assert_selector "body[data-broken-fetches=done]"
+      assert_no_selector ".notification-badge-frame[busy]", visible: :all
+      execute_script("window.fetch = window.realFetch")
+    end
 end
