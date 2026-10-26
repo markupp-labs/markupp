@@ -9,15 +9,18 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-// Caminhos do servidor MCP na mesma origem (ADR-0041): o endpoint Streamable HTTP e a
-// metadata do recurso protegido dele (RFC 9728), que o próprio servidor MCP publica.
+// Caminhos do servidor MCP na mesma origem (ADR-0041): o endpoint Streamable HTTP, a
+// metadata do recurso protegido dele (RFC 9728), que o próprio servidor MCP publica, e
+// o endpoint sem login dos cofres publicados (ADR-0051).
 const (
 	mcpEndpointPath         = "/mcp"
 	mcpResourceMetadataPath = "/.well-known/oauth-protected-resource/mcp"
+	mcpPublicEndpointPath   = "/mcp/public"
 )
 
 // mountMCPProxy encaminha o servidor MCP ao container dele, sem CORS nem autenticação: o
-// servidor MCP troca o token do agente e responde 401 sozinho.
+// servidor MCP troca o token do agente e responde 401 sozinho, e em /mcp/public lê só
+// os cofres publicados, pelas rotas /v1/public com o limite delas.
 func mountMCPProxy(r chi.Router, upstreamURL string) {
 	if upstreamURL == "" {
 		return
@@ -29,6 +32,7 @@ func mountMCPProxy(r chi.Router, upstreamURL string) {
 	proxy := withoutWriteDeadline(newMCPReverseProxy(upstream))
 	r.Handle(mcpEndpointPath, proxy)
 	r.Handle(mcpResourceMetadataPath, proxy)
+	r.Handle(mcpPublicEndpointPath, proxy)
 }
 
 // newMCPReverseProxy repassa cada pedaço da resposta assim que chega, porque o
