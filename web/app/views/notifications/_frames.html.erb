@@ -1,0 +1,8 @@
+<%# Resposta de frame: os contadores das duas barras e a lista do popover com o que vier no bloco; o Turbo fica com o
+    frame que pediu. %>
+<% %w[side drawer].each do |placement| %>
+  <%= render "notifications/badge", placement:, unread: %>
+<% end %>
+<%= turbo_frame_tag "notification_list", target: "_top" do %>
+  <%= yield %>
+<% end %>

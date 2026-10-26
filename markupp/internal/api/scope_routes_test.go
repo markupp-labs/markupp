@@ -28,6 +28,7 @@ var (
 		{http.MethodPatch, "/v1/users/u2"}, {http.MethodDelete, "/v1/users/u2"}, {http.MethodDelete, "/v1/users/invites/c1"},
 		{http.MethodPost, "/v1/tenants"}, {http.MethodGet, "/v1/me/invites"},
 		{http.MethodPost, "/v1/me/invites/c1/accept"}, {http.MethodPost, "/v1/me/invites/c1/decline"},
+		{http.MethodGet, "/v1/me/notifications"},
 	}
 	anyScopeRoutes  = []scopedRoute{{http.MethodGet, "/v1/auth/me"}, {http.MethodGet, "/v1/me/tenants"}}
 	loginOnlyRoutes = []scopedRoute{

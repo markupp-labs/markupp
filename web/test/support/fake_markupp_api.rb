@@ -7,7 +7,7 @@ class FakeMarkuppApi
   delegate :put_requests, :post_requests, to: :@notes
   delegate :expire_access_tokens!, :revoke_refresh_tokens!, :refresh_token_valid?, to: :@accounts
   delegate :disable_local_auth!, :hold_refreshes_together!, to: :@auth
-  delegate :assign_role!, :deny_notes_in!, :delete_tenant!, to: :@tenants
+  delegate :assign_role!, :deny_notes_in!, :delete_tenant!, :receive_invite!, to: :@tenants
   delegate :sent_tokens, to: :@account_email
   delegate :received_etags, :graph_queries, :change_graph!, to: :@graph
   delegate :decisions, to: :@oauth_requests, prefix: :oauth
@@ -81,9 +81,9 @@ class FakeMarkuppApi
     end
 
     # Só notas, grafo e administração agem num tenant; chamada de confiança, sem conta, não tem papel. Os pedidos OAuth
-    # são da conta, sem tenant.
+    # e as notificações são da conta, sem tenant.
     def tenant_membership(path, account, call)
-      return unless account && path.start_with?("/notes", "/users", "/v1/") && !path.start_with?(OAUTH_REQUESTS)
+      return unless account && path.start_with?("/notes", "/users", "/v1/") && !path.start_with?(OAUTH_REQUESTS, FakeMarkuppTenants::NOTIFICATIONS)
 
       @tenants.membership_for(account, @credentials[:tenant_id], call)
     end
@@ -97,6 +97,7 @@ class FakeMarkuppApi
     def fake_for(call, path)
       return @notes if path.start_with?("/notes")
       return @oauth_requests if path.start_with?(OAUTH_REQUESTS)
+      return @tenants if path == FakeMarkuppTenants::NOTIFICATIONS
       return @note_index if path.start_with?("/v1/search/") || FakeMarkuppNoteIndex::VAULT_NOTES.match?(path)
       return @graph if path.start_with?("/v1/")
       return @account_email if path.start_with?("/auth/password/", "/auth/email/")

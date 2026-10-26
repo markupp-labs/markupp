@@ -1,5 +1,6 @@
-<%# Convite recebido: os botões levam a frase do convite como descrição, para o leitor de tela saber qual aceita. %>
-<% sentence_id = "my_invite_#{invite.id}" %>
+<%# Convite recebido: os botões levam a frase do convite como descrição, para o leitor de tela saber qual aceita. O
+    id_prefix separa a frase da lista do sino (notifications/_list) da do seletor de tenant, na mesma página. %>
+<% sentence_id = "#{local_assigns.fetch(:id_prefix, "my_invite")}_#{invite.id}" %>
 <li class="px-2 py-1">
   <p id="<%= sentence_id %>" class="[overflow-wrap:anywhere]"><%= t(".join", tenant: invite.tenant_name, role: t("tenants.roles.#{invite.role}")) %></p>
   <p class="text-xs text-ink-muted"><%= t(".expires", date: l(invite.expires_at.to_date, format: :short)) %></p>

@@ -1,0 +1,13 @@
+<%# Contador do sino, dentro do botão (layouts/_activity_bar), uma cópia por barra. O texto escondido dá o nome do botão
+    com a contagem e, numa região viva, o leitor de tela ouve quando ela muda: o frame_poll recarrega com morph, então
+    sem mudança nada é anunciado. Na primeira carga (preguiçosa, quando a barra aparece) a região chega junto com o texto
+    e não fala. O número à vista é só para os olhos. Só o frame da barra leva o src: o da resposta com o mesmo src o Turbo
+    recusa, como frame que aponta para si mesmo. %>
+<% source = local_assigns[:source] %>
+<%= turbo_frame_tag "notification_badge_#{placement}", src: source, loading: (:lazy if source), refresh: :morph,
+                    data: { controller: "frame-poll" }, class: "notification-badge-frame" do %>
+  <span aria-live="polite" class="sr-only"><%= notification_label(unread) %></span>
+  <% if unread.positive? %>
+    <span aria-hidden="true" class="notification-badge"><%= notification_badge_count(unread) %></span>
+  <% end %>
+<% end %>

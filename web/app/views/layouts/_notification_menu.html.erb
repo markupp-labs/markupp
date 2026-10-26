@@ -1,0 +1,14 @@
+<%# Lista do sino (ADR-0049), aberta pelo ícone de sino da barra de atividades (layouts/_activity_bar). Não é menu: traz
+    frases e botões de aceitar e recusar, então é um diálogo não modal num popover auto, que fecha com Esc ou clique
+    fora. Uma cópia só para os dois sinos, ancorada como o menu da conta (layouts/_account_menu). A lista carrega quando
+    o popover abre pela primeira vez (frame preguiçoso) e recarrega a cada nova abertura (frame_poll no toggle, sem
+    intervalo); aceitar ou recusar sai do frame e recarrega a página, com o contador junto. %>
+<div id="notification_menu" popover role="dialog" aria-labelledby="notification_menu_title"
+     data-controller="frame-poll" data-frame-poll-interval-value="0" data-action="toggle->frame-poll#reload"
+     class="layer m-0 mt-1 w-72 origin-top-right layer-panel p-1 text-[13px] [inset:auto] [position-anchor:--notification-menu] [position-area:bottom_span-left] md:mt-0 md:ml-1 md:origin-bottom-left md:[position-area:right_span-top]">
+  <h2 id="notification_menu_title" class="border-b border-line px-2 pb-1.5 pt-1 text-ink-muted"><%= t(".title") %></h2>
+  <%= turbo_frame_tag "notification_list", src: notifications_path, loading: :lazy, target: "_top",
+                      data: { frame_poll_target: "frame" }, class: "mt-1 block" do %>
+    <%= busy_spinner(busy_when: "#notification_list[aria-busy]", class: "flex px-2 py-1") %>
+  <% end %>
+</div>
