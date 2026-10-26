@@ -1,7 +1,7 @@
 require "application_system_test_case"
 
 # O owner publica o cofre nas configurações, copia o link público, abre a leitura sem conta e despublica.
-class VaultPublicationTest < ApplicationSystemTestCase
+class VaultPublishingTest < ApplicationSystemTestCase
   NOTES = [ { id: "plan", path: "plan.md", content: "# Plan\n" } ].freeze
 
   test "publish, copy the public link and unpublish the vault" do
