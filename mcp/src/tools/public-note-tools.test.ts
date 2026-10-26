@@ -85,8 +85,9 @@ describe("list_public_notes", () => {
   it("recusa slug fora do formato antes de chamar a API", async () => {
     const api = docsVault();
     client = await MarkuppToolClient.connectPublic(api);
-    const result = await client.call("list_public_notes", { vault: "../x" });
-    expect(result.isError).toBe(true);
+    await expect(
+      client.call("list_public_notes", { vault: "../x" }),
+    ).rejects.toThrow(/vault: .*pattern/);
     expect(api.calls).toEqual([]);
   });
 });
