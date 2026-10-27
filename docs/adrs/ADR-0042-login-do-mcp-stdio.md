@@ -39,3 +39,13 @@ dois processos não reaproveitarem o mesmo refresh
   Autorização no painel o derruba
 - Revogar um JWT pelo `/oauth/revoke` não tem efeito, porque ele não é gravado
 - Dois processos stdio na mesma máquina dividem uma Autorização só
+
+## Emenda
+
+O CLI de terminal, `mu` (repositório `markupp-cli`), tem o mesmo problema do processo stdio: é
+um binário instalado na máquina da pessoa, sem como guardar segredo, e o registro dinâmico vem
+desligado. O servidor Go passa a conhecer de fábrica um segundo cliente público, `markupp-cli`,
+com nome `markupp-cli (terminal)`, os mesmos redirects em loopback e o mesmo PKCE do
+`markupp-mcp`. Os dois ficam separados para que o painel mostre a Autorização de cada um e a
+pessoa revogue um sem derrubar o outro. A migração que cria o cliente remove, no Down, só a
+linha `markupp-cli`, e não todos os clientes embutidos
