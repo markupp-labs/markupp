@@ -136,7 +136,7 @@ func (m *SMTPMailer) greet(client *smtp.Client, heloName string) error {
 		return err
 	}
 	if err := m.secure(client); err != nil {
-		return fmt.Errorf("secure connection to %s: %w", m.addr, err)
+		return fmt.Errorf("tls handshake with %s: %w", m.addr, err)
 	}
 	return nil
 }

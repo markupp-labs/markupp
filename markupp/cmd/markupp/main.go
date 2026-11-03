@@ -115,7 +115,7 @@ func parseReindexScope(args []string) (string, error) {
 		return "", fmt.Errorf("invalid reindex arguments %q, %s: %w", args, reindexUsage, err)
 	}
 	if flags.NArg() > 0 || (*vaultID != "") == *all {
-		return "", fmt.Errorf("reindex arguments %q, %s", args, reindexUsage)
+		return "", fmt.Errorf("invalid reindex arguments %q, %s", args, reindexUsage)
 	}
 	return *vaultID, nil
 }
