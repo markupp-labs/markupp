@@ -63,6 +63,7 @@ var (
 	ErrInvalidID         = errors.New("ID inválido")
 	ErrConflict          = errors.New("nota foi atualizada por outro cliente")
 	ErrVaultForbidden    = errors.New("cofre inexistente ou sem acesso")
+	ErrNoVault           = errors.New("a conta nao e membro de nenhum cofre")
 	ErrCommunityNotFound = errors.New("comunidade não encontrada")
 )
 

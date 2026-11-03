@@ -238,6 +238,8 @@ func writeDomainError(w http.ResponseWriter, err error) {
 		writeError(w, "duplicate_path", notes.ErrDuplicatePath.Error(), http.StatusConflict)
 	case errors.Is(err, notes.ErrVaultForbidden):
 		writeError(w, "vault_forbidden", notes.ErrVaultForbidden.Error(), http.StatusForbidden)
+	case errors.Is(err, notes.ErrNoVault):
+		writeError(w, "no_vault", notes.ErrNoVault.Error(), http.StatusConflict)
 	case errors.Is(err, notes.ErrConflict):
 		writeError(w, "conflict", notes.ErrConflict.Error(), http.StatusConflict)
 	case errors.Is(err, notes.ErrNotFound):

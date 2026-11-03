@@ -45,14 +45,15 @@ type issuedInviteResponse struct {
 	Token string `json:"token,omitempty"`
 }
 
-// mountAdminRoutes monta as rotas de administração do tenant: as de membros e convites,
-// que só owner e admin alcançam, e o apagar do tenant, só do owner. O papel vem do
-// vínculo no banco, nunca do cliente.
+// mountAdminRoutes monta as rotas de administração do tenant: a lista de colegas, que
+// todo membro lê; as de membros e convites, que só owner e admin alcançam; e o apagar do
+// tenant, só do owner. O papel vem do vínculo no banco, nunca do cliente.
 func mountAdminRoutes(r chi.Router, svc AdminService, validator TokenValidator, tenants TenantResolver) {
 	h := &adminHandler{svc: svc}
+	r.With(acceptOAuthScope(oauth.ScopeNotesRead, oauth.ScopeAdmin), RequireAuth(validator), RequireTenant(tenants)).
+		Get("/users", h.listMembers)
 	r.Group(func(g chi.Router) {
 		g.Use(acceptOAuthScope(oauth.ScopeAdmin), RequireAuth(validator), RequireTenant(tenants), requireAdmin)
-		g.Get("/users", h.listMembers)
 		g.Get("/users/invites", h.listInvites)
 		g.Post("/users/invites", h.issueInvite)
 		g.Patch("/users/{id}", h.changeRole)

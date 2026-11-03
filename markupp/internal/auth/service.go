@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/google/uuid"
 
@@ -305,13 +306,14 @@ func (s *Service) ListTenants(ctx context.Context, userID string) ([]TenantSumma
 	return s.repo.ListTenantSummaries(ctx, userID)
 }
 
-// maxTenantNameLength limita o nome que aparece no seletor de tenant dos clientes.
+// maxTenantNameLength limita, em caracteres, o nome que aparece no seletor de tenant
+// dos clientes.
 const maxTenantNameLength = 100
 
 // CreateTenant cria o tenant name com userID como owner e o cofre inicial dele lá.
 func (s *Service) CreateTenant(ctx context.Context, userID, name string) (Membership, error) {
 	name = strings.TrimSpace(name)
-	if name == "" || len(name) > maxTenantNameLength {
+	if name == "" || utf8.RuneCountInString(name) > maxTenantNameLength {
 		return Membership{}, fmt.Errorf("%w: %q, esperado de 1 a %d caracteres", ErrInvalidTenantName, name, maxTenantNameLength)
 	}
 	p := CreateTenantParams{

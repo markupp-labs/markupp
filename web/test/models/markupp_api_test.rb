@@ -312,6 +312,21 @@ class MarkuppApiTest < ActiveSupport::TestCase
     assert_operator MarkuppApi::VaultUnavailable, :<, MarkuppApi::Forbidden
   end
 
+  test "maps the error codes of the vault routes to their classes" do
+    { [ "400 Bad Request", "invalid_name" ] => MarkuppApi::InvalidName,
+      [ "422 Unprocessable Content", "not_tenant_member" ] => MarkuppApi::NotTenantMember,
+      [ "409 Conflict", "already_vault_member" ] => MarkuppApi::AlreadyVaultMember,
+      [ "404 Not Found", "vault_member_not_found" ] => MarkuppApi::VaultMemberNotFound,
+      [ "409 Conflict", "no_vault" ] => MarkuppApi::NoVault }.each do |(status, code), error_class|
+      assert_answer_raises(error_class, %({"error":"#{code}","message":"recusado"}), status) { it.post("/v1/vaults", name: "x") }
+    end
+  end
+
+  test "invalid name is a kind of InvalidRequest and vault member not found a kind of NotFound" do
+    assert_operator MarkuppApi::InvalidName, :<, MarkuppApi::InvalidRequest
+    assert_operator MarkuppApi::VaultMemberNotFound, :<, MarkuppApi::NotFound
+  end
+
   test "path appends the query, leaving out the parameters without value" do
     assert_equal "/v1/vaults/a%20b/notes?limit=5&orphan=false", MarkuppApi.path("v1", "vaults", "a b", "notes", orphan: false, limit: 5, sort: nil)
   end
