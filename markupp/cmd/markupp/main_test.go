@@ -461,7 +461,7 @@ func TestNewCIMDClientMetadataFetcher_LimiteDeCorpo_ChegaAoFetcher(t *testing.T)
 	_, err = fetcher.FetchClientMetadata(context.Background(), srv.clientID())
 
 	require.ErrorIs(t, err, cimd.ErrFetchFailed)
-	assert.Contains(t, err.Error(), "mais de 16 bytes")
+	assert.Contains(t, err.Error(), "larger than 16 bytes")
 }
 
 func TestNewCIMDClientMetadataFetcher_Timeout_ChegaAoFetcher(t *testing.T) {
