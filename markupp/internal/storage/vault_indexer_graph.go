@@ -13,13 +13,13 @@ import (
 func saveGraph(ctx context.Context, q *gen.Queries, cs indexing.Changeset, indexed []indexing.IndexedNote) error {
 	noteIDs := batchNoteIDs(indexed)
 	if err := q.DeleteNoteGraph(ctx, noteIDs); err != nil {
-		return fmt.Errorf("apagar o grafo das %d notas do cofre %q: %w", len(noteIDs), cs.VaultID, err)
+		return fmt.Errorf("delete graph of %d notes in vault %q: %w", len(noteIDs), cs.VaultID, err)
 	}
 	if err := q.SaveNoteTitles(ctx, titleRows(indexed)); err != nil {
-		return fmt.Errorf("gravar os titulos das %d notas do cofre %q: %w", len(noteIDs), cs.VaultID, err)
+		return fmt.Errorf("save titles of %d notes in vault %q: %w", len(noteIDs), cs.VaultID, err)
 	}
 	if err := q.SaveNoteLinks(ctx, linkRows(indexed)); err != nil {
-		return fmt.Errorf("gravar as ligacoes das %d notas do cofre %q: %w", len(noteIDs), cs.VaultID, err)
+		return fmt.Errorf("save links of %d notes in vault %q: %w", len(noteIDs), cs.VaultID, err)
 	}
 	return nil
 }
