@@ -88,7 +88,7 @@ func (h *notesHandler) create(w http.ResponseWriter, r *http.Request) {
 func (h *notesHandler) createIn(w http.ResponseWriter, r *http.Request, vaultOf func(createNoteRequest) string) {
 	var req createNoteRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, "invalid_request", "JSON inválido", http.StatusBadRequest)
+		writeError(w, "invalid_request", "invalid JSON body", http.StatusBadRequest)
 		return
 	}
 	note, err := h.svc.Create(r.Context(), vaultOf(req), req.Path, req.Content)
@@ -108,7 +108,7 @@ func (h *notesHandler) update(w http.ResponseWriter, r *http.Request) {
 		Force          bool      `json:"force"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, "invalid_request", "JSON inválido", http.StatusBadRequest)
+		writeError(w, "invalid_request", "invalid JSON body", http.StatusBadRequest)
 		return
 	}
 	note, err := h.svc.Update(r.Context(), id, req.Path, req.Content, req.LastModifiedAt, req.Force)
@@ -150,7 +150,7 @@ func writeNotes(w http.ResponseWriter, list []notes.Note, render func(notes.Note
 func (h *notesHandler) search(w http.ResponseWriter, r *http.Request) {
 	query := r.URL.Query().Get("query")
 	if query == "" {
-		writeError(w, "invalid_request", "query string 'query' é obrigatória", http.StatusBadRequest)
+		writeError(w, "invalid_request", "query string parameter 'query' is required", http.StatusBadRequest)
 		return
 	}
 	offset, limit, ok := parsePage(w, r)
@@ -249,6 +249,6 @@ func writeDomainError(w http.ResponseWriter, err error) {
 	case errors.Is(err, notes.ErrInvalidID):
 		writeError(w, "invalid_id", notes.ErrInvalidID.Error(), http.StatusBadRequest)
 	default:
-		writeError(w, "internal", "erro interno", http.StatusInternalServerError)
+		writeError(w, "internal", "internal error", http.StatusInternalServerError)
 	}
 }

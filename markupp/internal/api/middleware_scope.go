@@ -1,6 +1,7 @@
 package api
 
 import (
+	"cmp"
 	"context"
 	"net/http"
 	"slices"
@@ -35,12 +36,28 @@ func allowOAuthActor(w http.ResponseWriter, r *http.Request, actor identity.Acto
 	case !actor.FromOAuth, slices.Contains(accepted, anyOAuthScope), grantsAnyScope(actor.OAuthScopes, accepted):
 		return true
 	case len(accepted) == 0:
-		writeError(w, "first_party_only", "rota so aceita o token de login", http.StatusForbidden)
+		writeError(w, "first_party_only", "this route only accepts a login token, not an app token", http.StatusForbidden)
 	default:
 		w.Header().Set("WWW-Authenticate", `Bearer error="insufficient_scope", scope="`+strings.Join(accepted, " ")+`"`)
-		writeError(w, "insufficient_scope", "o token nao tem o escopo "+strings.Join(accepted, " ou "), http.StatusForbidden)
+		writeError(w, "insufficient_scope", insufficientScopeMessage(accepted), http.StatusForbidden)
 	}
 	return false
+}
+
+// scopeActions nomeia cada escopo pelo que ele deixa o app fazer, para a recusa ser legível.
+var scopeActions = map[string]string{
+	oauth.ScopeNotesRead:  "read notes",
+	oauth.ScopeNotesWrite: "write notes",
+	oauth.ScopeAdmin:      "manage the tenant",
+}
+
+// insufficientScopeMessage diz o que falta ao app e como resolver; escopo sem frase sai pelo nome.
+func insufficientScopeMessage(accepted []string) string {
+	actions := make([]string, 0, len(accepted))
+	for _, scope := range accepted {
+		actions = append(actions, cmp.Or(scopeActions[scope], scope))
+	}
+	return "this app is not allowed to " + strings.Join(actions, " or ") + "; authorize it again with that permission"
 }
 
 // grantsAnyScope diz se os escopos concedidos cobrem algum dos aceitos.

@@ -42,15 +42,15 @@ func (h *oauthHandler) register(w http.ResponseWriter, r *http.Request) {
 func readRegistrationBody(w http.ResponseWriter, r *http.Request) (oauth.RegistrationRequest, *oauth.ProtocolError) {
 	contentType := r.Header.Get("Content-Type")
 	if mediaType, _, _ := mime.ParseMediaType(contentType); mediaType != "application/json" {
-		return oauth.RegistrationRequest{}, invalidClientMetadata(fmt.Sprintf("Content-Type %s; esperado application/json", oauth.ClientValue(contentType)))
+		return oauth.RegistrationRequest{}, invalidClientMetadata(fmt.Sprintf("Content-Type %s: expected application/json", oauth.ClientValue(contentType)))
 	}
 	decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxRegisterBodyBytes))
 	var req oauth.RegistrationRequest
 	if err := decoder.Decode(&req); err != nil {
-		return oauth.RegistrationRequest{}, invalidClientMetadata(fmt.Sprintf("corpo ilegivel ou acima de %d bytes; esperado um objeto JSON com os metadados do cliente", maxRegisterBodyBytes))
+		return oauth.RegistrationRequest{}, invalidClientMetadata(fmt.Sprintf("unreadable body or larger than %d bytes: expected a JSON object with the client metadata", maxRegisterBodyBytes))
 	}
 	if !errors.Is(decoder.Decode(&struct{}{}), io.EOF) {
-		return oauth.RegistrationRequest{}, invalidClientMetadata("dados depois do objeto JSON; esperado um unico objeto")
+		return oauth.RegistrationRequest{}, invalidClientMetadata("data after the JSON object: expected a single object")
 	}
 	return req, nil
 }
