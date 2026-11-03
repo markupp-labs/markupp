@@ -1,0 +1,8 @@
+<%# Despublicar tira o link do ar na hora e libera o slug: confirma antes, pelo diálogo do painel. %>
+<section class="mt-6 rounded-md border border-danger p-3">
+  <h2 class="font-semibold text-danger"><%= t(".title") %></h2>
+  <p class="mt-1 text-ink-muted"><%= t(".hint") %></p>
+  <%= button_to t(".unpublish"), settings_publication_path, method: :delete, params: { vault_id: },
+                class: "btn btn-danger mt-3", form_class: "inline",
+                data: { turbo_confirm: t(".confirm", slug: publication.slug), confirm_button: t(".unpublish") } %>
+</section>

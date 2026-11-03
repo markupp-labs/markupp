@@ -1,0 +1,36 @@
+en:
+  settings:
+    nav:
+      publications: "Publication"
+    publications:
+      show:
+        hint: "Publishing gives the active vault a public link: anyone with it reads the notes, the tree and the graph, without an account. Only owners and admins publish."
+        not_published: "Not published. Choose a slug to publish the vault."
+        no_vault:
+          title: "No vault yet"
+          hint: "Create a note first: the vault comes with it."
+      public_link:
+        label: "Public link"
+        copy: "Copy link"
+        copied: "Copied"
+        copy_failed: "Could not copy"
+      form:
+        slug: "Slug"
+        slug_hint: "3 to 63 characters: lowercase letters, digits and hyphens. It is unique across the server."
+        title: "Title"
+        title_hint: "Shown to readers. Blank uses the vault name."
+        publish: "Publish"
+        save: "Save"
+      unpublish:
+        title: "Unpublish"
+        hint: "The public link stops working at once and the slug is free again."
+        unpublish: "Unpublish"
+        confirm: "Unpublish %{slug}? The public link stops working."
+      update:
+        published: "Vault published at %{url}."
+      destroy:
+        unpublished: "Vault unpublished. The public link no longer opens."
+        not_published: "The vault was not published."
+      errors:
+        slug_taken: "%{slug} is already taken by another vault. Pick another slug."
+        invalid_request: "Use 3 to 63 characters: lowercase letters, digits and hyphens."

@@ -44,6 +44,14 @@ Rails.application.routes.draw do
     resource :general, only: :show, controller: "general"
     resources :members, only: [ :index, :update, :destroy ]
     resources :invites, only: [ :index, :create, :destroy ]
+    resource :publication, only: [ :show, :update, :destroy ]
+  end
+
+  # Cofre publicado, lido sem conta (ADR-0048). O caminho da nota vem inteiro, com barras e pontos, sem formato; o grafo
+  # fica no slug com .json, que nenhum caminho de nota alcança (o slug não tem ponto).
+  constraints slug: /[a-z0-9-]+/ do
+    get "p/:slug", to: "public_graphs#show", format: true, constraints: { format: :json }, as: :public_vault_graph
+    get "p/:slug(/*path)", to: "public_notes#show", format: false, as: :public_vault
   end
 
   # Páginas de erro: o ShowExceptions pede /<status> (config.exceptions_app). O resto que não casa com rota nenhuma é o

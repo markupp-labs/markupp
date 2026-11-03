@@ -1,0 +1,18 @@
+<%# Publicação do cofre ativo: o estado (o link público, ou "não publicado"), o form de slug e título e, publicado, a
+    Danger zone com o Unpublish. Recusado, o form volta com o que foi digitado e o motivo sob o slug. %>
+<div class="max-w-4xl">
+  <%= render "settings/tenant_heading", title: t("settings.nav.publications") %>
+
+  <% if @vault_id.nil? %>
+    <div class="mt-3"><%= render "layouts/empty_state", title: t(".no_vault.title"), hint: t(".no_vault.hint") %></div>
+  <% else %>
+    <p class="mt-3 max-w-[65ch] text-ink-muted"><%= t(".hint") %></p>
+    <% if @publication %>
+      <%= render "settings/publications/public_link", publication: @publication %>
+    <% else %>
+      <p class="mt-3"><%= t(".not_published") %></p>
+    <% end %>
+    <%= render "settings/publications/form", vault_id: @vault_id, publication: @publication, slug: @slug, title: @title, slug_error: @slug_error %>
+    <%= render "settings/publications/unpublish", vault_id: @vault_id, publication: @publication if @publication %>
+  <% end %>
+</div>

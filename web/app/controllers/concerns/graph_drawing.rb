@@ -18,9 +18,12 @@ module GraphDrawing
     end
 
     def graph_node(node, current)
-      { id: node.id, title: node.title, url: (note_path(node.id) if node.id), hue: (helpers.community_hue(node.community) if node.community),
+      { id: node.id, title: node.title, url: (graph_note_url(node) if node.id), hue: (helpers.community_hue(node.community) if node.community),
         rank: node.pagerank, unresolved: node.unresolved == true, current: node.id.present? && node.id == current }
     end
+
+    # O link do nó que é nota: a página dela no painel. A leitura sem conta troca pelo link público.
+    def graph_note_url(node) = note_path(node.id)
 
     def graph_link(link) = { source: link.source, target: link.target, inferred: link.type == "inferred" }
 

@@ -43,6 +43,12 @@ class MarkuppApi
   class OAuthRequestNotFound < NotFound; end
   # Cofre inexistente ou de que a conta não é membro.
   class VaultUnavailable < Forbidden; end
+  # Slug de publicação já usado por outro cofre, de qualquer tenant.
+  class SlugTaken < Error; end
+  # Cofre que não está publicado, na rota de publicação dele.
+  class NotPublished < NotFound; end
+  # Pedidos demais do mesmo IP na janela do limite da API.
+  class RateLimited < Error; end
 
   # Corpo e ETag de uma leitura que pode voltar 304.
   Revision = Data.define(:body, :etag)
@@ -62,16 +68,20 @@ class MarkuppApi
     "member_not_found" => MemberNotFound, "tenant_not_found" => TenantNotFound, "last_owner" => LastOwner, "role_above_own" => RoleAboveOwn,
     "invalid_invite" => InvalidToken, "invalid_token" => InvalidToken, "already_exists" => AccountExists,
     "email_unavailable" => EmailUnavailable, "email_already_verified" => EmailAlreadyVerified,
-    "vault_forbidden" => VaultUnavailable, "request_not_found" => OAuthRequestNotFound
+    "vault_forbidden" => VaultUnavailable, "request_not_found" => OAuthRequestNotFound,
+    "slug_taken" => SlugTaken, "not_published" => NotPublished, "rate_limited" => RateLimited
   }.freeze
   # Para o status cujo corpo não traz código conhecido.
-  ERRORS_BY_STATUS = { "401" => Unauthorized, "403" => Forbidden, "404" => NotFound }.freeze
+  ERRORS_BY_STATUS = { "401" => Unauthorized, "403" => Forbidden, "404" => NotFound, "429" => RateLimited }.freeze
 
-  def initialize(base_url, access_token: nil, tenant_id: nil, read_timeout: READ_TIMEOUT)
+  # forwarded_for é o IP de quem visita a leitura sem conta: vai no X-Forwarded-For para o limite por IP da API contar
+  # o visitante, e não o painel, quando o painel está em MARKUPP_TRUSTED_PROXIES.
+  def initialize(base_url, access_token: nil, tenant_id: nil, read_timeout: READ_TIMEOUT, forwarded_for: nil)
     @base_url = base_url
     @access_token = access_token
     @tenant_id = tenant_id
     @read_timeout = read_timeout
+    @forwarded_for = forwarded_for
   end
 
   # Caminho da API a partir dos segmentos, cada um codificado: id com barra ou espaço não vira outra rota.
@@ -116,6 +126,7 @@ class MarkuppApi
       http_request = verb.new(uri, headers)
       http_request["Authorization"] = "Bearer #{@access_token}" if @access_token
       http_request["X-Markupp-Tenant"] = @tenant_id if @tenant_id
+      http_request["X-Forwarded-For"] = @forwarded_for if @forwarded_for
       return http_request if body.nil?
 
       http_request.content_type = "application/json"

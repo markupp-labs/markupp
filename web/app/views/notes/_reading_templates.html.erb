@@ -1,0 +1,14 @@
+<%# Moldes que o note_mode_controller.js clona na leitura, na nota do painel e na do cofre publicado. %>
+<%# Cabeçalho de cada bloco de código da leitura (linguagem e copiar), clonado depois do render (editor/code_blocks.js). %>
+<template data-note-mode-target="codeTools">
+  <div class="code-header">
+    <span class="code-language"></span>
+    <span class="code-tools">
+      <span role="status" aria-live="polite" class="code-copy-status"></span>
+      <button type="button" class="btn-icon" aria-label="<%= t("notes.form.copy_code") %>" title="<%= t("notes.form.copy_code") %>"
+              data-action="note-mode#copyCode"><%= icon("copy") %></button>
+    </span>
+  </div>
+</template>
+<%# Indicador de carregamento de cada ![[nota]] enquanto o conteúdo não chega, clonado pelo editor/note_embeds.js. %>
+<template data-note-mode-target="embedSpinner"><%= busy_spinner %></template>

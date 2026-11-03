@@ -24,6 +24,22 @@ class NoteInVaultTest < ActiveSupport::TestCase
     assert_equal [ nil, nil, nil ], [ notes.first.degree, notes.first.pagerank, notes.first.community ]
   end
 
+  test "list_all_from reads every page of the list until a short one, with the query" do
+    notes = Note.list_all_from(@api, "vaults", "vault-1", "notes", page_limit: 2, orphan: false)
+
+    assert_equal %w[3 1], notes.map(&:id)
+    assert_equal %w[fresh.md hub.md lone.md], Note.list_all_from(@api, "vaults", "vault-1", "notes", page_limit: 1).map(&:path)
+  end
+
+  test "list_all_from stops at the offset cap of the API, with the list truncated there" do
+    api = FakeOffsetCappedListing.new(offset_cap: 10_000, max_calls: 50)
+
+    notes = Note.list_all_from(api, "public", "vaults", "docs", "notes", page_limit: 1_000)
+
+    assert_equal (0..10_000).step(1_000).to_a, api.requested_offsets
+    assert_equal 11_000, notes.size
+  end
+
   test "in_vault with orphan lists only the notes without any link" do
     assert_equal [ "2" ], Note.in_vault(@api, "vault-1", orphan: true).map(&:id)
     assert_equal %w[3 1], Note.in_vault(@api, "vault-1", orphan: false).map(&:id)

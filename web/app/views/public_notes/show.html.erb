@@ -1,0 +1,8 @@
+<%# Sem a nota, a página do cofre com o grafo; com ela, a nota em modo leitura. %>
+<% content_for :title, @note ? "#{@note.title} | #{@vault.title}" : @vault.title %>
+<% content_for :tree, render("public_notes/tree", tree: @tree, current: @note) %>
+<% if @note %>
+  <%= render "public_notes/note", note: @note, tree: @tree %>
+<% else %>
+  <%= render "public_notes/vault", vault: @vault, tree: @tree %>
+<% end %>

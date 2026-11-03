@@ -23,11 +23,7 @@ class ExplorerListing
     end
   end
 
-  # ponytail: uma chamada por página de 100, sem teto; cofre de milhares de notas pede paginar a própria lista.
-  def self.every_note(api, vault_id, page_limit, **query)
-    pages = (0..).lazy.map { Note.in_vault(api, vault_id, **query, offset: it * page_limit, limit: page_limit) }
-    pages.slice_after { it.size < page_limit }.first.flatten
-  end
+  def self.every_note(api, vault_id, page_limit, **query) = Note.list_all_from(api, "vaults", vault_id, "notes", page_limit:, **query)
 
   # Das maiores para as menores, empate pelo id; dentro de cada uma a ordem que veio (PageRank). Sem comunidade no fim.
   def self.by_community(notes)

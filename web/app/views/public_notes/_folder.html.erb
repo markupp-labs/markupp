@@ -1,0 +1,21 @@
+<%# Os itens de uma pasta da árvore pública, pastas antes das notas. Cada pasta é um details, aberto quando a nota lida
+    mora nela (open_folders: as pastas da nota ainda não percorridas); abrir e fechar não precisa de script. %>
+<ul class="flex flex-col">
+  <% folder.folders.each do |child| %>
+    <% open = child.name == open_folders.first %>
+    <li>
+      <%= tag.details open: do %>
+        <summary class="tree-row cursor-pointer text-ink-muted"><%= child.name %>/</summary>
+        <div class="pl-3">
+          <%= render "public_notes/folder", folder: child, current:, open_folders: open ? open_folders.drop(1) : [] %>
+        </div>
+      <% end %>
+    </li>
+  <% end %>
+  <% folder.notes.each do |note| %>
+    <li>
+      <%= link_to note.title, published_note_path(@vault.slug, note), title: note.path, aria: { current: ("page" if note.id == current&.id) },
+                  class: "tree-row block truncate aria-[current=page]:bg-accent-soft aria-[current=page]:text-ink" %>
+    </li>
+  <% end %>
+</ul>

@@ -32,6 +32,7 @@
         <% if current_tenant&.admin? %>
           <%= settings_nav_link("members", settings_members_path) %>
           <%= settings_nav_link("invites", settings_invites_path) %>
+          <%= settings_nav_link("publications", settings_publication_path) %>
         <% end %>
       </nav>
 

@@ -312,6 +312,29 @@ class MarkuppApiTest < ActiveSupport::TestCase
     assert_operator MarkuppApi::VaultUnavailable, :<, MarkuppApi::Forbidden
   end
 
+  test "sends the visitor IP in X-Forwarded-For when it reads for a visitor" do
+    server = FakeHttpServer.new(status: "200 OK", body: "{}")
+    thread = server.serve_once
+
+    MarkuppApi.new(server.url, forwarded_for: "203.0.113.9").get("/v1/public/vaults/docs")
+    thread.join
+    assert_equal "203.0.113.9", server.requested_headers["x-forwarded-for"]
+    assert_not server.requested_headers.key?("authorization")
+  ensure
+    server.close
+  end
+
+  test "maps the publication error codes to their classes" do
+    assert_answer_raises(MarkuppApi::SlugTaken, '{"error":"slug_taken","message":"slug"}', "409 Conflict") { it.put("/v1/vaults/v/publication", slug: "docs") }
+    assert_answer_raises(MarkuppApi::NotPublished, '{"error":"not_published","message":"cofre"}', "404 Not Found") { it.get("/v1/vaults/v/publication") }
+    assert_operator MarkuppApi::NotPublished, :<, MarkuppApi::NotFound
+  end
+
+  test "maps a 429 to RateLimited, with or without the error code" do
+    assert_answer_raises(MarkuppApi::RateLimited, '{"error":"rate_limited","message":"aguarde 3s"}', "429 Too Many Requests") { it.get("/v1/public/vaults/docs") }
+    assert_answer_raises(MarkuppApi::RateLimited, "", "429 Too Many Requests") { it.get("/v1/public/vaults/docs") }
+  end
+
   test "path appends the query, leaving out the parameters without value" do
     assert_equal "/v1/vaults/a%20b/notes?limit=5&orphan=false", MarkuppApi.path("v1", "vaults", "a b", "notes", orphan: false, limit: 5, sort: nil)
   end

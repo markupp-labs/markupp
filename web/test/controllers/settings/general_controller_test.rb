@@ -22,7 +22,7 @@ module Settings
       assert_select "main dl#tenant_general dd", "Acme research"
       assert_select "main input[name*=name]", count: 0
       links = css_select("main nav a").map { it["href"] }
-      assert_equal [ GENERAL, settings_members_path, settings_invites_path ], links.last(3)
+      assert_equal [ GENERAL, settings_members_path, settings_invites_path, settings_publication_path ], links.last(4)
       assert_select "main nav a[href=?][aria-current=page]", GENERAL, text: "General"
     end
 

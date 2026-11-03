@@ -1,0 +1,24 @@
+<%# Slug e título da publicação. O pattern só adianta no navegador a regra que a API confere; o slug digitado volta
+    no campo quando a API recusa, com o motivo ligado a ele pelo aria-describedby. %>
+<% field_class = "w-full rounded-md border border-line bg-surface px-2 py-1 aria-invalid:border-danger" %>
+<%= form_with scope: :publication, url: settings_publication_path, method: :patch, class: "mt-3 flex flex-col gap-3 rounded-md border border-line p-3" do |form| %>
+  <%= hidden_field_tag :vault_id, vault_id, id: nil %>
+  <div>
+    <%= form.label :slug, t(".slug"), class: "block text-ink-muted" %>
+    <%= form.text_field :slug, value: slug || publication&.slug, required: true, pattern: "[a-z0-9\\-]{3,63}", maxlength: 63,
+                        autocomplete: "off", spellcheck: false, autofocus: slug_error.present?,
+                        aria: { invalid: slug_error.present?, describedby: [ "publication_slug_hint", ("publication_slug_error" if slug_error) ].compact.join(" ") },
+                        class: field_class %>
+    <p id="publication_slug_hint" class="text-xs text-ink-muted"><%= t(".slug_hint") %></p>
+    <% if slug_error %>
+      <p id="publication_slug_error" class="text-danger"><%= slug_error %></p>
+    <% end %>
+  </div>
+  <div>
+    <%= form.label :title, t(".title"), class: "block text-ink-muted" %>
+    <%= form.text_field :title, value: title || publication&.title, maxlength: 200, autocomplete: "off",
+                        aria: { describedby: "publication_title_hint" }, class: field_class %>
+    <p id="publication_title_hint" class="text-xs text-ink-muted"><%= t(".title_hint") %></p>
+  </div>
+  <%= form.button publication ? t(".save") : t(".publish"), class: "btn self-start" %>
+<% end %>

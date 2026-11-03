@@ -147,7 +147,7 @@ module Settings
       end
     end
 
-    test "an owner also sees the tenant section with general, members and invites" do
+    test "an owner also sees the tenant section with general, members, invites and publication" do
       use_fake_api
       sign_in_as
 
@@ -158,7 +158,7 @@ module Settings
         assert_select "a[href=?]", settings_members_path, text: "Members"
         assert_select "a[href=?]", settings_invites_path, text: "Invites"
         assert_select "a" do |links|
-          assert_equal %w[Account Appearance Editor General Members Invites], links.map { it.text.strip }
+          assert_equal %w[Account Appearance Editor General Members Invites Publication], links.map { it.text.strip }
         end
       end
     end
