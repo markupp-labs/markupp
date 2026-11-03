@@ -27,25 +27,25 @@ func (s *Service) StartAuthorization(ctx context.Context, p AuthorizeParams) (st
 		return "", unregisteredClientError(p.ClientID)
 	}
 	if err != nil {
-		return "", fmt.Errorf("oauth: gravando o pedido de autorização do cliente %s: %w", ClientValue(p.ClientID), err)
+		return "", fmt.Errorf("oauth: save authorization request of client %s: %w", ClientValue(p.ClientID), err)
 	}
 	return s.cfg.PanelURL + "/oauth/authorize/" + url.PathEscape(req.ID), nil
 }
 
 // registeredClientShape descreve o client_id aceito, para as mensagens de erro.
-const registeredClientShape = "um cliente registrado por CIMD ou DCR"
+const registeredClientShape = "a client registered through CIMD or DCR"
 
 // checkClientRedirect resolve o cliente e confirma que ele registrou a redirect_uri pedida.
 func (s *Service) checkClientRedirect(ctx context.Context, p AuthorizeParams) error {
 	if p.ClientID == "" {
-		return &ProtocolError{Code: errInvalidRequest, Description: "client_id ausente; esperado " + registeredClientShape}
+		return &ProtocolError{Code: errInvalidRequest, Description: "client_id missing; expected " + registeredClientShape}
 	}
 	client, err := s.resolveClient(ctx, p.ClientID)
 	if err != nil {
 		return err
 	}
 	if !MatchRedirectURI(client.RedirectURIs, p.RedirectURI) {
-		return &ProtocolError{Code: errInvalidRequest, Description: "redirect_uri " + ClientValue(p.RedirectURI) + " nao registrada para o cliente; esperada uma das redirect_uris registradas por ele"}
+		return &ProtocolError{Code: errInvalidRequest, Description: "redirect_uri " + ClientValue(p.RedirectURI) + " not registered for the client; expected one of the redirect_uris it registered"}
 	}
 	return nil
 }
@@ -74,13 +74,13 @@ func (s *Service) buildRequest(p AuthorizeParams) (AuthorizationRequest, error) 
 // checkCodeFlow exige response_type=code e PKCE com S256.
 func checkCodeFlow(p AuthorizeParams) error {
 	if p.ResponseType != "code" {
-		return redirectError(p, errUnsupportedResponseType, "response_type "+ClientValue(p.ResponseType)+" nao suportado; esperado 'code'")
+		return redirectError(p, errUnsupportedResponseType, "response_type "+ClientValue(p.ResponseType)+" not supported; expected 'code'")
 	}
 	if p.CodeChallengeMethod != "S256" {
-		return redirectError(p, errInvalidRequest, "code_challenge_method "+ClientValue(p.CodeChallengeMethod)+" nao suportado; esperado 'S256'")
+		return redirectError(p, errInvalidRequest, "code_challenge_method "+ClientValue(p.CodeChallengeMethod)+" not supported; expected 'S256'")
 	}
 	if !ValidChallenge(p.CodeChallenge) {
-		return redirectError(p, errInvalidRequest, "code_challenge invalido; esperado SHA-256 em base64url sem padding, 43 caracteres")
+		return redirectError(p, errInvalidRequest, "invalid code_challenge; expected SHA-256 in base64url without padding, 43 characters")
 	}
 	return nil
 }
@@ -88,11 +88,11 @@ func checkCodeFlow(p AuthorizeParams) error {
 // requestedResource devolve o resource na forma canônica, se for um servidor protegido.
 func (s *Service) requestedResource(p AuthorizeParams) (string, error) {
 	if p.Resource == "" {
-		return "", redirectError(p, errInvalidTarget, "resource ausente; esperado "+s.knownResources())
+		return "", redirectError(p, errInvalidTarget, "resource missing; expected "+s.knownResources())
 	}
 	resource, ok := canonicalize(p.Resource)
 	if !ok || !s.knownResource(resource) {
-		return "", redirectError(p, errInvalidTarget, "resource "+ClientValue(p.Resource)+" desconhecido; esperado "+s.knownResources())
+		return "", redirectError(p, errInvalidTarget, "resource "+ClientValue(p.Resource)+" unknown; expected "+s.knownResources())
 	}
 	return resource, nil
 }
@@ -110,7 +110,7 @@ func (s *Service) knownResources() string {
 	for _, resource := range s.cfg.Resources {
 		described = append(described, ClientValue(resource))
 	}
-	return "um de " + strings.Join(described, ", ")
+	return "one of " + strings.Join(described, ", ")
 }
 
 // requestedScopes separa o scope por espaço, recusa escopo fora de SupportedScopes e
@@ -119,7 +119,7 @@ func requestedScopes(p AuthorizeParams) ([]string, error) {
 	requested := map[string]bool{}
 	for _, scope := range strings.Split(p.Scope, " ") {
 		if scope != "" && !slices.Contains(SupportedScopes(), scope) {
-			return nil, redirectError(p, errInvalidScope, "escopo "+ClientValue(scope)+" nao suportado; esperado um de "+strings.Join(SupportedScopes(), ", "))
+			return nil, redirectError(p, errInvalidScope, "scope "+ClientValue(scope)+" not supported; expected one of "+strings.Join(SupportedScopes(), ", "))
 		}
 		requested[scope] = scope != ""
 	}
