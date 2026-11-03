@@ -56,15 +56,15 @@ type Repository interface {
 // Erros de domínio devolvidos pelo Service e traduzidos em status HTTP pela
 // camada de API.
 var (
-	ErrInvalidPath       = errors.New("path inválido")
-	ErrInvalidContent    = errors.New("content inválido")
-	ErrDuplicatePath     = errors.New("path já existe")
-	ErrNotFound          = errors.New("nota não encontrada")
-	ErrInvalidID         = errors.New("ID inválido")
-	ErrConflict          = errors.New("nota foi atualizada por outro cliente")
-	ErrVaultForbidden    = errors.New("cofre inexistente ou sem acesso")
-	ErrNoVault           = errors.New("a conta nao e membro de nenhum cofre")
-	ErrCommunityNotFound = errors.New("comunidade não encontrada")
+	ErrInvalidPath       = errors.New("invalid path")
+	ErrInvalidContent    = errors.New("invalid content")
+	ErrDuplicatePath     = errors.New("path already exists")
+	ErrNotFound          = errors.New("note not found")
+	ErrInvalidID         = errors.New("invalid ID")
+	ErrConflict          = errors.New("note was updated by another client")
+	ErrVaultForbidden    = errors.New("vault not found or not accessible to this account")
+	ErrNoVault           = errors.New("account is not a member of any vault")
+	ErrCommunityNotFound = errors.New("community not found")
 )
 
 // Service aplica as regras de negócio das notas sobre um Repository.
@@ -116,7 +116,7 @@ func (s *Service) Create(ctx context.Context, vaultID, path, content string) (No
 	note := Note{ID: s.newID(), VaultID: vaultID, Path: path, Content: content, CreatedAt: now, UpdatedAt: now}
 	saved, err := s.repo.Save(ctx, note)
 	if err != nil {
-		return Note{}, fmt.Errorf("salvar nota %q no cofre %q: %w", note.ID, vaultID, err)
+		return Note{}, fmt.Errorf("save note %q in vault %q: %w", note.ID, vaultID, err)
 	}
 	return saved, nil
 }
@@ -153,7 +153,7 @@ func (s *Service) Update(ctx context.Context, id, path, content string, lastModi
 		if errors.Is(err, ErrDuplicatePath) || errors.Is(err, ErrNotFound) || errors.Is(err, ErrConflict) {
 			return Note{}, err
 		}
-		return Note{}, fmt.Errorf("atualizar nota %q: %w", id, err)
+		return Note{}, fmt.Errorf("update note %q: %w", id, err)
 	}
 	return updated, nil
 }
@@ -167,7 +167,7 @@ func (s *Service) Delete(ctx context.Context, id string) error {
 		if errors.Is(err, ErrNotFound) {
 			return err
 		}
-		return fmt.Errorf("excluir nota %q: %w", id, err)
+		return fmt.Errorf("delete note %q: %w", id, err)
 	}
 	return nil
 }
@@ -202,7 +202,7 @@ func validatePath(path string) error {
 		return ErrInvalidPath
 	}
 	if indexing.Title(p) == "" {
-		return fmt.Errorf("%w: caminho %q sem titulo, esperado nome antes da extensao .md no ultimo segmento, como pasta/nota.md", ErrInvalidPath, path)
+		return fmt.Errorf("%w %q: expected a name before the .md extension in the last segment, like folder/note.md", ErrInvalidPath, path)
 	}
 	return nil
 }
@@ -226,7 +226,7 @@ func (s *Service) SearchNotes(ctx context.Context, query, vaultID string, offset
 
 	results, err := s.repo.SearchNotes(ctx, query, vaultID, int32(offset), int32(limit))
 	if err != nil {
-		return nil, fmt.Errorf("buscar notas: %w", err)
+		return nil, fmt.Errorf("search notes: %w", err)
 	}
 	return results, nil
 }
