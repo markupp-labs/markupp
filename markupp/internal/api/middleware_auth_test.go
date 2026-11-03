@@ -71,7 +71,7 @@ func TestRequireAuth_TokenOAuthSemARotaDeclarar_Retorna403FirstPartyOnly(t *test
 
 	assert.False(t, reached)
 	assert.Equal(t, http.StatusForbidden, rec.Code)
-	assert.JSONEq(t, `{"error":"first_party_only","message":"rota so aceita o token de login"}`, rec.Body.String())
+	assert.JSONEq(t, `{"error":"first_party_only","message":"this route only accepts a login token, not an app token"}`, rec.Body.String())
 }
 
 func TestRequireAuth_SemHeaderAuthorization_Retorna401(t *testing.T) {

@@ -12,6 +12,7 @@ import (
 
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/api"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/auth"
+	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/oauth"
 )
 
 type scopedRoute struct{ method, path string }
@@ -78,13 +79,20 @@ func assertRoutesPass(t *testing.T, routes []scopedRoute, scope string) {
 	}
 }
 
+// frasesDeEscopo é como a recusa nomeia cada escopo para quem lê.
+var frasesDeEscopo = map[string]string{
+	oauth.ScopeNotesRead:  "read notes",
+	oauth.ScopeNotesWrite: "write notes",
+	oauth.ScopeAdmin:      "manage the tenant",
+}
+
 func assertRoutesNeedScope(t *testing.T, routes []scopedRoute, scope, required string) {
 	t.Helper()
 	for _, route := range routes {
 		rec := serveScoped(route, scope)
 
 		assert.Equal(t, http.StatusForbidden, rec.Code, "%s %s com scope %q", route.method, route.path, scope)
-		assert.JSONEq(t, `{"error":"insufficient_scope","message":"o token nao tem o escopo `+required+`"}`, rec.Body.String(), route.path)
+		assert.JSONEq(t, `{"error":"insufficient_scope","message":"this app is not allowed to `+frasesDeEscopo[required]+`; authorize it again with that permission"}`, rec.Body.String(), route.path)
 		assert.Equal(t, `Bearer error="insufficient_scope", scope="`+required+`"`, rec.Header().Get("WWW-Authenticate"), route.path)
 	}
 }
@@ -137,7 +145,7 @@ func assertFirstPartyOnly(t *testing.T, routes []scopedRoute, scope string) {
 		rec := serveScoped(route, scope)
 
 		assert.Equal(t, http.StatusForbidden, rec.Code, "%s %s com scope %q", route.method, route.path, scope)
-		assert.JSONEq(t, `{"error":"first_party_only","message":"rota so aceita o token de login"}`, rec.Body.String(), route.path)
+		assert.JSONEq(t, `{"error":"first_party_only","message":"this route only accepts a login token, not an app token"}`, rec.Body.String(), route.path)
 		assert.Empty(t, rec.Header().Get("WWW-Authenticate"), route.path)
 	}
 }
@@ -157,6 +165,6 @@ func TestScopeRoutes_ScopeSoDeEspacos_RecusadoEmTodaRota(t *testing.T) {
 		rec := serveScoped(route, "  \t ")
 
 		assert.Equal(t, http.StatusUnauthorized, rec.Code, "%s %s", route.method, route.path)
-		assert.JSONEq(t, `{"error":"unauthorized","message":"token ausente ou invalido"}`, rec.Body.String(), route.path)
+		assert.JSONEq(t, `{"error":"unauthorized","message":"missing or invalid access token"}`, rec.Body.String(), route.path)
 	}
 }

@@ -237,7 +237,7 @@ func TestAuthorize_ErroInterno_Retorna500(t *testing.T) {
 	rec := authorizeRequest(&fakeOAuthService{err: errors.New("banco fora")}, "client_id=c1")
 
 	assert.Equal(t, http.StatusInternalServerError, rec.Code)
-	assert.JSONEq(t, `{"error":"internal","message":"erro interno"}`, rec.Body.String())
+	assert.JSONEq(t, `{"error":"internal","message":"internal error"}`, rec.Body.String())
 }
 
 func codeForm() url.Values {
