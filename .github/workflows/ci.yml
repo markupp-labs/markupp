@@ -6,17 +6,17 @@ on:
   pull_request:
 
 jobs:
-  # Diz quais pacotes o PR (ou o push na main) mexeu, para cada job rodar só quando o dele
-  # muda. Job pulado conta como sucesso no check obrigatório, por isso o filtro fica aqui e
-  # não no gatilho do workflow. Sem base para comparar (branch nova), roda tudo.
+  # Tells which packages the PR (or the push to main) changed, so each job runs only when its
+  # own package changes. A skipped job counts as success for a required check, so the filter
+  # lives here and not in the workflow trigger. Without a base to compare (new branch), run all.
   changes:
-    name: Pacotes alterados
+    name: Changed packages
     runs-on: ubuntu-latest
     outputs:
       server: ${{ steps.diff.outputs.server }}
       mcp: ${{ steps.diff.outputs.mcp }}
       pulumi: ${{ steps.diff.outputs.pulumi }}
-      painel: ${{ steps.diff.outputs.painel }}
+      web: ${{ steps.diff.outputs.web }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -27,16 +27,16 @@ jobs:
           BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
         run: |
           if [ -z "$BASE" ] || ! git cat-file -e "$BASE^{commit}" 2>/dev/null; then
-            alterados=".github/workflows/ci.yml"
+            files=".github/workflows/ci.yml"
           else
-            alterados="$(git diff --name-only "$BASE" "$GITHUB_SHA")"
+            files="$(git diff --name-only "$BASE" "$GITHUB_SHA")"
           fi
-          mexeu() { grep -qE "^(\.github/workflows/ci\.yml|$1)" <<< "$alterados" && echo true || echo false; }
+          changed() { grep -qE "^(\.github/workflows/ci\.yml|$1)" <<< "$files" && echo true || echo false; }
           {
-            echo "server=$(mexeu 'markupp/|Makefile|scripts/')"
-            echo "mcp=$(mexeu 'mcp/')"
-            echo "pulumi=$(mexeu 'deploy/pulumi/|markupp/\.golangci\.yml')"
-            echo "painel=$(mexeu 'web/')"
+            echo "server=$(changed 'markupp/|Makefile|scripts/')"
+            echo "mcp=$(changed 'mcp/')"
+            echo "pulumi=$(changed 'deploy/pulumi/|markupp/\.golangci\.yml')"
+            echo "web=$(changed 'web/')"
           } | tee -a "$GITHUB_OUTPUT"
 
   server-tests:
@@ -144,7 +144,7 @@ jobs:
   painel-tests:
     name: Painel (Rails) tests
     needs: changes
-    if: needs.changes.outputs.painel == 'true'
+    if: needs.changes.outputs.web == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
