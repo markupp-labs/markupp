@@ -35,7 +35,7 @@ func TestAcceptOAuthScope_ConjuntoDeEscopos_RecusaEscopoForaDele(t *testing.T) {
 	rec := serveWithAcceptedScopes("notas:leitura", oauth.ScopeNotesWrite, oauth.ScopeAdmin)
 
 	assert.Equal(t, http.StatusForbidden, rec.Code)
-	assert.JSONEq(t, `{"error":"insufficient_scope","message":"o token nao tem o escopo notas:escrita ou administracao"}`, rec.Body.String())
+	assert.JSONEq(t, `{"error":"insufficient_scope","message":"this app is not allowed to write notes or manage the tenant; authorize it again with that permission"}`, rec.Body.String())
 	assert.Equal(t, `Bearer error="insufficient_scope", scope="notas:escrita administracao"`, rec.Header().Get("WWW-Authenticate"))
 }
 
@@ -43,5 +43,5 @@ func TestAcceptOAuthScope_SemEscopo_RecusaTokenOAuth(t *testing.T) {
 	rec := serveWithAcceptedScopes("notas:leitura administracao")
 
 	assert.Equal(t, http.StatusForbidden, rec.Code)
-	assert.JSONEq(t, `{"error":"first_party_only","message":"rota so aceita o token de login"}`, rec.Body.String())
+	assert.JSONEq(t, `{"error":"first_party_only","message":"this route only accepts a login token, not an app token"}`, rec.Body.String())
 }

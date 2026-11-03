@@ -97,7 +97,7 @@ func TestCreate_NomeVazioOuLongo_RecusaComOValor(t *testing.T) {
 		_, err := novoServico(&fakeVaultsRepository{}).Create(context.Background(), membroAtor, nome)
 
 		require.ErrorIs(t, err, vaults.ErrInvalidName)
-		assert.Contains(t, err.Error(), "de 1 a 100 caracteres")
+		assert.Contains(t, err.Error(), "1 to 100 characters")
 	}
 }
 
@@ -113,7 +113,7 @@ func TestCreate_NomeAcentuado_ContaCaracteresNaoBytes(t *testing.T) {
 
 	_, err = novoServico(&fakeVaultsRepository{}).Create(context.Background(), membroAtor, strings.Repeat("é", 101))
 	require.ErrorIs(t, err, vaults.ErrInvalidName)
-	assert.Contains(t, err.Error(), "de 1 a 100 caracteres")
+	assert.Contains(t, err.Error(), "1 to 100 characters")
 }
 
 func TestRename_GravaONomeAparadoEAudita(t *testing.T) {

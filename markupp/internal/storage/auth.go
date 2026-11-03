@@ -37,7 +37,7 @@ func NewPostgresAuthRepository(pool *pgxpool.Pool) *PostgresAuthRepository {
 func (r *PostgresAuthRepository) CreateAccountTx(ctx context.Context, p auth.CreateAccountParams) (auth.User, error) {
 	err := r.inTx(ctx, func(qtx *gen.Queries) error {
 		if err := qtx.LockFirstAdmin(ctx, firstAdminLockKey); err != nil {
-			return fmt.Errorf("adquirir lock de bootstrap para %q: %w", p.User.Email, err)
+			return fmt.Errorf("acquire bootstrap lock for %q: %w", p.User.Email, err)
 		}
 		return commitAccount(ctx, qtx, p)
 	})
@@ -50,7 +50,7 @@ func (r *PostgresAuthRepository) CreateAccountTx(ctx context.Context, p auth.Cre
 func commitAccount(ctx context.Context, qtx *gen.Queries, p auth.CreateAccountParams) error {
 	userCount, err := qtx.CountUsers(ctx)
 	if err != nil {
-		return fmt.Errorf("contar usuarios para %q: %w", p.User.Email, err)
+		return fmt.Errorf("count users for %q: %w", p.User.Email, err)
 	}
 	if userCount > 0 && !p.AllowMemberRegistration {
 		return auth.ErrRegistrationDisabled
@@ -80,7 +80,7 @@ func registerMember(ctx context.Context, qtx *gen.Queries, p auth.CreateAccountP
 func bootstrapFirstTenant(ctx context.Context, qtx *gen.Queries, p auth.CreateAccountParams) error {
 	tenantID, u := p.BootstrapTenantID, p.User
 	if err := qtx.EnsureTenant(ctx, gen.EnsureTenantParams{ID: tenantID, CreatedAt: u.CreatedAt}); err != nil {
-		return fmt.Errorf("criar tenant %q do primeiro usuario: %w", tenantID, err)
+		return fmt.Errorf("create tenant %q of the first user: %w", tenantID, err)
 	}
 	join := tenantJoin{tenantID: tenantID, userID: u.ID, role: identity.RoleOwner, vaultID: p.InitialVaultID, vaultName: p.InitialVaultName, at: u.CreatedAt}
 	if err := joinTenant(ctx, qtx, join); err != nil {
@@ -99,7 +99,7 @@ func adoptExistingVaults(ctx context.Context, qtx *gen.Queries, tenantID string,
 		TenantID: tenantID, UserID: u.ID, CreatedAt: u.CreatedAt.Add(time.Millisecond),
 	})
 	if err != nil {
-		return fmt.Errorf("dar ao usuario %q os cofres do tenant %q: %w", u.ID, tenantID, err)
+		return fmt.Errorf("give user %q the vaults of tenant %q: %w", u.ID, tenantID, err)
 	}
 	return qtx.DeleteEmptyTenants(ctx)
 }
@@ -115,7 +115,7 @@ func insertUserRows(ctx context.Context, q *gen.Queries, u auth.User, ident auth
 		return fmt.Errorf("%w: %q", auth.ErrUserAlreadyExists, u.Email)
 	}
 	if err != nil {
-		return fmt.Errorf("gravar conta para %q: %w", u.Email, err)
+		return fmt.Errorf("save account for %q: %w", u.Email, err)
 	}
 	return nil
 }
@@ -130,7 +130,7 @@ type tenantJoin struct {
 func joinTenant(ctx context.Context, q *gen.Queries, j tenantJoin) error {
 	err := q.AddMembership(ctx, gen.AddMembershipParams{TenantID: j.tenantID, UserID: j.userID, Role: j.role, CreatedAt: j.at})
 	if err != nil {
-		return fmt.Errorf("vincular %q ao tenant %q como %s: %w", j.userID, j.tenantID, j.role, err)
+		return fmt.Errorf("add %q to tenant %q as %s: %w", j.userID, j.tenantID, j.role, err)
 	}
 	return insertInitialVault(ctx, q, j)
 }
@@ -138,7 +138,7 @@ func joinTenant(ctx context.Context, q *gen.Queries, j tenantJoin) error {
 func insertInitialVault(ctx context.Context, q *gen.Queries, j tenantJoin) error {
 	err := q.CreateVault(ctx, gen.CreateVaultParams{ID: j.vaultID, TenantID: j.tenantID, Name: j.vaultName, CreatedAt: j.at})
 	if err != nil {
-		return fmt.Errorf("criar cofre de %q no tenant %q: %w", j.userID, j.tenantID, err)
+		return fmt.Errorf("create vault of %q in tenant %q: %w", j.userID, j.tenantID, err)
 	}
 	return q.AddVaultMember(ctx, gen.AddVaultMemberParams{VaultID: j.vaultID, UserID: j.userID, CreatedAt: j.at})
 }
@@ -155,7 +155,7 @@ func accountEvent(id, tenantID, action string, u auth.User) gen.CreateAuditEvent
 func (r *PostgresAuthRepository) CreateTenantTx(ctx context.Context, p auth.CreateTenantParams) error {
 	return r.inTx(ctx, func(qtx *gen.Queries) error {
 		if err := qtx.CreateTenant(ctx, gen.CreateTenantParams{ID: p.TenantID, Name: p.Name, CreatedAt: p.Now}); err != nil {
-			return fmt.Errorf("criar tenant %q: %w", p.Name, err)
+			return fmt.Errorf("create tenant %q: %w", p.Name, err)
 		}
 		join := tenantJoin{tenantID: p.TenantID, userID: p.UserID, role: identity.RoleOwner, vaultID: p.VaultID, vaultName: auth.InitialVaultName, at: p.Now}
 		if err := joinTenant(ctx, qtx, join); err != nil {
@@ -172,7 +172,7 @@ func (r *PostgresAuthRepository) CreateTenantTx(ctx context.Context, p auth.Crea
 func (r *PostgresAuthRepository) ListPendingInvites(ctx context.Context, userID string, now time.Time) ([]auth.PendingInvite, error) {
 	rows, err := r.q.ListPendingInvites(ctx, gen.ListPendingInvitesParams{UserID: userID, Now: now})
 	if err != nil {
-		return nil, fmt.Errorf("listar convites de %q: %w", userID, err)
+		return nil, fmt.Errorf("list invites of %q: %w", userID, err)
 	}
 	out := make([]auth.PendingInvite, 0, len(rows))
 	for _, row := range rows {
@@ -219,7 +219,7 @@ func (r *PostgresAuthRepository) DeclineInviteTx(ctx context.Context, p auth.Dec
 
 func membershipConflictErr(err error, userID, tenantID string) error {
 	if errors.Is(err, auth.ErrAlreadyMember) || isUniqueConstraintViolation(err) {
-		return fmt.Errorf("%w: usuario %q no tenant %q", auth.ErrAlreadyMember, userID, tenantID)
+		return fmt.Errorf("%w: user %q in tenant %q", auth.ErrAlreadyMember, userID, tenantID)
 	}
 	return err
 }
@@ -265,7 +265,7 @@ func claimErr(err error) error {
 	if errors.Is(err, pgx.ErrNoRows) {
 		return auth.ErrInviteInvalid
 	}
-	return fmt.Errorf("consumir convite: %w", err)
+	return fmt.Errorf("consume invite: %w", err)
 }
 
 func (r *PostgresAuthRepository) inTx(ctx context.Context, fn func(qtx *gen.Queries) error) error {
@@ -276,10 +276,10 @@ func (r *PostgresAuthRepository) inTx(ctx context.Context, fn func(qtx *gen.Quer
 func (r *PostgresAuthRepository) GetMembership(ctx context.Context, userID, tenantID string) (auth.Membership, error) {
 	row, err := r.q.GetMembership(ctx, gen.GetMembershipParams{UserID: userID, TenantID: tenantID})
 	if errors.Is(err, pgx.ErrNoRows) {
-		return auth.Membership{}, fmt.Errorf("%w: usuario %q, tenant %q", auth.ErrMembershipNotFound, userID, tenantID)
+		return auth.Membership{}, fmt.Errorf("%w: user %q, tenant %q", auth.ErrMembershipNotFound, userID, tenantID)
 	}
 	if err != nil {
-		return auth.Membership{}, fmt.Errorf("buscar vinculo de %q com %q: %w", userID, tenantID, err)
+		return auth.Membership{}, fmt.Errorf("find membership of %q in %q: %w", userID, tenantID, err)
 	}
 	return auth.Membership(row), nil
 }
@@ -288,7 +288,7 @@ func (r *PostgresAuthRepository) GetMembership(ctx context.Context, userID, tena
 func (r *PostgresAuthRepository) ListMemberships(ctx context.Context, userID string) ([]auth.Membership, error) {
 	rows, err := r.q.ListMemberships(ctx, userID)
 	if err != nil {
-		return nil, fmt.Errorf("listar tenants de %q: %w", userID, err)
+		return nil, fmt.Errorf("list tenants of %q: %w", userID, err)
 	}
 	out := make([]auth.Membership, 0, len(rows))
 	for _, row := range rows {
@@ -302,7 +302,7 @@ func (r *PostgresAuthRepository) ListMemberships(ctx context.Context, userID str
 func (r *PostgresAuthRepository) ListTenantSummaries(ctx context.Context, userID string) ([]auth.TenantSummary, error) {
 	rows, err := r.q.ListTenantSummaries(ctx, userID)
 	if err != nil {
-		return nil, fmt.Errorf("resumir tenants de %q: %w", userID, err)
+		return nil, fmt.Errorf("summarize tenants of %q: %w", userID, err)
 	}
 	out := make([]auth.TenantSummary, 0, len(rows))
 	for _, row := range rows {
@@ -329,7 +329,7 @@ func (r *PostgresAuthRepository) GetUserByID(ctx context.Context, id string) (au
 		if errors.Is(err, pgx.ErrNoRows) {
 			return auth.User{}, auth.ErrUserNotFound
 		}
-		return auth.User{}, fmt.Errorf("buscar usuario %q: %w", id, err)
+		return auth.User{}, fmt.Errorf("find user %q: %w", id, err)
 	}
 	return toAuthUser(row), nil
 }
@@ -348,7 +348,7 @@ func (r *PostgresAuthRepository) GetUserIdentity(ctx context.Context, provider, 
 		if errors.Is(err, pgx.ErrNoRows) {
 			return auth.UserIdentity{}, auth.ErrIdentityNotFound
 		}
-		return auth.UserIdentity{}, fmt.Errorf("buscar identidade %s:%s: %w", provider, providerUserID, err)
+		return auth.UserIdentity{}, fmt.Errorf("find identity %s:%s: %w", provider, providerUserID, err)
 	}
 	return toAuthIdentity(row), nil
 }
@@ -371,7 +371,7 @@ func (r *PostgresAuthRepository) ConsumeRefreshToken(ctx context.Context, tokenH
 		if errors.Is(err, pgx.ErrNoRows) {
 			return "", auth.ErrRefreshTokenInvalid
 		}
-		return "", fmt.Errorf("consumir refresh token: %w", err)
+		return "", fmt.Errorf("consume refresh token: %w", err)
 	}
 	return userID, nil
 }
@@ -391,10 +391,10 @@ func (r *PostgresAuthRepository) saveSessionRows(ctx context.Context, qtx *gen.Q
 		Revoked:   rec.Revoked,
 		CreatedAt: rec.CreatedAt,
 	}); err != nil {
-		return fmt.Errorf("salvar refresh token: %w", err)
+		return fmt.Errorf("save refresh token: %w", err)
 	}
 	if err := qtx.CreateAuditEvent(ctx, toCreateAuditEventParams(event)); err != nil {
-		return fmt.Errorf("gravar auditoria de sessao: %w", err)
+		return fmt.Errorf("save session audit: %w", err)
 	}
 	return nil
 }
@@ -406,7 +406,7 @@ func (r *PostgresAuthRepository) GetRefreshToken(ctx context.Context, tokenHash 
 		if errors.Is(err, pgx.ErrNoRows) {
 			return auth.RefreshTokenRecord{}, auth.ErrRefreshTokenInvalid
 		}
-		return auth.RefreshTokenRecord{}, fmt.Errorf("buscar refresh token: %w", err)
+		return auth.RefreshTokenRecord{}, fmt.Errorf("find refresh token: %w", err)
 	}
 	return auth.RefreshTokenRecord{
 		TokenHash: row.TokenHash,
@@ -421,7 +421,7 @@ func (r *PostgresAuthRepository) GetRefreshToken(ctx context.Context, tokenHash 
 func (r *PostgresAuthRepository) RevokeRefreshToken(ctx context.Context, tokenHash string) error {
 	rows, err := r.q.RevokeRefreshToken(ctx, tokenHash)
 	if err != nil {
-		return fmt.Errorf("revogar refresh token: %w", err)
+		return fmt.Errorf("revoke refresh token: %w", err)
 	}
 	if rows == 0 {
 		return auth.ErrRefreshTokenInvalid
@@ -432,7 +432,7 @@ func (r *PostgresAuthRepository) RevokeRefreshToken(ctx context.Context, tokenHa
 // RevokeAllUserRefreshTokens revoga todas as sessões ativas do usuário.
 func (r *PostgresAuthRepository) RevokeAllUserRefreshTokens(ctx context.Context, userID string) error {
 	if err := r.q.RevokeAllUserRefreshTokens(ctx, userID); err != nil {
-		return fmt.Errorf("revogar sessoes do usuario %q: %w", userID, err)
+		return fmt.Errorf("revoke sessions of user %q: %w", userID, err)
 	}
 	return nil
 }
@@ -440,7 +440,7 @@ func (r *PostgresAuthRepository) RevokeAllUserRefreshTokens(ctx context.Context,
 // RecordAuditEvent insere uma linha de auditoria no plano de registro.
 func (r *PostgresAuthRepository) RecordAuditEvent(ctx context.Context, e auth.AuditEventRecord) error {
 	if err := r.q.CreateAuditEvent(ctx, toCreateAuditEventParams(e)); err != nil {
-		return fmt.Errorf("registrar auditoria para %q: %w", e.Target, err)
+		return fmt.Errorf("record audit for %q: %w", e.Target, err)
 	}
 	return nil
 }

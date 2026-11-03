@@ -218,7 +218,7 @@ class MarkuppApiTest < ActiveSupport::TestCase
   end
 
   test "maps read_only to ReadOnly, a kind of Forbidden" do
-    error = assert_put_raises(MarkuppApi::ReadOnly, '{"error":"read_only","message":"o papel viewer so le as notas"}', status: "403 Forbidden")
+    error = assert_put_raises(MarkuppApi::ReadOnly, '{"error":"read_only","message":"the viewer role can only read"}', status: "403 Forbidden")
     assert_kind_of MarkuppApi::Forbidden, error
   end
 

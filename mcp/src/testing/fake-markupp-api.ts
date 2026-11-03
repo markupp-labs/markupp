@@ -250,7 +250,7 @@ export class FakeMarkuppApi implements MarkuppApi {
       throw new MarkuppApiError(
         409,
         "already_member",
-        "email ja pertence a um usuario do tenant",
+        "email already belongs to a user of the tenant",
       );
     }
     const invite = this.withInvite(tenant, email, role);
@@ -281,7 +281,7 @@ export class FakeMarkuppApi implements MarkuppApi {
       throw new MarkuppApiError(
         409,
         "already_member",
-        "a conta ja e membro desse tenant",
+        "this account is already a member of the tenant",
       );
     }
     this.withTenant(invite.tenant_id, invite.role, invite.tenant_name);
@@ -363,7 +363,7 @@ export class FakeMarkuppApi implements MarkuppApi {
       throw new MarkuppApiError(
         403,
         "forbidden",
-        "acesso restrito a administradores",
+        "only tenant owners and admins can do this",
       );
     }
   }
@@ -374,7 +374,7 @@ export class FakeMarkuppApi implements MarkuppApi {
       throw new MarkuppApiError(
         404,
         "member_not_found",
-        "usuario nao e membro deste tenant",
+        "account is not a member of this tenant",
       );
     return member;
   }
@@ -404,7 +404,7 @@ export class FakeMarkuppApi implements MarkuppApi {
       throw new MarkuppApiError(
         403,
         "read_only",
-        "o papel viewer so le as notas",
+        "the viewer role can only read",
       );
     }
   }
@@ -439,7 +439,7 @@ export class FakeMarkuppApi implements MarkuppApi {
       throw new MarkuppApiError(
         403,
         "tenant_forbidden",
-        "sem acesso a esse tenant",
+        "this account has no access to this tenant",
       );
     return list;
   }
@@ -481,6 +481,6 @@ function inviteNotFound(): MarkuppApiError {
   return new MarkuppApiError(
     404,
     "invite_not_found",
-    "convite inexistente, vencido ou ja respondido",
+    "invite not found, expired or already answered",
   );
 }

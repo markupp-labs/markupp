@@ -9,12 +9,12 @@ import (
 
 // Erros da gestão de cofres.
 var (
-	ErrVaultNotFound      = errors.New("cofre inexistente ou fora do alcance da conta")
-	ErrMemberNotFound     = errors.New("conta nao e membro do cofre")
-	ErrNotTenantMember    = errors.New("conta nao pertence ao tenant")
-	ErrAlreadyVaultMember = errors.New("conta ja e membro do cofre")
-	ErrInvalidName        = errors.New("nome de cofre invalido")
-	ErrReadOnly           = errors.New("o papel viewer nao gerencia cofres")
+	ErrVaultNotFound      = errors.New("vault not found or not accessible to this account")
+	ErrMemberNotFound     = errors.New("account is not a member of the vault")
+	ErrNotTenantMember    = errors.New("account does not belong to the tenant")
+	ErrAlreadyVaultMember = errors.New("account is already a member of the vault")
+	ErrInvalidName        = errors.New("invalid vault name")
+	ErrReadOnly           = errors.New("the viewer role can only read")
 )
 
 // Vault é o cofre como a conta o vê.

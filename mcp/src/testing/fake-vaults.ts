@@ -70,7 +70,7 @@ export class FakeVaults {
       throw new MarkuppApiError(
         404,
         "vault_member_not_found",
-        `conta ${userId} nao e membro do cofre`,
+        `account is not a member of the vault: "${userId}"`,
       );
     list.splice(index, 1);
   }
@@ -84,7 +84,7 @@ export class FakeVaults {
       throw new MarkuppApiError(
         403,
         "vault_forbidden",
-        `cofre ${id} inexistente ou fora do alcance da conta`,
+        `vault not found or not accessible to this account: "${id}"`,
       );
     return vault;
   }
@@ -103,6 +103,6 @@ function notTenantMember(userId: string): MarkuppApiError {
   return new MarkuppApiError(
     422,
     "not_tenant_member",
-    `conta ${userId} nao pertence ao tenant`,
+    `account does not belong to the tenant: "${userId}"`,
   );
 }

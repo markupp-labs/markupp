@@ -12,13 +12,13 @@ import (
 )
 
 // ErrNoActor indica transação de dados pedida sem ator autenticado no contexto.
-var ErrNoActor = errors.New("transacao de dados sem ator autenticado no contexto")
+var ErrNoActor = errors.New("data transaction has no authenticated actor in context")
 
 // inTx roda fn numa transação, desfeita se fn falhar.
 func inTx(ctx context.Context, pool *pgxpool.Pool, fn func(q *gen.Queries) error) error {
 	tx, err := pool.Begin(ctx)
 	if err != nil {
-		return fmt.Errorf("iniciar transacao: %w", err)
+		return fmt.Errorf("begin transaction: %w", err)
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 	if err := fn(gen.New(tx)); err != nil {
@@ -36,7 +36,7 @@ func inActorTx(ctx context.Context, pool *pgxpool.Pool, fn func(q *gen.Queries) 
 	}
 	return inTx(ctx, pool, func(q *gen.Queries) error {
 		if err := q.EnterActor(ctx, gen.EnterActorParams{TenantID: actor.TenantID, UserID: actor.UserID, Role: actor.Role}); err != nil {
-			return fmt.Errorf("entrar no tenant %q como %q: %w", actor.TenantID, actor.UserID, err)
+			return fmt.Errorf("enter tenant %q as %q: %w", actor.TenantID, actor.UserID, err)
 		}
 		return fn(q)
 	})

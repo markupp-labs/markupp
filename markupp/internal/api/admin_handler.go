@@ -70,7 +70,7 @@ func requireAdmin(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		actor, ok := identity.ActorFrom(r.Context())
 		if !ok || !actor.IsAdmin() {
-			writeError(w, "forbidden", "acesso restrito a administradores", http.StatusForbidden)
+			writeError(w, "forbidden", "only tenant owners and admins can do this", http.StatusForbidden)
 			return
 		}
 		next.ServeHTTP(w, r)
@@ -147,7 +147,7 @@ func (h *adminHandler) revokeInvite(w http.ResponseWriter, r *http.Request) {
 	actor, _ := identity.ActorFrom(r.Context())
 	err := h.svc.RevokeInvite(r.Context(), actor, chi.URLParam(r, "id"))
 	if errors.Is(err, auth.ErrInviteInvalid) {
-		writeError(w, "invite_not_found", "convite inexistente ou ja respondido", http.StatusNotFound)
+		writeError(w, "invite_not_found", "invite not found or already answered", http.StatusNotFound)
 		return
 	}
 	h.answerMembership(w, err)
@@ -160,7 +160,7 @@ func (h *adminHandler) deleteTenant(w http.ResponseWriter, r *http.Request) {
 	case err == nil:
 		w.WriteHeader(http.StatusNoContent)
 	case errors.Is(err, auth.ErrNotOwner):
-		writeError(w, "forbidden", "so o owner apaga o tenant", http.StatusForbidden)
+		writeError(w, "forbidden", "only the tenant owner can delete the tenant", http.StatusForbidden)
 	case errors.Is(err, auth.ErrMembershipNotFound):
 		writeTenantNotFound(w, err)
 	default:
@@ -173,7 +173,7 @@ func (h *adminHandler) answerMembership(w http.ResponseWriter, err error) {
 	case err == nil:
 		w.WriteHeader(http.StatusNoContent)
 	case errors.Is(err, auth.ErrMembershipNotFound):
-		writeError(w, "member_not_found", "usuario nao e membro deste tenant", http.StatusNotFound)
+		writeError(w, "member_not_found", "account is not a member of this tenant", http.StatusNotFound)
 	case errors.Is(err, auth.ErrLastOwner):
 		writeError(w, "last_owner", err.Error(), http.StatusConflict)
 	default:
@@ -209,5 +209,5 @@ func writeAdminInternal(w http.ResponseWriter, operation string, err error) {
 // a causa ao cliente.
 func writeLoggedInternal(w http.ResponseWriter, message, operation string, err error) {
 	slog.Error(message, "operacao", operation, "error", err)
-	writeError(w, "internal", "erro interno", http.StatusInternalServerError)
+	writeError(w, "internal", "internal error", http.StatusInternalServerError)
 }

@@ -46,7 +46,7 @@ func (r *PostgresVaultsRepository) CreateTx(ctx context.Context, v vaults.Vault,
 	return inActorTx(ctx, r.pool, func(q *gen.Queries) error {
 		err := q.CreateMemberVault(ctx, gen.CreateMemberVaultParams{ID: v.ID, Name: v.Name, CreatedAt: v.CreatedAt})
 		if err != nil {
-			return fmt.Errorf("criar cofre %q: %w", v.Name, err)
+			return fmt.Errorf("create vault %q: %w", v.Name, err)
 		}
 		return q.CreateAuditEvent(ctx, toCreateAuditEventParams(event))
 	})
@@ -61,7 +61,7 @@ func (r *PostgresVaultsRepository) RenameTx(ctx context.Context, id, name string
 			return fmt.Errorf("%w: %q", vaults.ErrVaultNotFound, id)
 		}
 		if err != nil {
-			return fmt.Errorf("renomear cofre %q: %w", id, err)
+			return fmt.Errorf("rename vault %q: %w", id, err)
 		}
 		v = vaults.Vault{ID: row.ID, Name: row.Name, CreatedAt: row.CreatedAt}
 		return q.CreateAuditEvent(ctx, toCreateAuditEventParams(event))
@@ -74,7 +74,7 @@ func (r *PostgresVaultsRepository) DeleteTx(ctx context.Context, id string, even
 	return inActorTx(ctx, r.pool, func(q *gen.Queries) error {
 		n, err := q.DeleteVault(ctx, id)
 		if err != nil {
-			return fmt.Errorf("apagar cofre %q: %w", id, err)
+			return fmt.Errorf("delete vault %q: %w", id, err)
 		}
 		if n == 0 {
 			return fmt.Errorf("%w: %q", vaults.ErrVaultNotFound, id)
@@ -114,7 +114,7 @@ func (r *PostgresVaultsRepository) AddMemberTx(ctx context.Context, vaultID, use
 		row, err := q.GetVaultMember(ctx, gen.GetVaultMemberParams{VaultID: vaultID, UserID: userID})
 		m = toVaultMember(row)
 		if err != nil {
-			return fmt.Errorf("ler membro %q do cofre %q: %w", userID, vaultID, err)
+			return fmt.Errorf("read member %q of vault %q: %w", userID, vaultID, err)
 		}
 		return q.CreateAuditEvent(ctx, toCreateAuditEventParams(event))
 	})
@@ -129,10 +129,10 @@ func (r *PostgresVaultsRepository) RemoveMemberTx(ctx context.Context, vaultID, 
 		}
 		n, err := q.RemoveVaultMember(ctx, gen.RemoveVaultMemberParams{VaultID: vaultID, UserID: userID})
 		if err != nil {
-			return fmt.Errorf("tirar %q do cofre %q: %w", userID, vaultID, err)
+			return fmt.Errorf("remove %q from vault %q: %w", userID, vaultID, err)
 		}
 		if n == 0 {
-			return fmt.Errorf("%w: %q no cofre %q", vaults.ErrMemberNotFound, userID, vaultID)
+			return fmt.Errorf("%w: %q in vault %q", vaults.ErrMemberNotFound, userID, vaultID)
 		}
 		return q.CreateAuditEvent(ctx, toCreateAuditEventParams(event))
 	})
@@ -153,7 +153,7 @@ func requireAddableMember(ctx context.Context, q *gen.Queries, vaultID, userID s
 	}
 	ok, err := q.IsTenantAccount(ctx, userID)
 	if err != nil {
-		return fmt.Errorf("conferir vinculo de %q: %w", userID, err)
+		return fmt.Errorf("check tenant membership of %q: %w", userID, err)
 	}
 	if !ok {
 		return fmt.Errorf("%w: %q", vaults.ErrNotTenantMember, userID)
@@ -164,10 +164,10 @@ func requireAddableMember(ctx context.Context, q *gen.Queries, vaultID, userID s
 func insertVaultMember(ctx context.Context, q *gen.Queries, vaultID, userID string, at time.Time) error {
 	err := q.AddVaultMember(ctx, gen.AddVaultMemberParams{VaultID: vaultID, UserID: userID, CreatedAt: at})
 	if isUniqueConstraintViolation(err) {
-		return fmt.Errorf("%w: %q no cofre %q", vaults.ErrAlreadyVaultMember, userID, vaultID)
+		return fmt.Errorf("%w: %q in vault %q", vaults.ErrAlreadyVaultMember, userID, vaultID)
 	}
 	if err != nil {
-		return fmt.Errorf("pôr %q no cofre %q: %w", userID, vaultID, err)
+		return fmt.Errorf("add %q to vault %q: %w", userID, vaultID, err)
 	}
 	return nil
 }

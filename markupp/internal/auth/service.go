@@ -67,7 +67,7 @@ func (s *Service) LoginLocal(ctx context.Context, email, password string) (Token
 		if errors.Is(err, ErrIdentityNotFound) {
 			return s.handleUnknownUser(ctx, normEmail, password)
 		}
-		return TokenPair{}, fmt.Errorf("buscar identidade local %q: %w", normEmail, err)
+		return TokenPair{}, fmt.Errorf("find local identity %q: %w", normEmail, err)
 	}
 	return s.verifyPasswordAndIssue(ctx, identity, normEmail, password)
 }
@@ -87,7 +87,7 @@ func validatePassword(password string) error {
 		return ErrEmptyPassword
 	}
 	if len(password) > maxPasswordLength {
-		return fmt.Errorf("senha com %d bytes, maximo %d: %w", len(password), maxPasswordLength, ErrPasswordTooLong)
+		return fmt.Errorf("password with %d bytes, maximum %d: %w", len(password), maxPasswordLength, ErrPasswordTooLong)
 	}
 	return nil
 }
@@ -103,11 +103,11 @@ func (s *Service) AcceptInvite(ctx context.Context, token, password string) (Tok
 	}
 	hash, err := s.hasher.Hash(password)
 	if err != nil {
-		return TokenPair{}, fmt.Errorf("hashear senha do convite: %w", err)
+		return TokenPair{}, fmt.Errorf("hash invite password: %w", err)
 	}
 	user, err := s.repo.AcceptInviteTx(ctx, s.acceptInviteParams(token, hash))
 	if err != nil {
-		return TokenPair{}, fmt.Errorf("aceitar convite: %w", err)
+		return TokenPair{}, fmt.Errorf("accept invite: %w", err)
 	}
 	return s.issueAndPersist(ctx, user, "auth.login")
 }
@@ -127,7 +127,7 @@ func (s *Service) acceptInviteParams(token, passwordHash string) AcceptInvitePar
 func (s *Service) handleUnknownUser(ctx context.Context, email, password string) (TokenPair, error) {
 	hash, err := s.hasher.Hash(password)
 	if err != nil {
-		return TokenPair{}, fmt.Errorf("hashear senha para %q: %w", email, err)
+		return TokenPair{}, fmt.Errorf("hash password for %q: %w", email, err)
 	}
 	p := s.buildAccountParams(email, hash)
 	user, err := s.repo.CreateAccountTx(ctx, p)
@@ -135,7 +135,7 @@ func (s *Service) handleUnknownUser(ctx context.Context, email, password string)
 		if errors.Is(err, ErrRegistrationDisabled) || errors.Is(err, ErrUserAlreadyExists) {
 			return s.rejectUnknownUser(ctx, email)
 		}
-		return TokenPair{}, fmt.Errorf("criar conta para %q: %w", email, err)
+		return TokenPair{}, fmt.Errorf("create account for %q: %w", email, err)
 	}
 	return s.issueAndPersist(ctx, user, "auth.login")
 }
@@ -144,7 +144,7 @@ func (s *Service) handleUnknownUser(ctx context.Context, email, password string)
 // custo ao de uma senha errada, e um segundo bcrypt denunciaria o email inexistente.
 func (s *Service) rejectUnknownUser(ctx context.Context, email string) (TokenPair, error) {
 	if err := s.auditLoginAttempt(ctx, "", email, "failure"); err != nil {
-		return TokenPair{}, fmt.Errorf("auditar login recusado para %q: %w", email, err)
+		return TokenPair{}, fmt.Errorf("audit rejected login for %q: %w", email, err)
 	}
 	return TokenPair{}, ErrInvalidCredentials
 }
@@ -167,13 +167,13 @@ func (s *Service) buildAccountParams(email, hash string) CreateAccountParams {
 func (s *Service) verifyPasswordAndIssue(ctx context.Context, identity UserIdentity, email, password string) (TokenPair, error) {
 	if err := s.hasher.Compare(identity.PasswordHash, password); err != nil {
 		if auditErr := s.auditLoginAttempt(ctx, identity.UserID, email, "failure"); auditErr != nil {
-			return TokenPair{}, fmt.Errorf("auditar falha de senha para %q: %w", email, auditErr)
+			return TokenPair{}, fmt.Errorf("audit wrong password for %q: %w", email, auditErr)
 		}
 		return TokenPair{}, ErrInvalidCredentials
 	}
 	user, err := s.repo.GetUserByID(ctx, identity.UserID)
 	if err != nil {
-		return TokenPair{}, fmt.Errorf("buscar usuario %q: %w", identity.UserID, err)
+		return TokenPair{}, fmt.Errorf("find user %q: %w", identity.UserID, err)
 	}
 	return s.issueAndPersist(ctx, user, "auth.login")
 }
@@ -212,11 +212,11 @@ func (s *Service) buildSessionRecords(user User, pair TokenPair, action string) 
 func (s *Service) issueAndPersist(ctx context.Context, user User, action string) (TokenPair, error) {
 	pair, err := s.tokens.GenerateTokenPair(user.ID)
 	if err != nil {
-		return TokenPair{}, fmt.Errorf("gerar tokens para %q: %w", user.ID, err)
+		return TokenPair{}, fmt.Errorf("generate tokens for %q: %w", user.ID, err)
 	}
 	rec, event := s.buildSessionRecords(user, pair, action)
 	if err := s.repo.IssueSessionTx(ctx, rec, event); err != nil {
-		return TokenPair{}, fmt.Errorf("gravar sessao de %q: %w", user.ID, err)
+		return TokenPair{}, fmt.Errorf("save session of %q: %w", user.ID, err)
 	}
 	return pair, nil
 }
@@ -230,7 +230,7 @@ func (s *Service) RefreshToken(ctx context.Context, rawRefreshToken string) (Tok
 	}
 	user, err := s.repo.GetUserByID(ctx, userID)
 	if err != nil {
-		return TokenPair{}, fmt.Errorf("buscar usuario %q do refresh token: %w", userID, err)
+		return TokenPair{}, fmt.Errorf("find user %q of the refresh token: %w", userID, err)
 	}
 	return s.issueAndPersist(ctx, user, "auth.refresh")
 }
@@ -245,14 +245,14 @@ func (s *Service) handleRefreshFailure(ctx context.Context, hash string, origErr
 
 func (s *Service) handleRefreshReuse(ctx context.Context, userID string) (TokenPair, error) {
 	if err := s.repo.RevokeAllUserRefreshTokens(ctx, userID); err != nil {
-		return TokenPair{}, fmt.Errorf("revogar todas sessoes do usuario %q: %w", userID, err)
+		return TokenPair{}, fmt.Errorf("revoke all sessions of user %q: %w", userID, err)
 	}
 	user, err := s.repo.GetUserByID(ctx, userID)
 	if err != nil {
-		return TokenPair{}, fmt.Errorf("buscar usuario %q do token reusado: %w", userID, err)
+		return TokenPair{}, fmt.Errorf("find user %q of the reused token: %w", userID, err)
 	}
 	if err := s.repo.RecordAuditEvent(ctx, s.refreshReuseEvent(user)); err != nil {
-		return TokenPair{}, fmt.Errorf("auditar reuso de token do usuario %q: %w", userID, err)
+		return TokenPair{}, fmt.Errorf("audit token reuse of user %q: %w", userID, err)
 	}
 	return TokenPair{}, ErrRefreshTokenRevoked
 }
@@ -294,11 +294,11 @@ func (s *Service) ResolveTenant(ctx context.Context, userID, requested string) (
 	}
 	switch len(memberships) {
 	case 0:
-		return Membership{}, fmt.Errorf("%w: usuario %q", ErrNoTenant, userID)
+		return Membership{}, fmt.Errorf("%w: user %q", ErrNoTenant, userID)
 	case 1:
 		return memberships[0], nil
 	}
-	return Membership{}, fmt.Errorf("%w: usuario %q esta em %d tenants", ErrTenantRequired, userID, len(memberships))
+	return Membership{}, fmt.Errorf("%w: user %q is in %d tenants", ErrTenantRequired, userID, len(memberships))
 }
 
 // ListTenants devolve os tenants de userID, com o papel e o resumo das notas em cada um.
@@ -314,14 +314,14 @@ const maxTenantNameLength = 100
 func (s *Service) CreateTenant(ctx context.Context, userID, name string) (Membership, error) {
 	name = strings.TrimSpace(name)
 	if name == "" || utf8.RuneCountInString(name) > maxTenantNameLength {
-		return Membership{}, fmt.Errorf("%w: %q, esperado de 1 a %d caracteres", ErrInvalidTenantName, name, maxTenantNameLength)
+		return Membership{}, fmt.Errorf("%w %q: expected 1 to %d characters", ErrInvalidTenantName, name, maxTenantNameLength)
 	}
 	p := CreateTenantParams{
 		TenantID: s.newID(), Name: name, UserID: userID,
 		VaultID: s.newID(), AuditEventID: s.newID(), Now: s.clock(),
 	}
 	if err := s.repo.CreateTenantTx(ctx, p); err != nil {
-		return Membership{}, fmt.Errorf("criar tenant %q para %q: %w", name, userID, err)
+		return Membership{}, fmt.Errorf("create tenant %q for %q: %w", name, userID, err)
 	}
 	return Membership{TenantID: p.TenantID, TenantName: name, Role: identity.RoleOwner}, nil
 }

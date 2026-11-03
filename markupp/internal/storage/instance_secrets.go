@@ -25,15 +25,15 @@ func NewPostgresInstanceSecrets(pool *pgxpool.Pool) *PostgresInstanceSecrets {
 func (s *PostgresInstanceSecrets) Secret(ctx context.Context, name string, generate func() (string, error)) (string, error) {
 	candidate, err := generate()
 	if err != nil {
-		return "", fmt.Errorf("gerar segredo da instancia %s: %w", name, err)
+		return "", fmt.Errorf("generate instance secret %s: %w", name, err)
 	}
 	err = s.q.InsertInstanceSecretIfMissing(ctx, gen.InsertInstanceSecretIfMissingParams{Name: name, Value: candidate})
 	if err != nil {
-		return "", fmt.Errorf("gravar segredo da instancia %s: %w", name, err)
+		return "", fmt.Errorf("save instance secret %s: %w", name, err)
 	}
 	value, err := s.q.GetInstanceSecret(ctx, name)
 	if err != nil {
-		return "", fmt.Errorf("ler segredo da instancia %s: %w", name, err)
+		return "", fmt.Errorf("read instance secret %s: %w", name, err)
 	}
 	return value, nil
 }

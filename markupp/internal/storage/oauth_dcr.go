@@ -13,7 +13,7 @@ import (
 func (r *PostgresOAuthRepository) RegisterDCRClient(ctx context.Context, reg oauth.DCRRegistration) error {
 	return inTx(ctx, r.pool, func(qtx *gen.Queries) error {
 		if err := qtx.LockDCRRegistrations(ctx); err != nil {
-			return fmt.Errorf("travar os registros dcr: %w", err)
+			return fmt.Errorf("lock dcr registrations: %w", err)
 		}
 		if err := reservePendingDCRSlot(ctx, qtx, reg); err != nil {
 			return err
@@ -26,11 +26,11 @@ func (r *PostgresOAuthRepository) RegisterDCRClient(ctx context.Context, reg oau
 // *oauth.PendingClientLimitError se os que sobram já somam MaxPending.
 func reservePendingDCRSlot(ctx context.Context, qtx *gen.Queries, reg oauth.DCRRegistration) error {
 	if err := qtx.DeleteExpiredPendingDCRClients(ctx, reg.IssuedAt.Add(-reg.PendingTTL)); err != nil {
-		return fmt.Errorf("expirar os clientes dcr pendentes: %w", err)
+		return fmt.Errorf("expire pending dcr clients: %w", err)
 	}
 	pending, err := qtx.CountPendingDCRClients(ctx, reg.IssuedAt)
 	if err != nil {
-		return fmt.Errorf("contar os clientes dcr pendentes: %w", err)
+		return fmt.Errorf("count pending dcr clients: %w", err)
 	}
 	if pending.Pending < int64(reg.MaxPending) {
 		return nil
@@ -43,7 +43,7 @@ func createDCRClient(ctx context.Context, qtx *gen.Queries, reg oauth.DCRRegistr
 		ID: reg.Client.ID, Name: reg.Client.Name, RedirectUris: reg.Client.RedirectURIs, CreatedAt: reg.IssuedAt,
 	})
 	if err != nil {
-		return fmt.Errorf("gravar cliente dcr %s: %w", oauth.ClientValue(reg.Client.ID), err)
+		return fmt.Errorf("save dcr client %s: %w", oauth.ClientValue(reg.Client.ID), err)
 	}
 	return nil
 }

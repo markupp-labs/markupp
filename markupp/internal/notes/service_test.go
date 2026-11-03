@@ -159,7 +159,7 @@ func TestCreate_PathSemTitulo_RetornaErrInvalidPathComOCaminho(t *testing.T) {
 
 		require.ErrorIs(t, err, notes.ErrInvalidPath, "caminho %q", caminho)
 		assert.Contains(t, err.Error(), caminho, "a mensagem traz o caminho recusado")
-		assert.Contains(t, err.Error(), "pasta/nota.md", "a mensagem traz o formato esperado")
+		assert.Contains(t, err.Error(), "folder/note.md", "a mensagem traz o formato esperado")
 		assert.False(t, repo.called)
 	}
 }
