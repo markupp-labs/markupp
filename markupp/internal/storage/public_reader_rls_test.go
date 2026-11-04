@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -12,6 +13,7 @@ import (
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/identity"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/notes"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/storage"
+	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/storage/gen"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/storage/storagetest"
 )
 
@@ -186,4 +188,34 @@ func TestRLS_PapelDaAplicacaoComoMembro_NaoPublica(t *testing.T) {
 		VALUES ('va', 'meu-cofre', 'x', 'ua', now()) RETURNING 1) SELECT count(*) FROM i`)
 
 	requirePermissaoNegada(t, err, "membro publicando")
+}
+
+// poolComSessaoDoDono abre sobre o banco de db um pool cujas conexões já trazem, no
+// nível da sessão, o tenant, o usuário e o papel do dono do cofre privado "priv".
+func poolComSessaoDoDono(t *testing.T, db *pgxpool.Pool) *pgxpool.Pool {
+	t.Helper()
+	cfg := db.Config()
+	cfg.AfterConnect = func(ctx context.Context, conn *pgx.Conn) error {
+		_, err := conn.Exec(ctx, `SELECT set_config('markupp.tenant_id', 't2', false),
+			set_config('markupp.user_id', 'ub', false), set_config('markupp.role', 'owner', false)`)
+		return err
+	}
+	pool, err := pgxpool.NewWithConfig(context.Background(), cfg)
+	require.NoError(t, err)
+	t.Cleanup(pool.Close)
+	return pool
+}
+
+// Regressão: as políticas antigas de notes valem para todos os papéis, e a transação
+// pública herdava da sessão o tenant e o usuário de quem usou a conexão antes.
+func TestRLS_LeitorComTenantEUsuarioNaSessao_SoEnxergaOsCofresPublicados(t *testing.T) {
+	pool := poolComSessaoDoDono(t, doisCofresUmPublicado(t))
+	ctx := context.Background()
+
+	err := storage.InPublicTx(ctx, pool, func(q *gen.Queries) error {
+		_, err := q.GetNoteByID(ctx, "s1")
+		return err
+	})
+
+	require.ErrorIs(t, err, pgx.ErrNoRows, "leitor publico leu a nota do cofre privado")
 }
