@@ -30,11 +30,15 @@ func (q *Queries) EnterActor(ctx context.Context, arg EnterActorParams) error {
 }
 
 const enterPublicReader = `-- name: EnterPublicReader :exec
-SELECT set_config('role', 'markupp_reader', true)
+SELECT set_config('role', 'markupp_reader', true),
+       set_config('markupp.tenant_id', '', true),
+       set_config('markupp.user_id', '', true),
+       set_config('markupp.role', '', true)
 `
 
 // Troca para o papel da leitura sem conta (ADR-0048), que só enxerga os cofres
-// publicados. Nada na sessão identifica alguém: não há tenant, usuário nem papel.
+// publicados. Zera tenant, usuário e papel, porque as políticas antigas de notes valem
+// para todos os papéis e a conexão do pool pode trazê-los da sessão.
 func (q *Queries) EnterPublicReader(ctx context.Context) error {
 	_, err := q.db.Exec(ctx, enterPublicReader)
 	return err
