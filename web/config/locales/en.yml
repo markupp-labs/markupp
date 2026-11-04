@@ -63,9 +63,9 @@ en:
       links: "Links"
       graph: "Graph"
       account: "Account"
-      notifications: "Notifications"
       settings: "Settings"
       settings_shortcut: "Settings (%{keys})"
+      notifications_shortcut: "Notifications (%{keys})"
     tenant_switcher:
       label: "Tenants"
       home: "Home"
@@ -127,6 +127,7 @@ en:
       tenant_general: "Tenant: General"
       delete_tenant: "Delete tenant"
       switch_vault: "Switch vault"
+      notifications: "Notifications"
       new_vault: "New vault"
       vault_settings: "Vault settings"
       vault_members: "Vault members"

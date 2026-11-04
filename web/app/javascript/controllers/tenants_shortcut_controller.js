@@ -3,7 +3,7 @@ import { Turbo } from "@hotwired/turbo-rails"
 import { isTyping } from "controllers/typing"
 
 // g e depois t, fora de campo de texto, abre a lista de tenants; g e depois v, o seletor de cofres da trilha, com o foco
-// no primeiro cofre (context_menu_controller.js). v e depois r, a ou q age no cofre ativo: renomear, adicionar membro e
+// no primeiro cofre (context_menu_controller.js); g e depois n, o sino, com o foco dentro dele. v e depois r, a ou q age no cofre ativo: renomear, adicionar membro e
 // sair. Com a ação na página (data-vault-action), foca o campo ou aperta o botão; sem ela, abre a página da ação
 // (vaultActions, de ShortcutsHelper#vault_shortcut_paths), que chega com o foco nela. Atalho em sequência como o gt do
 // Vim e o g n do GitHub, sem disputar Ctrl ou Alt com o navegador. Qualquer outra tecla no meio desfaz o prefixo.
@@ -21,6 +21,7 @@ export default class extends Controller {
       return Turbo.visit(this.urlValue)
     }
     if (prefix == "g" && event.key == "v") return this.openVaults(event)
+    if (prefix == "g" && event.key == "n") return this.openNotifications(event)
     if (prefix == "v" && event.key in this.vaultActionsValue) return this.runVaultAction(event)
     if (PREFIXES.includes(event.key)) this.prefix = event.key
   }
@@ -31,6 +32,16 @@ export default class extends Controller {
     if (!opener) return
     event.preventDefault()
     opener.click()
+  }
+
+  // O sino visível (barra do lado ou gaveta) recebe o foco antes de abrir, para o Esc do popover devolvê-lo a ele.
+  openNotifications(event) {
+    const bell = [ ...document.querySelectorAll("button[popovertarget=notification_menu]") ].find(it => it.checkVisibility())
+    if (!bell) return
+    event.preventDefault()
+    bell.focus()
+    bell.click()
+    document.getElementById("notification_menu").focus()
   }
 
   // O Leave vault pede a confirmação dele (data-turbo-confirm); o nome e a escolha do colega só recebem o foco. Na

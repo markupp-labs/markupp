@@ -15,7 +15,7 @@
     </div>
   <% end %>
   <div class="activity-bar-actions">
-    <button type="button" popovertarget="notification_menu" aria-haspopup="dialog" title="<%= t(".notifications") %>"
+    <button type="button" popovertarget="notification_menu" aria-haspopup="dialog" title="<%= t(".notifications_shortcut", keys: shortcut_key(:notifications)) %>"
             class="activity-tab [anchor-name:--notification-menu]">
       <%= icon("bell") %>
       <%= render "notifications/badge", placement:, unread: 0, source: notifications_path %>
