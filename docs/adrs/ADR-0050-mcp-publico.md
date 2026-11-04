@@ -1,4 +1,4 @@
-# ADR-0050: Servidor MCP público para cofres publicados
+# ADR-0050: Servidor MCP público para notas públicas
 
 ## Status
 
@@ -6,15 +6,15 @@ Proposta
 
 ## Contexto
 
-O servidor MCP do ADR-0045 exige Autorização OAuth em qualquer transporte. Um cofre público
-(ADR-0048) deve ser lido sem conta também por agentes, tão facilmente quanto por pessoas
+O servidor MCP do ADR-0045 exige Autorização OAuth em qualquer transporte. Uma nota pública
+(ADR-0048) deve ser lida sem conta também por agentes, tão facilmente quanto por pessoas
 
 ## Decisão
 
 O servidor MCP expõe um segundo endpoint, `/mcp/public`, sem OAuth, com ferramentas só de
-leitura sobre cofres publicados: listar, ler e buscar notas por slug. Essas ferramentas chamam
+leitura sobre notas públicas: listar, ler e buscar pelo id público. Essas ferramentas chamam
 apenas as rotas `/v1/public/...` da API, herdando o papel `markupp_reader`, o limite por IP e o
-404 para cofre não publicado. O endpoint autenticado continua como está, e as ferramentas dos
+404 para nota não publicada. O endpoint autenticado continua como está, e as ferramentas dos
 dois nunca se misturam no mesmo registro
 
 ## Alternativas consideradas
