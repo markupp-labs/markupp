@@ -80,6 +80,8 @@ jobs:
     needs: publish-image
     if: github.ref_type == 'tag'
     runs-on: ubuntu-latest
+    # A aprovação no environment é o portão do deploy de produção, e o token mora nele.
+    environment: production
     permissions: {}
     # Sem o secret (forks e self-host), o passo é pulado e o release termina verde.
     env:
