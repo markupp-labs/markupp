@@ -41,3 +41,8 @@ um provedor seja configurado
 - Reconstruir é seguro porque vetor é dado derivado (ADR-0012), mas custa uma passada de
   embedding sobre todas as notas, o que no Multi-tenant é custo por chamada
 - Trocar o provedor padrão do Multi-tenant não muda a arquitetura
+
+## Emenda
+
+Em novembro de 2026, o texto deste ADR foi revisto para tirar do repositório público o que
+trata da operação comercial do Multi-tenant. A decisão não mudou.

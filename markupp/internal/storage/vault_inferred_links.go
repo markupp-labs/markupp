@@ -44,7 +44,7 @@ func inferLinks(ctx context.Context, q *gen.Queries, vaultID, searchConfig strin
 	}
 	params, edges := vc.chooseTargets(candidates, occurrences, g)
 	if err := q.SaveInferredLinks(ctx, params); err != nil {
-		return nil, fmt.Errorf("gravar as %d ligacoes inferidas do cofre %q: %w", len(edges), vaultID, err)
+		return nil, fmt.Errorf("save %d inferred links of vault %q: %w", len(edges), vaultID, err)
 	}
 	return edges, nil
 }
@@ -54,11 +54,11 @@ func inferLinks(ctx context.Context, q *gen.Queries, vaultID, searchConfig strin
 func loadCitations(ctx context.Context, q *gen.Queries, vaultID string) (vaultCitations, error) {
 	titles, err := q.ListVaultTitleKeys(ctx, vaultID)
 	if err != nil {
-		return vaultCitations{}, fmt.Errorf("listar os titulos do cofre %q: %w", vaultID, err)
+		return vaultCitations{}, fmt.Errorf("list titles of vault %q: %w", vaultID, err)
 	}
 	cited, err := q.ListVaultCitations(ctx, vaultID)
 	if err != nil {
-		return vaultCitations{}, fmt.Errorf("listar as ligacoes do cofre %q: %w", vaultID, err)
+		return vaultCitations{}, fmt.Errorf("list links of vault %q: %w", vaultID, err)
 	}
 	vc := vaultCitations{titleNotes: make(map[string]int), citers: make(map[string]map[string]bool)}
 	for _, t := range titles {
@@ -123,7 +123,7 @@ func countOccurrences(ctx context.Context, q *gen.Queries, vaultID, searchConfig
 	for _, r := range rows {
 		occurrences[r.TitleKey] = titleOccurrence{count: int(r.Occurrences), common: r.Common}
 	}
-	return occurrences, wrapVault(err, fmt.Sprintf("contar as ocorrencias de %d titulos candidatos", len(params.TitleKeys)), vaultID)
+	return occurrences, wrapVault(err, fmt.Sprintf("count occurrences of %d candidate titles", len(params.TitleKeys)), vaultID)
 }
 
 // chooseTargets escolhe a nota de cada citação sem nota e monta as linhas e as
@@ -172,5 +172,5 @@ func wrapVault(err error, operation, vaultID string) error {
 	if err == nil {
 		return nil
 	}
-	return fmt.Errorf("%s do cofre %q: %w", operation, vaultID, err)
+	return fmt.Errorf("%s in vault %q: %w", operation, vaultID, err)
 }

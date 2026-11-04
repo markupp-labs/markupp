@@ -89,7 +89,7 @@ func listGraphNotes(ctx context.Context, q *gen.Queries, vaultID string, noteIDs
 	}
 	rows, err := q.ListGraphNotes(ctx, p)
 	if err != nil {
-		return nil, fmt.Errorf("ler as notas do grafo do cofre %q: %w", vaultID, err)
+		return nil, fmt.Errorf("read graph notes of vault %q: %w", vaultID, err)
 	}
 	return convertRows(rows, toGraphNote), nil
 }
@@ -97,7 +97,7 @@ func listGraphNotes(ctx context.Context, q *gen.Queries, vaultID string, noteIDs
 func listGraphEdges(ctx context.Context, q *gen.Queries, vaultID string, noteIDs []string, f notes.GraphFilter) ([]notes.GraphEdge, error) {
 	rows, err := q.ListGraphEdges(ctx, gen.ListGraphEdgesParams{VaultID: vaultID, NoteIds: noteIDs, HideInferred: f.HideInferred})
 	if err != nil {
-		return nil, fmt.Errorf("ler as ligacoes do grafo do cofre %q: %w", vaultID, err)
+		return nil, fmt.Errorf("read graph links of vault %q: %w", vaultID, err)
 	}
 	return convertRows(rows, toGraphEdge), nil
 }
@@ -109,7 +109,7 @@ func listGraphCitations(ctx context.Context, q *gen.Queries, vaultID string, not
 	}
 	rows, err := q.ListGraphCitations(ctx, gen.ListGraphCitationsParams{VaultID: vaultID, NoteIds: noteIDs})
 	if err != nil {
-		return nil, fmt.Errorf("ler as ligacoes nao resolvidas do grafo do cofre %q: %w", vaultID, err)
+		return nil, fmt.Errorf("read unresolved graph links of vault %q: %w", vaultID, err)
 	}
 	return convertRows(rows, toGraphCitation), nil
 }

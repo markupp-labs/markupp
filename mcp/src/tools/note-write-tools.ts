@@ -10,6 +10,7 @@ import {
   noteIdParameter,
   noteLocator,
   tenantParameter,
+  vaultIdParameter,
   writeAnnotations,
   type MarkuppApiFactory,
 } from "./tool-support.js";
@@ -24,6 +25,11 @@ const createNoteParameters = z.object({
     .min(1)
     .describe("Path unique within the vault, such as projects/markupp.md."),
   content: z.string().describe("Full markdown content."),
+  vault_id: vaultIdParameter
+    .optional()
+    .describe(
+      "Vault id from list_vaults to create the note in; omit for the tenant's default vault.",
+    ),
 });
 
 const editNoteParameters = z.object({
@@ -57,13 +63,13 @@ function addCreateNote(
   server.addTool({
     name: "create_note",
     description:
-      "Creates a new note in the tenant's default vault and returns its id. To change a note that already exists, use edit_note.",
+      "Creates a new note in the given vault, or in the tenant's default vault without vault_id, and returns its id. To change a note that already exists, use edit_note.",
     parameters: createNoteParameters,
     annotations: writeAnnotations,
-    execute: async ({ tenant, path, content }, context) => {
+    execute: async ({ tenant, path, content, vault_id }, context) => {
       const api = apiFor(factory, context);
       return noteHeader(
-        await callApi(() => api.createNote(tenant, path, content)),
+        await callApi(() => api.createNote(tenant, path, content, vault_id)),
       );
     },
   });

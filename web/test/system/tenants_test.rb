@@ -162,7 +162,7 @@ class TenantsTest < ApplicationSystemTestCase
 
     send_keys "g", "t"
     assert_selector "h1", text: "Tenants"
-    click_on "Acme research"
+    within("main") { click_on "Acme research" }
     click_on "Switch tenant"
     assert_selector "#tenant_switcher a", text: "All tenants"
     within("#tenant_switcher") { click_on "All tenants" }

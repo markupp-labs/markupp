@@ -109,7 +109,7 @@ func (h *oauthHandler) authorize(w http.ResponseWriter, r *http.Request) {
 func readAuthorizeQuery(r *http.Request) (url.Values, *oauth.ProtocolError) {
 	query, err := url.ParseQuery(r.URL.RawQuery)
 	if err != nil {
-		return nil, invalidRequest(fmt.Sprintf("query malformada (%s), esperado %s valido", oauth.ClientValue(err.Error()), formURLEncoded))
+		return nil, invalidRequest(fmt.Sprintf("malformed query (%s): expected valid %s", oauth.ClientValue(err.Error()), formURLEncoded))
 	}
 	if protoErr := rejectRepeatedParam(query); protoErr != nil {
 		return nil, protoErr
@@ -226,12 +226,12 @@ func exchangeGrantFrom(r *http.Request, form url.Values) (oauth.ExchangeGrant, *
 func resourceCredentials(r *http.Request) (resourceID, secret string, protoErr *oauth.ProtocolError) {
 	user, password, ok := r.BasicAuth()
 	if !ok || user == "" || password == "" {
-		return "", "", invalidClient("autenticacao HTTP Basic obrigatoria, esperado usuario = URL do resource e senha = segredo dele")
+		return "", "", invalidClient("HTTP Basic authentication required: expected user = resource URL and password = its secret")
 	}
 	resourceID, errID := url.QueryUnescape(user)
 	secret, errSecret := url.QueryUnescape(password)
 	if errID != nil || errSecret != nil {
-		return "", "", invalidClient("credencial HTTP Basic mal codificada, esperado usuario e senha em " + formURLEncoded)
+		return "", "", invalidClient("malformed HTTP Basic credentials: expected user and password encoded as " + formURLEncoded)
 	}
 	return resourceID, secret, nil
 }
@@ -257,11 +257,11 @@ func writeExchangeError(w http.ResponseWriter, err error) {
 func readOAuthForm(w http.ResponseWriter, r *http.Request) (url.Values, *oauth.ProtocolError) {
 	contentType := r.Header.Get("Content-Type")
 	if mediaType, _, _ := mime.ParseMediaType(contentType); mediaType != formURLEncoded {
-		return nil, invalidRequest(fmt.Sprintf("corpo deve ser %s, recebido Content-Type %s", formURLEncoded, oauth.ClientValue(contentType)))
+		return nil, invalidRequest(fmt.Sprintf("body must be %s, got Content-Type %s", formURLEncoded, oauth.ClientValue(contentType)))
 	}
 	r.Body = http.MaxBytesReader(w, r.Body, maxAuthBodyBytes)
 	if err := r.ParseForm(); err != nil {
-		return nil, invalidRequest(fmt.Sprintf("formulario ilegivel ou acima de %d bytes", maxAuthBodyBytes))
+		return nil, invalidRequest(fmt.Sprintf("unreadable form or larger than %d bytes", maxAuthBodyBytes))
 	}
 	if protoErr := rejectRepeatedParam(r.PostForm); protoErr != nil {
 		return nil, protoErr

@@ -26,7 +26,7 @@ func TestQueryReader_GuardaOPrimeiroInvalidoComOValorEOFormato(t *testing.T) {
 	assert.Empty(t, qr.oneOf("sort", "pagerank", "degree"))
 
 	require.ErrorIs(t, qr.err, errInvalidQuery)
-	assert.Contains(t, qr.err.Error(), `orphan "1", esperado true ou false`, "so o primeiro invalido")
+	assert.Contains(t, qr.err.Error(), `orphan "1": expected true or false`, "so o primeiro invalido")
 }
 
 func TestQueryReader_LeOsValoresAceitos(t *testing.T) {
@@ -47,6 +47,6 @@ func TestQueryReader_InteiroNoIntervalo(t *testing.T) {
 	assert.Equal(t, 3, dentro.intBetween("depth", 1, 1, 3))
 	assert.Zero(t, fora.intBetween("depth", 1, 1, 3))
 	require.ErrorIs(t, fora.err, errInvalidQuery)
-	assert.Contains(t, fora.err.Error(), `depth "-1", esperado inteiro de 1 a 3`)
+	assert.Contains(t, fora.err.Error(), `depth "-1": expected an integer from 1 to 3`)
 	assert.NoError(t, ausente.err)
 }

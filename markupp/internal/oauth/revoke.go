@@ -24,7 +24,7 @@ func (s *Service) RevokeToken(ctx context.Context, r RevokeRequest) error {
 		return nil
 	}
 	if err != nil {
-		return fmt.Errorf("oauth: buscando o token a revogar: %w", err)
+		return fmt.Errorf("oauth: find token to revoke: %w", err)
 	}
 	now := s.clock()
 	if r.ClientID != grant.Authorization.ClientID || !liveGrant(grant, now) {
@@ -35,10 +35,10 @@ func (s *Service) RevokeToken(ctx context.Context, r RevokeRequest) error {
 
 func checkRevokeParams(r RevokeRequest) error {
 	if r.Token == "" {
-		return &ProtocolError{Code: errInvalidRequest, Description: "token ausente; esperado o access ou refresh token a revogar"}
+		return &ProtocolError{Code: errInvalidRequest, Description: "token missing; expected the access or refresh token to revoke"}
 	}
 	if r.ClientID == "" {
-		return &ProtocolError{Code: errInvalidRequest, Description: "client_id ausente; esperado o client_id que recebeu o token"}
+		return &ProtocolError{Code: errInvalidRequest, Description: "client_id missing; expected the client_id that received the token"}
 	}
 	return nil
 }
@@ -54,7 +54,7 @@ func liveGrant(grant TokenGrant, now time.Time) bool {
 func (s *Service) revokeTokens(ctx context.Context, authorization Authorization, tokenHash string, now time.Time) error {
 	event := auditEvent(AuditActionRevoke, AuditResultSuccess, authorization, now)
 	if err := s.repo.RevokeAuthorizationTokensAudited(ctx, authorization.ID, tokenHash, ExpiredTriggerIgnored, event); err != nil {
-		return fmt.Errorf("oauth: revogando os tokens da autorização %q: %w", authorization.ID, err)
+		return fmt.Errorf("oauth: revoke tokens of authorization %q: %w", authorization.ID, err)
 	}
 	return nil
 }
@@ -63,7 +63,7 @@ func (s *Service) revokeTokens(ctx context.Context, authorization Authorization,
 func (s *Service) ListAuthorizations(ctx context.Context, userID string) ([]AuthorizationView, error) {
 	summaries, err := s.repo.ListActiveAuthorizations(ctx, userID)
 	if err != nil {
-		return nil, fmt.Errorf("oauth: listando as autorizações da conta %q: %w", userID, err)
+		return nil, fmt.Errorf("oauth: list authorizations of account %q: %w", userID, err)
 	}
 	views := make([]AuthorizationView, 0, len(summaries))
 	for _, summary := range summaries {
@@ -81,7 +81,7 @@ func (s *Service) ListAuthorizations(ctx context.Context, userID string) ([]Auth
 func (s *Service) RevokeAuthorization(ctx context.Context, userID, authorizationID string) error {
 	event := AuditEvent{Action: AuditActionRevoke, Result: AuditResultSuccess, UserID: userID, OccurredAt: s.clock()}
 	if err := s.repo.RevokeAuthorization(ctx, userID, authorizationID, event); err != nil {
-		return fmt.Errorf("oauth: revogando a autorização %s da conta %q: %w", ClientValue(authorizationID), userID, err)
+		return fmt.Errorf("oauth: revoke authorization %s of account %q: %w", ClientValue(authorizationID), userID, err)
 	}
 	return nil
 }

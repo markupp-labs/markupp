@@ -65,15 +65,15 @@ func checkRegistration(req RegistrationRequest) (Client, error) {
 func checkPublicClientMetadata(req RegistrationRequest) error {
 	switch {
 	case presentButEmpty(req.GrantTypes):
-		return invalidClientMetadata("grant_types presente e vazio; esperado ausente ou com ao menos um valor")
+		return invalidClientMetadata("grant_types present and empty; expected absent or with at least one value")
 	case presentButEmpty(req.ResponseTypes):
-		return invalidClientMetadata("response_types presente e vazio; esperado ausente ou com ao menos um valor")
+		return invalidClientMetadata("response_types present and empty; expected absent or with at least one value")
 	case req.TokenEndpointAuthMethod != nil && *req.TokenEndpointAuthMethod != "none":
-		return invalidClientMetadata("token_endpoint_auth_method " + ClientValue(*req.TokenEndpointAuthMethod) + "; esperado ausente ou none")
+		return invalidClientMetadata("token_endpoint_auth_method " + ClientValue(*req.TokenEndpointAuthMethod) + "; expected absent or none")
 	case slices.ContainsFunc(req.GrantTypes, func(g string) bool { return !slices.Contains(dcrGrantTypes(), g) }):
-		return invalidClientMetadata("grant_types " + ClientValue(strings.Join(req.GrantTypes, " ")) + "; esperado ausente ou subconjunto de authorization_code e refresh_token")
+		return invalidClientMetadata("grant_types " + ClientValue(strings.Join(req.GrantTypes, " ")) + "; expected absent or a subset of authorization_code and refresh_token")
 	case req.ResponseTypes != nil && !slices.Equal(req.ResponseTypes, []string{"code"}):
-		return invalidClientMetadata("response_types " + ClientValue(strings.Join(req.ResponseTypes, " ")) + "; esperado ausente ou so code")
+		return invalidClientMetadata("response_types " + ClientValue(strings.Join(req.ResponseTypes, " ")) + "; expected absent or only code")
 	}
 	return nil
 }
@@ -86,11 +86,11 @@ func presentButEmpty(list []string) bool {
 // checkDCRRedirectURIs aplica a mesma regra das redirect_uris do documento CIMD.
 func checkDCRRedirectURIs(uris []string) error {
 	if len(uris) == 0 {
-		return &ProtocolError{Code: errInvalidRedirectURI, Description: "redirect_uris ausente ou vazio; esperada lista com ao menos uma URI"}
+		return &ProtocolError{Code: errInvalidRedirectURI, Description: "redirect_uris missing or empty; expected a list with at least one URI"}
 	}
 	for _, raw := range uris {
 		if reason := cimd.RedirectURIProblem(raw); reason != "" {
-			return &ProtocolError{Code: errInvalidRedirectURI, Description: "redirect_uri " + ClientValue(raw) + " " + reason + "; esperado " + cimd.RedirectURIShape}
+			return &ProtocolError{Code: errInvalidRedirectURI, Description: "redirect_uri " + ClientValue(raw) + " " + reason + "; expected " + cimd.RedirectURIShape}
 		}
 	}
 	return nil
@@ -105,11 +105,11 @@ func invalidClientMetadata(description string) *ProtocolError {
 func registrationFailure(err error, now time.Time) error {
 	var limit *PendingClientLimitError
 	if !errors.As(err, &limit) {
-		return fmt.Errorf("oauth: registrando cliente dcr: %w", err)
+		return fmt.Errorf("oauth: register dcr client: %w", err)
 	}
 	refusal := &ProtocolError{
 		Code: errTemporarilyUnavailable, RetryAfter: max(limit.FreesAt.Sub(now), time.Second),
-		Description: "registro dinamico de clientes lotado; esperada nova tentativa depois do Retry-After",
+		Description: "dynamic client registration is full; expected a new attempt after Retry-After",
 	}
 	return refusal.WithInternalCause(err)
 }

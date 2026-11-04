@@ -51,19 +51,19 @@ func sameSecret(received, configured string) bool {
 }
 
 func errResourceUnauthenticated() error {
-	return &ProtocolError{Code: errInvalidClient, Description: "resource nao autenticado; esperado HTTP Basic com a url de um resource configurado e o segredo dele"}
+	return &ProtocolError{Code: errInvalidClient, Description: "resource not authenticated; expected HTTP Basic with the url of a configured resource and its secret"}
 }
 
 // checkExchangeParams confere os tipos de token e o alvo da troca, que é a API deste issuer.
 func (s *Service) checkExchangeParams(g ExchangeGrant) error {
 	if g.SubjectToken == "" {
-		return &ProtocolError{Code: errInvalidRequest, Description: "subject_token ausente; esperado o access token recebido pelo resource"}
+		return &ProtocolError{Code: errInvalidRequest, Description: "subject_token missing; expected the access token received by the resource"}
 	}
 	if g.SubjectTokenType != TokenTypeAccessToken {
-		return &ProtocolError{Code: errInvalidRequest, Description: "subject_token_type " + ClientValue(g.SubjectTokenType) + " nao suportado; esperado " + TokenTypeAccessToken}
+		return &ProtocolError{Code: errInvalidRequest, Description: "subject_token_type " + ClientValue(g.SubjectTokenType) + " not supported; expected " + TokenTypeAccessToken}
 	}
 	if g.RequestedTokenType != "" && g.RequestedTokenType != TokenTypeAccessToken {
-		return &ProtocolError{Code: errInvalidRequest, Description: "requested_token_type " + ClientValue(g.RequestedTokenType) + " nao suportado; esperado " + TokenTypeAccessToken + " ou ausente"}
+		return &ProtocolError{Code: errInvalidRequest, Description: "requested_token_type " + ClientValue(g.RequestedTokenType) + " not supported; expected " + TokenTypeAccessToken + " or absent"}
 	}
 	if err := s.checkExchangeTarget("audience", g.Audience); err != nil {
 		return err
@@ -77,13 +77,13 @@ func (s *Service) checkExchangeTarget(name, raw string) error {
 		return nil
 	}
 	if target, ok := canonicalize(raw); !ok || target != s.cfg.Issuer {
-		return &ProtocolError{Code: errInvalidTarget, Description: name + " " + ClientValue(raw) + " diferente da API; esperado " + ClientValue(s.cfg.Issuer) + " ou ausente"}
+		return &ProtocolError{Code: errInvalidTarget, Description: name + " " + ClientValue(raw) + " differs from the API; expected " + ClientValue(s.cfg.Issuer) + " or absent"}
 	}
 	return nil
 }
 
 // invalidSubjectDescription é a descrição do subject_token que não vale para a troca.
-const invalidSubjectDescription = "subject_token invalido, expirado, revogado ou de outro resource; esperado um access token vigente emitido para o resource autenticado"
+const invalidSubjectDescription = "subject_token invalid, expired, revoked or from another resource; expected a current access token issued to the authenticated resource"
 
 // findSubjectToken busca o access token pelo hash e confere que ele vale em now para o
 // resource autenticado.
@@ -93,7 +93,7 @@ func (s *Service) findSubjectToken(ctx context.Context, subject, resource string
 		return TokenGrant{}, grantError(invalidSubjectDescription)
 	}
 	if err != nil {
-		return TokenGrant{}, fmt.Errorf("oauth: buscando o subject_token da troca: %w", err)
+		return TokenGrant{}, fmt.Errorf("oauth: find exchange subject_token: %w", err)
 	}
 	if !exchangeable(grant, resource, now) {
 		return TokenGrant{}, grantError(invalidSubjectDescription)
@@ -112,11 +112,11 @@ func exchangeable(grant TokenGrant, resource string, now time.Time) bool {
 func (s *Service) issueExchanged(ctx context.Context, grant TokenGrant, now time.Time) (ExchangeResponse, error) {
 	token, err := s.scoped.IssueScopedToken(grant.Authorization.UserID, grant.Token.Scopes, s.cfg.ExchangeTTL)
 	if err != nil {
-		return ExchangeResponse{}, fmt.Errorf("oauth: emitindo o token da troca da autorização %q: %w", grant.Authorization.ID, err)
+		return ExchangeResponse{}, fmt.Errorf("oauth: issue exchange token for authorization %q: %w", grant.Authorization.ID, err)
 	}
 	event := auditEvent(AuditActionExchange, AuditResultSuccess, grant.Authorization, now)
 	if err := s.repo.RecordAuditEvent(ctx, event); err != nil {
-		return ExchangeResponse{}, fmt.Errorf("oauth: auditando a troca da autorização %q: %w", grant.Authorization.ID, err)
+		return ExchangeResponse{}, fmt.Errorf("oauth: audit exchange for authorization %q: %w", grant.Authorization.ID, err)
 	}
 	return ExchangeResponse{
 		AccessToken: token, IssuedTokenType: TokenTypeAccessToken, TokenType: "Bearer",

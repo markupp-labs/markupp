@@ -108,14 +108,14 @@ type RedeemedCode struct {
 
 // Erros do repositório.
 var (
-	ErrClientNotFound        = errors.New("cliente oauth não encontrado")
-	ErrRequestNotFound       = errors.New("pedido de autorização inexistente, expirado ou já decidido")
-	ErrAuthorizationNotFound = errors.New("autorização ativa não encontrada")
-	ErrCodeNotFound          = errors.New("código de autorização inexistente ou expirado")
-	ErrCodeAlreadyUsed       = errors.New("código de autorização já usado")
-	ErrTokenNotFound         = errors.New("token oauth inexistente, expirado ou revogado")
-	ErrRefreshReused         = errors.New("refresh token oauth já rotacionado")
-	ErrClientSourceConflict  = errors.New("client_id já registrado por outra origem")
+	ErrClientNotFound        = errors.New("oauth client not found")
+	ErrRequestNotFound       = errors.New("authorization request not found, expired or already decided")
+	ErrAuthorizationNotFound = errors.New("active authorization not found")
+	ErrCodeNotFound          = errors.New("authorization code not found or expired")
+	ErrCodeAlreadyUsed       = errors.New("authorization code already used")
+	ErrTokenNotFound         = errors.New("oauth token not found, expired or revoked")
+	ErrRefreshReused         = errors.New("oauth refresh token already rotated")
+	ErrClientSourceConflict  = errors.New("client_id already registered by another source")
 )
 
 // Repository é a porta de persistência do authorization server. Todas as tabelas são
@@ -226,7 +226,7 @@ type PendingClientLimitError struct {
 }
 
 func (e *PendingClientLimitError) Error() string {
-	return fmt.Sprintf("teto de %d clientes dcr pendentes atingido; esperada vaga a partir de %s",
+	return fmt.Sprintf("limit of %d pending dcr clients reached; expected a free slot from %s",
 		e.MaxPending, e.FreesAt.UTC().Format(time.RFC3339))
 }
 
@@ -252,7 +252,7 @@ type ClientMetadata struct {
 
 // ErrInvalidMetadataClientID é o erro que o ClientMetadataFetcher embrulha quando o
 // client_id não serve como URL de documento e a busca nem sai para a rede.
-var ErrInvalidMetadataClientID = errors.New("client_id não serve como URL de documento de metadados")
+var ErrInvalidMetadataClientID = errors.New("client_id cannot be used as a metadata document URL")
 
 // ClientMetadataFetcher busca e valida o documento de metadados de um client_id que é
 // URL (draft-ietf-oauth-client-id-metadata-document). Erro de busca ou de validação

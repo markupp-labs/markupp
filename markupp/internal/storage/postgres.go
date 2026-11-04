@@ -15,7 +15,7 @@ import (
 func OpenPool(ctx context.Context, databaseURL string) (*pgxpool.Pool, error) {
 	pool, err := pgxpool.New(ctx, databaseURL)
 	if err != nil {
-		return nil, fmt.Errorf("configurar pool, esperado postgres://usuario:senha@host/banco: %w", err)
+		return nil, fmt.Errorf("configure pool: expected postgres://user:password@host/database: %w", err)
 	}
 	if err := pool.Ping(ctx); err != nil {
 		pool.Close()
@@ -45,10 +45,10 @@ func EnableScalerLogin(ctx context.Context, pool *pgxpool.Pool, password string)
 	var stmt string
 	err := pool.QueryRow(ctx, "SELECT format('ALTER ROLE markupp_scaler WITH LOGIN PASSWORD %L', $1::text)", password).Scan(&stmt)
 	if err != nil {
-		return fmt.Errorf("montar o ALTER ROLE do papel markupp_scaler: %w", err)
+		return fmt.Errorf("build ALTER ROLE for role markupp_scaler: %w", err)
 	}
 	if _, err := pool.Exec(ctx, stmt); err != nil {
-		return fmt.Errorf("dar LOGIN ao papel markupp_scaler, esperado dono do banco com CREATEROLE: %w", err)
+		return fmt.Errorf("grant LOGIN to role markupp_scaler: expected database owner with CREATEROLE: %w", err)
 	}
 	return nil
 }

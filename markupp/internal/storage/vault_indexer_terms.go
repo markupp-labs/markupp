@@ -17,11 +17,11 @@ const termsPerNote = 50
 func saveTerms(ctx context.Context, q *gen.Queries, cs indexing.Changeset, indexed []indexing.IndexedNote) error {
 	noteIDs := batchNoteIDs(indexed)
 	if err := q.DeleteNoteTerms(ctx, noteIDs); err != nil {
-		return fmt.Errorf("apagar os termos das %d notas do cofre %q: %w", len(noteIDs), cs.VaultID, err)
+		return fmt.Errorf("delete terms of %d notes in vault %q: %w", len(noteIDs), cs.VaultID, err)
 	}
 	params := gen.SaveNoteTermsParams{TermsPerNote: termsPerNote, VaultID: cs.VaultID, NoteIds: noteIDs}
 	if err := q.SaveNoteTerms(ctx, params); err != nil {
-		return fmt.Errorf("gravar os termos das %d notas do cofre %q: %w", len(noteIDs), cs.VaultID, err)
+		return fmt.Errorf("save terms of %d notes in vault %q: %w", len(noteIDs), cs.VaultID, err)
 	}
 	return nil
 }

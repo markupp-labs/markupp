@@ -120,11 +120,11 @@ func Load(lookup LookupFunc) (Config, error) {
 	readString(lookup, "MARKUPP_SCALER_PASSWORD", &cfg.ScalerPassword)
 	cfg.AllowedOrigins = splitOrigins(lookup)
 	port := int64(cfg.Port)
-	if err := readBounded(lookup, "MARKUPP_PORT", 1, 65535, "de 1 a 65535", &port); err != nil {
+	if err := readBounded(lookup, "MARKUPP_PORT", 1, 65535, "from 1 to 65535", &port); err != nil {
 		return Config{}, err
 	}
 	cfg.Port = int(port)
-	if err := readBounded(lookup, "MARKUPP_MAX_NOTE_SIZE", 1, math.MaxInt64, "maior que zero", &cfg.MaxNoteSize); err != nil {
+	if err := readBounded(lookup, "MARKUPP_MAX_NOTE_SIZE", 1, math.MaxInt64, "greater than zero", &cfg.MaxNoteSize); err != nil {
 		return Config{}, err
 	}
 	if err := loadServerSettings(lookup, &cfg); err != nil {
@@ -155,7 +155,7 @@ func loadServerSettings(lookup LookupFunc, cfg *Config) error {
 
 func readRateLimit(lookup LookupFunc, target *int) error {
 	limit := int64(*target)
-	if err := readBounded(lookup, "MARKUPP_RATE_LIMIT_PER_MINUTE", 1, 10000, "de 1 a 10000", &limit); err != nil {
+	if err := readBounded(lookup, "MARKUPP_RATE_LIMIT_PER_MINUTE", 1, 10000, "from 1 to 10000", &limit); err != nil {
 		return err
 	}
 	*target = int(limit)
@@ -172,7 +172,7 @@ func readTrustedProxies(lookup LookupFunc, target *[]netip.Prefix) error {
 		}
 		prefix, err := netip.ParsePrefix(item)
 		if err != nil {
-			return fmt.Errorf("MARKUPP_TRUSTED_PROXIES=%q: %q nao e CIDR; esperada lista de CIDRs IPv4 ou IPv6 separada por virgula, como 10.0.0.0/8,fd00::/8", raw, item)
+			return fmt.Errorf("MARKUPP_TRUSTED_PROXIES=%q: %q is not a CIDR, expected a comma separated list of IPv4 or IPv6 CIDRs, such as 10.0.0.0/8,fd00::/8", raw, item)
 		}
 		*target = append(*target, unmapPrefix(prefix).Masked())
 	}
@@ -203,7 +203,7 @@ func loadSMTPSettings(lookup LookupFunc, cfg *Config) error {
 		return err
 	}
 	if _, err := mail.ParseAddress(cfg.SMTPFrom); err != nil {
-		return fmt.Errorf("MARKUPP_SMTP_FROM=%q, esperado o remetente usuario@dominio ou Nome <usuario@dominio> quando MARKUPP_SMTP_URL existe: %w", cfg.SMTPFrom, err)
+		return fmt.Errorf("MARKUPP_SMTP_FROM=%q, expected a sender user@domain or Name <user@domain> when MARKUPP_SMTP_URL is set: %w", cfg.SMTPFrom, err)
 	}
 	return nil
 }
@@ -218,7 +218,7 @@ func checkSMTPURL(raw string) error {
 	if err == nil {
 		shown = parsed.Redacted()
 	}
-	return fmt.Errorf("MARKUPP_SMTP_URL=%q, esperado smtp://usuario:senha@host:porta ou smtps://", shown)
+	return fmt.Errorf("MARKUPP_SMTP_URL=%q, expected smtp://user:password@host:port or smtps://", shown)
 }
 
 // LoadIndexer lê só o que o indexador usa: o banco, a configuração de busca e o
@@ -227,7 +227,7 @@ func LoadIndexer(lookup LookupFunc) (Config, error) {
 	cfg := Default()
 	url, ok := lookup("MARKUPP_DATABASE_URL")
 	if !ok || url == "" {
-		return Config{}, fmt.Errorf("MARKUPP_DATABASE_URL vazia, esperado postgres://usuario:senha@host:5432/banco")
+		return Config{}, fmt.Errorf("MARKUPP_DATABASE_URL is empty, expected postgres://user:password@host:5432/database")
 	}
 	cfg.DatabaseURL = url
 	readString(lookup, "MARKUPP_SEARCH_CONFIG", &cfg.SearchConfig)
@@ -245,10 +245,10 @@ func readInterval(lookup LookupFunc, key string, target *time.Duration) error {
 	}
 	value, err := time.ParseDuration(strings.TrimSpace(raw))
 	if err != nil {
-		return fmt.Errorf("%s=%q, esperada duracao positiva como 30s ou 2m: %w", key, raw, err)
+		return fmt.Errorf("%s=%q, expected a positive duration such as 30s or 2m: %w", key, raw, err)
 	}
 	if value <= 0 {
-		return fmt.Errorf("%s=%q, esperada duracao positiva como 30s ou 2m", key, raw)
+		return fmt.Errorf("%s=%q, expected a positive duration such as 30s or 2m", key, raw)
 	}
 	*target = value
 	return nil
@@ -263,10 +263,10 @@ func readBounded(lookup LookupFunc, key string, lowest, highest int64, faixa str
 	}
 	value, err := strconv.ParseInt(raw, 10, 64)
 	if err != nil {
-		return fmt.Errorf("%s=%q, esperado inteiro %s: %w", key, raw, faixa, err)
+		return fmt.Errorf("%s=%q, expected an integer %s: %w", key, raw, faixa, err)
 	}
 	if value < lowest || value > highest {
-		return fmt.Errorf("%s=%d fora da faixa, esperado inteiro %s", key, value, faixa)
+		return fmt.Errorf("%s=%d out of range, expected an integer %s", key, value, faixa)
 	}
 	*target = value
 	return nil
@@ -291,12 +291,12 @@ func loadAuthSettings(lookup LookupFunc, cfg *Config) error {
 	}
 	readString(lookup, "MARKUPP_DEFAULT_TENANT_ID", &cfg.DefaultTenantID)
 	jwtExp := int64(cfg.JWTExpirationMinutes)
-	if err := readBounded(lookup, "MARKUPP_JWT_EXPIRATION_MINUTES", 1, 10080, "de 1 a 10080", &jwtExp); err != nil {
+	if err := readBounded(lookup, "MARKUPP_JWT_EXPIRATION_MINUTES", 1, 10080, "from 1 to 10080", &jwtExp); err != nil {
 		return err
 	}
 	cfg.JWTExpirationMinutes = int(jwtExp)
 	refExp := int64(cfg.RefreshExpirationDays)
-	if err := readBounded(lookup, "MARKUPP_REFRESH_EXPIRATION_DAYS", 1, 365, "de 1 a 365", &refExp); err != nil {
+	if err := readBounded(lookup, "MARKUPP_REFRESH_EXPIRATION_DAYS", 1, 365, "from 1 to 365", &refExp); err != nil {
 		return err
 	}
 	cfg.RefreshExpirationDays = int(refExp)
@@ -317,7 +317,7 @@ func readAuthSecret(lookup LookupFunc, target *string) error {
 		return nil
 	}
 	if len(trimmed) < minAuthSecretBytes {
-		return fmt.Errorf("MARKUPP_AUTH_SECRET com %d bytes, esperado ao menos %d bytes aleatorios", len(trimmed), minAuthSecretBytes)
+		return fmt.Errorf("MARKUPP_AUTH_SECRET has %d bytes, expected at least %d bytes of random data", len(trimmed), minAuthSecretBytes)
 	}
 	*target = trimmed
 	return nil
@@ -336,7 +336,7 @@ func readBool(lookup LookupFunc, key string, target *bool) error {
 	}
 	parsed, err := strconv.ParseBool(strings.TrimSpace(val))
 	if err != nil {
-		return fmt.Errorf("%s=%q invalido, esperado booleano (true/false/1/0): %w", key, val, err)
+		return fmt.Errorf("%s=%q is invalid, expected boolean (true/false/1/0): %w", key, val, err)
 	}
 	*target = parsed
 	return nil
