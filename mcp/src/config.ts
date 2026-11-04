@@ -41,12 +41,12 @@ const LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
 export const ISSUER_RULE: PublicUrlRule = {
   path: "forbidden",
   expected:
-    "https://host[:porta] sem caminho, query nem fragmento (http so em localhost, 127.0.0.1 ou [::1])",
+    "https://host[:port] without path, query or fragment (http only on localhost, 127.0.0.1 or [::1])",
 };
 const RESOURCE_RULE: PublicUrlRule = {
   path: "required",
   expected:
-    "https://host[:porta]/caminho sem query nem fragmento (http so em localhost, 127.0.0.1 ou [::1]); o caminho e a rota do endpoint MCP",
+    "https://host[:port]/path without query or fragment (http only on localhost, 127.0.0.1 or [::1]); the path is the route of the MCP endpoint",
 };
 
 // loadHttpEnv lê e valida as variáveis do transporte HTTP, todas opcionais, falhando
@@ -72,7 +72,7 @@ function internalUrl(env: McpEnvironment, key: string): string {
   const url = URL.parse(raw);
   if (!url || !["http:", "https:"].includes(url.protocol)) {
     throw new Error(
-      `${key}="${raw}", esperado http(s)://host[:porta] do servidor Go`,
+      `${key}="${raw}", expected http(s)://host[:port] of the Go server`,
     );
   }
   return raw.replace(/\/+$/, "");
@@ -94,7 +94,7 @@ export function checkPublicUrl(
 ): URL {
   const url = URL.parse(raw);
   if (!url || !publicUrlAllowed(url, raw, rule)) {
-    throw new Error(`${source}="${raw}", esperado ${rule.expected}`);
+    throw new Error(`${source}="${raw}", expected ${rule.expected}`);
   }
   return url;
 }
@@ -118,7 +118,7 @@ function secretSource(env: McpEnvironment): ResourceSecretSource {
   const path = optional(env, "MARKUPP_MCP_SECRET_PATH");
   if (path !== undefined) return { kind: "file", path };
   throw new Error(
-    `${key} e MARKUPP_MCP_SECRET_PATH vazias, esperado o segredo do resource em ${key} ou, em MARKUPP_MCP_SECRET_PATH, o caminho do arquivo em que o Go o escreve`,
+    `${key} and MARKUPP_MCP_SECRET_PATH are empty, expected the resource secret in ${key} or, in MARKUPP_MCP_SECRET_PATH, the path of the file the Go server writes it to`,
   );
 }
 
@@ -127,7 +127,7 @@ export function checkSecretSize(source: string, secret: string): string {
   const bytes = new TextEncoder().encode(secret).length;
   if (bytes < MIN_RESOURCE_SECRET_BYTES) {
     throw new Error(
-      `${source} com ${bytes} bytes, esperado ao menos ${MIN_RESOURCE_SECRET_BYTES} bytes aleatorios`,
+      `${source} has ${bytes} bytes, expected at least ${MIN_RESOURCE_SECRET_BYTES} random bytes`,
     );
   }
   return secret;
@@ -138,7 +138,9 @@ function port(env: McpEnvironment): number {
   if (raw === undefined) return DEFAULT_PORT;
   const value = Number(raw);
   if (!/^\d+$/.test(raw) || value < 1 || value > 65535) {
-    throw new Error(`MARKUPP_MCP_PORT="${raw}", esperado inteiro de 1 a 65535`);
+    throw new Error(
+      `MARKUPP_MCP_PORT="${raw}", expected an integer from 1 to 65535`,
+    );
   }
   return value;
 }

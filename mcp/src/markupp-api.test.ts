@@ -23,7 +23,7 @@ function apiWith(fake: FakeFetch): HttpMarkuppApi {
 function onlyRequest(fake: FakeFetch): Request {
   const [request] = fake.requests;
   if (!request || fake.requests.length !== 1) {
-    throw new Error(`esperava 1 requisição, chegaram ${fake.requests.length}`);
+    throw new Error(`expected 1 request, got ${fake.requests.length}`);
   }
   return request;
 }

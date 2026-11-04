@@ -10,7 +10,7 @@ export function readPackageVersion(packageJsonUrl: URL): SemanticVersion {
   };
   if (typeof version !== "string" || !/^\d+\.\d+\.\d+/.test(version)) {
     throw new Error(
-      `versao ${JSON.stringify(version)} em ${packageJsonUrl.pathname}, esperado x.y.z`,
+      `version ${JSON.stringify(version)} in ${packageJsonUrl.pathname}, expected x.y.z`,
     );
   }
   return version as SemanticVersion;

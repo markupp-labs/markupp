@@ -12,7 +12,7 @@ export function freeLoopbackPort(): Promise<number> {
         typeof address === "object" && address
           ? resolve(address.port)
           : reject(
-              new Error(`endereço inesperado do loopback: ${String(address)}`),
+              new Error(`unexpected loopback address: ${String(address)}`),
             ),
       );
     });

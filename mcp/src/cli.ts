@@ -21,13 +21,13 @@ type Subcommand = {
   run: (args: string[], env: McpEnvironment, deps: CliDeps) => Promise<number>;
 };
 
-export const USAGE = `uso: markupp-mcp [login [url] | logout | http | help | --version]
-  (sem subcomando)  serve o MCP em stdio com o login guardado
-  login [url]       entra pelo navegador (url padrao http://localhost:8080)
-  logout            revoga e apaga o login guardado
-  http              serve o MCP em Streamable HTTP
-  help, -h, --help  mostra este uso
-  --version, -v     mostra a versao`;
+export const USAGE = `usage: markupp-mcp [login [url] | logout | http | help | --version]
+  (no subcommand)   serves MCP over stdio with the stored login
+  login [url]       signs in through the browser (default url http://localhost:8080)
+  logout            revokes and deletes the stored login
+  http              serves MCP over Streamable HTTP
+  help, -h, --help  shows this usage
+  --version, -v     shows the version`;
 
 // INFO_FLAGS são as opções que só imprimem algo no stdout e saem com 0, sem servir nada.
 const INFO_FLAGS: Record<string, (deps: CliDeps) => string> = {
@@ -58,12 +58,12 @@ export async function runCli(
   if (info !== undefined) return printInfo(info(deps), deps);
   const subcommand = ownEntry(SUBCOMMANDS, command);
   if (subcommand === undefined) {
-    deps.writeError(`subcomando "${command}" desconhecido\n${USAGE}`);
+    deps.writeError(`unknown subcommand "${command}"\n${USAGE}`);
     return 2;
   }
   if (args.length > subcommand.maxArgs) {
     deps.writeError(
-      `argumentos demais para ${command}: ${args.join(" ")}\n${USAGE}`,
+      `too many arguments for ${command}: ${args.join(" ")}\n${USAGE}`,
     );
     return 2;
   }

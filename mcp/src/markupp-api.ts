@@ -449,7 +449,7 @@ async function toApiError(
   const parsed = parseErrorBody(text);
   if (parsed)
     return new MarkuppApiError(response.status, parsed.error, parsed.message);
-  const message = `${call.method} ${call.path} respondeu ${response.status} com corpo fora do formato {error, message}: ${text.slice(0, 200)}`;
+  const message = `${call.method} ${call.path} answered ${response.status} with a body that does not match {error, message}: ${text.slice(0, 200)}`;
   return new MarkuppApiError(response.status, "unexpected_response", message);
 }
 

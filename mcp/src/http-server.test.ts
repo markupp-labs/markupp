@@ -20,7 +20,7 @@ function freePort(): Promise<number> {
       probe.close(() =>
         typeof address === "object" && address
           ? resolve(address.port)
-          : reject(new Error(`endereço inesperado: ${String(address)}`)),
+          : reject(new Error(`unexpected address: ${String(address)}`)),
       );
     });
   });
