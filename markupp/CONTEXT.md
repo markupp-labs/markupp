@@ -11,13 +11,8 @@ e agente de IA são clientes, e nenhum deles é privilegiado. O navegador consom
 o markupp.
 _Avoid_: consumidor, integração, aplicação externa, frontend
 
-**Cloud**:
-A edição que a equipe opera, com vários tenants e plano de controle. É o mesmo código do
-self-host, e a diferença entre as duas é configuração.
-_Avoid_: Enterprise, Multi-tenant, SaaS, hospedado
-
 **Self-host**:
-A edição que qualquer pessoa instala e opera por conta própria, sem plano de controle.
+Instalar e operar o markupp por conta própria. É o produto completo, sem recurso reservado.
 _Avoid_: on-premise, comunidade, open source
 
 **Nota**:
@@ -82,12 +77,6 @@ _Avoid_: workspace, projeto, biblioteca, espaço
 A unidade de isolamento dentro do banco. Toda linha de dado carrega o tenant a que
 pertence. A conta entra num tenant por vínculo.
 _Avoid_: cliente, organização, conta
-
-**Edição**:
-A forma de instalação do markupp. São duas, self-host e Cloud, com o mesmo código, e a
-diferença entre elas é configuração. O self-host é operado por quem instala. O Cloud é operado
-pela equipe, com plano de controle.
-_Avoid_: versão, plano, SaaS, Enterprise, Multi-tenant
 
 **Plano de registro**:
 Onde as notas vivem. É durável e é a fonte da verdade do sistema.
