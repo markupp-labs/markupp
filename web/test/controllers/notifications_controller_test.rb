@@ -14,7 +14,8 @@ class NotificationsControllerTest < ActionDispatch::IntegrationTest
     get root_path
 
     %w[side drawer].each do |placement|
-      assert_select ".activity-bar-#{placement} .activity-bar-actions button[popovertarget=notification_menu][aria-haspopup=dialog]" do
+      assert_select ".activity-bar-#{placement} .activity-bar-actions button[popovertarget=notification_menu][aria-haspopup=dialog]" \
+                    "[title='Notifications (g n)']" do
         assert_select "turbo-frame#notification_badge_#{placement}[src=?][loading=lazy][refresh=morph][data-controller=frame-poll]", notifications_path
       end
     end

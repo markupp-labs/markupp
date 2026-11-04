@@ -106,6 +106,21 @@ class NotificationsTest < ApplicationSystemTestCase
     assert_selector "#{BELL}:focus"
   end
 
+  test "g then n opens the bell with the focus inside, and esc gives it back to the bell" do
+    use_fake_api(tenants: TENANTS, invites: [ INVITE ])
+    sign_in_through_form
+    execute_script("document.activeElement.blur()")
+
+    send_keys "g", "n"
+    assert_selector "#notification_menu:popover-open"
+    assert evaluate_script("document.querySelector('#notification_menu').contains(document.activeElement)"),
+           "expected the focus inside the bell popover"
+    send_keys :escape
+
+    assert_no_selector "#notification_menu:popover-open"
+    assert_selector "#{BELL}:focus"
+  end
+
   test "the count reads clearly on the bell in the light and the dark theme" do
     use_fake_api(tenants: TENANTS, invites: [ INVITE ])
     sign_in_through_form
