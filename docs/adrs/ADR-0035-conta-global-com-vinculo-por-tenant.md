@@ -56,5 +56,5 @@ administração, e o viewer só lê nos cofres de que é membro
 
 Em novembro de 2026, o texto deste ADR foi revisto. A decisão não mudou.
 
-Em novembro de 2026, a edição operada pela equipe passou a se chamar Cloud. A decisão não
-mudou.
+Em novembro de 2026, o texto passou a descrever a capacidade da instalação no lugar de uma
+edição. A decisão não mudou.

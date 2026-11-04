@@ -41,5 +41,5 @@ self-host sem depender de serviço de terceiro
 
 ## Emenda
 
-Em novembro de 2026, a edição operada pela equipe passou a se chamar Cloud. A decisão não
-mudou.
+Em novembro de 2026, o texto passou a descrever a capacidade da instalação no lugar de uma
+edição. A decisão não mudou.
