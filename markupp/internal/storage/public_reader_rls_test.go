@@ -47,7 +47,7 @@ func privilegiosDoLeitor(t *testing.T, db *pgxpool.Pool) map[string][]string {
 	return out
 }
 
-func TestMigracao00036_Leitor_SoLeAsTabelasDaNotaEDaRecuperacao(t *testing.T) {
+func TestMigracao00038_Leitor_SoLeAsTabelasDaNotaEDaRecuperacao(t *testing.T) {
 	db := setupTestDB(t)
 
 	privilegios := privilegiosDoLeitor(t, db)
@@ -61,7 +61,7 @@ func TestMigracao00036_Leitor_SoLeAsTabelasDaNotaEDaRecuperacao(t *testing.T) {
 	}
 }
 
-func TestMigracao00036_Leitor_NaoLeQuemPublicouNemOTenant(t *testing.T) {
+func TestMigracao00038_Leitor_NaoLeQuemPublicouNemOTenant(t *testing.T) {
 	db := setupTestDB(t)
 
 	for _, coluna := range []string{"tenant_id", "published_by"} {
