@@ -6,9 +6,8 @@ Proposta
 
 ## Contexto
 
-Quem usa o markupp quer abrir um cofre para leitura de qualquer pessoa, e a documentação do
-próprio markupp deve ser o primeiro cofre assim, servindo de demonstração ao vivo. Hoje toda rota de nota
-exige conta, e o RLS do ADR-0034 recorta pelo tenant e pelo usuário entregues pela transação do
+Quem instala o markupp quer abrir um cofre para leitura de qualquer pessoa, como a documentação
+de um projeto ou uma base aberta à comunidade. Hoje toda rota de nota exige conta, e o RLS do ADR-0034 recorta pelo tenant e pelo usuário entregues pela transação do
 ator. Não existe caminho de leitura para quem não tem conta
 
 ## Decisão
