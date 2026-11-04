@@ -73,6 +73,16 @@ cofre lê e escreve todas as notas dele, salvo o viewer, que só lê. O membro e
 por outro membro, entre as contas que já têm vínculo com o tenant.
 _Avoid_: workspace, projeto, biblioteca, espaço
 
+**Nota pública**:
+A nota que qualquer pessoa, com ou sem conta, lê pelo endereço público, porque foi publicada
+sozinha ou está numa pasta ou cofre publicado. Ninguém escreve nela por esse caminho.
+_Avoid_: página pública, site, nota compartilhada
+
+**Publicação**:
+O ato de tornar pública uma nota, uma pasta ou um cofre, e o registro desse ato, com autor e
+data. Despublicar desfaz a publicação, e as notas voltam a ser lidas só pelos membros.
+_Avoid_: compartilhamento, exportação, deploy
+
 **Tenant**:
 A unidade de isolamento dentro do banco. Toda linha de dado carrega o tenant a que
 pertence. A conta entra num tenant por vínculo.
@@ -117,6 +127,11 @@ _Avoid_: associação, assinatura, membership
 O pedido de vínculo que owner ou admin emite para um email, com papel e validade. A conta
 desse email aceita ou recusa; quem ainda não tem conta se cadastra pelo token do convite.
 _Avoid_: cadastro, convocação, autorregistro
+
+**Notificação**:
+O que pede atenção da conta no painel, como um convite pendente. É da conta, não do tenant, e
+some quando a conta resolve o que a originou.
+_Avoid_: alerta, aviso, email
 
 **Autorização**:
 O consentimento de uma conta para um cliente agir em nome dela. A conta pode revogar a
