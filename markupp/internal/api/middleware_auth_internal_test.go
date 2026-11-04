@@ -42,5 +42,5 @@ func TestRequireAuth_DeclaracaoDepoisDoRequireAuth_RecusaTokenOAuth(t *testing.T
 	handler.ServeHTTP(rec, req)
 
 	assert.Equal(t, http.StatusForbidden, rec.Code)
-	assert.JSONEq(t, `{"error":"first_party_only","message":"rota so aceita o token de login"}`, rec.Body.String())
+	assert.JSONEq(t, `{"error":"first_party_only","message":"this route only accepts a login token, not an app token"}`, rec.Body.String())
 }

@@ -39,7 +39,7 @@ export class OAuthGrantError extends Error {
 
   constructor(endpoint: string, status: number, code: string, detail: string) {
     super(
-      `${endpoint} recusou o pedido: status ${status}, error ${code} (${detail}); esperado 200`,
+      `${endpoint} refused the request: status ${status}, error ${code} (${detail}); expected 200`,
     );
     this.name = "OAuthGrantError";
     this.oauthError = code;
@@ -54,7 +54,7 @@ export function isInvalidGrant(error: unknown): error is OAuthGrantError {
 }
 
 const METADATA_SHAPE =
-  "esperado {issuer, authorization_endpoint, token_endpoint, revocation_endpoint}";
+  "expected {issuer, authorization_endpoint, token_endpoint, revocation_endpoint}";
 
 const metadataBody = z.object({
   issuer: z.string(),
@@ -64,7 +64,7 @@ const metadataBody = z.object({
 });
 
 const TOKENS_SHAPE =
-  "esperado {access_token: string, expires_in: inteiro positivo, refresh_token: string}";
+  "expected {access_token: string, expires_in: positive integer, refresh_token: string}";
 
 const tokensBody = z.object({
   access_token: z.string().min(1),
@@ -79,13 +79,13 @@ export async function discoverAuthServer(
   url: string,
   fetcher: typeof fetch,
 ): Promise<AuthServerMetadata> {
-  const origin = checkPublicUrl("url do markupp", url, ISSUER_RULE).origin;
+  const origin = checkPublicUrl("markupp url", url, ISSUER_RULE).origin;
   const metadataUrl = `${origin}${METADATA_PATH}`;
   const signal = AbortSignal.timeout(REQUEST_TIMEOUT_MS);
   const response = await fetcher(metadataUrl, { signal });
   if (!response.ok) {
     throw new Error(
-      `metadata em ${metadataUrl} respondeu status ${response.status}, esperado 200`,
+      `metadata at ${metadataUrl} answered status ${response.status}, expected 200`,
     );
   }
   return metadataFrom(metadataUrl, origin, await readBody(response));
@@ -99,13 +99,13 @@ function metadataFrom(
   const parsed = metadataBody.safeParse(body.json);
   if (!parsed.success) {
     throw new Error(
-      `metadata em ${metadataUrl} fora do formato: ${JSON.stringify(body.excerpt)}; ${METADATA_SHAPE}`,
+      `metadata at ${metadataUrl} malformed: ${JSON.stringify(body.excerpt)}; ${METADATA_SHAPE}`,
     );
   }
   const { issuer } = parsed.data;
   if (URL.parse(issuer)?.origin !== origin) {
     throw new Error(
-      `issuer em ${metadataUrl}="${issuer}", esperado ${origin}, a origem da url pedida`,
+      `issuer at ${metadataUrl}="${issuer}", expected ${origin}, the origin of the requested url`,
     );
   }
   return endpointsOf(parsed.data, origin);
@@ -134,7 +134,7 @@ function endpointsOf(
 function sameOrigin(name: string, raw: string, origin: string): string {
   const url = URL.parse(raw);
   if (!url || url.origin !== origin) {
-    throw new Error(`${name}="${raw}", esperado uma url na origem ${origin}`);
+    throw new Error(`${name}="${raw}", expected a url on origin ${origin}`);
   }
   return url.href;
 }
@@ -192,7 +192,7 @@ function issuedTokens(
   if (!parsed.success) {
     const fields = parsed.error.issues.map((i) => i.path.join(".")).join(", ");
     throw new Error(
-      `resposta de ${tokenEndpoint} fora do formato nos campos [${fields}]; ${TOKENS_SHAPE}`,
+      `response from ${tokenEndpoint} malformed in fields [${fields}]; ${TOKENS_SHAPE}`,
     );
   }
   const { access_token, expires_in, refresh_token } = parsed.data;

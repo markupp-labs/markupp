@@ -40,7 +40,7 @@ namespace informado:
 Em qualquer linguagem do Pulumi, inclusive YAML:
 
 ```sh
-pulumi package add github.com/markupp-labs/markupp/deploy/pulumi@v1.1.0
+pulumi package add github.com/markupp-labs/markupp/deploy/pulumi@v1.0.0-rc.2
 ```
 
 ```yaml
@@ -49,7 +49,7 @@ resources:
     type: markupp:index:Markupp
     properties:
       namespace: markupp
-      image: ghcr.io/markupp-labs/markupp:1.1.0
+      image: ghcr.io/markupp-labs/markupp:1.0.0-rc.2
       host: notas.exemplo.com
       acmeEmail: ops@exemplo.com
       database:
@@ -62,7 +62,8 @@ e só o notificador a recebe: a API recebe apenas `MARKUPP_INVITE_BY_EMAIL=true`
 O email leva o token do convite, então o notificador exige TLS: com smtp:// o servidor precisa
 oferecer STARTTLS. Texto puro só com `?tls=none` no fim da URL, para servidor local.
 Com email, a API deixa de devolver o token do convite, e o notificador gera o token na entrega e
-o envia só por email.
+o envia só por email. O bloco `email` vazio vale como sem email, porque o Pulumi YAML não omite
+propriedade, e o bloco com `from` sem `smtpUrl` é recusado.
 
 Os emails de convite, verificação de email e troca de senha levam primeiro o link da página do
 painel que recebe o token (/invite_acceptance/new, /email_confirmation/new e
@@ -90,13 +91,36 @@ Gateway, informe `existingGateway` com nome, namespace e listener. O componente 
 HTTPRoute, e o Gateway precisa aceitar rotas do namespace do markupp em `allowedRoutes`. Nesse
 caso o certificado fica com quem administra o Gateway.
 
-### Stacks da equipe
+Para subir o painel, informe `panel` com `image` e `host`. Ele fica num host próprio, porque no
+host da API as rotas dos dois colidem, com uma réplica só: a renovação do token mora na memória
+do processo. O componente gera a `secret_key_base` num Secret, aponta o painel para a API pelo
+Service e passa à API o `MARKUPP_PANEL_URL`, que leva o consentimento do OAuth e os links dos
+emails para o painel. Com `existingGateway`, `panel.sectionName` escolhe o listener do host do
+painel; com Gateway próprio, o componente abre um listener para ele.
 
-O projeto em `deploy/stacks` usa o componente pelo caminho local e tem duas stacks:
+Para subir o servidor MCP, informe `mcp` com `image`. Ele atende na mesma origem da API, em
+`/mcp`, encaminhado pelo Go ao Service dele, e o componente guarda num Secret o segredo do
+resource, que vai para a API em `MARKUPP_OAUTH_RESOURCES` e para o MCP em
+`MARKUPP_MCP_RESOURCE_SECRET`.
 
-- `prod`: o Enterprise no cluster de produção, com Let's Encrypt
-- `dev`: um cluster kind que o CI sobe em cada PR e a cada push em dev para testar a implantação, com
-  certificado autoassinado
+### Stack dev
+
+O projeto em `deploy/stacks` usa o componente pelo caminho local e tem uma stack, `dev`: um
+cluster kind que o CI sobe em cada PR e a cada push em dev para testar a implantação, com
+certificado autoassinado.
+
+A cada tag `v*`, o workflow de release publica as imagens do servidor, do painel e do MCP. Com
+aprovação no environment `production` do GitHub, que guarda o secret `CLOUD_DISPATCH_TOKEN`, o
+release também avisa a tag nova por `repository_dispatch`; sem o secret (forks e instalações
+self-host), o passo é pulado.
+
+A stack sobe sem email. Para ligar numa stack, com a URL do SMTP cifrada no arquivo da stack:
+
+```sh
+pulumi config set --path --secret email.smtpUrl 'smtps://usuario:senha@host:465'
+pulumi config set --path email.from 'markupp <nao-responda@exemplo.com>'
+pulumi config set --path email.panelUrl https://painel.exemplo.com
+```
 
 Para rodar o mesmo teste da stack dev na própria máquina, com Docker, kind, helm, kubectl e
 Pulumi instalados:

@@ -31,7 +31,7 @@ export class TokenExchangeError extends Error {
 
   constructor(httpStatus: number, oauthError: string, description: string) {
     super(
-      `troca de token recusada pelo issuer: status ${httpStatus}, error ${oauthError} (${description}); esperado 200 com access_token e expires_in`,
+      `token exchange refused by the issuer: status ${httpStatus}, error ${oauthError} (${description}); expected 200 with access_token and expires_in`,
     );
     this.name = "TokenExchangeError";
     this.httpStatus = httpStatus;
@@ -55,7 +55,7 @@ const exchangeSuccessBody = z.object({
 });
 
 const SUCCESS_SHAPE =
-  "esperado {access_token: string, expires_in: inteiro positivo}";
+  "expected {access_token: string, expires_in: positive integer}";
 
 // exchangeAgentToken troca o token opaco do agente pelo JWT da API (RFC 8693), com o
 // servidor MCP autenticado por HTTP Basic como resource.
@@ -120,13 +120,13 @@ async function readExchangedToken(
   const body = await readBody(response);
   if (body.json === undefined) {
     throw new Error(
-      `resposta da troca de token nao e JSON: status ${response.status}, corpo ${JSON.stringify(body.excerpt)}; ${SUCCESS_SHAPE}`,
+      `token exchange response is not JSON: status ${response.status}, body ${JSON.stringify(body.excerpt)}; ${SUCCESS_SHAPE}`,
     );
   }
   const parsed = exchangeSuccessBody.safeParse(body.json);
   if (!parsed.success) {
     throw new Error(
-      `resposta da troca de token fora do formato: ${parsed.error.message}; ${SUCCESS_SHAPE}`,
+      `token exchange response malformed: ${parsed.error.message}; ${SUCCESS_SHAPE}`,
     );
   }
   const { access_token, expires_in } = parsed.data;

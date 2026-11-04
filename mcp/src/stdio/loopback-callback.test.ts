@@ -9,7 +9,7 @@ describe("callbackReply", () => {
   it("aceita o retorno com o state esperado", () => {
     const answer = callbackReply(callbackUrl("code=c&state=s"), "s");
     expect(answer).toMatchObject({ status: 200, accepted: true });
-    expect(answer.html).toContain("Pode fechar esta aba");
+    expect(answer.html).toContain("You can close this tab");
   });
 
   it("recusa o state diferente e segue esperando", () => {
@@ -23,7 +23,7 @@ describe("callbackReply", () => {
       "s",
     );
     expect(answer).toMatchObject({ status: 200, accepted: true });
-    expect(answer.html).toContain("Login recusado");
+    expect(answer.html).toContain("Login refused");
   });
 
   it("responde 404 fora da rota do callback", () => {

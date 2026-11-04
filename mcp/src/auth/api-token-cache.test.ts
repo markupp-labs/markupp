@@ -84,7 +84,7 @@ describe("ApiTokenCache", () => {
 
   it("recusa teto que não é inteiro positivo, citando o valor", () => {
     expect(() => cacheOver(new FakeFetch(), new FakeClock(), 0)).toThrow(
-      "teto do cache de tokens invalido: 0",
+      "invalid token cache limit: 0",
     );
   });
 });

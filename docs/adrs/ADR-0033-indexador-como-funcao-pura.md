@@ -20,14 +20,15 @@ no compose
 ## Alternativas consideradas
 
 - Indexador ciente da plataforma, lendo variáveis do Job ou falando com a API do Kubernetes:
-  menos camadas, e cada edição passa a ter uma indexação própria
+  menos camadas, e cada plataforma passa a ter uma indexação própria
 - Deixar a pureza implícita, sem registro: nada impede o próximo entrypoint de carregar estado
   para dentro do pacote
 
 ## Consequências
 
-- Uma implementação de indexação serve o cluster e o compose, sem edição com funcionalidade a
-  menos
+- Uma implementação de indexação serve o cluster e o compose, sem instalação com funcionalidade
+  a menos
 - O indexador é testável sem Kubernetes, com um conjunto de mudanças montado no teste
-- Trocar a forma de disparo, de KEDA para CronJob ou para broker, não toca o pacote de indexação
+- Trocar a forma de disparo, de KEDA para CronJob ou para broker, não toca o pacote de
+  indexação
 - Indexação atrasada não impede leitura nem escrita de nota, como o ADR-0012 prometeu

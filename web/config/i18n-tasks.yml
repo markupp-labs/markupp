@@ -14,6 +14,7 @@ data:
 ignore_missing:
   - settings.members.leave_tenant.left
   - tenants.refuse_unconfirmed_deletion.name_mismatch
+  - settings.vault_members.leave_vault.left
 
 ignore_unused:
   # Procuradas pelo próprio Rails: erros e atributos do ActiveModel e rótulos do form.label.
@@ -21,8 +22,10 @@ ignore_unused:
   - helpers.label.*
   # Unidade montada pelo compact_age a partir do AGE_STEPS.
   - compact_age.*
-  # Chave montada pelo leave_panel_session do PasswordResetsController.
+  # Chave montada pelo leave_panel_session do PasswordResetsController, e a do _empty dos cofres, escolhida num ternário.
   - password_resets.create.changed*
+  - vaults.empty.*hint
   # As duas do ignore_missing, na action em que o Rails procura.
   - settings.members.destroy.left
   - tenants.destroy.name_mismatch
+  - settings.vault_members.destroy.left

@@ -10,8 +10,17 @@ permissions:
 
 jobs:
   publish-image:
-    name: Publica imagem no GHCR
+    name: Publica a imagem ${{ matrix.image }} no GHCR
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - image: markupp
+            context: ./markupp
+          - image: markupp-web
+            context: ./web
+          - image: markupp-mcp
+            context: ./mcp
     permissions:
       contents: read
       packages: write
@@ -50,7 +59,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ github.repository_owner }}/markupp
+          images: ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}
           tags: |
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
@@ -59,9 +68,115 @@ jobs:
       - name: Build e push
         uses: docker/build-push-action@v6
         with:
-          context: ./markupp
-          file: ./markupp/Dockerfile
+          context: ${{ matrix.context }}
+          file: ${{ matrix.context }}/Dockerfile
           platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+
+  dispatch-cloud:
+    name: Avisa a operação da instância oficial
+    needs: publish-image
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    # A aprovação no environment é o portão do deploy de produção, e o token mora nele.
+    environment: production
+    permissions: {}
+    # Sem o secret (forks e self-host), o passo é pulado e o release termina verde.
+    env:
+      CLOUD_DISPATCH_TOKEN: ${{ secrets.CLOUD_DISPATCH_TOKEN }}
+    steps:
+      - name: Dispara o deploy da tag no markupp-cloud
+        if: env.CLOUD_DISPATCH_TOKEN != ''
+        env:
+          GH_TOKEN: ${{ secrets.CLOUD_DISPATCH_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          gh api --method POST repos/markupp-labs/markupp-cloud/dispatches \
+            -f event_type=markupp-release \
+            -f "client_payload[tag]=$TAG"
+
+  pack-npm:
+    name: Pack markupp-mcp for npm
+    needs: publish-image
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: mcp
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Set up Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 26
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npx vitest run
+
+      - name: Set package version from tag
+        env:
+          TAG: ${{ github.ref_name }}
+        run: npm version "${TAG#v}" --no-git-tag-version
+
+      - name: Pack tarball
+        run: npm pack --pack-destination "$RUNNER_TEMP/npm"
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: markupp-mcp-tarball
+          path: ${{ runner.temp }}/npm/*.tgz
+          if-no-files-found: error
+          retention-days: 1
+
+  # Publica no npm por trusted publishing: o npm troca o token OIDC do GitHub
+  # (id-token: write) por uma credencial de publicação, sem segredo guardado, e gera a
+  # provenance. O job só baixa o tarball pronto e publica, sem instalar dependências
+  # nem rodar scripts do pacote enquanto o token existe.
+  publish-npm:
+    name: Publish markupp-mcp to npm
+    needs: pack-npm
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          sparse-checkout: scripts/dist-tag-npm.sh
+          sparse-checkout-cone-mode: false
+
+      - name: Set up Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 26
+          registry-url: https://registry.npmjs.org
+
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: markupp-mcp-tarball
+          path: ${{ runner.temp }}/npm
+
+      # Prerelease vai para a dist-tag next: o npm recusa publicar prerelease sem --tag
+      # explícito, e quem roda npx markupp-mcp recebe só versões estáveis. Uma estável
+      # que não passa da latest atual (correção de uma linha antiga) vai para
+      # latest-MAJOR.MINOR, para não rebaixar o que o npx instala. Só o E404 do pacote
+      # ainda inexistente conta como sem latest; outra falha do npm view para o job.
+      - name: Publish with provenance
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          if ! current=$(npm view markupp-mcp dist-tags.latest 2>"$RUNNER_TEMP/npm-view.err"); then
+            grep -q E404 "$RUNNER_TEMP/npm-view.err" || { cat "$RUNNER_TEMP/npm-view.err" >&2; exit 1; }
+            current=
+          fi
+          dist_tag=$(scripts/dist-tag-npm.sh "${TAG#v}" "$current")
+          printf 'publishing %s with dist-tag %s (current latest: %s)\n' "${TAG#v}" "$dist_tag" "${current:-none}"
+          npm publish "$RUNNER_TEMP"/npm/markupp-mcp-*.tgz --ignore-scripts --provenance --access public --tag "$dist_tag"

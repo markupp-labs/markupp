@@ -1,0 +1,162 @@
+{
+  "placeholders": {
+    "instanceUrl": "{{instanceUrl}}",
+    "mcpUrl": "{{mcpUrl}}"
+  },
+  "clients": [
+    {
+      "id": "claude-code",
+      "name": "Claude Code",
+      "docsUrl": "https://code.claude.com/docs/en/mcp",
+      "snippets": [
+        {
+          "id": "cli",
+          "language": "shell",
+          "template": "claude mcp add --transport http markupp {{mcpUrl}}"
+        }
+      ],
+      "deeplinks": []
+    },
+    {
+      "id": "codex",
+      "name": "Codex",
+      "docsUrl": "https://developers.openai.com/codex/mcp",
+      "snippets": [
+        {
+          "id": "cli",
+          "language": "shell",
+          "template": "codex mcp add markupp --url {{mcpUrl}}"
+        },
+        {
+          "id": "login",
+          "language": "shell",
+          "template": "codex mcp login markupp"
+        },
+        {
+          "id": "config",
+          "language": "toml",
+          "path": "~/.codex/config.toml",
+          "template": "[mcp_servers.markupp]\nurl = \"{{mcpUrl}}\""
+        }
+      ],
+      "deeplinks": []
+    },
+    {
+      "id": "cursor",
+      "name": "Cursor",
+      "docsUrl": "https://cursor.com/docs/context/mcp",
+      "snippets": [
+        {
+          "id": "config",
+          "language": "json",
+          "path": "~/.cursor/mcp.json",
+          "template": "{\n  \"mcpServers\": {\n    \"markupp\": {\n      \"url\": \"{{mcpUrl}}\"\n    }\n  }\n}"
+        }
+      ],
+      "deeplinks": [
+        {
+          "id": "install",
+          "base": "cursor://anysphere.cursor-deeplink/mcp/install?name=markupp&config=",
+          "payload": {
+            "url": "{{mcpUrl}}"
+          },
+          "encoding": "base64-json"
+        }
+      ]
+    },
+    {
+      "id": "vscode",
+      "name": "VS Code",
+      "docsUrl": "https://code.visualstudio.com/docs/copilot/customization/mcp-servers",
+      "snippets": [
+        {
+          "id": "cli",
+          "language": "shell",
+          "template": "code --add-mcp '{\"name\":\"markupp\",\"type\":\"http\",\"url\":\"{{mcpUrl}}\"}'"
+        },
+        {
+          "id": "config",
+          "language": "json",
+          "path": ".vscode/mcp.json",
+          "template": "{\n  \"servers\": {\n    \"markupp\": {\n      \"type\": \"http\",\n      \"url\": \"{{mcpUrl}}\"\n    }\n  }\n}"
+        }
+      ],
+      "deeplinks": [
+        {
+          "id": "install",
+          "base": "vscode:mcp/install?",
+          "payload": {
+            "name": "markupp",
+            "type": "http",
+            "url": "{{mcpUrl}}"
+          },
+          "encoding": "uri-json"
+        }
+      ]
+    },
+    {
+      "id": "claude-desktop",
+      "name": "Claude Desktop",
+      "docsUrl": "https://support.claude.com/en/articles/11175166-getting-started-with-custom-connectors-using-remote-mcp",
+      "snippets": [
+        {
+          "id": "url",
+          "language": "text",
+          "template": "{{mcpUrl}}"
+        }
+      ],
+      "deeplinks": []
+    },
+    {
+      "id": "gemini-cli",
+      "name": "Gemini CLI",
+      "docsUrl": "https://geminicli.com/docs/tools/mcp-server/",
+      "snippets": [
+        {
+          "id": "cli",
+          "language": "shell",
+          "template": "gemini mcp add --transport http markupp {{mcpUrl}}"
+        },
+        {
+          "id": "config",
+          "language": "json",
+          "path": "~/.gemini/settings.json",
+          "template": "{\n  \"mcpServers\": {\n    \"markupp\": {\n      \"httpUrl\": \"{{mcpUrl}}\"\n    }\n  }\n}"
+        }
+      ],
+      "deeplinks": []
+    },
+    {
+      "id": "windsurf",
+      "name": "Windsurf",
+      "docsUrl": "https://docs.windsurf.com/windsurf/cascade/mcp",
+      "snippets": [
+        {
+          "id": "config",
+          "language": "json",
+          "path": "~/.codeium/windsurf/mcp_config.json",
+          "template": "{\n  \"mcpServers\": {\n    \"markupp\": {\n      \"serverUrl\": \"{{mcpUrl}}\"\n    }\n  }\n}"
+        }
+      ],
+      "deeplinks": []
+    },
+    {
+      "id": "stdio",
+      "name": "stdio (npx)",
+      "docsUrl": "https://www.npmjs.com/package/markupp-mcp",
+      "snippets": [
+        {
+          "id": "login",
+          "language": "shell",
+          "template": "npx -y markupp-mcp login {{instanceUrl}}"
+        },
+        {
+          "id": "config",
+          "language": "json",
+          "template": "{\n  \"mcpServers\": {\n    \"markupp\": {\n      \"command\": \"npx\",\n      \"args\": [\n        \"-y\",\n        \"markupp-mcp\"\n      ]\n    }\n  }\n}"
+        }
+      ],
+      "deeplinks": []
+    }
+  ]
+}

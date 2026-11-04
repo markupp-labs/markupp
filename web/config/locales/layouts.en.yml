@@ -32,11 +32,18 @@ en:
       account: "Account"
       settings: "Settings"
       settings_shortcut: "Settings (%{keys})"
+      notifications_shortcut: "Notifications (%{keys})"
     tenant_switcher:
-      switch: "Switch tenant"
+      label: "Tenants"
+      home: "Home"
+      switch: "Switch tenant: %{name}"
+      switch_vault: "Switch vault: %{name}"
+      no_vault: "No vault"
       new_tenant: "New tenant"
       all_tenants: "All tenants"
       all_tenants_title: "All tenants (g t)"
+    notification_menu:
+      title: "Notifications"
     account_menu:
       label: "Account menu"
       signed_in_as: "Signed in as"

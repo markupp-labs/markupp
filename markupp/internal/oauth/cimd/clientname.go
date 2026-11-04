@@ -23,14 +23,14 @@ const maxStackedMarks = 2
 // prontas para o error_description.
 func SanitizeClientName(raw string) (string, error) {
 	if !utf8.ValidString(raw) {
-		return "", errors.New("client_name com UTF-8 invalido; esperado texto UTF-8")
+		return "", errors.New("client_name has invalid UTF-8; expected UTF-8 text")
 	}
 	name := strings.Join(strings.Fields(strings.Map(clientNameRune, raw)), " ")
 	if name == "" {
-		return "", fmt.Errorf("client_name ausente ou vazio; esperado nome com 1 a %d caracteres", maxClientNameLen)
+		return "", fmt.Errorf("client_name missing or empty; expected a name with 1 to %d characters", maxClientNameLen)
 	}
 	if count := utf8.RuneCountInString(name); count > maxClientNameLen {
-		return "", fmt.Errorf("client_name com %d caracteres; esperado no maximo %d", count, maxClientNameLen)
+		return "", fmt.Errorf("client_name has %d characters; expected at most %d", count, maxClientNameLen)
 	}
 	if err := checkStackedMarks(name); err != nil {
 		return "", err
@@ -61,7 +61,7 @@ func checkStackedMarks(name string) error {
 		}
 		stacked++
 		if stacked > maxStackedMarks {
-			return fmt.Errorf("client_name com mais de %d marcas combinantes seguidas no caractere %d; esperado no maximo %d", maxStackedMarks, position+1, maxStackedMarks)
+			return fmt.Errorf("client_name has more than %d consecutive combining marks at character %d; expected at most %d", maxStackedMarks, position+1, maxStackedMarks)
 		}
 	}
 	return nil

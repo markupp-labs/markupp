@@ -1,5 +1,5 @@
 name: markupp
-description: Instalações do markupp que a equipe opera, uma por stack
+description: Stack dev do markupp, usada pelo smoke do CI e pelo ambiente local
 runtime: yaml
 
 packages:
@@ -24,6 +24,18 @@ config:
   apiReplicas:
     type: integer
     default: 2
+  email:
+    type: object
+    default: {}
+  existingGateway:
+    type: object
+    default: {}
+  panel:
+    type: object
+    default: {}
+  mcp:
+    type: object
+    default: {}
 
 resources:
   markupp:
@@ -35,6 +47,10 @@ resources:
       certificateIssuer: ${certificateIssuer}
       acmeEmail: ${acmeEmail}
       apiReplicas: ${apiReplicas}
+      email: ${email}
+      existingGateway: ${existingGateway}
+      panel: ${panel}
+      mcp: ${mcp}
       database:
         storageClass: ${storageClass}
 

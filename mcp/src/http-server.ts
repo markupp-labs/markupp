@@ -11,6 +11,7 @@ import {
 import { exchangeAgentToken, type Clock } from "./auth/token-exchange.js";
 import type { HttpConfig } from "./config.js";
 import { HttpMarkuppApi } from "./markupp-api.js";
+import { forwardDualStack, freeLoopbackPort } from "./dual-stack-forwarder.js";
 import { SERVER_INFO } from "./server-info.js";
 import type { MarkuppSession } from "./session.js";
 import { registerMarkuppTools } from "./tools/register-markupp-tools.js";
@@ -77,18 +78,28 @@ function apiForSession(
   });
 }
 
+// HttpServerStop encerra o encaminhador e o servidor MCP.
+export type HttpServerStop = () => Promise<void>;
+
 // startHttpServer sobe o Streamable HTTP na porta e na rota tiradas do resource, em
-// todas as interfaces como o servidor Go, para ser alcançável dentro de um container.
-export function startHttpServer(
+// todas as interfaces como o servidor Go, para ser alcançável dentro de um container:
+// o fastmcp fica no loopback, atrás do encaminhador que atende IPv6 e IPv4.
+export async function startHttpServer(
   server: FastMCP<MarkuppSession>,
   config: HttpConfig,
-): Promise<void> {
-  return server.start({
+): Promise<HttpServerStop> {
+  const internalPort = await freeLoopbackPort();
+  await server.start({
     transportType: "httpStream",
     httpStream: {
-      host: "0.0.0.0",
-      port: config.port,
+      host: "127.0.0.1",
+      port: internalPort,
       endpoint: config.endpoint,
     },
   });
+  const forwarder = await forwardDualStack(config.port, internalPort);
+  return async () => {
+    await forwarder.close();
+    await server.stop();
+  };
 }

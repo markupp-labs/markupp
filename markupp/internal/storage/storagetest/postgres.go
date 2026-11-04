@@ -70,7 +70,7 @@ func startContainer() (string, error) {
 		tcpostgres.BasicWaitStrategies(),
 	)
 	if err != nil {
-		return "", fmt.Errorf("subir contêiner %s: %w", postgresImage, err)
+		return "", fmt.Errorf("start container %s: %w", postgresImage, err)
 	}
 	return ctr.ConnectionString(ctx, "sslmode=disable")
 }

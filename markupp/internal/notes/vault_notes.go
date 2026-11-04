@@ -41,7 +41,7 @@ type VaultNotesQuery struct {
 func (s *Service) ListVaultNotes(ctx context.Context, vaultID string, q VaultNotesQuery) ([]Note, error) {
 	list, err := s.repo.ListVaultNotes(ctx, vaultID, q)
 	if err != nil {
-		return nil, fmt.Errorf("listar as notas do cofre %q: %w", vaultID, err)
+		return nil, fmt.Errorf("list notes of vault %q: %w", vaultID, err)
 	}
 	return list, nil
 }

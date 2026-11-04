@@ -13,7 +13,7 @@ export type StoredCredential = {
 };
 
 const FILE_SHAPE =
-  "esperado JSON {issuer, refresh_token, access_token, expires_at em ISO 8601}";
+  "expected JSON {issuer, refresh_token, access_token, expires_at in ISO 8601}";
 
 const credentialFile = z.object({
   issuer: z.string().min(1),
@@ -70,9 +70,9 @@ function credentialJson(
 function parseCredential(path: string, raw: string): StoredCredential {
   const parsed = credentialFile.safeParse(jsonOrUndefined(raw));
   if (!parsed.success) {
-    const fields = parsed.error.issues.map((i) => i.path.join(".") || "(raiz)");
+    const fields = parsed.error.issues.map((i) => i.path.join(".") || "(root)");
     throw new Error(
-      `credencial em ${path} invalida nos campos [${fields.join(", ")}], ${FILE_SHAPE}; rode markupp-mcp login de novo`,
+      `credential in ${path} invalid in fields [${fields.join(", ")}], ${FILE_SHAPE}; run markupp-mcp login again`,
     );
   }
   const { issuer, refresh_token, access_token, expires_at } = parsed.data;

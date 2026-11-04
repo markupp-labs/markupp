@@ -48,11 +48,11 @@ async function discoverIssuer(
 ): Promise<string> {
   const metadataUrl = `${apiUrl}${METADATA_PATH}`;
   const issuer = await retryUntilDeadline(
-    `metadata do Go em ${metadataUrl}`,
+    `Go metadata at ${metadataUrl}`,
     () => fetchIssuer(metadataUrl, deps.fetch),
     deps,
   );
-  return checkPublicUrl(`issuer em ${metadataUrl}`, issuer, ISSUER_RULE).origin;
+  return checkPublicUrl(`issuer at ${metadataUrl}`, issuer, ISSUER_RULE).origin;
 }
 
 async function fetchIssuer(
@@ -62,12 +62,12 @@ async function fetchIssuer(
   const signal = AbortSignal.timeout(REQUEST_TIMEOUT_MS);
   const response = await fetcher(metadataUrl, { signal });
   if (!response.ok) {
-    throw new Error(`status ${response.status}, esperado 200`);
+    throw new Error(`status ${response.status}, expected 200`);
   }
   const metadata = (await response.json()) as { issuer?: unknown };
   if (typeof metadata.issuer !== "string") {
     throw new Error(
-      `issuer=${JSON.stringify(metadata.issuer)}, esperado a URL do issuer em texto`,
+      `issuer=${JSON.stringify(metadata.issuer)}, expected the issuer URL as a string`,
     );
   }
   return metadata.issuer;
@@ -79,11 +79,11 @@ async function resourceSecret(
 ): Promise<string> {
   if (source.kind === "value") return source.value;
   const secret = await retryUntilDeadline(
-    `segredo do resource em ${source.path}`,
+    `resource secret at ${source.path}`,
     () => readSecretFile(source.path, deps.readFile),
     deps,
   );
-  return checkSecretSize(`segredo em ${source.path}`, secret);
+  return checkSecretSize(`secret at ${source.path}`, secret);
 }
 
 // readSecretFile trata o arquivo vazio como ainda não escrito, e o erro nunca cita o
@@ -94,7 +94,7 @@ async function readSecretFile(
 ): Promise<string> {
   const secret = (await readFile(path)).trim();
   if (secret === "") {
-    throw new Error("arquivo vazio, esperado o segredo escrito pelo Go");
+    throw new Error("empty file, expected the secret written by the Go server");
   }
   return secret;
 }
@@ -112,7 +112,7 @@ async function retryUntilDeadline<T>(
     if (outcome.ok) return outcome.value;
     if (deps.clock() >= deadline) {
       throw new Error(
-        `${waitingFor} indisponivel apos ${STARTUP_TIMEOUT_MS / 1000}s, ultimo erro: ${errorMessage(outcome.error)}`,
+        `${waitingFor} unavailable after ${STARTUP_TIMEOUT_MS / 1000}s, last error: ${errorMessage(outcome.error)}`,
       );
     }
     await deps.sleep(RETRY_INTERVAL_MS);

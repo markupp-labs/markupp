@@ -92,6 +92,11 @@ services:
     environment:
       BINDING: 0.0.0.0
       MARKUPP_API_URL: http://markupp:8080
+      # A página Agents mostra aos clientes MCP a URL do MCP, o /mcp da URL pública do
+      # servidor, que o encaminha ao serviço mcp. Sem MARKUPP_MCP_URL a página só avisa
+      # que o MCP está desligado.
+      MARKUPP_PUBLIC_URL: ${MARKUPP_PUBLIC_URL:-http://localhost:${MARKUPP_PORT:-8080}}
+      MARKUPP_MCP_URL: ${MARKUPP_PUBLIC_URL:-http://localhost:${MARKUPP_PORT:-8080}}/mcp
     volumes:
       - ./web:/rails
       - ${BUNDLE_CACHE:-bundle_cache}:/usr/local/bundle

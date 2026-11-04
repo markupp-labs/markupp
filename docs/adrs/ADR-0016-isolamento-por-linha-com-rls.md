@@ -6,9 +6,9 @@ Substituída pelo ADR-0034
 
 ## Contexto
 
-O Enterprise é uma instância única compartilhada, com divisão lógica por cliente, para
-aproveitar economia de escala e não deixar recurso ocioso. É preciso garantir que a consulta
-de um cliente nunca alcance dado de outro, inclusive em travessia de grafo, onde até a
+Uma instalação com vários tenants compartilha uma instância, com divisão lógica por tenant,
+para aproveitar economia de escala e não deixar recurso ocioso. É preciso garantir que a
+consulta de um cliente nunca alcance dado de outro, inclusive em travessia de grafo, onde até a
 contagem de backlinks entrega a existência de nota alheia
 
 ## Decisão
@@ -34,6 +34,11 @@ repete filtro em query nenhuma. O self-host é o mesmo desenho com um único ten
 - A aplicação precisa conectar com papel que não seja dono da tabela, e a tabela precisa de
   `FORCE ROW LEVEL SECURITY`, porque dono e superusuário ignoram política por padrão
 - A política de isolamento precisa de teste próprio: uma política errada vaza tudo de uma vez
-- Self-host e Enterprise compartilham o mesmo caminho de código, sem modo alternativo
+- Toda instalação usa o mesmo caminho de código, sem modo alternativo
 - Cliente grande e cliente pequeno dividem o mesmo índice, e vizinho ruidoso só se resolve
   depois, com particionamento por `tenant_id`
+
+## Emenda
+
+Em novembro de 2026, o texto passou a descrever a capacidade da instalação no lugar de uma
+edição. A decisão não mudou.
