@@ -27,7 +27,7 @@ async function logoutUnderLock(deps: LogoutDeps): Promise<LogoutResult> {
   } catch (error) {
     await deps.store.remove();
     throw new Error(
-      `credential deleted from ${deps.store.path}, but revoking it on markupp failed (${errorMessage(error)}); revoke the authorization in the web panel`,
+      `credential deleted from ${deps.store.path}, but revoking it on markupp failed (${errorMessage(error)}); the login stays valid on the server until it expires`,
     );
   }
   await deps.store.remove();
