@@ -109,7 +109,7 @@ describe("npx markupp-mcp a partir do tarball", () => {
   it("mostra o uso num subcomando desconhecido", async () => {
     const outcome = await runPackedBin(["desconhecido"]);
     expect(outcome.code).toBe(2);
-    expect(outcome.stderr).toContain("uso: markupp-mcp");
+    expect(outcome.stderr).toContain("usage: markupp-mcp");
   });
 
   it("sobe o stdio e explica que falta o login", async () => {
