@@ -1,6 +1,6 @@
 # Diagramas de blocos
 
-![Arquitetura da edição Enterprise](diagramas-de-blocos.drawio.svg)
+![Arquitetura da instalação em Kubernetes](diagramas-de-blocos.drawio.svg)
 
 O sistema se divide em sete artefatos. A divisão segue perfil de recurso, não entidade de
 domínio: nota, cofre, usuário e busca não são serviços, compartilham banco e caminho de
@@ -72,9 +72,9 @@ que roda antes de qualquer serviço subir a versão nova.
 A API REST valida identidade contra o provedor OIDC habilitado, o indexador de embedding
 gera vetores pelo provedor configurado, e o worker de notificação entrega email pelo dele.
 
-Os três são trocáveis por configuração, e é por isso que o desenho não nomeia serviço. O
-Enterprise entrega email por SMTP, o self-host aponta para um modelo local e um SMTP próprio, e
-o código é o mesmo nos dois.
+Os três são trocáveis por configuração, e é por isso que o desenho não nomeia serviço. Uma
+instalação em nuvem entrega email por SMTP, o self-host aponta para um modelo local e um SMTP
+próprio, e o código é o mesmo nos dois.
 
 ## O que muda no self-host
 

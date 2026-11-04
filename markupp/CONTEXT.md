@@ -11,13 +11,8 @@ e agente de IA são clientes, e nenhum deles é privilegiado. O navegador consom
 o markupp.
 _Avoid_: consumidor, integração, aplicação externa, frontend
 
-**Enterprise**:
-A edição que a equipe opera, com vários tenants. O nome diz quem opera, não onde roda.
-_Avoid_: nuvem, SaaS, hospedado
-
 **Self-host**:
-A edição que qualquer pessoa instala e opera por conta própria, com um tenant só e sem
-plano de controle.
+Instalar e operar o markupp por conta própria. É o produto completo, sem recurso reservado.
 _Avoid_: on-premise, comunidade, open source
 
 **Nota**:
@@ -80,14 +75,8 @@ _Avoid_: workspace, projeto, biblioteca, espaço
 
 **Tenant**:
 A unidade de isolamento dentro do banco. Toda linha de dado carrega o tenant a que
-pertence, e o self-host roda com um só. A conta entra num tenant por vínculo.
+pertence. A conta entra num tenant por vínculo.
 _Avoid_: cliente, organização, conta
-
-**Edição**:
-A forma de instalação do markupp. São duas, self-host e Enterprise, com o mesmo código, e a
-diferença entre elas é configuração. O self-host é operado por quem instala, com um tenant
-só. O Enterprise é operado pela equipe, para vários tenants.
-_Avoid_: versão, plano, nuvem, cloud, SaaS
 
 **Plano de registro**:
 Onde as notas vivem. É durável e é a fonte da verdade do sistema.

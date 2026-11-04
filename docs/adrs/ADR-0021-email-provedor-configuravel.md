@@ -8,11 +8,11 @@ Aceita
 
 Convite de usuário, recuperação de acesso por credencial local e alerta de operação dependem
 de envio de mensagem. O self-host não pode depender de serviço de terceiro para funcionar,
-e o Enterprise precisa de entrega confiável e mensurável
+e uma instalação com vários tenants precisa de entrega confiável e mensurável
 
 ## Decisão
 
-Envio por SMTP genérico nas duas edições, configurado por URL. Cada instalação aponta para o
+Envio por SMTP genérico em toda instalação, configurado por URL. Cada instalação aponta para o
 servidor de email que tiver. Sem SMTP configurado, o sistema não envia e os fluxos que dependem
 de envio ficam explicitamente indisponíveis
 
@@ -34,3 +34,6 @@ de envio ficam explicitamente indisponíveis
 ## Emenda
 
 Em novembro de 2026, o texto deste ADR foi revisto. A decisão não mudou.
+
+Em novembro de 2026, o texto passou a descrever a capacidade da instalação no lugar de uma
+edição. A decisão não mudou.
