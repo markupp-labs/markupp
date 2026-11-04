@@ -31,11 +31,11 @@ var slugPattern = regexp.MustCompile(`^[a-z0-9-]{3,63}$`)
 
 // Erros da publicação.
 var (
-	ErrInvalidSlug  = errors.New("slug invalido")
-	ErrInvalidTitle = errors.New("titulo invalido")
-	ErrSlugTaken    = errors.New("slug ja usado por outro cofre")
-	ErrNotPublished = errors.New("cofre nao publicado")
-	ErrNotAdmin     = errors.New("publicacao reservada a owner e admin do tenant")
+	ErrInvalidSlug  = errors.New("invalid slug")
+	ErrInvalidTitle = errors.New("invalid title")
+	ErrSlugTaken    = errors.New("slug already used by another vault")
+	ErrNotPublished = errors.New("vault is not published")
+	ErrNotAdmin     = errors.New("publishing is reserved to tenant owners and admins")
 )
 
 // Publication é o cofre publicado: o slug da URL pública, o título mostrado e quem
@@ -114,7 +114,7 @@ func requireAdmin(actor identity.Actor) error {
 	if actor.IsAdmin() {
 		return nil
 	}
-	return fmt.Errorf("%w: papel %q, esperado owner ou admin", ErrNotAdmin, actor.Role)
+	return fmt.Errorf("%w: role %q, expected owner or admin", ErrNotAdmin, actor.Role)
 }
 
 func newPublication(actor identity.Actor, vaultID, slug, title string, now time.Time) (Publication, error) {
@@ -123,7 +123,7 @@ func newPublication(actor identity.Actor, vaultID, slug, title string, now time.
 	}
 	title = strings.TrimSpace(title)
 	if utf8.RuneCountInString(title) > MaxTitleLength {
-		return Publication{}, fmt.Errorf("%w: %d caracteres, esperado no maximo %d", ErrInvalidTitle, utf8.RuneCountInString(title), MaxTitleLength)
+		return Publication{}, fmt.Errorf("%w: %d characters, expected at most %d", ErrInvalidTitle, utf8.RuneCountInString(title), MaxTitleLength)
 	}
 	return Publication{VaultID: vaultID, Slug: slug, Title: title, PublishedBy: actor.UserID, PublishedAt: now}, nil
 }
@@ -133,7 +133,7 @@ func ValidateSlug(slug string) error {
 	if slugPattern.MatchString(slug) {
 		return nil
 	}
-	return fmt.Errorf("%w: %q, esperado de 3 a 63 caracteres entre a-z, 0-9 e hifen", ErrInvalidSlug, slug)
+	return fmt.Errorf("%w: %q, expected 3 to 63 characters among a-z, 0-9 and hyphen", ErrInvalidSlug, slug)
 }
 
 func (s *Service) event(actor identity.Actor, action, vaultID string, at time.Time) auth.AuditEventRecord {

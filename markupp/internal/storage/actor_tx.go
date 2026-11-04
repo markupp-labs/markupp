@@ -48,7 +48,7 @@ func inActorTx(ctx context.Context, pool *pgxpool.Pool, fn func(q *gen.Queries) 
 func inPublicTx(ctx context.Context, pool *pgxpool.Pool, fn func(q *gen.Queries) error) error {
 	return inTx(ctx, pool, func(q *gen.Queries) error {
 		if err := q.EnterPublicReader(ctx); err != nil {
-			return fmt.Errorf("entrar no papel da leitura publica: %w", err)
+			return fmt.Errorf("enter the public reader role: %w", err)
 		}
 		return fn(q)
 	})

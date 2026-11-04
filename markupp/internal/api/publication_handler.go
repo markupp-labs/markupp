@@ -92,7 +92,7 @@ func writePublicationError(w http.ResponseWriter, err error) {
 	case errors.Is(err, publication.ErrNotPublished):
 		writeError(w, "not_published", err.Error(), http.StatusNotFound)
 	case errors.Is(err, publication.ErrNotAdmin):
-		writeError(w, "forbidden", "acesso restrito a administradores", http.StatusForbidden)
+		writeError(w, "forbidden", "only tenant owners and admins can do this", http.StatusForbidden)
 	case errors.Is(err, notes.ErrVaultForbidden):
 		writeError(w, "vault_forbidden", notes.ErrVaultForbidden.Error(), http.StatusForbidden)
 	default:

@@ -162,11 +162,11 @@ func (h *publicVaultsHandler) search(w http.ResponseWriter, r *http.Request) {
 func readPublicQuery(w http.ResponseWriter, r *http.Request) (string, bool) {
 	query := r.URL.Query().Get("q")
 	if query == "" {
-		writeError(w, "invalid_request", "query string 'q' é obrigatória", http.StatusBadRequest)
+		writeError(w, "invalid_request", "query string parameter 'q' is required", http.StatusBadRequest)
 		return "", false
 	}
 	if len(query) > maxPublicQueryLength {
-		writeError(w, "invalid_request", fmt.Sprintf("q com %d bytes, esperado no máximo %d", len(query), maxPublicQueryLength), http.StatusBadRequest)
+		writeError(w, "invalid_request", fmt.Sprintf("q has %d bytes, expected at most %d", len(query), maxPublicQueryLength), http.StatusBadRequest)
 		return "", false
 	}
 	return query, true

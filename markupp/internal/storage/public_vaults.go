@@ -62,7 +62,7 @@ func (r *PostgresPublicVaults) PublicNote(ctx context.Context, slug, noteID stri
 			return notFoundOnNoRows(err)
 		}
 		if row.VaultID != vault.VaultID {
-			return fmt.Errorf("%w: nota %q fora do cofre publicado %q", notes.ErrNotFound, noteID, slug)
+			return fmt.Errorf("%w: note %q outside the published vault %q", notes.ErrNotFound, noteID, slug)
 		}
 		out, err = withRank(ctx, q, toNote(row))
 		return err
@@ -127,7 +127,7 @@ func (r *PostgresPublicVaults) inVault(ctx context.Context, slug string, read fu
 			return fmt.Errorf("%w: slug %q", publication.ErrNotPublished, slug)
 		}
 		if err != nil {
-			return fmt.Errorf("ler o cofre publicado %q: %w", slug, err)
+			return fmt.Errorf("read published vault %q: %w", slug, err)
 		}
 		return read(q, publication.PublicVault{VaultID: row.VaultID, Slug: row.Slug, Title: row.Title, PublishedAt: row.PublishedAt})
 	})

@@ -48,11 +48,11 @@ func (r *PostgresVaultPublications) PublishTx(ctx context.Context, p publication
 func publishErr(err error, p publication.Publication) error {
 	switch {
 	case errors.Is(err, pgx.ErrNoRows), pgErrorCode(err) == insufficientPrivilegeCode:
-		return fmt.Errorf("%w: publicar o cofre %q", notes.ErrVaultForbidden, p.VaultID)
+		return fmt.Errorf("%w: publish vault %q", notes.ErrVaultForbidden, p.VaultID)
 	case isUniqueConstraintViolation(err):
 		return fmt.Errorf("%w: %q", publication.ErrSlugTaken, p.Slug)
 	}
-	return fmt.Errorf("publicar o cofre %q com o slug %q: %w", p.VaultID, p.Slug, err)
+	return fmt.Errorf("publish vault %q with slug %q: %w", p.VaultID, p.Slug, err)
 }
 
 // UnpublishTx apaga a publicação do cofre e audita junto. Devolve
@@ -60,12 +60,12 @@ func publishErr(err error, p publication.Publication) error {
 // e publication.ErrNotPublished quando o cofre dele não está publicado.
 func (r *PostgresVaultPublications) UnpublishTx(ctx context.Context, vaultID string, event auth.AuditEventRecord) error {
 	return inActorTx(ctx, r.pool, func(q *gen.Queries) error {
-		if err := requireVaultInReach(ctx, q, vaultID, "despublicar"); err != nil {
+		if err := requireVaultInReach(ctx, q, vaultID, "unpublish"); err != nil {
 			return err
 		}
 		rows, err := q.DeleteVaultPublication(ctx, vaultID)
 		if err != nil {
-			return fmt.Errorf("despublicar o cofre %q: %w", vaultID, err)
+			return fmt.Errorf("unpublish vault %q: %w", vaultID, err)
 		}
 		if rows == 0 {
 			return unpublishRefused(ctx, q, vaultID)
@@ -79,7 +79,7 @@ func (r *PostgresVaultPublications) UnpublishTx(ctx context.Context, vaultID str
 // os cofres de que são membros.
 func requireVaultInReach(ctx context.Context, q *gen.Queries, vaultID, operation string) error {
 	if err := requireVisibleVault(ctx, q, vaultID); err != nil {
-		return fmt.Errorf("%s a publicacao do cofre %q: %w", operation, vaultID, err)
+		return fmt.Errorf("%s the publication of vault %q: %w", operation, vaultID, err)
 	}
 	return nil
 }
@@ -90,11 +90,11 @@ func unpublishRefused(ctx context.Context, q *gen.Queries, vaultID string) error
 	_, err := q.GetVaultPublication(ctx, vaultID)
 	switch {
 	case errors.Is(err, pgx.ErrNoRows):
-		return fmt.Errorf("%w: cofre %q", publication.ErrNotPublished, vaultID)
+		return fmt.Errorf("%w: vault %q", publication.ErrNotPublished, vaultID)
 	case err != nil:
-		return fmt.Errorf("conferir a publicacao do cofre %q: %w", vaultID, err)
+		return fmt.Errorf("check the publication of vault %q: %w", vaultID, err)
 	}
-	return fmt.Errorf("%w: despublicar o cofre %q", notes.ErrVaultForbidden, vaultID)
+	return fmt.Errorf("%w: unpublish vault %q", notes.ErrVaultForbidden, vaultID)
 }
 
 // Publication lê a publicação do cofre vaultID. Devolve notes.ErrVaultForbidden quando
@@ -102,12 +102,12 @@ func unpublishRefused(ctx context.Context, q *gen.Queries, vaultID string) error
 func (r *PostgresVaultPublications) Publication(ctx context.Context, vaultID string) (publication.Publication, error) {
 	var out publication.Publication
 	err := inActorTx(ctx, r.pool, func(q *gen.Queries) error {
-		if err := requireVaultInReach(ctx, q, vaultID, "ler"); err != nil {
+		if err := requireVaultInReach(ctx, q, vaultID, "read"); err != nil {
 			return err
 		}
 		row, err := q.GetVaultPublication(ctx, vaultID)
 		if errors.Is(err, pgx.ErrNoRows) {
-			return fmt.Errorf("%w: cofre %q", publication.ErrNotPublished, vaultID)
+			return fmt.Errorf("%w: vault %q", publication.ErrNotPublished, vaultID)
 		}
 		out = publication.Publication(row)
 		return err

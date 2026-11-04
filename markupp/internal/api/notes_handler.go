@@ -246,7 +246,7 @@ func writeDomainError(w http.ResponseWriter, err error) {
 	case errors.Is(err, notes.ErrNotFound):
 		writeError(w, "not_found", notes.ErrNotFound.Error(), http.StatusNotFound)
 	case errors.Is(err, publication.ErrNotPublished):
-		writeError(w, "not_found", "cofre publico nao encontrado", http.StatusNotFound)
+		writeError(w, "not_found", "public vault not found", http.StatusNotFound)
 	case errors.Is(err, notes.ErrCommunityNotFound):
 		writeError(w, "not_found", notes.ErrCommunityNotFound.Error(), http.StatusNotFound)
 	case errors.Is(err, notes.ErrInvalidID):
