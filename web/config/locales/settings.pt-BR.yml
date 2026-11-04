@@ -44,7 +44,7 @@ pt-BR:
         vim_keys_hint: "Os atalhos do Vim dão ao editor os modos normal, inserção e visual do Vim, com :w, :q e :e. Esc duas vezes e depois Tab saem do editor."
     agents:
       mcp_missing:
-        notice: "Esta instância não tem servidor MCP, então os agentes de IA ainda não conseguem se conectar. Peça ao administrador para ligar o MCP (o bloco mcp da stack do Pulumi, ou o serviço mcp do compose) e passar ao painel o endereço do MCP em MARKUPP_MCP_URL."
+        notice: "Esta instância não tem servidor MCP, então os agentes de IA ainda não conseguem se conectar. Peça ao administrador para ligar o MCP."
       show:
         title: "Agentes"
         intro: "Conecte um agente de IA a esta instância do markupp por MCP. Escolha o seu cliente, copie o trecho e entre quando o cliente pedir: o agente age com a sua conta e os seus papéis."
