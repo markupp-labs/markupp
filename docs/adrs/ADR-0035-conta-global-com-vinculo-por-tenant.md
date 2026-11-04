@@ -54,5 +54,4 @@ administração, e o viewer só lê nos cofres de que é membro
 
 ## Emenda
 
-Em novembro de 2026, o texto deste ADR foi revisto para tirar do repositório público o que
-trata da operação comercial do Enterprise. A decisão não mudou.
+Em novembro de 2026, o texto deste ADR foi revisto. A decisão não mudou.
