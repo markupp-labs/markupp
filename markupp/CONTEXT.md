@@ -78,14 +78,14 @@ cofre lê e escreve todas as notas dele, salvo o viewer, que só lê. O membro e
 por outro membro, entre as contas que já têm vínculo com o tenant.
 _Avoid_: workspace, projeto, biblioteca, espaço
 
-**Cofre público**:
-O cofre que owner ou admin do tenant publicou com um slug. Qualquer pessoa, com ou sem conta,
-lê as notas dele, e ninguém escreve nele por esse caminho.
-_Avoid_: tenant público, site, página pública
+**Nota pública**:
+A nota que qualquer pessoa, com ou sem conta, lê pelo endereço público, porque foi publicada
+sozinha ou está numa pasta ou cofre publicado. Ninguém escreve nela por esse caminho.
+_Avoid_: página pública, site, nota compartilhada
 
 **Publicação**:
-O ato de tornar um cofre público, e o registro desse ato, com slug, autor e data. Despublicar
-desfaz a publicação, e o cofre volta a ser lido só pelos membros.
+O ato de tornar pública uma nota, uma pasta ou um cofre, e o registro desse ato, com autor e
+data. Despublicar desfaz a publicação, e as notas voltam a ser lidas só pelos membros.
 _Avoid_: compartilhamento, exportação, deploy
 
 **Tenant**:
