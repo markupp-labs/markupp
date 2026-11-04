@@ -12,6 +12,8 @@ pt-BR:
       forbidden: "Seu papel neste tenant não permite isso."
       read_only: "Seu papel neste tenant é viewer, que só lê notas."
       tenant_unavailable: "Você não tem mais acesso a esse tenant."
+      vault_unavailable: "Você não tem mais acesso a esse cofre."
+      no_vault: "Crie um cofre antes, depois adicione notas a ele."
   sessions:
     back_to_login:
       label: "Voltar para o login"

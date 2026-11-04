@@ -32,11 +32,18 @@ pt-BR:
       account: "Conta"
       settings: "Configurações"
       settings_shortcut: "Configurações (%{keys})"
+      notifications_shortcut: "Notificações (%{keys})"
     tenant_switcher:
-      switch: "Trocar de tenant"
+      label: "Tenants"
+      home: "Início"
+      switch: "Trocar de tenant: %{name}"
+      switch_vault: "Trocar de cofre: %{name}"
+      no_vault: "Nenhum cofre"
       new_tenant: "Novo tenant"
       all_tenants: "Todos os tenants"
       all_tenants_title: "Todos os tenants (g t)"
+    notification_menu:
+      title: "Notificações"
     account_menu:
       label: "Menu da conta"
       signed_in_as: "Conectado como"

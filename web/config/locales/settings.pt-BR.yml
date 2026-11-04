@@ -6,6 +6,7 @@ pt-BR:
       accounts: "Conta"
       appearances: "Aparência"
       editors: "Editor"
+      agents: "Agentes"
       tenant: "Tenant"
       general: "Geral"
       members: "Membros"
@@ -41,15 +42,42 @@ pt-BR:
         editor_style_hint: "Simples mostra o markdown num tamanho só, como no VS Code. Estilizado aumenta os títulos, como o modo fonte do Obsidian."
         vim_keys: "Atalhos do Vim"
         vim_keys_hint: "Os atalhos do Vim dão ao editor os modos normal, inserção e visual do Vim, com :w, :q e :e. Esc duas vezes e depois Tab saem do editor."
+    agents:
+      mcp_missing:
+        notice: "Esta instância não tem servidor MCP, então os agentes de IA ainda não conseguem se conectar. Peça ao administrador para ligar o MCP (o bloco mcp da stack do Pulumi, ou o serviço mcp do compose) e passar ao painel o endereço do MCP em MARKUPP_MCP_URL."
+      show:
+        title: "Agentes"
+        intro: "Conecte um agente de IA a esta instância do markupp por MCP. Escolha o seu cliente, copie o trecho e entre quando o cliente pedir: o agente age com a sua conta e os seus papéis."
+        clients_label: "Clientes MCP"
+        copy: "Copiar"
+        copied: "Copiado"
+        copy_failed: "Não deu para copiar"
+        install: "Adicionar ao %{client}"
+        docs: "Documentação do %{client}"
+        snippets:
+          cli: "Rode num terminal"
+          login: "Depois entre"
+          config: "Ou adicione à configuração MCP do seu cliente"
+          config_at: "Ou adicione em %{path}"
+          url: "URL do servidor"
+        clients:
+          claude-code: "Rode o comando, depois abra /mcp no Claude Code e entre no markupp pelo navegador."
+          codex: "Adicione o servidor, depois entre com codex mcp login, que abre o markupp no navegador."
+          cursor: "Adicione o servidor com um clique, ou edite o arquivo de configuração. O Cursor pede para entrar no markupp quando o servidor sobe."
+          vscode: "Adicione o servidor com um clique, pela linha de comando ou num arquivo do workspace. O VS Code pede para entrar no markupp quando o servidor sobe."
+          claude-desktop: "No Claude Desktop ou no claude.ai, abra Customize, depois Connectors, escolha Add custom connector e cole esta URL. O Claude conecta a partir da nuvem da Anthropic, então a instância precisa estar acessível pela internet."
+          gemini-cli: "Adicione o servidor com o comando ou no settings.json, depois entre com /mcp auth markupp dentro do Gemini CLI."
+          windsurf: "Adicione o servidor à configuração MCP do Windsurf, depois atualize os servidores MCP no Cascade."
+          stdio: "Para clientes que só rodam servidores locais. Entre uma vez com o primeiro comando (precisa de Node.js), depois aponte o cliente para npx markupp-mcp, que serve MCP por stdio com esse login."
+    danger_zone:
+      title: "Zona de perigo"
+      type_name: "Digite %{name} para confirmar"
     general:
       show:
         tenant_name: "Nome do tenant"
-      danger_zone:
-        title: "Zona de perigo"
         delete_tenant: "Apagar tenant"
-        hint: "Isto apaga o tenant e todas as notas dele para todos os membros. Não tem volta."
-        confirm: "Apagar %{name}? Isto apaga o tenant e todas as notas dele para todos os membros, e não dá para desfazer."
-        type_name: "Digite %{name} para confirmar"
+        delete_hint: "Isto apaga o tenant e todas as notas dele para todos os membros. Não tem volta."
+        confirm_delete: "Apagar %{name}? Isto apaga o tenant e todas as notas dele para todos os membros, e não dá para desfazer."
     members:
       index:
         email: "Email"
