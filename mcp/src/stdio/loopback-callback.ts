@@ -21,21 +21,25 @@ const CALLBACK_PATH = "/callback";
 // ou uma requisição de outra origem não encerrarem o login.
 export function callbackReply(url: URL, expectedState: string): CallbackReply {
   if (url.pathname !== CALLBACK_PATH) {
-    return reply(404, "Rota desconhecida.", false);
+    return reply(404, "Unknown route.", false);
   }
   if (url.searchParams.get("state") !== expectedState) {
-    return reply(400, "Este retorno não é do login em andamento.", false);
+    return reply(
+      400,
+      "This redirect does not belong to the login in progress.",
+      false,
+    );
   }
   if (url.searchParams.has("error")) {
     return reply(
       200,
-      "Login recusado. Volte ao terminal para ver o motivo.",
+      "Login refused. Go back to the terminal to see why.",
       true,
     );
   }
   return reply(
     200,
-    "Login concluído. Pode fechar esta aba e voltar ao terminal.",
+    "Login complete. You can close this tab and go back to the terminal.",
     true,
   );
 }
@@ -45,7 +49,7 @@ function reply(
   message: string,
   accepted: boolean,
 ): CallbackReply {
-  const html = `<!doctype html><html lang="pt-BR"><meta charset="utf-8"><title>markupp-mcp</title><p>${message}</p></html>`;
+  const html = `<!doctype html><html lang="en"><meta charset="utf-8"><title>markupp-mcp</title><p>${message}</p></html>`;
   return { status, html, accepted };
 }
 

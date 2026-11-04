@@ -73,7 +73,7 @@ describe("resolveHttpConfig", () => {
     const go = new StartingGo();
     const attempt = resolveHttpConfig(envConfig(), go.deps);
     await expect(attempt).rejects.toThrow(
-      `metadata do Go em ${METADATA_URL} indisponivel apos 60s, ultimo erro: FakeFetch sem resposta`,
+      `Go metadata at ${METADATA_URL} unavailable after 60s, last error: FakeFetch has no queued response`,
     );
     expect(go.upstream.requests).toHaveLength(61);
   });
@@ -81,14 +81,14 @@ describe("resolveHttpConfig", () => {
   it("recusa o issuer que o agente não poderia usar", async () => {
     const go = new StartingGo().publishIssuer("http://markupp:8080");
     await expect(resolveHttpConfig(envConfig(), go.deps)).rejects.toThrow(
-      `issuer em ${METADATA_URL}="http://markupp:8080", esperado https://`,
+      `issuer at ${METADATA_URL}="http://markupp:8080", expected https://`,
     );
   });
 
   it("recusa o issuer com caminho, como o Go", async () => {
     const go = new StartingGo().publishIssuer("https://markupp.exemplo/x");
     await expect(resolveHttpConfig(envConfig(), go.deps)).rejects.toThrow(
-      "sem caminho",
+      "without path",
     );
   });
 
@@ -116,7 +116,7 @@ describe("resolveHttpConfig", () => {
     await expect(
       resolveHttpConfig(envConfig({ secret }), go.deps),
     ).rejects.toThrow(
-      "segredo do resource em /run/s indisponivel apos 60s, ultimo erro: arquivo vazio",
+      "resource secret at /run/s unavailable after 60s, last error: empty file",
     );
   });
 
@@ -126,7 +126,7 @@ describe("resolveHttpConfig", () => {
     const secret = { kind: "file", path: "/run/s" } as const;
     const attempt = resolveHttpConfig(envConfig({ secret }), go.deps);
     await expect(attempt).rejects.toThrow(
-      "segredo em /run/s com 13 bytes, esperado ao menos 32 bytes aleatorios",
+      "secret at /run/s has 13 bytes, expected at least 32 random bytes",
     );
     await expect(attempt).rejects.not.toThrow("segredo-curto");
   });

@@ -23,7 +23,7 @@ function apiWith(fake: FakeFetch): HttpMarkuppApi {
 function onlyRequest(fake: FakeFetch): Request {
   const [request] = fake.requests;
   if (!request || fake.requests.length !== 1) {
-    throw new Error(`esperava 1 requisição, chegaram ${fake.requests.length}`);
+    throw new Error(`expected 1 request, got ${fake.requests.length}`);
   }
   return request;
 }
@@ -186,7 +186,7 @@ describe("HttpMarkuppApi", () => {
     await expect(apiWith(fake).listTenants()).rejects.toMatchObject({
       status: 502,
       code: "unexpected_response",
-      message: expect.stringContaining("GET /v1/me/tenants respondeu 502"),
+      message: expect.stringContaining("GET /v1/me/tenants answered 502"),
     });
   });
 });

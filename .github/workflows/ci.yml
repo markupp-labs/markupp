@@ -115,6 +115,31 @@ jobs:
       - name: Run tests
         run: npx vitest run
 
+  # Instala o tarball do npm pack e chama o binário pelo npx, como quem instala o pacote.
+  mcp-package:
+    name: MCP npm package
+    needs: changes
+    if: needs.changes.outputs.mcp == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mcp
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 26
+          cache: npm
+          cache-dependency-path: mcp/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Pack, install and run through npx
+        run: npm run test:pack
+
   pulumi-component-tests:
     name: Pulumi component (Go) tests
     needs: changes

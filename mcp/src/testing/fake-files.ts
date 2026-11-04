@@ -16,7 +16,7 @@ export class FakeFiles {
     this.reads.push(path);
     const file = this.files.get(path);
     if (!file || file.failedReads-- > 0) {
-      throw new Error(`ENOENT: arquivo ${path} inexistente`);
+      throw new Error(`ENOENT: file ${path} does not exist`);
     }
     return file.content;
   };

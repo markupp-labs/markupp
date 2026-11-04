@@ -95,12 +95,12 @@ function refusalResponse(
 export function exchangeFailureLog(error: unknown): AuthFailureLog {
   const message = error instanceof Error ? error.message : String(error);
   if (!(error instanceof TokenExchangeError)) {
-    return { level: "error", msg: "troca de token falhou", error: message };
+    return { level: "error", msg: "token exchange failed", error: message };
   }
   const msg =
     error.oauthError === "invalid_client"
-      ? "issuer recusou a credencial do servidor MCP; confira a URL do resource e o segredo configurados nos dois lados"
-      : "issuer recusou a troca de token";
+      ? "issuer refused the MCP server credential; check the resource URL and the secret configured on both sides"
+      : "issuer refused the token exchange";
   return {
     level: "error",
     msg,

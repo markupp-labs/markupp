@@ -53,7 +53,7 @@ describe("CredentialStore", () => {
     files.put(PATH, JSON.stringify({ issuer: "x", refresh_token: "segredo" }));
     const store = new CredentialStore(PATH, files);
     const failure = await store.load().catch((error: unknown) => String(error));
-    expect(failure).toContain(`credencial em ${PATH} invalida`);
+    expect(failure).toContain(`credential in ${PATH} invalid`);
     expect(failure).toContain("access_token, expires_at");
     expect(failure).not.toContain("segredo");
   });

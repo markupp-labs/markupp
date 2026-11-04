@@ -82,12 +82,12 @@ async function waitForBrowser(
   deps: LoginDeps,
 ): Promise<URLSearchParams> {
   deps.writeError(
-    `Abrindo o navegador para entrar no markupp. Se ele nao abrir, acesse:\n${url}`,
+    `Opening the browser to sign in to markupp. If it does not open, visit:\n${url}`,
   );
   deps.openBrowser(url);
   const expired = deps.timeout(CALLBACK_TIMEOUT_MS).then((): never => {
     throw new Error(
-      `o navegador nao voltou a ${attempt.callback.redirectUri} em ${CALLBACK_TIMEOUT_MS / 60_000} minutos, esperado o retorno depois do consentimento; rode markupp-mcp login de novo`,
+      `the browser did not return to ${attempt.callback.redirectUri} within ${CALLBACK_TIMEOUT_MS / 60_000} minutes, expected the redirect after consent; run markupp-mcp login again`,
     );
   });
   return Promise.race([attempt.callback.received, expired]);
@@ -99,13 +99,13 @@ function authorizationCode(query: URLSearchParams): string {
   if (error !== null) {
     const description = query.get("error_description") ?? "";
     throw new Error(
-      `login recusado pelo markupp: error ${error} (${description})`,
+      `login refused by markupp: error ${error} (${description})`,
     );
   }
   const code = query.get("code");
   if (!code) {
     throw new Error(
-      "retorno do navegador sem code nem error, esperado ?code=...&state=...",
+      "browser redirect without code or error, expected ?code=...&state=...",
     );
   }
   return code;
