@@ -1,4 +1,4 @@
-# ADR-0051: Servidor MCP público para cofres publicados
+# ADR-0050: Servidor MCP público para cofres publicados
 
 ## Status
 
