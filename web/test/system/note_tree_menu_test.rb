@@ -198,11 +198,6 @@ class NoteTreeMenuTest < ApplicationSystemTestCase
       assert_equal [ 0, path.length ], evaluate_script("[ document.activeElement.selectionStart, document.activeElement.selectionEnd ]")
     end
 
-    def grant_clipboard
-      page.driver.browser.execute_cdp("Browser.grantPermissions", origin: Capybara.current_session.server.base_url,
-                                                                  permissions: %w[clipboardReadWrite clipboardSanitizedWrite])
-    end
-
     def clipboard
       evaluate_async_script("navigator.clipboard.readText().then(arguments[0])")
     end
