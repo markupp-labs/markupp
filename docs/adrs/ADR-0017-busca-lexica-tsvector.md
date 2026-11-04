@@ -28,11 +28,12 @@ antes do grafo de ligações
 - FTS5 do SQLite, proposto no ADR-0014: traz BM25, que é ranking melhor, mas o ADR-0015 tirou o
   SQLite do projeto
 - ParadeDB com `pg_search`: entrega BM25 sobre Postgres, e o custo de extensão é baixo porque
-  pgvector já obriga a sair da imagem oficial. O impedimento é o Enterprise: `pg_search` não
-  está na lista de extensões suportadas pelo RDS, enquanto pgvector está, então adotá-lo
-  obrigaria a operar Postgres por conta própria ou a manter busca diferente por edição
-- Motor de busca externo (Elasticsearch, Meilisearch): mais um serviço para operar nas duas
-  edições, para um ganho que `tsvector` já entrega
+  pgvector já obriga a sair da imagem oficial. O impedimento é a instalação sobre RDS:
+  `pg_search` não está na lista de extensões suportadas pelo RDS, enquanto pgvector está, então
+  adotá-lo obrigaria a operar Postgres por conta própria ou a manter busca diferente por
+  instalação
+- Motor de busca externo (Elasticsearch, Meilisearch): mais um serviço para operar em toda
+  instalação, para um ganho que `tsvector` já entrega
 - Ir direto para busca semântica: depende de provedor de embedding configurado (ADR-0019), tem
   custo por nota, e erra justamente em termo exato, nome próprio e identificador. Não substitui
   a léxica nem é pré-requisito para a melhoria imediata
@@ -51,3 +52,8 @@ antes do grafo de ligações
   igual. Trocar por BM25 depois é mudança contida no plano de recuperação
 - O índice GIN e a coluna `tsvector` vivem no plano de recuperação, mantidos pelo indexador
   (ADR-0018), e podem ser apagados e reconstruídos
+
+## Emenda
+
+Em novembro de 2026, o texto passou a descrever a capacidade da instalação no lugar de uma
+edição. A decisão não mudou.

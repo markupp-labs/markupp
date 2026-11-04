@@ -6,8 +6,8 @@ Substituída pelo ADR-0029
 
 ## Contexto
 
-Busca semântica e sugestão de ligação precisam de vetor por nota ou por trecho. As duas
-edições têm restrições opostas: o Enterprise roda indexação em Lambda (ADR-0018), onde
+Busca semântica e sugestão de ligação precisam de vetor por nota ou por trecho. As instalações
+têm restrições opostas: a instalação em nuvem roda indexação em Lambda (ADR-0018), onde
 carregar pesos de modelo significa imagem grande e cold start, e o self-host não deve depender
 de serviço de terceiro para funcionar
 
@@ -15,9 +15,9 @@ de serviço de terceiro para funcionar
 
 A geração de embedding fica atrás de uma interface com provedor escolhido por configuração.
 Duas implementações: cliente HTTP compatível com a API da OpenAI, e cliente do Amazon Bedrock.
-O padrão do Enterprise é Bedrock. No self-host, o cliente compatível com OpenAI aponta para
-Ollama, LocalAI, llama.cpp ou vLLM no próprio compose, e busca semântica vem desligada até que
-um provedor seja configurado
+O padrão em instalações na AWS é Bedrock. No self-host, o cliente compatível com OpenAI aponta
+para Ollama, LocalAI, llama.cpp ou vLLM no próprio compose, e busca semântica vem desligada até
+que um provedor seja configurado
 
 ## Alternativas consideradas
 
@@ -32,14 +32,19 @@ um provedor seja configurado
 
 ## Consequências
 
-- Cada edição usa o provedor que lhe serve, com uma interface e duas implementações
+- Cada instalação usa o provedor que lhe serve, com uma interface e duas implementações
 - Instalação padrão do self-host não fala com serviço externo, e não tem busca semântica até
   ser configurada. Busca léxica (ADR-0017) e grafo de ligações funcionam sem vetor
 - Vetores de provedores diferentes não são comparáveis, e a dimensão varia por modelo: cada
   instância tem um modelo ativo, registrado junto dos vetores, e trocar de modelo obriga a
   reconstruir a tabela de vetores inteira
 - Reconstruir é seguro porque vetor é dado derivado (ADR-0012), mas custa uma passada de
-  embedding sobre todas as notas, o que no Enterprise é custo por chamada
-- O custo do Bedrock por nota e por reindexação completa ainda precisa ser medido numa prova de
-  conceito no free tier da AWS. Custo acima do previsto troca o provedor padrão do Enterprise,
-  sem mudança de arquitetura
+  embedding sobre todas as notas, o que no Bedrock é custo por chamada
+- Trocar o provedor padrão em instalações na AWS não muda a arquitetura
+
+## Emenda
+
+Em novembro de 2026, o texto deste ADR foi revisto. A decisão não mudou.
+
+Em novembro de 2026, o texto passou a descrever a capacidade da instalação no lugar de uma
+edição. A decisão não mudou.

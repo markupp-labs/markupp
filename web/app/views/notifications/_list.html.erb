@@ -1,0 +1,11 @@
+<%# Lista do sino: hoje só convites, com o aceitar e o recusar de my_invites. id_prefix separa as frases da página da
+    lista das do popover, quando os dois estão abertos. %>
+<% if feed.items.any? %>
+  <ul class="space-y-px">
+    <% feed.items.each do |notification| %>
+      <%= render "my_invites/invite", invite: notification.invite, id_prefix: local_assigns.fetch(:id_prefix, "notification_invite") %>
+    <% end %>
+  </ul>
+<% else %>
+  <p class="px-2 py-1 text-ink-muted"><%= t("notifications.list.empty") %></p>
+<% end %>

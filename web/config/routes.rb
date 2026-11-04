@@ -29,6 +29,7 @@ Rails.application.routes.draw do
   resource :current_vault, only: :update
   resources :vaults, only: [ :create, :update, :destroy ]
   resources :my_invites, only: [ :index, :update, :destroy ]
+  resource :notifications, only: :show
 
   # Consentimento OAuth: o servidor manda o navegador para cá com o id do pedido.
   resources :oauth_authorizations, path: "oauth/authorize", only: :show do
@@ -43,6 +44,7 @@ Rails.application.routes.draw do
     resource :account, only: :show
     resource :appearance, only: :show
     resource :editor, only: :show
+    resource :agents, only: :show
     resource :general, only: :show, controller: "general"
     resources :members, only: [ :index, :update, :destroy ]
     resources :invites, only: [ :index, :create, :destroy ]

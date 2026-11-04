@@ -68,10 +68,4 @@ class CodeBlocksTest < ApplicationSystemTestCase
     assert_not scroll["pre"], "expected the pre itself not to scroll, got #{scroll}"
     assert_equal "#{scroll['line']} rgba(0, 0, 0, 0)", scroll["color"]
   end
-
-  private
-    def grant_clipboard
-      page.driver.browser.execute_cdp("Browser.grantPermissions", origin: Capybara.current_session.server.base_url,
-                                                                  permissions: %w[clipboardReadWrite clipboardSanitizedWrite])
-    end
 end

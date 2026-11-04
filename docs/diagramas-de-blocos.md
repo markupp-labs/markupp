@@ -1,6 +1,6 @@
 # Diagramas de blocos
 
-![Arquitetura da edição Enterprise](diagramas-de-blocos.drawio.svg)
+![Arquitetura da instalação em Kubernetes](diagramas-de-blocos.drawio.svg)
 
 O sistema se divide em sete artefatos. A divisão segue perfil de recurso, não entidade de
 domínio: nota, cofre, usuário e busca não são serviços, compartilham banco e caminho de
@@ -31,8 +31,8 @@ O **servidor MCP** é a porta MCP dos mesmos clientes, com o mesmo conjunto de o
 uma rajada de tráfego própria. O isolamento é mútuo, e nenhum dos dois perfis de carga
 degrada o outro.
 
-O **plano de controle** cuida de cobrança, provisionamento e plano. Tráfego baixo e postura
-de segurança distinta dos outros três.
+O **plano de controle** cuida do provisionamento de tenants. Tráfego baixo e postura de
+segurança distinta dos outros três.
 
 ## Escala a zero com KEDA
 
@@ -72,14 +72,14 @@ que roda antes de qualquer serviço subir a versão nova.
 A API REST valida identidade contra o provedor OIDC habilitado, o indexador de embedding
 gera vetores pelo provedor configurado, e o worker de notificação entrega email pelo dele.
 
-Os três são trocáveis por configuração, e é por isso que o desenho não nomeia serviço. O
-Enterprise entrega email por SMTP, o self-host aponta para um modelo local e um SMTP próprio, e
-o código é o mesmo nos dois.
+Os três são trocáveis por configuração, e é por isso que o desenho não nomeia serviço. Uma
+instalação em nuvem entrega email por SMTP, o self-host aponta para um modelo local e um SMTP
+próprio, e o código é o mesmo nos dois.
 
 ## O que muda no self-host
 
 O mesmo conjunto de imagens roda por compose num nó só, menos o plano de controle: com um
-tenant só, não há cobrança nem provisionamento. Embedding e notificação sobem por perfil, só
+tenant só, não há o que provisionar. Embedding e notificação sobem por perfil, só
 quando configurados. Sem cluster, o TLS termina no próprio servidor, e o embedding pode vir de
 modelo local carregado no processo do indexador.
 

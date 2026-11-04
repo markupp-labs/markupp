@@ -6,16 +6,14 @@ Aceita
 
 ## Contexto
 
-O Enterprise roda em Kubernetes (ADR-0027), primeiro num cluster on-premise e depois em nuvem
-pública. A implantação precisa ser reproduzível pela equipe e por quem hospeda por conta
-própria, e nada disso está descrito em código hoje
+O markupp roda em Kubernetes (ADR-0027), primeiro num cluster on-premise e depois em nuvem
+pública. A implantação precisa ser reproduzível por quem hospeda, e nada disso está descrito em código hoje
 
 ## Decisão
 
 Pulumi, com um componente escrito em Go e mantido neste repositório, versionado com a mesma tag
 das imagens. O componente declara os recursos Kubernetes do markupp com tipos do SDK, sem chart
-Helm por baixo, e é o artefato de instalação em Kubernetes para terceiros. A stack da equipe
-consome o mesmo componente
+Helm por baixo, e é o artefato de instalação em Kubernetes. Toda stack consome o mesmo componente
 
 O estado fica num bucket do Garage, e os segredos da stack são cifrados por passphrase. O CI
 implanta com uma credencial restrita ao namespace do markupp. Gateway API e cert-manager são
@@ -29,7 +27,8 @@ pré-requisitos do cluster, e KEDA é opcional, instalado à parte por quem admi
 - Operator próprio: resolve ciclo de vida complexo, e os serviços não têm estado
 - Terraform: mais difundido, e descreve a infraestrutura em linguagem própria
 - Estado no Pulumi Cloud: menos infraestrutura para montar, e é gratuito só para uso individual
-- Estado em bucket de nuvem: sobrevive à perda do cluster, e traz uma conta de nuvem só para isso
+- Estado em bucket de nuvem: sobrevive à perda do cluster, e traz uma conta de nuvem só para
+  isso
 - Credencial de administrador do cluster no CI: o CI instalaria os operadores também, e um
   vazamento alcançaria os outros projetos do cluster
 
@@ -46,3 +45,8 @@ pré-requisitos do cluster, e KEDA é opcional, instalado à parte por quem admi
 - Sem KEDA, os indexadores rodam por CronJob. Sem URL de banco externo, o componente sobe um
   Postgres de uma instância no namespace, com senha gerada
 - Quem hospeda num nó só continua recebendo o compose, sem IaC
+
+## Emenda
+
+Em novembro de 2026, o texto passou a descrever a capacidade da instalação no lugar de uma
+edição. A decisão não mudou.

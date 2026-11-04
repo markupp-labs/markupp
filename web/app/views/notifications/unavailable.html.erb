@@ -1,0 +1,5 @@
+<%# O aviso de frame do ApplicationController (sessão vencida, por exemplo) só na lista: o contador mora dentro do
+    botão do sino e não leva link. %>
+<%= render layout: "notifications/frames", locals: { unread: 0 } do %>
+  <p role="alert" class="px-2 py-1"><%= link_to alert, path, data: { turbo_frame: "_top" }, class: "text-danger underline" %></p>
+<% end %>
