@@ -12,7 +12,9 @@ class ShortcutsTest < ActionDispatch::IntegrationTest
     [ "Focus region left", "Alt H" ], [ "Focus region below", "Alt J" ], [ "Focus region above", "Alt K" ], [ "Focus region right", "Alt L" ],
     [ "Light theme", "" ], [ "Dark theme", "" ], [ "Editor style: plain", "" ], [ "Editor style: styled", "" ],
     [ "Vim keys: on", "" ], [ "Vim keys: off", "" ],
-    [ "All tenants", "g t" ], [ "Switch tenant", "" ], [ "Tenant: General", "" ], [ "Delete tenant", "" ], [ "Log out", "" ],
+    [ "All tenants", "g t" ], [ "Switch tenant", "" ], [ "Tenant: General", "" ], [ "Delete tenant", "" ],
+    [ "Switch vault", "g v" ], [ "New vault", "" ], [ "Vault settings", "" ], [ "Vault members", "" ], [ "Delete vault", "" ], [ "Log out", "" ],
+    [ "Rename the vault", "v r" ], [ "Add a member to the vault", "v a" ], [ "Leave the vault", "v q" ],
     [ "Show or hide the graph filters", "f" ], [ "Show or hide orphan notes", "o" ], [ "Show or hide unresolved links", "u" ],
     [ "Show or hide inferred links", "i" ], [ "Next and previous community in the graph", "c" ], [ "Clear the graph filters", "x" ]
   ].freeze
@@ -27,7 +29,7 @@ class ShortcutsTest < ActionDispatch::IntegrationTest
 
     assert_select "dialog#shortcut_help[aria-labelledby=shortcut_help_title]" do
       assert_select "#shortcut_help_title", "Keyboard shortcuts"
-      [ "General", "Note", "Tree", "Menus and lists", "Tenants", "Graph" ].each { assert_select "h3", text: it }
+      [ "General", "Note", "Tree", "Menus and lists", "Vault", "Tenants", "Graph" ].each { assert_select "h3", text: it }
     end
     rows = css_select("#shortcut_help dt").to_h { |keys| [ keys.next_element.text.strip, keys.css("kbd").map(&:text) ] }
     { "Command palette" => [ "Ctrl+Shift+P", "F1", ":" ], "Keyboard shortcuts" => [ "?" ], "New note" => [ "Alt+N" ], "Save" => [ "Ctrl+S" ],
@@ -38,7 +40,9 @@ class ShortcutsTest < ActionDispatch::IntegrationTest
       "Show or hide inferred links" => [ "i" ], "Next and previous community in the graph" => [ "c", "Shift+C" ],
       "Clear the graph filters" => [ "x" ],
       "Focus region left" => [ "Alt+H" ], "Focus region right" => [ "Alt+L" ],
-      "Next row" => [ "j", "↓" ], "All tenants" => [ "g t" ], "Filter tenants" => [ "/" ],
+      "Next row" => [ "j", "↓" ], "All tenants" => [ "g t" ], "Switch vault" => [ "g v" ],
+      "Rename the vault" => [ "v r" ], "Add a member to the vault" => [ "v a" ], "Leave the vault" => [ "v q" ],
+      "Remove the member in focus, in a member list" => [ "Delete" ], "Filter tenants" => [ "/" ],
       "Move between tenants" => [ "hjkl", "←↓↑→" ], "Indent and outdent in the content" => [ "Tab", "Shift+Tab" ],
       "From the content back to the path (Esc first)" => [ "Esc Shift+Tab" ] }.each do |name, keys|
       assert_equal keys, rows[name], "expected #{name} with #{keys.inspect} in the help"

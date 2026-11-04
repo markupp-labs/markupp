@@ -13,15 +13,16 @@ class MascotTest < ActionDispatch::IntegrationTest
     end
   end
 
-  test "the sidebar brand is the small mascot beside the tenant name, inside the link home" do
+  test "the sidebar brand is the small mascot as the link home, beside the tenant name of the trail" do
     use_fake_api(notes: [])
     sign_in_as
 
     get root_path
 
-    assert_select "nav #current_tenant a[href=?]", root_path, text: /Acme research/ do
+    assert_select "nav #current_tenant a[href=?]", root_path do
       assert_select SMALL, count: 1
     end
+    assert_select "nav #current_tenant button[popovertarget=tenant_switcher]", text: "Acme research"
     assert_select "nav #current_tenant", text: /markupp/, count: 0
     assert_select LARGE, count: 0
   end

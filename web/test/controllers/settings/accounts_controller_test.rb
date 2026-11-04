@@ -129,7 +129,7 @@ module Settings
       assert_select "nav#sidebar a", text: "Back to notes", count: 0
     end
 
-    test "a member sees account, appearance, editor and the tenant general, in that order, without members and invites" do
+    test "a member sees account, appearance, editor, the vault general and members and the tenant general, in that order" do
       use_fake_api(tenants: MEMBER_ONLY)
       sign_in_as
 
@@ -140,14 +140,14 @@ module Settings
         assert_select "a[href=?]:not([aria-current])", settings_appearance_path, text: "Appearance"
         assert_select "a[href='/settings/editor']:not([aria-current])", text: "Editor"
         assert_select "a" do |links|
-          assert_equal %w[Account Appearance Editor General], links.map { it.text.strip }
+          assert_equal %w[Account Appearance Editor General Members General], links.map { it.text.strip }
         end
         assert_select "a[href=?]", settings_members_path, count: 0
         assert_select "a[href=?]", settings_invites_path, count: 0
       end
     end
 
-    test "an owner also sees the tenant section with general, members and invites" do
+    test "an owner also sees the tenant section with general, members and invites, after the vault section" do
       use_fake_api
       sign_in_as
 
@@ -158,18 +158,21 @@ module Settings
         assert_select "a[href=?]", settings_members_path, text: "Members"
         assert_select "a[href=?]", settings_invites_path, text: "Invites"
         assert_select "a" do |links|
-          assert_equal %w[Account Appearance Editor General Members Invites], links.map { it.text.strip }
+          assert_equal %w[Account Appearance Editor General Members General Members Invites], links.map { it.text.strip }
         end
       end
     end
 
+    # A exceção é o Vault settings do seletor de cofres, um item do menu dele.
     test "the settings links live only in the settings nav, not in the sidebar" do
       use_fake_api
       sign_in_as
 
       get settings_account_path
 
-      assert_select "nav#sidebar .sidebar-scroll a[href^='/settings']", count: 0
+      assert_select "nav#sidebar .sidebar-scroll a[href^='/settings']:not([role=menuitem])", count: 0
+      assert_select "nav#sidebar .sidebar-scroll a[href^='/settings']", count: 1
+      assert_select "#vault_switcher a[role=menuitem][href=?]", settings_vault_path
     end
 
     test "the settings icon of the activity bar is marked as current" do

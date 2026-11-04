@@ -36,6 +36,12 @@ describe("toUserError", () => {
     ["unauthorized", 401, /Reconnect the server and sign in/],
     ["read_only", 403, /role owner, admin or member/],
     ["duplicate_path", 409, /^duplicate_path: x\. .*list_notes.*edit_note/],
+    ["vault_forbidden", 403, /list_vaults/],
+    ["invalid_name", 400, /1 to 100 characters/],
+    ["not_tenant_member", 422, /list_members.*invite_member/],
+    ["already_vault_member", 409, /list_vault_members/],
+    ["vault_member_not_found", 404, /list_vault_members/],
+    ["no_vault", 409, /create_vault/],
   ])("dá o próximo passo de %s", (code, status, nextStep) => {
     const error = toUserError(new MarkuppApiError(status, code, "x"));
     expect(error.message).toMatch(nextStep);

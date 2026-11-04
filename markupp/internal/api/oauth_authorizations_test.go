@@ -64,7 +64,7 @@ func TestMyAuthorizations_ErroInterno_Retorna500(t *testing.T) {
 		rec := consentRequest(&fakeOAuthService{err: errors.New("banco fora")}, route.method, route.path, true)
 
 		assert.Equal(t, http.StatusInternalServerError, rec.Code, route.path)
-		assert.JSONEq(t, `{"error":"internal","message":"erro interno"}`, rec.Body.String(), route.path)
+		assert.JSONEq(t, `{"error":"internal","message":"internal error"}`, rec.Body.String(), route.path)
 	}
 }
 
