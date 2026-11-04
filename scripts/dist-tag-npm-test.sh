@@ -13,7 +13,7 @@ escolhe() {
     printf 'ok    %s\n' "$descricao"
     return 0
   fi
-  printf 'FALHA %s (esperava %s, recebeu %s)\n' "$descricao" "$esperado" "$recebido"
+  printf 'FAIL  %s (expected %s, got %s)\n' "$descricao" "$esperado" "$recebido"
   falhas=$((falhas + 1))
 }
 
@@ -21,7 +21,7 @@ rejeita() {
   local descricao="$1"
   shift
   if "$ESCOLHEDOR" "$@" >/dev/null 2>&1; then
-    printf 'FALHA %s (esperava saida diferente de 0)\n' "$descricao"
+    printf 'FAIL  %s (expected a non-zero exit)\n' "$descricao"
     falhas=$((falhas + 1))
     return 0
   fi
@@ -40,7 +40,7 @@ rejeita 'latest atual fora do semver reprova' 1.0.0 lixo
 rejeita 'sem versao reprova'
 
 if [ "$falhas" -ne 0 ]; then
-  printf '\n%s caso(s) falharam\n' "$falhas"
+  printf '\n%s case(s) failed\n' "$falhas"
   exit 1
 fi
-printf '\ntodos os casos passaram\n'
+printf '\nall cases passed\n'

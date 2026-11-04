@@ -15,7 +15,7 @@ exige_formato() {
   if printf '%s' "$valor" | grep -qE "$formato"; then
     return 0
   fi
-  printf '%s %q fora do formato, esperado algo como %s\n' "$nome" "$valor" "$exemplo" >&2
+  printf '%s %q is malformed, expected something like %s\n' "$nome" "$valor" "$exemplo" >&2
   exit 1
 }
 
@@ -27,9 +27,9 @@ maior_que() {
 
 versao="${1:-}"
 atual="${2:-}"
-exige_formato versao "$versao" "$SEMVER" '1.0.0 ou 1.0.0-rc.1, sem o v'
+exige_formato version "$versao" "$SEMVER" '1.0.0 or 1.0.0-rc.1, without the v'
 if [ -n "$atual" ]; then
-  exige_formato 'latest atual' "$atual" "$ESTAVEL" '1.0.0'
+  exige_formato 'current latest' "$atual" "$ESTAVEL" '1.0.0'
 fi
 
 if [[ "$versao" == *-* ]]; then
