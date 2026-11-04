@@ -58,7 +58,7 @@ flowchart TD
 ```
 
 Os dois caminhos, credencial local e provedor externo, terminam na mesma abertura de sessão.
-A diferença entre as edições é qual provedor está ligado, não qual código roda.
+A diferença entre instalações é qual provedor está ligado, não qual código roda.
 
 O ponto que costuma passar batido é o auto-registro desligado. Um usuário que autentica com
 sucesso no provedor externo e não tem conta vinculada continua sem acesso, porque autenticar
