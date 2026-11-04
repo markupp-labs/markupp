@@ -30,3 +30,8 @@ de envio ficam explicitamente indisponíveis
 - Envio sai do caminho da requisição e vai para o mesmo trabalho assíncrono da indexação
   (ADR-0018), senão a latência da resposta fica presa à do servidor de email
 - Notificação dentro da interface, sem email, é decisão separada e não está coberta aqui
+
+## Emenda
+
+Em novembro de 2026, o texto deste ADR foi revisto para tirar do repositório público o que
+trata da operação comercial do Enterprise. A decisão não mudou.

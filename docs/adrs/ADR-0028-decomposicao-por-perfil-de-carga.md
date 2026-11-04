@@ -51,3 +51,8 @@ Nota, cofre, usuário e busca não são serviços: compartilham banco e caminho 
 - O custo dessa escolha é acoplamento pelo schema. Mudança de coluna coordena os seis que
   alcançam o banco, em expand e contract, e nenhum deles evolui o modelo de dados por conta
   própria. O painel fica de fora, porque consome a API
+
+## Emenda
+
+Em novembro de 2026, o texto deste ADR foi revisto para tirar do repositório público o que
+trata da operação comercial do Enterprise. A decisão não mudou.
