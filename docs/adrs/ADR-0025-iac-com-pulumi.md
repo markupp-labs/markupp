@@ -7,15 +7,13 @@ Aceita
 ## Contexto
 
 O markupp roda em Kubernetes (ADR-0027), primeiro num cluster on-premise e depois em nuvem
-pública. A implantação precisa ser reproduzível pela equipe e por quem hospeda por conta
-própria, e nada disso está descrito em código hoje
+pública. A implantação precisa ser reproduzível por quem hospeda, e nada disso está descrito em código hoje
 
 ## Decisão
 
 Pulumi, com um componente escrito em Go e mantido neste repositório, versionado com a mesma tag
 das imagens. O componente declara os recursos Kubernetes do markupp com tipos do SDK, sem chart
-Helm por baixo, e é o artefato de instalação em Kubernetes para terceiros. A stack da equipe
-consome o mesmo componente
+Helm por baixo, e é o artefato de instalação em Kubernetes. Toda stack consome o mesmo componente
 
 O estado fica num bucket do Garage, e os segredos da stack são cifrados por passphrase. O CI
 implanta com uma credencial restrita ao namespace do markupp. Gateway API e cert-manager são

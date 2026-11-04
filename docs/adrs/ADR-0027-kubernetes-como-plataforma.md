@@ -8,8 +8,8 @@ Aceita
 
 A instalação em nuvem foi desenhada sobre Lambda e balanceador da AWS (ADR-0018, ADR-0023),
 enquanto o self-host roda por compose. São dois runtimes diferentes para o mesmo produto, e o
-serverless amarra o projeto a uma nuvem. Além disso, self-host é a identidade do projeto: o que
-a equipe opera na nuvem deveria ser o que qualquer pessoa consegue operar
+serverless amarra o projeto a uma nuvem. Além disso, self-host é a identidade do projeto, e uma
+instalação em nuvem deveria ser o que qualquer pessoa consegue operar
 
 ## Decisão
 
@@ -37,7 +37,7 @@ acrescentado no nível do cluster para ele
 
 ## Consequências
 
-- O que a equipe opera passa a ser uma instalação que qualquer pessoa com Pulumi reproduz
+- Uma instalação em nuvem passa a ser algo que qualquer pessoa com Pulumi reproduz
   (ADR-0025). Quem usa Helm, Argo CD ou Flux fica sem artefato oficial
 - Some a taxa do Lambda: sem pool obrigatório na frente do Postgres, sem teto de quinze minutos
   e sem fatiar lote por causa de tempo
