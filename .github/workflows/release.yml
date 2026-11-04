@@ -217,10 +217,10 @@ jobs:
         env:
           TAG: ${{ github.ref_name }}
         run: |
-          if ! atual=$(npm view markupp-mcp dist-tags.latest 2>"$RUNNER_TEMP/npm-view.err"); then
+          if ! current=$(npm view markupp-mcp dist-tags.latest 2>"$RUNNER_TEMP/npm-view.err"); then
             grep -q E404 "$RUNNER_TEMP/npm-view.err" || { cat "$RUNNER_TEMP/npm-view.err" >&2; exit 1; }
-            atual=
+            current=
           fi
-          dist_tag=$(scripts/dist-tag-npm.sh "${TAG#v}" "$atual")
-          printf 'publishing %s with dist-tag %s (current latest: %s)\n' "${TAG#v}" "$dist_tag" "${atual:-none}"
+          dist_tag=$(scripts/dist-tag-npm.sh "${TAG#v}" "$current")
+          printf 'publishing %s with dist-tag %s (current latest: %s)\n' "${TAG#v}" "$dist_tag" "${current:-none}"
           npm publish "$RUNNER_TEMP"/npm/markupp-mcp-*.tgz --ignore-scripts --provenance --access public --tag "$dist_tag"

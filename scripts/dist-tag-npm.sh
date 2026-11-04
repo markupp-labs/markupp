@@ -4,38 +4,38 @@
 #   prerelease                      -> next
 #   estável maior que a latest      -> latest
 #   estável igual ou menor          -> latest-MAJOR.MINOR, para não rebaixar o npx
-# Uso: dist-tag-npm.sh VERSAO [LATEST_ATUAL]
+# Uso: dist-tag-npm.sh VERSION [CURRENT_LATEST]
 set -euo pipefail
 
 SEMVER='^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$'
-ESTAVEL='^[0-9]+\.[0-9]+\.[0-9]+$'
+STABLE='^[0-9]+\.[0-9]+\.[0-9]+$'
 
-exige_formato() {
-  local nome="$1" valor="$2" formato="$3" exemplo="$4"
-  if printf '%s' "$valor" | grep -qE "$formato"; then
+require_format() {
+  local name="$1" value="$2" format="$3" example="$4"
+  if printf '%s' "$value" | grep -qE "$format"; then
     return 0
   fi
-  printf '%s %q is malformed, expected something like %s\n' "$nome" "$valor" "$exemplo" >&2
+  printf '%s %q is malformed, expected something like %s\n' "$name" "$value" "$example" >&2
   exit 1
 }
 
-maior_que() {
-  local versao="$1" atual="$2"
-  [ "$versao" != "$atual" ] &&
-    [ "$(printf '%s\n%s\n' "$atual" "$versao" | sort -V | tail -n 1)" = "$versao" ]
+greater_than() {
+  local version="$1" current="$2"
+  [ "$version" != "$current" ] &&
+    [ "$(printf '%s\n%s\n' "$current" "$version" | sort -V | tail -n 1)" = "$version" ]
 }
 
-versao="${1:-}"
-atual="${2:-}"
-exige_formato version "$versao" "$SEMVER" '1.0.0 or 1.0.0-rc.1, without the v'
-if [ -n "$atual" ]; then
-  exige_formato 'current latest' "$atual" "$ESTAVEL" '1.0.0'
+version="${1:-}"
+current="${2:-}"
+require_format version "$version" "$SEMVER" '1.0.0 or 1.0.0-rc.1, without the v'
+if [ -n "$current" ]; then
+  require_format 'current latest' "$current" "$STABLE" '1.0.0'
 fi
 
-if [[ "$versao" == *-* ]]; then
+if [[ "$version" == *-* ]]; then
   echo next
-elif [ -z "$atual" ] || maior_que "$versao" "$atual"; then
+elif [ -z "$current" ] || greater_than "$version" "$current"; then
   echo latest
 else
-  echo "latest-${versao%.*}"
+  echo "latest-${version%.*}"
 fi

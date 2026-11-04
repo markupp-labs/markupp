@@ -1,46 +1,46 @@
 #!/usr/bin/env bash
 set -uo pipefail
 
-ESCOLHEDOR="$(cd "$(dirname "$0")" && pwd)/dist-tag-npm.sh"
-falhas=0
+PICKER="$(cd "$(dirname "$0")" && pwd)/dist-tag-npm.sh"
+failures=0
 
-escolhe() {
-  local esperado="$1" descricao="$2"
+expect_tag() {
+  local expected="$1" description="$2"
   shift 2
-  local recebido
-  recebido="$("$ESCOLHEDOR" "$@" 2>/dev/null)"
-  if [ "$recebido" = "$esperado" ]; then
-    printf 'ok    %s\n' "$descricao"
+  local actual
+  actual="$("$PICKER" "$@" 2>/dev/null)"
+  if [ "$actual" = "$expected" ]; then
+    printf 'ok    %s\n' "$description"
     return 0
   fi
-  printf 'FAIL  %s (expected %s, got %s)\n' "$descricao" "$esperado" "$recebido"
-  falhas=$((falhas + 1))
+  printf 'FAIL  %s (expected %s, got %s)\n' "$description" "$expected" "$actual"
+  failures=$((failures + 1))
 }
 
-rejeita() {
-  local descricao="$1"
+expect_rejection() {
+  local description="$1"
   shift
-  if "$ESCOLHEDOR" "$@" >/dev/null 2>&1; then
-    printf 'FAIL  %s (expected a non-zero exit)\n' "$descricao"
-    falhas=$((falhas + 1))
+  if "$PICKER" "$@" >/dev/null 2>&1; then
+    printf 'FAIL  %s (expected a non-zero exit)\n' "$description"
+    failures=$((failures + 1))
     return 0
   fi
-  printf 'ok    %s\n' "$descricao"
+  printf 'ok    %s\n' "$description"
 }
 
-escolhe latest 'primeira publicacao estavel vai para latest' 1.0.0 ''
-escolhe latest 'estavel maior que a latest vai para latest' 1.1.0 1.0.0
-escolhe latest 'compara numeros e nao texto' 1.10.0 1.9.0
-escolhe latest-1.0 'correcao de linha antiga nao rebaixa a latest' 1.0.1 1.1.0
-escolhe latest-1.1 'versao igual a latest nao vira latest de novo' 1.1.0 1.1.0
-escolhe next 'prerelease vai para next' 1.2.0-rc.1 1.1.0
-escolhe next 'prerelease sem latest vai para next' 1.0.0-rc.1 ''
-rejeita 'versao fora do semver reprova' v1.0.0 1.0.0
-rejeita 'latest atual fora do semver reprova' 1.0.0 lixo
-rejeita 'sem versao reprova'
+expect_tag latest 'primeira publicacao estavel vai para latest' 1.0.0 ''
+expect_tag latest 'estavel maior que a latest vai para latest' 1.1.0 1.0.0
+expect_tag latest 'compara numeros e nao texto' 1.10.0 1.9.0
+expect_tag latest-1.0 'correcao de linha antiga nao rebaixa a latest' 1.0.1 1.1.0
+expect_tag latest-1.1 'versao igual a latest nao vira latest de novo' 1.1.0 1.1.0
+expect_tag next 'prerelease vai para next' 1.2.0-rc.1 1.1.0
+expect_tag next 'prerelease sem latest vai para next' 1.0.0-rc.1 ''
+expect_rejection 'versao fora do semver reprova' v1.0.0 1.0.0
+expect_rejection 'latest atual fora do semver reprova' 1.0.0 lixo
+expect_rejection 'sem versao reprova'
 
-if [ "$falhas" -ne 0 ]; then
-  printf '\n%s case(s) failed\n' "$falhas"
+if [ "$failures" -ne 0 ]; then
+  printf '\n%s case(s) failed\n' "$failures"
   exit 1
 fi
 printf '\nall cases passed\n'
