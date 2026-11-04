@@ -5,7 +5,7 @@ Claude Code, Codex, Cursor and VS Code read and write your markupp notes, follow
 and manage tenants and invites, always through the markupp REST API and with your own
 permissions.
 
-Requires Node.js 22.12 or later.
+Requires Node.js 26 or later.
 
 ## Install
 

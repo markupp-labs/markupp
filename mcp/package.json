@@ -22,7 +22,7 @@
   "license": "AGPL-3.0-only",
   "type": "module",
   "engines": {
-    "node": ">=22.12"
+    "node": ">=26"
   },
   "bin": {
     "markupp-mcp": "dist/bin.js"
