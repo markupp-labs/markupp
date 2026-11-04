@@ -42,7 +42,7 @@ func (r *PostgresOAuthRepository) GetClient(ctx context.Context, id string, dcrP
 		return oauth.Client{}, fmt.Errorf("%w: client_id %s", oauth.ErrClientNotFound, oauth.ClientValue(id))
 	}
 	if err != nil {
-		return oauth.Client{}, fmt.Errorf("buscar cliente oauth %s: %w", oauth.ClientValue(id), err)
+		return oauth.Client{}, fmt.Errorf("find oauth client %s: %w", oauth.ClientValue(id), err)
 	}
 	return oauth.Client{ID: row.ID, Name: row.Name, RedirectURIs: row.RedirectUris, Source: row.Source}, nil
 }
@@ -57,10 +57,10 @@ func (r *PostgresOAuthRepository) CreateRequest(ctx context.Context, req oauth.A
 		CodeChallenge: req.CodeChallenge, CreatedAt: req.CreatedAt, ExpiresAt: req.ExpiresAt,
 	})
 	if pgErrorCode(err) == foreignKeyViolationCode {
-		return fmt.Errorf("%w: client_id %s apagado antes de gravar o pedido", oauth.ErrClientNotFound, oauth.ClientValue(req.ClientID))
+		return fmt.Errorf("%w: client_id %s was deleted before saving the request", oauth.ErrClientNotFound, oauth.ClientValue(req.ClientID))
 	}
 	if err != nil {
-		return fmt.Errorf("gravar pedido de autorização do cliente %s: %w", oauth.ClientValue(req.ClientID), err)
+		return fmt.Errorf("save authorization request of client %s: %w", oauth.ClientValue(req.ClientID), err)
 	}
 	return nil
 }
@@ -69,7 +69,7 @@ func (r *PostgresOAuthRepository) CreateRequest(ctx context.Context, req oauth.A
 func (r *PostgresOAuthRepository) GetPendingRequest(ctx context.Context, id string, now time.Time) (oauth.AuthorizationRequest, error) {
 	row, err := r.q.GetPendingOAuthRequest(ctx, gen.GetPendingOAuthRequestParams{ID: id, Now: now})
 	if err != nil {
-		return oauth.AuthorizationRequest{}, requestErr("buscar pedido pendente", err)
+		return oauth.AuthorizationRequest{}, requestErr("find pending", err)
 	}
 	return toAuthorizationRequest(row), nil
 }
@@ -78,7 +78,7 @@ func (r *PostgresOAuthRepository) GetPendingRequest(ctx context.Context, id stri
 // Recusa sem gravar nada a aprovação sem hash de código.
 func (r *PostgresOAuthRepository) ApproveRequest(ctx context.Context, a oauth.Approval) (oauth.AuthorizationRequest, error) {
 	if a.CodeHash == "" {
-		return oauth.AuthorizationRequest{}, errors.New(`aprovar pedido de autorização: code_hash "" vazio, esperado o hash do código emitido`)
+		return oauth.AuthorizationRequest{}, errors.New(`approve authorization request: code_hash "" is empty, expected the hash of the issued code`)
 	}
 	var row gen.OauthRequest
 	err := inTx(ctx, r.pool, func(qtx *gen.Queries) error {
@@ -97,14 +97,14 @@ func (r *PostgresOAuthRepository) ApproveRequest(ctx context.Context, a oauth.Ap
 // registros, para a limpeza dos pendentes não apagar o cliente no meio da aprovação.
 func approveInTx(ctx context.Context, qtx *gen.Queries, a oauth.Approval) (gen.OauthRequest, error) {
 	if err := qtx.ShareDCRRegistrationLockForRequest(ctx, a.RequestID); err != nil {
-		return gen.OauthRequest{}, fmt.Errorf("compartilhar a trava dos registros dcr na aprovação: %w", err)
+		return gen.OauthRequest{}, fmt.Errorf("share dcr registration lock on approval: %w", err)
 	}
 	row, err := qtx.ApproveOAuthRequest(ctx, gen.ApproveOAuthRequestParams{
 		ID: a.RequestID, UserID: a.UserID, CodeHash: a.CodeHash,
 		CodeExpiresAt: a.CodeExpiresAt, DecidedAt: a.DecidedAt, DcrPendingCutoff: a.DCRPendingCutoff,
 	})
 	if err != nil {
-		return row, requestErr("aprovar pedido", err)
+		return row, requestErr("approve", err)
 	}
 	authorizationID, err := grantScopes(ctx, qtx, row, a.DecidedAt)
 	if err != nil {
@@ -112,7 +112,7 @@ func approveInTx(ctx context.Context, qtx *gen.Queries, a oauth.Approval) (gen.O
 	}
 	err = qtx.SetOAuthRequestAuthorization(ctx, gen.SetOAuthRequestAuthorizationParams{ID: row.ID, AuthorizationID: authorizationID})
 	if err != nil {
-		return row, fmt.Errorf("ligar o pedido aprovado à autorização %q: %w", authorizationID, err)
+		return row, fmt.Errorf("link approved request to authorization %q: %w", authorizationID, err)
 	}
 	return row, auditAuthorize(ctx, qtx, row, "success", a.DecidedAt)
 }
@@ -124,7 +124,7 @@ func (r *PostgresOAuthRepository) DenyRequest(ctx context.Context, d oauth.Denia
 		var err error
 		row, err = qtx.DenyOAuthRequest(ctx, gen.DenyOAuthRequestParams{ID: d.RequestID, UserID: d.UserID, DecidedAt: d.DecidedAt})
 		if err != nil {
-			return requestErr("recusar pedido", err)
+			return requestErr("deny", err)
 		}
 		return auditAuthorize(ctx, qtx, row, "failure", d.DecidedAt)
 	})
@@ -142,7 +142,7 @@ func grantScopes(ctx context.Context, qtx *gen.Queries, req gen.OauthRequest, at
 		Scopes: orderedScopes(req.Scopes), At: at, Supported: oauth.SupportedScopes(),
 	})
 	if err != nil {
-		return "", fmt.Errorf("conceder escopos de %q para %s: %w", req.UserID.String, oauth.ClientValue(req.ClientID), err)
+		return "", fmt.Errorf("grant scopes of %q to %s: %w", req.UserID.String, oauth.ClientValue(req.ClientID), err)
 	}
 	return id, nil
 }
@@ -171,7 +171,7 @@ func auditOAuth(ctx context.Context, qtx *gen.Queries, e oauth.AuditEvent) error
 		Target: e.ClientID, Result: e.Result, OccurredAt: e.OccurredAt,
 	}))
 	if err != nil {
-		return fmt.Errorf("registrar auditoria %s (%s) para o cliente %s: %w", e.Action, e.Result, oauth.ClientValue(e.ClientID), err)
+		return fmt.Errorf("record audit %s (%s) for client %s: %w", e.Action, e.Result, oauth.ClientValue(e.ClientID), err)
 	}
 	return nil
 }
@@ -185,10 +185,10 @@ func (r *PostgresOAuthRepository) ActiveAuthorization(ctx context.Context, userI
 func activeAuthorization(ctx context.Context, q *gen.Queries, userID, clientID string) (oauth.Authorization, error) {
 	row, err := q.GetActiveOAuthAuthorization(ctx, gen.GetActiveOAuthAuthorizationParams{UserID: userID, ClientID: clientID})
 	if errors.Is(err, pgx.ErrNoRows) {
-		return oauth.Authorization{}, fmt.Errorf("%w: usuário %q, cliente %s", oauth.ErrAuthorizationNotFound, userID, oauth.ClientValue(clientID))
+		return oauth.Authorization{}, fmt.Errorf("%w: user %q, client %s", oauth.ErrAuthorizationNotFound, userID, oauth.ClientValue(clientID))
 	}
 	if err != nil {
-		return oauth.Authorization{}, fmt.Errorf("buscar autorização de %q para %s: %w", userID, oauth.ClientValue(clientID), err)
+		return oauth.Authorization{}, fmt.Errorf("find authorization of %q for %s: %w", userID, oauth.ClientValue(clientID), err)
 	}
 	return toAuthorization(row), nil
 }
@@ -201,7 +201,7 @@ func saveTokensInTx(ctx context.Context, qtx *gen.Queries, tokens []oauth.Issued
 			Resource: t.Resource, Scopes: t.Scopes, ExpiresAt: t.ExpiresAt,
 		})
 		if err != nil {
-			return fmt.Errorf("gravar token %s da autorização %q: %w", t.Kind, t.AuthorizationID, err)
+			return fmt.Errorf("save token %s of authorization %q: %w", t.Kind, t.AuthorizationID, err)
 		}
 	}
 	return nil
@@ -213,7 +213,7 @@ func saveTokensInTx(ctx context.Context, qtx *gen.Queries, tokens []oauth.Issued
 // em paralelo escaparia do UPDATE.
 func revokeLockedTokens(ctx context.Context, qtx *gen.Queries, authorizationID string) error {
 	if err := qtx.RevokeOAuthAuthorizationTokens(ctx, authorizationID); err != nil {
-		return fmt.Errorf("revogar tokens da autorização %q: %w", authorizationID, err)
+		return fmt.Errorf("revoke tokens of authorization %q: %w", authorizationID, err)
 	}
 	return nil
 }
@@ -223,7 +223,7 @@ func requestErr(op string, err error) error {
 	if errors.Is(err, pgx.ErrNoRows) {
 		return oauth.ErrRequestNotFound
 	}
-	return fmt.Errorf("%s de autorização: %w", op, err)
+	return fmt.Errorf("%s authorization request: %w", op, err)
 }
 
 func toAuthorizationRequest(row gen.OauthRequest) oauth.AuthorizationRequest {

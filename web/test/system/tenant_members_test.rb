@@ -10,7 +10,7 @@ class TenantMembersTest < ApplicationSystemTestCase
 
   test "an owner opens the settings from the activity bar and changes a role" do
     within(".activity-bar-side") { click_on "Settings" }
-    within("main nav") { click_on "Members" }
+    within("main nav") { find("a[href='/settings/members']").click }
 
     assert_selector "h1", text: "Members"
     select "viewer", from: "Role for caio@markupp.dev"

@@ -89,7 +89,7 @@ func requireProtocolError(t *testing.T, err error, code, redirectURI, state stri
 	assert.Equal(t, code, protocolErr.Code)
 	assert.Equal(t, redirectURI, protocolErr.RedirectURI)
 	assert.Equal(t, state, protocolErr.State)
-	assert.Contains(t, protocolErr.Description, "; esperad", "a descrição deve dizer o formato esperado")
+	assert.Contains(t, protocolErr.Description, "; expected", "a descrição deve dizer o formato esperado")
 }
 
 // requireNotProtocolError confere que a falha de infraestrutura não virou erro de protocolo.

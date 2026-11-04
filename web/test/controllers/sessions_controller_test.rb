@@ -134,7 +134,7 @@ class SessionsControllerTest < ActionDispatch::IntegrationTest
 
     get root_path
 
-    assert_equal "access-1", api.received_credentials.find { it[:call] == "GET /notes" }[:access_token]
+    assert_equal "access-1", api.received_credentials.find { it[:call].start_with?("GET /v1/vaults/") }[:access_token]
   end
 
   test "an expired access token is renewed without the user noticing" do

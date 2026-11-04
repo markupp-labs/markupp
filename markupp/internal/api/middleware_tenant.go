@@ -59,7 +59,7 @@ func tenantFromPath(r *http.Request) string {
 
 func writeTenantNotFound(w http.ResponseWriter, err error) {
 	if errors.Is(err, auth.ErrMembershipNotFound) {
-		writeError(w, "tenant_not_found", "tenant inexistente", http.StatusNotFound)
+		writeError(w, "tenant_not_found", "tenant not found", http.StatusNotFound)
 		return
 	}
 	writeTenantError(w, err)
@@ -68,14 +68,14 @@ func writeTenantNotFound(w http.ResponseWriter, err error) {
 func writeTenantError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, auth.ErrMembershipNotFound):
-		writeError(w, "tenant_forbidden", "sem acesso a esse tenant", http.StatusForbidden)
+		writeError(w, "tenant_forbidden", "this account has no access to this tenant", http.StatusForbidden)
 	case errors.Is(err, auth.ErrTenantRequired):
 		writeError(w, "tenant_required", "informe o tenant em "+TenantHeader, http.StatusBadRequest)
 	case errors.Is(err, auth.ErrNoTenant):
-		writeError(w, "no_tenant", "usuario sem nenhum tenant", http.StatusForbidden)
+		writeError(w, "no_tenant", "this account does not belong to any tenant yet", http.StatusForbidden)
 	default:
 		slog.Error("falha ao resolver tenant", "error", err)
-		writeError(w, "internal", "erro interno", http.StatusInternalServerError)
+		writeError(w, "internal", "internal error", http.StatusInternalServerError)
 	}
 }
 
@@ -84,7 +84,7 @@ func requireWriter(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		actor, _ := identity.ActorFrom(r.Context())
 		if actor.Role == identity.RoleViewer {
-			writeError(w, "read_only", "o papel viewer so le as notas", http.StatusForbidden)
+			writeError(w, "read_only", "the viewer role can only read", http.StatusForbidden)
 			return
 		}
 		next.ServeHTTP(w, r)

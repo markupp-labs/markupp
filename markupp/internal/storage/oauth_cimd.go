@@ -17,10 +17,10 @@ import (
 func (r *PostgresOAuthRepository) GetFreshCIMDClient(ctx context.Context, id string, now time.Time) (oauth.Client, error) {
 	row, err := r.q.GetFreshCIMDClient(ctx, gen.GetFreshCIMDClientParams{ID: id, Now: now})
 	if errors.Is(err, pgx.ErrNoRows) {
-		return oauth.Client{}, fmt.Errorf("%w: client_id cimd %s sem documento válido", oauth.ErrClientNotFound, oauth.ClientValue(id))
+		return oauth.Client{}, fmt.Errorf("%w: cimd client_id %s has no valid document", oauth.ErrClientNotFound, oauth.ClientValue(id))
 	}
 	if err != nil {
-		return oauth.Client{}, fmt.Errorf("buscar cliente cimd %s: %w", oauth.ClientValue(id), err)
+		return oauth.Client{}, fmt.Errorf("find cimd client %s: %w", oauth.ClientValue(id), err)
 	}
 	return oauth.Client{ID: row.ID, Name: row.Name, RedirectURIs: row.RedirectUris, Source: row.Source}, nil
 }
@@ -35,7 +35,7 @@ func (r *PostgresOAuthRepository) SaveCIMDClient(ctx context.Context, client oau
 			return err
 		}
 		if err := qtx.DeleteStaleCIMDClients(ctx, now); err != nil {
-			return fmt.Errorf("apagar clientes cimd vencidos em %s: %w", now.Format(time.RFC3339), err)
+			return fmt.Errorf("delete cimd clients expired at %s: %w", now.Format(time.RFC3339), err)
 		}
 		return nil
 	})
@@ -47,10 +47,10 @@ func upsertCIMDClientInTx(ctx context.Context, qtx *gen.Queries, client oauth.Cl
 		ID: client.ID, Name: client.Name, RedirectUris: client.RedirectURIs, ExpiresAt: expiresAt,
 	})
 	if err != nil {
-		return fmt.Errorf("salvar cliente cimd %s: %w", oauth.ClientValue(client.ID), err)
+		return fmt.Errorf("save cimd client %s: %w", oauth.ClientValue(client.ID), err)
 	}
 	if rows == 0 {
-		return fmt.Errorf(`salvar cliente cimd %s: %w, esperado source "cimd"`, oauth.ClientValue(client.ID), oauth.ErrClientSourceConflict)
+		return fmt.Errorf(`save cimd client %s: %w: expected source "cimd"`, oauth.ClientValue(client.ID), oauth.ErrClientSourceConflict)
 	}
 	return nil
 }

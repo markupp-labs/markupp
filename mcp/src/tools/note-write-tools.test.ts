@@ -25,6 +25,34 @@ describe("create_note", () => {
     expect(Object.keys(created)).toEqual(["id", "path", "updated_at"]);
   });
 
+  it("com vault_id cria a nota no cofre", async () => {
+    const api = new FakeMarkuppApi().withTenant("t1");
+    const vault = api.withVault("t1", "Casa");
+    client = await MarkuppToolClient.connect(api);
+    const result = await client.call("create_note", {
+      tenant: "t1",
+      path: "a.md",
+      content: "# A",
+      vault_id: vault.id,
+    });
+    const created = JSON.parse(result.text) as { id: string };
+    expect(api.stored("t1", created.id).vault_id).toBe(vault.id);
+  });
+
+  it("aponta list_vaults quando o cofre da nota não está ao alcance", async () => {
+    client = await MarkuppToolClient.connect(
+      new FakeMarkuppApi().withTenant("t1"),
+    );
+    const result = await client.call("create_note", {
+      tenant: "t1",
+      path: "a.md",
+      content: "# A",
+      vault_id: "v9",
+    });
+    expect(result.isError).toBe(true);
+    expect(result.text).toMatch(/^vault_forbidden: .*list_vaults/);
+  });
+
   it("manda achar e editar a nota quando o path já existe", async () => {
     const api = new FakeMarkuppApi().withTenant("t1");
     api.withNote("t1", "a.md", "x");

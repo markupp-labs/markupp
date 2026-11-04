@@ -159,7 +159,7 @@ func TestCreate_PathSemTitulo_RetornaErrInvalidPathComOCaminho(t *testing.T) {
 
 		require.ErrorIs(t, err, notes.ErrInvalidPath, "caminho %q", caminho)
 		assert.Contains(t, err.Error(), caminho, "a mensagem traz o caminho recusado")
-		assert.Contains(t, err.Error(), "pasta/nota.md", "a mensagem traz o formato esperado")
+		assert.Contains(t, err.Error(), "folder/note.md", "a mensagem traz o formato esperado")
 		assert.False(t, repo.called)
 	}
 }
@@ -646,13 +646,13 @@ func TestCreate_SemCofre_GravaNoCofrePadraoDoAtor(t *testing.T) {
 	assert.Equal(t, "cofre-padrao", repo.saved.VaultID)
 }
 
-func TestCreate_AtorSemCofre_PropagaErrVaultForbidden(t *testing.T) {
-	repo := &fakeRepo{defaultVaultErr: notes.ErrVaultForbidden}
+func TestCreate_AtorSemCofre_PropagaErrNoVault(t *testing.T) {
+	repo := &fakeRepo{defaultVaultErr: notes.ErrNoVault}
 	svc := newServiceForTest(repo)
 
 	_, err := svc.Create(context.Background(), "", "a.md", "x")
 
-	require.ErrorIs(t, err, notes.ErrVaultForbidden)
+	require.ErrorIs(t, err, notes.ErrNoVault)
 	assert.False(t, repo.called)
 }
 

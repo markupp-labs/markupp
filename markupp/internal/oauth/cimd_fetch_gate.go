@@ -15,7 +15,7 @@ import (
 const maxCIMDFetches = 8
 
 // errCIMDFetchBusy indica que a busca nem saiu porque todas as vagas estavam ocupadas.
-var errCIMDFetchBusy = errors.New("oauth: buscas de documento cimd no limite")
+var errCIMDFetchBusy = errors.New("oauth: too many cimd document fetches")
 
 // cimdFetchGate junta numa só as buscas simultâneas do mesmo client_id e recusa, sem
 // buscar, quando já há maxCIMDFetches buscas para fora em andamento.
@@ -35,7 +35,7 @@ func (g *cimdFetchGate) fetch(clientID string, fetchDocument func() (ClientMetad
 		select {
 		case g.slots <- struct{}{}:
 		default:
-			return ClientMetadata{}, fmt.Errorf("%w: %d em andamento ao buscar %s; esperada uma vaga livre", errCIMDFetchBusy, maxCIMDFetches, ClientValue(clientID))
+			return ClientMetadata{}, fmt.Errorf("%w: %d in progress while fetching %s; expected a free slot", errCIMDFetchBusy, maxCIMDFetches, ClientValue(clientID))
 		}
 		defer func() { <-g.slots }()
 		return fetchDocument()
