@@ -111,8 +111,9 @@ certificado autoassinado.
 
 A cada tag `v*`, o workflow de release publica as imagens do servidor, do painel e do MCP. A
 instância oficial é operada fora deste repositório e consome essas imagens e o componente pela
-tag, como qualquer instalação self-host. Se o secret `CLOUD_DISPATCH_TOKEN` existir, o release
-avisa essa operação da tag nova; sem ele (forks e instalações self-host), o passo é pulado.
+tag, como qualquer instalação self-host. Com aprovação no environment `production` do GitHub,
+que guarda o secret `CLOUD_DISPATCH_TOKEN`, o release avisa essa operação da tag nova; sem o
+secret (forks e instalações self-host), o passo é pulado.
 
 A stack sobe sem email. Para ligar numa stack, com a URL do SMTP cifrada no arquivo da stack:
 
