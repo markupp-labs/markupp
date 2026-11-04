@@ -94,7 +94,7 @@ func writeAccountEmailError(w http.ResponseWriter, err error) {
 	}
 	switch {
 	case errors.Is(err, auth.ErrUserNotFound):
-		writeError(w, "unauthorized", "token ausente ou invalido", http.StatusUnauthorized)
+		writeError(w, "unauthorized", "missing or invalid access token", http.StatusUnauthorized)
 	case errors.Is(err, auth.ErrEmailAlreadyVerified):
 		writeError(w, "email_already_verified", err.Error(), http.StatusConflict)
 	case errors.Is(err, auth.ErrEmailUnavailable):

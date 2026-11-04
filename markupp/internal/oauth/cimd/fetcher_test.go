@@ -181,7 +181,7 @@ func TestFetcher_PortaDiferenteDe443_RecusaSemBuscar(t *testing.T) {
 	_, err = fetcher.Fetch(context.Background(), srv.clientID())
 
 	require.ErrorIs(t, err, cimd.ErrInvalidClientID)
-	assert.Contains(t, err.Error(), "porta "+srv.porta())
+	assert.Contains(t, err.Error(), "port "+srv.porta())
 	assert.Zero(t, srv.requisicoes.Load())
 }
 

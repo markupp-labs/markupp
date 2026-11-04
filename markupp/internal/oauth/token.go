@@ -36,26 +36,26 @@ func (s *Service) redeemCode(ctx context.Context, code string, now time.Time) (R
 	case errors.Is(err, ErrCodeNotFound), errors.Is(err, ErrAuthorizationNotFound):
 		return RedeemedCode{}, grantError(invalidCodeDescription)
 	}
-	return RedeemedCode{}, fmt.Errorf("oauth: consumindo o código de autorização: %w", err)
+	return RedeemedCode{}, fmt.Errorf("oauth: consume authorization code: %w", err)
 }
 
 // invalidCodeDescription é a descrição do código que não vale, ou cuja Autorização foi
 // revogada.
-const invalidCodeDescription = "codigo de autorizacao invalido ou expirado; esperado um codigo emitido por este servidor e ainda valido"
+const invalidCodeDescription = "authorization code invalid or expired; expected a still valid code issued by this server"
 
 // reusedCodeDescription é a descrição do código apresentado pela segunda vez.
-const reusedCodeDescription = "codigo de autorizacao ja usado; esperado um codigo de uso unico ainda nao trocado"
+const reusedCodeDescription = "authorization code already used; expected a single-use code not yet exchanged"
 
 // checkGrant confere o grant contra o pedido que originou o código.
 func checkGrant(g CodeGrant, req AuthorizationRequest) error {
 	if g.ClientID != req.ClientID {
-		return grantError("client_id " + ClientValue(g.ClientID) + " diferente do pedido; esperado o client_id que pediu o codigo")
+		return grantError("client_id " + ClientValue(g.ClientID) + " differs from the request; expected the client_id that requested the code")
 	}
 	if g.RedirectURI != req.RedirectURI {
-		return grantError("redirect_uri " + ClientValue(g.RedirectURI) + " diferente da usada no pedido; esperada a mesma redirect_uri do pedido")
+		return grantError("redirect_uri " + ClientValue(g.RedirectURI) + " differs from the one in the request; expected the same redirect_uri as the request")
 	}
 	if !VerifyPKCE(g.CodeVerifier, req.CodeChallenge) {
-		return grantError("code_verifier nao confere com o code_challenge do pedido; esperado o verifier que gerou o challenge S256")
+		return grantError("code_verifier does not match the request code_challenge; expected the verifier that generated the S256 challenge")
 	}
 	return checkResource(g.Resource, req.Resource)
 }
@@ -67,7 +67,7 @@ func checkResource(raw, granted string) error {
 		return nil
 	}
 	if resource, ok := canonicalize(raw); !ok || resource != granted {
-		return &ProtocolError{Code: errInvalidTarget, Description: "resource " + ClientValue(raw) + " diferente do concedido; esperado " + ClientValue(granted)}
+		return &ProtocolError{Code: errInvalidTarget, Description: "resource " + ClientValue(raw) + " differs from the granted one; expected " + ClientValue(granted)}
 	}
 	return nil
 }
@@ -90,7 +90,7 @@ func (s *Service) issueTokens(ctx context.Context, redeemed RedeemedCode, now ti
 	case errors.Is(err, ErrAuthorizationNotFound):
 		return TokenResponse{}, grantError(invalidCodeDescription)
 	}
-	return TokenResponse{}, fmt.Errorf("oauth: gravando os tokens da autorização %q: %w", redeemed.Authorization.ID, err)
+	return TokenResponse{}, fmt.Errorf("oauth: save tokens of authorization %q: %w", redeemed.Authorization.ID, err)
 }
 
 // tokenPair é o par access e refresh recém-gerado: os registros com o hash, para o
@@ -124,7 +124,7 @@ func (s *Service) newTokenPair(base IssuedToken, refreshScopes []string, userID 
 func (s *Service) newAPITokenPair(base, refreshBase IssuedToken, userID string, now time.Time) (tokenPair, error) {
 	access, err := s.scoped.IssueScopedToken(userID, base.Scopes, s.cfg.ExchangeTTL)
 	if err != nil {
-		return tokenPair{}, fmt.Errorf("oauth: emitindo o token da API da autorização %q: %w", base.AuthorizationID, err)
+		return tokenPair{}, fmt.Errorf("oauth: issue API token for authorization %q: %w", base.AuthorizationID, err)
 	}
 	refresh := s.newToken()
 	return tokenPair{

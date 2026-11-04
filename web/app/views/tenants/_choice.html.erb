@@ -1,7 +1,7 @@
-<%# Ativa o tenant; o ativo leva o mesmo realce da nota atual. %>
-<%= button_to current_tenant_path, method: :patch, params: { tenant_id: tenant.id },
+<%# Ativa o tenant; o ativo leva o mesmo realce da nota atual. Item do menu do seletor de tenants. %>
+<%= button_to current_tenant_path, method: :patch, params: { tenant_id: tenant.id }, role: "menuitem", tabindex: -1,
               title: tenant.name, aria: { current: (true if tenant.id == credential.tenant_id) },
-              class: "tree-row flex w-full items-baseline gap-2 text-left aria-[current=true]:bg-accent-soft aria-[current=true]:text-ink" do %>
+              class: "tree-row context-menu-item flex w-full items-baseline gap-2 text-left aria-[current=true]:bg-accent-soft aria-[current=true]:text-ink" do %>
   <span class="truncate"><%= tenant.name %></span>
   <span class="ml-auto shrink-0 text-ink-muted"><%= t("tenants.roles.#{tenant.role}") %></span>
 <% end %>
