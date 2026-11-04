@@ -17,14 +17,14 @@ import (
 func (s *Service) DescribeRequest(ctx context.Context, requestID, userID string) (RequestView, error) {
 	req, err := s.repo.GetPendingRequest(ctx, requestID, s.clock())
 	if err != nil {
-		return RequestView{}, fmt.Errorf("oauth: buscando o pedido %s: %w", ClientValue(requestID), err)
+		return RequestView{}, fmt.Errorf("oauth: find request %s: %w", ClientValue(requestID), err)
 	}
 	client, err := s.repo.GetClient(ctx, req.ClientID, s.dcrPendingCutoff(s.clock()))
 	if errors.Is(err, ErrClientNotFound) {
 		return RequestView{}, clientGoneErr(requestID)
 	}
 	if err != nil {
-		return RequestView{}, fmt.Errorf("oauth: buscando o cliente %s do pedido %s: %w", ClientValue(req.ClientID), ClientValue(requestID), err)
+		return RequestView{}, fmt.Errorf("oauth: find client %s of request %s: %w", ClientValue(req.ClientID), ClientValue(requestID), err)
 	}
 	authorized, err := s.alreadyAuthorized(ctx, userID, req)
 	if err != nil {
@@ -39,7 +39,7 @@ func (s *Service) DescribeRequest(ctx context.Context, requestID, userID string)
 // clientGoneErr é o erro do pedido cujo cliente foi apagado depois de criado: para a
 // conta, o pedido deixou de existir.
 func clientGoneErr(requestID string) error {
-	return fmt.Errorf("oauth: o cliente do pedido %s foi apagado: %w", ClientValue(requestID), ErrRequestNotFound)
+	return fmt.Errorf("oauth: client of request %s was deleted: %w", ClientValue(requestID), ErrRequestNotFound)
 }
 
 // alreadyAuthorized diz se a Autorização ativa da conta para o cliente já cobre todos os
@@ -50,7 +50,7 @@ func (s *Service) alreadyAuthorized(ctx context.Context, userID string, req Auth
 		return false, nil
 	}
 	if err != nil {
-		return false, fmt.Errorf("oauth: buscando a autorização da conta %q para o cliente %s: %w", userID, ClientValue(req.ClientID), err)
+		return false, fmt.Errorf("oauth: find authorization of account %q for client %s: %w", userID, ClientValue(req.ClientID), err)
 	}
 	for _, scope := range req.Scopes {
 		if !slices.Contains(active.Scopes, scope) {
@@ -88,7 +88,7 @@ func (s *Service) Approve(ctx context.Context, requestID, userID string) (string
 		CodeExpiresAt: now.Add(s.cfg.CodeTTL), DecidedAt: now, DCRPendingCutoff: s.dcrPendingCutoff(now),
 	})
 	if err != nil {
-		return "", fmt.Errorf("oauth: aprovando o pedido %s: %w", ClientValue(requestID), err)
+		return "", fmt.Errorf("oauth: approve request %s: %w", ClientValue(requestID), err)
 	}
 	return AppendQuery(req.RedirectURI, map[string]string{"code": code, "state": req.State, "iss": s.cfg.Issuer}), nil
 }
@@ -97,7 +97,7 @@ func (s *Service) Approve(ctx context.Context, requestID, userID string) (string
 func (s *Service) Deny(ctx context.Context, requestID, userID string) (string, error) {
 	req, err := s.repo.DenyRequest(ctx, Denial{RequestID: requestID, UserID: userID, DecidedAt: s.clock()})
 	if err != nil {
-		return "", fmt.Errorf("oauth: recusando o pedido %s: %w", ClientValue(requestID), err)
+		return "", fmt.Errorf("oauth: deny request %s: %w", ClientValue(requestID), err)
 	}
 	return AppendQuery(req.RedirectURI, map[string]string{"error": errAccessDenied, "state": req.State, "iss": s.cfg.Issuer}), nil
 }

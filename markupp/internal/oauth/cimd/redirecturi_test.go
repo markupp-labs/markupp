@@ -81,7 +81,7 @@ func TestFetcher_RedirectURIProibida_RecusaComValor(t *testing.T) {
 			_, err := srv.buscar()
 
 			require.ErrorIs(t, err, cimd.ErrInvalidDocument)
-			assert.Contains(t, err.Error(), "esperado")
+			assert.Contains(t, err.Error(), "expected")
 		})
 	}
 }

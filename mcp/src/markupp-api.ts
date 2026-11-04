@@ -14,6 +14,17 @@ export type NoteSummary = {
 // Note é a nota inteira, como as rotas /v1/notes/{id} e POST /v1/notes devolvem.
 export type Note = NoteSummary & { content: string; created_at: string };
 
+// FoundNote é a nota que a busca acha; a busca num cofre não traz updated_at.
+export type FoundNote = Omit<NoteSummary, "updated_at"> & {
+  updated_at?: string;
+};
+
+// Account é a conta do token, como GET /v1/auth/me devolve, sem os campos de login.
+export type Account = { id: string; email: string };
+
+// Vault é um cofre de que a conta é membro, como GET /v1/vaults devolve.
+export type Vault = { id: string; name: string; created_at: string };
+
 // SearchPage pagina a busca; o servidor limita limit a 1..100 e usa 10 se faltar.
 export type SearchPage = { limit?: number; offset?: number };
 
@@ -28,7 +39,8 @@ export type NoteRevision = {
 // Role é o papel de uma conta no tenant, do maior para o menor.
 export type Role = "owner" | "admin" | "member" | "viewer";
 
-// Member é um membro do tenant como GET /v1/users devolve; id é o id da conta.
+// Member é um membro do tenant como GET /v1/users devolve, ou do cofre como GET
+// /v1/vaults/{id}/members devolve, com o papel no tenant; id é o id da conta.
 export type Member = {
   id: string;
   email: string;
@@ -62,17 +74,24 @@ export type PendingInvite = {
 };
 
 // MarkuppApi é a fatia da API REST do markupp que as ferramentas MCP usam. tenant é o
-// id do tenant em que a chamada age.
+// id do tenant em que a chamada age; vault, quando vem, restringe a nota a esse cofre.
 export interface MarkuppApi {
+  getAccount(): Promise<Account>;
   listTenants(): Promise<TenantMembership[]>;
-  listNotes(tenant: string): Promise<NoteSummary[]>;
+  listNotes(tenant: string, vault?: string): Promise<NoteSummary[]>;
   searchNotes(
     tenant: string,
     query: string,
     page?: SearchPage,
-  ): Promise<NoteSummary[]>;
+    vault?: string,
+  ): Promise<FoundNote[]>;
   getNote(tenant: string, id: string): Promise<Note>;
-  createNote(tenant: string, path: string, content: string): Promise<Note>;
+  createNote(
+    tenant: string,
+    path: string,
+    content: string,
+    vault?: string,
+  ): Promise<Note>;
   updateNote(tenant: string, id: string, revision: NoteRevision): Promise<Note>;
   deleteNote(tenant: string, id: string): Promise<void>;
   listMembers(tenant: string): Promise<Member[]>;
@@ -89,6 +108,17 @@ export interface MarkuppApi {
   listMyInvites(): Promise<PendingInvite[]>;
   acceptInvite(inviteId: string): Promise<TenantMembership>;
   declineInvite(inviteId: string): Promise<void>;
+  listVaults(tenant: string): Promise<Vault[]>;
+  createVault(tenant: string, name: string): Promise<Vault>;
+  renameVault(tenant: string, vault: string, name: string): Promise<Vault>;
+  deleteVault(tenant: string, vault: string): Promise<void>;
+  listVaultMembers(tenant: string, vault: string): Promise<Member[]>;
+  addVaultMember(tenant: string, vault: string, userId: string): Promise<void>;
+  removeVaultMember(
+    tenant: string,
+    vault: string,
+    userId: string,
+  ): Promise<void>;
 }
 
 // MarkuppApiError é a resposta de erro {error, message} da API, com o status HTTP.
@@ -121,8 +151,15 @@ type ApiCall = {
   body?: unknown;
 };
 
+// SearchHit é o resultado de /v1/search/notes, com a nota resumida e o cofre dela.
+type SearchHit = { note: { id: string; path: string }; vault_id: string };
+
 // TenantHeader é onde a API lê em qual tenant da conta a requisição age.
 const TenantHeader = "X-Markupp-Tenant";
+
+// MaxLimit e MaxOffset são o maior limit e o maior offset que a API aceita numa página.
+const MaxLimit = 100;
+const MaxOffset = 10_000;
 
 // HttpMarkuppApi fala com a API do markupp só pelas rotas /v1.
 export class HttpMarkuppApi implements MarkuppApi {
@@ -132,12 +169,22 @@ export class HttpMarkuppApi implements MarkuppApi {
     this.baseUrl = options.baseUrl.replace(/\/+$/, "");
   }
 
+  // getAccount lê a conta em /v1/auth/me, que aceita token OAuth de qualquer escopo.
+  async getAccount(): Promise<Account> {
+    const { id, email } = await this.json<Account>({
+      method: "GET",
+      path: "/v1/auth/me",
+    });
+    return { id, email };
+  }
+
   listTenants(): Promise<TenantMembership[]> {
     return this.json({ method: "GET", path: "/v1/me/tenants" });
   }
 
   // listNotes recebe as notas inteiras da API e devolve só o resumo de cada uma.
-  async listNotes(tenant: string): Promise<NoteSummary[]> {
+  async listNotes(tenant: string, vault?: string): Promise<NoteSummary[]> {
+    if (vault !== undefined) return this.listVaultNotes(tenant, vault);
     const notes = await this.json<Note[]>({
       method: "GET",
       path: "/v1/notes",
@@ -146,27 +193,79 @@ export class HttpMarkuppApi implements MarkuppApi {
     return notes.map(noteSummary);
   }
 
-  searchNotes(
+  // listVaultNotes pede páginas do maior tamanho que a rota do cofre aceita até vir uma
+  // incompleta.
+  // ponytail: para no offset máximo da rota, cerca de 10 mil notas por cofre; passar
+  // disso pede paginar a ferramenta list_notes.
+  private async listVaultNotes(
+    tenant: string,
+    vault: string,
+  ): Promise<NoteSummary[]> {
+    const notes: NoteSummary[] = [];
+    for (let offset = 0; offset <= MaxOffset; offset += MaxLimit) {
+      const params = `limit=${MaxLimit}&offset=${offset}`;
+      const path = `${vaultPath(vault)}/notes?${params}`;
+      const page = await this.json<NoteSummary[]>({
+        method: "GET",
+        path,
+        tenant,
+      });
+      notes.push(
+        ...page.map((note) => noteSummary({ ...note, vault_id: vault })),
+      );
+      if (page.length < MaxLimit) break;
+    }
+    return notes;
+  }
+
+  // searchNotes busca pela rota antiga, que traz updated_at; filtrar por cofre só a
+  // busca de /v1/search/notes faz.
+  async searchNotes(
     tenant: string,
     query: string,
     page: SearchPage = {},
-  ): Promise<NoteSummary[]> {
-    const params = new URLSearchParams({ query });
-    if (page.limit !== undefined) params.set("limit", String(page.limit));
-    if (page.offset !== undefined) params.set("offset", String(page.offset));
-    return this.json({
-      method: "GET",
-      path: `/v1/notes/search?${params}`,
-      tenant,
-    });
+    vault?: string,
+  ): Promise<FoundNote[]> {
+    if (vault !== undefined)
+      return this.searchVault(tenant, query, page, vault);
+    const params = withPage(new URLSearchParams({ query }), page);
+    const path = `/v1/notes/search?${params}`;
+    return this.json({ method: "GET", path, tenant });
+  }
+
+  private async searchVault(
+    tenant: string,
+    query: string,
+    page: SearchPage,
+    vault: string,
+  ): Promise<FoundNote[]> {
+    const params = withPage(new URLSearchParams({ q: query, vault }), page);
+    const path = `/v1/search/notes?${params}`;
+    const hits = await this.json<SearchHit[]>({ method: "GET", path, tenant });
+    return hits.map(({ note: { id, path }, vault_id }) => ({
+      id,
+      vault_id,
+      path,
+    }));
   }
 
   getNote(tenant: string, id: string): Promise<Note> {
     return this.json({ method: "GET", path: notePath(id), tenant });
   }
 
-  // createNote manda vault_id vazio: o servidor grava no cofre padrão do tenant.
-  createNote(tenant: string, path: string, content: string): Promise<Note> {
+  // createNote sem cofre manda vault_id vazio: o servidor grava no cofre padrão do
+  // tenant; com cofre usa a rota do cofre.
+  createNote(
+    tenant: string,
+    path: string,
+    content: string,
+    vault?: string,
+  ): Promise<Note> {
+    if (vault !== undefined) {
+      const body = { path, content };
+      const route = `${vaultPath(vault)}/notes`;
+      return this.json({ method: "POST", path: route, tenant, body });
+    }
     const body = { vault_id: "", path, content };
     return this.json({ method: "POST", path: "/v1/notes", tenant, body });
   }
@@ -245,6 +344,52 @@ export class HttpMarkuppApi implements MarkuppApi {
     });
   }
 
+  listVaults(tenant: string): Promise<Vault[]> {
+    return this.json({ method: "GET", path: "/v1/vaults", tenant });
+  }
+
+  createVault(tenant: string, name: string): Promise<Vault> {
+    const body = { name };
+    return this.json({ method: "POST", path: "/v1/vaults", tenant, body });
+  }
+
+  renameVault(tenant: string, vault: string, name: string): Promise<Vault> {
+    const path = vaultPath(vault);
+    return this.json({ method: "PATCH", path, tenant, body: { name } });
+  }
+
+  async deleteVault(tenant: string, vault: string): Promise<void> {
+    await this.send({ method: "DELETE", path: vaultPath(vault), tenant });
+  }
+
+  listVaultMembers(tenant: string, vault: string): Promise<Member[]> {
+    const path = `${vaultPath(vault)}/members`;
+    return this.json({ method: "GET", path, tenant });
+  }
+
+  async addVaultMember(
+    tenant: string,
+    vault: string,
+    userId: string,
+  ): Promise<void> {
+    const path = `${vaultPath(vault)}/members`;
+    await this.send({
+      method: "POST",
+      path,
+      tenant,
+      body: { user_id: userId },
+    });
+  }
+
+  async removeVaultMember(
+    tenant: string,
+    vault: string,
+    userId: string,
+  ): Promise<void> {
+    const path = `${vaultPath(vault)}/members/${encodeURIComponent(userId)}`;
+    await this.send({ method: "DELETE", path, tenant });
+  }
+
   private async json<T>(call: ApiCall): Promise<T> {
     const response = await this.send(call);
     return (await response.json()) as T;
@@ -276,6 +421,18 @@ function notePath(id: string): string {
 
 function memberPath(userId: string): string {
   return `/v1/users/${encodeURIComponent(userId)}`;
+}
+
+function vaultPath(vault: string): string {
+  return `/v1/vaults/${encodeURIComponent(vault)}`;
+}
+
+// withPage põe na query string o limit e o offset que vieram, para o servidor usar o
+// padrão dele nos que faltam.
+function withPage(params: URLSearchParams, page: SearchPage): URLSearchParams {
+  if (page.limit !== undefined) params.set("limit", String(page.limit));
+  if (page.offset !== undefined) params.set("offset", String(page.offset));
+  return params;
 }
 
 function myInvitePath(inviteId: string): string {

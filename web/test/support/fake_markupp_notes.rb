@@ -29,15 +29,17 @@ class FakeMarkuppNotes
     note.merge!(body.slice(:path, :content).stringify_keys)
   end
 
-  # Como a API, recusa caminho já usado. O id segue a ordem dos POSTs: created-1, created-2...
+  # Como a API, recusa caminho já usado. O id segue a ordem dos POSTs: created-1, created-2... A rota sem prefixo grava
+  # no cofre padrão; a de /v1, no cofre da rota.
   def post(path, body, role: nil, **)
-    raise ArgumentError, "fake API has no route for POST #{path}, expected /notes" unless path == "/notes"
+    vault_id = path == "/notes" ? VAULT_ID : FakeMarkuppNoteIndex::VAULT_NOTES.match(path)&.[](:vault_id)
+    raise ArgumentError, "fake API has no route for POST #{path}, expected /notes or /v1/vaults/{id}/notes" unless vault_id
 
     refuse_viewer(role, "POST #{path}")
     @post_requests << body
     refuse_path(body[:path], nil)
 
-    @notes << body.slice(:path, :content).stringify_keys.merge("vault_id" => VAULT_ID, "id" => "created-#{@post_requests.size}", "updated_at" => "2026-10-01T12:00:00.000Z")
+    @notes << body.slice(:path, :content).stringify_keys.merge("vault_id" => vault_id, "id" => "created-#{@post_requests.size}", "updated_at" => "2026-10-01T12:00:00.000Z")
     @notes.last
   end
 

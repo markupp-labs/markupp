@@ -48,7 +48,7 @@ func (h *oauthHandler) revokeAuthorization(w http.ResponseWriter, r *http.Reques
 	actor, _ := identity.ActorFrom(r.Context())
 	err := h.svc.RevokeAuthorization(r.Context(), actor.UserID, chi.URLParam(r, "id"))
 	if errors.Is(err, oauth.ErrAuthorizationNotFound) {
-		writeError(w, "authorization_not_found", "autorizacao inexistente ou ja revogada", http.StatusNotFound)
+		writeError(w, "authorization_not_found", "authorization not found or already revoked", http.StatusNotFound)
 		return
 	}
 	if err != nil {

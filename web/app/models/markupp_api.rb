@@ -43,6 +43,15 @@ class MarkuppApi
   class OAuthRequestNotFound < NotFound; end
   # Cofre inexistente ou de que a conta não é membro.
   class VaultUnavailable < Forbidden; end
+  # Nome de cofre vazio, com espaço nas pontas ou longo demais.
+  class InvalidName < InvalidRequest; end
+  # A conta escolhida para o cofre não é do tenant.
+  class NotTenantMember < Error; end
+  class AlreadyVaultMember < Error; end
+  # A conta já não é membro do cofre: removida por outro membro ou saiu.
+  class VaultMemberNotFound < NotFound; end
+  # Nota nova sem cofre onde cair.
+  class NoVault < Error; end
 
   # Corpo e ETag de uma leitura que pode voltar 304.
   Revision = Data.define(:body, :etag)
@@ -62,7 +71,9 @@ class MarkuppApi
     "member_not_found" => MemberNotFound, "tenant_not_found" => TenantNotFound, "last_owner" => LastOwner, "role_above_own" => RoleAboveOwn,
     "invalid_invite" => InvalidToken, "invalid_token" => InvalidToken, "already_exists" => AccountExists,
     "email_unavailable" => EmailUnavailable, "email_already_verified" => EmailAlreadyVerified,
-    "vault_forbidden" => VaultUnavailable, "request_not_found" => OAuthRequestNotFound
+    "vault_forbidden" => VaultUnavailable, "request_not_found" => OAuthRequestNotFound,
+    "invalid_name" => InvalidName, "not_tenant_member" => NotTenantMember, "already_vault_member" => AlreadyVaultMember,
+    "vault_member_not_found" => VaultMemberNotFound, "no_vault" => NoVault
   }.freeze
   # Para o status cujo corpo não traz código conhecido.
   ERRORS_BY_STATUS = { "401" => Unauthorized, "403" => Forbidden, "404" => NotFound }.freeze

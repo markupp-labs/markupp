@@ -12,34 +12,41 @@ class SidebarTest < ApplicationSystemTestCase
     assert_operator settings_bottom, :<=, evaluate_script("window.innerHeight")
   end
 
-  test "the tenant name leads home from a note" do
+  test "the mascot leads home from a note and the tenant name opens the switcher" do
     use_fake_api(notes: [ { id: "1", path: "plan.md", content: "# Plan\n" } ])
     sign_in_through_form
 
     visit note_path("1")
-    within("#current_tenant") { click_on "Acme research" }
+    within("#current_tenant") { click_on "Switch tenant" }
+    assert_selector "#tenant_switcher:popover-open"
+    find("#current_tenant a[aria-label=Home]").click
 
     assert_current_path root_path
   end
 
-  test "the tenant name fits beside the mascot at the default width" do
+  test "the trail of tenant and vault fits beside the mascot at the default width" do
     use_fake_api(notes: [])
     sign_in_through_form
 
     visit root_path
 
-    name = find("#current_tenant [title='Acme research']")
-    assert name.evaluate_script("this.scrollWidth <= this.clientWidth"), "expected Acme research not to be cut at 288px"
+    [ "Acme research", "Notes" ].each do |name|
+      part = find("#current_tenant [title='#{name}']")
+      assert part.evaluate_script("this.scrollWidth <= this.clientWidth"), "expected #{name} not to be cut at 288px"
+    end
   end
 
-  test "a tenant name of twenty characters fits beside the mascot at the default width" do
-    use_fake_api(notes: [], tenants: [ { id: "tenant-1", name: "Laboratorio de Dados", members: { FakeMarkuppAccounts::DEFAULT_EMAIL => "owner" } } ])
+  # O cofre fica em destaque: um tenant longo é que encolhe, com o nome inteiro no title.
+  test "a long tenant name gives way to the vault name, which stays whole" do
+    tenants = [ { id: "tenant-1", name: "Laboratorio de Dados Abertos", members: { FakeMarkuppAccounts::DEFAULT_EMAIL => "owner" } } ]
+    use_fake_api(notes: [], tenants:)
     sign_in_through_form
 
     visit root_path
 
-    name = find("#current_tenant [title='Laboratorio de Dados']")
-    assert name.evaluate_script("this.scrollWidth <= this.clientWidth"), "expected Laboratorio de Dados not to be cut at 288px"
+    vault = find("#current_tenant [title='Notes']")
+    assert vault.evaluate_script("this.scrollWidth <= this.clientWidth"), "expected Notes not to be cut at 288px"
+    assert_selector "#current_tenant button[title='Laboratorio de Dados Abertos']"
   end
 
   test "the spine on the sidebar edge hides and shows it and the state survives a reload" do

@@ -9,7 +9,7 @@ import (
 )
 
 // ErrLastOwner indica mudança que deixaria o tenant sem owner.
-var ErrLastOwner = errors.New("o tenant ficaria sem owner")
+var ErrLastOwner = errors.New("the tenant would be left without an owner")
 
 // MembershipChange troca o papel de UserID para NewRole, ou remove o vínculo quando
 // NewRole vem vazio, auditada por Event na mesma transação.
@@ -31,7 +31,7 @@ type MembershipState struct {
 // acima do seu nem concede papel acima do seu, e o tenant nunca fica sem owner.
 func CheckMembershipChange(st MembershipState, newRole string) error {
 	if identity.RoleRank(st.Current) > identity.RoleRank(st.ActorRole) {
-		return fmt.Errorf("%w: %q mexendo em %q", ErrRoleAboveOwn, st.ActorRole, st.Current)
+		return fmt.Errorf("%w: %q changing %q", ErrRoleAboveOwn, st.ActorRole, st.Current)
 	}
 	if newRole != "" {
 		if err := checkRoleCeiling(identity.Actor{Role: st.ActorRole}, newRole); err != nil {
@@ -39,7 +39,7 @@ func CheckMembershipChange(st MembershipState, newRole string) error {
 		}
 	}
 	if st.Current == identity.RoleOwner && newRole != identity.RoleOwner && st.Owners <= 1 {
-		return fmt.Errorf("%w: %d owner restante", ErrLastOwner, st.Owners)
+		return fmt.Errorf("%w: %d owner left", ErrLastOwner, st.Owners)
 	}
 	return nil
 }
@@ -47,7 +47,7 @@ func CheckMembershipChange(st MembershipState, newRole string) error {
 // ChangeRole troca o papel de userID no tenant do ator para role.
 func (s *AdminService) ChangeRole(ctx context.Context, actor identity.Actor, userID, role string) error {
 	if identity.RoleRank(role) == 0 {
-		return fmt.Errorf("%w: %q, esperado owner, admin, member ou viewer", ErrInvalidRole, role)
+		return fmt.Errorf("%w %q: expected owner, admin, member or viewer", ErrInvalidRole, role)
 	}
 	return s.changeMembership(ctx, actor, userID, role, "members.role")
 }

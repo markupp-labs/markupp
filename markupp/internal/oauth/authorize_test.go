@@ -195,5 +195,5 @@ func TestStartAuthorization_SemResourcesConfigurados_ListaAAPI(t *testing.T) {
 	var protocolErr *oauth.ProtocolError
 	require.True(t, errors.As(err, &protocolErr))
 	assert.Equal(t, "invalid_target", protocolErr.Code)
-	assert.Contains(t, protocolErr.Description, "um de '"+testIssuer+"'", "a API, pelo issuer, segue aceita como resource")
+	assert.Contains(t, protocolErr.Description, "one of '"+testIssuer+"'", "a API, pelo issuer, segue aceita como resource")
 }
