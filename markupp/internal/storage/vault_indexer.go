@@ -27,7 +27,7 @@ type PostgresVaultIndexer struct {
 // em logger o cálculo que parou no teto de iterações.
 func NewPostgresVaultIndexer(ctx context.Context, pool *pgxpool.Pool, searchConfig string, logger *slog.Logger) (*PostgresVaultIndexer, error) {
 	if _, err := gen.New(pool).ResolveSearchConfig(ctx, searchConfig); err != nil {
-		return nil, fmt.Errorf("configuracao de texto %q nao resolvida, esperado nome de pg_ts_config como simple ou pg_catalog.portuguese: %w", searchConfig, err)
+		return nil, fmt.Errorf("text search config %q not found: expected a pg_ts_config name such as simple or pg_catalog.portuguese: %w", searchConfig, err)
 	}
 	return &PostgresVaultIndexer{pool: pool, searchConfig: searchConfig, logger: logger}, nil
 }
@@ -65,7 +65,7 @@ func (x *PostgresVaultIndexer) indexNextBatch(ctx context.Context, index indexin
 			return nil
 		}
 		if err != nil {
-			return fmt.Errorf("reservar cofre pendente: %w", err)
+			return fmt.Errorf("claim pending vault: %w", err)
 		}
 		found, batch.vault = true, vault
 		if batch.notes, err = x.indexVault(ctx, q, vault, index); err != nil {
@@ -84,7 +84,7 @@ func (x *PostgresVaultIndexer) indexVault(ctx context.Context, q *gen.Queries, v
 	}
 	rows, err := q.ListPendingNotes(ctx, vault.VaultID)
 	if err != nil {
-		return 0, fmt.Errorf("listar notas pendentes do cofre %q: %w", vault.VaultID, err)
+		return 0, fmt.Errorf("list pending notes of vault %q: %w", vault.VaultID, err)
 	}
 	cs := toChangeset(vault, rows)
 	if err := x.applyBatch(ctx, q, cs, index(cs)); err != nil {
@@ -98,14 +98,14 @@ func (x *PostgresVaultIndexer) indexVault(ctx context.Context, q *gen.Queries, v
 func vaultTermNoteCount(ctx context.Context, q *gen.Queries, vaultID string) (int, error) {
 	n, err := q.VaultTermNoteCount(ctx, vaultID)
 	if err != nil {
-		return 0, fmt.Errorf("ler o N do df do cofre %q: %w", vaultID, err)
+		return 0, fmt.Errorf("read df N of vault %q: %w", vaultID, err)
 	}
 	return int(n), nil
 }
 
 func enterVault(ctx context.Context, q *gen.Queries, vault gen.ReservePendingVaultRow) error {
 	if err := q.EnterIndexer(ctx, gen.EnterIndexerParams{TenantID: vault.TenantID, VaultID: vault.VaultID}); err != nil {
-		return fmt.Errorf("entrar no cofre %q do tenant %q: %w", vault.VaultID, vault.TenantID, err)
+		return fmt.Errorf("enter vault %q of tenant %q: %w", vault.VaultID, vault.TenantID, err)
 	}
 	return nil
 }
@@ -131,7 +131,7 @@ func (x *PostgresVaultIndexer) analyzeLargeBatch(ctx context.Context, batch inde
 		return nil
 	}
 	if _, err := x.pool.Exec(ctx, analyzeDerivedTables); err != nil {
-		return fmt.Errorf("analisar as tabelas derivadas depois do lote de %d notas do cofre %q: %w", batch.notes, batch.vault.VaultID, err)
+		return fmt.Errorf("analyze derived tables after batch of %d notes in vault %q: %w", batch.notes, batch.vault.VaultID, err)
 	}
 	return nil
 }
@@ -143,7 +143,7 @@ func (x *PostgresVaultIndexer) secondStage(ctx context.Context, vault gen.Reserv
 	return inTx(ctx, x.pool, func(q *gen.Queries) error {
 		locked, err := q.TryLockSecondStage(ctx, vault.VaultID)
 		if err != nil {
-			return fmt.Errorf("travar o segundo estagio do cofre %q: %w", vault.VaultID, err)
+			return fmt.Errorf("lock second stage of vault %q: %w", vault.VaultID, err)
 		}
 		if !locked {
 			return nil
@@ -188,7 +188,7 @@ func (x *PostgresVaultIndexer) saveDocuments(ctx context.Context, q *gen.Queries
 		params.Bodies = append(params.Bodies, note.Search.Text)
 	}
 	if err := q.SaveSearchDocuments(ctx, params); err != nil {
-		return fmt.Errorf("gravar indice das %d notas do cofre %q: %w", len(indexed), cs.VaultID, err)
+		return fmt.Errorf("save index of %d notes in vault %q: %w", len(indexed), cs.VaultID, err)
 	}
 	return nil
 }
@@ -201,12 +201,12 @@ func matchBatch(cs indexing.Changeset, indexed []indexing.IndexedNote) error {
 	}
 	for _, note := range indexed {
 		if !missing[note.Search.NoteID] {
-			return fmt.Errorf("documento da nota %q fora do lote do cofre %q, esperado um documento por nota pendente", note.Search.NoteID, cs.VaultID)
+			return fmt.Errorf("document for note %q is outside the batch of vault %q: expected one document per pending note", note.Search.NoteID, cs.VaultID)
 		}
 		delete(missing, note.Search.NoteID)
 	}
 	for id := range missing {
-		return fmt.Errorf("nota %q do cofre %q sem documento, esperado um documento por nota pendente", id, cs.VaultID)
+		return fmt.Errorf("note %q of vault %q has no document: expected one document per pending note", id, cs.VaultID)
 	}
 	return nil
 }
@@ -218,7 +218,7 @@ func dequeue(ctx context.Context, q *gen.Queries, vaultID string, rows []gen.Lis
 		params.Revisions = append(params.Revisions, row.Revision)
 	}
 	if err := q.DequeueNotes(ctx, params); err != nil {
-		return fmt.Errorf("tirar da fila as %d notas do cofre %q: %w", len(rows), vaultID, err)
+		return fmt.Errorf("dequeue %d notes of vault %q: %w", len(rows), vaultID, err)
 	}
 	return nil
 }
@@ -229,10 +229,10 @@ func dequeue(ctx context.Context, q *gen.Queries, vaultID string, rows []gen.Lis
 func RequeueNotes(ctx context.Context, pool *pgxpool.Pool, vaultID string) (int64, error) {
 	n, err := gen.New(pool).RequeueNotes(ctx, pgtype.Text{String: vaultID, Valid: vaultID != ""})
 	if pgErrorCode(err) == noDataFoundCode {
-		return 0, fmt.Errorf("cofre %q inexistente, esperado id de um cofre da instalacao ou --all: %w", vaultID, err)
+		return 0, fmt.Errorf("vault %q not found: expected the id of a vault in this installation or --all: %w", vaultID, err)
 	}
 	if err != nil {
-		return 0, fmt.Errorf("reenfileirar as notas do cofre %q (vazio para todos), esperado papel dono do banco: %w", vaultID, err)
+		return 0, fmt.Errorf("requeue notes of vault %q (empty for all): expected database owner role: %w", vaultID, err)
 	}
 	return n, nil
 }

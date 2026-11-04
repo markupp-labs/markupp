@@ -18,9 +18,9 @@ import (
 
 var (
 	// ErrInvalidToken indica que a assinatura ou o formato do JWT e invalido.
-	ErrInvalidToken = errors.New("token invalido")
+	ErrInvalidToken = errors.New("invalid token")
 	// ErrExpiredToken indica que a validade temporal do JWT expirou.
-	ErrExpiredToken = errors.New("token expirado")
+	ErrExpiredToken = errors.New("expired token")
 )
 
 type tokenHeader struct {
@@ -130,7 +130,7 @@ func (c *TokenCodec) encodeClaims(claims Claims) (string, error) {
 
 	payloadBytes, err := json.Marshal(claims)
 	if err != nil {
-		return "", fmt.Errorf("serializar claims: %w", err)
+		return "", fmt.Errorf("serialize claims: %w", err)
 	}
 	payloadPart := base64.RawURLEncoding.EncodeToString(payloadBytes)
 	signature := c.sign(headerPart + "." + payloadPart)
@@ -163,7 +163,7 @@ func decodeClaims(payloadPart string) (Claims, error) {
 func generateRandomHex(n int) (string, error) {
 	bytes := make([]byte, n)
 	if _, err := rand.Read(bytes); err != nil {
-		return "", fmt.Errorf("gerar bytes aleatorios: %w", err)
+		return "", fmt.Errorf("generate random bytes: %w", err)
 	}
 	return hex.EncodeToString(bytes), nil
 }
@@ -185,7 +185,7 @@ func HashOpaqueToken(token string) string {
 // o mesmo JWT do login, com validade ttl e os escopos separados por espaço na claim scope.
 func (c *TokenCodec) IssueScopedToken(userID string, scopes []string, ttl time.Duration) (string, error) {
 	if ttl <= 0 {
-		return "", fmt.Errorf("auth: validade %s do token com escopo invalida; esperado maior que zero", ttl)
+		return "", fmt.Errorf("auth: scoped token ttl %s: expected greater than zero", ttl)
 	}
 	if err := checkTokenScopes(scopes); err != nil {
 		return "", err
@@ -200,11 +200,11 @@ func (c *TokenCodec) IssueScopedToken(userID string, scopes []string, ttl time.D
 // scope sumir ou mudar de sentido. Sem claim scope o token valeria como de login.
 func checkTokenScopes(scopes []string) error {
 	if len(scopes) == 0 {
-		return errors.New("auth: token com escopo sem nenhum escopo; esperado ao menos um")
+		return errors.New("auth: scoped token without scopes: expected at least one")
 	}
 	for _, scope := range scopes {
 		if scope == "" || strings.ContainsFunc(scope, unicode.IsSpace) {
-			return fmt.Errorf("auth: escopo %q invalido; esperado texto sem espacos", scope)
+			return fmt.Errorf("auth: scope %q: expected text without spaces", scope)
 		}
 	}
 	return nil

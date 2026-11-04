@@ -10,7 +10,7 @@ import (
 )
 
 // errInvalidQuery marca o parâmetro de consulta inválido, que vira 400.
-var errInvalidQuery = errors.New("parametro de consulta invalido")
+var errInvalidQuery = errors.New("invalid query parameter")
 
 // queryReader lê parâmetros opcionais da query string e guarda o primeiro inválido
 // em err; depois dele, as leituras devolvem o valor zero.
@@ -26,7 +26,7 @@ func (qr *queryReader) boolean(name string) *bool {
 		return nil
 	}
 	if raw != "true" && raw != "false" {
-		qr.err = fmt.Errorf("%w: %s %q, esperado true ou false", errInvalidQuery, name, raw)
+		qr.err = fmt.Errorf("%w: %s %q: expected true or false", errInvalidQuery, name, raw)
 		return nil
 	}
 	v := raw == "true"
@@ -41,7 +41,7 @@ func (qr *queryReader) int64(name string) *int64 {
 	}
 	v, err := strconv.ParseInt(raw, 10, 64)
 	if err != nil {
-		qr.err = fmt.Errorf("%w: %s %q, esperado inteiro", errInvalidQuery, name, raw)
+		qr.err = fmt.Errorf("%w: %s %q: expected an integer", errInvalidQuery, name, raw)
 		return nil
 	}
 	return &v
@@ -55,7 +55,7 @@ func (qr *queryReader) intBetween(name string, fallback, lo, hi int) int {
 	}
 	v, err := strconv.Atoi(raw)
 	if err != nil || v < lo || v > hi {
-		qr.err = fmt.Errorf("%w: %s %q, esperado inteiro de %d a %d", errInvalidQuery, name, raw, lo, hi)
+		qr.err = fmt.Errorf("%w: %s %q: expected an integer from %d to %d", errInvalidQuery, name, raw, lo, hi)
 		return 0
 	}
 	return v
@@ -68,7 +68,7 @@ func (qr *queryReader) oneOf(name string, accepted ...string) string {
 		return ""
 	}
 	if !slices.Contains(accepted, raw) {
-		qr.err = fmt.Errorf("%w: %s %q, esperado um de %s", errInvalidQuery, name, raw, strings.Join(accepted, ", "))
+		qr.err = fmt.Errorf("%w: %s %q: expected one of %s", errInvalidQuery, name, raw, strings.Join(accepted, ", "))
 		return ""
 	}
 	return raw
