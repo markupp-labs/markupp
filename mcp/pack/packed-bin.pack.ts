@@ -30,7 +30,9 @@ async function packInto(destination: string): Promise<PackedTarball> {
   const [report] = JSON.parse(stdout.slice(stdout.indexOf("["))) as
     PackedTarball[] | [];
   if (report === undefined) {
-    throw new Error(`npm pack sem tarball: ${stdout}, esperado um item`);
+    throw new Error(
+      `npm pack returned no tarball: ${stdout}, expected one item`,
+    );
   }
   return report;
 }
@@ -113,6 +115,6 @@ describe("npx markupp-mcp a partir do tarball", () => {
   it("sobe o stdio e explica que falta o login", async () => {
     const outcome = await runPackedBin([]);
     expect(outcome.code).toBe(1);
-    expect(outcome.stderr).toContain("rode markupp-mcp login");
+    expect(outcome.stderr).toContain("run markupp-mcp login");
   });
 });

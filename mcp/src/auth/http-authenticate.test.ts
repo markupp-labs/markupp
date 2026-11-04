@@ -176,7 +176,7 @@ describe("exchangeFailureLog", () => {
   it("registra falha que não veio do issuer só com a mensagem", () => {
     expect(exchangeFailureLog(new Error("rede fora"))).toEqual({
       level: "error",
-      msg: "troca de token falhou",
+      msg: "token exchange failed",
       error: "rede fora",
     });
   });
@@ -186,7 +186,7 @@ describe("exchangeFailureLog", () => {
       new TokenExchangeError(400, "invalid_target", "x"),
     );
     expect(entry).toMatchObject({
-      msg: "issuer recusou a troca de token",
+      msg: "issuer refused the token exchange",
       oauth_error: "invalid_target",
     });
   });

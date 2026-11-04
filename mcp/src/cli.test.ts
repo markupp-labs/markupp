@@ -118,7 +118,7 @@ describe("runCli stdio", () => {
   it("sai com 1 sem login guardado, pedindo markupp-mcp login", async () => {
     const cli = new RecordingCli();
     expect(await runCli([], {}, cli)).toBe(1);
-    expect(cli.stderr.join("\n")).toContain("rode markupp-mcp login [url]");
+    expect(cli.stderr.join("\n")).toContain("run markupp-mcp login [url]");
     expect(cli.servedStdio).toBeUndefined();
   });
 
@@ -147,7 +147,7 @@ describe("runCli login e logout", () => {
     });
     expect(await runCli(["login"], {}, cli)).toBe(0);
     expect((await cli.store().load())?.refreshToken).toBe("r1");
-    expect(cli.stderr.at(-1)).toBe(`login feito em ${TEST_ISSUER}`);
+    expect(cli.stderr.at(-1)).toBe(`logged in to ${TEST_ISSUER}`);
   });
 
   it("sai com 1 quando a pessoa recusa no painel", async () => {
@@ -162,13 +162,15 @@ describe("runCli login e logout", () => {
     cli.upstream.respondWith(200, authServerMetadata()).respondWith(200);
     expect(await runCli(["logout"], {}, cli)).toBe(0);
     expect(await cli.store().load()).toBeUndefined();
-    expect(cli.stderr).toEqual([`login revogado e apagado de ${CREDENTIALS}`]);
+    expect(cli.stderr).toEqual([
+      `login revoked and deleted from ${CREDENTIALS}`,
+    ]);
   });
 
   it("avisa e sai com 0 no logout sem login guardado", async () => {
     const cli = new RecordingCli();
     expect(await runCli(["logout"], {}, cli)).toBe(0);
-    expect(cli.stderr.join("\n")).toContain("nada a revogar");
+    expect(cli.stderr.join("\n")).toContain("nothing to revoke");
   });
 });
 
@@ -176,14 +178,14 @@ describe("runCli uso", () => {
   it("sai com 2 e o uso diante de subcomando desconhecido", async () => {
     const cli = new RecordingCli();
     expect(await runCli(["htp"], {}, cli)).toBe(2);
-    expect(cli.stderr.join("\n")).toMatch(/subcomando "htp" desconhecido/);
+    expect(cli.stderr.join("\n")).toMatch(/unknown subcommand "htp"/);
     expect(cli.stderr.join("\n")).toContain(USAGE);
   });
 
   it("sai com 2 diante de argumentos demais", async () => {
     const cli = new RecordingCli();
     expect(await runCli(["logout", "x"], {}, cli)).toBe(2);
-    expect(cli.stderr.join("\n")).toContain("argumentos demais para logout: x");
+    expect(cli.stderr.join("\n")).toContain("too many arguments for logout: x");
   });
 
   it("não confunde método do objeto com subcomando", async () => {
@@ -215,6 +217,7 @@ describe("runCli ajuda e versão", () => {
   );
 
   it("o uso lista as opções de ajuda e versão", () => {
+    expect(USAGE).toMatch(/^usage: markupp-mcp /);
     expect(USAGE).toContain("--help");
     expect(USAGE).toContain("--version");
   });

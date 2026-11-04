@@ -186,7 +186,7 @@ describe("HttpMarkuppApi", () => {
     await expect(apiWith(fake).listTenants()).rejects.toMatchObject({
       status: 502,
       code: "unexpected_response",
-      message: expect.stringContaining("GET /v1/me/tenants respondeu 502"),
+      message: expect.stringContaining("GET /v1/me/tenants answered 502"),
     });
   });
 });

@@ -61,7 +61,7 @@ describe("runLogout", () => {
     const rig = await new LogoutRig().seed();
     rig.upstream.respondWith(503);
     await expect(runLogout(rig.deps())).rejects.toThrow(
-      "revogue a Autorizacao pelo painel",
+      "revoke the authorization in the web panel",
     );
     expect(await rig.store.load()).toBeUndefined();
   });
