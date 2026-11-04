@@ -51,3 +51,8 @@ antes do grafo de ligações
   igual. Trocar por BM25 depois é mudança contida no plano de recuperação
 - O índice GIN e a coluna `tsvector` vivem no plano de recuperação, mantidos pelo indexador
   (ADR-0018), e podem ser apagados e reconstruídos
+
+## Emenda
+
+Em novembro de 2026, a edição operada pela equipe passou a se chamar Cloud. A decisão não
+mudou.

@@ -32,3 +32,8 @@ self-host recebe o banco como serviço no compose
   self-hosted como Immich, Paperless-ngx e Gitea
 - Vetorial passa a ser pgvector, e busca léxica deixa de poder usar FTS5
 - Uma implementação de query, de busca e de vetorial serve as duas edições
+
+## Emenda
+
+Em novembro de 2026, a edição operada pela equipe passou a se chamar Cloud. A decisão não
+mudou.

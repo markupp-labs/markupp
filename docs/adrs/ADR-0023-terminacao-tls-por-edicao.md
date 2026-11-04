@@ -34,3 +34,8 @@ o balanceador e a aplicação é HTTP
 - No Cloud o certificado renova sozinho pelo ACM, sem código na aplicação
 - Atrás do balanceador a aplicação precisa confiar no cabeçalho de protocolo original, senão
   gera link com esquema errado
+
+## Emenda
+
+Em novembro de 2026, a edição operada pela equipe passou a se chamar Cloud. A decisão não
+mudou.

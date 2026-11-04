@@ -45,3 +45,8 @@ da própria conta, como responder convite, rodam no papel da conexão, porque pr
 - Self-host e Cloud compartilham o mesmo caminho de código
 - Cliente grande e cliente pequeno dividem o mesmo índice, e vizinho ruidoso só se resolve
   depois, com particionamento por `tenant_id`
+
+## Emenda
+
+Em novembro de 2026, a edição operada pela equipe passou a se chamar Cloud. A decisão não
+mudou.

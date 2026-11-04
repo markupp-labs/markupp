@@ -37,3 +37,8 @@ repete filtro em query nenhuma. O self-host é o mesmo desenho com um único ten
 - Self-host e Cloud compartilham o mesmo caminho de código, sem modo alternativo
 - Cliente grande e cliente pequeno dividem o mesmo índice, e vizinho ruidoso só se resolve
   depois, com particionamento por `tenant_id`
+
+## Emenda
+
+Em novembro de 2026, a edição operada pela equipe passou a se chamar Cloud. A decisão não
+mudou.

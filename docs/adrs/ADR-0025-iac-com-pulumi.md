@@ -46,3 +46,8 @@ pré-requisitos do cluster, e KEDA é opcional, instalado à parte por quem admi
 - Sem KEDA, os indexadores rodam por CronJob. Sem URL de banco externo, o componente sobe um
   Postgres de uma instância no namespace, com senha gerada
 - Quem hospeda num nó só continua recebendo o compose, sem IaC
+
+## Emenda
+
+Em novembro de 2026, a edição operada pela equipe passou a se chamar Cloud. A decisão não
+mudou.

@@ -37,3 +37,8 @@ depender de serviço de terceiro
   serviço, e apenas nele
 - Vetor de provedores diferentes continua incomparável: um modelo ativo por instalação, e
   trocar obriga reconstruir a tabela de vetores inteira
+
+## Emenda
+
+Em novembro de 2026, a edição operada pela equipe passou a se chamar Cloud. A decisão não
+mudou.

@@ -55,3 +55,8 @@ acrescentado no nível do cluster para ele
   que os implemente
 - Portabilidade não sai de graça: gateway, classe de armazenamento e identidade ainda têm
   arestas específicas de cada nuvem
+
+## Emenda
+
+Em novembro de 2026, a edição operada pela equipe passou a se chamar Cloud. A decisão não
+mudou.

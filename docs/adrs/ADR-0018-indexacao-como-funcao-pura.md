@@ -37,3 +37,8 @@ mudanças vem do cursor de revisão usado pela sincronização incremental
 - Indexação atrasada não impede leitura nem escrita de nota, o que cumpre fisicamente o que o
   ADR-0012 prometeu apenas no desenho
 - O self-host não ganha dependência de nuvem
+
+## Emenda
+
+Em novembro de 2026, a edição operada pela equipe passou a se chamar Cloud. A decisão não
+mudou.

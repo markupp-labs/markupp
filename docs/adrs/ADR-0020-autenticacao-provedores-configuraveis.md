@@ -37,3 +37,8 @@ desenho do ADR-0019: uma interface, implementações escolhidas por configuraç�
   senão trocar de provedor ou de e-mail perde o vínculo com o histórico do usuário
 - Primeiro acesso precisa de regra de quem se torna administrador, e auto-registro fica
   desligado por padrão
+
+## Emenda
+
+Em novembro de 2026, a edição operada pela equipe passou a se chamar Cloud. A decisão não
+mudou.
