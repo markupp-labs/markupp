@@ -1,0 +1,8 @@
+<%# API fora: o contador fica sem número e a lista diz o porquê. %>
+<% if turbo_frame_request? %>
+  <%= render layout: "notifications/frames", locals: { unread: 0 } do %>
+    <p class="px-2 py-1 text-danger"><%= t("notes.unreachable.title") %></p>
+  <% end %>
+<% else %>
+  <%= render template: "notes/unreachable" %>
+<% end %>

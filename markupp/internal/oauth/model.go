@@ -28,6 +28,10 @@ const (
 // BuiltinMCPClientID é o cliente público embutido do markupp-mcp em stdio (ADR-0042).
 const BuiltinMCPClientID = "markupp-mcp"
 
+// BuiltinCLIClientID é o cliente público embutido do mu, o CLI de terminal (emenda do
+// ADR-0042).
+const BuiltinCLIClientID = "markupp-cli"
+
 // AuthorizationRequest é o Pedido de autorização: a solicitação de um cliente para agir
 // em nome de uma conta. O ID funciona como portador (ADR-0047): qualquer conta logada que
 // o apresente aprova ou recusa o pedido antes de ExpiresAt.

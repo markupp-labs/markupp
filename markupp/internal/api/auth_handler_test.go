@@ -41,6 +41,10 @@ type fakeAuthService struct {
 	answerErr          error
 	answeredInvite     string
 
+	notifications     auth.NotificationFeed
+	notificationsErr  error
+	notificationsUser string
+
 	createdTenant   auth.Membership
 	createTenantErr error
 	tenantCreator   string

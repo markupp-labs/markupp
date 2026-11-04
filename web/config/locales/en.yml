@@ -65,6 +65,7 @@ en:
       account: "Account"
       settings: "Settings"
       settings_shortcut: "Settings (%{keys})"
+      notifications_shortcut: "Notifications (%{keys})"
     tenant_switcher:
       label: "Tenants"
       home: "Home"
@@ -74,6 +75,8 @@ en:
       new_tenant: "New tenant"
       all_tenants: "All tenants"
       all_tenants_title: "All tenants (g t)"
+    notification_menu:
+      title: "Notifications"
     account_menu:
       label: "Account menu"
       signed_in_as: "Signed in as"
@@ -124,6 +127,7 @@ en:
       tenant_general: "Tenant: General"
       delete_tenant: "Delete tenant"
       switch_vault: "Switch vault"
+      notifications: "Notifications"
       new_vault: "New vault"
       vault_settings: "Vault settings"
       vault_members: "Vault members"
