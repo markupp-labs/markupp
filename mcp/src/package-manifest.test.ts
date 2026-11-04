@@ -33,8 +33,8 @@ describe("package.json publicado no npm", () => {
     );
   });
 
-  it("aceita o Node 22 LTS, o piso das dependências", () => {
-    expect(manifest.engines.node).toBe(">=22.12");
+  it("exige o Node 26, a versão atual do projeto", () => {
+    expect(manifest.engines.node).toBe(">=26");
   });
 
   it("tem palavras-chave para a busca do npm", () => {
