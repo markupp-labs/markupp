@@ -57,11 +57,11 @@ describe("runLogout", () => {
     expect(rig.upstream.requests).toHaveLength(0);
   });
 
-  it("apaga a credencial e manda revogar pelo painel quando o Go falha", async () => {
+  it("apaga a credencial e avisa que o login segue válido no servidor quando o Go falha", async () => {
     const rig = await new LogoutRig().seed();
     rig.upstream.respondWith(503);
     await expect(runLogout(rig.deps())).rejects.toThrow(
-      "revoke the authorization in the web panel",
+      "the login stays valid on the server until it expires",
     );
     expect(await rig.store.load()).toBeUndefined();
   });
