@@ -21,8 +21,7 @@ A divisão segue perfil de recurso, não entidade de domínio:
 - Indexador de embedding: perfil de recurso distinto, com acelerador quando houver modelo
   local, escala a zero
 - Worker de notificação: rajada com repetição, fora do caminho da requisição
-- Plano de controle: cobrança, provisionamento e plano, tráfego baixo e postura de segurança
-  distinta
+- Plano de controle: provisionamento de tenants, tráfego baixo e postura de segurança distinta
 - Painel web: interface do usuário, com ritmo de release próprio e cliente da API como
   qualquer outro (ADR-0031)
 
@@ -52,3 +51,7 @@ Nota, cofre, usuário e busca não são serviços: compartilham banco e caminho 
 - O custo dessa escolha é acoplamento pelo schema. Mudança de coluna coordena os seis que
   alcançam o banco, em expand e contract, e nenhum deles evolui o modelo de dados por conta
   própria. O painel fica de fora, porque consome a API
+
+## Emenda
+
+Em novembro de 2026, o texto deste ADR foi revisto. A decisão não mudou.

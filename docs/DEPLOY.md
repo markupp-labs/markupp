@@ -109,11 +109,10 @@ O projeto em `deploy/stacks` usa o componente pelo caminho local e tem uma stack
 cluster kind que o CI sobe em cada PR e a cada push em dev para testar a implantação, com
 certificado autoassinado.
 
-A cada tag `v*`, o workflow de release publica as imagens do servidor, do painel e do MCP. A
-instância oficial é operada fora deste repositório e consome essas imagens e o componente pela
-tag, como qualquer instalação self-host. Com aprovação no environment `production` do GitHub,
-que guarda o secret `CLOUD_DISPATCH_TOKEN`, o release avisa essa operação da tag nova; sem o
-secret (forks e instalações self-host), o passo é pulado.
+A cada tag `v*`, o workflow de release publica as imagens do servidor, do painel e do MCP. Com
+aprovação no environment `production` do GitHub, que guarda o secret `CLOUD_DISPATCH_TOKEN`, o
+release também avisa a tag nova por `repository_dispatch`; sem o secret (forks e instalações
+self-host), o passo é pulado.
 
 A stack sobe sem email. Para ligar numa stack, com a URL do SMTP cifrada no arquivo da stack:
 
