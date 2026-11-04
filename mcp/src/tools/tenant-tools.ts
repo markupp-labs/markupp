@@ -4,6 +4,7 @@ import type { MarkuppSession } from "../session.js";
 import {
   apiFor,
   callApi,
+  nameParameter,
   readOnlyAnnotations,
   writeAnnotations,
   type MarkuppApiFactory,
@@ -38,14 +39,8 @@ function addListTenants(
   });
 }
 
-// O servidor apara o nome e limita a 100 caracteres; o schema já recusa o que passa disso.
 const createTenantParameters = z.object({
-  name: z
-    .string()
-    .trim()
-    .min(1)
-    .max(100)
-    .describe("Tenant name, up to 100 characters."),
+  name: nameParameter.describe("Tenant name, up to 100 characters."),
 });
 
 function addCreateTenant(

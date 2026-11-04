@@ -54,7 +54,7 @@ class MyInvitesControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select "[role=status]", "Joined Home lab as member."
     assert_select "nav #current_tenant", text: /Home lab.*member/m
-    assert_equal "tenant-2", api.received_credentials.reverse.find { it[:call] == "GET /notes" }[:tenant_id]
+    assert_equal "tenant-2", api.received_credentials.reverse.find { it[:call].start_with?("GET /v1/vaults/") }[:tenant_id]
   end
 
   test "accepting an invite makes its tenant the active one among several" do

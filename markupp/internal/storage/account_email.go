@@ -56,7 +56,7 @@ func lockUser(ctx context.Context, q *gen.Queries, userID string) (bool, error) 
 		return false, fmt.Errorf("%w: %q", auth.ErrUserNotFound, userID)
 	}
 	if err != nil {
-		return false, fmt.Errorf("travar a conta %q: %w", userID, err)
+		return false, fmt.Errorf("lock account %q: %w", userID, err)
 	}
 	return verified, nil
 }
@@ -66,13 +66,13 @@ func lockUser(ctx context.Context, q *gen.Queries, userID string) (bool, error) 
 func renewAccountToken(ctx context.Context, q *gen.Queries, userID, purpose string, cooldown time.Duration) error {
 	recent, err := q.RecentAccountTokenExists(ctx, gen.RecentAccountTokenExistsParams{UserID: userID, Purpose: purpose, Cooldown: interval(cooldown)})
 	if err != nil {
-		return fmt.Errorf("conferir pedido recente de %s da conta %q: %w", purpose, userID, err)
+		return fmt.Errorf("check recent %s request of account %q: %w", purpose, userID, err)
 	}
 	if recent {
 		return nil
 	}
 	if err := q.DeleteOpenAccountTokens(ctx, gen.DeleteOpenAccountTokensParams{UserID: userID, Purpose: purpose}); err != nil {
-		return fmt.Errorf("invalidar %s aberto da conta %q: %w", purpose, userID, err)
+		return fmt.Errorf("invalidate open %s of account %q: %w", purpose, userID, err)
 	}
 	return enqueueAccountToken(ctx, q, userID, purpose)
 }
@@ -81,7 +81,7 @@ func renewAccountToken(ctx context.Context, q *gen.Queries, userID, purpose stri
 func enqueueAccountToken(ctx context.Context, q *gen.Queries, userID, purpose string) error {
 	id, err := q.CreateAccountToken(ctx, gen.CreateAccountTokenParams{UserID: userID, Purpose: purpose})
 	if err != nil {
-		return fmt.Errorf("criar %s da conta %q: %w", purpose, userID, err)
+		return fmt.Errorf("create %s of account %q: %w", purpose, userID, err)
 	}
 	return q.EnqueueAccountTokenNotification(ctx, gen.EnqueueAccountTokenNotificationParams{
 		Kind: purpose, AccountTokenID: pgtype.Text{String: id, Valid: true},
@@ -110,7 +110,7 @@ func useAccountToken(ctx context.Context, q *gen.Queries, tokenHash, purpose str
 		return "", auth.ErrInvalidToken
 	}
 	if err != nil {
-		return "", fmt.Errorf("usar token de %s: %w", purpose, err)
+		return "", fmt.Errorf("use %s token: %w", purpose, err)
 	}
 	return owner, nil
 }
@@ -124,7 +124,7 @@ func (r *PostgresAccountEmailRepository) RequestPasswordResetTx(ctx context.Cont
 			return nil
 		}
 		if err != nil {
-			return fmt.Errorf("buscar conta local de %q: %w", email, err)
+			return fmt.Errorf("find local account of %q: %w", email, err)
 		}
 		if _, err := lockUser(ctx, q, userID); err != nil {
 			return err
@@ -143,7 +143,7 @@ func (r *PostgresAccountEmailRepository) ResetPasswordTx(ctx context.Context, p 
 		}
 		hash, err := p.HashPassword()
 		if err != nil {
-			return fmt.Errorf("calcular hash da senha nova da conta %q: %w", userID, err)
+			return fmt.Errorf("hash new password of account %q: %w", userID, err)
 		}
 		return applyPasswordReset(ctx, q, userID, hash, p)
 	})
@@ -153,13 +153,13 @@ func (r *PostgresAccountEmailRepository) ResetPasswordTx(ctx context.Context, p 
 // email, então a conta fica verificada.
 func applyPasswordReset(ctx context.Context, q *gen.Queries, userID, hash string, p auth.PasswordResetParams) error {
 	if err := q.UpdateLocalPassword(ctx, gen.UpdateLocalPasswordParams{UserID: userID, PasswordHash: pgtype.Text{String: hash, Valid: true}}); err != nil {
-		return fmt.Errorf("gravar senha nova da conta %q: %w", userID, err)
+		return fmt.Errorf("save new password of account %q: %w", userID, err)
 	}
 	if err := q.MarkEmailVerified(ctx, userID); err != nil {
-		return fmt.Errorf("verificar email da conta %q: %w", userID, err)
+		return fmt.Errorf("verify email of account %q: %w", userID, err)
 	}
 	if err := q.RevokeAllUserRefreshTokens(ctx, userID); err != nil {
-		return fmt.Errorf("derrubar sessoes da conta %q: %w", userID, err)
+		return fmt.Errorf("revoke sessions of account %q: %w", userID, err)
 	}
 	return q.CreateAuditEvent(ctx, toCreateAuditEventParams(auth.AuditEventRecord{
 		ID: p.AuditEventID, ActorID: userID, Action: "auth.password_reset", Target: userID, Result: "success", OccurredAt: p.Now,

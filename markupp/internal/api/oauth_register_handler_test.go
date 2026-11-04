@@ -89,7 +89,7 @@ func TestRegister_CorpoRecusado_Retorna400SemChamarOServico(t *testing.T) {
 
 			assert.Equal(t, http.StatusBadRequest, rec.Code)
 			assert.Contains(t, rec.Body.String(), `"error":"invalid_client_metadata"`)
-			assert.Contains(t, rec.Body.String(), "esperad")
+			assert.Contains(t, rec.Body.String(), "expected")
 			assert.Equal(t, "*", rec.Header().Get("Access-Control-Allow-Origin"))
 			assert.Nil(t, svc.gotRegistration)
 		})

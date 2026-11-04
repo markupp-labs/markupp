@@ -79,7 +79,7 @@ func serveCommunity(graph NoteGraph) http.HandlerFunc {
 		raw := chi.URLParam(r, "cid")
 		communityID, err := strconv.ParseInt(raw, 10, 64)
 		if err != nil {
-			writeError(w, "invalid_id", fmt.Sprintf("id de comunidade %q, esperado inteiro", raw), http.StatusBadRequest)
+			writeError(w, "invalid_id", fmt.Sprintf("community id %q: expected an integer", raw), http.StatusBadRequest)
 			return
 		}
 		community, err := graph.Community(r.Context(), chi.URLParam(r, "id"), communityID)

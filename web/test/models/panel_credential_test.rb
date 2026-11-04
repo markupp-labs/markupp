@@ -76,6 +76,31 @@ class PanelCredentialTest < ActiveSupport::TestCase
     assert_equal "tenant-1", @fake_api.received_credentials.sole[:tenant_id]
   end
 
+  test "vault_id= keeps the active vault in the session" do
+    @credential.vault_id = "vault-2"
+
+    assert_equal "vault-2", @credential.vault_id
+    assert_equal "vault-2", @session[:vault_id]
+  end
+
+  test "tenant_id= forgets the active vault when the tenant changes" do
+    @credential.tenant_id = "tenant-1"
+    @credential.vault_id = "vault-2"
+
+    @credential.tenant_id = "tenant-2"
+
+    assert_nil @credential.vault_id
+  end
+
+  test "tenant_id= keeps the active vault when the tenant stays the same" do
+    @credential.tenant_id = "tenant-1"
+    @credential.vault_id = "vault-2"
+
+    @credential.tenant_id = "tenant-1"
+
+    assert_equal "vault-2", @credential.vault_id
+  end
+
   test "public_api goes without token nor tenant" do
     @session[:tenant_id] = "tenant-1"
 

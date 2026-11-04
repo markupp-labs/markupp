@@ -7,7 +7,7 @@
   <%# Sem tenant ativo (onboarding) não há notas para buscar: sem busca, sem seletor. %>
   <%# Ctrl+B/Cmd+B recolhe a barra lateral como no VS Code; o grid e o fechado vêm do CSS (.app-shell). %>
   <%# Ctrl+, e Cmd+, abrem as configurações; o Stimulus não tem filtro para a vírgula, o controller confere a tecla. %>
-  <%# Ctrl+Shift+E, L e G (Cmd no Mac) mostram a visão da barra lateral e levam o foco a ela (sidebar_controller.js); g e depois t abre a lista de tenants. %>
+  <%# Ctrl+Shift+E, L e G (Cmd no Mac) mostram a visão da barra lateral e levam o foco a ela (sidebar_controller.js); g e depois t abre a lista de tenants, e g e depois v o seletor de cofres; v e depois r, a ou q, as ações do cofre ativo. %>
   <%# Alt+h/j/k/l levam o foco à região vizinha pela geometria (region_nav_controller.js); na captura, antes do editor e do Vim. %>
   <%# Alt+G abre o grafo do cofre em tela cheia (full_graph_shortcut_controller.js), a partir da nota aberta. %>
   <% shortcuts = "keydown.ctrl+b@window->sidebar#toggleFromShortcut keydown.meta+b@window->sidebar#toggleFromShortcut keydown@window->settings-shortcut#open keydown@window->sidebar#focusView explorer-mode:reveal->sidebar#reveal keydown@window->tenants-shortcut#open keydown@window->region-nav#navigate:capture turbo:before-render@document->area-transition#mark" %>
@@ -15,7 +15,7 @@
   <body class="app-shell min-h-dvh bg-surface font-mono text-sm text-ink"
         <%= tag.attributes(data: { controller: [ "sidebar", "settings-shortcut", "region-nav", "tenants-shortcut", "area-transition", ("search" if current_tenant), ("full-graph-shortcut" if current_tenant) ].compact.join(" "), action: shortcuts,
                                   area: current_area,
-                                  settings_shortcut_url_value: settings_path, tenants_shortcut_url_value: tenants_path, full_graph_shortcut_url_value: graph_path,
+                                  settings_shortcut_url_value: settings_path, tenants_shortcut_url_value: tenants_path, tenants_shortcut_vault_actions_value: vault_shortcut_paths.to_json, full_graph_shortcut_url_value: graph_path,
                                   sidebar_hide_label_value: t(".hide_sidebar"), sidebar_show_label_value: t(".show_sidebar") }) %>>
     <%= busy_origin_spinner_template %>
     <%# Cada página nomeia a barra lateral pelo que ela mostra ali; sem nome, são as notas. %>
@@ -92,6 +92,7 @@
     <%= render "layouts/command_palette" %>
     <%= render "layouts/shortcut_help" %>
     <%= render "layouts/confirm_dialog" %>
+    <%= render "vaults/new_dialog" if current_tenant&.writer? %>
 
     <%# @container: o lado a lado escolhe colunas ou pilha pela largura do main (application.css). md:pl-10 deixa a lombada (21px) fora do conteúdo.
         Com a nota, o main vira coluna e o form fica com o que sobra depois do aviso, sem rolar a página por ele. %>

@@ -12,7 +12,7 @@ import (
 const (
 	authSecretName        = "auth_secret"
 	mcpResourceSecretName = "mcp_resource_secret" // #nosec G101 -- nome da linha no banco, nao o segredo
-	mcpUpstreamExpected   = "http(s)://host[:porta] do servidor MCP, sem caminho, query nem fragmento"
+	mcpUpstreamExpected   = "http(s)://host[:port] of the MCP server, without path, query or fragment"
 )
 
 // InstanceSecrets guarda os segredos que o servidor gera na primeira subida (ADR-0041).
@@ -31,7 +31,7 @@ func loadMCPSettings(lookup LookupFunc, cfg *Config) error {
 	}
 	parsed, err := url.Parse(upstream)
 	if err != nil || !mcpUpstreamAllowed(parsed) {
-		return fmt.Errorf("MARKUPP_MCP_UPSTREAM_URL=%q, esperado %s", upstream, mcpUpstreamExpected)
+		return fmt.Errorf("MARKUPP_MCP_UPSTREAM_URL=%q, expected %s", upstream, mcpUpstreamExpected)
 	}
 	cfg.MCPUpstreamURL = strings.TrimRight(upstream, "/")
 	return nil
@@ -68,7 +68,7 @@ func (c Config) WithInstanceSecrets(ctx context.Context, secrets InstanceSecrets
 	if c.AuthSecret == "" {
 		secret, err := secrets.Secret(ctx, authSecretName, generate)
 		if err != nil {
-			return Config{}, fmt.Errorf("segredo %s da instancia: %w", authSecretName, err)
+			return Config{}, fmt.Errorf("read instance secret %s: %w", authSecretName, err)
 		}
 		c.AuthSecret = secret
 	}
@@ -77,7 +77,7 @@ func (c Config) WithInstanceSecrets(ctx context.Context, secrets InstanceSecrets
 	}
 	secret, err := secrets.Secret(ctx, mcpResourceSecretName, generate)
 	if err != nil {
-		return Config{}, fmt.Errorf("segredo %s da instancia: %w", mcpResourceSecretName, err)
+		return Config{}, fmt.Errorf("read instance secret %s: %w", mcpResourceSecretName, err)
 	}
 	c.OAuthResources = []OAuthResource{{URL: c.DefaultMCPResourceURL(), Secret: secret}}
 	return c, nil
@@ -90,18 +90,18 @@ func WriteMCPSecret(path, secret string) error {
 	dir := filepath.Dir(path)
 	// #nosec G301 -- o servidor MCP roda com outro usuario e precisa atravessar o diretorio
 	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return fmt.Errorf("criar o diretorio %s do segredo do MCP: %w", dir, err)
+		return fmt.Errorf("create MCP secret directory %s: %w", dir, err)
 	}
 	temp, err := os.CreateTemp(dir, ".secret-*")
 	if err != nil {
-		return fmt.Errorf("criar arquivo temporario em %s para o segredo do MCP: %w", dir, err)
+		return fmt.Errorf("create temporary MCP secret file in %s: %w", dir, err)
 	}
 	defer func() { _ = os.Remove(temp.Name()) }()
 	if err := writeAndClose(temp, secret); err != nil {
-		return fmt.Errorf("escrever o segredo do MCP em %s: %w", temp.Name(), err)
+		return fmt.Errorf("write MCP secret to %s: %w", temp.Name(), err)
 	}
 	if err := os.Rename(temp.Name(), path); err != nil {
-		return fmt.Errorf("mover o segredo do MCP para %s: %w", path, err)
+		return fmt.Errorf("move MCP secret to %s: %w", path, err)
 	}
 	return nil
 }

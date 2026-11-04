@@ -41,15 +41,15 @@ func TestLoad_LimitesDoCIMDNasBordas_Aceita(t *testing.T) {
 
 func TestLoad_LimiteDoCIMDInvalido_RetornaErroComVariavelEValor(t *testing.T) {
 	casos := []struct{ chave, valor, faixa string }{
-		{"MARKUPP_OAUTH_CIMD_TIMEOUT_SECONDS", "0", "de 1 a 30"},
-		{"MARKUPP_OAUTH_CIMD_TIMEOUT_SECONDS", "31", "de 1 a 30"},
-		{"MARKUPP_OAUTH_CIMD_MAX_KB", "0", "de 1 a 1024"},
-		{"MARKUPP_OAUTH_CIMD_MAX_KB", "1025", "de 1 a 1024"},
-		{"MARKUPP_OAUTH_CIMD_CACHE_MIN_MINUTES", "0", "de 1 a 60"},
-		{"MARKUPP_OAUTH_CIMD_CACHE_MIN_MINUTES", "61", "de 1 a 60"},
-		{"MARKUPP_OAUTH_CIMD_CACHE_MAX_HOURS", "0", "de 1 a 168"},
-		{"MARKUPP_OAUTH_CIMD_CACHE_MAX_HOURS", "169", "de 1 a 168"},
-		{"MARKUPP_OAUTH_CIMD_CACHE_MAX_HOURS", "um dia", "de 1 a 168"},
+		{"MARKUPP_OAUTH_CIMD_TIMEOUT_SECONDS", "0", "from 1 to 30"},
+		{"MARKUPP_OAUTH_CIMD_TIMEOUT_SECONDS", "31", "from 1 to 30"},
+		{"MARKUPP_OAUTH_CIMD_MAX_KB", "0", "from 1 to 1024"},
+		{"MARKUPP_OAUTH_CIMD_MAX_KB", "1025", "from 1 to 1024"},
+		{"MARKUPP_OAUTH_CIMD_CACHE_MIN_MINUTES", "0", "from 1 to 60"},
+		{"MARKUPP_OAUTH_CIMD_CACHE_MIN_MINUTES", "61", "from 1 to 60"},
+		{"MARKUPP_OAUTH_CIMD_CACHE_MAX_HOURS", "0", "from 1 to 168"},
+		{"MARKUPP_OAUTH_CIMD_CACHE_MAX_HOURS", "169", "from 1 to 168"},
+		{"MARKUPP_OAUTH_CIMD_CACHE_MAX_HOURS", "um dia", "from 1 to 168"},
 	}
 	for _, caso := range casos {
 		env := envComOAuth()

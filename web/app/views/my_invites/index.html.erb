@@ -1,8 +1,8 @@
-<%# Frame do seletor de tenant; sem convites fica vazio e não ocupa espaço. %>
+<%# Frame do seletor de tenant; sem convites fica vazio e não ocupa espaço. Os botões são itens do menu do seletor. %>
 <%= turbo_frame_tag "my_invites", target: "_top" do %>
   <% if @invites.any? %>
-    <ul class="mt-1 space-y-px border-t border-line pt-1">
-      <%= render partial: "my_invites/invite", collection: @invites %>
+    <ul role="none" class="mt-1 space-y-px border-t border-line pt-1">
+      <%= render partial: "my_invites/invite", collection: @invites, locals: { in_menu: true } %>
     </ul>
   <% end %>
 <% end %>
