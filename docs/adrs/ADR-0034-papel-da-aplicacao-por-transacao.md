@@ -36,13 +36,13 @@ da própria conta, como responder convite, rodam no papel da conexão, porque pr
 
 - Vazamento entre clientes e entre cofres passa a ser impedido pelo banco
 - Instalação e deploy não mudam: o papel nasce na migração
-- Um repositório que use o pool fora da transação do ator roda como superusuário e enxerga todos
-  os tenants. Um teste lê o pacote de armazenamento e falha quando isso acontece
+- Um repositório que use o pool fora da transação do ator roda como superusuário e enxerga
+  todos os tenants. Um teste lê o pacote de armazenamento e falha quando isso acontece
 - `FORCE ROW LEVEL SECURITY` fica dispensado, porque `markupp_app` não é dono das tabelas
 - Tabelas da conta, como identidades e refresh tokens, ficam sem RLS e sem GRANT para
   `markupp_app`: só a autenticação as lê
 - A política de isolamento tem teste próprio, que roda no papel da aplicação sem `WHERE`
-- Self-host e Cloud compartilham o mesmo caminho de código
+- Toda instalação usa o mesmo caminho de código
 - Cliente grande e cliente pequeno dividem o mesmo índice, e vizinho ruidoso só se resolve
   depois, com particionamento por `tenant_id`
 

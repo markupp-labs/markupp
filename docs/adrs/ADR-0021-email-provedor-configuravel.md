@@ -8,11 +8,11 @@ Aceita
 
 Convite de usuário, recuperação de acesso por credencial local e alerta de operação dependem
 de envio de mensagem. O self-host não pode depender de serviço de terceiro para funcionar,
-e o Cloud precisa de entrega confiável e mensurável
+e uma instalação com vários tenants precisa de entrega confiável e mensurável
 
 ## Decisão
 
-Envio por SMTP genérico nas duas edições, configurado por URL. Cada instalação aponta para o
+Envio por SMTP genérico em toda instalação, configurado por URL. Cada instalação aponta para o
 servidor de email que tiver. Sem SMTP configurado, o sistema não envia e os fluxos que dependem
 de envio ficam explicitamente indisponíveis
 

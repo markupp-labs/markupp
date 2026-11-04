@@ -15,16 +15,17 @@ Job sobe, carrega o modelo, processa o lote e termina
 
 Três implementações atrás da mesma interface: cliente HTTP compatível com a API da OpenAI,
 cliente do Amazon Bedrock, e modelo local carregado no processo do indexador de embedding. O
-Bedrock segue como padrão do Cloud, e o modelo local passa a ser a opção de self-host sem
-depender de serviço de terceiro
+Bedrock segue como padrão em instalações na AWS, e o modelo local passa a ser a opção de
+self-host sem depender de serviço de terceiro
 
 ## Alternativas consideradas
 
-- Manter apenas os dois provedores do ADR-0019: quem quer local aponta para um Ollama no próprio
-  cluster e resolve sem código novo, ao custo de mais um componente para o self-hoster subir e
-  manter
-- Modelo local como padrão em todas as edições: elimina a dependência de terceiro por completo,
-  e obriga baixar pesos na primeira execução, inclusive onde o Bedrock sairia mais barato
+- Manter apenas os dois provedores do ADR-0019: quem quer local aponta para um Ollama no
+  próprio cluster e resolve sem código novo, ao custo de mais um componente para o self-hoster
+  subir e manter
+- Modelo local como padrão em todas as instalações: elimina a dependência de terceiro por
+  completo, e obriga baixar pesos na primeira execução, inclusive onde o Bedrock sairia mais
+  barato
 
 ## Consequências
 

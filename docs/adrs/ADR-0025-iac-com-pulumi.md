@@ -6,7 +6,7 @@ Aceita
 
 ## Contexto
 
-O Cloud roda em Kubernetes (ADR-0027), primeiro num cluster on-premise e depois em nuvem
+O markupp roda em Kubernetes (ADR-0027), primeiro num cluster on-premise e depois em nuvem
 pública. A implantação precisa ser reproduzível pela equipe e por quem hospeda por conta
 própria, e nada disso está descrito em código hoje
 
@@ -29,7 +29,8 @@ pré-requisitos do cluster, e KEDA é opcional, instalado à parte por quem admi
 - Operator próprio: resolve ciclo de vida complexo, e os serviços não têm estado
 - Terraform: mais difundido, e descreve a infraestrutura em linguagem própria
 - Estado no Pulumi Cloud: menos infraestrutura para montar, e é gratuito só para uso individual
-- Estado em bucket de nuvem: sobrevive à perda do cluster, e traz uma conta de nuvem só para isso
+- Estado em bucket de nuvem: sobrevive à perda do cluster, e traz uma conta de nuvem só para
+  isso
 - Credencial de administrador do cluster no CI: o CI instalaria os operadores também, e um
   vazamento alcançaria os outros projetos do cluster
 

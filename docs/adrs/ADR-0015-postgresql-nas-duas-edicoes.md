@@ -1,4 +1,4 @@
-# ADR-0015: PostgreSQL nas duas edições, no lugar do SQLite
+# ADR-0015: PostgreSQL em toda instalação, no lugar do SQLite
 
 ## Status
 
@@ -6,22 +6,22 @@ Aceita
 
 ## Contexto
 
-A edição Cloud vai rodar como instância única em nuvem, com divisão lógica por cliente,
-e a indexação vai rodar sob demanda em processo separado. SQLite é embarcado e de escritor
+Uma instalação em nuvem vai rodar como instância única, com divisão lógica por tenant, e a
+indexação vai rodar sob demanda em processo separado. SQLite é embarcado e de escritor
 único: dois processos não escrevem o mesmo arquivo com segurança fora do mesmo host, e o
 travamento dele não sobrevive a filesystem de rede
 
 ## Decisão
 
-PostgreSQL nas duas edições, self-host e Cloud. O `sqlc` passa a gerar para Postgres e o
-self-host recebe o banco como serviço no compose
+PostgreSQL em toda instalação, com compose ou em nuvem. O `sqlc` passa a gerar para Postgres e
+o self-host recebe o banco como serviço no compose
 
 ## Alternativas consideradas
 
-- Manter SQLite nas duas edições: impede indexação em processo separado, que é justamente o
+- Manter SQLite em toda instalação: impede indexação em processo separado, que é justamente o
   objetivo
 - SQLite no self-host e Postgres na nuvem: dois dialetos de query para sempre, busca léxica e
-  vetorial escritas duas vezes, e divergência de comportamento entre edições que só aparece
+  vetorial escritas duas vezes, e divergência de comportamento entre instalações que só aparece
   em produção de um dos lados
 
 ## Consequências
@@ -31,7 +31,7 @@ self-host recebe o banco como serviço no compose
 - O self-host ganha um container a mais no compose, prática já comum em software
   self-hosted como Immich, Paperless-ngx e Gitea
 - Vetorial passa a ser pgvector, e busca léxica deixa de poder usar FTS5
-- Uma implementação de query, de busca e de vetorial serve as duas edições
+- Uma implementação de query, de busca e de vetorial serve toda instalação
 
 ## Emenda
 
