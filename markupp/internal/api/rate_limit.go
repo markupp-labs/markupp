@@ -72,18 +72,42 @@ func (l *AccountRateLimiter) sweepExpired(now time.Time) {
 // limitAccountAttempts limita a rota por IP e, quando o corpo traz email, também por
 // email. Limitador nil deixa a rota livre.
 func limitAccountAttempts(l *AccountRateLimiter) func(http.Handler) http.Handler {
+	if l == nil {
+		return passThrough
+	}
+	return limitRequests(l.allowRequest)
+}
+
+// limitRequests responde 429 ao pedido que allow recusa, com o tempo de espera.
+func limitRequests(allow func(*http.Request) (time.Duration, bool)) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
-		if l == nil {
-			return next
-		}
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if wait, ok := l.allowRequest(r); !ok {
+			if wait, ok := allow(r); !ok {
 				writeRateLimited(w, wait)
 				return
 			}
 			next.ServeHTTP(w, r)
 		})
 	}
+}
+
+// publicReadsKey prefixa a chave do limite da leitura pública, que é uma só por IP
+// para todas as rotas, para o slug e o id da nota não abrirem limites novos.
+const publicReadsKey = "public ip "
+
+// limitPublicReads limita a leitura pública sem conta por IP (ADR-0048). Limitador nil
+// deixa as rotas livres.
+func limitPublicReads(l *AccountRateLimiter) func(http.Handler) http.Handler {
+	if l == nil {
+		return passThrough
+	}
+	return limitRequests(func(r *http.Request) (time.Duration, bool) {
+		return l.Allow(publicReadsKey + l.clientIP(r))
+	})
+}
+
+func passThrough(next http.Handler) http.Handler {
+	return next
 }
 
 func (l *AccountRateLimiter) allowRequest(r *http.Request) (time.Duration, bool) {
