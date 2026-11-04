@@ -33,8 +33,7 @@ de envio ficam explicitamente indisponíveis
 
 ## Emenda
 
-Em novembro de 2026, o texto deste ADR foi revisto para tirar do repositório público o que
-trata da operação comercial do Cloud. A decisão não mudou.
+Em novembro de 2026, o texto deste ADR foi revisto. A decisão não mudou.
 
 Em novembro de 2026, a edição operada pela equipe passou a se chamar Cloud. A decisão não
 mudou.

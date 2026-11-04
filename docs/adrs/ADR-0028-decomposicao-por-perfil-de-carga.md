@@ -54,5 +54,4 @@ Nota, cofre, usuário e busca não são serviços: compartilham banco e caminho 
 
 ## Emenda
 
-Em novembro de 2026, o texto deste ADR foi revisto para tirar do repositório público o que
-trata da operação comercial do Cloud. A decisão não mudou.
+Em novembro de 2026, o texto deste ADR foi revisto. A decisão não mudou.
