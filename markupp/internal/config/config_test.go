@@ -451,7 +451,7 @@ func TestLoad_LimiteDaLeituraPublicaForaDaFaixa_RetornaErroComOValor(t *testing.
 
 		require.Error(t, err, valor)
 		assert.Contains(t, err.Error(), "MARKUPP_PUBLIC_RATE_LIMIT_PER_MINUTE", valor)
-		assert.Contains(t, err.Error(), "de 1 a 10000", valor)
+		assert.Contains(t, err.Error(), "from 1 to 10000", valor)
 	}
 }
 
