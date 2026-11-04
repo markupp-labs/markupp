@@ -6,7 +6,7 @@ Aceita
 
 ## Contexto
 
-O Multi-tenant atende vários clientes na mesma instância, e a mesma pessoa pode trabalhar para
+O Cloud atende vários clientes na mesma instância, e a mesma pessoa pode trabalhar para
 mais de um. Com a conta presa a um tenant, essa pessoa precisaria de um email por cliente, e
 convidar um email que já tinha conta em outro cliente gerava convite impossível de aceitar. O
 Langfuse, cujo modelo de distribuição é o mesmo do markupp (ADR-0020), resolve isso com
@@ -55,4 +55,4 @@ administração, e o viewer só lê nos cofres de que é membro
 ## Emenda
 
 Em novembro de 2026, o texto deste ADR foi revisto para tirar do repositório público o que
-trata da operação comercial do Enterprise. A decisão não mudou.
+trata da operação comercial do Cloud. A decisão não mudou.

@@ -8,23 +8,23 @@ Aceita
 
 O acesso precisa ser controlado por autenticação e autorização, inclusive por provedor externo
 de identidade. As duas edições têm restrições opostas: o self-host não pode depender de
-provedor de terceiro para o primeiro login, e o Multi-tenant não deveria armazenar senha nem
+provedor de terceiro para o primeiro login, e o Cloud não deveria armazenar senha nem
 operar fluxo de recuperação. O Langfuse, cujo modelo de distribuição é o mesmo do markupp,
 resolve isso com lista de provedores habilitada por configuração no mesmo binário
 
 ## Decisão
 
 Autenticação com provedores habilitados por configuração: credencial local, com usuário e
-senha, e qualquer número de provedores OIDC ou OAuth, como Google e GitHub. O Multi-tenant
+senha, e qualquer número de provedores OIDC ou OAuth, como Google e GitHub. O Cloud
 habilita provedor externo, e o self-host escolhe, inclusive ficar só na credencial local. Mesmo
 desenho do ADR-0019: uma interface, implementações escolhidas por configuração
 
 ## Alternativas consideradas
 
 - Só credencial local, no modelo do Jellyfin: não atende autenticação por provedor externo, e
-  obriga o Multi-tenant a guardar senha e operar recuperação de acesso
+  obriga o Cloud a guardar senha e operar recuperação de acesso
 - Só OIDC: obriga o self-host a depender de provedor de terceiro para conseguir entrar
-- OIDC no Multi-tenant e credencial local no self-host, fixos: divide o código de autenticação
+- OIDC no Cloud e credencial local no self-host, fixos: divide o código de autenticação
   por edição, e tira da organização que hospeda por conta própria a opção de plugar o provedor
   de identidade que ela já usa
 
