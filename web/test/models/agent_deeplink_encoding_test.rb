@@ -1,6 +1,6 @@
 require "test_helper"
 
-# Codificação do json dos deeplinks, igual à do catálogo do servidor MCP (mcp/src/clients/link-encoding.ts).
+# Codificação do json dos deeplinks do Cursor (base64) e do VS Code (direto na url).
 class AgentDeeplinkEncodingTest < ActiveSupport::TestCase
   test "uri-json encodes the json as a strict url component" do
     assert_equal "%7B%22name%22%3A%22a%21%28%29%2A%27%22%7D", AgentDeeplinkEncoding.encode({ "name" => "a!()*'" }, "uri-json")

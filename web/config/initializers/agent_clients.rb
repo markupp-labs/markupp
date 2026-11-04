@@ -1,4 +1,4 @@
-# Página Agents: o catálogo de clientes MCP (cópia gerada pelo npm run clients:sync em mcp/) e a url pública da
+# Página Agents: o catálogo de clientes MCP (config/agent_clients.json, mantido à mão) e a url pública da
 # instância, a mesma MARKUPP_PUBLIC_URL que a API anuncia como issuer. MARKUPP_MCP_URL só vem quando a instância serve
 # o MCP; sem ela a página avisa que o MCP está desligado.
 Rails.application.config.to_prepare do

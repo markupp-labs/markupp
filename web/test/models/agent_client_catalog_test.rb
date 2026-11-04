@@ -1,23 +1,9 @@
 require "test_helper"
 
-# Catálogo de clientes MCP: os modelos vêm do config/agent_clients.json, que o npm run clients:sync gera a partir do
-# catálogo do servidor MCP. O exemplo montado lá é o contrato: o Ruby tem de montar igual ao TypeScript.
+# Catálogo de clientes MCP: os modelos vêm do config/agent_clients.json, e cada cliente sai com os trechos e deeplinks
+# que o próprio cliente aceita.
 class AgentClientCatalogTest < ActiveSupport::TestCase
   DOCUMENT = JSON.parse(Rails.root.join("config/agent_clients.json").read)
-
-  # O cliente montado no formato do clients.json, para comparar com o exemplo.
-  def as_catalog_json(client)
-    { "id" => client.id, "name" => client.name, "docsUrl" => client.docs_url,
-      "snippets" => client.snippets.map { { "id" => it.id, "language" => it.language, "path" => it.path, "text" => it.text }.compact },
-      "deeplinks" => client.deeplinks.map { { "id" => it.id, "href" => it.href } } }
-  end
-
-  test "clients_for builds the same clients as the MCP catalog example" do
-    catalog = AgentClientCatalog.new(DOCUMENT)
-    example = DOCUMENT.fetch("example")
-
-    assert_equal example.fetch("clients"), catalog.clients_for(example.fetch("instanceUrl")).map { as_catalog_json(it) }
-  end
 
   test "clients_for puts the MCP url, under the instance, in the snippets" do
     claude_code = AgentClientCatalog.new(DOCUMENT).clients_for("http://localhost:8080/").first

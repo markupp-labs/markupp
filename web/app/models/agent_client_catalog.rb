@@ -1,6 +1,5 @@
 # Clientes MCP da página Agents, montados para a url pública da instância. Os modelos vêm do config/agent_clients.json,
-# gerado pelo npm run clients:sync a partir do catálogo único do servidor MCP (mcp/src/clients/catalog.ts): aqui só se
-# trocam os marcadores {{instanceUrl}} e {{mcpUrl}} e se codificam os deeplinks.
+# mantido à mão: aqui só se trocam os marcadores {{instanceUrl}} e {{mcpUrl}} e se codificam os deeplinks.
 class AgentClientCatalog
   Client = Data.define(:id, :name, :docs_url, :snippets, :deeplinks)
   Snippet = Data.define(:id, :language, :path, :text)
@@ -26,7 +25,7 @@ class AgentClientCatalog
       { @placeholders.fetch("instanceUrl") => instance_url, @placeholders.fetch("mcpUrl") => mcp_url }
     end
 
-    # Valida a url e tira a barra do fim, como no TypeScript.
+    # Valida a url e tira a barra do fim.
     def http_url(raw_url, label)
       uri = URI.parse(raw_url.to_s)
       raise URI::InvalidURIError unless uri.is_a?(URI::HTTP) && uri.host.present?
