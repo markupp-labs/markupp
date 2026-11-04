@@ -35,7 +35,7 @@ export type HttpServerDeps = {
 };
 
 // HttpServers são os dois servidores do transporte HTTP: o autenticado, em
-// config.endpoint, e o público sem login, embaixo dele (ADR-0051).
+// config.endpoint, e o público sem login, embaixo dele (ADR-0050).
 export type HttpServers = {
   authenticated: FastMCP<MarkuppSession>;
   anonymous: FastMCP<PublicSession>;

@@ -319,7 +319,7 @@ pelo Go e pelo arquivo do segredo. No cluster, com o MCP em subdomínio próprio
 do MCP vêm do Secret.
 
 O mesmo servidor atende, sem OAuth, a rota do endpoint seguida de `/public` (`/mcp/public` por
-padrão), que o Go também encaminha (ADR-0051). Ali o agente só lê os cofres publicados, pelas
+padrão), que o Go também encaminha (ADR-0050). Ali o agente só lê os cofres publicados, pelas
 ferramentas `list_public_notes`, `read_public_note` e `search_public_notes`, que chamam as rotas
 `/v1/public/vaults/{slug}` da API sem token. O limite de `MARKUPP_PUBLIC_RATE_LIMIT_PER_MINUTE`
 vale também para elas, contado pelo IP de cada agente, sem configuração: o MCP repassa ao Go o

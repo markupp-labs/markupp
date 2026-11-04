@@ -19,7 +19,7 @@ export type PublicServerConfig = Pick<
   "apiUrl" | "resourceUrl" | "resourceSecret"
 >;
 
-// createPublicServer monta o FastMCP de /mcp/public (ADR-0051): sem OAuth, com só as
+// createPublicServer monta o FastMCP de /mcp/public (ADR-0050): sem OAuth, com só as
 // ferramentas de leitura dos cofres publicados, que chamam /v1/public no Go.
 export function createPublicServer(
   config: PublicServerConfig,

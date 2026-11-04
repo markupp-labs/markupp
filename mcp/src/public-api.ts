@@ -51,7 +51,7 @@ export type HttpPublicMarkuppApiOptions = {
   // escreveu ao encaminhar, repassado para o Go contar o limite por IP do agente.
   forwardedFor?: string;
   // relayAuthorization é o HTTP Basic do MCP como resource: só com ele o Go conta o
-  // limite pelo X-Forwarded-For repassado (ADR-0051).
+  // limite pelo X-Forwarded-For repassado (ADR-0050).
   relayAuthorization?: string;
 };
 

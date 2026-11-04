@@ -11,7 +11,7 @@ import (
 
 // Caminhos do servidor MCP na mesma origem (ADR-0041): o endpoint Streamable HTTP, a
 // metadata do recurso protegido dele (RFC 9728), que o próprio servidor MCP publica, e
-// o endpoint sem login dos cofres publicados (ADR-0051).
+// o endpoint sem login dos cofres publicados (ADR-0050).
 const (
 	mcpEndpointPath         = "/mcp"
 	mcpResourceMetadataPath = "/.well-known/oauth-protected-resource/mcp"

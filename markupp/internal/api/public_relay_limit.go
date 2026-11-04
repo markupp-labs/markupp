@@ -7,7 +7,7 @@ import (
 )
 
 // RelayAuthenticator confere a credencial HTTP Basic de um resource, como o servidor
-// MCP, que chama a leitura pública em nome de um agente (ADR-0051).
+// MCP, que chama a leitura pública em nome de um agente (ADR-0050).
 type RelayAuthenticator interface {
 	AuthenticatesResource(resourceID, secret string) bool
 }

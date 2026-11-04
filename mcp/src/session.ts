@@ -7,7 +7,7 @@ export type MarkuppSession = {
   apiToken: ApiTokenSource;
 };
 
-// PublicSession é a sessão anônima de /mcp/public (ADR-0051): sem login, só o
+// PublicSession é a sessão anônima de /mcp/public (ADR-0050): sem login, só o
 // X-Forwarded-For do agente, para o Go contar o limite por IP dele.
 export type PublicSession = {
   forwardedFor?: string;

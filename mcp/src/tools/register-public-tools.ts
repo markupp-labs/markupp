@@ -7,7 +7,7 @@ import type { PublicApiFactory } from "./public-tool-support.js";
 export type { PublicApiFactory } from "./public-tool-support.js";
 
 // registerPublicTools registra só a leitura dos cofres publicados, num servidor à parte
-// do autenticado (ADR-0051): as ferramentas dos dois nunca se misturam.
+// do autenticado (ADR-0050): as ferramentas dos dois nunca se misturam.
 export function registerPublicTools(
   server: FastMCP<PublicSession>,
   factory: PublicApiFactory,
