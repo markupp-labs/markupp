@@ -99,6 +99,7 @@ func TestPublicacao_SlugRepetido_Responde409(t *testing.T) {
 
 	assert.Equal(t, http.StatusConflict, rec.Code)
 	assert.Contains(t, rec.Body.String(), `"slug_taken"`)
+	assert.Contains(t, rec.Body.String(), "slug already used by another vault")
 }
 
 func TestPublicacao_ErrosDoServico_ViramStatus(t *testing.T) {
@@ -114,6 +115,13 @@ func TestPublicacao_ErrosDoServico_ViramStatus(t *testing.T) {
 
 		assert.Equal(t, status, rec.Code, err.Error())
 	}
+}
+
+func TestPublicacao_ServicoRecusaPapel_MensagemDeAdmin(t *testing.T) {
+	rec := pedePublicacao(t, &fakeVaultPublisher{err: publication.ErrNotAdmin}, "admin", http.MethodPut, `{"slug":"docs"}`)
+
+	assert.Equal(t, http.StatusForbidden, rec.Code)
+	assert.Contains(t, rec.Body.String(), "only tenant owners and admins can do this")
 }
 
 func TestPublicacao_CorpoInvalido_Responde400(t *testing.T) {
@@ -138,6 +146,7 @@ func TestPublicacao_DespublicarNaoPublicado_Responde404(t *testing.T) {
 
 	assert.Equal(t, http.StatusNotFound, rec.Code)
 	assert.Contains(t, rec.Body.String(), `"not_published"`)
+	assert.Contains(t, rec.Body.String(), "vault is not published")
 }
 
 func TestPublicacao_DespublicarCofreForaDoAlcance_Responde403(t *testing.T) {

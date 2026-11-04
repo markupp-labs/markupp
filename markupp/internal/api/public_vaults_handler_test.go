@@ -127,6 +127,7 @@ func TestPublico_CofreNaoPublicado_Responde404(t *testing.T) {
 
 		assert.Equal(t, http.StatusNotFound, rec.Code, rota)
 		assert.Contains(t, rec.Body.String(), `"not_found"`, rota)
+		assert.Contains(t, rec.Body.String(), "public vault not found", rota)
 	}
 }
 
@@ -176,12 +177,17 @@ func TestPublico_Busca_SemOCofreInterno(t *testing.T) {
 }
 
 func TestPublico_BuscaSemQOuLongaDemais_Responde400(t *testing.T) {
-	for _, alvo := range []string{"/search", "/search?q=" + strings.Repeat("a", 257)} {
+	casos := map[string]string{
+		"/search":                               "query string parameter 'q' is required",
+		"/search?q=" + strings.Repeat("a", 257): "q has 257 bytes, expected at most 256",
+	}
+	for alvo, mensagem := range casos {
 		reader := cofrePublicoDeTeste()
 
 		rec := getPublico(routerPublico(reader, nil), "/v1/public/vaults/docs"+alvo, nil)
 
 		assert.Equal(t, http.StatusBadRequest, rec.Code, alvo)
+		assert.Contains(t, rec.Body.String(), mensagem, alvo)
 		assert.Empty(t, reader.query, "consulta invalida nao chega ao banco")
 	}
 }

@@ -82,7 +82,7 @@ func TestPublicar_SlugForaDoFormato_RecusadoComOValor(t *testing.T) {
 
 		require.ErrorIs(t, err, publication.ErrInvalidSlug, slug)
 		assert.Contains(t, err.Error(), `"`+slug+`"`)
-		assert.Contains(t, err.Error(), "a-z, 0-9 e hifen")
+		assert.Contains(t, err.Error(), "a-z, 0-9 and hyphen")
 		assert.Empty(t, repo.events)
 	}
 }
