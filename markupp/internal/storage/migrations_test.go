@@ -179,13 +179,13 @@ func TestMigracao00035_DownEUpComTenantSemeado(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestMigracao00036_DownRemoveSoOClienteEmbutidoDoCLI(t *testing.T) {
+func TestMigracao00037_DownRemoveSoOClienteEmbutidoDoCLI(t *testing.T) {
 	pool := storagetest.EmptyPool(t)
 	provider := gooseProvider(t, pool)
 	_, err := provider.Up(context.Background())
 	require.NoError(t, err)
 
-	_, err = provider.DownTo(context.Background(), 35)
+	_, err = provider.DownTo(context.Background(), 36)
 	require.NoError(t, err)
 
 	assert.Equal(t, 0, countRows(t, pool, "SELECT count(*) FROM oauth_clients WHERE id = 'markupp-cli'"))
