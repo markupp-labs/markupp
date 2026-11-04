@@ -14,6 +14,7 @@ Rails.application.routes.draw do
 
   root "notes#index"
   resource :theme, only: :update
+  resource :locale, only: :update
   resource :editor_style, only: :update
   resource :vim_keys, only: :update
   resource :session, only: [ :new, :create, :destroy ]

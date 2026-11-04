@@ -1,0 +1,70 @@
+pt-BR:
+  layouts:
+    tenant_switcher:
+      vaults_unreachable: "Cofres indisponíveis"
+    vault_switcher:
+      label: "Cofres"
+      new_vault: "Novo cofre"
+      vault_settings: "Configurações do cofre"
+  shortcuts:
+    groups:
+      vault: "Cofre"
+    names:
+      list_remove_member: "Remover o membro em foco, numa lista de membros"
+      vault_rename: "Renomear o cofre"
+      vault_add_member: "Adicionar um membro ao cofre"
+      vault_leave: "Sair do cofre"
+  vaults:
+    invalid_name: "Use de 1 a 100 caracteres."
+    new_dialog:
+      title: "Novo cofre"
+      name: "Nome"
+      create: "Criar"
+      cancel: "Cancelar"
+    create:
+      created: "%{name} criado."
+    empty:
+      title: "Nenhum cofre ainda"
+      hint: "Um cofre guarda notas que você compartilha com pessoas deste tenant. Crie um para começar a escrever."
+      viewer_hint: "Peça a um membro de algum cofre para adicionar você."
+      new_vault: "Novo cofre"
+    update:
+      renamed: "Renomeado para %{name}."
+    destroy:
+      deleted: "%{name} apagado."
+      name_mismatch: "O nome não confere. Nada foi apagado."
+  settings:
+    nav:
+      vault: "Cofre"
+      vault_general: "Geral"
+      vault_members: "Membros"
+    vault_general:
+      show:
+        vault_name: "Nome do cofre"
+        save: "Salvar"
+        delete_vault: "Apagar cofre"
+        delete_hint: "Isto apaga o cofre e todas as notas dele para todos os membros. Não tem volta."
+        confirm_delete: "Apagar %{name}? Isto apaga o cofre e todas as notas dele para todos os membros, e não dá para desfazer."
+    vault_members:
+      index:
+        colleague: "Pessoa deste tenant"
+        add: "Adicionar"
+        everyone_in: "Todo mundo de %{tenant} já é membro. Convide mais pessoas para o tenant antes."
+        email: "Email"
+        role: "Papel no tenant"
+        joined: "Entrou em"
+      vault_member:
+        joined: "Entrou em"
+        remove: "Remover"
+        leave: "Sair do cofre"
+        confirm_remove: "Remover %{email} de %{vault}?"
+        confirm_leave: "Sair de %{vault}? Você perde as notas dele até um membro adicionar você de novo."
+      create:
+        added: "Membro adicionado."
+      destroy:
+        removed: "Membro removido."
+        left: "Você saiu de %{name}."
+      errors:
+        not_tenant_member: "Só pessoas deste tenant podem entrar nos cofres dele. Convide a pessoa para o tenant antes."
+        already_vault_member: "Essa pessoa já é membro deste cofre."
+        vault_member_not_found: "Essa pessoa não é mais membro deste cofre."

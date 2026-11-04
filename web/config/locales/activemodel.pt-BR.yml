@@ -1,0 +1,37 @@
+pt-BR:
+  activemodel:
+    # O título é o nome no fim do caminho: o erro de título em branco diz "Nome", como o campo chama.
+    attributes:
+      note:
+        title: "Nome"
+        path: "Caminho"
+        content: "Conteúdo"
+      session_login:
+        email: "Email"
+        password: "Senha"
+      token_form:
+        token: "Token"
+        password: "Senha"
+    errors:
+      models:
+        note:
+          attributes:
+            path:
+              taken: "já existe"
+              invalid: "não pode conter .. nem passar de 1024 caracteres"
+        session_login:
+          attributes:
+            base:
+              invalid_credentials: "Email ou senha incorretos."
+              local_auth_disabled: "O login com senha está desativado neste servidor."
+        token_form:
+          attributes:
+            token:
+              blank: "Cole o token do email."
+              invalid_token: "Este token é inválido, venceu ou já foi usado."
+            password:
+              invalid: "Use uma senha de até 72 bytes."
+            base:
+              account_exists: "Este email já tem conta. Entre e aceite o convite pela sua lista de tenants."
+              local_auth_disabled: "O login com senha está desativado neste servidor."
+              email_unavailable: "Este servidor não envia email, então a redefinição de senha está desligada. Peça a um administrador."

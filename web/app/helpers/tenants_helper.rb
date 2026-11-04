@@ -7,6 +7,13 @@ module TenantsHelper
     count = t("tenants.card.notes", count: tenant.notes_count)
     return count unless tenant.last_note_at
 
-    "#{count}, #{t("tenants.card.last_edit", time: time_ago_in_words(tenant.last_note_at, scope: :datetime_short))}"
+    "#{count}, #{last_edit(tenant.last_note_at)}"
+  end
+
+  # Abaixo de um minuto a idade curta seria "now", que não cabe em "last edit %{time} ago".
+  def last_edit(time)
+    return t("tenants.card.last_edit_now") unless age_step(time)
+
+    t("tenants.card.last_edit", time: compact_age(time))
   end
 end

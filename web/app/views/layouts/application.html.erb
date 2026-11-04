@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <% html_attributes = sidebar_html_attributes %>
-<%= tag.html lang: "en", style: html_attributes[:style],
+<%= tag.html lang: I18n.locale, style: html_attributes[:style],
              data: { theme: chosen_theme, editor_style: chosen_editor_style, vim_keys: chosen_vim_keys, **html_attributes[:data] } do %>
   <%= render "layouts/head" %>
 
