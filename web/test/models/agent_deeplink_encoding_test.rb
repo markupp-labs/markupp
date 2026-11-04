@@ -6,6 +6,10 @@ class AgentDeeplinkEncodingTest < ActiveSupport::TestCase
     assert_equal "%7B%22name%22%3A%22a%21%28%29%2A%27%22%7D", AgentDeeplinkEncoding.encode({ "name" => "a!()*'" }, "uri-json")
   end
 
+  test "uri-json escapes everything but letters, digits and -_.~" do
+    assert_equal "%22a%21%27%28%29%2Ab%20~-_.%3A%2F%5C%22%7B%7D%22", AgentDeeplinkEncoding.encode(%(a!'()*b ~-_.:/"{}), "uri-json")
+  end
+
   test "base64-json encodes the json in base64 and escapes its padding" do
     encoded = AgentDeeplinkEncoding.encode({ "url" => "https://a.b/?>>" }, "base64-json")
 
