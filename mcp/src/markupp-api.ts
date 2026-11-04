@@ -284,8 +284,8 @@ function myInvitePath(inviteId: string): string {
 
 // toApiError lê o corpo {error, message}; um corpo fora desse formato (um proxy no
 // meio, por exemplo) vira o código unexpected_response com o status e o texto recebido.
-async function toApiError(
-  call: ApiCall,
+export async function toApiError(
+  call: Pick<ApiCall, "method" | "path">,
   response: Response,
 ): Promise<MarkuppApiError> {
   const text = await response.text();

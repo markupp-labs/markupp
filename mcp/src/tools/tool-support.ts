@@ -120,7 +120,15 @@ function unauthenticated(reason: string): UserError {
 }
 
 export function toUserError(error: MarkuppApiError): UserError {
-  const nextStep = nextStepFor(error.code);
+  return userErrorWithStep(error, nextStepFor(error.code));
+}
+
+// userErrorWithStep junta o código, a mensagem da API e o próximo passo, quando há, no
+// texto que o agente lê.
+export function userErrorWithStep(
+  error: MarkuppApiError,
+  nextStep: string | undefined,
+): UserError {
   const text = `${error.code}: ${error.message}`;
   return new UserError(nextStep ? `${text}. ${nextStep}` : text, {
     code: error.code,
@@ -128,8 +136,14 @@ export function toUserError(error: MarkuppApiError): UserError {
   });
 }
 
-// nextStepFor lê só as chaves próprias do mapa, para "toString" não achar um método.
 export function nextStepFor(code: string): string | undefined {
-  if (!Object.hasOwn(nextStepByCode, code)) return undefined;
-  return nextStepByCode[code as keyof typeof nextStepByCode];
+  return stepFrom(nextStepByCode, code);
+}
+
+// stepFrom lê só as chaves próprias do mapa, para "toString" não achar um método.
+export function stepFrom(
+  steps: Readonly<Record<string, string>>,
+  code: string,
+): string | undefined {
+  return Object.hasOwn(steps, code) ? steps[code] : undefined;
 }
