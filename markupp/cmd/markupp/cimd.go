@@ -47,7 +47,7 @@ func newCIMDClientMetadataFetcher(limits cimdLimits, extra ...cimd.Option) (*cim
 	}, extra...)
 	fetcher, err := cimd.NewFetcher(opts...)
 	if err != nil {
-		return nil, fmt.Errorf("montar o fetcher de documentos cimd: %w", err)
+		return nil, fmt.Errorf("build cimd document fetcher: %w", err)
 	}
 	return &cimdClientMetadataFetcher{fetcher: fetcher}, nil
 }
@@ -67,7 +67,7 @@ func contractError(err error) error {
 func (a *cimdClientMetadataFetcher) FetchClientMetadata(ctx context.Context, clientID string) (oauth.ClientMetadata, error) {
 	meta, err := a.fetcher.Fetch(ctx, clientID)
 	if err != nil {
-		return oauth.ClientMetadata{}, fmt.Errorf("buscar o documento cimd do cliente %s: %w", oauth.ClientValue(clientID), contractError(err))
+		return oauth.ClientMetadata{}, fmt.Errorf("fetch cimd document of client %s: %w", oauth.ClientValue(clientID), contractError(err))
 	}
 	return oauth.ClientMetadata{
 		ClientID: meta.ClientID, Name: meta.Name, RedirectURIs: meta.RedirectURIs, TTL: meta.TTL,

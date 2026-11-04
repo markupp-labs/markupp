@@ -24,7 +24,7 @@ func mountMCPProxy(r chi.Router, upstreamURL string) {
 	}
 	upstream, err := url.Parse(upstreamURL)
 	if err != nil {
-		panic("api: MCPUpstreamURL invalida, a config deveria ter recusado: " + err.Error())
+		panic("api: invalid MCPUpstreamURL, the config should have rejected it: " + err.Error())
 	}
 	proxy := withoutWriteDeadline(newMCPReverseProxy(upstream))
 	r.Handle(mcpEndpointPath, proxy)

@@ -65,7 +65,7 @@ func TestLoad_UpstreamDoMCPForaDoFormato_RetornaErroComOValor(t *testing.T) {
 
 		require.Error(t, err, valor)
 		assert.Contains(t, err.Error(), "MARKUPP_MCP_UPSTREAM_URL", valor)
-		assert.Contains(t, err.Error(), "http(s)://host[:porta]", valor)
+		assert.Contains(t, err.Error(), "http(s)://host[:port]", valor)
 	}
 }
 

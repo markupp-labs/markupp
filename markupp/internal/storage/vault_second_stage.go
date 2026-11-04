@@ -19,7 +19,7 @@ func saveGraphMarkingChange(ctx context.Context, q *gen.Queries, cs indexing.Cha
 	noteIDs := batchNoteIDs(indexed)
 	before, err := q.NoteGraphFingerprint(ctx, noteIDs)
 	if err != nil {
-		return fmt.Errorf("ler a impressao do grafo das %d notas do cofre %q: %w", len(noteIDs), cs.VaultID, err)
+		return fmt.Errorf("read graph fingerprint of %d notes in vault %q: %w", len(noteIDs), cs.VaultID, err)
 	}
 	if err := saveGraph(ctx, q, cs, indexed); err != nil {
 		return err
@@ -29,7 +29,7 @@ func saveGraphMarkingChange(ctx context.Context, q *gen.Queries, cs indexing.Cha
 		return err
 	}
 	if err := q.MarkSecondStage(ctx, cs.VaultID); err != nil {
-		return fmt.Errorf("marcar o cofre %q para o segundo estagio: %w", cs.VaultID, err)
+		return fmt.Errorf("mark vault %q for the second stage: %w", cs.VaultID, err)
 	}
 	return nil
 }
@@ -44,16 +44,16 @@ func runSecondStage(ctx context.Context, q *gen.Queries, vaultID, searchConfig s
 		return nil
 	}
 	if err != nil {
-		return fmt.Errorf("ler a marcacao do segundo estagio do cofre %q: %w", vaultID, err)
+		return fmt.Errorf("read second stage mark of vault %q: %w", vaultID, err)
 	}
 	if err := refreshVault(ctx, q, vaultID, searchConfig, logger); err != nil {
 		return err
 	}
 	if err := q.SaveGraphVersion(ctx, gen.SaveGraphVersionParams{VaultID: vaultID, Version: revision}); err != nil {
-		return fmt.Errorf("gravar a versao %d do grafo do cofre %q: %w", revision, vaultID, err)
+		return fmt.Errorf("save graph version %d of vault %q: %w", revision, vaultID, err)
 	}
 	if err := q.UnmarkSecondStage(ctx, gen.UnmarkSecondStageParams{VaultID: vaultID, Revision: revision}); err != nil {
-		return fmt.Errorf("desmarcar a revisao %d do segundo estagio do cofre %q: %w", revision, vaultID, err)
+		return fmt.Errorf("unmark second stage revision %d of vault %q: %w", revision, vaultID, err)
 	}
 	return nil
 }
@@ -75,7 +75,7 @@ func refreshVault(ctx context.Context, q *gen.Queries, vaultID, searchConfig str
 		return err
 	}
 	if err := q.ReweightVaultNoteTerms(ctx, vaultID); err != nil {
-		return fmt.Errorf("repesar as postagens do cofre %q: %w", vaultID, err)
+		return fmt.Errorf("reweight postings of vault %q: %w", vaultID, err)
 	}
 	return requeueOnFirstTermStats(ctx, q, vaultID, known)
 }
@@ -95,7 +95,7 @@ func requeueOnFirstTermStats(ctx context.Context, q *gen.Queries, vaultID string
 		return err
 	}
 	if err := q.RequeueVaultNotes(ctx, vaultID); err != nil {
-		return fmt.Errorf("reenfileirar as notas do cofre %q para reescolher os termos com o df novo: %w", vaultID, err)
+		return fmt.Errorf("requeue notes of vault %q to pick terms with the new df: %w", vaultID, err)
 	}
 	return nil
 }
@@ -104,7 +104,7 @@ func requeueOnFirstTermStats(ctx context.Context, q *gen.Queries, vaultID string
 func vaultTermStatsKnown(ctx context.Context, q *gen.Queries, vaultID string) (bool, error) {
 	known, err := q.VaultTermStatsKnown(ctx, vaultID)
 	if err != nil {
-		return false, fmt.Errorf("ler se o cofre %q ja tem df: %w", vaultID, err)
+		return false, fmt.Errorf("check whether vault %q has df: %w", vaultID, err)
 	}
 	return known, nil
 }
@@ -112,13 +112,13 @@ func vaultTermStatsKnown(ctx context.Context, q *gen.Queries, vaultID string) (b
 // saveTermFrequencies troca o df e o N do cofre pelos do índice léxico atual.
 func saveTermFrequencies(ctx context.Context, q *gen.Queries, vaultID string) error {
 	if err := q.DeleteVaultTermFrequencies(ctx, vaultID); err != nil {
-		return fmt.Errorf("apagar o df do cofre %q: %w", vaultID, err)
+		return fmt.Errorf("delete df of vault %q: %w", vaultID, err)
 	}
 	if err := q.SaveVaultTermFrequencies(ctx, vaultID); err != nil {
-		return fmt.Errorf("gravar o df do cofre %q: %w", vaultID, err)
+		return fmt.Errorf("save df of vault %q: %w", vaultID, err)
 	}
 	if err := q.SaveVaultTermStats(ctx, vaultID); err != nil {
-		return fmt.Errorf("gravar o N do df do cofre %q: %w", vaultID, err)
+		return fmt.Errorf("save df N of vault %q: %w", vaultID, err)
 	}
 	return nil
 }

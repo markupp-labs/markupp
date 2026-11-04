@@ -575,6 +575,15 @@ func TestPostNotes_CofreSemAcesso_Retorna403(t *testing.T) {
 	assert.Contains(t, rec.Body.String(), "vault_forbidden")
 }
 
+func TestPostNotes_AtorSemCofre_Retorna409NoVault(t *testing.T) {
+	svc := &fakeService{err: notes.ErrNoVault}
+
+	rec := doPost(t, svc, `{"path":"x.md","content":"y"}`)
+
+	assert.Equal(t, http.StatusConflict, rec.Code)
+	assert.Contains(t, rec.Body.String(), `"error":"no_vault"`)
+}
+
 func TestGetNotes_ExpoeContentSHA256(t *testing.T) {
 	svc := &fakeService{note: notes.Note{ID: "id-x", Path: "x.md", Content: "y", ContentSHA256: "ab01"}}
 

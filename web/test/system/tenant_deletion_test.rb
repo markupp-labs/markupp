@@ -74,7 +74,7 @@ class TenantDeletionTest < ApplicationSystemTestCase
   test "a later confirmation, after going to members, asks without the name field and with its button on" do
     click_on "Delete tenant"
     send_keys "Acme", :escape
-    within("main nav") { click_on "Members" }
+    within("main nav") { find("a[href='/settings/members']").click }
     assert_selector "h1", text: "Members"
     within("li", text: "caio@markupp.dev") { click_on "Remove" }
 

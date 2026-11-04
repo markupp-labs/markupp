@@ -1,0 +1,17 @@
+<%# Cofre novo, aberto por qualquer New vault do painel (seletor de cofres, estado vazio, paleta) pelo command="show-modal".
+    Cancel fecha sem validar; quem cria vira membro e o cofre fica ativo (VaultsController). %>
+<dialog id="new_vault" closedby="any" aria-labelledby="new_vault_title"
+        class="layer mx-auto mt-[15vh] w-[min(28rem,calc(100vw-2rem))] layer-panel p-4">
+  <h2 id="new_vault_title" class="font-semibold"><%= t(".title") %></h2>
+  <%= form_with scope: :vault, url: vaults_path, class: "mt-3 flex flex-col gap-3" do |form| %>
+    <div>
+      <%= form.label :name, t(".name"), class: "block text-ink-muted" %>
+      <%= form.text_field :name, required: true, maxlength: 100, autocomplete: "off", spellcheck: false, autofocus: true,
+                          class: "w-full rounded-md border border-line bg-surface px-2 py-1" %>
+    </div>
+    <div class="flex gap-2">
+      <%= form.button t(".create"), class: "btn" %>
+      <button type="submit" formmethod="dialog" formnovalidate class="btn text-ink-muted"><%= t(".cancel") %></button>
+    </div>
+  <% end %>
+</dialog>

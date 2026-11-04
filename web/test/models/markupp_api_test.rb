@@ -218,7 +218,7 @@ class MarkuppApiTest < ActiveSupport::TestCase
   end
 
   test "maps read_only to ReadOnly, a kind of Forbidden" do
-    error = assert_put_raises(MarkuppApi::ReadOnly, '{"error":"read_only","message":"o papel viewer so le as notas"}', status: "403 Forbidden")
+    error = assert_put_raises(MarkuppApi::ReadOnly, '{"error":"read_only","message":"the viewer role can only read"}', status: "403 Forbidden")
     assert_kind_of MarkuppApi::Forbidden, error
   end
 
@@ -310,6 +310,21 @@ class MarkuppApiTest < ActiveSupport::TestCase
       it.get("/v1/vaults/v/communities")
     end
     assert_operator MarkuppApi::VaultUnavailable, :<, MarkuppApi::Forbidden
+  end
+
+  test "maps the error codes of the vault routes to their classes" do
+    { [ "400 Bad Request", "invalid_name" ] => MarkuppApi::InvalidName,
+      [ "422 Unprocessable Content", "not_tenant_member" ] => MarkuppApi::NotTenantMember,
+      [ "409 Conflict", "already_vault_member" ] => MarkuppApi::AlreadyVaultMember,
+      [ "404 Not Found", "vault_member_not_found" ] => MarkuppApi::VaultMemberNotFound,
+      [ "409 Conflict", "no_vault" ] => MarkuppApi::NoVault }.each do |(status, code), error_class|
+      assert_answer_raises(error_class, %({"error":"#{code}","message":"recusado"}), status) { it.post("/v1/vaults", name: "x") }
+    end
+  end
+
+  test "invalid name is a kind of InvalidRequest and vault member not found a kind of NotFound" do
+    assert_operator MarkuppApi::InvalidName, :<, MarkuppApi::InvalidRequest
+    assert_operator MarkuppApi::VaultMemberNotFound, :<, MarkuppApi::NotFound
   end
 
   test "path appends the query, leaving out the parameters without value" do

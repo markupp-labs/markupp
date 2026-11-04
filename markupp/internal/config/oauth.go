@@ -29,11 +29,11 @@ type oauthURLRule struct {
 
 var (
 	publicURLRule = oauthURLRule{key: "MARKUPP_PUBLIC_URL",
-		expected: "https://host[:porta] sem caminho, query nem fragmento (http so em localhost, 127.0.0.1 ou [::1])"}
+		expected: "https://host[:port] without path, query or fragment (http only on localhost, 127.0.0.1 or [::1])"}
 	panelURLRule = oauthURLRule{key: "MARKUPP_PANEL_URL", allowPath: true,
-		expected: "https://host[:porta][/caminho] sem query nem fragmento (http so em localhost, 127.0.0.1 ou [::1])"}
+		expected: "https://host[:port][/path] without query or fragment (http only on localhost, 127.0.0.1 or [::1])"}
 	resourceURLRule = oauthURLRule{key: "MARKUPP_OAUTH_RESOURCES", allowPath: true,
-		expected: "url=segredo com url https://host[:porta][/caminho] sem query nem fragmento (http so em localhost, 127.0.0.1 ou [::1])"}
+		expected: "url=secret with url https://host[:port][/path] without query or fragment (http only on localhost, 127.0.0.1 or [::1])"}
 )
 
 // OAuthEnabled diz se o authorization server está ligado. Depois do Load ele sempre
@@ -113,7 +113,7 @@ func loadOAuthDurations(lookup LookupFunc, cfg *Config) error {
 	}
 	for _, duration := range durations {
 		value := int64(*duration.target)
-		faixa := fmt.Sprintf("de %d a %d", duration.lowest, duration.highest)
+		faixa := fmt.Sprintf("from %d to %d", duration.lowest, duration.highest)
 		if err := readBounded(lookup, duration.key, duration.lowest, duration.highest, faixa, &value); err != nil {
 			return err
 		}
@@ -127,7 +127,7 @@ func (c Config) checkCIMDCacheBounds() error {
 	if c.OAuthCIMDCacheMinMinutes <= c.OAuthCIMDCacheMaxHours*60 {
 		return nil
 	}
-	return fmt.Errorf("MARKUPP_OAUTH_CIMD_CACHE_MIN_MINUTES=%d acima de MARKUPP_OAUTH_CIMD_CACHE_MAX_HOURS=%d, esperado minimo ate o maximo",
+	return fmt.Errorf("MARKUPP_OAUTH_CIMD_CACHE_MIN_MINUTES=%d above MARKUPP_OAUTH_CIMD_CACHE_MAX_HOURS=%d, expected the minimum not to exceed the maximum",
 		c.OAuthCIMDCacheMinMinutes, c.OAuthCIMDCacheMaxHours)
 }
 
@@ -146,10 +146,10 @@ func loadPanelURL(lookup LookupFunc, cfg *Config) error {
 func normalizeOAuthURL(raw string, rule oauthURLRule) (string, error) {
 	parsed, err := url.Parse(raw)
 	if err != nil {
-		return "", fmt.Errorf("%s=%q, esperado %s", rule.key, "valor ilegivel", rule.expected)
+		return "", fmt.Errorf("%s=%q, expected %s", rule.key, "unreadable value", rule.expected)
 	}
 	if !oauthURLAllowed(parsed, rule) || strings.Contains(raw, "#") {
-		return "", fmt.Errorf("%s=%q, esperado %s", rule.key, parsed.Redacted(), rule.expected)
+		return "", fmt.Errorf("%s=%q, expected %s", rule.key, parsed.Redacted(), rule.expected)
 	}
 	return oauth.CanonicalURL(parsed), nil
 }
@@ -204,7 +204,7 @@ func readOAuthResources(lookup LookupFunc) ([]OAuthResource, error) {
 func appendUniqueResource(resources []OAuthResource, resource OAuthResource) ([]OAuthResource, error) {
 	for i, existing := range resources {
 		if existing.URL == resource.URL {
-			return nil, fmt.Errorf("MARKUPP_OAUTH_RESOURCES com o par %d repetindo a url do par %d, esperado cada url uma vez so",
+			return nil, fmt.Errorf("MARKUPP_OAUTH_RESOURCES pair %d repeats the url of pair %d, expected each url only once",
 				len(resources)+1, i+1)
 		}
 	}
@@ -219,11 +219,11 @@ func parseOAuthResource(entry string, position int) (OAuthResource, error) {
 	rawURL, secret = strings.TrimSpace(rawURL), strings.TrimSpace(secret)
 	normalized, err := normalizeOAuthURL(rawURL, resourceURLRule)
 	if rawURL == "" || secret == "" || err != nil {
-		return OAuthResource{}, fmt.Errorf("MARKUPP_OAUTH_RESOURCES com o par %d fora do formato, esperado %s",
+		return OAuthResource{}, fmt.Errorf("MARKUPP_OAUTH_RESOURCES pair %d is malformed, expected %s",
 			position, resourceURLRule.expected)
 	}
 	if len(secret) < minOAuthResourceSecretBytes {
-		return OAuthResource{}, fmt.Errorf("MARKUPP_OAUTH_RESOURCES com segredo de %d bytes no par %d, esperado ao menos %d bytes aleatorios",
+		return OAuthResource{}, fmt.Errorf("MARKUPP_OAUTH_RESOURCES secret of %d bytes in pair %d, expected at least %d bytes of random data",
 			len(secret), position, minOAuthResourceSecretBytes)
 	}
 	return OAuthResource{URL: normalized, Secret: secret}, nil

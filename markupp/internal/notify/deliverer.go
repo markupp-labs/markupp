@@ -36,7 +36,7 @@ func NewDeliverer(outbox Outbox, mailer Mailer, from, panelURL string, newToken 
 func (d *Deliverer) DeliverNext(ctx context.Context) (bool, error) {
 	token, err := d.newToken()
 	if err != nil {
-		return false, fmt.Errorf("gerar token da notificacao: %w", err)
+		return false, fmt.Errorf("generate notification token: %w", err)
 	}
 	claim, found, err := d.outbox.ClaimNextDue(ctx, auth.HashOpaqueToken(token), claimLease)
 	if err != nil || !found {
@@ -53,10 +53,10 @@ func (d *Deliverer) attempt(ctx context.Context, claim Claim, token string) Outc
 		return Outcome{GiveUp: true, Error: err.Error()}
 	}
 	if !claim.Pending {
-		return Outcome{GiveUp: true, Error: fmt.Sprintf("pedido %s %q nao esta mais aberto", claim.Kind, claim.NotificationID)}
+		return Outcome{GiveUp: true, Error: fmt.Sprintf("%s request %q is no longer open", claim.Kind, claim.NotificationID)}
 	}
 	if claim.Attempt > maxAttempts {
-		return Outcome{GiveUp: true, Error: fmt.Sprintf("tentativa %d, esperado no maximo %d", claim.Attempt, maxAttempts)}
+		return Outcome{GiveUp: true, Error: fmt.Sprintf("attempt %d, expected at most %d", claim.Attempt, maxAttempts)}
 	}
 	if err := d.mailer.Send(ctx, compose(claim.Details, token, d.from, d.panelURL)); err != nil {
 		return d.failure(claim.Attempt, err)
@@ -78,5 +78,5 @@ func composerFor(kind Kind) (func(TokenDetails, string, string, string) Message,
 	case KindPasswordReset:
 		return ResetPasswordMessage, nil
 	}
-	return nil, fmt.Errorf("notificacao do tipo %q, esperado %q, %q ou %q", kind, KindInvite, KindEmailVerification, KindPasswordReset)
+	return nil, fmt.Errorf("notification kind %q, expected %q, %q or %q", kind, KindInvite, KindEmailVerification, KindPasswordReset)
 }
