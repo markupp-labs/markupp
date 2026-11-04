@@ -33,8 +33,7 @@ revelar que o cofre existe. O painel serve a leitura em `/p/{slug}`, fora do log
 
 ## Alternativas consideradas
 
-- Tenant público: expõe todos os cofres do tenant ou exige exceção por cofre, e não significa
-  nada no self-host, que tem um tenant só
+- Tenant público: expõe todos os cofres do tenant ou exige exceção por cofre
 - Coluna `public` em `vaults`: mexe nas políticas de uma tabela central e mistura publicação,
   que é evento auditável, com o estado do cofre
 - Exportar o cofre como site estático: a publicação deixa de refletir a edição na hora, e o
