@@ -142,7 +142,7 @@ jobs:
   # das dependências, que assim não alcança a credencial de publicação. A tag já passou
   # pela validação de semver no publish-image.
   pack-npm:
-    name: Empacota o markupp-mcp para o npm
+    name: Pack markupp-mcp for npm
     needs: publish-image
     if: github.ref_type == 'tag'
     runs-on: ubuntu-latest
@@ -165,12 +165,12 @@ jobs:
       - name: Run tests
         run: npx vitest run
 
-      - name: Versão do pacote pela tag
+      - name: Set package version from tag
         env:
           TAG: ${{ github.ref_name }}
         run: npm version "${TAG#v}" --no-git-tag-version
 
-      - name: Empacota o tarball
+      - name: Pack tarball
         run: npm pack --pack-destination "$RUNNER_TEMP/npm"
 
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -185,7 +185,7 @@ jobs:
   # provenance. O job só baixa o tarball pronto e publica, sem instalar dependências
   # nem rodar scripts do pacote enquanto o token existe.
   publish-npm:
-    name: Publica o markupp-mcp no npm
+    name: Publish markupp-mcp to npm
     needs: pack-npm
     runs-on: ubuntu-latest
     permissions:
@@ -213,7 +213,7 @@ jobs:
       # que não passa da latest atual (correção de uma linha antiga) vai para
       # latest-MAJOR.MINOR, para não rebaixar o que o npx instala. Só o E404 do pacote
       # ainda inexistente conta como sem latest; outra falha do npm view para o job.
-      - name: Publica com provenance
+      - name: Publish with provenance
         env:
           TAG: ${{ github.ref_name }}
         run: |
@@ -222,5 +222,5 @@ jobs:
             atual=
           fi
           dist_tag=$(scripts/dist-tag-npm.sh "${TAG#v}" "$atual")
-          printf 'publica %s com a dist-tag %s (latest atual: %s)\n' "${TAG#v}" "$dist_tag" "${atual:-nenhuma}"
+          printf 'publishing %s with dist-tag %s (current latest: %s)\n' "${TAG#v}" "$dist_tag" "${atual:-none}"
           npm publish "$RUNNER_TEMP"/npm/markupp-mcp-*.tgz --ignore-scripts --provenance --access public --tag "$dist_tag"
