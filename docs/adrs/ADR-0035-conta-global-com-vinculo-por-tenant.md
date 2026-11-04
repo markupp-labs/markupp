@@ -43,7 +43,7 @@ administração, e o viewer só lê nos cofres de que é membro
   custo de uma consulta de vínculo por requisição
 - Login, refresh e cadastro viram eventos da conta, auditados sem tenant
 - Restringir quem cria tenant, como a lista de criadores do Langfuse, fica para quando o
-  plano de controle ou a cobrança pedirem
+  plano de controle pedir
 - Sem verificação de email (ADR-0021), o token do convite é o que prova o email no cadastro. A
   conta de auto-registro fica fora do handshake até ter o email verificado, e com o
   auto-registro ligado qualquer pessoa ocupa um email alheio antes do dono
@@ -51,3 +51,7 @@ administração, e o viewer só lê nos cofres de que é membro
 - Quem entra num tenant ganha um cofre próprio lá. Quem sai perde os cofres em que era o único
   membro, com as notas; compartilhar cofre entre membros depende das rotas de cofre, ainda não
   implementadas
+
+## Emenda
+
+Em novembro de 2026, o texto deste ADR foi revisto. A decisão não mudou.
