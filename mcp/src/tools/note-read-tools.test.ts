@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { FakeMarkuppApi } from "../testing/fake-markupp-api.js";
+import { FakeAccountId } from "../testing/fake-vaults.js";
 import { MarkuppToolClient } from "../testing/markupp-tool-client.js";
 
 let client: MarkuppToolClient;
@@ -19,6 +20,33 @@ describe("list_notes", () => {
       { id: first.id, path: "a.md", updated_at: first.updated_at },
       { id: second.id, path: "b/plano.md", updated_at: second.updated_at },
     ]);
+  });
+
+  it("com vault_id lista só as notas do cofre", async () => {
+    const api = new FakeMarkuppApi().withTenant("t1");
+    const vault = api.withVault("t1", "Casa");
+    api.withNote("t1", "fora.md", "x");
+    const inside = api.withNote("t1", "dentro.md", "y", vault.id);
+    client = await MarkuppToolClient.connect(api);
+    const result = await client.call("list_notes", {
+      tenant: "t1",
+      vault_id: vault.id,
+    });
+    expect(JSON.parse(result.text)).toEqual([
+      { id: inside.id, path: "dentro.md", updated_at: inside.updated_at },
+    ]);
+  });
+
+  it("aponta list_vaults quando o cofre não está ao alcance", async () => {
+    client = await MarkuppToolClient.connect(
+      new FakeMarkuppApi().withTenant("t1"),
+    );
+    const result = await client.call("list_notes", {
+      tenant: "t1",
+      vault_id: "v9",
+    });
+    expect(result.isError).toBe(true);
+    expect(result.text).toMatch(/^vault_forbidden: .*list_vaults/);
   });
 });
 
@@ -54,6 +82,53 @@ describe("search_notes", () => {
     expect(JSON.parse(result.text)).toEqual([
       { id: middle.id, path: "b.md", updated_at: middle.updated_at },
     ]);
+  });
+
+  it("com vault_id busca só no cofre e devolve id e path", async () => {
+    const api = new FakeMarkuppApi().withTenant("t1");
+    const vault = api.withVault("t1", "Casa");
+    api.withNote("t1", "fora.md", "viagem");
+    const inside = api.withNote("t1", "dentro.md", "viagem", vault.id);
+    client = await MarkuppToolClient.connect(api);
+    const result = await client.call("search_notes", {
+      tenant: "t1",
+      query: "viagem",
+      vault_id: vault.id,
+    });
+    expect(JSON.parse(result.text)).toEqual([
+      { id: inside.id, path: "dentro.md" },
+    ]);
+  });
+
+  it("com vault_id de cofre fora do alcance devolve lista vazia, como a API", async () => {
+    const api = new FakeMarkuppApi().withTenant("t1");
+    const vault = api.withVault("t1", "Casa");
+    api.withNote("t1", "dentro.md", "viagem", vault.id);
+    await api.removeVaultMember("t1", vault.id, FakeAccountId);
+    client = await MarkuppToolClient.connect(api);
+    for (const vault_id of [vault.id, "v9"]) {
+      const result = await client.call("search_notes", {
+        tenant: "t1",
+        query: "viagem",
+        vault_id,
+      });
+      expect(result.isError).toBe(false);
+      expect(JSON.parse(result.text)).toEqual([]);
+    }
+  });
+
+  it("descreve a busca de texto completo por relevância", async () => {
+    client = await MarkuppToolClient.connect(new FakeMarkuppApi());
+    const tool = await client.tool("search_notes");
+    expect(tool.description).toMatch(/full-text/);
+    expect(tool.description).toMatch(/relevan/);
+    expect(tool.description).not.toMatch(/newest first|case-insensitive/);
+    expect(tool.inputSchema.properties?.query).toMatchObject({
+      description: expect.stringMatching(/words/),
+    });
+    expect(tool.inputSchema.properties?.query).not.toMatchObject({
+      description: expect.stringMatching(/contains/),
+    });
   });
 
   it("aponta list_tenants quando o tenant não é da conta", async () => {

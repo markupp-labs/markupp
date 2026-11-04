@@ -1,5 +1,5 @@
 <%# Configurações como no VS Code e no Obsidian: navegação à esquerda, seção à direita; no celular a navegação vira uma linha acima,
-    com o grupo Tenant numa linha própria para a General não parecer configuração do app. %>
+    com os grupos Vault e Tenant numa linha própria cada, para as General não parecerem configuração do app. %>
 <%# Com tenant a barra lateral é a das notas, árvore e New note; sem ele (onboarding) fica só a marca e o rodapé. %>
 <% content_for :area, "settings" %>
 <% if current_tenant %>
@@ -22,11 +22,14 @@
         <%= settings_nav_link("accounts", settings_account_path) %>
         <%= settings_nav_link("appearances", settings_appearance_path) %>
         <%= settings_nav_link("editors", settings_editor_path) %>
+        <%# O grupo do cofre ativo vem antes do tenant: é o que se configura mais, e sem cofre ele some. %>
+        <% if current_tenant && current_vault %>
+          <%= render "settings/nav_group", label: t("settings.nav.vault"), name: current_vault.name %>
+          <%= settings_nav_link("vault_general", settings_vault_path) %>
+          <%= settings_nav_link("vault_members", settings_vault_members_path) %>
+        <% end %>
         <% if current_tenant %>
-          <div class="min-w-0 basis-full px-2 pt-3 md:basis-auto">
-            <p class="text-xs text-ink-muted"><%= t("settings.nav.tenant") %></p>
-            <p class="truncate text-ink-muted" title="<%= current_tenant.name %>"><%= current_tenant.name %></p>
-          </div>
+          <%= render "settings/nav_group", label: t("settings.nav.tenant"), name: current_tenant.name %>
           <%= settings_nav_link("general", settings_general_path) %>
         <% end %>
         <% if current_tenant&.admin? %>

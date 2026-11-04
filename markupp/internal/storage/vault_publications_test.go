@@ -31,7 +31,7 @@ func eventoDePublicacao(id, action, vaultID string) auth.AuditEventRecord {
 }
 
 // emUTC tira o fuso local que o driver põe no instante lido do banco.
-func emUTC(p publication.Publication) publication.Publication {
+func publicationInUTC(p publication.Publication) publication.Publication {
 	p.PublishedAt = p.PublishedAt.UTC()
 	return p
 }
@@ -50,7 +50,7 @@ func TestPublicarCofre_AdminDoCofre_GravaEAudita(t *testing.T) {
 	p, err := repo.PublishTx(ctx, publicacaoDe("va", "docs", "Documentacao"), eventoDePublicacao("e1", publication.ActionPublish, "va"))
 
 	require.NoError(t, err)
-	assert.Equal(t, publicacaoDe("va", "docs", "Documentacao"), emUTC(p))
+	assert.Equal(t, publicacaoDe("va", "docs", "Documentacao"), publicationInUTC(p))
 	assert.Equal(t, 1, countRows(t, db, "SELECT count(*) FROM audit_events WHERE action = 'vaults.publish' AND target = 'va'"))
 	assert.Equal(t, 1, countRows(t, db, "SELECT count(*) FROM vault_publications WHERE tenant_id = 't1' AND slug = 'docs'"))
 }
@@ -74,7 +74,7 @@ func TestPublicarCofre_DeNovo_TrocaSlugETituloEMantemAPrimeiraPublicacao(t *test
 	p, err := repo.PublishTx(ctx, depois, eventoDePublicacao("e2", publication.ActionPublish, "va"))
 
 	require.NoError(t, err)
-	assert.Equal(t, publicacaoDe("va", "manual", "B"), emUTC(p))
+	assert.Equal(t, publicacaoDe("va", "manual", "B"), publicationInUTC(p))
 }
 
 func TestPublicarCofre_SlugDeOutroTenant_DevolveSlugTomado(t *testing.T) {

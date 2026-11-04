@@ -198,7 +198,7 @@ func peekEmail(r *http.Request) string {
 func writeRateLimited(w http.ResponseWriter, wait time.Duration) {
 	seconds := max(1, int(math.Ceil(wait.Seconds())))
 	w.Header().Set("Retry-After", strconv.Itoa(seconds))
-	writeError(w, "rate_limited", "tentativas demais, aguarde "+strconv.Itoa(seconds)+"s", http.StatusTooManyRequests)
+	writeError(w, "rate_limited", "too many attempts, try again in "+strconv.Itoa(seconds)+"s", http.StatusTooManyRequests)
 }
 
 // unversionedPath tira o prefixo /v1 do caminho, para a rota sob /v1 e o alias obsoleto

@@ -46,7 +46,7 @@ func TestParseClientID_URLsInvalidas_RecusaComValorEFormato(t *testing.T) {
 			_, err := cimd.ParseClientID(raw)
 
 			require.ErrorIs(t, err, cimd.ErrInvalidClientID)
-			assert.Contains(t, err.Error(), "esperado")
+			assert.Contains(t, err.Error(), "expected")
 		})
 	}
 }

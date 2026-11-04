@@ -7,8 +7,8 @@ import (
 
 // RedirectURIShape descreve a redirect_uri aceita, para a mensagem de erro de quem a
 // recusa.
-const RedirectURIShape = "https com host, http em 127.0.0.1, [::1] ou localhost, ou esquema privado (RFC 8252, secao 7.1) " +
-	"fora de javascript, data, vbscript e file, sem fragmento e sem credenciais"
+const RedirectURIShape = "https with a host, http on 127.0.0.1, [::1] or localhost, or a private-use scheme (RFC 8252, section 7.1) " +
+	"other than javascript, data, vbscript and file, without fragment or credentials"
 
 // forbiddenRedirectSchemes são os esquemas que executam código ou leem arquivo local; o
 // vazio é a URL relativa. O url.Parse já devolve o esquema em minúsculas.
@@ -20,11 +20,11 @@ func RedirectURIProblem(raw string) string {
 	parsed, err := url.Parse(raw)
 	switch {
 	case err != nil:
-		return "nao e uma URL"
+		return "is not a URL"
 	case strings.Contains(raw, "#"):
-		return "contem fragmento"
+		return "contains a fragment"
 	case parsed.User != nil:
-		return "contem credenciais"
+		return "contains credentials"
 	}
 	return redirectSchemeProblem(parsed)
 }
@@ -41,15 +41,15 @@ func redirectSchemeProblem(parsed *url.URL) string {
 	switch parsed.Scheme {
 	case "https":
 		if parsed.Hostname() == "" {
-			return "https sem host"
+			return "uses https without a host"
 		}
 	case "http":
 		if !LoopbackHost(parsed.Hostname()) {
-			return "http fora de 127.0.0.1, [::1] e localhost"
+			return "uses http outside 127.0.0.1, [::1] and localhost"
 		}
 	default:
 		if forbiddenRedirectSchemes[parsed.Scheme] {
-			return "esquema proibido ou URL relativa"
+			return "uses a forbidden scheme or is a relative URL"
 		}
 	}
 	return ""

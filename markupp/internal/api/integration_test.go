@@ -266,10 +266,10 @@ func TestIntegration_CriarNotaDuplicada_RetornaMensagemLimpa(t *testing.T) {
 
 	errBody := decodeJSON(t, resp2.Body)
 	assert.Equal(t, "duplicate_path", errBody["error"])
-	assert.Equal(t, "path já existe", errBody["message"])
+	assert.Equal(t, "path already exists", errBody["message"])
 
 	msg, _ := errBody["message"].(string)
-	assert.NotContains(t, msg, "salvar nota")
+	assert.NotContains(t, msg, "save note")
 }
 
 func TestIntegration_ListNotes_DBVazio_RetornaArrayVazio(t *testing.T) {

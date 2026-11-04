@@ -15,6 +15,7 @@ type RouterDeps struct {
 	Graph          NoteGraph
 	Auth           AuthService
 	Admin          AdminService
+	Vaults         VaultService
 	AccountEmail   AccountEmailService
 	Tokens         TokenValidator
 	Tenants        TenantResolver
@@ -70,8 +71,8 @@ func mustHaveRouterDeps(d RouterDeps) {
 	if d.Tokens == nil {
 		panic("api: Tokens obrigatorio para proteger as rotas")
 	}
-	if d.Tenants == nil && (d.Notes != nil || d.Graph != nil || d.Admin != nil || d.Publications != nil) {
-		panic("api: Tenants obrigatorio para as rotas de notas, do grafo, de administracao e de publicacao")
+	if d.Tenants == nil && (d.Notes != nil || d.Graph != nil || d.Admin != nil || d.Vaults != nil || d.Publications != nil) {
+		panic("api: Tenants obrigatorio para as rotas de notas, do grafo, de administracao, de cofres e de publicacao")
 	}
 	if d.OAuth != nil && d.OAuthMetadata == nil {
 		panic("api: OAuthMetadata obrigatorio para as rotas OAuth, que usam o Issuer")
@@ -90,23 +91,28 @@ func newVersionRoutes(d RouterDeps, current bool) chi.Router {
 	if d.Notes != nil {
 		mountProtectedNotesRoutes(r, d.Notes, d.Tokens, d.Tenants, current)
 	}
-	if d.Graph != nil && current {
-		mountProtectedGraphRoutes(r, d.Graph, d.Tokens, d.Tenants)
+	if current {
+		mountV1OnlyRoutes(r, d)
 	}
-	mountTenantAdminRoutes(r, d, current)
+	if d.Admin != nil {
+		mountAdminRoutes(r, d.Admin, d.Tokens, d.Tenants)
+	}
 	if d.AccountEmail != nil {
 		mountAccountEmailRoutes(r, d.AccountEmail, d.Tokens, limit)
 	}
 	return r
 }
 
-// mountTenantAdminRoutes monta a administração do tenant e a publicação dos cofres,
-// que nasceu depois da transição e existe só sob /v1.
-func mountTenantAdminRoutes(r chi.Router, d RouterDeps, current bool) {
-	if d.Admin != nil {
-		mountAdminRoutes(r, d.Admin, d.Tokens, d.Tenants)
+// mountV1OnlyRoutes monta as rotas que nasceram depois da transição e não têm o alias
+// sem prefixo: o grafo, a gestão de cofres e a publicação dos cofres.
+func mountV1OnlyRoutes(r chi.Router, d RouterDeps) {
+	if d.Graph != nil {
+		mountProtectedGraphRoutes(r, d.Graph, d.Tokens, d.Tenants)
 	}
-	if d.Publications != nil && current {
+	if d.Vaults != nil {
+		mountVaultRoutes(r, d.Vaults, d.Tokens, d.Tenants)
+	}
+	if d.Publications != nil {
 		mountPublicationRoutes(r, d.Publications, d.Tokens, d.Tenants)
 	}
 }

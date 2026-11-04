@@ -8,7 +8,7 @@ import (
 )
 
 // ErrBlockedAddress indica que o host resolveu para um IP fora da internet pública.
-var ErrBlockedAddress = errors.New("endereco bloqueado")
+var ErrBlockedAddress = errors.New("blocked address")
 
 // IPPolicy decide, depois da resolução DNS, se a conexão a um IP é permitida.
 // Devolve nil para permitir ou um erro que embrulha ErrBlockedAddress.
@@ -40,8 +40,8 @@ func PublicOnly(ip netip.Addr) error {
 	if isPublicIP(ip) {
 		return nil
 	}
-	return fmt.Errorf("%w: %s; esperado IP publico (fora de loopback, privado, link-local, unspecified, "+
-		"multicast, CGNAT, benchmark, reservado, site-local, NAT64, IPv4-compativel, 6to4 e Teredo)", ErrBlockedAddress, ip)
+	return fmt.Errorf("%w: %s; expected a public IP (outside loopback, private, link-local, unspecified, "+
+		"multicast, CGNAT, benchmark, reserved, site-local, NAT64, IPv4-compatible, 6to4 and Teredo)", ErrBlockedAddress, ip)
 }
 
 func isPublicIP(ip netip.Addr) bool {
@@ -68,7 +68,7 @@ func inBlockedPrefix(ip netip.Addr) bool {
 func (p IPPolicy) dialControl(_, address string, _ syscall.RawConn) error {
 	addrPort, err := netip.ParseAddrPort(address)
 	if err != nil {
-		return fmt.Errorf("%w: %q; esperado ip:porta", ErrBlockedAddress, address)
+		return fmt.Errorf("%w: %q; expected ip:port", ErrBlockedAddress, address)
 	}
 	return p(addrPort.Addr())
 }

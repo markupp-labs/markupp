@@ -86,7 +86,7 @@ func decideRequest(w http.ResponseWriter, r *http.Request, decide requestDecisio
 // writeOAuthRequestError não distingue pedido inexistente, vencido ou já decidido.
 func writeOAuthRequestError(w http.ResponseWriter, operation string, err error) {
 	if errors.Is(err, oauth.ErrRequestNotFound) {
-		writeError(w, "request_not_found", "pedido de autorizacao inexistente, vencido ou ja decidido", http.StatusNotFound)
+		writeError(w, "request_not_found", "authorization request not found, expired or already decided", http.StatusNotFound)
 		return
 	}
 	writeOAuthInternal(w, operation, err)

@@ -1,0 +1,8 @@
+<%# Conta sem cofre no tenant ativo, no lugar da árvore: quem escreve cria um (o diálogo New vault do layout); o viewer
+    só pode ser adicionado por um membro. %>
+<%= render "layouts/empty_state", title: t("vaults.empty.title"), hint: t(writer ? "vaults.empty.hint" : "vaults.empty.viewer_hint") %>
+<% if writer %>
+  <button type="button" commandfor="new_vault" command="show-modal" class="btn mt-1 ml-1">
+    <%= icon("plus") %><%= t("vaults.empty.new_vault") %>
+  </button>
+<% end %>

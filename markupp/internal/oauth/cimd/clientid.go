@@ -8,9 +8,9 @@ import (
 )
 
 // ErrInvalidClientID indica um client_id que não serve como URL de metadados.
-var ErrInvalidClientID = errors.New("client_id invalido")
+var ErrInvalidClientID = errors.New("invalid client_id")
 
-const clientIDShape = "URL https com host e caminho, sem query, sem fragmento, sem credenciais e sem segmentos . ou .."
+const clientIDShape = "an https URL with host and path, without query, fragment, credentials or . and .. segments"
 
 // ParseClientID valida o client_id antes de qualquer busca e devolve a URL interpretada.
 // A porta fica para o Fetcher, que só aceita a 443; a query não passa, nem vazia, embora
@@ -18,7 +18,7 @@ const clientIDShape = "URL https com host e caminho, sem query, sem fragmento, s
 func ParseClientID(raw string) (*url.URL, error) {
 	parsed, err := url.Parse(raw)
 	if err != nil {
-		return nil, invalidClientID(raw, "nao e uma URL")
+		return nil, invalidClientID(raw, "is not a URL")
 	}
 	if reason := clientIDProblem(raw, parsed); reason != "" {
 		return nil, invalidClientID(raw, reason)
@@ -29,19 +29,19 @@ func ParseClientID(raw string) (*url.URL, error) {
 func clientIDProblem(raw string, parsed *url.URL) string {
 	switch {
 	case parsed.Scheme != "https":
-		return "esquema diferente de https"
+		return "uses a scheme other than https"
 	case parsed.Hostname() == "":
-		return "sem host"
+		return "has no host"
 	case parsed.User != nil:
-		return "contem credenciais"
+		return "contains credentials"
 	case strings.Contains(raw, "?"):
-		return "contem query"
+		return "contains a query"
 	case strings.Contains(raw, "#"):
-		return "contem fragmento"
+		return "contains a fragment"
 	case parsed.Path == "" || parsed.Path == "/":
-		return "sem caminho"
+		return "has no path"
 	case hasDotSegment(parsed.Path):
-		return "contem segmento . ou .."
+		return "contains a . or .. segment"
 	}
 	return ""
 }
@@ -57,5 +57,5 @@ func hasDotSegment(path string) bool {
 }
 
 func invalidClientID(raw, reason string) error {
-	return fmt.Errorf("%w: %q %s; esperado %s", ErrInvalidClientID, raw, reason, clientIDShape)
+	return fmt.Errorf("%w: %q %s; expected %s", ErrInvalidClientID, raw, reason, clientIDShape)
 }
