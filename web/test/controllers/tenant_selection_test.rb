@@ -95,6 +95,26 @@ class TenantSelectionTest < ActionDispatch::IntegrationTest
     assert_select "#tenant_cards > li", text: /Field notes.*No notes yet/m
   end
 
+  test "a card edited less than a minute ago says just now" do
+    use_fake_api(tenants: [ { id: "tenant-1", name: "Acme research", members: { EMAIL => "owner" }, notes_count: 2,
+                              last_note_at: 10.seconds.ago.utc.iso8601 } ])
+    sign_in_as
+
+    get tenants_path
+
+    assert_select "#tenant_cards > li", text: /2 notes, last edit just now/
+  end
+
+  test "cards show the note stats in pt-BR with the compact units of the locale" do
+    use_fake_api(tenants: [ { id: "tenant-1", name: "Acme research", members: { EMAIL => "owner" }, notes_count: 12,
+                              last_note_at: 15.days.ago.utc.iso8601 } ])
+    sign_in_as
+
+    get tenants_path, headers: { "Accept-Language" => "pt-BR" }
+
+    assert_select "#tenant_cards > li", text: /12 notas, última edição há 2sem/
+  end
+
   test "cards skip the stats line when the API sends no stats" do
     use_fake_api(tenants: TWO_TENANTS)
     sign_in_as
@@ -215,7 +235,7 @@ class TenantSelectionTest < ActionDispatch::IntegrationTest
 
     get root_path
 
-    assert_select "nav #current_tenant", text: /Acme research\s*owner/
+    assert_select "nav #current_tenant", text: %r{Acme research\s*/\s*Notes\s*owner}
   end
 
   test "the switcher lists every tenant with the active one marked" do
@@ -258,5 +278,5 @@ class TenantSelectionTest < ActionDispatch::IntegrationTest
   end
 
   private
-    def notes_tenant_sent(api) = api.received_credentials.reverse.find { it[:call] == "GET /notes" }[:tenant_id]
+    def notes_tenant_sent(api) = api.received_credentials.reverse.find { it[:call].start_with?("GET /v1/vaults/") }[:tenant_id]
 end

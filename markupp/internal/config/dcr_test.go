@@ -44,12 +44,12 @@ func TestLoad_LimitesDoDCRNasBordas_Aceita(t *testing.T) {
 
 func TestLoad_VariavelDoDCRInvalida_RetornaErroComVariavelEValor(t *testing.T) {
 	casos := []struct{ chave, valor, esperado string }{
-		{"MARKUPP_OAUTH_DCR_MAX_PENDING", "0", "de 1 a 100000"},
-		{"MARKUPP_OAUTH_DCR_MAX_PENDING", "100001", "de 1 a 100000"},
-		{"MARKUPP_OAUTH_DCR_PENDING_HOURS", "0", "de 1 a 168"},
-		{"MARKUPP_OAUTH_DCR_PENDING_HOURS", "169", "de 1 a 168"},
-		{"MARKUPP_OAUTH_DCR_PENDING_HOURS", "um dia", "de 1 a 168"},
-		{"MARKUPP_OAUTH_DCR_ENABLED", "talvez", "booleano"},
+		{"MARKUPP_OAUTH_DCR_MAX_PENDING", "0", "from 1 to 100000"},
+		{"MARKUPP_OAUTH_DCR_MAX_PENDING", "100001", "from 1 to 100000"},
+		{"MARKUPP_OAUTH_DCR_PENDING_HOURS", "0", "from 1 to 168"},
+		{"MARKUPP_OAUTH_DCR_PENDING_HOURS", "169", "from 1 to 168"},
+		{"MARKUPP_OAUTH_DCR_PENDING_HOURS", "um dia", "from 1 to 168"},
+		{"MARKUPP_OAUTH_DCR_ENABLED", "talvez", "boolean"},
 	}
 	for _, caso := range casos {
 		env := envComOAuth()

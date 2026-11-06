@@ -1,0 +1,50 @@
+en:
+  notes:
+    index:
+      pick: "Pick a note from the sidebar."
+    form:
+      save: "Save"
+      unsaved: "Unsaved changes"
+      leave: "You have unsaved changes. Leave anyway?"
+      leave_button: "Leave"
+      stay: "Stay"
+      conflict: "This note changed on the server since you opened it."
+      reload: "Reload and discard my changes"
+      overwrite: "Overwrite"
+      delete: "Delete"
+      confirm_delete: "Delete %{path}? This cannot be undone."
+      read_only: "Read only: your role here is viewer."
+      mode: "Note view"
+      modes:
+        edit: "Edit"
+        read: "Read"
+        split: "Side by side"
+      preview: "Preview"
+      missing_note: "No note named %{name}"
+      copy_code: "Copy code"
+      copied: "Copied"
+      copy_failed: "Could not copy"
+    update:
+      saved: "Saved"
+    create:
+      created: "Created"
+    destroy:
+      deleted: "Deleted"
+    sidebar:
+      new_note: "New note"
+      tree: "Notes"
+      empty: "No notes yet."
+      copied: "Copied %{text}"
+    tree_menu:
+      label: "Note actions"
+      new_here: "New note here"
+      rename: "Rename / move"
+      delete: "Delete"
+      copy_path: "Copy path"
+      copy_wikilink: "Copy wikilink"
+    not_found:
+      title: "Note not found"
+      hint: "It may have been renamed or deleted. Pick another one from the sidebar."
+    unreachable:
+      title: "Can't reach the markupp server"
+      hint: "Try again in a moment."

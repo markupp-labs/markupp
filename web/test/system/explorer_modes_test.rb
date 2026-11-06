@@ -48,8 +48,7 @@ class ExplorerModesTest < ApplicationSystemTestCase
   end
 
   test "a flat row opens the note menu and copies its path" do
-    page.driver.browser.execute_cdp("Browser.grantPermissions", origin: Capybara.current_session.server.base_url,
-                                                                permissions: %w[clipboardReadWrite clipboardSanitizedWrite])
+    grant_clipboard
     select "By community", from: "Explorer view"
     find("[role=group] [role=treeitem]", text: "hub").right_click
 

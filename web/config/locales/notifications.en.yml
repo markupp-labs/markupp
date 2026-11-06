@@ -1,0 +1,11 @@
+en:
+  notifications:
+    badge:
+      label:
+        zero: "Notifications"
+        one: "Notifications, %{count} pending"
+        other: "Notifications, %{count} pending"
+    list:
+      empty: "Nothing needs your attention."
+    show:
+      title: "Notifications"

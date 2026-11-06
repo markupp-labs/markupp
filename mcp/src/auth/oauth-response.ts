@@ -29,13 +29,13 @@ export async function readBody(response: Response): Promise<ReadBody> {
 }
 
 // oauthErrorIn lê {error, error_description} do corpo de erro; fora desse formato, o
-// código vira sem_codigo_oauth e a descrição cita o trecho do corpo.
+// código vira missing_oauth_error e a descrição cita o trecho do corpo.
 export function oauthErrorIn(body: ReadBody): OAuthErrorFields {
   const parsed = oauthErrorBody.safeParse(body.json);
   if (!parsed.success) {
     return {
-      code: "sem_codigo_oauth",
-      description: `corpo fora do formato {error, error_description}: ${JSON.stringify(body.excerpt)}`,
+      code: "missing_oauth_error",
+      description: `body does not match {error, error_description}: ${JSON.stringify(body.excerpt)}`,
     };
   }
   return {

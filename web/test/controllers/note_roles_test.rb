@@ -63,7 +63,7 @@ class NoteRolesTest < ActionDispatch::IntegrationTest
 
     assert_redirected_to root_path
     assert_equal READ_ONLY_ALERT, flash[:alert]
-    assert_not api.received_credentials.any? { it[:call] == "GET /notes" }
+    assert_not api.received_credentials.any? { it[:call].start_with?("GET /v1/vaults/") }
   end
 
   test "a save refused because the role changed shows the alert and reloads the note" do

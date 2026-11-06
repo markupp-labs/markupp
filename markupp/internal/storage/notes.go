@@ -58,8 +58,8 @@ func (r *PostgresNotesRepository) Save(ctx context.Context, note notes.Note) (no
 	return toNote(row), nil
 }
 
-// DefaultVaultID devolve o cofre mais antigo do ator, ou notes.ErrVaultForbidden
-// quando ele não é membro de nenhum.
+// DefaultVaultID devolve o cofre mais antigo do ator, ou notes.ErrNoVault quando ele
+// não é membro de nenhum.
 func (r *PostgresNotesRepository) DefaultVaultID(ctx context.Context) (string, error) {
 	var vaultID string
 	err := r.run(ctx, func(q *gen.Queries) error {
@@ -68,7 +68,7 @@ func (r *PostgresNotesRepository) DefaultVaultID(ctx context.Context) (string, e
 		return qErr
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
-		return "", notes.ErrVaultForbidden
+		return "", notes.ErrNoVault
 	}
 	return vaultID, err
 }

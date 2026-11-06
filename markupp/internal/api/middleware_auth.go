@@ -26,13 +26,13 @@ func RequireAuth(validator TokenValidator) func(http.Handler) http.Handler {
 func serveAuthenticated(w http.ResponseWriter, r *http.Request, next http.Handler, validator TokenValidator) {
 	tokenString, ok := extractBearerToken(r.Header.Get("Authorization"))
 	if !ok {
-		writeError(w, "unauthorized", "token ausente ou invalido", http.StatusUnauthorized)
+		writeError(w, "unauthorized", "missing or invalid access token", http.StatusUnauthorized)
 		return
 	}
 	claims, err := validator.ValidateToken(tokenString)
 	// Scope só de espaços não é login nem escopo algum: o token é recusado inteiro.
 	if err != nil || (claims.Scope != "" && strings.TrimSpace(claims.Scope) == "") {
-		writeError(w, "unauthorized", "token ausente ou invalido", http.StatusUnauthorized)
+		writeError(w, "unauthorized", "missing or invalid access token", http.StatusUnauthorized)
 		return
 	}
 	actor := actorFromClaims(claims)

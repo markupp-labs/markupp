@@ -41,6 +41,10 @@ type fakeAuthService struct {
 	answerErr          error
 	answeredInvite     string
 
+	notifications     auth.NotificationFeed
+	notificationsErr  error
+	notificationsUser string
+
 	createdTenant   auth.Membership
 	createTenantErr error
 	tenantCreator   string
@@ -343,7 +347,7 @@ func TestAuthHandler_Login_EmailOuSenhaVazios_Retorna400(t *testing.T) {
 	router.ServeHTTP(rec, req)
 
 	assert.Equal(t, http.StatusBadRequest, rec.Code)
-	assert.Contains(t, rec.Body.String(), "email obrigatorio")
+	assert.Contains(t, rec.Body.String(), "email is required")
 }
 
 func TestAuthHandler_Refresh_JSONInvalido_Retorna400(t *testing.T) {

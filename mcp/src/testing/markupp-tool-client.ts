@@ -52,7 +52,7 @@ export class MarkuppToolClient {
     const [first] = contents;
     if (!first || !("text" in first))
       throw new Error(
-        `resource ${uri} sem conteúdo de texto: ${JSON.stringify(contents)}`,
+        `resource ${uri} has no text content: ${JSON.stringify(contents)}`,
       );
     return { text: first.text, mimeType: first.mimeType, uri: first.uri };
   }
@@ -62,7 +62,7 @@ export class MarkuppToolClient {
     const found = tools.find((tool) => tool.name === name);
     if (!found)
       throw new Error(
-        `ferramenta ${name} não registrada; há ${tools.map((t) => t.name).join(", ")}`,
+        `tool ${name} not registered; available: ${tools.map((t) => t.name).join(", ")}`,
       );
     return found;
   }

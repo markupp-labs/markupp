@@ -35,6 +35,7 @@ type fakeRepository struct {
 	createdTenant auth.CreateTenantParams
 
 	pendingForUser   []auth.PendingInvite
+	pendingErr       error
 	acceptedByID     auth.AcceptInviteByIDParams
 	acceptByIDResult auth.Membership
 	acceptByIDErr    error
@@ -695,8 +696,19 @@ func TestCreateTenant_NomeVazio_RecusaComErrInvalidTenantName(t *testing.T) {
 	require.ErrorIs(t, err, auth.ErrInvalidTenantName)
 }
 
+func TestCreateTenant_NomeAcentuado_ContaCaracteresNaoBytes(t *testing.T) {
+	svc := setupAuthService(newFakeRepository(defaultClock()), false, defaultClock())
+
+	_, err := svc.CreateTenant(context.Background(), "u1", strings.Repeat("é", 100))
+	require.NoError(t, err, "100 letras acentuadas cabem no limite")
+
+	_, err = svc.CreateTenant(context.Background(), "u1", strings.Repeat("é", 101))
+	require.ErrorIs(t, err, auth.ErrInvalidTenantName)
+	assert.Contains(t, err.Error(), "1 to 100 characters")
+}
+
 func (f *fakeRepository) ListPendingInvites(ctx context.Context, userID string, now time.Time) ([]auth.PendingInvite, error) {
-	return f.pendingForUser, nil
+	return f.pendingForUser, f.pendingErr
 }
 
 func (f *fakeRepository) AcceptInviteByIDTx(ctx context.Context, p auth.AcceptInviteByIDParams) (auth.Membership, error) {

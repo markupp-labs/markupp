@@ -1,7 +1,6 @@
 en:
   explorer:
     mode_label: "Explorer view"
-    now: "now"
     modes:
       folders: "Folders"
       central: "Most central"

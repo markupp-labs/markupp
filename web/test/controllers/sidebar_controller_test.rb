@@ -5,20 +5,20 @@ require "test_helper"
 class SidebarControllerTest < ActionDispatch::IntegrationTest
   EMAIL = FakeMarkuppAccounts::DEFAULT_EMAIL
 
-  test "the tenant name leads home and a separate button opens the switcher" do
+  test "the mascot leads home and the tenant name opens the switcher" do
     use_fake_api(notes: [])
     sign_in_as
 
     get root_path
 
     assert_select "nav #current_tenant" do
-      assert_select "a[href=?]", root_path, text: /Acme research/
-      assert_select "button[popovertarget=tenant_switcher][aria-label=?][title=?] svg[data-icon=caret-up-down]", "Switch tenant", "Switch tenant"
+      assert_select "a[href=?] [data-mascot]", root_path
+      assert_select "button[popovertarget=tenant_switcher][aria-label=?]", "Switch tenant: Acme research", text: "Acme research"
     end
   end
 
-  # De baixo para cima, como no VS Code: a engrenagem, a conta e o tema. O CSS esconde o botão do tema já ativo.
-  test "the foot of the activity bar carries, bottom up, the settings, the account and the theme, without a sidebar footer" do
+  # De baixo para cima, como no VS Code: a engrenagem, a conta, o tema e o sino. O CSS esconde o botão do tema já ativo.
+  test "the foot of the activity bar carries, bottom up, the settings, the account, the theme and the bell, without a sidebar footer" do
     use_fake_api(notes: [])
     sign_in_as
 
@@ -26,7 +26,7 @@ class SidebarControllerTest < ActionDispatch::IntegrationTest
 
     assert_select "nav#sidebar footer", count: 0
     icons = css_select(".activity-bar-side .activity-bar-actions svg").map { it["data-icon"] }
-    assert_equal %w[sun moon user-circle gear-six], icons
+    assert_equal %w[bell sun moon user-circle gear-six], icons
     assert_select ".activity-bar-side .activity-bar-actions" do
       assert_select "button[popovertarget=account_menu][aria-haspopup=menu][aria-label=Account][title=?]", EMAIL
       assert_select "a[href=?][aria-label=Settings][title=?][aria-keyshortcuts=?]", settings_path, "Settings (Ctrl+,)", "Control+, Meta+,"

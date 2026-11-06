@@ -70,7 +70,7 @@ type searchHitResponse struct {
 func (h *notesHandler) searchV1(w http.ResponseWriter, r *http.Request) {
 	query := r.URL.Query().Get("q")
 	if query == "" {
-		writeError(w, "invalid_request", "query string 'q' é obrigatória", http.StatusBadRequest)
+		writeError(w, "invalid_request", "query string parameter 'q' is required", http.StatusBadRequest)
 		return
 	}
 	offset, limit, ok := parsePage(w, r)

@@ -128,7 +128,7 @@ func TestLoad_PortaForaDaFaixa_RetornaErroComOValor(t *testing.T) {
 
 		require.Error(t, err, "porta %s devia ser recusada", porta)
 		assert.Contains(t, err.Error(), porta)
-		assert.Contains(t, err.Error(), "1 a 65535")
+		assert.Contains(t, err.Error(), "1 to 65535")
 	}
 }
 
@@ -140,7 +140,7 @@ func TestLoad_TamanhoNaoPositivo_RetornaErroComOValor(t *testing.T) {
 
 		require.Error(t, err, "tamanho %s devia ser recusado", tamanho)
 		assert.Contains(t, err.Error(), tamanho)
-		assert.Contains(t, err.Error(), "maior que zero")
+		assert.Contains(t, err.Error(), "greater than zero")
 	}
 }
 
@@ -221,7 +221,7 @@ func TestLoad_BooleanoInvalido_RetornaErroComChaveValorEFormato(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "MARKUPP_AUTH_LOCAL_ENABLED")
 	assert.Contains(t, err.Error(), "sim")
-	assert.Contains(t, err.Error(), "esperado booleano")
+	assert.Contains(t, err.Error(), "expected boolean")
 }
 
 func TestLoad_BooleanoEmMaiusculo_InterpretaCorretamente(t *testing.T) {
@@ -420,7 +420,7 @@ func TestLoad_LimiteDeTentativasForaDaFaixa_RetornaErroComOValor(t *testing.T) {
 
 		require.Error(t, err, valor)
 		assert.Contains(t, err.Error(), "MARKUPP_RATE_LIMIT_PER_MINUTE", valor)
-		assert.Contains(t, err.Error(), "de 1 a 10000", valor)
+		assert.Contains(t, err.Error(), "from 1 to 10000", valor)
 	}
 }
 

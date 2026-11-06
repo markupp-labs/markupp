@@ -26,7 +26,7 @@ export class FakeFetch {
     const next = this.queued.shift();
     if (!next) {
       throw new Error(
-        `FakeFetch sem resposta enfileirada para ${init?.method ?? "GET"} ${String(input)}`,
+        `FakeFetch has no queued response for ${init?.method ?? "GET"} ${String(input)}`,
       );
     }
     return next;

@@ -27,8 +27,16 @@ class PanelCredential
 
   def tenant_id = @session[:tenant_id]
 
+  # Cofre é do tenant: trocar de tenant esquece o cofre ativo.
   def tenant_id=(id)
+    @session.delete(:vault_id) unless id == tenant_id
     @session[:tenant_id] = id
+  end
+
+  def vault_id = @session[:vault_id]
+
+  def vault_id=(id)
+    @session[:vault_id] = id
   end
 
   def account_id = @session[:account_id]

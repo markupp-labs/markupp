@@ -1,0 +1,18 @@
+pt-BR:
+  oauth_authorizations:
+    # Escopos do authorization server (notas:leitura vira notas_leitura): o que o cliente vai poder fazer.
+    scopes:
+      notas_leitura: "Ler suas notas"
+      notas_escrita: "Criar, editar e apagar suas notas"
+      administracao: "Administrar seus tenants, membros e convites"
+    show:
+      title: "%{client} quer acessar seu markupp"
+      signed_in_as: "Conectado como %{email}"
+      returns_to: "Volta para"
+      abilities: "Vai poder"
+      approve: "Aprovar"
+      deny: "Recusar"
+      keys: "↵ aprovar  esc recusar"
+    gone:
+      title: "Este pedido de autorização não vale mais"
+      hint: "Ele expirou ou já foi respondido. Volte ao aplicativo e conecte de novo."

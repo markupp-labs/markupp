@@ -41,7 +41,7 @@ class AuthenticateHarness {
     const headers = authorization === undefined ? {} : { authorization };
     return this.authenticate({ headers }).then(
       () => {
-        throw new Error("authenticate aceitou; esperado Response lançada");
+        throw new Error("authenticate accepted; expected a thrown Response");
       },
       (thrown: unknown) => thrown as Response,
     );
@@ -176,7 +176,7 @@ describe("exchangeFailureLog", () => {
   it("registra falha que não veio do issuer só com a mensagem", () => {
     expect(exchangeFailureLog(new Error("rede fora"))).toEqual({
       level: "error",
-      msg: "troca de token falhou",
+      msg: "token exchange failed",
       error: "rede fora",
     });
   });
@@ -186,7 +186,7 @@ describe("exchangeFailureLog", () => {
       new TokenExchangeError(400, "invalid_target", "x"),
     );
     expect(entry).toMatchObject({
-      msg: "issuer recusou a troca de token",
+      msg: "issuer refused the token exchange",
       oauth_error: "invalid_target",
     });
   });

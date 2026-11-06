@@ -24,7 +24,7 @@ describe("readPackageVersion", () => {
   it("recusa versão fora de x.y.z citando o valor", () => {
     expect(() =>
       readPackageVersion(packageJsonWith({ version: "beta" })),
-    ).toThrow('versao "beta"');
+    ).toThrow('version "beta"');
   });
 });
 

@@ -49,12 +49,25 @@ module ShortcutsHelper
       Shortcut.of(:editor_style_styled, run: { form: { url: :editor_style_path, params: { editor_style: "styled" }, turbo: false } }),
       Shortcut.of(:vim_keys_on, run: { form: { url: :vim_keys_path, params: { vim_keys: "on" }, turbo: false } }),
       Shortcut.of(:vim_keys_off, run: { form: { url: :vim_keys_path, params: { vim_keys: "off" }, turbo: false } }),
+      Shortcut.of(:language_en, run: { form: { url: :locale_path, params: { locale: "en" }, turbo: false } }),
+      Shortcut.of(:language_pt_br, run: { form: { url: :locale_path, params: { locale: "pt-BR" }, turbo: false } }),
       Shortcut.of(:tenants, "g t", run: { href: :tenants_path }),
       Shortcut.of(:switch_tenant, run: { click: "button[popovertarget=tenant_switcher]" }),
       # Seção General do tenant ativo nas configurações; só com tenant, que é quando o seletor está na barra.
       Shortcut.of(:tenant_general, run: { href: :settings_general_path, when: "button[popovertarget=tenant_switcher]" }),
       # Só na Danger zone da General do tenant, para o owner: abre a mesma confirmação com o nome do tenant.
       Shortcut.of(:delete_tenant, run: { click: "#delete_tenant" }),
+      # g e depois v abre o seletor de cofres da trilha (tenants_shortcut_controller.js), com o foco no primeiro.
+      Shortcut.of(:switch_vault, "g v", run: { click: "button[popovertarget=vault_switcher]" }),
+      # O diálogo do layout, pelo New vault do seletor; só para quem escreve, que é quem tem o botão.
+      Shortcut.of(:new_vault, run: { click: "button[commandfor=new_vault]" }),
+      # As seções do cofre ativo; só com cofre, que é quando o nome dele está na trilha.
+      Shortcut.of(:vault_settings, run: { href: :settings_vault_path, when: "[data-current-vault]" }),
+      Shortcut.of(:vault_members, run: { href: :settings_vault_members_path, when: "[data-current-vault]" }),
+      # Só na Danger zone da General do cofre, para quem escreve: abre a mesma confirmação com o nome do cofre.
+      Shortcut.of(:delete_vault, run: { click: "#delete_vault" }),
+      # g e depois n abre o sino da barra de atividades (tenants_shortcut_controller.js), com o foco dentro dele.
+      Shortcut.of(:notifications, "g n", run: { click: "button[popovertarget=notification_menu]" }),
       Shortcut.of(:log_out, run: { form: { url: :session_path, method: :delete } })
     ],
     note: [
@@ -86,6 +99,8 @@ module ShortcutsHelper
       Shortcut.of(:list_move, "↓", "↑"),
       Shortcut.of(:palette_move, "Ctrl+J", "Ctrl+K"),
       Shortcut.of(:menu_move, "j", "k"),
+      # Nas listas de membros do cofre e do tenant (context_menu_controller.js), com o foco numa linha: pede confirmação.
+      Shortcut.of(:list_remove_member, "Delete"),
       Shortcut.of(:list_choose, "Enter"),
       Shortcut.of(:list_close, "Esc")
     ],
@@ -101,6 +116,13 @@ module ShortcutsHelper
       Shortcut.of(:vim_split, ":split"),
       Shortcut.of(:vim_leave_editor, "Esc Esc Tab"),
       Shortcut.of(:vim_back_to_path, "Esc Esc Shift+Tab")
+    ],
+    # v e depois uma letra, fora de campo de texto (tenants_shortcut_controller.js): a ação do cofre ativo na página dela,
+    # que abre com o foco na ação se não for a aberta. Renomear e adicionar só para quem escreve.
+    vault: [
+      Shortcut.of(:vault_rename, "v r", run: { href: :vault_rename_shortcut_path, when: "[data-vault-writer]" }),
+      Shortcut.of(:vault_add_member, "v a", run: { href: :vault_add_member_shortcut_path, when: "[data-vault-writer]" }),
+      Shortcut.of(:vault_leave, "v q", run: { href: :vault_leave_shortcut_path, when: "[data-current-vault]" })
     ],
     tenants: [
       Shortcut.of(:filter_tenants, "/"),
@@ -132,6 +154,21 @@ module ShortcutsHelper
   }.freeze
 
   SHORTCUTS_BY_NAME = SHORTCUT_GROUPS.values.flatten.index_by(&:name).freeze
+
+  # Destinos dos atalhos do cofre ativo, com a tecla depois do v: o da página da ação, que abre com o foco nela. Sem
+  # cofre, nenhum; o viewer só sai.
+  def vault_shortcut_paths
+    return {} unless current_tenant && current_vault
+
+    leave = { q: vault_leave_shortcut_path }
+    current_tenant.writer? ? leave.merge(r: vault_rename_shortcut_path, a: vault_add_member_shortcut_path) : leave
+  end
+
+  def vault_rename_shortcut_path = settings_vault_path(focus: "rename")
+
+  def vault_add_member_shortcut_path = settings_vault_members_path(focus: "add")
+
+  def vault_leave_shortcut_path = settings_vault_members_path(focus: "leave")
 
   # Área da página (notas, configurações, tenants), que a view diz com content_for :area; sem ela, são as notas. O layout
   # a põe no data-area do body.

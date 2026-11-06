@@ -100,7 +100,7 @@ func (g *PostgresNoteGraph) Community(ctx context.Context, vaultID string, commu
 			return err
 		}
 		if len(rows) == 0 {
-			return fmt.Errorf("%w: id %d no cofre %q", notes.ErrCommunityNotFound, communityID, vaultID)
+			return fmt.Errorf("%w: id %d in vault %q", notes.ErrCommunityNotFound, communityID, vaultID)
 		}
 		out = toCommunity(rows[0])
 		return nil

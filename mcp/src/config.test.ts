@@ -24,7 +24,7 @@ describe("loadHttpEnv", () => {
 
   it.each(["0", "65536", "80a", "-1"])("recusa a porta %s", (port) => {
     expect(() => loadHttpEnv(environment({ MARKUPP_MCP_PORT: port }))).toThrow(
-      `MARKUPP_MCP_PORT="${port}", esperado inteiro de 1 a 65535`,
+      `MARKUPP_MCP_PORT="${port}", expected an integer from 1 to 65535`,
     );
   });
 
@@ -38,7 +38,7 @@ describe("loadHttpEnv", () => {
   it("recusa a API fora de http ou https", () => {
     expect(() =>
       loadHttpEnv(environment({ MARKUPP_MCP_API_URL: "ftp://markupp" })),
-    ).toThrow('MARKUPP_MCP_API_URL="ftp://markupp", esperado http(s)://host');
+    ).toThrow('MARKUPP_MCP_API_URL="ftp://markupp", expected http(s)://host');
   });
 
   it("lê o resource dado", () => {
@@ -54,7 +54,7 @@ describe("loadHttpEnv", () => {
         environment({ MARKUPP_MCP_RESOURCE_URL: "http://exemplo/mcp" }),
       ),
     ).toThrow(
-      'MARKUPP_MCP_RESOURCE_URL="http://exemplo/mcp", esperado https://',
+      'MARKUPP_MCP_RESOURCE_URL="http://exemplo/mcp", expected https://',
     );
   });
 
@@ -71,7 +71,7 @@ describe("loadHttpEnv", () => {
         environment({ MARKUPP_MCP_RESOURCE_URL: "https://mcp.exemplo" }),
       ),
     ).toThrow(
-      'MARKUPP_MCP_RESOURCE_URL="https://mcp.exemplo", esperado https://host[:porta]/caminho',
+      'MARKUPP_MCP_RESOURCE_URL="https://mcp.exemplo", expected https://host[:port]/path',
     );
   });
 
@@ -91,7 +91,7 @@ describe("loadHttpEnv", () => {
         environment({ MARKUPP_MCP_RESOURCE_SECRET: "segredo-curto" }),
       );
     expect(attempt).toThrow(
-      "MARKUPP_MCP_RESOURCE_SECRET com 13 bytes, esperado ao menos 32 bytes aleatorios",
+      "MARKUPP_MCP_RESOURCE_SECRET has 13 bytes, expected at least 32 random bytes",
     );
     expect(attempt).not.toThrow("segredo-curto");
   });
@@ -110,7 +110,7 @@ describe("loadHttpEnv", () => {
 
   it("sem segredo nem caminho, cita as duas formas de fornecer", () => {
     expect(() => loadHttpEnv({})).toThrow(
-      /MARKUPP_MCP_RESOURCE_SECRET e MARKUPP_MCP_SECRET_PATH vazias/,
+      /MARKUPP_MCP_RESOURCE_SECRET and MARKUPP_MCP_SECRET_PATH are empty/,
     );
   });
 });
