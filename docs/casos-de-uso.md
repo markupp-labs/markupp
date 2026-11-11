@@ -19,8 +19,16 @@ Ator: cliente.
 
 O cliente apresenta credencial local ou é redirecionado ao provedor OIDC habilitado. No
 retorno, o servidor liga o identificador do provedor a uma conta de chave estável e abre a
-sessão. Conta que ainda não existe só é criada se o auto-registro estiver ligado, e ele vem
-desligado.
+sessão. O login com credencial local só entra em conta que já existe.
+
+## Criar conta
+
+Ator: pessoa sem conta.
+
+A pessoa informa email e senha, e o servidor cria a conta e abre a sessão. A primeira conta da
+instalação vira owner do tenant inicial. As outras só nascem com o auto-registro ligado, que
+vem desligado, e chegam sem tenant e sem email provado; com SMTP, recebem o email de
+verificação.
 
 ## Criar nota
 

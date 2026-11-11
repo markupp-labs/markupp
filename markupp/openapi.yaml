@@ -10,7 +10,7 @@ info:
     Todas as rotas vivem sob /v1 (ADR-0026). Durante a transição, os mesmos caminhos
     continuam servidos sem prefixo, com os cabeçalhos Deprecation (RFC 9745) e
     Link rel="successor-version" apontando o caminho sob /v1; sem prefixo, a nota
-    mantém a representação antiga, sem a organização derivada. As rotas /oauth/requests,
+    mantém a representação antiga, sem a organização derivada. As rotas /accounts, /oauth/requests,
     /me/authorizations, /me/notifications, /vaults, /search e as sub-coleções de /notes/{id} nasceram
     depois da transição e existem só sob /v1, sem o caminho sem prefixo.
 
@@ -26,13 +26,56 @@ servers:
 security:
   - bearerAuth: []
 paths:
+  /accounts:
+    post:
+      summary: Cria a conta local e abre a sessão dela
+      description: >
+        A primeira conta da instalação vira owner do tenant inicial, com o primeiro cofre,
+        mesmo com o auto-registro desligado. As outras só nascem com
+        MARKUPP_AUTH_REGISTRATION_ENABLED ligado, sem tenant, e com SMTP recebem o email de
+        verificação. Existe só sob /v1.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '201':
+          description: Conta criada, com a sessão aberta
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenPairResponse'
+        '400':
+          description: Email ou senha ausentes, ou senha acima de 72 bytes (invalid_request)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: >
+            Auto-registro desligado e a instalação já tem conta (registration_disabled), ou
+            credencial local desligada (local_auth_disabled)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: O email já tem conta (already_exists)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/RateLimited'
   /auth/login:
     post:
       summary: Abre a sessão com credencial local
       description: >
-        Sem nenhum usuário cadastrado, o primeiro login cria a conta de administrador com o
-        primeiro cofre. Com auto-registro desligado, email desconhecido é recusado como
-        credencial inválida.
+        Só entra em conta que já existe: email sem conta é recusado como credencial
+        inválida, e a conta nasce em POST /accounts.
       security: []
       requestBody:
         required: true
