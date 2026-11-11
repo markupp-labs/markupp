@@ -242,7 +242,7 @@ func newHandler(cfg config.Config, pool *pgxpool.Pool, logger *slog.Logger) (htt
 	authSvc, codec := newAuthService(cfg, pool)
 	// A API não recebe o SMTP: o booleano diz que há quem entregue os emails dela.
 	emailEnabled := cfg.InviteByEmail
-	adminSvc := auth.NewAdminService(storage.NewPostgresAdminRepository(pool), time.Now, emailEnabled)
+	adminSvc := auth.NewAdminService(storage.NewPostgresAdminRepository(pool), time.Now, emailEnabled, auth.InviteLimits{PerAccount: cfg.InviteLimitPerAccount, PerTenant: cfg.InviteLimitPerTenant})
 	accountEmail := auth.NewAccountEmailService(storage.NewPostgresAccountEmailRepository(pool), auth.NewBcryptHasher(), time.Now, auth.AccountEmailOptions{
 		EmailEnabled: emailEnabled, LocalEnabled: cfg.LocalAuthEnabled, Background: runDetached, Logger: logger,
 	})

@@ -65,7 +65,7 @@ func TestSMTPMailer_Send_EntregaAoServidor(t *testing.T) {
 	var caixa caixaDoMailpit
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&caixa))
 	require.Len(t, caixa.Messages, 1)
-	assert.Contains(t, caixa.Messages[0].Subject, "Equipe A")
+	assert.Equal(t, "Convite para um tenant no markupp", caixa.Messages[0].Subject)
 	assert.Equal(t, "nova@markupp.dev", caixa.Messages[0].To[0].Address)
 }
 

@@ -31,10 +31,13 @@ func eventoDoConvite(inv auth.Invite) auth.AuditEventRecord {
 	}
 }
 
+// semLimite aceita qualquer cota: os testes que não tratam do limite não dependem dele.
+func semLimite(auth.InviteQuota) error { return nil }
+
 func emitirConvite(ctx context.Context, t *testing.T, db *pgxpool.Pool, inv auth.Invite, token string) {
 	t.Helper()
 	repo := storage.NewPostgresAdminRepository(db)
-	require.NoError(t, repo.CreateInviteTx(ctx, inv, auth.HashOpaqueToken(token), eventoDoConvite(inv), false))
+	require.NoError(t, repo.CreateInviteTx(ctx, inv, auth.HashOpaqueToken(token), eventoDoConvite(inv), false, semLimite))
 }
 
 func TestAdminRepo_CreateInviteTx_ListaSoNoTenantEAudita(t *testing.T) {
@@ -66,7 +69,7 @@ func TestAdminRepo_CreateInviteTx_EmailJaUsuarioDoTenant_RecusaComErrAlreadyMemb
 	repo := storage.NewPostgresAdminRepository(db)
 	inv := conviteDe(admin, "c1", "admin-a@markupp.dev")
 
-	err := repo.CreateInviteTx(ctx, inv, auth.HashOpaqueToken("tok-1"), eventoDoConvite(inv), false)
+	err := repo.CreateInviteTx(ctx, inv, auth.HashOpaqueToken("tok-1"), eventoDoConvite(inv), false, semLimite)
 
 	assert.ErrorIs(t, err, auth.ErrAlreadyMember)
 }
@@ -136,7 +139,7 @@ func TestAdminRepo_CreateInviteTx_AtorMembro_BarradoPeloBanco(t *testing.T) {
 	ctx := storagetest.SeedMember(t, db, membro, "va")
 	inv := conviteDe(membro, "c1", "nova@markupp.dev")
 
-	err := storage.NewPostgresAdminRepository(db).CreateInviteTx(ctx, inv, auth.HashOpaqueToken("tok"), eventoDoConvite(inv), false)
+	err := storage.NewPostgresAdminRepository(db).CreateInviteTx(ctx, inv, auth.HashOpaqueToken("tok"), eventoDoConvite(inv), false, semLimite)
 
 	assert.Error(t, err, "so admin emite convite, mesmo que a rota esqueca o requireAdmin")
 }

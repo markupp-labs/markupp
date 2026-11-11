@@ -28,7 +28,7 @@ func conviteComEmail(t *testing.T, db *pgxpool.Pool, id, email string) {
 	ctx := storagetest.SeedMember(t, db, adminDoConvite, "va")
 	inv := conviteDe(adminDoConvite, id, email)
 	inv.ExpiresAt = validadeDoConvite
-	require.NoError(t, storage.NewPostgresAdminRepository(db).CreateInviteTx(ctx, inv, auth.HashOpaqueToken("descartado-"+id), eventoDoConvite(inv), true))
+	require.NoError(t, storage.NewPostgresAdminRepository(db).CreateInviteTx(ctx, inv, auth.HashOpaqueToken("descartado-"+id), eventoDoConvite(inv), true, semLimite))
 }
 
 // reservaProxima reserva a próxima notificação vencida por uma hora, trocando o hash

@@ -189,6 +189,10 @@ func writeAdminError(w http.ResponseWriter, err error) {
 		writeError(w, "already_member", err.Error(), http.StatusConflict)
 	case errors.Is(err, auth.ErrRoleAboveOwn):
 		writeError(w, "role_above_own", err.Error(), http.StatusForbidden)
+	case errors.Is(err, auth.ErrEmailNotVerified):
+		writeError(w, "email_not_verified", err.Error(), http.StatusForbidden)
+	case errors.Is(err, auth.ErrInviteLimit):
+		writeError(w, "invite_limit_reached", err.Error(), http.StatusTooManyRequests)
 	default:
 		writeAdminInternal(w, "administrar o tenant", err)
 	}

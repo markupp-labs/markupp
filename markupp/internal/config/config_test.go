@@ -424,6 +424,41 @@ func TestLoad_LimiteDeTentativasForaDaFaixa_RetornaErroComOValor(t *testing.T) {
 	}
 }
 
+func TestDefault_LimitesDeConvite_VintePorContaECinquentaPorTenant(t *testing.T) {
+	env := fakeEnv{"MARKUPP_DATABASE_URL": urlDeTeste, "MARKUPP_AUTH_SECRET": segredoDeTesteValido}
+
+	cfg, err := config.Load(env.Lookup)
+
+	require.NoError(t, err)
+	assert.Equal(t, 20, cfg.InviteLimitPerAccount)
+	assert.Equal(t, 50, cfg.InviteLimitPerTenant)
+}
+
+func TestLoad_LimitesDeConviteDefinidos_LeOsValores(t *testing.T) {
+	env := fakeEnv{"MARKUPP_DATABASE_URL": urlDeTeste, "MARKUPP_AUTH_SECRET": segredoDeTesteValido,
+		"MARKUPP_INVITE_LIMIT_PER_ACCOUNT": "5", "MARKUPP_INVITE_LIMIT_PER_TENANT": "200"}
+
+	cfg, err := config.Load(env.Lookup)
+
+	require.NoError(t, err)
+	assert.Equal(t, 5, cfg.InviteLimitPerAccount)
+	assert.Equal(t, 200, cfg.InviteLimitPerTenant)
+}
+
+func TestLoad_LimiteDeConviteForaDaFaixa_RetornaErroComAVariavel(t *testing.T) {
+	for _, nome := range []string{"MARKUPP_INVITE_LIMIT_PER_ACCOUNT", "MARKUPP_INVITE_LIMIT_PER_TENANT"} {
+		for _, valor := range []string{"0", "-1", "vinte", "10001"} {
+			env := fakeEnv{"MARKUPP_DATABASE_URL": urlDeTeste, "MARKUPP_AUTH_SECRET": segredoDeTesteValido, nome: valor}
+
+			_, err := config.Load(env.Lookup)
+
+			require.Error(t, err, nome+"="+valor)
+			assert.Contains(t, err.Error(), nome, valor)
+			assert.Contains(t, err.Error(), "from 1 to 10000", valor)
+		}
+	}
+}
+
 func TestLoad_SemProxiesConfiaveis_DeixaAListaVazia(t *testing.T) {
 	env := fakeEnv{"MARKUPP_DATABASE_URL": urlDeTeste, "MARKUPP_AUTH_SECRET": segredoDeTesteValido}
 
