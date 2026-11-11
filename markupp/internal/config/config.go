@@ -86,6 +86,10 @@ type Config struct {
 	// RateLimitPerMinute é quantas tentativas por minuto cada IP e cada email têm nas
 	// rotas de conta (ADR-0044).
 	RateLimitPerMinute int
+	// InviteLimitPerAccount e InviteLimitPerTenant são quantos convites cabem em 24
+	// horas, por conta em todos os tenants dela e por tenant (#50).
+	InviteLimitPerAccount int
+	InviteLimitPerTenant  int
 	// TrustedProxies são as redes dos proxies cujo X-Forwarded-For o limite de
 	// tentativas aceita. Vazia, o limite usa só o IP da conexão.
 	TrustedProxies []netip.Prefix
@@ -105,6 +109,8 @@ func Default() Config {
 		SearchConfig:            "simple",
 		IndexInterval:           30 * time.Second,
 		RateLimitPerMinute:      5,
+		InviteLimitPerAccount:   20,
+		InviteLimitPerTenant:    50,
 	}
 	setOAuthDefaults(&cfg)
 	return cfg
@@ -147,15 +153,26 @@ func loadServerSettings(lookup LookupFunc, cfg *Config) error {
 	if err := loadSMTPSettings(lookup, cfg); err != nil {
 		return err
 	}
-	if err := readRateLimit(lookup, &cfg.RateLimitPerMinute); err != nil {
+	if err := readLimit(lookup, "MARKUPP_RATE_LIMIT_PER_MINUTE", &cfg.RateLimitPerMinute); err != nil {
+		return err
+	}
+	if err := readInviteLimits(lookup, cfg); err != nil {
 		return err
 	}
 	return readTrustedProxies(lookup, &cfg.TrustedProxies)
 }
 
-func readRateLimit(lookup LookupFunc, target *int) error {
+func readInviteLimits(lookup LookupFunc, cfg *Config) error {
+	if err := readLimit(lookup, "MARKUPP_INVITE_LIMIT_PER_ACCOUNT", &cfg.InviteLimitPerAccount); err != nil {
+		return err
+	}
+	return readLimit(lookup, "MARKUPP_INVITE_LIMIT_PER_TENANT", &cfg.InviteLimitPerTenant)
+}
+
+// readLimit lê um limite inteiro de 1 a 10000 da variável name.
+func readLimit(lookup LookupFunc, name string, target *int) error {
 	limit := int64(*target)
-	if err := readBounded(lookup, "MARKUPP_RATE_LIMIT_PER_MINUTE", 1, 10000, "from 1 to 10000", &limit); err != nil {
+	if err := readBounded(lookup, name, 1, 10000, "from 1 to 10000", &limit); err != nil {
 		return err
 	}
 	*target = int(limit)

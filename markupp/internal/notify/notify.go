@@ -83,7 +83,9 @@ func InviteMessage(d TokenDetails, token, from, panelURL string) Message {
 		"%s"+
 		"Use o token no cliente do markupp para aceitar. O convite vale até %s.\n",
 		d.InviterEmail, d.TenantName, d.Role, tokenBlock(panelURL, inviteLink, token), validUntil(d.ExpiresAt))
-	return Message{From: from, To: d.Email, Subject: "Convite para " + d.TenantName + " no markupp", Body: body}
+	// O nome do tenant é escolhido por quem convida: no assunto, ele seria a isca de um
+	// phishing que sai do remetente da instância (#50). No corpo, vem com quem convidou.
+	return Message{From: from, To: d.Email, Subject: "Convite para um tenant no markupp", Body: body}
 }
 
 // VerifyEmailMessage monta o email que leva o token de verificação da conta e,
