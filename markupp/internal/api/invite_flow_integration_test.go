@@ -43,8 +43,8 @@ func TestIntegration_ConviteAteNotaIsolada(t *testing.T) {
 	server, _ := setupAuthIntegrationServer(t)
 	url := server.URL
 
-	status, admin := sendJSON(t, http.MethodPost, url+"/auth/login", "", `{"email":"admin@markupp.dev","password":"senhaAdmin"}`)
-	require.Equal(t, http.StatusOK, status)
+	status, admin := sendJSON(t, http.MethodPost, url+"/v1/accounts", "", `{"email":"admin@markupp.dev","password":"senhaAdmin"}`)
+	require.Equal(t, http.StatusCreated, status)
 	tokenAdmin := admin["access_token"].(string)
 
 	status, convite := sendJSON(t, http.MethodPost, url+"/users/invites", tokenAdmin, `{"email":"membro@markupp.dev","role":"member"}`)
@@ -83,7 +83,7 @@ func meusTenants(t *testing.T, url, token string) []map[string]any {
 func TestIntegration_MeusTenants_ContaSoAsNotasDosCofresDaConta(t *testing.T) {
 	server, _ := setupAuthIntegrationServer(t)
 	url := server.URL
-	_, admin := sendJSON(t, http.MethodPost, url+"/auth/login", "", `{"email":"admin@markupp.dev","password":"senhaAdmin"}`)
+	_, admin := sendJSON(t, http.MethodPost, url+"/v1/accounts", "", `{"email":"admin@markupp.dev","password":"senhaAdmin"}`)
 	tokenAdmin := admin["access_token"].(string)
 	_, convite := sendJSON(t, http.MethodPost, url+"/users/invites", tokenAdmin, `{"email":"membro@markupp.dev","role":"member"}`)
 	_, membro := sendJSON(t, http.MethodPost, url+"/auth/invites/accept", "", `{"token":"`+convite["token"].(string)+`","password":"senhaMembro"}`)
@@ -137,7 +137,7 @@ func firstPendingInvite(t *testing.T, url, token string) string {
 func TestIntegration_ContaGlobalEmDoisTenantsComPapeis(t *testing.T) {
 	server, _ := setupAuthIntegrationServer(t)
 	url := server.URL
-	_, sessaoA := sendJSON(t, http.MethodPost, url+"/auth/login", "", `{"email":"ana@x.dev","password":"senha-ana"}`)
+	_, sessaoA := sendJSON(t, http.MethodPost, url+"/v1/accounts", "", `{"email":"ana@x.dev","password":"senha-ana"}`)
 	tokenA := sessaoA["access_token"].(string)
 	_, convite := sendJSON(t, http.MethodPost, url+"/users/invites", tokenA, `{"email":"bia@x.dev","role":"member"}`)
 	_, sessaoB := sendJSON(t, http.MethodPost, url+"/auth/invites/accept", "", `{"token":"`+convite["token"].(string)+`","password":"senha-bia"}`)

@@ -49,6 +49,10 @@ type fakeAuthService struct {
 	createTenantErr error
 	tenantCreator   string
 	tenantName      string
+
+	registerPair  auth.TokenPair
+	registerErr   error
+	registerEmail string
 }
 
 func (f *fakeAuthService) ListMyInvites(ctx context.Context, userID string) ([]auth.PendingInvite, error) {
