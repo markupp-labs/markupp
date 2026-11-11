@@ -157,6 +157,23 @@ func TestAdminRoutes_IssueInvite_ErrosDeDominio(t *testing.T) {
 	}
 }
 
+func TestAdminRoutes_IssueInvite_CotaEVerificacao_CodigoEStatus(t *testing.T) {
+	casos := []struct {
+		err    error
+		status int
+		code   string
+	}{
+		{auth.ErrInviteLimit, http.StatusTooManyRequests, "invite_limit_reached"},
+		{auth.ErrEmailNotVerified, http.StatusForbidden, "email_not_verified"},
+	}
+	for _, c := range casos {
+		rec := adminRequest(&fakeAdminService{issueErr: c.err}, "admin", http.MethodPost, "/users/invites", `{"email":"x@y.dev","role":"member"}`)
+
+		assert.Equal(t, c.status, rec.Code, c.code)
+		assert.Contains(t, rec.Body.String(), `"`+c.code+`"`)
+	}
+}
+
 func TestAdminRoutes_ListInvites_NaoExpoeToken(t *testing.T) {
 	svc := &fakeAdminService{invites: []auth.Invite{{ID: "c1", Email: "nova@markupp.dev", Role: "member"}}}
 
