@@ -123,3 +123,5 @@ en:
         invalid_request: "Enter an address like name@example.com."
         already_member: "%{email} is already a member."
         role_above_own: "You can't give or change a role above your own."
+        email_not_verified: "Confirm your email in account settings before sending invites."
+        invite_limit_reached: "You reached the invite limit for the last 24 hours. Try again later."

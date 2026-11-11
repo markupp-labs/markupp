@@ -52,6 +52,10 @@ class MarkuppApi
   class VaultMemberNotFound < NotFound; end
   # Nota nova sem cofre onde cair.
   class NoVault < Error; end
+  # Com SMTP, só convida quem já confirmou o email.
+  class EmailNotVerified < Error; end
+  # A conta ou o tenant chegou ao limite de convites das últimas 24 horas.
+  class InviteLimitReached < Error; end
 
   # Corpo e ETag de uma leitura que pode voltar 304.
   Revision = Data.define(:body, :etag)
@@ -73,7 +77,8 @@ class MarkuppApi
     "email_unavailable" => EmailUnavailable, "email_already_verified" => EmailAlreadyVerified,
     "vault_forbidden" => VaultUnavailable, "request_not_found" => OAuthRequestNotFound,
     "invalid_name" => InvalidName, "not_tenant_member" => NotTenantMember, "already_vault_member" => AlreadyVaultMember,
-    "vault_member_not_found" => VaultMemberNotFound, "no_vault" => NoVault
+    "vault_member_not_found" => VaultMemberNotFound, "no_vault" => NoVault,
+    "email_not_verified" => EmailNotVerified, "invite_limit_reached" => InviteLimitReached
   }.freeze
   # Para o status cujo corpo não traz código conhecido.
   ERRORS_BY_STATUS = { "401" => Unauthorized, "403" => Forbidden, "404" => NotFound }.freeze

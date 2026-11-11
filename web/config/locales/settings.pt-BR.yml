@@ -123,3 +123,5 @@ pt-BR:
         invalid_request: "Informe um endereço como nome@exemplo.com."
         already_member: "%{email} já é membro."
         role_above_own: "Você não pode dar nem mudar um papel acima do seu."
+        email_not_verified: "Confirme seu email nas configurações da conta antes de enviar convites."
+        invite_limit_reached: "Você chegou ao limite de convites das últimas 24 horas. Tente de novo mais tarde."
