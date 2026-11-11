@@ -37,7 +37,7 @@ var declaredOAuthPolicies = map[string]oauthRoutePolicy{
 	"GET /.well-known/oauth-authorization-server/": publicRoute, "OPTIONS /.well-known/oauth-authorization-server/": publicRoute,
 	"GET /oauth/authorize/": publicRoute, "POST /oauth/token": publicRoute, "OPTIONS /oauth/token": publicRoute,
 	"POST /oauth/revoke": publicRoute, "OPTIONS /oauth/revoke": publicRoute,
-	"GET /v1/healthz": publicRoute, "POST /v1/auth/login": publicRoute, "POST /v1/auth/refresh": publicRoute,
+	"GET /v1/healthz": publicRoute, "POST /v1/accounts": publicRoute, "POST /v1/auth/login": publicRoute, "POST /v1/auth/refresh": publicRoute,
 	"POST /v1/auth/logout": publicRoute, "POST /v1/auth/invites/accept": publicRoute,
 	"POST /v1/auth/password/forgot": publicRoute, "POST /v1/auth/password/reset": publicRoute,
 	"GET /v1/auth/me": anyScopeRoute, "GET /v1/me/tenants": anyScopeRoute,

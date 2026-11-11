@@ -831,7 +831,7 @@ func servicoComEmail(repo auth.Repository, emailEnabled bool) *auth.Service {
 func TestService_AutoRegistroComSMTP_PedeAVerificacaoDoEmail(t *testing.T) {
 	repo := newFakeRepository(defaultClock())
 
-	_, err := servicoComEmail(repo, true).LoginLocal(context.Background(), "nova@markupp.dev", "senhaForte123")
+	_, err := servicoComEmail(repo, true).Register(context.Background(), "nova@markupp.dev", "senhaForte123")
 
 	require.NoError(t, err)
 	assert.True(t, repo.lastAccount.SendVerification)
@@ -840,7 +840,7 @@ func TestService_AutoRegistroComSMTP_PedeAVerificacaoDoEmail(t *testing.T) {
 func TestService_AutoRegistroSemSMTP_NaoPedeVerificacao(t *testing.T) {
 	repo := newFakeRepository(defaultClock())
 
-	_, err := servicoComEmail(repo, false).LoginLocal(context.Background(), "nova@markupp.dev", "senhaForte123")
+	_, err := servicoComEmail(repo, false).Register(context.Background(), "nova@markupp.dev", "senhaForte123")
 
 	require.NoError(t, err)
 	assert.False(t, repo.lastAccount.SendVerification)
