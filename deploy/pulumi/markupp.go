@@ -65,6 +65,9 @@ type MarkuppArgs struct {
 	// RateLimitPerMinute troca as 5 tentativas por minuto das rotas de conta
 	// (MARKUPP_RATE_LIMIT_PER_MINUTE).
 	RateLimitPerMinute *int `pulumi:"rateLimitPerMinute,optional"`
+	// RegistrationEnabled abre o cadastro de conta a qualquer pessoa
+	// (MARKUPP_AUTH_REGISTRATION_ENABLED). Exige o email, que prova o email da conta.
+	RegistrationEnabled bool `pulumi:"registrationEnabled,optional"`
 }
 
 // GatewayRefArgs aponta para um Gateway de outro namespace. Ele precisa
@@ -159,13 +162,12 @@ func validate(args MarkuppArgs) error {
 				r.field, args.Namespace, args.Image, args.Host, args.CertificateIssuer, args.AcmeEmail)
 		}
 	}
-	if err := validateEmailServer(args); err != nil {
-		return err
+	for _, check := range []func(MarkuppArgs) error{validateEmailServer, validatePanel, validateEmailSender, validateRegistration} {
+		if err := check(args); err != nil {
+			return err
+		}
 	}
-	if err := validatePanel(args); err != nil {
-		return err
-	}
-	return validateEmailSender(args)
+	return nil
 }
 
 // ingressRequiredFields lista o que a entrada exige: com Gateway existente, a
