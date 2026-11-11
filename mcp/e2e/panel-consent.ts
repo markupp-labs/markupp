@@ -16,21 +16,19 @@ async function expectStatus(
   );
 }
 
-// ensureAccount cria a conta do e2e; os testes dividem o banco, e quem chega depois
-// recebe 409 already_exists da conta que outro teste já criou.
-async function ensureAccount(issuer: string): Promise<void> {
+// createAccount faz o primeiro cadastro, uma vez no globalSetup: depois dele o cadastro
+// fecha (sem MARKUPP_AUTH_REGISTRATION_ENABLED) e responde 403 a qualquer email.
+export async function createAccount(issuer: string): Promise<void> {
   const response = await fetch(`${issuer}/v1/accounts`, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(ACCOUNT),
   });
-  if (response.status === 409) return;
   await expectStatus(response, 201, "POST /v1/accounts");
 }
 
 // loginByPassword devolve o access token da API da conta do e2e.
 export async function loginByPassword(issuer: string): Promise<string> {
-  await ensureAccount(issuer);
   const response = await fetch(`${issuer}/v1/auth/login`, {
     method: "POST",
     headers: { "content-type": "application/json" },
