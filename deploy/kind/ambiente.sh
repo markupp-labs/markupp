@@ -54,10 +54,15 @@ curl_api() {
   curl -sfk --resolve markupp.local:8443:127.0.0.1 "$@"
 }
 
+SMOKE_ACCOUNT='{"email":"admin@markupp.local","password":"senhaForte123"}'
+
+# login_smoke cria a conta do smoke, que no banco vazio vira owner; num banco que já tem
+# a conta, o cadastro responde 409 e o login segue.
 login_smoke() {
+  curl -sk --resolve markupp.local:8443:127.0.0.1 -o /dev/null -X POST "$URL/v1/accounts" \
+    -H 'Content-Type: application/json' -d "$SMOKE_ACCOUNT"
   curl_api -X POST "$URL/v1/auth/login" \
-    -H 'Content-Type: application/json' \
-    -d '{"email":"admin@markupp.local","password":"senhaForte123"}' \
+    -H 'Content-Type: application/json' -d "$SMOKE_ACCOUNT" \
     | grep -o '"access_token":"[^"]*"' | cut -d'"' -f4
 }
 
