@@ -71,6 +71,13 @@ painel que recebe o token (/invite_acceptance/new, /email_confirmation/new e
 link. O painel é o de `MARKUPP_PANEL_URL` no notificador, a mesma variável do OAuth descrita
 abaixo, com `http://localhost:3999` como padrão. No componente, ela vem de `email.panelUrl`.
 
+Em 24 horas, cada conta emite até 20 convites, somando todos os tenants dela, e cada tenant
+recebe até 50; acima disso a API responde 429 `invite_limit_reached`. Convite revogado continua
+contando, e as variáveis `MARKUPP_INVITE_LIMIT_PER_ACCOUNT` e `MARKUPP_INVITE_LIMIT_PER_TENANT`,
+de 1 a 10000, trocam os dois números. A contagem fica no banco e vale entre réplicas. Com SMTP,
+só convida a conta que já confirmou o email, e o assunto do convite não leva o nome do tenant:
+os dois impedem que o remetente da instância vire relay de spam e phishing.
+
 A API limita login, refresh, aceite de convite, pedido de verificação de email e pedido e troca
 de senha a 5 tentativas por minuto por IP e, quando o corpo traz email, por email (ADR-0044).
 Acima disso responde 429 com Retry-After. A variável `MARKUPP_RATE_LIMIT_PER_MINUTE`, de 1 a

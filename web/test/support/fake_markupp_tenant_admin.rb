@@ -38,15 +38,27 @@ class FakeMarkuppTenantAdmin
     change_membership(tenant_id, member_id(path, call), role, nil, call)
   end
 
-  def post(path, body, role:, tenant_id:, **)
+  def post(path, body, account:, role:, tenant_id:, **)
     call = "POST #{path}"
     refuse_non_admin(role, call)
     raise ArgumentError, "fake API has no route for #{call}, expected /users/invites" unless path == "/users/invites"
 
+    refuse_over_quota(account, call)
     issue(tenant_id, body[:email].to_s.strip.downcase, body[:role], role, call)
   end
 
+  # Como CheckInviteQuota: com SMTP, só quem confirmou o email; e até 20 convites da conta em 24 horas.
+  INVITES_PER_ACCOUNT = 20
+
   private
+    def refuse_over_quota(account, call)
+      if @email_enabled && !account.fetch("verified", true)
+        raise MarkuppApi::EmailNotVerified, "fake API refuses #{call}: email_not_verified, #{account['email']} has not confirmed the email"
+      end
+      sent = @tenants.invites.count { it["invited_by"] == account["id"] && it["created_at"] && Time.iso8601(it["created_at"]) > 24.hours.ago }
+      raise MarkuppApi::InviteLimitReached, "fake API refuses #{call}: invite_limit_reached, #{sent} invites in 24h" if sent >= INVITES_PER_ACCOUNT
+    end
+
     def rank(role) = RANKS.index(role).to_i
 
     def refuse_non_admin(role, call)

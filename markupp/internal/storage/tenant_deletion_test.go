@@ -35,7 +35,7 @@ func semearDoisTenants(t *testing.T, db *pgxpool.Pool) {
 	salvarNota(ctxDona, t, notas, notaNoCofre("n-dona", "dela.md", "va"))
 	salvarNota(ctxU2, t, notas, notaNoCofre("n-u2", "dele.md", "vb"))
 	inv := conviteDe(donaDoT1, "c1", "nova@markupp.dev")
-	require.NoError(t, storage.NewPostgresAdminRepository(db).CreateInviteTx(ctxDona, inv, auth.HashOpaqueToken("tok"), eventoDoConvite(inv), true))
+	require.NoError(t, storage.NewPostgresAdminRepository(db).CreateInviteTx(ctxDona, inv, auth.HashOpaqueToken("tok"), eventoDoConvite(inv), true, semLimite))
 	_, err := db.Exec(context.Background(), "INSERT INTO note_search_index (note_id, document) VALUES ('n-dona', to_tsvector('dela'))")
 	require.NoError(t, err)
 	ctxOutra := storagetest.SeedMember(t, db, identity.Actor{UserID: "outra", TenantID: "t2", Role: "owner"}, "vc")

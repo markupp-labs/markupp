@@ -431,7 +431,11 @@ paths:
         Quem já tem conta vê o convite em /me/invites. O token serve para quem ainda
         não tem conta se cadastrar. Sem SMTP configurado, ele volta uma única vez nesta
         resposta e o administrador o repassa. Com SMTP, ele não volta: o servidor gera
-        o token na entrega e o envia só por email. Vale por 7 dias.
+        o token na entrega e o envia só por email. Vale por 7 dias. Em 24 horas, cada
+        conta emite até 20 convites somando todos os tenants dela, e cada tenant recebe
+        até 50, ajustáveis em MARKUPP_INVITE_LIMIT_PER_ACCOUNT e
+        MARKUPP_INVITE_LIMIT_PER_TENANT; convite revogado continua contando. Com SMTP, só
+        convida a conta que já confirmou o email.
       parameters:
         - $ref: '#/components/parameters/TenantHeader'
       requestBody:
@@ -456,13 +460,21 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
-          description: Sem papel de administração (forbidden) ou papel acima do próprio (role_above_own)
+          description: >
+            Sem papel de administração (forbidden), papel acima do próprio (role_above_own)
+            ou, com SMTP, conta que ainda não confirmou o email (email_not_verified)
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '409':
           description: O email já é de um membro do tenant (already_member)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: A conta ou o tenant chegou ao limite de convites em 24 horas (invite_limit_reached)
           content:
             application/json:
               schema:
