@@ -53,7 +53,30 @@ func NewService(repo Repository, tokens TokenIssuer, hasher PasswordHasher, cfg 
 	}
 }
 
-// LoginLocal autentica via email e senha ou inicializa a primeira conta de administrador.
+// Register cria a conta local e abre a sessão. A primeira conta da instalação vira
+// owner do tenant inicial mesmo com o registro desligado; as outras só nascem com ele
+// ligado, sem tenant, e com SMTP recebem o email de verificação.
+func (s *Service) Register(ctx context.Context, email, password string) (TokenPair, error) {
+	if !s.cfg.LocalEnabled {
+		return TokenPair{}, ErrLocalAuthDisabled
+	}
+	normEmail, err := s.validateCredentials(email, password)
+	if err != nil {
+		return TokenPair{}, err
+	}
+	hash, err := s.hasher.Hash(password)
+	if err != nil {
+		return TokenPair{}, fmt.Errorf("hash password for %q: %w", normEmail, err)
+	}
+	user, err := s.repo.CreateAccountTx(ctx, s.buildAccountParams(normEmail, hash))
+	if err != nil {
+		return TokenPair{}, fmt.Errorf("create account for %q: %w", normEmail, err)
+	}
+	return s.issueAndPersist(ctx, user, "auth.login")
+}
+
+// LoginLocal autentica via email e senha. Email sem conta é recusado como senha
+// errada: o login nunca cria conta, senão um erro de digitação vira conta nova.
 func (s *Service) LoginLocal(ctx context.Context, email, password string) (TokenPair, error) {
 	if !s.cfg.LocalEnabled {
 		return TokenPair{}, ErrLocalAuthDisabled
@@ -124,25 +147,12 @@ func (s *Service) acceptInviteParams(token, passwordHash string) AcceptInvitePar
 	}
 }
 
+// handleUnknownUser roda um bcrypt descartado antes de recusar: o custo iguala o de uma
+// senha errada, e o tempo da resposta não denuncia o email inexistente.
 func (s *Service) handleUnknownUser(ctx context.Context, email, password string) (TokenPair, error) {
-	hash, err := s.hasher.Hash(password)
-	if err != nil {
+	if _, err := s.hasher.Hash(password); err != nil {
 		return TokenPair{}, fmt.Errorf("hash password for %q: %w", email, err)
 	}
-	p := s.buildAccountParams(email, hash)
-	user, err := s.repo.CreateAccountTx(ctx, p)
-	if err != nil {
-		if errors.Is(err, ErrRegistrationDisabled) || errors.Is(err, ErrUserAlreadyExists) {
-			return s.rejectUnknownUser(ctx, email)
-		}
-		return TokenPair{}, fmt.Errorf("create account for %q: %w", email, err)
-	}
-	return s.issueAndPersist(ctx, user, "auth.login")
-}
-
-// rejectUnknownUser nao roda bcrypt de novo: o Hash em handleUnknownUser ja igualou o
-// custo ao de uma senha errada, e um segundo bcrypt denunciaria o email inexistente.
-func (s *Service) rejectUnknownUser(ctx context.Context, email string) (TokenPair, error) {
 	if err := s.auditLoginAttempt(ctx, "", email, "failure"); err != nil {
 		return TokenPair{}, fmt.Errorf("audit rejected login for %q: %w", email, err)
 	}

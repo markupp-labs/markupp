@@ -17,6 +17,7 @@ const maxAuthBodyBytes = 4096
 // AuthService é a interface do serviço de autenticação consumida pelos endpoints HTTP.
 type AuthService interface {
 	LoginLocal(ctx context.Context, email, password string) (auth.TokenPair, error)
+	Register(ctx context.Context, email, password string) (auth.TokenPair, error)
 	RefreshToken(ctx context.Context, rawRefreshToken string) (auth.TokenPair, error)
 	RevokeSession(ctx context.Context, rawRefreshToken string) error
 	GetAccount(ctx context.Context, userID string) (auth.User, error)
@@ -90,6 +91,20 @@ func (h *authHandler) login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, pair)
+}
+
+// createAccount é o cadastro: cria a conta e já devolve a sessão dela, com 201.
+func (h *authHandler) createAccount(w http.ResponseWriter, r *http.Request) {
+	var req loginRequest
+	if !decodeJSONBody(w, r, &req) {
+		return
+	}
+	pair, err := h.svc.Register(r.Context(), req.Email, req.Password)
+	if err != nil {
+		h.handleAuthError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusCreated, pair)
 }
 
 func (h *authHandler) refresh(w http.ResponseWriter, r *http.Request) {
@@ -220,6 +235,8 @@ func (h *authHandler) handleAuthError(w http.ResponseWriter, err error) {
 		writeError(w, "invalid_invite", auth.ErrInviteInvalid.Error(), http.StatusBadRequest)
 	case errors.Is(err, auth.ErrUserAlreadyExists):
 		writeError(w, "already_exists", "this email already has an account", http.StatusConflict)
+	case errors.Is(err, auth.ErrRegistrationDisabled):
+		writeError(w, "registration_disabled", "this installation only creates accounts by invite", http.StatusForbidden)
 	case errors.Is(err, auth.ErrRefreshTokenRevoked), errors.Is(err, auth.ErrRefreshTokenExpired), errors.Is(err, auth.ErrRefreshTokenInvalid):
 		writeError(w, "invalid_refresh_token", "refresh token revoked or expired", http.StatusUnauthorized)
 	default:
