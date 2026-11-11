@@ -72,9 +72,9 @@ func getWithAuth(t *testing.T, url, token string) *http.Response {
 func TestIntegration_Auth_FluxoCompleto(t *testing.T) {
 	server, db := setupAuthIntegrationServer(t)
 
-	loginResp := postJSON(t, server.URL+"/auth/login", `{"email":"admin@markupp.dev","password":"senhaForte123"}`)
+	loginResp := postJSON(t, server.URL+"/v1/accounts", `{"email":"admin@markupp.dev","password":"senhaForte123"}`)
 	defer func() { _ = loginResp.Body.Close() }()
-	require.Equal(t, http.StatusOK, loginResp.StatusCode)
+	require.Equal(t, http.StatusCreated, loginResp.StatusCode)
 
 	tokens := decodeJSON(t, loginResp.Body)
 	accessToken, _ := tokens["access_token"].(string)
@@ -122,9 +122,9 @@ func TestIntegration_Auth_FluxoCompleto(t *testing.T) {
 func TestIntegration_Auth_LoginIncorretoERegistroBloqueado(t *testing.T) {
 	server, _ := setupAuthIntegrationServer(t)
 
-	firstResp := postJSON(t, server.URL+"/auth/login", `{"email":"admin@markupp.dev","password":"senhaAdmin"}`)
+	firstResp := postJSON(t, server.URL+"/v1/accounts", `{"email":"admin@markupp.dev","password":"senhaAdmin"}`)
 	_ = firstResp.Body.Close()
-	require.Equal(t, http.StatusOK, firstResp.StatusCode)
+	require.Equal(t, http.StatusCreated, firstResp.StatusCode)
 
 	wrongPassResp := postJSON(t, server.URL+"/auth/login", `{"email":"admin@markupp.dev","password":"senhaErrada"}`)
 	_ = wrongPassResp.Body.Close()

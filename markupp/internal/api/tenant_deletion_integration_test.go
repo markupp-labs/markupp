@@ -36,7 +36,7 @@ func tenantsDaConta(t *testing.T, url, token string) []string {
 func TestIntegration_ApagarTenant_SoOOwnerApagaETudoSome(t *testing.T) {
 	server, _ := setupAuthIntegrationServer(t)
 	url := server.URL
-	_, sessaoAna := sendJSON(t, http.MethodPost, url+"/auth/login", "", `{"email":"ana@x.dev","password":"senha-ana"}`)
+	_, sessaoAna := sendJSON(t, http.MethodPost, url+"/v1/accounts", "", `{"email":"ana@x.dev","password":"senha-ana"}`)
 	tokenAna := sessaoAna["access_token"].(string)
 	tenantPadrao := tenantsDaConta(t, url, tokenAna)[0]
 	status, criado := sendJSON(t, http.MethodPost, url+"/tenants", tokenAna, `{"name":"Apagavel"}`)

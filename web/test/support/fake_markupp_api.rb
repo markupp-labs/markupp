@@ -6,7 +6,7 @@ class FakeMarkuppApi
 
   delegate :put_requests, :post_requests, to: :@notes
   delegate :expire_access_tokens!, :revoke_refresh_tokens!, :refresh_token_valid?, to: :@accounts
-  delegate :disable_local_auth!, :hold_refreshes_together!, to: :@auth
+  delegate :disable_local_auth!, :close_registration!, :hold_refreshes_together!, to: :@auth
   delegate :assign_role!, :deny_notes_in!, :delete_tenant!, :receive_invite!, to: :@tenants
   delegate :sent_tokens, to: :@account_email
   delegate :received_etags, :graph_queries, :change_graph!, to: :@graph
@@ -107,6 +107,7 @@ class FakeMarkuppApi
       return @vaults if FakeMarkuppVaults::ROUTE.match?(path)
       return @oauth_requests if path.start_with?(OAUTH_REQUESTS)
       return @tenants if path == FakeMarkuppTenants::NOTIFICATIONS
+      return @auth if path == "/v1/accounts"
       return @note_index if path.start_with?("/v1/search/") || FakeMarkuppNoteIndex::VAULT_NOTES.match?(path)
       return @graph if path.start_with?("/v1/")
       return @account_email if path.start_with?("/auth/password/", "/auth/email/")

@@ -179,11 +179,11 @@ make e2e-mcp
 
 ## Validar
 
-Smoke test pela API. Com o banco vazio, o primeiro login cria a conta como owner do tenant
-inicial:
+Smoke test pela API. Com o banco vazio, o primeiro cadastro cria a conta como owner do tenant
+inicial, e já devolve a sessão:
 
 ```sh
-TOKEN=$(curl -s -X POST http://localhost:8080/auth/login \
+TOKEN=$(curl -s -X POST http://localhost:8080/v1/accounts \
   -H 'Content-Type: application/json' \
   -d '{"email":"admin@exemplo.dev","password":"troque-esta-senha"}' \
   | grep -o '"access_token":"[^"]*"' | cut -d'"' -f4)
@@ -208,6 +208,11 @@ precisa dizer nada. Quem tem mais de um escolhe por requisição com o cabeçalh
 lê em cada tenant e quando a mais recente mudou. Qualquer conta cria tenant em
 `POST /tenants` e vira owner dele. Só o owner apaga o tenant, em `DELETE /tenants/{id}`, e
 apaga de vez: cofres, notas, vínculos e convites vão junto, e as contas continuam.
+
+O login só entra em conta que já existe; a conta nasce no cadastro, em `POST /v1/accounts` ou
+na tela "Criar conta" do painel. Depois da primeira, o cadastro só aceita conta nova com
+`MARKUPP_AUTH_REGISTRATION_ENABLED=true`; desligado, ele responde 403 `registration_disabled` e
+a conta nasce só pelo convite.
 
 A conta de auto-registro (`MARKUPP_AUTH_REGISTRATION_ENABLED=true`) nasce sem email provado e
 não recebe convite pela lista até verificar. Com SMTP configurado, ela recebe o email de
@@ -318,6 +323,7 @@ do MCP vêm do Secret.
 
 ## Aviso
 
-Com o banco vazio, quem fizer o primeiro login vira owner do tenant inicial
-([ADR-0035](adrs/ADR-0035-conta-global-com-vinculo-por-tenant.md)).
-Faça esse login antes de expor o servidor publicamente.
+Com o banco vazio, quem criar a primeira conta, pelo painel em "Criar conta" ou em
+`POST /v1/accounts`, vira owner do tenant inicial
+([ADR-0035](adrs/ADR-0035-conta-global-com-vinculo-por-tenant.md)). Isso vale mesmo com o
+auto-registro desligado. Crie essa conta antes de expor o servidor publicamente.

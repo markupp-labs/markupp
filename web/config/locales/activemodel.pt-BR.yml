@@ -9,6 +9,9 @@ pt-BR:
       session_login:
         email: "Email"
         password: "Senha"
+      account_registration:
+        email: "Email"
+        password: "Senha"
       token_form:
         token: "Token"
         password: "Senha"
@@ -23,6 +26,14 @@ pt-BR:
           attributes:
             base:
               invalid_credentials: "Email ou senha incorretos."
+              local_auth_disabled: "O login com senha está desativado neste servidor."
+        account_registration:
+          attributes:
+            password:
+              invalid: "Use uma senha de até 72 bytes."
+            base:
+              account_exists: "Este email já tem uma conta."
+              registration_disabled: "Este servidor só cria contas por convite. Peça um a um administrador."
               local_auth_disabled: "O login com senha está desativado neste servidor."
         token_form:
           attributes:
