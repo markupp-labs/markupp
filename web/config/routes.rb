@@ -18,6 +18,7 @@ Rails.application.routes.draw do
   resource :editor_style, only: :update
   resource :vim_keys, only: :update
   resource :session, only: [ :new, :create, :destroy ]
+  resource :registration, only: [ :new, :create ]
   resource :invite_acceptance, only: [ :new, :create ]
   resource :password_request, only: [ :new, :create ]
   resource :password_reset, only: [ :new, :create ]

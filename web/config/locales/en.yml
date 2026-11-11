@@ -14,6 +14,11 @@ en:
       tenant_unavailable: "You no longer have access to that tenant."
       vault_unavailable: "You no longer have access to that vault."
       no_vault: "Create a vault first, then add notes to it."
+  registrations:
+    new:
+      title: "Create an account"
+      submit: "Create account"
+      log_in: "Log in"
   sessions:
     back_to_login:
       label: "Back to log in"
@@ -23,6 +28,8 @@ en:
       invite_hint: "Got an invite token?"
       accept_invite: "Accept it here."
       forgot_password: "Forgot password?"
+      no_account: "No account yet?"
+      create_account: "Create one."
     destroy:
       logged_out: "Logged out."
   invite_acceptances:

@@ -14,6 +14,11 @@ pt-BR:
       tenant_unavailable: "Você não tem mais acesso a esse tenant."
       vault_unavailable: "Você não tem mais acesso a esse cofre."
       no_vault: "Crie um cofre antes, depois adicione notas a ele."
+  registrations:
+    new:
+      title: "Criar uma conta"
+      submit: "Criar conta"
+      log_in: "Entrar"
   sessions:
     back_to_login:
       label: "Voltar para o login"
@@ -23,6 +28,8 @@ pt-BR:
       invite_hint: "Recebeu um token de convite?"
       accept_invite: "Aceite aqui."
       forgot_password: "Esqueceu a senha?"
+      no_account: "Ainda não tem conta?"
+      create_account: "Crie uma."
     destroy:
       logged_out: "Você saiu."
   invite_acceptances:

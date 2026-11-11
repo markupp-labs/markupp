@@ -9,7 +9,8 @@ class RegistrationsControllerTest < ActionDispatch::IntegrationTest
     get new_registration_path
 
     assert_response :success
-    assert_select "main a[href=?] ~ h1", new_session_path, text: "Back to log in"
+    assert_select "main a[href=?] ~ h1", new_session_path
+    assert_select "main a[href=?]", new_session_path, text: "Back to log in"
     assert_select "h1", "Create an account"
     assert_select "form[action=?][method=post]", registration_path do
       assert_select "label[for=registration_email]", "Email"

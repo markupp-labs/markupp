@@ -9,6 +9,9 @@ en:
       session_login:
         email: "Email"
         password: "Password"
+      account_registration:
+        email: "Email"
+        password: "Password"
       token_form:
         token: "Token"
         password: "Password"
@@ -23,6 +26,14 @@ en:
           attributes:
             base:
               invalid_credentials: "Email or password is wrong."
+              local_auth_disabled: "Password login is disabled on this server."
+        account_registration:
+          attributes:
+            password:
+              invalid: "Enter a password up to 72 bytes long."
+            base:
+              account_exists: "This email already has an account."
+              registration_disabled: "This server only creates accounts by invite. Ask an admin for one."
               local_auth_disabled: "Password login is disabled on this server."
         token_form:
           attributes:
