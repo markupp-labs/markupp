@@ -214,7 +214,8 @@ não recebe convite pela lista até verificar. Com SMTP configurado, ela recebe 
 verificação no cadastro, confirma com o token logada nela em `POST /auth/email/verify` e pode
 pedir outro em `POST /auth/email/verification`. Sem SMTP, nada
 prova o email dela, e qualquer pessoa pode ocupar um email alheio antes do dono: só ligue o
-auto-registro com SMTP.
+auto-registro com SMTP. No componente, `registrationEnabled: true` liga o auto-registro, e ele é
+recusado sem o bloco `email`.
 
 Com SMTP, quem esqueceu a senha pede a troca em `POST /auth/password/forgot` e troca com o token
 do email em `POST /auth/password/reset`.
