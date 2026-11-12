@@ -1,0 +1,104 @@
+# Self-host do markupp com as imagens publicadas no GHCR, sem build. Copie example.env
+# para .env, preencha e rode docker compose up -d. O desenvolvimento usa compose.dev.yaml.
+x-servidor: &servidor
+  image: ghcr.io/markupp-labs/markupp:${MARKUPP_VERSION:?defina MARKUPP_VERSION no .env, veja example.env}
+  environment: &ambiente
+    MARKUPP_DATABASE_URL: postgres://markupp:${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD no .env, veja example.env}@postgres:5432/markupp?sslmode=disable
+    MARKUPP_AUTH_REGISTRATION_ENABLED: ${MARKUPP_AUTH_REGISTRATION_ENABLED:-false}
+  restart: unless-stopped
+
+services:
+  postgres:
+    image: postgres:17.9-alpine3.23
+    environment:
+      POSTGRES_USER: markupp
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: markupp
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U markupp -d markupp"]
+      interval: 2s
+      retries: 15
+    restart: unless-stopped
+
+  migrate:
+    <<: *servidor
+    command: ["migrate"]
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # Sem KEDA, o indexador e o notificador rodam em laço (ADR-0032).
+  indexer:
+    <<: *servidor
+    command: ["index-loop"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  # Sem MARKUPP_SMTP_URL o notificador fica ocioso e a instância roda sem email.
+  notifier:
+    <<: *servidor
+    environment:
+      <<: *ambiente
+      MARKUPP_SMTP_URL: ${MARKUPP_SMTP_URL:-}
+      MARKUPP_SMTP_FROM: ${MARKUPP_SMTP_FROM:-}
+      MARKUPP_PANEL_URL: ${MARKUPP_PANEL_URL:-http://localhost:${WEB_PORT:-3000}}
+    command: ["notify-loop"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  markupp:
+    <<: *servidor
+    environment:
+      <<: *ambiente
+      # O convite sai por email só quando há SMTP; sem ele, a API devolve o token.
+      MARKUPP_INVITE_BY_EMAIL: ${MARKUPP_SMTP_URL:+true}
+      MARKUPP_PUBLIC_URL: ${MARKUPP_PUBLIC_URL:-http://localhost:${MARKUPP_PORT:-8080}}
+      MARKUPP_PANEL_URL: ${MARKUPP_PANEL_URL:-http://localhost:${WEB_PORT:-3000}}
+      MARKUPP_MCP_UPSTREAM_URL: http://mcp:3000
+      MARKUPP_MCP_SECRET_PATH: /run/markupp-mcp/secret
+    volumes:
+      - mcp_secret:/run/markupp-mcp
+    ports:
+      - "${MARKUPP_PORT:-8080}:8080"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  web:
+    image: ghcr.io/markupp-labs/markupp-web:${MARKUPP_VERSION}
+    environment:
+      # O Thruster escuta na 8080: a 80 da imagem pede root, e a 3000 é a do Puma atrás dele.
+      HTTP_PORT: "8080"
+      SECRET_KEY_BASE: ${SECRET_KEY_BASE:?defina SECRET_KEY_BASE no .env, gere com openssl rand -hex 64}
+      MARKUPP_PANEL_FORCE_SSL: ${MARKUPP_PANEL_FORCE_SSL:-true}
+      MARKUPP_API_URL: http://markupp:8080
+      MARKUPP_PUBLIC_URL: ${MARKUPP_PUBLIC_URL:-http://localhost:${MARKUPP_PORT:-8080}}
+      MARKUPP_MCP_URL: ${MARKUPP_PUBLIC_URL:-http://localhost:${MARKUPP_PORT:-8080}}/mcp
+    ports:
+      - "${WEB_PORT:-3000}:8080"
+    restart: unless-stopped
+    depends_on:
+      - markupp
+
+  # Servidor MCP (ADR-0045): lê o segredo que o Go grava no volume compartilhado e
+  # recebe os agentes pelo /mcp do Go, sem porta própria no host.
+  mcp:
+    image: ghcr.io/markupp-labs/markupp-mcp:${MARKUPP_VERSION}
+    environment:
+      MARKUPP_MCP_API_URL: http://markupp:8080
+      MARKUPP_MCP_SECRET_PATH: /run/markupp-mcp/secret
+    volumes:
+      - mcp_secret:/run/markupp-mcp:ro
+    restart: unless-stopped
+    depends_on:
+      markupp:
+        condition: service_started
+
+volumes:
+  postgres_data:
+  mcp_secret:
