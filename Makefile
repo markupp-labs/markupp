@@ -1,4 +1,4 @@
-COMPOSE_FILE=docker-compose.yaml
+COMPOSE_FILE=compose.dev.yaml
 DOCKER_COMPOSE=docker compose
 META_COVERAGE=90
 PERFIL_COVERAGE=markupp/cover.out
@@ -35,7 +35,7 @@ kind-painel:
 kind-down:
 	./deploy/kind/ambiente.sh down
 
-# Valida o arquivo docker-compose e a interpolação de variáveis de ambiente
+# Valida o compose de desenvolvimento e a interpolação de variáveis de ambiente
 compose-config:
 	$(DOCKER_COMPOSE) -f $(COMPOSE_FILE) config
 

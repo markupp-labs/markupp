@@ -1,65 +1,53 @@
+# Self-host do markupp com as imagens publicadas no GHCR, sem build. Copie example.env
+# para .env, preencha e rode docker compose up -d. O desenvolvimento usa compose.dev.yaml.
 x-servidor: &servidor
-  build:
-    context: ./markupp
-    dockerfile: Dockerfile.dev
+  image: ghcr.io/markupp-labs/markupp:${MARKUPP_VERSION:?defina MARKUPP_VERSION no .env, veja example.env}
   environment: &ambiente
-    MARKUPP_DATABASE_URL: postgres://markupp:${POSTGRES_PASSWORD:-markupp}@postgres:5432/markupp?sslmode=disable
+    MARKUPP_DATABASE_URL: postgres://markupp:${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD no .env, veja example.env}@postgres:5432/markupp?sslmode=disable
     MARKUPP_AUTH_REGISTRATION_ENABLED: ${MARKUPP_AUTH_REGISTRATION_ENABLED:-false}
-  volumes:
-    - ./markupp:/src
-    - ${GO_MOD_CACHE:-go_mod_cache}:/go/pkg/mod
+  restart: unless-stopped
 
 services:
   postgres:
     image: postgres:17.9-alpine3.23
     environment:
       POSTGRES_USER: markupp
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-markupp}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: markupp
     volumes:
-      - ${POSTGRES_VOLUME:-postgres_data}:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U markupp -d markupp"]
       interval: 2s
       retries: 15
+    restart: unless-stopped
 
   migrate:
     <<: *servidor
-    command: ["go", "run", "-C", "/src", "./cmd/markupp", "migrate"]
+    command: ["migrate"]
+    restart: "no"
     depends_on:
       postgres:
         condition: service_healthy
 
-  # O self-host não tem KEDA: o mesmo indexador roda em laço (ADR-0032). Erro do banco
-  # vai para o log e o laço tenta de novo no próximo intervalo.
+  # Sem KEDA, o indexador e o notificador rodam em laço (ADR-0032).
   indexer:
     <<: *servidor
-    command: ["go", "run", "-C", "/src", "./cmd/markupp", "index-loop"]
-    restart: unless-stopped
+    command: ["index-loop"]
     depends_on:
       migrate:
         condition: service_completed_successfully
 
-  mailpit:
-    image: axllent/mailpit:v1.31.4
-    ports:
-      - "${MAILPIT_PORT:-8025}:8025"
-
-  # O self-host não tem KEDA: o notificador fica em laço, como o indexador.
+  # Sem MARKUPP_SMTP_URL o notificador fica ocioso e a instância roda sem email.
   notifier:
     <<: *servidor
     environment:
       <<: *ambiente
-      # O Mailpit recebe todo email de desenvolvimento; a caixa fica em http://localhost:8025
-      MARKUPP_SMTP_URL: smtp://mailpit:1025?tls=none
-      MARKUPP_SMTP_FROM: convites@markupp.local
-      # Os links dos emails (confirmação e convite) apontam para o painel do serviço web.
+      MARKUPP_SMTP_URL: ${MARKUPP_SMTP_URL:-}
+      MARKUPP_SMTP_FROM: ${MARKUPP_SMTP_FROM:-}
       MARKUPP_PANEL_URL: ${MARKUPP_PANEL_URL:-http://localhost:${WEB_PORT:-3000}}
-    command: ["go", "run", "-C", "/src", "./cmd/markupp", "notify-loop"]
-    restart: unless-stopped
+    command: ["notify-loop"]
     depends_on:
-      mailpit:
-        condition: service_started
       migrate:
         condition: service_completed_successfully
 
@@ -67,17 +55,13 @@ services:
     <<: *servidor
     environment:
       <<: *ambiente
-      MARKUPP_INVITE_BY_EMAIL: "true"
-      # Segredos gerados no banco na primeira subida (ADR-0041). A URL pública acompanha
-      # a porta publicada no host; o servidor MCP fica nela em /mcp, encaminhado pelo Go.
+      # O convite sai por email só quando há SMTP; sem ele, a API devolve o token.
+      MARKUPP_INVITE_BY_EMAIL: ${MARKUPP_SMTP_URL:+true}
       MARKUPP_PUBLIC_URL: ${MARKUPP_PUBLIC_URL:-http://localhost:${MARKUPP_PORT:-8080}}
-      # O login e o consentimento do OAuth acontecem no painel do serviço web.
       MARKUPP_PANEL_URL: ${MARKUPP_PANEL_URL:-http://localhost:${WEB_PORT:-3000}}
       MARKUPP_MCP_UPSTREAM_URL: http://mcp:3000
       MARKUPP_MCP_SECRET_PATH: /run/markupp-mcp/secret
     volumes:
-      - ./markupp:/src
-      - ${GO_MOD_CACHE:-go_mod_cache}:/go/pkg/mod
       - mcp_secret:/run/markupp-mcp
     ports:
       - "${MARKUPP_PORT:-8080}:8080"
@@ -86,41 +70,35 @@ services:
         condition: service_completed_successfully
 
   web:
-    build:
-      context: ./web
-      dockerfile: Dockerfile.dev
-    ports:
-      - "${WEB_PORT:-3000}:3000"
+    image: ghcr.io/markupp-labs/markupp-web:${MARKUPP_VERSION}
     environment:
-      BINDING: 0.0.0.0
+      # O Thruster escuta na 8080: a 80 da imagem pede root, e a 3000 é a do Puma atrás dele.
+      HTTP_PORT: "8080"
+      SECRET_KEY_BASE: ${SECRET_KEY_BASE:?defina SECRET_KEY_BASE no .env, gere com openssl rand -hex 64}
+      MARKUPP_PANEL_FORCE_SSL: ${MARKUPP_PANEL_FORCE_SSL:-false}
       MARKUPP_API_URL: http://markupp:8080
-      # A página Agents mostra aos clientes MCP a URL do MCP, o /mcp da URL pública do
-      # servidor, que o encaminha ao serviço mcp. Sem MARKUPP_MCP_URL a página só avisa
-      # que o MCP está desligado.
       MARKUPP_PUBLIC_URL: ${MARKUPP_PUBLIC_URL:-http://localhost:${MARKUPP_PORT:-8080}}
       MARKUPP_MCP_URL: ${MARKUPP_PUBLIC_URL:-http://localhost:${MARKUPP_PORT:-8080}}/mcp
-    volumes:
-      - ./web:/rails
-      - ${BUNDLE_CACHE:-bundle_cache}:/usr/local/bundle
+    ports:
+      - "${WEB_PORT:-3000}:8080"
+    restart: unless-stopped
     depends_on:
       - markupp
 
-  # Servidor MCP (ADR-0045): descobre o issuer pelo Go e lê o segredo que o Go escreve no
-  # volume compartilhado. Os agentes chegam a ele pelo /mcp do Go.
+  # Servidor MCP (ADR-0045): lê o segredo que o Go grava no volume compartilhado e
+  # recebe os agentes pelo /mcp do Go, sem porta própria no host.
   mcp:
-    build:
-      context: ./mcp
+    image: ghcr.io/markupp-labs/markupp-mcp:${MARKUPP_VERSION}
     environment:
       MARKUPP_MCP_API_URL: http://markupp:8080
       MARKUPP_MCP_SECRET_PATH: /run/markupp-mcp/secret
     volumes:
       - mcp_secret:/run/markupp-mcp:ro
+    restart: unless-stopped
     depends_on:
       markupp:
         condition: service_started
 
 volumes:
   postgres_data:
-  go_mod_cache:
-  bundle_cache:
   mcp_secret:

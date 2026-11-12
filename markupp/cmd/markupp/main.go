@@ -146,10 +146,13 @@ func reindexVaults(ctx context.Context, logger *slog.Logger, args []string) erro
 }
 
 // deliverNotifications entrega a fila de email em laço: é o Deployment que o KEDA
-// escala entre zero e uma réplica, e o serviço do compose.
+// escala entre zero e uma réplica, e o serviço do compose. Sem SMTP a instalação roda
+// sem email: o notificador fica ocioso até ser encerrado, sem reiniciar em laço.
 func deliverNotifications(ctx context.Context, logger *slog.Logger, cfg config.Config) error {
 	if cfg.SMTPURL == "" {
-		return fmt.Errorf("MARKUPP_SMTP_URL is empty, expected smtp://user:password@host:port to deliver the email queue")
+		logger.Warn("notificador ocioso", "motivo", "MARKUPP_SMTP_URL vazia, email desligado")
+		<-ctx.Done()
+		return nil
 	}
 	mailer, err := notify.NewSMTPMailer(cfg.SMTPURL)
 	if err != nil {
