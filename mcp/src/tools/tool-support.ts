@@ -136,6 +136,11 @@ const nextStepByCode = {
     "Find the current publication id with list_publications.",
   no_vault:
     "The tenant has no vault for you: create one with create_vault, or pass vault_id from list_vaults.",
+  same_note: "A refusal takes two different notes.",
+  note_outside_vault:
+    "Both notes must belong to the vault: find their ids with list_notes and that vault_id.",
+  link_refusal_not_found:
+    "Find the current refusal id with list_link_refusals.",
 } as const satisfies Record<string, string>;
 
 // apiFor devolve o cliente da API da sessão que chamou a ferramenta ou leu o resource.
