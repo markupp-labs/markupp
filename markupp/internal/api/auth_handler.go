@@ -216,6 +216,10 @@ func writeCredentialInputError(w http.ResponseWriter, err error) bool {
 	switch {
 	case errors.Is(err, auth.ErrEmptyEmail), errors.Is(err, auth.ErrEmptyPassword), errors.Is(err, auth.ErrPasswordTooLong):
 		writeError(w, "invalid_request", err.Error(), http.StatusBadRequest)
+	case errors.Is(err, auth.ErrPasswordTooShort):
+		writeError(w, "password_too_short", err.Error(), http.StatusBadRequest)
+	case errors.Is(err, auth.ErrCommonPassword):
+		writeError(w, "common_password", err.Error(), http.StatusBadRequest)
 	case errors.Is(err, auth.ErrLocalAuthDisabled):
 		writeError(w, "local_auth_disabled", "email and password login is disabled", http.StatusForbidden)
 	default:

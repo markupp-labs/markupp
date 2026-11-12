@@ -53,6 +53,8 @@ services:
       # O Mailpit recebe todo email de desenvolvimento; a caixa fica em http://localhost:8025
       MARKUPP_SMTP_URL: smtp://mailpit:1025?tls=none
       MARKUPP_SMTP_FROM: convites@markupp.local
+      # Os links dos emails (confirmação e convite) apontam para o painel do serviço web.
+      MARKUPP_PANEL_URL: ${MARKUPP_PANEL_URL:-http://localhost:${WEB_PORT:-3000}}
     command: ["go", "run", "-C", "/src", "./cmd/markupp", "notify-loop"]
     restart: unless-stopped
     depends_on:

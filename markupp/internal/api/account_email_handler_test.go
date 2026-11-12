@@ -92,11 +92,11 @@ func TestAccountEmailRoutes_ErrosDeDominio(t *testing.T) {
 		{auth.ErrInvalidToken, "/auth/email/verify", `{"token":"x"}`, http.StatusBadRequest, "invalid_token"},
 		{auth.ErrEmailUnavailable, "/auth/password/forgot", `{"email":"a@markupp.dev"}`, http.StatusServiceUnavailable, "email_unavailable"},
 		{auth.ErrEmptyEmail, "/auth/password/forgot", `{"email":""}`, http.StatusBadRequest, "invalid_request"},
-		{auth.ErrInvalidToken, "/auth/password/reset", `{"token":"x","password":"senhaNova123"}`, http.StatusBadRequest, "invalid_token"},
+		{auth.ErrInvalidToken, "/auth/password/reset", `{"token":"x","password":"senhaNova123-de-teste"}`, http.StatusBadRequest, "invalid_token"},
 		{auth.ErrEmptyPassword, "/auth/password/reset", `{"token":"x","password":""}`, http.StatusBadRequest, "invalid_request"},
 		{auth.ErrUserNotFound, "/auth/email/verification", "", http.StatusUnauthorized, "unauthorized"},
 		{auth.ErrLocalAuthDisabled, "/auth/password/forgot", `{"email":"a@markupp.dev"}`, http.StatusForbidden, "local_auth_disabled"},
-		{auth.ErrLocalAuthDisabled, "/auth/password/reset", `{"token":"x","password":"senhaNova123"}`, http.StatusForbidden, "local_auth_disabled"},
+		{auth.ErrLocalAuthDisabled, "/auth/password/reset", `{"token":"x","password":"senhaNova123-de-teste"}`, http.StatusForbidden, "local_auth_disabled"},
 	}
 	for _, c := range casos {
 		rec := accountEmailRequest(&fakeAccountEmailService{err: c.err}, http.MethodPost, c.path, c.body, true)
@@ -130,11 +130,11 @@ func TestAccountEmailRoutes_PedirTroca_SempreAceitaSemDizerSeAContaExiste(t *tes
 func TestAccountEmailRoutes_TrocarSenha_SemLogin(t *testing.T) {
 	svc := &fakeAccountEmailService{}
 
-	rec := accountEmailRequest(svc, http.MethodPost, "/auth/password/reset", `{"token":"tok-r","password":"senhaNova123"}`, false)
+	rec := accountEmailRequest(svc, http.MethodPost, "/auth/password/reset", `{"token":"tok-r","password":"senhaNova123-de-teste"}`, false)
 
 	assert.Equal(t, http.StatusNoContent, rec.Code)
 	assert.Equal(t, "tok-r", svc.resetToken)
-	assert.Equal(t, "senhaNova123", svc.resetPassword)
+	assert.Equal(t, "senhaNova123-de-teste", svc.resetPassword)
 }
 
 func TestAccountEmailRoutes_CorpoInvalido_Recusa400(t *testing.T) {

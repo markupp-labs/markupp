@@ -88,7 +88,7 @@ func oauthServiceDeIntegracao(pool *pgxpool.Pool, codec *auth.TokenCodec, opcoes
 
 func loginDeIntegracao(t *testing.T, server *httptest.Server) string {
 	t.Helper()
-	resp := postJSON(t, server.URL+"/v1/accounts", `{"email":"admin@markupp.dev","password":"senhaForte123"}`)
+	resp := postJSON(t, server.URL+"/v1/accounts", `{"email":"admin@markupp.dev","password":"senhaForte123-de-teste"}`)
 	defer func() { _ = resp.Body.Close() }()
 	require.Equal(t, http.StatusCreated, resp.StatusCode)
 	token, _ := decodeJSON(t, resp.Body)["access_token"].(string)

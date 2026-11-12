@@ -10,7 +10,7 @@ class InviteAcceptancesController < ApplicationController
   end
 
   def create
-    @form = TokenForm.new(params.expect(invite_acceptance: [ :token, :password ]))
+    @form = TokenForm.new(params.expect(invite_acceptance: [ :token, :password, :password_confirmation ]))
     pair = @form.submit(credential.public_api, "/auth/invites/accept")
     return render(:new, status: :unprocessable_content) unless pair
 

@@ -2,7 +2,7 @@
 // autorização que o authorize abriu.
 
 // Com o banco vazio, o cadastro cria a conta como owner do tenant inicial.
-const ACCOUNT = { email: "e2e@markupp.local", password: "senha-do-e2e" };
+const ACCOUNT = { email: "e2e@markupp.local", password: "senha-longa-do-e2e" };
 
 async function expectStatus(
   response: Response,

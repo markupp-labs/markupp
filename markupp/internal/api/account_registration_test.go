@@ -30,7 +30,7 @@ func postAccount(router http.Handler, body string) *httptest.ResponseRecorder {
 func TestAccounts_Create_Sucesso_Devolve201ComSessao(t *testing.T) {
 	svc := &fakeAuthService{registerPair: auth.TokenPair{AccessToken: "jwt-novo", RefreshToken: "r-novo", ExpiresIn: 900}}
 
-	rec := postAccount(setupAuthRouter(svc, nil), `{"email":"nova@markupp.dev","password":"senhaNova123"}`)
+	rec := postAccount(setupAuthRouter(svc, nil), `{"email":"nova@markupp.dev","password":"senhaNova123-de-teste"}`)
 
 	assert.Equal(t, http.StatusCreated, rec.Code)
 	assert.Equal(t, "nova@markupp.dev", svc.registerEmail)
@@ -50,6 +50,8 @@ func TestAccounts_Create_ErrosDeDominio_CodigoEStatus(t *testing.T) {
 		{auth.ErrRegistrationDisabled, http.StatusForbidden, "registration_disabled"},
 		{auth.ErrUserAlreadyExists, http.StatusConflict, "already_exists"},
 		{auth.ErrEmptyPassword, http.StatusBadRequest, "invalid_request"},
+		{auth.ErrPasswordTooShort, http.StatusBadRequest, "password_too_short"},
+		{auth.ErrCommonPassword, http.StatusBadRequest, "common_password"},
 		{auth.ErrLocalAuthDisabled, http.StatusForbidden, "local_auth_disabled"},
 	}
 	for _, c := range casos {

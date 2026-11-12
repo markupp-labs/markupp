@@ -16,6 +16,8 @@ var (
 	ErrRegistrationDisabled = errors.New("self-registration is disabled")
 	ErrLocalAuthDisabled    = errors.New("local authentication is disabled")
 	ErrPasswordTooLong      = errors.New("password exceeds the maximum length of 72 bytes")
+	ErrPasswordTooShort     = errors.New("password is shorter than the minimum of 15 characters")
+	ErrCommonPassword       = errors.New("password is in the list of common passwords")
 	ErrRefreshTokenRevoked  = errors.New("refresh token revoked")
 	ErrRefreshTokenExpired  = errors.New("refresh token expired")
 	ErrRefreshTokenInvalid  = errors.New("invalid refresh token")

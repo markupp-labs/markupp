@@ -85,7 +85,8 @@ class SettingsTest < ApplicationSystemTestCase
     assert_text "Password reset email sent to #{FakeMarkuppAccounts::DEFAULT_EMAIL}."
     within("main") { click_on "I have a reset token" }
     fill_in "Token", with: @api.sent_tokens.last.fetch(:token)
-    fill_in "New password", with: "senha-nova"
+    fill_in "New password", with: "senha-nova-de-teste"
+    fill_in "Confirm password", with: "senha-nova-de-teste"
     click_on "Reset password"
 
     assert_text "Password changed. Log in again."
