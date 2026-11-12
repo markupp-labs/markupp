@@ -85,7 +85,7 @@ class InviteAcceptancesControllerTest < ActionDispatch::IntegrationTest
     accept_invite("tok-1", " ")
 
     assert_response :unprocessable_content
-    assert_select "input[name=?][aria-invalid=true][aria-describedby=invite_acceptance_password_error]", "invite_acceptance[password]"
+    assert_select "input[name=?][aria-invalid=true][aria-describedby=?]", "invite_acceptance[password]", "invite_acceptance_password_hint invite_acceptance_password_error"
     assert_select "#invite_acceptance_password_error", "Enter a password up to 72 bytes long."
   end
 
@@ -114,7 +114,7 @@ class InviteAcceptancesControllerTest < ActionDispatch::IntegrationTest
     accept_invite("tok-1", "senha-nova-de-teste")
     delete session_path
 
-    accept_invite("tok-1", "outra-senha")
+    accept_invite("tok-1", "outra-senha-de-teste")
 
     assert_response :unprocessable_content
     assert_select "#invite_acceptance_token_error", "This token is invalid, expired or already used."

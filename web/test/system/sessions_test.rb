@@ -23,7 +23,7 @@ class SessionsTest < ApplicationSystemTestCase
 
     click_on "Show password"
     assert_field "Password", type: "text", with: "senha-de-teste-longa"
-    assert_selector "button[aria-pressed=true]", accessible_name: "Show password"
+    assert_selector "button[aria-pressed=true][aria-label='Show password']"
 
     click_on "Show password"
     assert_field "Password", type: "password"

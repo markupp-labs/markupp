@@ -45,6 +45,9 @@ class MarkuppApi
   class VaultUnavailable < Forbidden; end
   # Nome de cofre vazio, com espaço nas pontas ou longo demais.
   class InvalidName < InvalidRequest; end
+  # Senha nova abaixo do mínimo de caracteres, ou da lista de senhas comuns.
+  class PasswordTooShort < InvalidRequest; end
+  class CommonPassword < InvalidRequest; end
   # A conta escolhida para o cofre não é do tenant.
   class NotTenantMember < Error; end
   class AlreadyVaultMember < Error; end
@@ -80,7 +83,8 @@ class MarkuppApi
     "vault_forbidden" => VaultUnavailable, "request_not_found" => OAuthRequestNotFound,
     "invalid_name" => InvalidName, "not_tenant_member" => NotTenantMember, "already_vault_member" => AlreadyVaultMember,
     "vault_member_not_found" => VaultMemberNotFound, "no_vault" => NoVault, "registration_disabled" => RegistrationDisabled,
-    "email_not_verified" => EmailNotVerified, "invite_limit_reached" => InviteLimitReached
+    "email_not_verified" => EmailNotVerified, "invite_limit_reached" => InviteLimitReached,
+    "password_too_short" => PasswordTooShort, "common_password" => CommonPassword
   }.freeze
   # Para o status cujo corpo não traz código conhecido.
   ERRORS_BY_STATUS = { "401" => Unauthorized, "403" => Forbidden, "404" => NotFound }.freeze

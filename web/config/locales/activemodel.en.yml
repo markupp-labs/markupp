@@ -12,9 +12,11 @@ en:
       account_registration:
         email: "Email"
         password: "Password"
+        password_confirmation: "Confirm password"
       token_form:
         token: "Token"
         password: "Password"
+        password_confirmation: "Confirm password"
     errors:
       models:
         note:
@@ -31,6 +33,10 @@ en:
           attributes:
             password:
               invalid: "Enter a password up to 72 bytes long."
+              too_short: "Use at least 15 characters."
+              common: "This password is too common. Choose another one."
+            password_confirmation:
+              confirmation: "The passwords don't match."
             base:
               account_exists: "This email already has an account."
               registration_disabled: "This server only creates accounts by invite. Ask an admin for one."
@@ -42,6 +48,10 @@ en:
               invalid_token: "This token is invalid, expired or already used."
             password:
               invalid: "Enter a password up to 72 bytes long."
+              too_short: "Use at least 15 characters."
+              common: "This password is too common. Choose another one."
+            password_confirmation:
+              confirmation: "The passwords don't match."
             base:
               account_exists: "This email already has an account. Log in and accept the invite from your tenant list."
               local_auth_disabled: "Password login is disabled on this server."

@@ -14,6 +14,10 @@ en:
       tenant_unavailable: "You no longer have access to that tenant."
       vault_unavailable: "You no longer have access to that vault."
       no_vault: "Create a vault first, then add notes to it."
+  passwords:
+    field:
+      show: "Show password"
+      rule: "Use at least 15 characters. Well-known passwords are refused."
   registrations:
     new:
       title: "Create an account"

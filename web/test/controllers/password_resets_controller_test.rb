@@ -77,7 +77,7 @@ class PasswordResetsControllerTest < ActionDispatch::IntegrationTest
     token = emailed_token(use_fake_api)
     reset_password(token, "senha-nova-de-teste")
 
-    reset_password(token, "outra-senha")
+    reset_password(token, "outra-senha-de-teste")
 
     assert_response :unprocessable_content
     assert_select "#password_reset_token_error", "This token is invalid, expired or already used."

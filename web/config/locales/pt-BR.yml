@@ -14,6 +14,10 @@ pt-BR:
       tenant_unavailable: "Você não tem mais acesso a esse tenant."
       vault_unavailable: "Você não tem mais acesso a esse cofre."
       no_vault: "Crie um cofre antes, depois adicione notas a ele."
+  passwords:
+    field:
+      show: "Mostrar senha"
+      rule: "Use pelo menos 15 caracteres. Senhas muito conhecidas são recusadas."
   registrations:
     new:
       title: "Criar uma conta"

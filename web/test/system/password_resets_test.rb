@@ -14,6 +14,7 @@ class PasswordResetsTest < ApplicationSystemTestCase
     click_on "I have a token"
     fill_in "Token", with: api.sent_tokens.last.fetch(:token)
     fill_in "New password", with: "senha-nova-de-teste"
+    fill_in "Confirm password", with: "senha-nova-de-teste"
     click_on "Reset password"
 
     assert_text "Password changed. Log in with the new one."
