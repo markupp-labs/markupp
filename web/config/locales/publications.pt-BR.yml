@@ -12,6 +12,8 @@ pt-BR:
     form:
       publish: "Publicar"
       public: "Pública"
+      move: "Mover"
+      move_warning: "%{title} é pública pela pasta publicada %{folder}. Tirá-la de %{folder} deixa 1 nota privada, e o link público dela para de funcionar."
       public_hint: "Qualquer pessoa com o link lê esta nota. Abre a página pública dela."
     sidebar:
       public: "pública"

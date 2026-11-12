@@ -8,6 +8,10 @@
 <%# viewer só lê: caminho e texto readonly, sem salvar nem apagar; o editor lê o readonly do textarea. %>
 <% writer = current_tenant.writer? %>
 <% mode = current_note_mode(@note) %>
+<%# Nota que só uma pasta publicada faz pública: o note-form avisa antes de salvar o caminho que sai dela. %>
+<% published_folders = @published_folders.to_a %>
+<% move_warning = { note_form_published_folders_value: published_folders, note_form_move_button_value: t(".move"),
+                    note_form_move_warning_value: t(".move_warning", title: @note.title, folder: published_folders.join(", ")) } if published_folders.any? %>
 
 <%# data-mode escolhe os painéis visíveis (CSS .note-form); Ctrl+E e Ctrl+\ trocam o modo (note_mode_controller.js). %>
 <%= form_with model: @note, class: "note-form flex min-h-0 flex-1 flex-col gap-3",
@@ -15,7 +19,7 @@
                       note_form_blank_title_value: ActiveModel::Error.new(@note, :title, :blank).full_message,
                       note_mode_wikilinks_value: wikilink_targets(@tree), note_mode_folder_value: @note.folder,
                       note_mode_missing_note_value: t(".missing_note"), note_mode_copied_value: t(".copied"),
-                      note_mode_copy_failed_value: t(".copy_failed"), note_form_root_url_value: root_path, note_form_notes_url_value: notes_path,
+                      note_mode_copy_failed_value: t(".copy_failed"), note_form_root_url_value: root_path, note_form_notes_url_value: notes_path, **move_warning.to_h,
                       action: "keydown.ctrl+s@window->note-form#save:prevent keydown.meta+s@window->note-form#save:prevent " \
                               "keydown@window->note-mode#shortcut input->note-mode#render highlight:grammar-loaded@document->note-mode#render turbo:load@document->note-mode#scrollToHash click->note-mode#followAnchor scroll->note-mode#followScroll:capture " \
                               "input->note-form#track submit->note-form#submit turbo:submit-start@document->note-form#allowLeavingOnDelete " \

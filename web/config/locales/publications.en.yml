@@ -12,6 +12,8 @@ en:
     form:
       publish: "Publish"
       public: "Public"
+      move: "Move"
+      move_warning: "%{title} is public through the published folder %{folder}. Moving it out of %{folder} makes 1 note private, and its public link stops working."
       public_hint: "Anyone with the link reads this note. Opens its public page."
     sidebar:
       public: "public"
