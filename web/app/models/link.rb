@@ -1,5 +1,6 @@
 # Ligação, como a API lista: source liga a target; a não resolvida tem target nil e, se o indexador
-# adivinhou a nota, inferred_target; type é explicit, embed, typed (com predicate) ou inferred.
+# adivinhou a nota, inferred_target; type é explicit, embed, typed (com predicate), inferred ou, na ligação automática
+# que o servidor cria, mentioned (cited_title é o título citado).
 Link = Data.define(:source, :target, :cited_title, :type, :predicate, :inferred_target) do
   extend V1Listing
 
@@ -18,4 +19,10 @@ Link = Data.define(:source, :target, :cited_title, :type, :predicate, :inferred_
   private_class_method :note_or_nil
 
   def unresolved? = target.nil?
+
+  # Criada pelo servidor, nunca escrita na nota: é a que a recusa de ligação tira.
+  def automatic? = Link::AUTOMATIC_TYPES.include?(type)
 end
+
+# Os tipos da ligação automática (ADR-0053); por enquanto só a por menção.
+Link::AUTOMATIC_TYPES = %w[mentioned].freeze

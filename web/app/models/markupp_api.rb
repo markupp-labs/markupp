@@ -81,6 +81,12 @@ class MarkuppApi
   class PublicationNotFound < NotFound; end
   # Pedidos demais do mesmo IP na janela do limite da leitura pública.
   class RateLimited < Error; end
+  # Recusa de ligação com a mesma nota nas duas pontas.
+  class SameNote < InvalidRequest; end
+  # Recusa de ligação com uma nota de fora do cofre: apagada ou movida no meio.
+  class NoteOutsideVault < Error; end
+  # Recusa de ligação já desfeita, ou de outro cofre.
+  class LinkRefusalNotFound < NotFound; end
 
   # Corpo e ETag de uma leitura que pode voltar 304.
   Revision = Data.define(:body, :etag)
@@ -109,7 +115,8 @@ class MarkuppApi
     "unknown_login_provider" => NotFound, "identity_already_linked" => IdentityAlreadyLinked,
     "provider_email_missing" => ProviderEmailMissing, "last_identity" => LastIdentity,
     "confirmation_mismatch" => ConfirmationMismatch, "publish_forbidden" => PublishForbidden, "already_published" => AlreadyPublished,
-    "publication_not_found" => PublicationNotFound, "rate_limited" => RateLimited
+    "publication_not_found" => PublicationNotFound, "rate_limited" => RateLimited,
+    "same_note" => SameNote, "note_outside_vault" => NoteOutsideVault, "link_refusal_not_found" => LinkRefusalNotFound
   }.freeze
   # Para o status cujo corpo não traz código conhecido.
   ERRORS_BY_STATUS = { "401" => Unauthorized, "403" => Forbidden, "404" => NotFound, "429" => RateLimited }.freeze

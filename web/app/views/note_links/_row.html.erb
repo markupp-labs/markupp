@@ -1,17 +1,24 @@
 <%# Linha que abre a nota: título, pasta apagada e, à direita, o tipo da ligação (kind). Com wikilink (sugestão), o y na
-    linha e o botão ao lado copiam o [[título]] (note_links_controller.js). %>
+    linha e o botão ao lado copiam o [[título]] (note_links_controller.js). Com a ligação automática (link), o motivo vai
+    no title e no texto do leitor de tela, e quem escreve tem o recusar ligação ao lado, também pelo r na linha. %>
 <% kind = local_assigns[:kind] %>
 <% wikilink = local_assigns[:wikilink] %>
+<% link = local_assigns[:link] %>
+<% reason = link_reason(link) if link %>
 <li class="links-item">
-  <%= link_to note_path(note), title: note.path, class: "tree-row links-row",
+  <%= link_to note_path(note), title: [ note.path, reason ].compact.join(", "), class: "tree-row links-row",
               aria: { keyshortcuts: ("Y" if wikilink) }, data: { links_item: "", wikilink: } do %>
     <span class="links-row-title truncate"><%= note.title %></span>
     <span class="links-row-folder truncate"><%= note.folder %></span>
     <% if kind %><span class="links-row-kind"><%= kind %></span><% end %>
+    <% if reason %><span class="sr-only"> (<%= reason %>)</span><% end %>
   <% end %>
   <% if wikilink %>
     <button type="button" class="links-copy" aria-label="<%= t("note_links.copy", wikilink:) %>"
             title="<%= t("note_links.copy_title", keys: shortcut_key(:links_copy_wikilink)) %>"
             data-wikilink="<%= wikilink %>" data-action="note-links#copy"><%= icon("copy") %></button>
+  <% end %>
+  <% if link&.automatic? && current_tenant.writer? %>
+    <%= render "note_links/refuse", link:, note: %>
   <% end %>
 </li>

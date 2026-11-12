@@ -142,7 +142,10 @@ module ShortcutsHelper
     links: [
       Shortcut.of(:links_move, "j", "k", "↓", "↑"),
       Shortcut.of(:links_open, "Enter"),
-      Shortcut.of(:links_copy_wikilink, "y")
+      Shortcut.of(:links_copy_wikilink, "y"),
+      # Na linha da ligação automática com o foco, para quem escreve: pede confirmação. A paleta aperta o botão da linha
+      # que tinha o foco antes de ela abrir.
+      Shortcut.of(:links_refuse, "r", run: { click: ".links-item:focus-within [data-links-refuse]", when: "[data-links-refuse]" })
     ],
     # Canvas do grafo, na visão Graph e na tela cheia (graph_view_controller.js), com o foco nele.
     graph: [

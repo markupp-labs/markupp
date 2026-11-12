@@ -9,6 +9,8 @@ Rails.application.routes.draw do
     resource :graph, only: :show, controller: "note_graphs"
   end
   resource :graph, only: :show
+  # Recusar ligação pela visão Links e pelo grafo; a lista e o desfazer ficam nas configurações do cofre.
+  resources :link_refusals, only: :create
   resource :search, only: :show
   resource :explorer, only: :show
 

@@ -1,0 +1,23 @@
+pt-BR:
+  note_links:
+    kinds:
+      mentioned: "menção"
+    reasons:
+      mentioned: "ligada porque o texto cita %{title}"
+    refuse:
+      label: "Recusar ligação"
+      label_for: "Recusar ligação com %{title}"
+      title: "Recusar ligação (%{keys})"
+      confirm: "Recusar a ligação automática entre %{source} e %{target}? Ela fica de fora até você desfazer nas configurações do cofre."
+  link_refusals:
+    create:
+      refused: "Ligação recusada. Ela fica de fora até você desfazer nas configurações do cofre."
+    errors:
+      invalid_request: "Escolha duas notas para recusar a ligação entre elas."
+      same_note: "Uma nota não recusa ligação com ela mesma."
+      note_outside_vault: "Uma dessas notas não está mais neste cofre."
+      read_only: "Seu papel neste tenant é viewer, que só lê."
+      vault_unavailable: "Você não tem mais acesso a esse cofre."
+  shortcuts:
+    names:
+      links_refuse: "Recusar a ligação automática com o foco"

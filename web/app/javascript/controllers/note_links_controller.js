@@ -5,7 +5,9 @@ import { Controller } from "@hotwired/stimulus"
 // numa sugestão copia o wikilink dela, como o yank do Vim. Teclas pelo code. Quem apertou Ctrl+Shift+L antes de o frame
 // chegar ficou com o foco na visão; quando ele chega, o foco desce para a primeira seção. O Show more no fim de uma seção
 // cheia carrega a página seguinte no frame dele; o link sai, a contagem da seção passa à que a página trouxe (100+ na
-// cheia, o número real na última) e o foco desce para a primeira linha nova.
+// cheia, o número real na última) e o foco desce para a primeira linha nova. r na linha da ligação automática aperta o
+// recusar ligação dela, que pede a confirmação do painel; o frame volta sem a linha, o status lê o aviso que veio nele
+// (data-message) e o foco fica na linha que tomou o lugar da recusada.
 const STEPS = { ArrowDown: 1, KeyJ: 1, ArrowUp: -1, KeyK: -1 }
 const ITEMS = "summary, [data-links-item]"
 const STATUS_TIMEOUT = 2000
@@ -17,6 +19,7 @@ export default class extends Controller {
   navigate(event) {
     if (event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) return
     if (event.code == "KeyY") return this.yank(event)
+    if (event.code == "KeyR") return this.refuse(event)
 
     const step = STEPS[event.code]
     if (!step) return
@@ -28,7 +31,7 @@ export default class extends Controller {
   }
 
   frameLoaded({ target }) {
-    if (target == this.element) return this.focusWhenWaiting()
+    if (target == this.element) return this.reloaded()
     this.updateCount(target)
     if (document.activeElement != document.body) return
 
@@ -40,6 +43,30 @@ export default class extends Controller {
     const count = frame.querySelector("[data-links-count]")?.dataset.linksCount
     const summary = frame.closest("details")?.querySelector(".links-section-count")
     if (count && summary) summary.textContent = count
+  }
+
+  reloaded() {
+    const message = this.statusTarget.dataset.message
+    if (message) this.announce(message)
+    if (this.refusedIndex == null || document.activeElement != document.body) return this.focusWhenWaiting()
+
+    const items = this.items
+    items[Math.min(this.refusedIndex, items.length - 1)]?.focus()
+    this.refusedIndex = null
+  }
+
+  // A recusa enviada guarda o lugar da linha, para o foco voltar ali quando o frame recarregar.
+  remember({ target }) {
+    const row = target.closest("li")?.querySelector(ITEMS)
+    if (row && target.querySelector("[data-links-refuse]")) this.refusedIndex = this.items.indexOf(row)
+  }
+
+  refuse(event) {
+    const button = event.target.closest("li")?.querySelector("[data-links-refuse]")
+    if (!button) return
+
+    event.preventDefault()
+    button.click()
   }
 
   focusWhenWaiting() {
@@ -62,10 +89,14 @@ export default class extends Controller {
     try {
       await navigator.clipboard.writeText(text)
       // Função no replace: o wikilink entra como texto, sem $& ou $$ virarem padrão de substituição.
-      this.statusTarget.textContent = this.copiedValue.replace("%{text}", () => text)
+      this.announce(this.copiedValue.replace("%{text}", () => text))
     } catch {
-      this.statusTarget.textContent = this.copyFailedValue
+      this.announce(this.copyFailedValue)
     }
+  }
+
+  announce(text) {
+    this.statusTarget.textContent = text
     clearTimeout(this.statusTimer)
     this.statusTimer = setTimeout(() => (this.statusTarget.textContent = ""), STATUS_TIMEOUT)
   }

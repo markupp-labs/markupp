@@ -1,0 +1,23 @@
+en:
+  note_links:
+    kinds:
+      mentioned: "mention"
+    reasons:
+      mentioned: "linked because the text cites %{title}"
+    refuse:
+      label: "Refuse link"
+      label_for: "Refuse link with %{title}"
+      title: "Refuse link (%{keys})"
+      confirm: "Refuse the automatic link between %{source} and %{target}? It stays out until you undo it in the vault settings."
+  link_refusals:
+    create:
+      refused: "Link refused. It stays out until you undo it in the vault settings."
+    errors:
+      invalid_request: "Pick two notes to refuse the link between them."
+      same_note: "A note can't refuse a link with itself."
+      note_outside_vault: "One of these notes is no longer in this vault."
+      read_only: "Your role in this tenant is viewer, it can only read."
+      vault_unavailable: "You no longer have access to that vault."
+  shortcuts:
+    names:
+      links_refuse: "Refuse the automatic link in focus"
