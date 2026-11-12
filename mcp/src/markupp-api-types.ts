@@ -72,3 +72,36 @@ export type PendingInvite = {
   role: string;
   expires_at: string;
 };
+
+// LinkedNote é a nota numa ligação ou numa recusa de ligação, como a API a resume.
+export type LinkedNote = { id: string; title: string; path: string };
+
+// LinkType é o tipo da ligação; mentioned é a ligação por menção, automática, que o
+// servidor cria quando a nota cita o título de outra no texto (ADR-0053).
+export type LinkType =
+  "explicit" | "embed" | "typed" | "inferred" | "mentioned";
+
+// Link é uma ligação como GET /v1/notes/{id}/links e /backlinks devolvem; target vem
+// null na ligação não resolvida, e predicate só vem na ligação tipada.
+export type Link = {
+  source: LinkedNote;
+  target: LinkedNote | null;
+  cited_title: string;
+  type: LinkType;
+  predicate: string | null;
+  inferred_target: LinkedNote | null;
+};
+
+// LinkQuery escolhe o sentido das ligações, outgoing as que a nota faz e incoming as
+// que chegam nela, o tipo e a página.
+export type LinkQuery = SearchPage & {
+  direction: "outgoing" | "incoming";
+  type?: LinkType;
+};
+
+// LinkRefusal é o par de notas do cofre em que o servidor não cria ligação automática.
+export type LinkRefusal = {
+  id: string;
+  notes: LinkedNote[];
+  created_at: string;
+};

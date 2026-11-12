@@ -9,6 +9,9 @@ import type {
   Account,
   FoundNote,
   IssuedInvite,
+  Link,
+  LinkQuery,
+  LinkRefusal,
   Member,
   Note,
   NoteRevision,
@@ -77,6 +80,22 @@ export interface MarkuppApi {
   ): Promise<Publication>;
   unpublish(tenant: string, publication: string): Promise<void>;
   listPublications(tenant: string, vault?: string): Promise<PublicationList>;
+  listLinks(tenant: string, note: string, query: LinkQuery): Promise<Link[]>;
+  listLinkRefusals(
+    tenant: string,
+    vault: string,
+    page?: SearchPage,
+  ): Promise<LinkRefusal[]>;
+  refuseLink(
+    tenant: string,
+    vault: string,
+    noteIds: string[],
+  ): Promise<LinkRefusal>;
+  undoLinkRefusal(
+    tenant: string,
+    vault: string,
+    refusalId: string,
+  ): Promise<void>;
 }
 
 export type FetchFunction = (
@@ -361,6 +380,46 @@ export class HttpMarkuppApi implements MarkuppApi {
     });
   }
 
+  // listLinks lê as ligações que a nota faz, em /links, ou as que chegam nela, em
+  // /backlinks.
+  listLinks(tenant: string, note: string, query: LinkQuery): Promise<Link[]> {
+    const { direction, type, ...page } = query;
+    const params = withPage(new URLSearchParams(type ? { type } : {}), page);
+    const route = direction === "incoming" ? "backlinks" : "links";
+    const path = withQuery(`${notePath(note)}/${route}`, params);
+    return this.json({ method: "GET", path, tenant });
+  }
+
+  listLinkRefusals(
+    tenant: string,
+    vault: string,
+    page: SearchPage = {},
+  ): Promise<LinkRefusal[]> {
+    const params = withPage(new URLSearchParams(), page);
+    const path = withQuery(linkRefusalsPath(vault), params);
+    return this.json({ method: "GET", path, tenant });
+  }
+
+  // refuseLink manda as duas notas do par; recusar de novo devolve a recusa que existe.
+  refuseLink(
+    tenant: string,
+    vault: string,
+    noteIds: string[],
+  ): Promise<LinkRefusal> {
+    const path = linkRefusalsPath(vault);
+    const body = { note_ids: noteIds };
+    return this.json({ method: "POST", path, tenant, body });
+  }
+
+  async undoLinkRefusal(
+    tenant: string,
+    vault: string,
+    refusalId: string,
+  ): Promise<void> {
+    const path = `${linkRefusalsPath(vault)}/${encodeURIComponent(refusalId)}`;
+    await this.send({ method: "DELETE", path, tenant });
+  }
+
   private async json<T>(call: ApiCall): Promise<T> {
     const response = await this.send(call);
     return (await response.json()) as T;
@@ -396,6 +455,16 @@ function memberPath(userId: string): string {
 
 function vaultPath(vault: string): string {
   return `/v1/vaults/${encodeURIComponent(vault)}`;
+}
+
+function linkRefusalsPath(vault: string): string {
+  return `${vaultPath(vault)}/link-refusals`;
+}
+
+// withQuery só põe o ? quando há parâmetro.
+function withQuery(path: string, params: URLSearchParams): string {
+  const query = params.toString();
+  return query ? `${path}?${query}` : path;
 }
 
 // withPage põe na query string o limit e o offset que vieram, para o servidor usar o
