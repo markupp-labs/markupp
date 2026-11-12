@@ -9,14 +9,14 @@ on:
     paths:
       - 'mcp/**'
       - 'markupp/**'
-      - 'docker-compose.yaml'
+      - 'compose.dev.yaml'
       - '.github/workflows/e2e-mcp.yml'
   push:
     branches: [dev]
     paths:
       - 'mcp/**'
       - 'markupp/**'
-      - 'docker-compose.yaml'
+      - 'compose.dev.yaml'
       - '.github/workflows/e2e-mcp.yml'
   workflow_dispatch:
 

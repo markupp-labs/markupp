@@ -8,7 +8,7 @@ import { createAccount } from "./panel-consent.js";
 // banco da stack de desenvolvimento, e sem .env, como numa primeira subida (ADR-0041).
 const COMPOSE_PROJECT = "markupp-e2e";
 const COMPOSE_FILE = fileURLToPath(
-  new URL("../../docker-compose.yaml", import.meta.url),
+  new URL("../../compose.dev.yaml", import.meta.url),
 );
 const STARTUP_TIMEOUT_MS = 10 * 60_000;
 const POLL_INTERVAL_MS = 2_000;
