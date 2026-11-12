@@ -11,7 +11,9 @@
     <header class="flex flex-wrap items-center gap-3 border-b border-line px-4 py-2">
       <%= mascot(:small) %>
       <% if @note %>
-        <%= link_to @note.publication.title, public_root_path(@note, @tree), class: "truncate font-semibold" %>
+        <%= link_to_if (root_path = public_root_path(@note, @tree)), @note.publication.title, root_path, class: "truncate font-semibold" do
+          tag.span(@note.publication.title, class: "truncate font-semibold")
+        end %>
         <%= yield :public_tools %>
       <% else %>
         <span>markupp</span>
