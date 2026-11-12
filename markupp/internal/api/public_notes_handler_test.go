@@ -39,7 +39,7 @@ func (f *fakePublicNoteReader) check(publicID string) error {
 }
 
 func (f *fakePublicNoteReader) PublicNote(_ context.Context, publicID string) (publication.PublicNote, error) {
-	passo, tituloDoPasso := "Zz9yXx8wVv7u", "Passo"
+	passo, tituloDoPasso := "Zz9yXx8wVv7u", "Passo" // #nosec G101 -- id publico ficticio de teste
 	return publication.PublicNote{
 		PublicID: publicID, Title: "Guia de Deploy", Content: "leia o [[Passo]]", UpdatedAt: time.Date(2026, 11, 12, 9, 0, 0, 0, time.UTC),
 		Publication: publication.PublicScope{Kind: "folder", Title: "docs"},
