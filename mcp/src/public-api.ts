@@ -7,11 +7,11 @@ import {
 // PublicationKind é o alvo da publicação que cobre a nota (ADR-0048).
 export type PublicationKind = "note" | "folder" | "vault";
 
-// PublicNoteLink é uma ligação da nota pública; public_id e title_slug vêm null quando
-// o alvo não é público.
+// PublicNoteLink é uma ligação escrita da nota pública (a inferida não vem); public_id
+// e title_slug vêm null quando o alvo não é público.
 export type PublicNoteLink = {
   cited_title: string;
-  kind: string;
+  kind: "explicit" | "embed" | "typed";
   public_id: string | null;
   title_slug: string | null;
 };
@@ -24,7 +24,12 @@ export type PublicNote = {
   content: string;
   updated_at: string;
   indexable: boolean;
-  publication: { kind: PublicationKind; title: string; root_public_id: string };
+  // root_public_id é a própria nota na publicação de nota e null na de pasta e cofre.
+  publication: {
+    kind: PublicationKind;
+    title: string;
+    root_public_id: string | null;
+  };
   links: PublicNoteLink[];
 };
 

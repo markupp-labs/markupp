@@ -30,7 +30,7 @@ export class FakePublicMarkuppApi implements PublicMarkuppApi {
         Date.UTC(2026, 0, 1, 0, 0, this.clockTick),
       ).toISOString(),
       indexable: false,
-      publication: { kind: "folder", title: folder, root_public_id: publicId },
+      publication: { kind: "folder", title: folder, root_public_id: null },
       links: [],
     };
     this.notes.push(note);

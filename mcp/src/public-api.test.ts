@@ -24,8 +24,15 @@ const publicNote = {
   content: "# Oi",
   updated_at: "2026-10-01T00:00:00Z",
   indexable: false,
-  publication: { kind: "folder", title: "guia", root_public_id: PUBLIC_ID },
-  links: [],
+  publication: { kind: "folder", title: "guia", root_public_id: null },
+  links: [
+    {
+      cited_title: "Privada",
+      kind: "explicit",
+      public_id: null,
+      title_slug: null,
+    },
+  ],
 };
 
 describe("HttpPublicMarkuppApi", () => {
