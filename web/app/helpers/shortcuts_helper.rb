@@ -127,7 +127,9 @@ module ShortcutsHelper
       Shortcut.of(:vault_add_member, "v a", run: { href: :vault_add_member_shortcut_path, when: "[data-vault-writer]" }),
       Shortcut.of(:vault_leave, "v q", run: { href: :vault_leave_shortcut_path, when: "[data-current-vault]" }),
       # Publicar o cofre inteiro é de owner e admin, como pasta.
-      Shortcut.of(:vault_publish, "v o", run: { href: :vault_publish_shortcut_path, when: "[data-vault-admin]" })
+      Shortcut.of(:vault_publish, "v o", run: { href: :vault_publish_shortcut_path, when: "[data-vault-admin]" }),
+      # Tudo que está público no tenant, com o cofre ativo marcado no seletor; na própria seção, foca o seletor.
+      Shortcut.of(:vault_publications, "v p", run: { href: :settings_publications_path, when: "[data-current-vault]" })
     ],
     tenants: [
       Shortcut.of(:filter_tenants, "/"),
@@ -161,11 +163,11 @@ module ShortcutsHelper
   SHORTCUTS_BY_NAME = SHORTCUT_GROUPS.values.flatten.index_by(&:name).freeze
 
   # Destinos dos atalhos do cofre ativo, com a tecla depois do v: o da página da ação, que abre com o foco nela. Sem
-  # cofre, nenhum; o viewer só sai, e publicar o cofre é de owner e admin.
+  # cofre, nenhum; o viewer só sai e vê as publicações, e publicar o cofre é de owner e admin.
   def vault_shortcut_paths
     return {} unless current_tenant && current_vault
 
-    paths = { q: vault_leave_shortcut_path }
+    paths = { q: vault_leave_shortcut_path, p: settings_publications_path }
     paths.merge!(r: vault_rename_shortcut_path, a: vault_add_member_shortcut_path) if current_tenant.writer?
     current_tenant.admin? ? paths.merge(o: vault_publish_shortcut_path) : paths
   end

@@ -32,7 +32,7 @@ class FakeMarkuppApi
     @graph = FakeMarkuppGraph.new(graph)
     @oauth_requests = FakeMarkuppOAuthRequests.new(oauth_requests)
     @vaults = FakeMarkuppVaults.new(vaults, @tenants, @accounts)
-    @publications = FakeMarkuppPublications.new(publications, @notes)
+    @publications = FakeMarkuppPublications.new(publications, @notes, @vaults)
     @public_notes = FakeMarkuppPublicNotes.new(@publications, @notes)
     @unreachable = unreachable
     @slow_calls = FakeSlowCalls.new(timeout: 10)

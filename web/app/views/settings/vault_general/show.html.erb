@@ -22,9 +22,13 @@
       <section id="vault_publication" aria-labelledby="vault_publication_title" class="mt-8">
         <h2 id="vault_publication_title" class="md-heading font-semibold"><%= t(".publication") %></h2>
         <p class="mt-1 max-w-[65ch] text-ink-muted"><%= t(".publication_hint") %></p>
-        <%= link_to new_publication_path(kind: "vault"), id: "publish_vault", class: "btn mt-3", autofocus: params[:focus] == "publish",
-                    data: { turbo_frame: "publish_preview", vault_action: "o" } do %>
-          <%= icon("eye") %><%= t(".publish_vault") %>
+        <% if vault_publication %>
+          <p class="mt-3"><%= t(".vault_public") %> <%= link_to t("settings.nav.publications"), settings_publications_path, class: "text-accent underline" %></p>
+        <% else %>
+          <%= link_to new_publication_path(kind: "vault"), id: "publish_vault", class: "btn mt-3", autofocus: params[:focus] == "publish",
+                      data: { turbo_frame: "publish_preview", vault_action: "o" } do %>
+            <%= icon("eye") %><%= t(".publish_vault") %>
+          <% end %>
         <% end %>
       </section>
     <% end %>

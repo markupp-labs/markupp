@@ -53,6 +53,7 @@ Rails.application.routes.draw do
     resources :invites, only: [ :index, :create, :destroy ]
     resource :vault, only: :show, controller: "vault_general"
     resources :vault_members, path: "vault/members", only: [ :index, :create, :destroy ]
+    resources :publications, only: [ :index, :update, :destroy ]
   end
 
   # Nota pública, lida sem conta (ADR-0048): o fim do endereço é o slug do título e o id público depois do último hífen.

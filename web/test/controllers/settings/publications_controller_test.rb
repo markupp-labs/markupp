@@ -39,10 +39,10 @@ module Settings
     test "another vault, or all of them, comes from the selector" do
       get settings_publications_path(vault_id: "vault-2")
       assert_select "option[selected][value=vault-2]"
-      assert_select "#publications li", 1
+      assert_select "#publications li[data-context-menu-target=item]", 1
 
       get settings_publications_path(vault_id: "all")
-      assert_select "#publications li", 3
+      assert_select "#publications li[data-context-menu-target=item]", 3
       assert_select "#publications li", text: /Drafts/
     end
 

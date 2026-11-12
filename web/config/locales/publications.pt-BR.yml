@@ -6,6 +6,7 @@ pt-BR:
     names:
       publish_note: "Publicar a nota"
       publish_row: "Publicar a linha com o foco"
+      vault_publications: "Publicações"
       vault_publish: "Publicar o cofre"
   notes:
     form:
@@ -46,3 +47,40 @@ pt-BR:
         publication: "Publicação"
         publication_hint: "Publicar o cofre abre todas as notas dele, e as que entrarem depois, a qualquer pessoa com o link, sem conta."
         publish_vault: "Publicar cofre"
+        vault_public: "O cofre inteiro está público. Despublique em"
+    nav:
+      publications: "Publicações"
+    publications:
+      gone: "Essa publicação já não existia."
+      index:
+        hint: "Tudo aqui está aberto a qualquer pessoa com o link, pessoas e agentes de IA sem conta. Despublique para tornar privado de novo; os links públicos param de funcionar."
+        vault: "Cofre"
+        all_vaults: "Todos os cofres"
+        show: "Mostrar"
+        what: "O quê"
+        who: "Publicado por"
+        when: "Em"
+        empty:
+          title: "Nada público aqui"
+          hint: "Publique uma nota pelo cabeçalho dela, uma pasta pelo menu da árvore, ou o cofre pela Geral dele."
+      publication:
+        kinds:
+          note: "Nota"
+          folder: "Pasta"
+          vault: "Cofre"
+        note_count:
+          one: "1 nota"
+          other: "%{count} notas"
+        indexed: "buscadores podem listar"
+        not_indexed: "fora dos buscadores"
+        index: "Deixar os buscadores listarem"
+        hide: "Tirar dos buscadores"
+        unpublish: "Despublicar"
+        confirm_unpublish:
+          one: "Despublicar %{name}? 1 nota fica privada e o link público dela para de funcionar, a menos que uma publicação própria a cubra."
+          other: "Despublicar %{name}? %{count} notas ficam privadas e os links públicos delas param de funcionar, salvo as que uma publicação própria cobre."
+      update:
+        indexed: "Os buscadores podem listar %{name} agora."
+        hidden: "%{name} está fora dos buscadores agora."
+      destroy:
+        unpublished: "%{name} está privado de novo. Os links públicos pararam de funcionar."

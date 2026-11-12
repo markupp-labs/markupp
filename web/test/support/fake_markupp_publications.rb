@@ -19,8 +19,9 @@ class FakeMarkuppPublications
 
   attr_reader :publications
 
-  def initialize(publications, notes)
+  def initialize(publications, notes, vaults)
     @notes = notes
+    @vaults = vaults
     @created = 0
     @publications = publications.map { stored(it.stringify_keys) }
     refresh_public_ids!
@@ -67,7 +68,7 @@ class FakeMarkuppPublications
     case publication["kind"]
     when "note" then File.basename(note_by_id(publication["note_id"])["path"], ".md")
     when "folder" then publication["folder_path"]
-    else FakeMarkuppVaults::DEFAULT_NAME
+    else @vaults.name_of(publication["vault_id"])
     end
   end
 
@@ -145,7 +146,7 @@ class FakeMarkuppPublications
 
     def view(publication)
       note = note_by_id(publication["note_id"]) if publication["kind"] == "note"
-      fields = { "vault_name" => FakeMarkuppVaults::DEFAULT_NAME, "target_name" => target_name(publication), "note_count" => notes_of(publication).size }
+      fields = { "vault_name" => @vaults.name_of(publication["vault_id"]), "target_name" => target_name(publication), "note_count" => notes_of(publication).size }
       fields.merge!("public_id" => note["public_id"], "title_slug" => FakeMarkuppPublications.title_slug(fields["target_name"])) if note
       publication.merge(fields)
     end
