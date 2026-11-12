@@ -364,6 +364,16 @@ class MarkuppApiTest < ActiveSupport::TestCase
     assert_operator MarkuppApi::VaultMemberNotFound, :<, MarkuppApi::NotFound
   end
 
+  test "maps the error codes of the link refusal routes to their classes" do
+    { [ "400 Bad Request", "same_note" ] => MarkuppApi::SameNote,
+      [ "422 Unprocessable Content", "note_outside_vault" ] => MarkuppApi::NoteOutsideVault,
+      [ "404 Not Found", "link_refusal_not_found" ] => MarkuppApi::LinkRefusalNotFound }.each do |(status, code), error_class|
+      assert_answer_raises(error_class, %({"error":"#{code}","message":"recusado"}), status) { it.post("/v1/vaults/v/link-refusals", note_ids: %w[a b]) }
+    end
+    assert_operator MarkuppApi::SameNote, :<, MarkuppApi::InvalidRequest
+    assert_operator MarkuppApi::LinkRefusalNotFound, :<, MarkuppApi::NotFound
+  end
+
   test "path appends the query, leaving out the parameters without value" do
     assert_equal "/v1/vaults/a%20b/notes?limit=5&orphan=false", MarkuppApi.path("v1", "vaults", "a b", "notes", orphan: false, limit: 5, sort: nil)
   end

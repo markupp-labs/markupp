@@ -14,7 +14,8 @@ class NoteLinksTest < ApplicationSystemTestCase
                  "roadmap" => [ { source: IDEAS, target: ROADMAP, cited_title: "roadmap", type: "explicit", predicate: nil, inferred_target: nil } ] },
     links: { "plan" => [ { source: PLAN, target: nil, cited_title: "Ghost", type: "explicit", predicate: nil, inferred_target: nil },
                          { source: PLAN, target: nil, cited_title: LONG_CITED_TITLE, type: "explicit", predicate: nil, inferred_target: ROADMAP },
-                         { source: PLAN, target: nil, cited_title: LONG_CITED_TITLE, type: "explicit", predicate: nil, inferred_target: QUARTERLY } ] },
+                         { source: PLAN, target: nil, cited_title: LONG_CITED_TITLE, type: "explicit", predicate: nil, inferred_target: QUARTERLY },
+                         { source: PLAN, target: IDEAS, cited_title: "ideas", type: "mentioned", predicate: nil, inferred_target: nil } ] },
     suggestions: { "plan" => [ { note: IDEAS, score: 0.03, resource_allocation: 0.5, cosine: 0.2 } ] }
   }.freeze
 
@@ -115,6 +116,18 @@ class NoteLinksTest < ApplicationSystemTestCase
     assert_equal "[[ideas]]", evaluate_async_script("navigator.clipboard.readText().then(arguments[0])")
     find("#links_suggestions button[aria-label='Copy [[ideas]]']").click
     assert_text "Copied [[ideas]]"
+  end
+
+  test "r on a link by mention asks, refuses it, takes the row away, says so and keeps the focus in the view" do
+    send_keys [ :control, :shift, "l" ]
+    assert_selector "#links_outgoing a", text: "ideas"
+    find("#links_outgoing a", text: "ideas").execute_script("this.focus()")
+
+    accept_panel_confirm("Refuse the automatic link between plan and ideas?", button: "Refuse link") { send_keys "r" }
+
+    assert_no_selector "#links_outgoing a", text: "ideas"
+    assert_text "Link refused."
+    assert_selector "#note_links :focus"
   end
 
   test "alt+l goes from the activity bar into the links view" do

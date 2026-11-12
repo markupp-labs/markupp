@@ -17,6 +17,7 @@ class ShortcutsTest < ActionDispatch::IntegrationTest
     [ "Switch vault", "g v" ], [ "New vault", "" ], [ "Vault settings", "" ], [ "Vault members", "" ], [ "Delete vault", "" ],
     [ "Notifications", "g n" ], [ "Log out", "" ],
     [ "Rename the vault", "v r" ], [ "Add a member to the vault", "v a" ], [ "Leave the vault", "v q" ], [ "Publish the vault", "v o" ], [ "Publications", "v p" ],
+    [ "Refuse the automatic link in focus", "r" ],
     [ "Show or hide the graph filters", "f" ], [ "Show or hide orphan notes", "o" ], [ "Show or hide unresolved links", "u" ],
     [ "Show or hide inferred links", "i" ], [ "Next and previous community in the graph", "c" ], [ "Clear the graph filters", "x" ]
   ].freeze
@@ -41,6 +42,7 @@ class ShortcutsTest < ActionDispatch::IntegrationTest
       "Show or hide the graph filters" => [ "f" ], "Show or hide orphan notes" => [ "o" ], "Show or hide unresolved links" => [ "u" ],
       "Show or hide inferred links" => [ "i" ], "Next and previous community in the graph" => [ "c", "Shift+C" ],
       "Clear the graph filters" => [ "x" ],
+      "Refuse the automatic link in focus" => [ "r" ],
       "Focus region left" => [ "Alt+H" ], "Focus region right" => [ "Alt+L" ],
       "Next row" => [ "j", "↓" ], "All tenants" => [ "g t" ], "Switch vault" => [ "g v" ],
       "Notifications" => [ "g n" ],

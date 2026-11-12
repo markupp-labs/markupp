@@ -20,6 +20,14 @@ class NoteLinksControllerTest < ActionDispatch::IntegrationTest
     suggestions: { "plan" => [ { note: IDEAS, score: 0.03, resource_allocation: 0.5, cosine: 0.2 } ] }
   }.freeze
 
+  # Ligação por menção nos dois sentidos: draft cita o título de plan, e plan cita o de ideas.
+  BY_MENTION = {
+    backlinks: { "plan" => [ { source: DRAFT, target: PLAN, cited_title: "plan", type: "mentioned", predicate: nil, inferred_target: nil } ] },
+    links: { "plan" => [ { source: PLAN, target: IDEAS, cited_title: "ideas", type: "mentioned", predicate: nil, inferred_target: nil },
+                         { source: PLAN, target: ALICE, cited_title: "alice", type: "explicit", predicate: nil, inferred_target: nil } ] }
+  }.freeze
+  VIEWER_TENANTS = [ FakeMarkuppTenants::DEFAULT_TENANTS.first.merge(members: { FakeMarkuppAccounts::DEFAULT_EMAIL => "viewer" }) ].freeze
+
   setup do
     @api = use_fake_api(notes: NOTES, graph: GRAPH)
     sign_in_as
@@ -126,5 +134,46 @@ class NoteLinksControllerTest < ActionDispatch::IntegrationTest
 
     assert_select "#sidebar_view_links turbo-frame#note_links", count: 0
     assert_select "#sidebar_view_links", text: /Open a note to see its links/
+  end
+
+  test "a link by mention says mention and, to the title and the screen reader, which title was cited" do
+    use_fake_api(notes: NOTES, graph: BY_MENTION)
+    sign_in_as
+
+    get note_links_path("plan")
+
+    assert_select "#links_backlinks a[href=?][title=?]", note_path("draft"), "draft.md, linked because the text cites plan" do
+      assert_select ".links-row-kind", text: "mention"
+      assert_select ".sr-only", text: "(linked because the text cites plan)"
+    end
+    assert_select "#links_outgoing a[href=?] .links-row-kind", note_path("ideas"), text: "mention"
+    assert_select "#links_outgoing a[href=?] .links-row-kind", note_path("alice"), count: 0
+  end
+
+  test "an automatic row refuses the link by its button and by r, with the panel confirm, and a written row does not" do
+    use_fake_api(notes: NOTES, graph: BY_MENTION)
+    sign_in_as
+
+    get note_links_path("plan")
+
+    assert_select "#links_backlinks li form[action=?][data-turbo-frame=note_links]", link_refusals_path do
+      assert_equal %w[draft plan], css_select("input[type=hidden][name='note_ids[]']").map { it["value"] }
+      assert_select "input[type=hidden][name=note_id][value=plan]"
+      assert_select "button[data-links-refuse][aria-label=?][aria-keyshortcuts=R][title=?][data-turbo-confirm=?][data-confirm-button=?]",
+                    "Refuse link with draft", "Refuse link (r)",
+                    "Refuse the automatic link between draft and plan? It stays out until you undo it in the vault settings.", "Refuse link"
+    end
+    assert_select "#links_outgoing li:has(a[href='#{note_path('ideas')}']) button[data-links-refuse]"
+    assert_select "#links_outgoing li:has(a[href='#{note_path('alice')}']) button[data-links-refuse]", count: 0
+  end
+
+  test "a viewer sees the link by mention without the refuse action" do
+    use_fake_api(notes: NOTES, graph: BY_MENTION, tenants: VIEWER_TENANTS)
+    sign_in_as
+
+    get note_links_path("plan")
+
+    assert_select ".links-row-kind", text: "mention", count: 2
+    assert_select "button[data-links-refuse]", count: 0
   end
 end

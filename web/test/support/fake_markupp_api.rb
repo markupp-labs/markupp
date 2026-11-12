@@ -20,10 +20,10 @@ class FakeMarkuppApi
   # de autorização OAuth (ver FakeMarkuppOAuthRequests); authorizations, o das Autorizações de cada conta (ver
   # FakeMarkuppAuthorizations); vaults, o dos cofres de cada tenant (ver FakeMarkuppVaults); publications, o das notas,
   # pastas e cofres publicados (ver FakeMarkuppPublications); login_providers, os provedores de login externo, nenhum
-  # por padrão (ver FakeMarkuppExternalLogin).
+  # por padrão (ver FakeMarkuppExternalLogin); link_refusals, o das recusas de ligação (ver FakeMarkuppLinkRefusals).
   def initialize(notes: [], unreachable: false, conflict: false, accounts: FakeMarkuppAccounts::DEFAULT_ACCOUNTS,
                  tenants: FakeMarkuppTenants::DEFAULT_TENANTS, invites: [], email_enabled: true, graph: {}, oauth_requests: [],
-                 authorizations: [], vaults: nil, publications: [], login_providers: [])
+                 authorizations: [], vaults: nil, publications: [], login_providers: [], link_refusals: [])
     @accounts = FakeMarkuppAccounts.new(accounts)
     @tenants = FakeMarkuppTenants.new(tenants, invites)
     @auth = FakeMarkuppAuth.new(@accounts, @tenants)
@@ -32,7 +32,8 @@ class FakeMarkuppApi
     @account_email = FakeMarkuppAccountEmail.new(@accounts, @auth, email_enabled:)
     @notes = FakeMarkuppNotes.new(notes:, conflict:)
     @note_index = FakeMarkuppNoteIndex.new(@notes)
-    @graph = FakeMarkuppGraph.new(graph)
+    @link_refusals = FakeMarkuppLinkRefusals.new(@notes, link_refusals)
+    @graph = FakeMarkuppGraph.new(graph, @link_refusals)
     @oauth_requests = FakeMarkuppOAuthRequests.new(oauth_requests)
     @authorizations = FakeMarkuppAuthorizations.new(authorizations)
     @vaults = FakeMarkuppVaults.new(vaults, @tenants, @accounts)
@@ -129,6 +130,7 @@ class FakeMarkuppApi
       return @authorizations if FakeMarkuppAuthorizations::ROUTE.match?(path)
       return @tenants if path == FakeMarkuppTenants::NOTIFICATIONS
       return @auth if path == "/v1/accounts"
+      return @link_refusals if FakeMarkuppLinkRefusals::ROUTE.match?(path)
       return @note_index if path.start_with?("/v1/search/") || FakeMarkuppNoteIndex::VAULT_NOTES.match?(path)
       return @graph if path.start_with?("/v1/")
       return @account_email if path.start_with?("/auth/password/", "/auth/email/")
