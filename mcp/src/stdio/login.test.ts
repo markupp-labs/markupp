@@ -94,7 +94,7 @@ describe("runLogin", () => {
   it("falha com o erro OAuth do retorno, sem gravar nada", async () => {
     const rig = new LoginRig({ kind: "deny", error: "access_denied" });
     await expect(runLogin(TEST_ISSUER, rig.deps())).rejects.toThrow(
-      "login recusado pelo markupp: error access_denied",
+      "login refused by markupp: error access_denied",
     );
     expect(await rig.store.load()).toBeUndefined();
     expect(rig.upstream.requests).toHaveLength(1);
@@ -103,7 +103,7 @@ describe("runLogin", () => {
   it("vence o prazo quando o navegador não volta, e fecha o callback", async () => {
     const rig = new LoginRig({ kind: "abandon" });
     await expect(runLogin(TEST_ISSUER, rig.deps())).rejects.toThrow(
-      "o navegador nao voltou a http://127.0.0.1:43123/callback em 5 minutos",
+      "the browser did not return to http://127.0.0.1:43123/callback within 5 minutes",
     );
     expect(rig.callback.closed).toBe(true);
   });

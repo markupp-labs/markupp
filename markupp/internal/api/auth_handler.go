@@ -17,12 +17,14 @@ const maxAuthBodyBytes = 4096
 // AuthService é a interface do serviço de autenticação consumida pelos endpoints HTTP.
 type AuthService interface {
 	LoginLocal(ctx context.Context, email, password string) (auth.TokenPair, error)
+	Register(ctx context.Context, email, password string) (auth.TokenPair, error)
 	RefreshToken(ctx context.Context, rawRefreshToken string) (auth.TokenPair, error)
 	RevokeSession(ctx context.Context, rawRefreshToken string) error
 	GetAccount(ctx context.Context, userID string) (auth.User, error)
 	ListTenants(ctx context.Context, userID string) ([]auth.TenantSummary, error)
 	CreateTenant(ctx context.Context, userID, name string) (auth.Membership, error)
 	ListMyInvites(ctx context.Context, userID string) ([]auth.PendingInvite, error)
+	ListMyNotifications(ctx context.Context, userID string) (auth.NotificationFeed, error)
 	AcceptMyInvite(ctx context.Context, userID, inviteID string) (auth.Membership, error)
 	DeclineMyInvite(ctx context.Context, userID, inviteID string) error
 	AcceptInvite(ctx context.Context, token, password string) (auth.TokenPair, error)
@@ -72,7 +74,7 @@ type myTenantResponse struct {
 func decodeJSONBody(w http.ResponseWriter, r *http.Request, dst any) bool {
 	r.Body = http.MaxBytesReader(w, r.Body, maxAuthBodyBytes)
 	if err := json.NewDecoder(r.Body).Decode(dst); err != nil {
-		writeError(w, "invalid_request", "JSON invalido", http.StatusBadRequest)
+		writeError(w, "invalid_request", "invalid JSON body", http.StatusBadRequest)
 		return false
 	}
 	return true
@@ -89,6 +91,20 @@ func (h *authHandler) login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, pair)
+}
+
+// createAccount é o cadastro: cria a conta e já devolve a sessão dela, com 201.
+func (h *authHandler) createAccount(w http.ResponseWriter, r *http.Request) {
+	var req loginRequest
+	if !decodeJSONBody(w, r, &req) {
+		return
+	}
+	pair, err := h.svc.Register(r.Context(), req.Email, req.Password)
+	if err != nil {
+		h.handleAuthError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusCreated, pair)
 }
 
 func (h *authHandler) refresh(w http.ResponseWriter, r *http.Request) {
@@ -139,16 +155,16 @@ func (h *authHandler) logError(msg string, err error) {
 func (h *authHandler) me(w http.ResponseWriter, r *http.Request) {
 	u, ok := identity.ActorFrom(r.Context())
 	if !ok {
-		writeError(w, "unauthorized", "nao autenticado", http.StatusUnauthorized)
+		writeError(w, "unauthorized", "not authenticated", http.StatusUnauthorized)
 		return
 	}
 	user, err := h.svc.GetAccount(r.Context(), u.UserID)
 	if err != nil {
 		if errors.Is(err, auth.ErrUserNotFound) {
-			writeError(w, "not_found", "usuario nao encontrado", http.StatusNotFound)
+			writeError(w, "not_found", "account not found", http.StatusNotFound)
 			return
 		}
-		writeError(w, "internal", "erro interno", http.StatusInternalServerError)
+		writeError(w, "internal", "internal error", http.StatusInternalServerError)
 		return
 	}
 	writeJSON(w, http.StatusOK, userResponse{ID: user.ID, Email: user.Email, EmailVerified: user.EmailVerified, PasswordLogin: user.PasswordLogin})
@@ -169,7 +185,7 @@ func (h *authHandler) createTenant(w http.ResponseWriter, r *http.Request) {
 	}
 	if err != nil {
 		h.logError("falha ao criar tenant", err)
-		writeError(w, "internal", "erro interno", http.StatusInternalServerError)
+		writeError(w, "internal", "internal error", http.StatusInternalServerError)
 		return
 	}
 	writeJSON(w, http.StatusCreated, tenantResponse{ID: m.TenantID, Name: m.TenantName, Role: m.Role})
@@ -180,7 +196,7 @@ func (h *authHandler) myTenants(w http.ResponseWriter, r *http.Request) {
 	summaries, err := h.svc.ListTenants(r.Context(), actor.UserID)
 	if err != nil {
 		h.logError("falha ao listar tenants", err)
-		writeError(w, "internal", "erro interno", http.StatusInternalServerError)
+		writeError(w, "internal", "internal error", http.StatusInternalServerError)
 		return
 	}
 	out := make([]myTenantResponse, 0, len(summaries))
@@ -200,8 +216,12 @@ func writeCredentialInputError(w http.ResponseWriter, err error) bool {
 	switch {
 	case errors.Is(err, auth.ErrEmptyEmail), errors.Is(err, auth.ErrEmptyPassword), errors.Is(err, auth.ErrPasswordTooLong):
 		writeError(w, "invalid_request", err.Error(), http.StatusBadRequest)
+	case errors.Is(err, auth.ErrPasswordTooShort):
+		writeError(w, "password_too_short", err.Error(), http.StatusBadRequest)
+	case errors.Is(err, auth.ErrCommonPassword):
+		writeError(w, "common_password", err.Error(), http.StatusBadRequest)
 	case errors.Is(err, auth.ErrLocalAuthDisabled):
-		writeError(w, "local_auth_disabled", "autenticacao local desativada", http.StatusForbidden)
+		writeError(w, "local_auth_disabled", "email and password login is disabled", http.StatusForbidden)
 	default:
 		return false
 	}
@@ -214,13 +234,15 @@ func (h *authHandler) handleAuthError(w http.ResponseWriter, err error) {
 	}
 	switch {
 	case errors.Is(err, auth.ErrInvalidCredentials):
-		writeError(w, "invalid_credentials", "credenciais invalidas", http.StatusUnauthorized)
+		writeError(w, "invalid_credentials", "invalid email or password", http.StatusUnauthorized)
 	case errors.Is(err, auth.ErrInviteInvalid):
 		writeError(w, "invalid_invite", auth.ErrInviteInvalid.Error(), http.StatusBadRequest)
 	case errors.Is(err, auth.ErrUserAlreadyExists):
-		writeError(w, "already_exists", "email ja tem conta", http.StatusConflict)
+		writeError(w, "already_exists", "this email already has an account", http.StatusConflict)
+	case errors.Is(err, auth.ErrRegistrationDisabled):
+		writeError(w, "registration_disabled", "this installation only creates accounts by invite", http.StatusForbidden)
 	case errors.Is(err, auth.ErrRefreshTokenRevoked), errors.Is(err, auth.ErrRefreshTokenExpired), errors.Is(err, auth.ErrRefreshTokenInvalid):
-		writeError(w, "invalid_refresh_token", "refresh token revogado ou expirado", http.StatusUnauthorized)
+		writeError(w, "invalid_refresh_token", "refresh token revoked or expired", http.StatusUnauthorized)
 	default:
 		writeAuthInternal(w, "autenticacao", err)
 	}

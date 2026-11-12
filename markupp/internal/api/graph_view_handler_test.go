@@ -157,11 +157,11 @@ func TestV1GetNoteGraph_ProfundidadePadraoEUmEVaiAteTres(t *testing.T) {
 
 func TestV1Graph_ParametroInvalido_Retorna400ComOValorEOFormato(t *testing.T) {
 	casos := map[string]string{
-		"/v1/notes/n1/graph?depth=0":           `depth "0", esperado inteiro de 1 a 3`,
-		"/v1/notes/n1/graph?depth=4":           `depth "4", esperado inteiro de 1 a 3`,
-		"/v1/notes/n1/graph?depth=dois":        `depth "dois", esperado inteiro de 1 a 3`,
-		"/v1/vaults/va/graph?orphans=talvez":   `orphans "talvez", esperado true ou false`,
-		"/v1/vaults/va/graph?community=grande": `community "grande", esperado inteiro`,
+		"/v1/notes/n1/graph?depth=0":           `depth "0": expected an integer from 1 to 3`,
+		"/v1/notes/n1/graph?depth=4":           `depth "4": expected an integer from 1 to 3`,
+		"/v1/notes/n1/graph?depth=dois":        `depth "dois": expected an integer from 1 to 3`,
+		"/v1/vaults/va/graph?orphans=talvez":   `orphans "talvez": expected true or false`,
+		"/v1/vaults/va/graph?community=grande": `community "grande": expected an integer`,
 	}
 	for alvo, mensagem := range casos {
 		rec := getGrafoDesenhado(t, &fakeNoteGraph{}, alvo, nil)

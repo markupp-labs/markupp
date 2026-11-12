@@ -29,6 +29,7 @@ import (
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/notify"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/oauth"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/storage"
+	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/vaults"
 )
 
 const (
@@ -78,7 +79,7 @@ func run(ctx context.Context, logger *slog.Logger, args []string) error {
 	}
 	cfg, err := config.Load(os.LookupEnv)
 	if err != nil {
-		return fmt.Errorf("carregar config: %w", err)
+		return fmt.Errorf("load config: %w", err)
 	}
 	switch cmd {
 	case migrateCommand:
@@ -97,11 +98,11 @@ func parseCommand(args []string) (command, error) {
 	case serveCommand, migrateCommand, indexCommand, indexLoopCommand, notifyLoopCommand, reindexCommand:
 		return cmd, nil
 	}
-	return "", fmt.Errorf("subcomando %q desconhecido, esperado %q, %q, %q, %q, %q ou %q",
+	return "", fmt.Errorf("unknown subcommand %q, expected %q, %q, %q, %q, %q or %q",
 		args[1], serveCommand, migrateCommand, indexCommand, indexLoopCommand, notifyLoopCommand, reindexCommand)
 }
 
-const reindexUsage = "esperado reindex --vault <id> para um cofre ou reindex --all para a instalacao"
+const reindexUsage = "expected reindex --vault <id> for one vault or reindex --all for the whole installation"
 
 // parseReindexScope lê o escopo do reindex: devolve o cofre de --vault, ou vazio com
 // --all. Exige exatamente um dos dois, para a instalação inteira nunca ser o padrão.
@@ -111,10 +112,10 @@ func parseReindexScope(args []string) (string, error) {
 	vaultID := flags.String("vault", "", "cofre a reindexar")
 	all := flags.Bool("all", false, "reindexa todos os cofres da instalacao")
 	if err := flags.Parse(args); err != nil {
-		return "", fmt.Errorf("argumentos %q do reindex invalidos, %s: %w", args, reindexUsage, err)
+		return "", fmt.Errorf("invalid reindex arguments %q, %s: %w", args, reindexUsage, err)
 	}
 	if flags.NArg() > 0 || (*vaultID != "") == *all {
-		return "", fmt.Errorf("argumentos %q do reindex, %s", args, reindexUsage)
+		return "", fmt.Errorf("invalid reindex arguments %q, %s", args, reindexUsage)
 	}
 	return *vaultID, nil
 }
@@ -129,11 +130,11 @@ func reindexVaults(ctx context.Context, logger *slog.Logger, args []string) erro
 	}
 	cfg, err := config.LoadIndexer(os.LookupEnv)
 	if err != nil {
-		return fmt.Errorf("carregar config do indexador: %w", err)
+		return fmt.Errorf("load indexer config: %w", err)
 	}
 	pool, err := storage.OpenPool(ctx, cfg.DatabaseURL)
 	if err != nil {
-		return fmt.Errorf("abrir banco: %w", err)
+		return fmt.Errorf("open database: %w", err)
 	}
 	defer pool.Close()
 	requeued, err := storage.RequeueNotes(ctx, pool, vaultID)
@@ -148,7 +149,7 @@ func reindexVaults(ctx context.Context, logger *slog.Logger, args []string) erro
 // escala entre zero e uma réplica, e o serviço do compose.
 func deliverNotifications(ctx context.Context, logger *slog.Logger, cfg config.Config) error {
 	if cfg.SMTPURL == "" {
-		return fmt.Errorf("MARKUPP_SMTP_URL vazia, esperado smtp://usuario:senha@host:porta para entregar a fila de email")
+		return fmt.Errorf("MARKUPP_SMTP_URL is empty, expected smtp://user:password@host:port to deliver the email queue")
 	}
 	mailer, err := notify.NewSMTPMailer(cfg.SMTPURL)
 	if err != nil {
@@ -156,7 +157,7 @@ func deliverNotifications(ctx context.Context, logger *slog.Logger, cfg config.C
 	}
 	pool, err := storage.OpenPool(ctx, cfg.DatabaseURL)
 	if err != nil {
-		return fmt.Errorf("abrir banco: %w", err)
+		return fmt.Errorf("open database: %w", err)
 	}
 	defer pool.Close()
 	deliverer := notify.NewDeliverer(storage.NewPostgresNotificationOutbox(pool), mailer, cfg.SMTPFrom, cfg.PanelURL, auth.NewOpaqueToken, time.Now)
@@ -171,7 +172,7 @@ func runIndexer(ctx context.Context, logger *slog.Logger, cmd command) error {
 	defer stop()
 	cfg, err := config.LoadIndexer(os.LookupEnv)
 	if err != nil {
-		return fmt.Errorf("carregar config do indexador: %w", err)
+		return fmt.Errorf("load indexer config: %w", err)
 	}
 	return indexVaults(ctx, logger, cfg, cmd)
 }
@@ -181,7 +182,7 @@ func runIndexer(ctx context.Context, logger *slog.Logger, cmd command) error {
 func indexVaults(ctx context.Context, logger *slog.Logger, cfg config.Config, cmd command) error {
 	pool, err := storage.OpenPool(ctx, cfg.DatabaseURL)
 	if err != nil {
-		return fmt.Errorf("abrir banco: %w", err)
+		return fmt.Errorf("open database: %w", err)
 	}
 	defer pool.Close()
 	indexer, err := storage.NewPostgresVaultIndexer(ctx, pool, cfg.SearchConfig, logger)
@@ -202,11 +203,11 @@ func indexVaults(ctx context.Context, logger *slog.Logger, cfg config.Config, cm
 func migrateDatabase(ctx context.Context, databaseURL, scalerPassword string) error {
 	pool, err := storage.OpenPool(ctx, databaseURL)
 	if err != nil {
-		return fmt.Errorf("abrir banco: %w", err)
+		return fmt.Errorf("open database: %w", err)
 	}
 	defer pool.Close()
 	if err := storage.Migrate(ctx, pool); err != nil {
-		return fmt.Errorf("aplicar migrations: %w", err)
+		return fmt.Errorf("apply migrations: %w", err)
 	}
 	if scalerPassword == "" {
 		return nil
@@ -218,13 +219,13 @@ func migrateDatabase(ctx context.Context, databaseURL, scalerPassword string) er
 func serve(ctx context.Context, logger *slog.Logger, cfg config.Config) error {
 	pool, err := storage.OpenPool(ctx, cfg.DatabaseURL)
 	if err != nil {
-		return fmt.Errorf("abrir banco: %w", err)
+		return fmt.Errorf("open database: %w", err)
 	}
 	defer pool.Close()
 
 	cfg, err = prepareInstance(ctx, cfg, storage.NewPostgresInstanceSecrets(pool))
 	if err != nil {
-		return fmt.Errorf("preparar a instancia: %w", err)
+		return fmt.Errorf("prepare instance: %w", err)
 	}
 	handler, err := newHandler(cfg, pool, logger)
 	if err != nil {
@@ -241,7 +242,7 @@ func newHandler(cfg config.Config, pool *pgxpool.Pool, logger *slog.Logger) (htt
 	authSvc, codec := newAuthService(cfg, pool)
 	// A API não recebe o SMTP: o booleano diz que há quem entregue os emails dela.
 	emailEnabled := cfg.InviteByEmail
-	adminSvc := auth.NewAdminService(storage.NewPostgresAdminRepository(pool), time.Now, emailEnabled)
+	adminSvc := auth.NewAdminService(storage.NewPostgresAdminRepository(pool), time.Now, emailEnabled, auth.InviteLimits{PerAccount: cfg.InviteLimitPerAccount, PerTenant: cfg.InviteLimitPerTenant})
 	accountEmail := auth.NewAccountEmailService(storage.NewPostgresAccountEmailRepository(pool), auth.NewBcryptHasher(), time.Now, auth.AccountEmailOptions{
 		EmailEnabled: emailEnabled, LocalEnabled: cfg.LocalAuthEnabled, Background: runDetached, Logger: logger,
 	})
@@ -251,6 +252,7 @@ func newHandler(cfg config.Config, pool *pgxpool.Pool, logger *slog.Logger) (htt
 	}
 	return api.NewRouter(api.RouterDeps{
 		Notes: notesSvc, Graph: storage.NewPostgresNoteGraph(pool, cfg.SearchConfig), Auth: authSvc, Admin: adminSvc, AccountEmail: accountEmail,
+		Vaults: vaults.NewService(storage.NewPostgresVaultsRepository(pool), time.Now, uuid.NewString),
 		Tokens: codec, Tenants: authSvc, Probe: pool, AllowedOrigins: cfg.AllowedOrigins,
 		OAuthMetadata: oauthMetadataFrom(cfg), OAuth: oauthSvc, MCPUpstreamURL: cfg.MCPUpstreamURL,
 		AccountRateLimiter: api.NewAccountRateLimiter(cfg.RateLimitPerMinute, time.Minute, time.Now, cfg.TrustedProxies),
@@ -276,7 +278,7 @@ func newOAuthService(cfg config.Config, pool *pgxpool.Pool, scoped oauth.ScopedT
 func newOAuthToken() string {
 	token, err := auth.NewOpaqueToken()
 	if err != nil {
-		panic(fmt.Sprintf("oauth: gerar token opaco: %v", err))
+		panic(fmt.Sprintf("oauth: generate opaque token: %v", err))
 	}
 	return token
 }

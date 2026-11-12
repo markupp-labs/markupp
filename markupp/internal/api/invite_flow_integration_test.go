@@ -43,14 +43,14 @@ func TestIntegration_ConviteAteNotaIsolada(t *testing.T) {
 	server, _ := setupAuthIntegrationServer(t)
 	url := server.URL
 
-	status, admin := sendJSON(t, http.MethodPost, url+"/auth/login", "", `{"email":"admin@markupp.dev","password":"senhaAdmin"}`)
-	require.Equal(t, http.StatusOK, status)
+	status, admin := sendJSON(t, http.MethodPost, url+"/v1/accounts", "", `{"email":"admin@markupp.dev","password":"senhaAdmin-de-teste"}`)
+	require.Equal(t, http.StatusCreated, status)
 	tokenAdmin := admin["access_token"].(string)
 
 	status, convite := sendJSON(t, http.MethodPost, url+"/users/invites", tokenAdmin, `{"email":"membro@markupp.dev","role":"member"}`)
 	require.Equal(t, http.StatusCreated, status)
 
-	status, membro := sendJSON(t, http.MethodPost, url+"/auth/invites/accept", "", `{"token":"`+convite["token"].(string)+`","password":"senhaMembro"}`)
+	status, membro := sendJSON(t, http.MethodPost, url+"/auth/invites/accept", "", `{"token":"`+convite["token"].(string)+`","password":"senhaMembro-de-teste"}`)
 	require.Equal(t, http.StatusOK, status)
 	tokenMembro := membro["access_token"].(string)
 
@@ -62,9 +62,10 @@ func TestIntegration_ConviteAteNotaIsolada(t *testing.T) {
 	assert.Equal(t, 1, countNotes(t, url, tokenMembro))
 	assert.Equal(t, 0, countNotes(t, url, tokenAdmin), "admin nao e membro do cofre do convidado")
 
-	status, _ = sendJSON(t, http.MethodGet, url+"/users", tokenMembro, "")
-	assert.Equal(t, http.StatusForbidden, status)
-	status, _ = sendJSON(t, http.MethodPost, url+"/auth/login", "", `{"email":"membro@markupp.dev","password":"senhaMembro"}`)
+	status, _ = sendJSON(t, http.MethodGet, url+"/users/invites", tokenMembro, "")
+	assert.Equal(t, http.StatusForbidden, status, "convites seguem so para admin")
+	assert.NotEmpty(t, idDaConta(t, url, tokenMembro, "admin@markupp.dev"), "member lista os colegas")
+	status, _ = sendJSON(t, http.MethodPost, url+"/auth/login", "", `{"email":"membro@markupp.dev","password":"senhaMembro-de-teste"}`)
 	assert.Equal(t, http.StatusOK, status, "convidado entra depois com a senha escolhida")
 }
 
@@ -82,10 +83,10 @@ func meusTenants(t *testing.T, url, token string) []map[string]any {
 func TestIntegration_MeusTenants_ContaSoAsNotasDosCofresDaConta(t *testing.T) {
 	server, _ := setupAuthIntegrationServer(t)
 	url := server.URL
-	_, admin := sendJSON(t, http.MethodPost, url+"/auth/login", "", `{"email":"admin@markupp.dev","password":"senhaAdmin"}`)
+	_, admin := sendJSON(t, http.MethodPost, url+"/v1/accounts", "", `{"email":"admin@markupp.dev","password":"senhaAdmin-de-teste"}`)
 	tokenAdmin := admin["access_token"].(string)
 	_, convite := sendJSON(t, http.MethodPost, url+"/users/invites", tokenAdmin, `{"email":"membro@markupp.dev","role":"member"}`)
-	_, membro := sendJSON(t, http.MethodPost, url+"/auth/invites/accept", "", `{"token":"`+convite["token"].(string)+`","password":"senhaMembro"}`)
+	_, membro := sendJSON(t, http.MethodPost, url+"/auth/invites/accept", "", `{"token":"`+convite["token"].(string)+`","password":"senhaMembro-de-teste"}`)
 	tokenMembro := membro["access_token"].(string)
 	status, nota := sendJSON(t, http.MethodPost, url+"/notes", tokenAdmin, `{"path":"do-admin.md","content":"x"}`)
 	require.Equal(t, http.StatusCreated, status)
@@ -136,10 +137,10 @@ func firstPendingInvite(t *testing.T, url, token string) string {
 func TestIntegration_ContaGlobalEmDoisTenantsComPapeis(t *testing.T) {
 	server, _ := setupAuthIntegrationServer(t)
 	url := server.URL
-	_, sessaoA := sendJSON(t, http.MethodPost, url+"/auth/login", "", `{"email":"ana@x.dev","password":"senha-ana"}`)
+	_, sessaoA := sendJSON(t, http.MethodPost, url+"/v1/accounts", "", `{"email":"ana@x.dev","password":"senha-ana-de-teste"}`)
 	tokenA := sessaoA["access_token"].(string)
 	_, convite := sendJSON(t, http.MethodPost, url+"/users/invites", tokenA, `{"email":"bia@x.dev","role":"member"}`)
-	_, sessaoB := sendJSON(t, http.MethodPost, url+"/auth/invites/accept", "", `{"token":"`+convite["token"].(string)+`","password":"senha-bia"}`)
+	_, sessaoB := sendJSON(t, http.MethodPost, url+"/auth/invites/accept", "", `{"token":"`+convite["token"].(string)+`","password":"senha-bia-de-teste"}`)
 	tokenB := sessaoB["access_token"].(string)
 	status, tenantB := sendJSON(t, http.MethodPost, url+"/tenants", tokenB, `{"name":"Estudio da Bia"}`)
 	require.Equal(t, http.StatusCreated, status)
@@ -156,8 +157,10 @@ func TestIntegration_ContaGlobalEmDoisTenantsComPapeis(t *testing.T) {
 	status, _ = sendAs(t, http.MethodPost, url+"/notes", tokenA, tenantB["id"].(string), `{"path":"da-ana.md","content":"x"}`)
 	assert.Equal(t, http.StatusForbidden, status, "viewer nao escreve")
 
-	status, _ = sendAs(t, http.MethodGet, url+"/users", tokenA, tenantB["id"].(string), "")
+	status, _ = sendAs(t, http.MethodGet, url+"/users/invites", tokenA, tenantB["id"].(string), "")
 	assert.Equal(t, http.StatusForbidden, status, "viewer nao administra")
+	status, _ = sendAs(t, http.MethodGet, url+"/users", tokenA, tenantB["id"].(string), "")
+	assert.Equal(t, http.StatusOK, status, "viewer lista os colegas")
 	status, _ = sendAs(t, http.MethodDelete, url+"/users/"+sessaoUserID(t, url, tokenB), tokenB, tenantB["id"].(string), "")
 	assert.Equal(t, http.StatusConflict, status, "o ultimo owner nao sai")
 }

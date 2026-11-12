@@ -11,6 +11,7 @@ class SessionsControllerTest < ActionDispatch::IntegrationTest
       assert_select "input[type=email][name=?][required]", "session[email]"
       assert_select "label", "Password"
       assert_select "input[type=password][name=?][required]", "session[password]"
+      assert_select "button[type=button][aria-controls=session_password][aria-pressed=false][aria-label=?]", "Show password"
       assert_select "button", "Log in"
     end
     assert_select "nav#sidebar", count: 0
@@ -134,7 +135,7 @@ class SessionsControllerTest < ActionDispatch::IntegrationTest
 
     get root_path
 
-    assert_equal "access-1", api.received_credentials.find { it[:call] == "GET /notes" }[:access_token]
+    assert_equal "access-1", api.received_credentials.find { it[:call].start_with?("GET /v1/vaults/") }[:access_token]
   end
 
   test "an expired access token is renewed without the user noticing" do

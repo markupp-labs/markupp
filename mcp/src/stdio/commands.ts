@@ -37,7 +37,7 @@ export async function serveStdio(
   const credential = await store.load();
   if (credential === undefined) {
     deps.writeError(
-      `sem login do markupp em ${store.path}; rode markupp-mcp login [url] no terminal antes de usar o transporte stdio`,
+      `no markupp login in ${store.path}; run markupp-mcp login [url] in a terminal before using the stdio transport`,
     );
     return 1;
   }
@@ -62,7 +62,7 @@ export async function login(
     store: credentialStore(env, deps),
     writeError: deps.writeError,
   });
-  deps.writeError(`login feito em ${credential.issuer}`);
+  deps.writeError(`logged in to ${credential.issuer}`);
   return 0;
 }
 
@@ -78,8 +78,8 @@ export async function logout(
   });
   const message =
     result === "absent"
-      ? `nenhum login do markupp em ${store.path}; nada a revogar`
-      : `login revogado e apagado de ${store.path}`;
+      ? `no markupp login in ${store.path}; nothing to revoke`
+      : `login revoked and deleted from ${store.path}`;
   deps.writeError(message);
   return 0;
 }

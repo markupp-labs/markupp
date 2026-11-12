@@ -15,7 +15,7 @@ func contaConvidada(t *testing.T, url, tokenDeQuemConvida, tenantID, email, role
 	t.Helper()
 	status, convite := sendAs(t, http.MethodPost, url+"/users/invites", tokenDeQuemConvida, tenantID, `{"email":"`+email+`","role":"`+role+`"}`)
 	require.Equal(t, http.StatusCreated, status, email)
-	status, sessao := sendJSON(t, http.MethodPost, url+"/auth/invites/accept", "", `{"token":"`+convite["token"].(string)+`","password":"senha-`+role+`"}`)
+	status, sessao := sendJSON(t, http.MethodPost, url+"/auth/invites/accept", "", `{"token":"`+convite["token"].(string)+`","password":"senha-`+role+`-de-teste"}`)
 	require.Equal(t, http.StatusOK, status, email)
 	return sessao["access_token"].(string)
 }
@@ -36,7 +36,7 @@ func tenantsDaConta(t *testing.T, url, token string) []string {
 func TestIntegration_ApagarTenant_SoOOwnerApagaETudoSome(t *testing.T) {
 	server, _ := setupAuthIntegrationServer(t)
 	url := server.URL
-	_, sessaoAna := sendJSON(t, http.MethodPost, url+"/auth/login", "", `{"email":"ana@x.dev","password":"senha-ana"}`)
+	_, sessaoAna := sendJSON(t, http.MethodPost, url+"/v1/accounts", "", `{"email":"ana@x.dev","password":"senha-ana-de-teste"}`)
 	tokenAna := sessaoAna["access_token"].(string)
 	tenantPadrao := tenantsDaConta(t, url, tokenAna)[0]
 	status, criado := sendJSON(t, http.MethodPost, url+"/tenants", tokenAna, `{"name":"Apagavel"}`)

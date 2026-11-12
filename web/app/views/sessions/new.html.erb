@@ -10,11 +10,7 @@
     <%= form.email_field :email, required: true, autofocus: true, autocomplete: "username", aria: field_aria,
                          class: "w-full rounded-md border border-line bg-surface px-2 py-1 aria-invalid:border-danger" %>
   </div>
-  <div>
-    <%= form.label :password, class: "block text-ink-muted" %>
-    <%= form.password_field :password, required: true, autocomplete: "current-password", aria: field_aria,
-                            class: "w-full rounded-md border border-line bg-surface px-2 py-1 aria-invalid:border-danger" %>
-  </div>
+  <%= render "passwords/field", form:, attribute: :password, autocomplete: "current-password", error_id: ("session_error" if login_error) %>
   <% if login_error %>
     <p id="session_error" role="alert" class="text-danger"><%= login_error %></p>
   <% end %>
@@ -22,6 +18,10 @@
 <% end %>
 
 <p class="mt-3"><%= link_to t(".forgot_password"), new_password_request_path, class: "text-accent underline" %></p>
+<p class="mt-1 text-ink-muted">
+  <%= t(".no_account") %>
+  <%= link_to t(".create_account"), new_registration_path, class: "text-accent underline" %>
+</p>
 <p class="mt-1 text-ink-muted">
   <%= t(".invite_hint") %>
   <%= link_to t(".accept_invite"), new_invite_acceptance_path, class: "text-accent underline" %>

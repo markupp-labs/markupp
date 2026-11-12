@@ -8,7 +8,7 @@ import (
 )
 
 // ErrInvalidDocument indica um documento de metadados que não atende ao draft.
-var ErrInvalidDocument = errors.New("documento de metadados invalido")
+var ErrInvalidDocument = errors.New("invalid metadata document")
 
 // ClientMetadata é o que o servidor aproveita do documento, já validado.
 type ClientMetadata struct {
@@ -28,7 +28,7 @@ type metadataDocument struct {
 func parseDocument(body []byte, clientID string) (ClientMetadata, error) {
 	var doc metadataDocument
 	if err := json.Unmarshal(body, &doc); err != nil {
-		return ClientMetadata{}, fmt.Errorf("%w: JSON ilegivel em %s: %w; esperado objeto JSON", ErrInvalidDocument, clientID, err)
+		return ClientMetadata{}, fmt.Errorf("%w: unreadable JSON at %s: %w; expected a JSON object", ErrInvalidDocument, clientID, err)
 	}
 	if err := doc.validate(clientID); err != nil {
 		return ClientMetadata{}, err
@@ -42,10 +42,10 @@ func parseDocument(body []byte, clientID string) (ClientMetadata, error) {
 
 func (d metadataDocument) validate(clientID string) error {
 	if d.ClientID != clientID {
-		return fmt.Errorf("%w: client_id %q; esperado igual a URL buscada %q", ErrInvalidDocument, d.ClientID, clientID)
+		return fmt.Errorf("%w: client_id %q; expected the fetched URL %q", ErrInvalidDocument, d.ClientID, clientID)
 	}
 	if d.TokenEndpointAuthMethod != nil && *d.TokenEndpointAuthMethod != "none" {
-		return fmt.Errorf("%w: token_endpoint_auth_method %q; esperado ausente ou \"none\"",
+		return fmt.Errorf("%w: token_endpoint_auth_method %q; expected absent or \"none\"",
 			ErrInvalidDocument, *d.TokenEndpointAuthMethod)
 	}
 	return validateRedirectURIs(d.RedirectURIs)
@@ -53,11 +53,11 @@ func (d metadataDocument) validate(clientID string) error {
 
 func validateRedirectURIs(uris []string) error {
 	if len(uris) == 0 {
-		return fmt.Errorf("%w: redirect_uris vazio; esperado lista com ao menos uma URL absoluta", ErrInvalidDocument)
+		return fmt.Errorf("%w: empty redirect_uris; expected a list with at least one absolute URL", ErrInvalidDocument)
 	}
 	for _, raw := range uris {
 		if reason := RedirectURIProblem(raw); reason != "" {
-			return fmt.Errorf("%w: redirect_uri %q %s; esperado %s", ErrInvalidDocument, raw, reason, RedirectURIShape)
+			return fmt.Errorf("%w: redirect_uri %q %s; expected %s", ErrInvalidDocument, raw, reason, RedirectURIShape)
 		}
 	}
 	return nil

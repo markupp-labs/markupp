@@ -10,8 +10,8 @@ info:
     Todas as rotas vivem sob /v1 (ADR-0026). Durante a transição, os mesmos caminhos
     continuam servidos sem prefixo, com os cabeçalhos Deprecation (RFC 9745) e
     Link rel="successor-version" apontando o caminho sob /v1; sem prefixo, a nota
-    mantém a representação antiga, sem a organização derivada. As rotas /oauth/requests,
-    /me/authorizations, /vaults, /search e as sub-coleções de /notes/{id} nasceram
+    mantém a representação antiga, sem a organização derivada. As rotas /accounts, /oauth/requests,
+    /me/authorizations, /me/notifications, /vaults, /search e as sub-coleções de /notes/{id} nasceram
     depois da transição e existem só sob /v1, sem o caminho sem prefixo.
 
     Os endpoints do protocolo OAuth (/oauth/authorize, /oauth/token, /oauth/revoke e a
@@ -26,13 +26,57 @@ servers:
 security:
   - bearerAuth: []
 paths:
+  /accounts:
+    post:
+      summary: Cria a conta local e abre a sessão dela
+      description: >
+        A primeira conta da instalação vira owner do tenant inicial, com o primeiro cofre,
+        mesmo com o auto-registro desligado. As outras só nascem com
+        MARKUPP_AUTH_REGISTRATION_ENABLED ligado, sem tenant, e com SMTP recebem o email de
+        verificação. Existe só sob /v1.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '201':
+          description: Conta criada, com a sessão aberta
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenPairResponse'
+        '400':
+          description: >
+            Email ou senha ausentes, ou senha acima de 72 bytes (invalid_request), senha com menos de 15 caracteres (password_too_short) ou senha da lista de senhas comuns (common_password)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: >
+            Auto-registro desligado e a instalação já tem conta (registration_disabled), ou
+            credencial local desligada (local_auth_disabled)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: O email já tem conta (already_exists)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/RateLimited'
   /auth/login:
     post:
       summary: Abre a sessão com credencial local
       description: >
-        Sem nenhum usuário cadastrado, o primeiro login cria a conta de administrador com o
-        primeiro cofre. Com auto-registro desligado, email desconhecido é recusado como
-        credencial inválida.
+        Só entra em conta que já existe: email sem conta é recusado como credencial
+        inválida, e a conta nasce em POST /accounts.
       security: []
       requestBody:
         required: true
@@ -131,7 +175,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/TokenPairResponse'
         '400':
-          description: Convite inexistente, vencido ou já aceito (invalid_invite), ou senha inválida
+          description: >
+            Convite inexistente, vencido ou já aceito (invalid_invite), senha ausente ou acima de
+            72 bytes (invalid_request), senha com menos de 15 caracteres (password_too_short) ou senha da lista de senhas comuns (common_password)
           content:
             application/json:
               schema:
@@ -247,7 +293,9 @@ paths:
         '204':
           description: Senha trocada
         '400':
-          description: Token inexistente, vencido ou já usado (invalid_token), ou senha inválida (invalid_request)
+          description: >
+            Token inexistente, vencido ou já usado (invalid_token), senha ausente ou acima de
+            72 bytes (invalid_request), senha com menos de 15 caracteres (password_too_short) ou senha da lista de senhas comuns (common_password)
           content:
             application/json:
               schema:
@@ -263,7 +311,10 @@ paths:
   /users:
     get:
       summary: Lista os membros do tenant
-      description: Exige papel owner ou admin no tenant.
+      description: >
+        Aberta a qualquer membro do tenant, viewer inclusive, com o mesmo formato para
+        todos; é onde se acha o id do colega a pôr num cofre. Token OAuth precisa do escopo
+        notas:leitura ou administracao.
       parameters:
         - $ref: '#/components/parameters/TenantHeader'
       responses:
@@ -385,7 +436,11 @@ paths:
         Quem já tem conta vê o convite em /me/invites. O token serve para quem ainda
         não tem conta se cadastrar. Sem SMTP configurado, ele volta uma única vez nesta
         resposta e o administrador o repassa. Com SMTP, ele não volta: o servidor gera
-        o token na entrega e o envia só por email. Vale por 7 dias.
+        o token na entrega e o envia só por email. Vale por 7 dias. Em 24 horas, cada
+        conta emite até 20 convites somando todos os tenants dela, e cada tenant recebe
+        até 50, ajustáveis em MARKUPP_INVITE_LIMIT_PER_ACCOUNT e
+        MARKUPP_INVITE_LIMIT_PER_TENANT; convite revogado continua contando. Com SMTP, só
+        convida a conta que já confirmou o email.
       parameters:
         - $ref: '#/components/parameters/TenantHeader'
       requestBody:
@@ -410,13 +465,21 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
-          description: Sem papel de administração (forbidden) ou papel acima do próprio (role_above_own)
+          description: >
+            Sem papel de administração (forbidden), papel acima do próprio (role_above_own)
+            ou, com SMTP, conta que ainda não confirmou o email (email_not_verified)
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '409':
           description: O email já é de um membro do tenant (already_member)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: A conta ou o tenant chegou ao limite de convites em 24 horas (invite_limit_reached)
           content:
             application/json:
               schema:
@@ -436,6 +499,7 @@ paths:
                 name:
                   type: string
                   maxLength: 100
+                  description: Aparado nas pontas, de 1 a 100 caracteres (não bytes)
       responses:
         '201':
           description: Tenant criado
@@ -515,6 +579,25 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/PendingInviteResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /me/notifications:
+    get:
+      summary: Lista as notificações da conta
+      description: >
+        O que pede a atenção da conta, para o sino do painel (ADR-0049). Hoje a única fonte
+        é o convite pendente, o mesmo de GET /me/invites, derivado na leitura e sem estado
+        de lido: unread é o número de itens que ainda pedem resposta e cai quando a conta
+        aceita ou recusa. Aceita token de login e token OAuth com o escopo administracao,
+        o mesmo de GET /me/invites, porque revela organizações de que a conta ainda não é
+        membro. Não usa o cabeçalho de tenant. Existe só sob /v1.
+      responses:
+        '200':
+          description: Notificações da conta, das mais antigas para as mais novas
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationFeedResponse'
         '401':
           $ref: '#/components/responses/Unauthorized'
   /me/invites/{id}/accept:
@@ -733,7 +816,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '409':
-          description: Caminho de nota duplicado
+          description: Caminho de nota duplicado (duplicate_path), ou conta sem cofre e sem vault_id (no_vault)
           content:
             application/json:
               schema:
@@ -1537,6 +1620,208 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /vaults:
+    get:
+      summary: Lista os cofres da conta
+      description: Os cofres do tenant de que a conta é membro, por nome. O viewer também lê.
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+      responses:
+        '200':
+          description: Lista, vazia quando a conta não é membro de nenhum cofre
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/VaultResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      summary: Cria um cofre
+      description: >
+        Quem cria vira o primeiro membro. O nome é livre, sem unicidade no tenant, para não
+        revelar cofre de que a conta não é membro. O viewer não cria.
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VaultNameRequest'
+      responses:
+        '201':
+          description: Cofre criado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VaultResponse'
+        '400':
+          description: Nome vazio ou com mais de 100 caracteres depois de aparado (invalid_name), ou JSON inválido (invalid_request)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Papel viewer (read_only)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /vaults/{id}:
+    patch:
+      summary: Renomeia um cofre
+      description: Qualquer membro do cofre que não é viewer renomeia.
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+        - $ref: '#/components/parameters/VaultID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VaultNameRequest'
+      responses:
+        '200':
+          description: Cofre renomeado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VaultResponse'
+        '400':
+          description: Nome vazio ou com mais de 100 caracteres depois de aparado (invalid_name), ou JSON inválido (invalid_request)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Cofre inexistente ou de que a conta não é membro (vault_forbidden), ou papel viewer (read_only)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      summary: Apaga um cofre
+      description: >
+        Qualquer membro do cofre que não é viewer apaga, até o último cofre da conta. Leva
+        junto as notas e o que deriva delas.
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+        - $ref: '#/components/parameters/VaultID'
+      responses:
+        '204':
+          description: Cofre apagado
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Cofre inexistente ou de que a conta não é membro (vault_forbidden), ou papel viewer (read_only)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /vaults/{id}/members:
+    get:
+      summary: Lista os membros do cofre
+      description: Por email, com o papel de cada um no tenant. O viewer também lê.
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+        - $ref: '#/components/parameters/VaultID'
+      responses:
+        '200':
+          description: Membros do cofre
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MemberResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Cofre inexistente ou de que a conta não é membro (vault_forbidden)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      summary: Adiciona um membro ao cofre
+      description: >
+        Qualquer membro do cofre que não é viewer adiciona uma conta que já é do tenant.
+        Quem não é do tenant entra antes pelo convite do tenant.
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+        - $ref: '#/components/parameters/VaultID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VaultMemberRequest'
+      responses:
+        '201':
+          description: Conta adicionada ao cofre
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MemberResponse'
+        '400':
+          description: JSON inválido (invalid_request)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Cofre inexistente ou de que a conta não é membro (vault_forbidden), ou papel viewer (read_only)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: A conta já é membro do cofre (already_vault_member)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: A conta não pertence ao tenant (not_tenant_member)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /vaults/{id}/members/{user_id}:
+    delete:
+      summary: Tira um membro do cofre
+      description: >
+        Qualquer membro do cofre que não é viewer tira outro membro. Com o próprio id é
+        sair do cofre, que até o viewer faz, inclusive do último.
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+        - $ref: '#/components/parameters/VaultID'
+        - $ref: '#/components/parameters/VaultMemberID'
+      responses:
+        '204':
+          description: Membro tirado do cofre
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Cofre inexistente ou de que a conta não é membro (vault_forbidden), ou papel viewer (read_only)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: A conta não é membro do cofre (vault_member_not_found)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /vaults/{id}/notes:
     get:
       summary: Lista as notas do cofre
@@ -1803,6 +2088,13 @@ components:
       description: Id da conta do membro
       schema:
         type: string
+    VaultMemberID:
+      name: user_id
+      in: path
+      required: true
+      description: Id da conta do membro do cofre
+      schema:
+        type: string
     InviteID:
       name: id
       in: path
@@ -2006,9 +2298,67 @@ components:
         joined_at:
           type: string
           format: date-time
+    VaultResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+    VaultNameRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          description: Aparado nas pontas, de 1 a 100 caracteres (não bytes)
+    VaultMemberRequest:
+      type: object
+      required: [user_id]
+      properties:
+        user_id:
+          type: string
+          description: Id de uma conta do tenant, como GET /v1/users devolve
     PendingInviteResponse:
       type: object
       properties:
+        id:
+          type: string
+        tenant_id:
+          type: string
+        tenant_name:
+          type: string
+        role:
+          $ref: '#/components/schemas/Role'
+        expires_at:
+          type: string
+          format: date-time
+    NotificationFeedResponse:
+      type: object
+      required: [items, unread]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/NotificationResponse'
+        unread:
+          type: integer
+          minimum: 0
+          description: Quantos itens ainda pedem resposta
+    NotificationResponse:
+      type: object
+      required: [kind, id]
+      description: >
+        Um item da lista. kind diz a fonte e quais campos vêm; o cliente ignora o kind que
+        não conhece. Com kind invite, os campos são os de PendingInviteResponse, e id é o do
+        convite, o mesmo de POST /me/invites/{id}/accept e /decline.
+      properties:
+        kind:
+          type: string
+          enum: [invite]
         id:
           type: string
         tenant_id:
@@ -2028,7 +2378,11 @@ components:
           type: string
         password:
           type: string
+          minLength: 15
           maxLength: 72
+          description: >
+            Senha nova: de 15 caracteres a 72 bytes, fora da lista de senhas comuns, sem
+            exigir tipos de caractere (NIST SP 800-63B-4)
     EmailTokenRequest:
       type: object
       required: [token]
@@ -2049,7 +2403,11 @@ components:
           type: string
         password:
           type: string
+          minLength: 15
           maxLength: 72
+          description: >
+            Senha nova: de 15 caracteres a 72 bytes, fora da lista de senhas comuns, sem
+            exigir tipos de caractere (NIST SP 800-63B-4)
     InviteRequest:
       type: object
       required: [email, role]
@@ -2518,4 +2876,4 @@ components:
         message:
           type: string
           description: Mensagem de erro legível
-          example: "JSON inválido"
+          example: "invalid JSON body"

@@ -6,19 +6,19 @@ Aceita
 
 ## Contexto
 
-O Enterprise foi desenhado sobre Lambda e balanceador da AWS (ADR-0018, ADR-0023), enquanto o
-self-host roda por compose. São dois runtimes diferentes para o mesmo produto, e o serverless
-amarra o projeto a uma nuvem. Além disso, self-host é a identidade do projeto: o que a equipe
-opera na nuvem deveria ser o que qualquer pessoa consegue operar
+A instalação em nuvem foi desenhada sobre Lambda e balanceador da AWS (ADR-0018, ADR-0023),
+enquanto o self-host roda por compose. São dois runtimes diferentes para o mesmo produto, e o
+serverless amarra o projeto a uma nuvem. Além disso, self-host é a identidade do projeto, e uma
+instalação em nuvem deveria ser o que qualquer pessoa consegue operar
 
 ## Decisão
 
-Kubernetes é a plataforma de execução do Enterprise e do self-host de porte maior, com as
-mesmas imagens de container usadas no compose. A indexação roda como Job criado sob demanda,
-com o gatilho ainda proposto no ADR-0032, e o TLS termina no Gateway. O compose continua sendo
-a via para instalação de um nó
+Kubernetes é a plataforma de execução das instalações de porte maior, inclusive com vários
+tenants, com as mesmas imagens de container usadas no compose. A indexação roda como Job criado
+sob demanda, com o gatilho ainda proposto no ADR-0032, e o TLS termina no Gateway. O compose
+continua sendo a via para instalação de um nó
 
-A implantação vem em duas fases. Na primeira, o Enterprise roda num cluster kubeadm on-premise,
+A implantação vem em duas fases. Na primeira, a instalação roda num cluster kubeadm on-premise,
 com Cilium, Gateway API, cert-manager e Longhorn. Na segunda, vai para nuvem pública, com a
 mesma instalação. O PostgreSQL roda numa instância só, dentro do namespace do markupp, sem nada
 acrescentado no nível do cluster para ele
@@ -37,7 +37,7 @@ acrescentado no nível do cluster para ele
 
 ## Consequências
 
-- O que a equipe opera passa a ser uma instalação que qualquer pessoa com Pulumi reproduz
+- Uma instalação em nuvem passa a ser algo que qualquer pessoa com Pulumi reproduz
   (ADR-0025). Quem usa Helm, Argo CD ou Flux fica sem artefato oficial
 - Some a taxa do Lambda: sem pool obrigatório na frente do Postgres, sem teto de quinze minutos
   e sem fatiar lote por causa de tempo
@@ -51,7 +51,12 @@ acrescentado no nível do cluster para ele
 - O banco não tem failover: se o nó dele cair, a API fica sem banco até o pod subir em outro nó
 - A entrada de tráfego usa Gateway API, e não Ingress. A API Ingress está congelada e a
   documentação do Kubernetes recomenda Gateway no lugar dela. São três recursos com donos
-  distintos, GatewayClass, Gateway e HTTPRoute, e o cluster precisa dos CRDs e de um controlador
-  que os implemente
+  distintos, GatewayClass, Gateway e HTTPRoute, e o cluster precisa dos CRDs e de um
+  controlador que os implemente
 - Portabilidade não sai de graça: gateway, classe de armazenamento e identidade ainda têm
   arestas específicas de cada nuvem
+
+## Emenda
+
+Em novembro de 2026, o texto passou a descrever a capacidade da instalação no lugar de uma
+edição. A decisão não mudou.

@@ -19,8 +19,16 @@ Ator: cliente.
 
 O cliente apresenta credencial local ou é redirecionado ao provedor OIDC habilitado. No
 retorno, o servidor liga o identificador do provedor a uma conta de chave estável e abre a
-sessão. Conta que ainda não existe só é criada se o auto-registro estiver ligado, e ele vem
-desligado.
+sessão. O login com credencial local só entra em conta que já existe.
+
+## Criar conta
+
+Ator: pessoa sem conta.
+
+A pessoa informa email e senha, e o servidor cria a conta e abre a sessão. A primeira conta da
+instalação vira owner do tenant inicial. As outras só nascem com o auto-registro ligado, que
+vem desligado, e chegam sem tenant e sem email provado; com SMTP, recebem o email de
+verificação.
 
 ## Criar nota
 
@@ -66,17 +74,37 @@ agrupado.
 
 Ator: cliente.
 
-Qualquer cliente autenticado cria um cofre e vira membro dele. O cofre nasce vazio, com
-namespace de caminho próprio.
+Qualquer cliente autenticado que não é viewer no tenant cria um cofre e vira membro dele. O
+cofre nasce vazio, com namespace de caminho próprio, e o nome não precisa ser único.
 
-## Convidar membro para o cofre
+## Renomear cofre
 
 Ator: cliente.
 
-Um membro convida outro usuário. O servidor grava a notificação como pendente, e o worker a
-envia pelo provedor de email configurado, fora do caminho da requisição. Sem provedor
-configurado o convite não sai. Quem aceita passa a ler e escrever todas as notas do cofre, e
-pode remover qualquer membro, inclusive quem criou.
+Um membro que não é viewer troca o nome do cofre. Caminhos e notas não mudam.
+
+## Apagar cofre
+
+Ator: cliente.
+
+Um membro que não é viewer apaga o cofre, e as notas e o dado derivado delas vão junto. Vale
+também para o último cofre da conta, que passa a não ter nenhum.
+
+## Adicionar membro ao cofre
+
+Ator: cliente.
+
+Um membro que não é viewer escolhe, numa lista das contas do tenant, quem entra no cofre. Só
+entra conta que já tem vínculo com o tenant; quem é de fora entra antes pelo convite do
+tenant. O novo membro lê as notas do cofre e, se não for viewer, escreve e gerencia o cofre
+como qualquer outro, inclusive removendo quem o criou.
+
+## Sair do cofre
+
+Ator: cliente.
+
+Qualquer membro, viewer inclusive, remove a si mesmo do cofre e deixa de ver as notas dele.
+O cofre pode acabar sem nenhum membro.
 
 ## Configurar provedores externos
 

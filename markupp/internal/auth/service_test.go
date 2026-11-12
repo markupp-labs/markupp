@@ -35,6 +35,7 @@ type fakeRepository struct {
 	createdTenant auth.CreateTenantParams
 
 	pendingForUser   []auth.PendingInvite
+	pendingErr       error
 	acceptedByID     auth.AcceptInviteByIDParams
 	acceptByIDResult auth.Membership
 	acceptByIDErr    error
@@ -228,13 +229,63 @@ func defaultClock() func() time.Time {
 	return func() time.Time { return time.Date(2026, 10, 4, 12, 0, 0, 0, time.UTC) }
 }
 
+func TestService_LoginLocal_EmailDesconhecidoComRegistroLigado_NuncaCriaConta(t *testing.T) {
+	clock := defaultClock()
+	repo := newFakeRepository(clock)
+	svc := setupAuthService(repo, true, clock)
+	ctx := context.Background()
+
+	_, err := svc.LoginLocal(ctx, "digitado.errado@markupp.dev", "senha-de-teste-longa")
+
+	require.ErrorIs(t, err, auth.ErrInvalidCredentials)
+	assert.Empty(t, repo.users, "login so entra; conta nasce em Register")
+}
+
+func TestService_Register_RegistroDesligadoDepoisDaPrimeira_RecusaComErrRegistrationDisabled(t *testing.T) {
+	clock := defaultClock()
+	repo := newFakeRepository(clock)
+	svc := setupAuthService(repo, false, clock)
+	ctx := context.Background()
+	_, err := svc.Register(ctx, "primeiro@markupp.dev", "senha-de-teste-longa")
+	require.NoError(t, err)
+
+	_, err = svc.Register(ctx, "segundo@markupp.dev", "senha-de-teste-longa")
+
+	require.ErrorIs(t, err, auth.ErrRegistrationDisabled)
+	assert.Len(t, repo.users, 1)
+}
+
+func TestService_Register_EmailJaComConta_RecusaComErrUserAlreadyExists(t *testing.T) {
+	clock := defaultClock()
+	repo := newFakeRepository(clock)
+	svc := setupAuthService(repo, true, clock)
+	ctx := context.Background()
+	_, err := svc.Register(ctx, "ana@markupp.dev", "senha-de-teste-longa")
+	require.NoError(t, err)
+
+	_, err = svc.Register(ctx, " Ana@Markupp.dev ", "outra-senha-de-teste")
+
+	require.ErrorIs(t, err, auth.ErrUserAlreadyExists)
+}
+
+func TestService_Register_SenhaVazia_RecusaAntesDoBanco(t *testing.T) {
+	clock := defaultClock()
+	repo := newFakeRepository(clock)
+	svc := setupAuthService(repo, true, clock)
+
+	_, err := svc.Register(context.Background(), "ana@markupp.dev", " ")
+
+	require.ErrorIs(t, err, auth.ErrEmptyPassword)
+	assert.Empty(t, repo.users)
+}
+
 func TestService_PrimeiroUsuario_PromovidoAAdminECriaCofre(t *testing.T) {
 	clock := defaultClock()
 	repo := newFakeRepository(clock)
 	svc := setupAuthService(repo, false, clock)
 	ctx := context.Background()
 
-	pair, err := svc.LoginLocal(ctx, "primeiro@markupp.dev", "senhaForte123")
+	pair, err := svc.Register(ctx, "primeiro@markupp.dev", "senha-forte-de-teste")
 	require.NoError(t, err)
 	assert.NotEmpty(t, pair.AccessToken)
 	assert.NotEmpty(t, pair.RefreshToken)
@@ -253,10 +304,10 @@ func TestService_LoginLocal_CredenciaisCorretas_Sucesso(t *testing.T) {
 	svc := setupAuthService(repo, false, clock)
 	ctx := context.Background()
 
-	_, err := svc.LoginLocal(ctx, "admin@markupp.dev", "senha123")
+	_, err := svc.Register(ctx, "admin@markupp.dev", "senha-de-teste-longa")
 	require.NoError(t, err)
 
-	pair, err := svc.LoginLocal(ctx, "admin@markupp.dev", "senha123")
+	pair, err := svc.LoginLocal(ctx, "admin@markupp.dev", "senha-de-teste-longa")
 	require.NoError(t, err)
 	assert.NotEmpty(t, pair.AccessToken)
 	assert.NotEmpty(t, pair.RefreshToken)
@@ -268,7 +319,7 @@ func TestService_LoginLocal_SenhaIncorreta_Falha(t *testing.T) {
 	svc := setupAuthService(repo, false, clock)
 	ctx := context.Background()
 
-	_, err := svc.LoginLocal(ctx, "admin@markupp.dev", "senhaCorreta")
+	_, err := svc.Register(ctx, "admin@markupp.dev", "senha-correta-de-teste")
 	require.NoError(t, err)
 
 	_, err = svc.LoginLocal(ctx, "admin@markupp.dev", "senhaErrada")
@@ -284,7 +335,7 @@ func TestService_LoginLocal_UsuarioNaoExisteEAutoRegistroDesativado_Rejeita(t *t
 	svc := setupAuthService(repo, false, clock)
 	ctx := context.Background()
 
-	_, err := svc.LoginLocal(ctx, "admin@markupp.dev", "senha123")
+	_, err := svc.Register(ctx, "admin@markupp.dev", "senha-de-teste-longa")
 	require.NoError(t, err)
 
 	_, err = svc.LoginLocal(ctx, "outro@markupp.dev", "senhaQualquer")
@@ -310,7 +361,7 @@ func TestService_RefreshToken_Valido_RenovaSessaoERevogaAnterior(t *testing.T) {
 	svc := setupAuthService(repo, false, clock)
 	ctx := context.Background()
 
-	pair1, err := svc.LoginLocal(ctx, "admin@markupp.dev", "senha123")
+	pair1, err := svc.Register(ctx, "admin@markupp.dev", "senha-de-teste-longa")
 	require.NoError(t, err)
 
 	pair2, err := svc.RefreshToken(ctx, pair1.RefreshToken)
@@ -329,7 +380,7 @@ func TestService_RevokeSession_Sucesso(t *testing.T) {
 	svc := setupAuthService(repo, false, clock)
 	ctx := context.Background()
 
-	pair, err := svc.LoginLocal(ctx, "admin@markupp.dev", "senha123")
+	pair, err := svc.Register(ctx, "admin@markupp.dev", "senha-de-teste-longa")
 	require.NoError(t, err)
 
 	err = svc.RevokeSession(ctx, pair.RefreshToken)
@@ -339,16 +390,16 @@ func TestService_RevokeSession_Sucesso(t *testing.T) {
 	require.ErrorIs(t, err, auth.ErrRefreshTokenRevoked)
 }
 
-func TestService_LoginLocal_UsuarioNaoExisteEAutoRegistroAtivado_CriaMembro(t *testing.T) {
+func TestService_Register_RegistroLigado_CriaContaSemTenant(t *testing.T) {
 	clock := defaultClock()
 	repo := newFakeRepository(clock)
 	svc := setupAuthService(repo, true, clock)
 	ctx := context.Background()
 
-	_, err := svc.LoginLocal(ctx, "admin@markupp.dev", "senha123")
+	_, err := svc.Register(ctx, "admin@markupp.dev", "senha-de-teste-longa")
 	require.NoError(t, err)
 
-	pair, err := svc.LoginLocal(ctx, "novo.membro@markupp.dev", "senhaMembro123")
+	pair, err := svc.Register(ctx, "novo.membro@markupp.dev", "senha-do-membro-de-teste")
 	require.NoError(t, err)
 	assert.NotEmpty(t, pair.AccessToken)
 	assert.NotEmpty(t, pair.RefreshToken)
@@ -366,7 +417,7 @@ func TestService_GetAccount_Sucesso(t *testing.T) {
 	svc := setupAuthService(repo, false, clock)
 	ctx := context.Background()
 
-	_, err := svc.LoginLocal(ctx, "admin@markupp.dev", "senha123")
+	_, err := svc.Register(ctx, "admin@markupp.dev", "senha-de-teste-longa")
 	require.NoError(t, err)
 
 	user, found := findUserByEmail(repo.users, "admin@markupp.dev")
@@ -403,7 +454,7 @@ func TestService_RefreshToken_Expirado_Falha(t *testing.T) {
 	svc := auth.NewService(repo, codec, hasher, cfg, clock)
 	ctx := context.Background()
 
-	pair, err := svc.LoginLocal(ctx, "admin@markupp.dev", "senha123")
+	pair, err := svc.Register(ctx, "admin@markupp.dev", "senha-de-teste-longa")
 	require.NoError(t, err)
 
 	agora = agora.Add(2 * time.Hour)
@@ -417,7 +468,7 @@ func TestService_RefreshToken_UsuarioInexistente_Falha(t *testing.T) {
 	svc := setupAuthService(repo, false, clock)
 	ctx := context.Background()
 
-	pair, err := svc.LoginLocal(ctx, "admin@markupp.dev", "senha123")
+	pair, err := svc.Register(ctx, "admin@markupp.dev", "senha-de-teste-longa")
 	require.NoError(t, err)
 
 	for k := range repo.users {
@@ -453,7 +504,7 @@ func TestService_LoginLocal_AutenticacaoLocalDesativada_RetornaErro(t *testing.T
 	svc := auth.NewService(repo, codec, hasher, cfg, clock)
 	ctx := context.Background()
 
-	_, err := svc.LoginLocal(ctx, "admin@markupp.dev", "senha123")
+	_, err := svc.LoginLocal(ctx, "admin@markupp.dev", "senha-de-teste-longa")
 	require.ErrorIs(t, err, auth.ErrLocalAuthDisabled)
 }
 
@@ -463,7 +514,7 @@ func TestService_RefreshToken_ReusoDetectado_RevogaTodasSessoesEAudita(t *testin
 	svc := setupAuthService(repo, false, clock)
 	ctx := context.Background()
 
-	pair1, err := svc.LoginLocal(ctx, "admin@markupp.dev", "senha123")
+	pair1, err := svc.Register(ctx, "admin@markupp.dev", "senha-de-teste-longa")
 	require.NoError(t, err)
 
 	pair2, err := svc.RefreshToken(ctx, pair1.RefreshToken)
@@ -492,7 +543,9 @@ func TestService_LoginLocal_PersistenciaAtomica_GravaSessaoEAuditoria(t *testing
 	svc := setupAuthService(repo, false, clock)
 	ctx := context.Background()
 
-	pair, err := svc.LoginLocal(ctx, "admin@markupp.dev", "senha123")
+	_, err := svc.Register(ctx, "admin@markupp.dev", "senha-de-teste-longa")
+	require.NoError(t, err)
+	pair, err := svc.LoginLocal(ctx, "admin@markupp.dev", "senha-de-teste-longa")
 	require.NoError(t, err)
 
 	hash := auth.HashOpaqueToken(pair.RefreshToken)
@@ -534,7 +587,7 @@ func countLoginHasherOps(t *testing.T, email string) int {
 	codec := auth.NewTokenCodec("segredo-para-testes-de-servico", 15*time.Minute, clock)
 	cfg := auth.ServiceConfig{DefaultTenantID: "default", LocalEnabled: true, RefreshExpirationPeriod: time.Hour}
 	svc := auth.NewService(repo, codec, hasher, cfg, clock)
-	_, err := svc.LoginLocal(context.Background(), "admin@markupp.dev", "senha123")
+	_, err := svc.Register(context.Background(), "admin@markupp.dev", "senha-de-teste-longa")
 	require.NoError(t, err)
 	hasher.ops = 0
 	_, err = svc.LoginLocal(context.Background(), email, "senhaErrada")
@@ -580,11 +633,11 @@ func TestAcceptInvite_TokenValido_CriaContaDoConviteEAbreSessao(t *testing.T) {
 	repo := repoComConvite(clock, "token-do-convite")
 	svc := setupAuthService(repo, false, clock)
 
-	pair, err := svc.AcceptInvite(context.Background(), "token-do-convite", "senhaNova")
+	pair, err := svc.AcceptInvite(context.Background(), "token-do-convite", "senha-do-convidado-nova")
 
 	require.NoError(t, err)
 	assert.NotEmpty(t, pair.AccessToken)
-	assert.Equal(t, "hash:senhaNova", repo.acceptedWith.PasswordHash)
+	assert.Equal(t, "hash:senha-do-convidado-nova", repo.acceptedWith.PasswordHash)
 	assert.NotEmpty(t, repo.acceptedWith.InitialVaultID)
 	user := repo.users[repo.acceptedWith.UserID]
 	assert.Equal(t, auth.User{ID: user.ID, Email: "nova@markupp.dev", CreatedAt: clock(), UpdatedAt: clock()}, user)
@@ -597,7 +650,7 @@ func TestAcceptInvite_TokenDesconhecido_RecusaComErrInviteInvalid(t *testing.T) 
 	clock := defaultClock()
 	svc := setupAuthService(repoComConvite(clock, "token-do-convite"), false, clock)
 
-	_, err := svc.AcceptInvite(context.Background(), "outro-token", "senhaNova")
+	_, err := svc.AcceptInvite(context.Background(), "outro-token", "senha-do-convidado-nova")
 
 	require.ErrorIs(t, err, auth.ErrInviteInvalid)
 }
@@ -695,8 +748,19 @@ func TestCreateTenant_NomeVazio_RecusaComErrInvalidTenantName(t *testing.T) {
 	require.ErrorIs(t, err, auth.ErrInvalidTenantName)
 }
 
+func TestCreateTenant_NomeAcentuado_ContaCaracteresNaoBytes(t *testing.T) {
+	svc := setupAuthService(newFakeRepository(defaultClock()), false, defaultClock())
+
+	_, err := svc.CreateTenant(context.Background(), "u1", strings.Repeat("é", 100))
+	require.NoError(t, err, "100 letras acentuadas cabem no limite")
+
+	_, err = svc.CreateTenant(context.Background(), "u1", strings.Repeat("é", 101))
+	require.ErrorIs(t, err, auth.ErrInvalidTenantName)
+	assert.Contains(t, err.Error(), "1 to 100 characters")
+}
+
 func (f *fakeRepository) ListPendingInvites(ctx context.Context, userID string, now time.Time) ([]auth.PendingInvite, error) {
-	return f.pendingForUser, nil
+	return f.pendingForUser, f.pendingErr
 }
 
 func (f *fakeRepository) AcceptInviteByIDTx(ctx context.Context, p auth.AcceptInviteByIDParams) (auth.Membership, error) {
@@ -767,7 +831,7 @@ func servicoComEmail(repo auth.Repository, emailEnabled bool) *auth.Service {
 func TestService_AutoRegistroComSMTP_PedeAVerificacaoDoEmail(t *testing.T) {
 	repo := newFakeRepository(defaultClock())
 
-	_, err := servicoComEmail(repo, true).LoginLocal(context.Background(), "nova@markupp.dev", "senhaForte123")
+	_, err := servicoComEmail(repo, true).Register(context.Background(), "nova@markupp.dev", "senha-forte-de-teste")
 
 	require.NoError(t, err)
 	assert.True(t, repo.lastAccount.SendVerification)
@@ -776,7 +840,7 @@ func TestService_AutoRegistroComSMTP_PedeAVerificacaoDoEmail(t *testing.T) {
 func TestService_AutoRegistroSemSMTP_NaoPedeVerificacao(t *testing.T) {
 	repo := newFakeRepository(defaultClock())
 
-	_, err := servicoComEmail(repo, false).LoginLocal(context.Background(), "nova@markupp.dev", "senhaForte123")
+	_, err := servicoComEmail(repo, false).Register(context.Background(), "nova@markupp.dev", "senha-forte-de-teste")
 
 	require.NoError(t, err)
 	assert.False(t, repo.lastAccount.SendVerification)

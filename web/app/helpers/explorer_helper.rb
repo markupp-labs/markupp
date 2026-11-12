@@ -2,8 +2,6 @@
 module ExplorerHelper
   # Matizes das comunidades (--community-0 a 7, em tree.css), pelo id da comunidade: o grafo usa a mesma conta.
   COMMUNITY_HUES = 8
-  # Idade curta como a do ls e do git log --relative: o maior passo que cabe.
-  AGE_STEPS = { "y" => 1.year, "mo" => 30.days, "w" => 1.week, "d" => 1.day, "h" => 1.hour, "m" => 1.minute }.freeze
 
   def community_hue(community) = community % COMMUNITY_HUES
 
@@ -16,13 +14,5 @@ module ExplorerHelper
     when "linked" then note.degree.to_s
     when "recent" then tag.time(compact_age(note.updated_at), datetime: note.updated_at&.iso8601, title: note.updated_at && l(note.updated_at))
     end
-  end
-
-  def compact_age(time, now: Time.current)
-    return "" if time.nil?
-
-    seconds = now - time
-    unit, span = AGE_STEPS.find { |_unit, step| seconds >= step }
-    unit ? "#{(seconds / span).floor}#{unit}" : t("explorer.now")
   end
 end

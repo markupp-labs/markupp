@@ -71,6 +71,13 @@ painel que recebe o token (/invite_acceptance/new, /email_confirmation/new e
 link. O painel é o de `MARKUPP_PANEL_URL` no notificador, a mesma variável do OAuth descrita
 abaixo, com `http://localhost:3999` como padrão. No componente, ela vem de `email.panelUrl`.
 
+Em 24 horas, cada conta emite até 20 convites, somando todos os tenants dela, e cada tenant
+recebe até 50; acima disso a API responde 429 `invite_limit_reached`. Convite revogado continua
+contando, e as variáveis `MARKUPP_INVITE_LIMIT_PER_ACCOUNT` e `MARKUPP_INVITE_LIMIT_PER_TENANT`,
+de 1 a 10000, trocam os dois números. A contagem fica no banco e vale entre réplicas. Com SMTP,
+só convida a conta que já confirmou o email, e o assunto do convite não leva o nome do tenant:
+os dois impedem que o remetente da instância vire relay de spam e phishing.
+
 A API limita login, refresh, aceite de convite, pedido de verificação de email e pedido e troca
 de senha a 5 tentativas por minuto por IP e, quando o corpo traz email, por email (ADR-0044).
 Acima disso responde 429 com Retry-After. A variável `MARKUPP_RATE_LIMIT_PER_MINUTE`, de 1 a
@@ -103,20 +110,18 @@ Para subir o servidor MCP, informe `mcp` com `image`. Ele atende na mesma origem
 resource, que vai para a API em `MARKUPP_OAUTH_RESOURCES` e para o MCP em
 `MARKUPP_MCP_RESOURCE_SECRET`.
 
-### Stacks da equipe
+### Stack dev
 
-O projeto em `deploy/stacks` usa o componente pelo caminho local e tem duas stacks:
+O projeto em `deploy/stacks` usa o componente pelo caminho local e tem uma stack, `dev`: um
+cluster kind que o CI sobe em cada PR e a cada push em dev para testar a implantação, com
+certificado autoassinado.
 
-- `prod`: o Enterprise no cluster de produção, com Let's Encrypt
-- `dev`: um cluster kind que o CI sobe em cada PR e a cada push em dev para testar a implantação, com
-  certificado autoassinado
+A cada tag `v*`, o workflow de release publica as imagens do servidor, do painel e do MCP. Com
+aprovação no environment `production` do GitHub, que guarda o secret `CLOUD_DISPATCH_TOKEN`, o
+release também avisa a tag nova por `repository_dispatch`; sem o secret (forks e instalações
+self-host), o passo é pulado.
 
-A cada tag `v*`, o workflow de release publica as imagens do servidor, do painel e do MCP e, com aprovação no environment
-`production` do GitHub, roda `pulumi up` na stack prod com as imagens da tag. O environment guarda
-os secrets `KUBE_TOKEN` (token de uma ServiceAccount com Role só no namespace do markupp) e
-`PULUMI_ACCESS_TOKEN`, e as variáveis `KUBE_SERVER` e `KUBE_CA_DATA`.
-
-As duas sobem sem email. Para ligar numa stack, com a URL do SMTP cifrada no arquivo da stack:
+A stack sobe sem email. Para ligar numa stack, com a URL do SMTP cifrada no arquivo da stack:
 
 ```sh
 pulumi config set --path --secret email.smtpUrl 'smtps://usuario:senha@host:465'
@@ -174,11 +179,11 @@ make e2e-mcp
 
 ## Validar
 
-Smoke test pela API. Com o banco vazio, o primeiro login cria a conta como owner do tenant
-inicial:
+Smoke test pela API. Com o banco vazio, o primeiro cadastro cria a conta como owner do tenant
+inicial, e já devolve a sessão:
 
 ```sh
-TOKEN=$(curl -s -X POST http://localhost:8080/auth/login \
+TOKEN=$(curl -s -X POST http://localhost:8080/v1/accounts \
   -H 'Content-Type: application/json' \
   -d '{"email":"admin@exemplo.dev","password":"troque-esta-senha"}' \
   | grep -o '"access_token":"[^"]*"' | cut -d'"' -f4)
@@ -204,12 +209,18 @@ lê em cada tenant e quando a mais recente mudou. Qualquer conta cria tenant em
 `POST /tenants` e vira owner dele. Só o owner apaga o tenant, em `DELETE /tenants/{id}`, e
 apaga de vez: cofres, notas, vínculos e convites vão junto, e as contas continuam.
 
+O login só entra em conta que já existe; a conta nasce no cadastro, em `POST /v1/accounts` ou
+na tela "Criar conta" do painel. Depois da primeira, o cadastro só aceita conta nova com
+`MARKUPP_AUTH_REGISTRATION_ENABLED=true`; desligado, ele responde 403 `registration_disabled` e
+a conta nasce só pelo convite.
+
 A conta de auto-registro (`MARKUPP_AUTH_REGISTRATION_ENABLED=true`) nasce sem email provado e
 não recebe convite pela lista até verificar. Com SMTP configurado, ela recebe o email de
 verificação no cadastro, confirma com o token logada nela em `POST /auth/email/verify` e pode
 pedir outro em `POST /auth/email/verification`. Sem SMTP, nada
 prova o email dela, e qualquer pessoa pode ocupar um email alheio antes do dono: só ligue o
-auto-registro com SMTP.
+auto-registro com SMTP. No componente, `registrationEnabled: true` liga o auto-registro, e ele é
+recusado sem o bloco `email`.
 
 Com SMTP, quem esqueceu a senha pede a troca em `POST /auth/password/forgot` e troca com o token
 do email em `POST /auth/password/reset`.
@@ -312,6 +323,7 @@ do MCP vêm do Secret.
 
 ## Aviso
 
-Com o banco vazio, quem fizer o primeiro login vira owner do tenant inicial
-([ADR-0035](adrs/ADR-0035-conta-global-com-vinculo-por-tenant.md)).
-Faça esse login antes de expor o servidor publicamente.
+Com o banco vazio, quem criar a primeira conta, pelo painel em "Criar conta" ou em
+`POST /v1/accounts`, vira owner do tenant inicial
+([ADR-0035](adrs/ADR-0035-conta-global-com-vinculo-por-tenant.md)). Isso vale mesmo com o
+auto-registro desligado. Crie essa conta antes de expor o servidor publicamente.

@@ -20,7 +20,7 @@ export class ApiTokenCache {
   constructor(exchange: AgentTokenExchange, clock: Clock, maxEntries: number) {
     if (!Number.isInteger(maxEntries) || maxEntries < 1) {
       throw new Error(
-        `teto do cache de tokens invalido: ${maxEntries}; esperado inteiro maior que zero`,
+        `invalid token cache limit: ${maxEntries}; expected an integer greater than zero`,
       );
     }
     this.exchange = exchange;

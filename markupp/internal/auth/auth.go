@@ -9,23 +9,25 @@ import (
 
 // Erros de domínio do pacote auth.
 var (
-	ErrUserNotFound         = errors.New("usuario nao encontrado")
-	ErrIdentityNotFound     = errors.New("identidade nao encontrada")
-	ErrUserAlreadyExists    = errors.New("usuario ja existe")
-	ErrInvalidCredentials   = errors.New("credenciais invalidas")
-	ErrRegistrationDisabled = errors.New("auto-registro desativado")
-	ErrLocalAuthDisabled    = errors.New("autenticacao local desativada")
-	ErrPasswordTooLong      = errors.New("senha excede o tamanho maximo de 72 bytes")
-	ErrRefreshTokenRevoked  = errors.New("refresh token revogado")
-	ErrRefreshTokenExpired  = errors.New("refresh token expirado")
-	ErrRefreshTokenInvalid  = errors.New("refresh token invalido")
-	ErrEmptyEmail           = errors.New("email obrigatorio")
-	ErrEmptyPassword        = errors.New("senha obrigatoria")
-	ErrInviteInvalid        = errors.New("convite inexistente, vencido ou ja aceito")
-	ErrMembershipNotFound   = errors.New("usuario sem vinculo com o tenant")
-	ErrTenantRequired       = errors.New("usuario de varios tenants precisa escolher um")
-	ErrNoTenant             = errors.New("usuario sem nenhum tenant")
-	ErrInvalidTenantName    = errors.New("nome de tenant invalido")
+	ErrUserNotFound         = errors.New("user not found")
+	ErrIdentityNotFound     = errors.New("identity not found")
+	ErrUserAlreadyExists    = errors.New("user already exists")
+	ErrInvalidCredentials   = errors.New("invalid credentials")
+	ErrRegistrationDisabled = errors.New("self-registration is disabled")
+	ErrLocalAuthDisabled    = errors.New("local authentication is disabled")
+	ErrPasswordTooLong      = errors.New("password exceeds the maximum length of 72 bytes")
+	ErrPasswordTooShort     = errors.New("password is shorter than the minimum of 15 characters")
+	ErrCommonPassword       = errors.New("password is in the list of common passwords")
+	ErrRefreshTokenRevoked  = errors.New("refresh token revoked")
+	ErrRefreshTokenExpired  = errors.New("refresh token expired")
+	ErrRefreshTokenInvalid  = errors.New("invalid refresh token")
+	ErrEmptyEmail           = errors.New("email is required")
+	ErrEmptyPassword        = errors.New("password is required")
+	ErrInviteInvalid        = errors.New("invite not found, expired or already accepted")
+	ErrMembershipNotFound   = errors.New("user is not a member of the tenant")
+	ErrTenantRequired       = errors.New("user belongs to several tenants and must choose one")
+	ErrNoTenant             = errors.New("user does not belong to any tenant")
+	ErrInvalidTenantName    = errors.New("invalid tenant name")
 )
 
 // User representa uma conta da instância com chave estável (UUID). O acesso a cada
@@ -116,8 +118,9 @@ func normalizeEmail(email string) string {
 	return strings.ToLower(strings.TrimSpace(email))
 }
 
-// InitialVaultName é o nome do cofre que toda conta ganha ao ser criada.
-const InitialVaultName = "Principal"
+// InitialVaultName é o nome do cofre que toda conta ganha ao entrar num tenant. O painel
+// é em inglês, e o nome nasce na mesma língua.
+const InitialVaultName = "Default"
 
 // PendingInvite é o convite que aguarda resposta da conta convidada.
 type PendingInvite struct {

@@ -1,0 +1,33 @@
+pt-BR:
+  graphs:
+    show:
+      title: "Grafo"
+      keys: "j k mover  ↵ abrir  + - zoom  0 ajustar  esc voltar"
+    filters:
+      title: "Filtros"
+      show: "mostrar"
+      orphans: "Órfãs"
+      unresolved: "Ligações não resolvidas"
+      inferred: "Ligações inferidas"
+      community: "Comunidade"
+      all_communities: "Todas as comunidades"
+      community_option: "%{hub} (%{size})"
+    local:
+      depth: "Profundidade"
+      depth_prompt: "profundidade"
+      full: "Grafo completo"
+    canvas_label: "Grafo das notas. j e k movem entre as notas, Enter abre uma, mais e menos dão zoom, 0 ajusta."
+    roledescription: "grafo"
+    list_label: "Notas no grafo"
+    status: "%{nodes} nós  %{links} ligações"
+    capped: "%{shown} de %{total} nós, os mais centrais  %{links} ligações"
+    empty:
+      title: "Nenhuma nota para desenhar ainda"
+      hint: "As notas e as ligações entre elas aparecem aqui."
+    filtered:
+      title: "Nenhuma nota passa por estes filtros"
+      hint: "Limpe os filtros para ver todas as notas."
+      clear: "Limpar filtros"
+    refused:
+      title: "Não dá para abrir este grafo"
+      hint: "Você pode não ter mais acesso a estas notas."

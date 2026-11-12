@@ -128,7 +128,7 @@ func TestLoad_PortaForaDaFaixa_RetornaErroComOValor(t *testing.T) {
 
 		require.Error(t, err, "porta %s devia ser recusada", porta)
 		assert.Contains(t, err.Error(), porta)
-		assert.Contains(t, err.Error(), "1 a 65535")
+		assert.Contains(t, err.Error(), "1 to 65535")
 	}
 }
 
@@ -140,7 +140,7 @@ func TestLoad_TamanhoNaoPositivo_RetornaErroComOValor(t *testing.T) {
 
 		require.Error(t, err, "tamanho %s devia ser recusado", tamanho)
 		assert.Contains(t, err.Error(), tamanho)
-		assert.Contains(t, err.Error(), "maior que zero")
+		assert.Contains(t, err.Error(), "greater than zero")
 	}
 }
 
@@ -221,7 +221,7 @@ func TestLoad_BooleanoInvalido_RetornaErroComChaveValorEFormato(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "MARKUPP_AUTH_LOCAL_ENABLED")
 	assert.Contains(t, err.Error(), "sim")
-	assert.Contains(t, err.Error(), "esperado booleano")
+	assert.Contains(t, err.Error(), "expected boolean")
 }
 
 func TestLoad_BooleanoEmMaiusculo_InterpretaCorretamente(t *testing.T) {
@@ -420,7 +420,42 @@ func TestLoad_LimiteDeTentativasForaDaFaixa_RetornaErroComOValor(t *testing.T) {
 
 		require.Error(t, err, valor)
 		assert.Contains(t, err.Error(), "MARKUPP_RATE_LIMIT_PER_MINUTE", valor)
-		assert.Contains(t, err.Error(), "de 1 a 10000", valor)
+		assert.Contains(t, err.Error(), "from 1 to 10000", valor)
+	}
+}
+
+func TestDefault_LimitesDeConvite_VintePorContaECinquentaPorTenant(t *testing.T) {
+	env := fakeEnv{"MARKUPP_DATABASE_URL": urlDeTeste, "MARKUPP_AUTH_SECRET": segredoDeTesteValido}
+
+	cfg, err := config.Load(env.Lookup)
+
+	require.NoError(t, err)
+	assert.Equal(t, 20, cfg.InviteLimitPerAccount)
+	assert.Equal(t, 50, cfg.InviteLimitPerTenant)
+}
+
+func TestLoad_LimitesDeConviteDefinidos_LeOsValores(t *testing.T) {
+	env := fakeEnv{"MARKUPP_DATABASE_URL": urlDeTeste, "MARKUPP_AUTH_SECRET": segredoDeTesteValido,
+		"MARKUPP_INVITE_LIMIT_PER_ACCOUNT": "5", "MARKUPP_INVITE_LIMIT_PER_TENANT": "200"}
+
+	cfg, err := config.Load(env.Lookup)
+
+	require.NoError(t, err)
+	assert.Equal(t, 5, cfg.InviteLimitPerAccount)
+	assert.Equal(t, 200, cfg.InviteLimitPerTenant)
+}
+
+func TestLoad_LimiteDeConviteForaDaFaixa_RetornaErroComAVariavel(t *testing.T) {
+	for _, nome := range []string{"MARKUPP_INVITE_LIMIT_PER_ACCOUNT", "MARKUPP_INVITE_LIMIT_PER_TENANT"} {
+		for _, valor := range []string{"0", "-1", "vinte", "10001"} {
+			env := fakeEnv{"MARKUPP_DATABASE_URL": urlDeTeste, "MARKUPP_AUTH_SECRET": segredoDeTesteValido, nome: valor}
+
+			_, err := config.Load(env.Lookup)
+
+			require.Error(t, err, nome+"="+valor)
+			assert.Contains(t, err.Error(), nome, valor)
+			assert.Contains(t, err.Error(), "from 1 to 10000", valor)
+		}
 	}
 }
 

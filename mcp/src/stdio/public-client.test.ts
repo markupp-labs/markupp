@@ -37,7 +37,7 @@ describe("discoverAuthServer", () => {
     await expect(
       discoverAuthServer(TEST_ISSUER, upstream.fetch),
     ).rejects.toThrow(
-      'issuer em http://localhost:8080/.well-known/oauth-authorization-server="https://outro.exemplo"',
+      'issuer at http://localhost:8080/.well-known/oauth-authorization-server="https://outro.exemplo"',
     );
   });
 
@@ -56,7 +56,7 @@ describe("discoverAuthServer", () => {
     const upstream = new FakeFetch();
     await expect(
       discoverAuthServer("http://markupp.exemplo", upstream.fetch),
-    ).rejects.toThrow('url do markupp="http://markupp.exemplo"');
+    ).rejects.toThrow('markupp url="http://markupp.exemplo"');
     expect(upstream.requests).toHaveLength(0);
   });
 });

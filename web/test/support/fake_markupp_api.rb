@@ -6,17 +6,17 @@ class FakeMarkuppApi
 
   delegate :put_requests, :post_requests, to: :@notes
   delegate :expire_access_tokens!, :revoke_refresh_tokens!, :refresh_token_valid?, to: :@accounts
-  delegate :disable_local_auth!, :hold_refreshes_together!, to: :@auth
-  delegate :assign_role!, :deny_notes_in!, :delete_tenant!, to: :@tenants
+  delegate :disable_local_auth!, :close_registration!, :hold_refreshes_together!, to: :@auth
+  delegate :assign_role!, :deny_notes_in!, :delete_tenant!, :receive_invite!, to: :@tenants
   delegate :sent_tokens, to: :@account_email
   delegate :received_etags, :graph_queries, :change_graph!, to: :@graph
   delegate :decisions, to: :@oauth_requests, prefix: :oauth
 
   # email_enabled: false é o servidor sem SMTP, que devolve o token do convite emitido e recusa os fluxos de email da conta.
   # graph é o cenário das ligações, comunidades e grafos sob /v1 (ver FakeMarkuppGraph); oauth_requests, o dos pedidos
-  # de autorização OAuth (ver FakeMarkuppOAuthRequests).
+  # de autorização OAuth (ver FakeMarkuppOAuthRequests); vaults, o dos cofres de cada tenant (ver FakeMarkuppVaults).
   def initialize(notes: [], unreachable: false, conflict: false, accounts: FakeMarkuppAccounts::DEFAULT_ACCOUNTS,
-                 tenants: FakeMarkuppTenants::DEFAULT_TENANTS, invites: [], email_enabled: true, graph: {}, oauth_requests: [])
+                 tenants: FakeMarkuppTenants::DEFAULT_TENANTS, invites: [], email_enabled: true, graph: {}, oauth_requests: [], vaults: nil)
     @accounts = FakeMarkuppAccounts.new(accounts)
     @tenants = FakeMarkuppTenants.new(tenants, invites)
     @auth = FakeMarkuppAuth.new(@accounts, @tenants)
@@ -27,6 +27,7 @@ class FakeMarkuppApi
     @note_index = FakeMarkuppNoteIndex.new(@notes)
     @graph = FakeMarkuppGraph.new(graph)
     @oauth_requests = FakeMarkuppOAuthRequests.new(oauth_requests)
+    @vaults = FakeMarkuppVaults.new(vaults, @tenants, @accounts)
     @unreachable = unreachable
     @slow_calls = FakeSlowCalls.new(timeout: 10)
     @received_credentials = []
@@ -48,6 +49,9 @@ class FakeMarkuppApi
 
   # Cenário: só a listagem de notas cai; login, tenants e conta seguem respondendo.
   def cut_notes! = @notes_unreachable = true
+
+  # Cenário: só a listagem de cofres (GET /v1/vaults) cai; o resto segue respondendo.
+  def cut_vaults! = @vaults_unreachable = true
 
   # Cenário: um bug no meio da chamada, que não é erro da API e o painel não trata.
   def break_with_bug! = @bug = true
@@ -72,7 +76,7 @@ class FakeMarkuppApi
       call = "#{verb} #{path}"
       @slow_calls.pass(call)
       raise "fake API bug on #{call}" if @bug
-      raise MarkuppApi::Error, "fake API unreachable on #{call}" if @unreachable || (@notes_unreachable && path.start_with?("/notes"))
+      raise MarkuppApi::Error, "fake API unreachable on #{call}" if unreachable?(call, path)
 
       @received_credentials << @credentials.merge(call:) if @credentials
       account = authenticate(call)
@@ -80,10 +84,14 @@ class FakeMarkuppApi
       fake_for(call, path).public_send(method, path, *body, account:, role: membership["role"], tenant_id: membership["id"], **options)
     end
 
+    def unreachable?(call, path) = @unreachable || (@notes_unreachable && notes_path?(path)) || (@vaults_unreachable && call == "GET /v1/vaults")
+
+    def notes_path?(path) = path.start_with?("/notes") || FakeMarkuppNoteIndex::VAULT_NOTES.match?(path)
+
     # Só notas, grafo e administração agem num tenant; chamada de confiança, sem conta, não tem papel. Os pedidos OAuth
-    # são da conta, sem tenant.
+    # e as notificações são da conta, sem tenant.
     def tenant_membership(path, account, call)
-      return unless account && path.start_with?("/notes", "/users", "/v1/") && !path.start_with?(OAUTH_REQUESTS)
+      return unless account && path.start_with?("/notes", "/users", "/v1/") && !path.start_with?(OAUTH_REQUESTS, FakeMarkuppTenants::NOTIFICATIONS)
 
       @tenants.membership_for(account, @credentials[:tenant_id], call)
     end
@@ -95,8 +103,11 @@ class FakeMarkuppApi
     end
 
     def fake_for(call, path)
-      return @notes if path.start_with?("/notes")
+      return @notes if path.start_with?("/notes") || (call.start_with?("POST ") && FakeMarkuppNoteIndex::VAULT_NOTES.match?(path))
+      return @vaults if FakeMarkuppVaults::ROUTE.match?(path)
       return @oauth_requests if path.start_with?(OAUTH_REQUESTS)
+      return @tenants if path == FakeMarkuppTenants::NOTIFICATIONS
+      return @auth if path == "/v1/accounts"
       return @note_index if path.start_with?("/v1/search/") || FakeMarkuppNoteIndex::VAULT_NOTES.match?(path)
       return @graph if path.start_with?("/v1/")
       return @account_email if path.start_with?("/auth/password/", "/auth/email/")

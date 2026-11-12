@@ -1,0 +1,11 @@
+pt-BR:
+  notifications:
+    badge:
+      label:
+        zero: "Notificações"
+        one: "Notificações, %{count} pendente"
+        other: "Notificações, %{count} pendentes"
+    list:
+      empty: "Nada precisa da sua atenção."
+    show:
+      title: "Notificações"

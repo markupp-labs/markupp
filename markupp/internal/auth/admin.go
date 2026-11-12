@@ -18,11 +18,11 @@ const inviteTTL = 7 * 24 * time.Hour
 
 // Erros da administração de usuários.
 var (
-	ErrInvalidRole   = errors.New("papel invalido")
-	ErrInvalidEmail  = errors.New("email invalido")
-	ErrAlreadyMember = errors.New("email ja pertence a um usuario do tenant")
-	ErrRoleAboveOwn  = errors.New("papel acima do de quem atribui")
-	ErrNotOwner      = errors.New("acao reservada ao owner do tenant")
+	ErrInvalidRole   = errors.New("invalid role")
+	ErrInvalidEmail  = errors.New("invalid email")
+	ErrAlreadyMember = errors.New("email already belongs to a user of the tenant")
+	ErrRoleAboveOwn  = errors.New("role is above the role of whoever grants it")
+	ErrNotOwner      = errors.New("only the tenant owner can do this")
 )
 
 // Invite é o convite para entrar no tenant. O token não fica aqui: só o hash dele
@@ -49,8 +49,9 @@ type AdminRepository interface {
 	ListMembers(ctx context.Context) ([]Member, error)
 	ListInvites(ctx context.Context) ([]Invite, error)
 	// CreateInviteTx grava o convite e a auditoria e, com byEmail, a notificação que
-	// entrega o token por email, tudo na mesma transação.
-	CreateInviteTx(ctx context.Context, inv Invite, tokenHash string, event AuditEventRecord, byEmail bool) error
+	// entrega o token por email, tudo na mesma transação. Antes, mostra a check a cota de
+	// quem convida na janela que termina em inv.CreatedAt; erro de check desfaz tudo.
+	CreateInviteTx(ctx context.Context, inv Invite, tokenHash string, event AuditEventRecord, byEmail bool, check func(InviteQuota) error) error
 	ChangeMembershipTx(ctx context.Context, change MembershipChange, check func(MembershipState) error) error
 	RevokeInviteTx(ctx context.Context, inviteID string, event AuditEventRecord) error
 	// DeleteTenantTx apaga de vez o tenant do ator, com tudo que pertence a ele, e grava
@@ -64,12 +65,14 @@ type AdminService struct {
 	clock         func() time.Time
 	newID         func() string
 	inviteByEmail bool
+	limits        InviteLimits
 }
 
 // NewAdminService monta o serviço sobre o repositório e o relógio dados. Com
-// inviteByEmail, o convite sai por email e o token nunca passa pela resposta.
-func NewAdminService(repo AdminRepository, clock func() time.Time, inviteByEmail bool) *AdminService {
-	return &AdminService{repo: repo, clock: clock, newID: uuid.NewString, inviteByEmail: inviteByEmail}
+// inviteByEmail, o convite sai por email e o token nunca passa pela resposta; limits
+// é o teto de convites por janela.
+func NewAdminService(repo AdminRepository, clock func() time.Time, inviteByEmail bool, limits InviteLimits) *AdminService {
+	return &AdminService{repo: repo, clock: clock, newID: uuid.NewString, inviteByEmail: inviteByEmail, limits: limits}
 }
 
 // ListMembers devolve os membros do tenant do ator, com o papel de cada um.
@@ -95,8 +98,8 @@ func (s *AdminService) IssueInvite(ctx context.Context, inviter identity.Actor, 
 	if err != nil {
 		return IssuedInvite{}, err
 	}
-	if err := s.repo.CreateInviteTx(ctx, inv, HashOpaqueToken(token), s.inviteEvent(inv), s.inviteByEmail); err != nil {
-		return IssuedInvite{}, fmt.Errorf("gravar convite de %q: %w", inv.Email, err)
+	if err := s.repo.CreateInviteTx(ctx, inv, HashOpaqueToken(token), s.inviteEvent(inv), s.inviteByEmail, s.checkQuota); err != nil {
+		return IssuedInvite{}, fmt.Errorf("save invite for %q: %w", inv.Email, err)
 	}
 	if s.inviteByEmail {
 		return IssuedInvite{Invite: inv}, nil
@@ -104,13 +107,17 @@ func (s *AdminService) IssueInvite(ctx context.Context, inviter identity.Actor, 
 	return IssuedInvite{Invite: inv, Token: token}, nil
 }
 
+func (s *AdminService) checkQuota(q InviteQuota) error {
+	return CheckInviteQuota(q, s.limits, s.inviteByEmail)
+}
+
 func (s *AdminService) newInvite(inviter identity.Actor, email, role string) (Invite, error) {
 	normEmail := normalizeEmail(email)
 	if !strings.Contains(normEmail, "@") {
-		return Invite{}, fmt.Errorf("%w: %q, esperado usuario@dominio", ErrInvalidEmail, email)
+		return Invite{}, fmt.Errorf("%w %q: expected user@domain", ErrInvalidEmail, email)
 	}
 	if identity.RoleRank(role) == 0 {
-		return Invite{}, fmt.Errorf("%w: %q, esperado owner, admin, member ou viewer", ErrInvalidRole, role)
+		return Invite{}, fmt.Errorf("%w %q: expected owner, admin, member or viewer", ErrInvalidRole, role)
 	}
 	if err := checkRoleCeiling(inviter, role); err != nil {
 		return Invite{}, err
@@ -125,7 +132,7 @@ func (s *AdminService) newInvite(inviter identity.Actor, email, role string) (In
 // checkRoleCeiling impede que alguém conceda papel acima do próprio.
 func checkRoleCeiling(granter identity.Actor, role string) error {
 	if identity.RoleRank(role) > identity.RoleRank(granter.Role) {
-		return fmt.Errorf("%w: %q por quem e %q", ErrRoleAboveOwn, role, granter.Role)
+		return fmt.Errorf("%w: %q granted by %q", ErrRoleAboveOwn, role, granter.Role)
 	}
 	return nil
 }
@@ -154,7 +161,7 @@ func (s *AdminService) RevokeInvite(ctx context.Context, actor identity.Actor, i
 // auditado na mesma transação. Só o owner apaga; as contas continuam.
 func (s *AdminService) DeleteTenant(ctx context.Context, actor identity.Actor) error {
 	if actor.Role != identity.RoleOwner {
-		return fmt.Errorf("%w: papel %q, esperado %q", ErrNotOwner, actor.Role, identity.RoleOwner)
+		return fmt.Errorf("%w: role %q, expected %q", ErrNotOwner, actor.Role, identity.RoleOwner)
 	}
 	return s.repo.DeleteTenantTx(ctx, AuditEventRecord{
 		ID: s.newID(), TenantID: actor.TenantID, ActorID: actor.UserID, Action: "tenants.delete",

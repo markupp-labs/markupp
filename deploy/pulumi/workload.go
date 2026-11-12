@@ -82,6 +82,7 @@ func apiDeploymentArgs(names resourceNames, args MarkuppArgs) *appsv1.Deployment
 	env := append(databaseURLEnv(names), inviteByEmailEnv(args)...)
 	env = append(env, publicURLEnv(args))
 	env = append(env, rateLimitEnv(args)...)
+	env = append(env, registrationEnv(args)...)
 	env = append(env, panelURLEnv(args)...)
 	env = append(env, mcpProxyEnv(names, args)...)
 	container.Env = env

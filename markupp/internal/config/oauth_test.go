@@ -167,7 +167,7 @@ func TestLoad_RecursoSemSegredo_RetornaErroSemVazarOPar(t *testing.T) {
 
 		require.Error(t, err, valor)
 		assert.Contains(t, err.Error(), "MARKUPP_OAUTH_RESOURCES")
-		assert.Contains(t, err.Error(), "url=segredo")
+		assert.Contains(t, err.Error(), "url=secret")
 		assert.NotContains(t, err.Error(), segredoDoRecursoDeTeste)
 	}
 }
@@ -180,7 +180,7 @@ func TestLoad_RecursoComSegredoCurto_RetornaErroComTamanhoSemOSegredo(t *testing
 
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "MARKUPP_OAUTH_RESOURCES")
-	assert.Contains(t, err.Error(), "par 1")
+	assert.Contains(t, err.Error(), "pair 1")
 	assert.Contains(t, err.Error(), "12 bytes")
 	assert.Contains(t, err.Error(), "32 bytes")
 	assert.NotContains(t, err.Error(), "curto-demais")
@@ -200,8 +200,8 @@ func TestLoad_RecursoForaDoFormato_RetornaErroComAPosicaoSemOPar(t *testing.T) {
 
 		require.Error(t, err, valor)
 		assert.Contains(t, err.Error(), "MARKUPP_OAUTH_RESOURCES", valor)
-		assert.Contains(t, err.Error(), "par 2", valor)
-		assert.Contains(t, err.Error(), "url=segredo", valor)
+		assert.Contains(t, err.Error(), "pair 2", valor)
+		assert.Contains(t, err.Error(), "url=secret", valor)
 		assert.NotContains(t, err.Error(), "mcp.markupp.dev", valor)
 		assert.NotContains(t, err.Error(), segredoDoRecursoDeTeste, valor)
 	}
@@ -215,8 +215,8 @@ func TestLoad_RecursoSoComSegredoBase64_RetornaErroSemVazarOSegredo(t *testing.T
 	_, err := config.Load(env.Lookup)
 
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "par 1")
-	assert.Contains(t, err.Error(), "url=segredo")
+	assert.Contains(t, err.Error(), "pair 1")
+	assert.Contains(t, err.Error(), "url=secret")
 	assert.NotContains(t, err.Error(), strings.TrimRight(segredo, "="))
 }
 
@@ -227,8 +227,8 @@ func TestLoad_RecursoInvertido_RetornaErroSemVazarOSegredo(t *testing.T) {
 	_, err := config.Load(env.Lookup)
 
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "par 1")
-	assert.Contains(t, err.Error(), "url=segredo")
+	assert.Contains(t, err.Error(), "pair 1")
+	assert.Contains(t, err.Error(), "url=secret")
 	assert.NotContains(t, err.Error(), segredoDoRecursoDeTeste)
 }
 
@@ -241,8 +241,8 @@ func TestLoad_RecursoRepetido_RetornaErroComAsPosicoes(t *testing.T) {
 
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "MARKUPP_OAUTH_RESOURCES")
-	assert.Contains(t, err.Error(), "par 2")
-	assert.Contains(t, err.Error(), "par 1")
+	assert.Contains(t, err.Error(), "pair 2")
+	assert.Contains(t, err.Error(), "pair 1")
 	assert.NotContains(t, err.Error(), outroSegredoDeTeste)
 }
 
@@ -254,7 +254,7 @@ func TestLoad_RecursoRepetidoAposNormalizar_RetornaErro(t *testing.T) {
 	_, err := config.Load(env.Lookup)
 
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "par 2")
+	assert.Contains(t, err.Error(), "pair 2")
 }
 
 func TestLoad_URLsComMaiusculasEBarraFinal_Normaliza(t *testing.T) {
@@ -333,7 +333,7 @@ func TestLoad_RecursoRepetidoComPortaPadrao_RetornaErro(t *testing.T) {
 	_, err := config.Load(env.Lookup)
 
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "par 2")
+	assert.Contains(t, err.Error(), "pair 2")
 }
 
 func TestDefault_DuracoesDoOAuth(t *testing.T) {
@@ -381,15 +381,15 @@ func TestLoad_DuracoesDoOAuthNosLimites_Aceita(t *testing.T) {
 
 func TestLoad_DuracaoDoOAuthInvalida_RetornaErroComVariavelEValor(t *testing.T) {
 	casos := []struct{ chave, valor, faixa string }{
-		{"MARKUPP_OAUTH_ACCESS_MINUTES", "0", "de 1 a 1440"},
-		{"MARKUPP_OAUTH_ACCESS_MINUTES", "1441", "de 1 a 1440"},
-		{"MARKUPP_OAUTH_REFRESH_DAYS", "366", "de 1 a 365"},
-		{"MARKUPP_OAUTH_REQUEST_MINUTES", "61", "de 1 a 60"},
-		{"MARKUPP_OAUTH_CODE_SECONDS", "9", "de 10 a 600"},
-		{"MARKUPP_OAUTH_CODE_SECONDS", "601", "de 10 a 600"},
-		{"MARKUPP_OAUTH_CODE_SECONDS", "um minuto", "de 10 a 600"},
-		{"MARKUPP_OAUTH_EXCHANGE_MINUTES", "0", "de 1 a 15"},
-		{"MARKUPP_OAUTH_EXCHANGE_MINUTES", "16", "de 1 a 15"},
+		{"MARKUPP_OAUTH_ACCESS_MINUTES", "0", "from 1 to 1440"},
+		{"MARKUPP_OAUTH_ACCESS_MINUTES", "1441", "from 1 to 1440"},
+		{"MARKUPP_OAUTH_REFRESH_DAYS", "366", "from 1 to 365"},
+		{"MARKUPP_OAUTH_REQUEST_MINUTES", "61", "from 1 to 60"},
+		{"MARKUPP_OAUTH_CODE_SECONDS", "9", "from 10 to 600"},
+		{"MARKUPP_OAUTH_CODE_SECONDS", "601", "from 10 to 600"},
+		{"MARKUPP_OAUTH_CODE_SECONDS", "um minuto", "from 10 to 600"},
+		{"MARKUPP_OAUTH_EXCHANGE_MINUTES", "0", "from 1 to 15"},
+		{"MARKUPP_OAUTH_EXCHANGE_MINUTES", "16", "from 1 to 15"},
 	}
 	for _, caso := range casos {
 		env := envComOAuth()

@@ -36,10 +36,10 @@ func (s *Service) RefreshToken(ctx context.Context, g RefreshGrant) (TokenRespon
 
 func checkRefreshParams(g RefreshGrant) error {
 	if g.RefreshToken == "" {
-		return &ProtocolError{Code: errInvalidRequest, Description: "refresh_token ausente; esperado o refresh token emitido por este servidor"}
+		return &ProtocolError{Code: errInvalidRequest, Description: "refresh_token missing; expected the refresh token issued by this server"}
 	}
 	if g.ClientID == "" {
-		return &ProtocolError{Code: errInvalidRequest, Description: "client_id ausente; esperado o client_id que recebeu o refresh token"}
+		return &ProtocolError{Code: errInvalidRequest, Description: "client_id missing; expected the client_id that received the refresh token"}
 	}
 	return nil
 }
@@ -54,7 +54,7 @@ func (s *Service) precheckRefresh(ctx context.Context, g RefreshGrant, now time.
 		return nil
 	}
 	if err != nil {
-		return fmt.Errorf("oauth: lendo o refresh token antes de consumir: %w", err)
+		return fmt.Errorf("oauth: read refresh token before consuming it: %w", err)
 	}
 	if !unspentRefresh(grant, g.ClientID, now) {
 		return nil
@@ -83,14 +83,14 @@ func (s *Service) consumeRefresh(ctx context.Context, refresh string, now time.T
 	case errors.Is(err, ErrTokenNotFound), errors.Is(err, ErrAuthorizationNotFound):
 		return TokenGrant{}, grantError(revokedRefreshDescription)
 	}
-	return TokenGrant{}, fmt.Errorf("oauth: consumindo o refresh token: %w", err)
+	return TokenGrant{}, fmt.Errorf("oauth: consume refresh token: %w", err)
 }
 
 // revokedRefreshDescription é a descrição do refresh que não vale mais.
-const revokedRefreshDescription = "refresh token invalido, expirado ou revogado; esperado um refresh token emitido por este servidor e ainda valido"
+const revokedRefreshDescription = "refresh token invalid, expired or revoked; expected a still valid refresh token issued by this server"
 
 // reusedRefreshDescription é a descrição do refresh já rotacionado reapresentado.
-const reusedRefreshDescription = "refresh token ja rotacionado; esperado o refresh token mais recente emitido para o cliente"
+const reusedRefreshDescription = "refresh token already rotated; expected the latest refresh token issued to the client"
 
 // revokeReusedRefresh derruba os tokens da Autorização do refresh reapresentado, com o
 // hash dele como gatilho. Expirado também dispara: o que importa é ele seguir sem
@@ -102,7 +102,7 @@ func (s *Service) revokeReusedRefresh(ctx context.Context, authorization Authori
 	}
 	event := auditEvent(AuditActionRefreshReuse, AuditResultFailure, authorization, now)
 	if err := s.repo.RevokeAuthorizationTokensAudited(ctx, authorization.ID, refreshHash, ExpiredTriggerRevokes, event); err != nil {
-		return fmt.Errorf("oauth: revogando os tokens da autorização %q após reuso de refresh token: %w", authorization.ID, err)
+		return fmt.Errorf("oauth: revoke tokens of authorization %q after refresh token reuse: %w", authorization.ID, err)
 	}
 	return grantError(reusedRefreshDescription)
 }
@@ -111,7 +111,7 @@ func (s *Service) revokeReusedRefresh(ctx context.Context, authorization Authori
 // escopos do access novo.
 func checkRefreshGrant(g RefreshGrant, grant TokenGrant) ([]string, error) {
 	if g.ClientID != grant.Authorization.ClientID {
-		return nil, grantError("client_id " + ClientValue(g.ClientID) + " diferente do dono do refresh token; esperado o client_id que recebeu o token")
+		return nil, grantError("client_id " + ClientValue(g.ClientID) + " differs from the refresh token owner; expected the client_id that received the token")
 	}
 	if err := checkResource(g.Resource, grant.Token.Resource); err != nil {
 		return nil, err
@@ -128,7 +128,7 @@ func narrowScopes(raw string, granted []string) ([]string, error) {
 	requested := map[string]bool{}
 	for _, scope := range strings.Fields(raw) {
 		if !slices.Contains(granted, scope) {
-			return nil, &ProtocolError{Code: errInvalidScope, Description: "escopo " + ClientValue(scope) + " nao concedido ao refresh token; esperado um subconjunto de " + strings.Join(granted, ", ")}
+			return nil, &ProtocolError{Code: errInvalidScope, Description: "scope " + ClientValue(scope) + " not granted to the refresh token; expected a subset of " + strings.Join(granted, ", ")}
 		}
 		requested[scope] = true
 	}
@@ -150,7 +150,7 @@ func (s *Service) saveRefreshed(ctx context.Context, grant TokenGrant, scopes []
 		return TokenResponse{}, grantError(revokedRefreshDescription)
 	}
 	if err != nil {
-		return TokenResponse{}, fmt.Errorf("oauth: gravando os tokens rotacionados da autorização %q: %w", grant.Authorization.ID, err)
+		return TokenResponse{}, fmt.Errorf("oauth: save rotated tokens of authorization %q: %w", grant.Authorization.ID, err)
 	}
 	return pair.response, nil
 }

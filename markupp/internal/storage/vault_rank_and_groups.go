@@ -13,7 +13,7 @@ import (
 // grafo g.
 func saveCentrality(ctx context.Context, q *gen.Queries, vaultID string, noteIDs []string, g *vaultgraph.Graph, logger *slog.Logger) error {
 	if err := q.DeleteNoteCentrality(ctx, vaultID); err != nil {
-		return fmt.Errorf("apagar a centralidade do cofre %q: %w", vaultID, err)
+		return fmt.Errorf("delete centrality of vault %q: %w", vaultID, err)
 	}
 	ranks, stop := g.PageRank()
 	logCapped(logger, vaultID, "pagerank", stop)
@@ -24,7 +24,7 @@ func saveCentrality(ctx context.Context, q *gen.Queries, vaultID string, noteIDs
 		params.Pageranks[i], params.InDegrees[i], params.OutDegrees[i] = ranks[id], toInt32(in), toInt32(out)
 	}
 	if err := q.SaveNoteCentrality(ctx, params); err != nil {
-		return fmt.Errorf("gravar a centralidade das %d notas do cofre %q: %w", len(noteIDs), vaultID, err)
+		return fmt.Errorf("save centrality of %d notes in vault %q: %w", len(noteIDs), vaultID, err)
 	}
 	return nil
 }
@@ -44,10 +44,10 @@ func saveCommunities(ctx context.Context, q *gen.Queries, vaultID string, g *vau
 		return err
 	}
 	if err := q.DeleteNoteCommunities(ctx, vaultID); err != nil {
-		return fmt.Errorf("apagar as comunidades do cofre %q: %w", vaultID, err)
+		return fmt.Errorf("delete communities of vault %q: %w", vaultID, err)
 	}
 	if err := q.SaveNoteCommunities(ctx, communityRows(communities, ids)); err != nil {
-		return fmt.Errorf("gravar as %d comunidades do cofre %q: %w", len(communities), vaultID, err)
+		return fmt.Errorf("save %d communities of vault %q: %w", len(communities), vaultID, err)
 	}
 	return nil
 }
@@ -65,7 +65,7 @@ func logCapped(logger *slog.Logger, vaultID, algorithm string, stop vaultgraph.C
 func previousCommunities(ctx context.Context, q *gen.Queries, vaultID string) (map[string]int64, error) {
 	rows, err := q.ListNoteCommunities(ctx, vaultID)
 	if err != nil {
-		return nil, fmt.Errorf("listar as comunidades anteriores do cofre %q: %w", vaultID, err)
+		return nil, fmt.Errorf("list previous communities of vault %q: %w", vaultID, err)
 	}
 	previous := make(map[string]int64, len(rows))
 	for _, r := range rows {
@@ -88,7 +88,7 @@ func assignCommunityIDs(ctx context.Context, q *gen.Queries, vaultID string, inh
 	}
 	fresh, err := q.NextCommunityIDs(ctx, toInt32(missing))
 	if err != nil {
-		return nil, fmt.Errorf("reservar %d ids de comunidade para o cofre %q: %w", missing, vaultID, err)
+		return nil, fmt.Errorf("reserve %d community ids for vault %q: %w", missing, vaultID, err)
 	}
 	for i := range inherited {
 		if inherited[i] == 0 {

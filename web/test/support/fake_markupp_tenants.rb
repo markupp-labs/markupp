@@ -1,5 +1,5 @@
 # Tenants da FakeMarkuppApi: vínculos conta-tenant-papel, /me/tenants, POST /tenants, convites recebidos em /me/invites
-# e o tenant do cabeçalho, resolvido como o RequireTenant do servidor.
+# e em /v1/me/notifications, e o tenant do cabeçalho, resolvido como o RequireTenant do servidor.
 class FakeMarkuppTenants
   # Todos os convites, de todos os tenants: a FakeMarkuppTenantAdmin emite, lista e revoga por aqui.
   attr_reader :invites
@@ -8,6 +8,7 @@ class FakeMarkuppTenants
   NAME_LIMIT = 100
 
   INVITE_ANSWER = %r{\A/me/invites/(?<id>[^/]+)/(?<answer>accept|decline)\z}
+  NOTIFICATIONS = "/v1/me/notifications".freeze
 
   # tenants: [{ id:, name:, members: { email => papel }, notes_count:, last_note_at: }]; as estatísticas são opcionais,
   # como no servidor que ainda não as manda, e só aparecem em /me/tenants quando o tenant as tem.
@@ -16,15 +17,16 @@ class FakeMarkuppTenants
     @tenants = tenants.map do |tenant|
       { "id" => tenant[:id], "name" => tenant[:name], "members" => tenant[:members].dup, "stats" => tenant.slice(:notes_count, :last_note_at).stringify_keys }
     end
-    @invites = invites.map { it.stringify_keys.reverse_merge("expires_at" => 7.days.from_now.utc.iso8601, "created_at" => Time.current.utc.iso8601) }
+    @invites = invites.map { pending_defaults(it) }
     @notes_denied = []
   end
 
   def get(path, account:, **)
     return memberships(account) if path == "/me/tenants"
     return pending_invites(account) if path == "/me/invites"
+    return notifications(account) if path == NOTIFICATIONS
 
-    raise ArgumentError, "fake API has no route for GET #{path}, expected /me/tenants or /me/invites"
+    raise ArgumentError, "fake API has no route for GET #{path}, expected /me/tenants, /me/invites or #{NOTIFICATIONS}"
   end
 
   def post(path, body, account:, **)
@@ -62,6 +64,9 @@ class FakeMarkuppTenants
   # Como a API: convite sem resposta e no prazo.
   def pending?(invite) = invite["accepted_at"].nil? && Time.zone.parse(invite["expires_at"]).future?
 
+  # Cenário: chega um convite com a página já aberta, como o de outro admin. invite como no initialize.
+  def receive_invite!(invite) = @invites << pending_defaults(invite)
+
   # Cenário: o papel muda (ou some, com nil) no servidor entre duas páginas.
   def assign_role!(tenant_id, email, role)
     members = tenant(tenant_id).fetch("members")
@@ -92,6 +97,16 @@ class FakeMarkuppTenants
       return [] unless account.fetch("verified", true)
 
       @invites.select { it["email"] == account["email"] && pending?(it) }.map { pending_invite(it) }
+    end
+
+    def pending_defaults(invite)
+      invite.stringify_keys.reverse_merge("expires_at" => 7.days.from_now.utc.iso8601, "created_at" => Time.current.utc.iso8601)
+    end
+
+    # Como a API (ADR-0049): os convites pendentes, cada um com o kind, e quantos pedem resposta.
+    def notifications(account)
+      items = pending_invites(account).map { { "kind" => "invite", **it } }
+      { "items" => items, "unread" => items.size }
     end
 
     def pending_invite(invite)

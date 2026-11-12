@@ -3,7 +3,7 @@ import { defineConfig } from "vitest/config";
 
 // O e2e fica fora da suíte unitária: os arquivos terminam em .e2e.ts, que o padrão do
 // Vitest não pega, e só esta config os inclui. Os arquivos rodam em série porque
-// dividem a conta criada no primeiro login.
+// dividem a conta criada no primeiro cadastro.
 export default defineConfig({
   test: {
     root: fileURLToPath(new URL(".", import.meta.url)),

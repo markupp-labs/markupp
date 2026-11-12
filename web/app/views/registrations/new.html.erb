@@ -1,0 +1,22 @@
+<% content_for :title, t(".title") %>
+<% password_error, confirmation_error, base_error = [ :password, :password_confirmation, :base ].map { @registration.errors[it].first } %>
+<% field_class = "w-full rounded-md border border-line bg-surface px-2 py-1 aria-invalid:border-danger" %>
+
+<%= render "sessions/back_to_login" %>
+<h1 class="text-base font-semibold"><%= t(".title") %></h1>
+
+<%= form_with model: @registration, scope: :registration, url: registration_path, class: "mt-3 flex flex-col gap-3 rounded-md border border-line p-3" do |form| %>
+  <div>
+    <%= form.label :email, class: "block text-ink-muted" %>
+    <%= form.email_field :email, required: true, autofocus: true, autocomplete: "email", class: field_class %>
+  </div>
+  <%= render "passwords/field", form:, attribute: :password, error: password_error, rule: true %>
+  <%= render "passwords/field", form:, attribute: :password_confirmation, error: confirmation_error %>
+  <% if base_error %>
+    <p role="alert" class="text-danger">
+      <%= base_error %>
+      <%= link_to t(".log_in"), new_session_path, class: "underline" if @registration.errors.of_kind?(:base, :account_exists) %>
+    </p>
+  <% end %>
+  <%= form.button t(".submit"), class: "btn self-start" %>
+<% end %>

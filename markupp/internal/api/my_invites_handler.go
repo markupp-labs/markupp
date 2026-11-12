@@ -56,9 +56,9 @@ func (h *authHandler) declineMyInvite(w http.ResponseWriter, r *http.Request) {
 func writeAnswerError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, auth.ErrInviteInvalid):
-		writeError(w, "invite_not_found", "convite inexistente, vencido ou ja respondido", http.StatusNotFound)
+		writeError(w, "invite_not_found", "invite not found, expired or already answered", http.StatusNotFound)
 	case errors.Is(err, auth.ErrAlreadyMember):
-		writeError(w, "already_member", "a conta ja e membro desse tenant", http.StatusConflict)
+		writeError(w, "already_member", "this account is already a member of the tenant", http.StatusConflict)
 	default:
 		writeMyInvitesInternal(w, "responder convite", err)
 	}

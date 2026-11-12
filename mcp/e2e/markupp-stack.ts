@@ -2,6 +2,8 @@ import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { setTimeout as sleep } from "node:timers/promises";
 
+import { createAccount } from "./panel-consent.js";
+
 // A stack do e2e roda num projeto do compose só dela, para o down -v do fim não apagar o
 // banco da stack de desenvolvimento, e sem .env, como numa primeira subida (ADR-0041).
 const COMPOSE_PROJECT = "markupp-e2e";
@@ -49,7 +51,8 @@ async function probe(url: string): Promise<string> {
   }
 }
 
-// setup é o globalSetup do Vitest: sobe a stack e espera o Go e o MCP atrás do /mcp.
+// setup é o globalSetup do Vitest: sobe a stack, espera o Go e o MCP atrás do /mcp e
+// cria a conta que os arquivos de teste dividem.
 export async function setup(): Promise<void> {
   compose(["up", "-d", "--build"]);
   try {
@@ -57,6 +60,7 @@ export async function setup(): Promise<void> {
     await waitUntilOk(
       `${markuppUrl()}/.well-known/oauth-protected-resource/mcp`,
     );
+    await createAccount(markuppUrl());
   } catch (error) {
     compose(["logs", "--tail", "100"]);
     teardown();

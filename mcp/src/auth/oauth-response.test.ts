@@ -24,7 +24,7 @@ describe("oauthErrorIn", () => {
 
   it("cita o trecho do corpo fora do formato", () => {
     const fields = oauthErrorIn({ excerpt: "<html>", json: undefined });
-    expect(fields.code).toBe("sem_codigo_oauth");
+    expect(fields.code).toBe("missing_oauth_error");
     expect(fields.description).toContain('"<html>"');
   });
 });

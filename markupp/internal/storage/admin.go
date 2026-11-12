@@ -57,11 +57,14 @@ func (r *PostgresAdminRepository) ListInvites(ctx context.Context) ([]auth.Invit
 // CreateInviteTx grava o convite e a auditoria juntos e, com byEmail, a notificação
 // que entrega o convite. Devolve auth.ErrAlreadyMember quando o email já é de um
 // usuário do tenant.
-func (r *PostgresAdminRepository) CreateInviteTx(ctx context.Context, inv auth.Invite, tokenHash string, event auth.AuditEventRecord, byEmail bool) error {
+func (r *PostgresAdminRepository) CreateInviteTx(ctx context.Context, inv auth.Invite, tokenHash string, event auth.AuditEventRecord, byEmail bool, check func(auth.InviteQuota) error) error {
 	return inActorTx(ctx, r.pool, func(q *gen.Queries) error {
+		if err := checkInviteQuota(ctx, q, inv, check); err != nil {
+			return err
+		}
 		rows, err := q.CreateInvite(ctx, toCreateInviteParams(inv, tokenHash))
 		if err != nil {
-			return fmt.Errorf("inserir convite de %q: %w", inv.Email, err)
+			return fmt.Errorf("insert invite for %q: %w", inv.Email, err)
 		}
 		if rows == 0 {
 			return fmt.Errorf("%w: %q", auth.ErrAlreadyMember, inv.Email)
@@ -73,12 +76,22 @@ func (r *PostgresAdminRepository) CreateInviteTx(ctx context.Context, inv auth.I
 	})
 }
 
+// checkInviteQuota lê a cota sob as travas do tenant e da conta, que seguram até o fim
+// da transação, e passa a check.
+func checkInviteQuota(ctx context.Context, q *gen.Queries, inv auth.Invite, check func(auth.InviteQuota) error) error {
+	row, err := q.GetInviteQuota(ctx, inv.CreatedAt.Add(-auth.InviteWindow))
+	if err != nil {
+		return fmt.Errorf("read invite quota of %q in tenant %q: %w", inv.InvitedBy, inv.TenantID, err)
+	}
+	return check(auth.InviteQuota{InviterVerified: row.InviterVerified, ByInviter: int(row.ByInviter), ByTenant: int(row.ByTenant)})
+}
+
 func enqueueInvite(ctx context.Context, q *gen.Queries, inviteID string, byEmail bool) error {
 	if !byEmail {
 		return nil
 	}
 	if err := q.EnqueueInviteNotification(ctx, pgtype.Text{String: inviteID, Valid: true}); err != nil {
-		return fmt.Errorf("enfileirar email do convite %q: %w", inviteID, err)
+		return fmt.Errorf("enqueue email of invite %q: %w", inviteID, err)
 	}
 	return nil
 }
@@ -122,7 +135,7 @@ func (r *PostgresAdminRepository) ChangeMembershipTx(ctx context.Context, c auth
 func lockMembershipState(ctx context.Context, q *gen.Queries, c auth.MembershipChange) (auth.MembershipState, error) {
 	owners, err := q.LockTenantOwners(ctx)
 	if err != nil {
-		return auth.MembershipState{}, fmt.Errorf("travar owners do tenant: %w", err)
+		return auth.MembershipState{}, fmt.Errorf("lock tenant owners: %w", err)
 	}
 	current, err := lockedRole(ctx, q, c.UserID, c.Event.TenantID)
 	if err != nil {
@@ -138,10 +151,10 @@ func lockMembershipState(ctx context.Context, q *gen.Queries, c auth.MembershipC
 func lockedRole(ctx context.Context, q *gen.Queries, userID, tenantID string) (string, error) {
 	role, err := q.GetMemberRole(ctx, userID)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return "", fmt.Errorf("%w: usuario %q no tenant %q", auth.ErrMembershipNotFound, userID, tenantID)
+		return "", fmt.Errorf("%w: user %q in tenant %q", auth.ErrMembershipNotFound, userID, tenantID)
 	}
 	if err != nil {
-		return "", fmt.Errorf("ler papel de %q: %w", userID, err)
+		return "", fmt.Errorf("read role of %q: %w", userID, err)
 	}
 	return role, nil
 }
@@ -154,7 +167,7 @@ func applyMembershipChange(ctx context.Context, q *gen.Queries, c auth.Membershi
 		err = q.UpdateMemberRole(ctx, gen.UpdateMemberRoleParams{UserID: c.UserID, Role: c.NewRole})
 	}
 	if err != nil {
-		return fmt.Errorf("mudar vinculo de %q para %q: %w", c.UserID, c.NewRole, err)
+		return fmt.Errorf("change role of %q to %q: %w", c.UserID, c.NewRole, err)
 	}
 	return q.CreateAuditEvent(ctx, toCreateAuditEventParams(c.Event))
 }
@@ -165,7 +178,7 @@ func (r *PostgresAdminRepository) RevokeInviteTx(ctx context.Context, inviteID s
 	return inActorTx(ctx, r.pool, func(q *gen.Queries) error {
 		rows, err := q.RevokeInvite(ctx, inviteID)
 		if err != nil {
-			return fmt.Errorf("revogar convite %q: %w", inviteID, err)
+			return fmt.Errorf("revoke invite %q: %w", inviteID, err)
 		}
 		if rows == 0 {
 			return fmt.Errorf("%w: %q", auth.ErrInviteInvalid, inviteID)
@@ -181,10 +194,10 @@ func (r *PostgresAdminRepository) DeleteTenantTx(ctx context.Context, event auth
 	return inActorTx(ctx, r.pool, func(q *gen.Queries) error {
 		rows, err := q.DeleteTenant(ctx, event.TenantID)
 		if err != nil {
-			return fmt.Errorf("apagar tenant %q: %w", event.TenantID, err)
+			return fmt.Errorf("delete tenant %q: %w", event.TenantID, err)
 		}
 		if rows == 0 {
-			return fmt.Errorf("%w: tenant %q sem owner %q", auth.ErrMembershipNotFound, event.TenantID, event.ActorID)
+			return fmt.Errorf("%w: tenant %q has no owner %q", auth.ErrMembershipNotFound, event.TenantID, event.ActorID)
 		}
 		return q.CreateAuditEvent(ctx, toCreateAuditEventParams(event))
 	})

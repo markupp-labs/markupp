@@ -26,7 +26,7 @@ func logCapturado(t *testing.T) *bytes.Buffer {
 func TestLogin_ErroInesperado_RegistraOErroNoLog(t *testing.T) {
 	buf := logCapturado(t)
 	router := setupAuthRouter(&fakeAuthService{loginErr: errors.New("banco fora")}, nil)
-	req := httptest.NewRequest(http.MethodPost, "/auth/login", bytes.NewBufferString(`{"email":"a@markupp.dev","password":"senhaSegura123"}`))
+	req := httptest.NewRequest(http.MethodPost, "/auth/login", bytes.NewBufferString(`{"email":"a@markupp.dev","password":"senhaSegura123-de-teste"}`))
 	rec := httptest.NewRecorder()
 
 	router.ServeHTTP(rec, req)
@@ -55,7 +55,7 @@ func TestOAuth_ErroInesperado_RegistraComMensagemDoOAuth(t *testing.T) {
 func TestAccountEmail_ErroInesperado_RegistraOErroNoLog(t *testing.T) {
 	buf := logCapturado(t)
 
-	rec := accountEmailRequest(&fakeAccountEmailService{err: errors.New("banco fora")}, http.MethodPost, "/auth/password/reset", `{"token":"x","password":"senhaNova123"}`, false)
+	rec := accountEmailRequest(&fakeAccountEmailService{err: errors.New("banco fora")}, http.MethodPost, "/auth/password/reset", `{"token":"x","password":"senhaNova123-de-teste"}`, false)
 
 	assert.Equal(t, http.StatusInternalServerError, rec.Code)
 	assert.Contains(t, buf.String(), `"msg":"falha no email da conta"`)

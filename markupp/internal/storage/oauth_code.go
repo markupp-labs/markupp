@@ -41,11 +41,11 @@ func redeemInTx(ctx context.Context, qtx *gen.Queries, codeHash string, now time
 		return reuseCodeInTx(ctx, qtx, codeHash, now, reuseWindow)
 	}
 	if err != nil {
-		return oauth.RedeemedCode{}, fmt.Errorf("consumir código de autorização: %w", err)
+		return oauth.RedeemedCode{}, fmt.Errorf("consume authorization code: %w", err)
 	}
 	redeemed, err := lockRequestAuthorization(ctx, qtx, row)
 	if err == nil && redeemed.Authorization.Revoked {
-		err = fmt.Errorf("%w: autorização %q do pedido revogada", oauth.ErrAuthorizationNotFound, redeemed.Authorization.ID)
+		err = fmt.Errorf("%w: authorization %q of the request was revoked", oauth.ErrAuthorizationNotFound, redeemed.Authorization.ID)
 	}
 	return redeemed, err
 }
@@ -60,7 +60,7 @@ func reuseCodeInTx(ctx context.Context, qtx *gen.Queries, codeHash string, now t
 		return usedCodeInTx(ctx, qtx, codeHash)
 	}
 	if err != nil {
-		return oauth.RedeemedCode{}, fmt.Errorf("marcar reuso do código de autorização: %w", err)
+		return oauth.RedeemedCode{}, fmt.Errorf("mark authorization code reuse: %w", err)
 	}
 	redeemed, err := lockRequestAuthorization(ctx, qtx, row)
 	if err != nil {
@@ -83,7 +83,7 @@ func usedCodeInTx(ctx context.Context, qtx *gen.Queries, codeHash string) (oauth
 		return oauth.RedeemedCode{}, oauth.ErrCodeNotFound
 	}
 	if err != nil {
-		return oauth.RedeemedCode{}, fmt.Errorf("ler o pedido do código de autorização já usado: %w", err)
+		return oauth.RedeemedCode{}, fmt.Errorf("read the request of the already used authorization code: %w", err)
 	}
 	return oauth.RedeemedCode{Request: toAuthorizationRequest(row)}, oauth.ErrCodeAlreadyUsed
 }
@@ -113,7 +113,7 @@ func lockRequestAuthorization(ctx context.Context, qtx *gen.Queries, row gen.Oau
 // linha.
 func (r *PostgresOAuthRepository) SaveCodeTokens(ctx context.Context, requestID string, tokens []oauth.IssuedToken) error {
 	if len(tokens) == 0 {
-		return errors.New("gravar par do código: nenhum token recebido, esperado o access e o refresh novos")
+		return errors.New("save code token pair: no tokens received, expected the new access and refresh tokens")
 	}
 	return inTx(ctx, r.pool, func(qtx *gen.Queries) error {
 		if err := checkCodeRequestInTx(ctx, qtx, requestID, tokens[0].AuthorizationID); err != nil {
@@ -126,15 +126,15 @@ func (r *PostgresOAuthRepository) SaveCodeTokens(ctx context.Context, requestID 
 // checkCodeRequestInTx trava a Autorização e confere que ela segue ativa e que o código
 // do pedido, que precisa ser dela, não foi reapresentado.
 func checkCodeRequestInTx(ctx context.Context, qtx *gen.Queries, requestID, authorizationID string) error {
-	if err := lockActiveAuthorization(ctx, qtx, authorizationID, "o par do código"); err != nil {
+	if err := lockActiveAuthorization(ctx, qtx, authorizationID, "the code token pair"); err != nil {
 		return err
 	}
 	unreused, err := qtx.IsUnreusedOAuthCode(ctx, gen.IsUnreusedOAuthCodeParams{ID: requestID, AuthorizationID: authorizationID})
 	if err != nil {
-		return fmt.Errorf("conferir o reuso do código da autorização %q: %w", authorizationID, err)
+		return fmt.Errorf("check code reuse of authorization %q: %w", authorizationID, err)
 	}
 	if !unreused {
-		return fmt.Errorf("%w: código da autorização %q reapresentado, ou pedido inexistente ou de outra autorização, esperado o pedido do código ainda sem reuso", oauth.ErrCodeAlreadyUsed, authorizationID)
+		return fmt.Errorf("%w: code of authorization %q was presented again, or its request is missing or belongs to another authorization: expected the code request not yet reused", oauth.ErrCodeAlreadyUsed, authorizationID)
 	}
 	return nil
 }

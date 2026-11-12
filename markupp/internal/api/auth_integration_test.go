@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -18,6 +19,7 @@ import (
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/notes"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/storage"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/storage/storagetest"
+	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/vaults"
 )
 
 func setupAuthIntegrationServer(t *testing.T) (*httptest.Server, *pgxpool.Pool) {
@@ -38,8 +40,9 @@ func setupAuthIntegrationServer(t *testing.T) (*httptest.Server, *pgxpool.Pool) 
 		RefreshExpirationPeriod: 7 * 24 * time.Hour,
 	}
 	authSvc := auth.NewService(authRepo, codec, hasher, authCfg, time.Now)
-	adminSvc := auth.NewAdminService(storage.NewPostgresAdminRepository(pool), time.Now, false)
-	router := api.NewRouter(api.RouterDeps{Notes: notesSvc, Tenants: authSvc, Auth: authSvc, Admin: adminSvc, Tokens: codec, Probe: pool})
+	adminSvc := auth.NewAdminService(storage.NewPostgresAdminRepository(pool), time.Now, false, auth.InviteLimits{PerAccount: 20, PerTenant: 50})
+	vaultsSvc := vaults.NewService(storage.NewPostgresVaultsRepository(pool), time.Now, uuid.NewString)
+	router := api.NewRouter(api.RouterDeps{Notes: notesSvc, Tenants: authSvc, Auth: authSvc, Admin: adminSvc, Vaults: vaultsSvc, Tokens: codec, Probe: pool})
 
 	server := httptest.NewServer(router)
 	t.Cleanup(server.Close)
@@ -69,9 +72,9 @@ func getWithAuth(t *testing.T, url, token string) *http.Response {
 func TestIntegration_Auth_FluxoCompleto(t *testing.T) {
 	server, db := setupAuthIntegrationServer(t)
 
-	loginResp := postJSON(t, server.URL+"/auth/login", `{"email":"admin@markupp.dev","password":"senhaForte123"}`)
+	loginResp := postJSON(t, server.URL+"/v1/accounts", `{"email":"admin@markupp.dev","password":"senhaForte123-de-teste"}`)
 	defer func() { _ = loginResp.Body.Close() }()
-	require.Equal(t, http.StatusOK, loginResp.StatusCode)
+	require.Equal(t, http.StatusCreated, loginResp.StatusCode)
 
 	tokens := decodeJSON(t, loginResp.Body)
 	accessToken, _ := tokens["access_token"].(string)
@@ -119,9 +122,9 @@ func TestIntegration_Auth_FluxoCompleto(t *testing.T) {
 func TestIntegration_Auth_LoginIncorretoERegistroBloqueado(t *testing.T) {
 	server, _ := setupAuthIntegrationServer(t)
 
-	firstResp := postJSON(t, server.URL+"/auth/login", `{"email":"admin@markupp.dev","password":"senhaAdmin"}`)
+	firstResp := postJSON(t, server.URL+"/v1/accounts", `{"email":"admin@markupp.dev","password":"senhaAdmin-de-teste"}`)
 	_ = firstResp.Body.Close()
-	require.Equal(t, http.StatusOK, firstResp.StatusCode)
+	require.Equal(t, http.StatusCreated, firstResp.StatusCode)
 
 	wrongPassResp := postJSON(t, server.URL+"/auth/login", `{"email":"admin@markupp.dev","password":"senhaErrada"}`)
 	_ = wrongPassResp.Body.Close()

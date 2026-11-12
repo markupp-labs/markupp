@@ -109,7 +109,7 @@ describe("exchangeAgentToken", () => {
     );
     expect(error).toMatchObject({
       httpStatus: 502,
-      oauthError: "sem_codigo_oauth",
+      oauthError: "missing_oauth_error",
     });
     expect((error as Error).message).toContain('"\\"gateway\\""');
   });
@@ -121,7 +121,7 @@ describe("exchangeAgentToken", () => {
     );
     expect(error).toMatchObject({
       httpStatus: 502,
-      oauthError: "sem_codigo_oauth",
+      oauthError: "missing_oauth_error",
     });
   });
 
@@ -130,7 +130,7 @@ describe("exchangeAgentToken", () => {
     await expect(
       exchangeAgentToken(configFor(fetcher, new FakeClock()), "agente"),
     ).rejects.toThrow(
-      'resposta da troca de token nao e JSON: status 200, corpo ""; esperado {access_token: string',
+      'token exchange response is not JSON: status 200, body ""; expected {access_token: string',
     );
   });
 
@@ -138,7 +138,7 @@ describe("exchangeAgentToken", () => {
     const fetcher = new FakeFetch().respondWith(200, { expires_in: 300 });
     await expect(
       exchangeAgentToken(configFor(fetcher, new FakeClock()), "agente"),
-    ).rejects.toThrow("esperado {access_token: string");
+    ).rejects.toThrow("expected {access_token: string");
   });
 });
 

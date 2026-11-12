@@ -127,6 +127,30 @@ module Settings
       assert_select "#invite_email_error", "caio@markupp.dev is already a member."
     end
 
+    test "an account that has not confirmed its email is asked to confirm before inviting" do
+      use_fake_api(accounts: [ { email: ANA, password: PASSWORD, verified: false } ], tenants: [ ACME ])
+      sign_in_as
+
+      post settings_invites_path, params: { invite: { email: "gil@markupp.dev", role: "member" } }
+
+      assert_response :forbidden
+      assert_select "#invite_email_error", "Confirm your email in account settings before sending invites."
+    end
+
+    test "the invite limit of the last 24 hours shows under the email field" do
+      sent = Array.new(20) do |number|
+        { id: "sent-#{number}", tenant_id: "tenant-1", email: "guest#{number}@markupp.dev", role: "member",
+          invited_by: "account-1", expires_at: "2099-10-23T12:00:00Z", created_at: 1.hour.ago.utc.iso8601 }
+      end
+      use_fake_api(accounts: ACCOUNTS, tenants: [ ACME ], invites: sent)
+      sign_in_as
+
+      post settings_invites_path, params: { invite: { email: "gil@markupp.dev", role: "member" } }
+
+      assert_response :too_many_requests
+      assert_select "#invite_email_error", "You reached the invite limit for the last 24 hours. Try again later."
+    end
+
     test "a role above your own shows under the role field" do
       use_fake_api(accounts: ACCOUNTS, tenants: [ ACME ])
       sign_in_as(BIA)

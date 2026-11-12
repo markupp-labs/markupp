@@ -1,0 +1,8 @@
+<%# Cabeçalho das seções do tenant e do cofre: o nome da seção e a que ela se refere (subtitle; sem ele, o tenant ativo).
+    A General do tenant passa subtitle: false, porque já mostra o nome no campo Tenant name. %>
+<% content_for :title, title %>
+<h1 class="md-heading text-base font-semibold"><%= title %></h1>
+<% subtitle = local_assigns.fetch(:subtitle) { current_tenant.name } %>
+<% if subtitle %>
+  <p class="truncate text-ink-muted" title="<%= subtitle %>"><%= subtitle %></p>
+<% end %>

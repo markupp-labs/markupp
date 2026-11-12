@@ -3,7 +3,7 @@
     para cá de qualquer lugar, como o explorador do VS Code (sidebar_controller.js). Botão direito, Shift+F10 ou a tecla
     Menu numa linha abrem o menu de contexto dela. %>
 <% folders = mode == "folders" %>
-<% groups = explorer_groups(tree, current, mode) unless folders %>
+<% groups = explorer_groups(mode) unless folders %>
 <%# target _top: as linhas abrem a nota na página inteira; só o form do seletor mira o frame. %>
 <%= turbo_frame_tag "explorer_list", target: "_top" do %>
   <% if groups.nil? && !folders %>

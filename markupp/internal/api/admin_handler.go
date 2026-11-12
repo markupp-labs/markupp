@@ -45,14 +45,15 @@ type issuedInviteResponse struct {
 	Token string `json:"token,omitempty"`
 }
 
-// mountAdminRoutes monta as rotas de administração do tenant: as de membros e convites,
-// que só owner e admin alcançam, e o apagar do tenant, só do owner. O papel vem do
-// vínculo no banco, nunca do cliente.
+// mountAdminRoutes monta as rotas de administração do tenant: a lista de colegas, que
+// todo membro lê; as de membros e convites, que só owner e admin alcançam; e o apagar do
+// tenant, só do owner. O papel vem do vínculo no banco, nunca do cliente.
 func mountAdminRoutes(r chi.Router, svc AdminService, validator TokenValidator, tenants TenantResolver) {
 	h := &adminHandler{svc: svc}
+	r.With(acceptOAuthScope(oauth.ScopeNotesRead, oauth.ScopeAdmin), RequireAuth(validator), RequireTenant(tenants)).
+		Get("/users", h.listMembers)
 	r.Group(func(g chi.Router) {
 		g.Use(acceptOAuthScope(oauth.ScopeAdmin), RequireAuth(validator), RequireTenant(tenants), requireAdmin)
-		g.Get("/users", h.listMembers)
 		g.Get("/users/invites", h.listInvites)
 		g.Post("/users/invites", h.issueInvite)
 		g.Patch("/users/{id}", h.changeRole)
@@ -69,7 +70,7 @@ func requireAdmin(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		actor, ok := identity.ActorFrom(r.Context())
 		if !ok || !actor.IsAdmin() {
-			writeError(w, "forbidden", "acesso restrito a administradores", http.StatusForbidden)
+			writeError(w, "forbidden", "only tenant owners and admins can do this", http.StatusForbidden)
 			return
 		}
 		next.ServeHTTP(w, r)
@@ -146,7 +147,7 @@ func (h *adminHandler) revokeInvite(w http.ResponseWriter, r *http.Request) {
 	actor, _ := identity.ActorFrom(r.Context())
 	err := h.svc.RevokeInvite(r.Context(), actor, chi.URLParam(r, "id"))
 	if errors.Is(err, auth.ErrInviteInvalid) {
-		writeError(w, "invite_not_found", "convite inexistente ou ja respondido", http.StatusNotFound)
+		writeError(w, "invite_not_found", "invite not found or already answered", http.StatusNotFound)
 		return
 	}
 	h.answerMembership(w, err)
@@ -159,7 +160,7 @@ func (h *adminHandler) deleteTenant(w http.ResponseWriter, r *http.Request) {
 	case err == nil:
 		w.WriteHeader(http.StatusNoContent)
 	case errors.Is(err, auth.ErrNotOwner):
-		writeError(w, "forbidden", "so o owner apaga o tenant", http.StatusForbidden)
+		writeError(w, "forbidden", "only the tenant owner can delete the tenant", http.StatusForbidden)
 	case errors.Is(err, auth.ErrMembershipNotFound):
 		writeTenantNotFound(w, err)
 	default:
@@ -172,7 +173,7 @@ func (h *adminHandler) answerMembership(w http.ResponseWriter, err error) {
 	case err == nil:
 		w.WriteHeader(http.StatusNoContent)
 	case errors.Is(err, auth.ErrMembershipNotFound):
-		writeError(w, "member_not_found", "usuario nao e membro deste tenant", http.StatusNotFound)
+		writeError(w, "member_not_found", "account is not a member of this tenant", http.StatusNotFound)
 	case errors.Is(err, auth.ErrLastOwner):
 		writeError(w, "last_owner", err.Error(), http.StatusConflict)
 	default:
@@ -188,6 +189,10 @@ func writeAdminError(w http.ResponseWriter, err error) {
 		writeError(w, "already_member", err.Error(), http.StatusConflict)
 	case errors.Is(err, auth.ErrRoleAboveOwn):
 		writeError(w, "role_above_own", err.Error(), http.StatusForbidden)
+	case errors.Is(err, auth.ErrEmailNotVerified):
+		writeError(w, "email_not_verified", err.Error(), http.StatusForbidden)
+	case errors.Is(err, auth.ErrInviteLimit):
+		writeError(w, "invite_limit_reached", err.Error(), http.StatusTooManyRequests)
 	default:
 		writeAdminInternal(w, "administrar o tenant", err)
 	}
@@ -208,5 +213,5 @@ func writeAdminInternal(w http.ResponseWriter, operation string, err error) {
 // a causa ao cliente.
 func writeLoggedInternal(w http.ResponseWriter, message, operation string, err error) {
 	slog.Error(message, "operacao", operation, "error", err)
-	writeError(w, "internal", "erro interno", http.StatusInternalServerError)
+	writeError(w, "internal", "internal error", http.StatusInternalServerError)
 }

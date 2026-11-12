@@ -13,7 +13,7 @@ import (
 const maxCIMDClientIDLen = 2048
 
 // metadataDocumentShape descreve o documento esperado quando a busca do CIMD falha.
-const metadataDocumentShape = "um Client ID Metadata Document acessivel e valido (draft-ietf-oauth-client-id-metadata-document)"
+const metadataDocumentShape = "a reachable and valid Client ID Metadata Document (draft-ietf-oauth-client-id-metadata-document)"
 
 // resolveClient acha o cliente do client_id: por CIMD quando ele é URL https e há
 // fetcher, senão pelo cadastro do repositório.
@@ -22,7 +22,7 @@ func (s *Service) resolveClient(ctx context.Context, clientID string) (Client, e
 		return s.registeredClient(ctx, clientID)
 	}
 	if len(clientID) > maxCIMDClientIDLen {
-		return Client{}, &ProtocolError{Code: errInvalidRequest, Description: fmt.Sprintf("client_id com %d caracteres; esperado no maximo %d", len(clientID), maxCIMDClientIDLen)}
+		return Client{}, &ProtocolError{Code: errInvalidRequest, Description: fmt.Sprintf("client_id has %d characters; expected at most %d", len(clientID), maxCIMDClientIDLen)}
 	}
 	return s.cimdClient(ctx, clientID)
 }
@@ -40,14 +40,14 @@ func (s *Service) registeredClient(ctx context.Context, clientID string) (Client
 		return Client{}, unregisteredClientError(clientID)
 	}
 	if err != nil {
-		return Client{}, fmt.Errorf("oauth: buscando o cliente %s: %w", ClientValue(clientID), err)
+		return Client{}, fmt.Errorf("oauth: find client %s: %w", ClientValue(clientID), err)
 	}
 	return client, nil
 }
 
 // unregisteredClientError é a recusa do client_id que não existe ou deixou de existir.
 func unregisteredClientError(clientID string) error {
-	return &ProtocolError{Code: errInvalidRequest, Description: "client_id " + ClientValue(clientID) + " nao registrado; esperado " + registeredClientShape}
+	return &ProtocolError{Code: errInvalidRequest, Description: "client_id " + ClientValue(clientID) + " not registered; expected " + registeredClientShape}
 }
 
 // cimdClient usa o documento em cache ainda válido ou busca e grava um novo. Documento
@@ -59,7 +59,7 @@ func (s *Service) cimdClient(ctx context.Context, clientID string) (Client, erro
 		return client, nil
 	}
 	if !errors.Is(err, ErrClientNotFound) {
-		return Client{}, fmt.Errorf("oauth: lendo o cache do cliente cimd %s: %w", ClientValue(clientID), err)
+		return Client{}, fmt.Errorf("oauth: read cached cimd client %s: %w", ClientValue(clientID), err)
 	}
 	return s.fetchCIMDClient(ctx, clientID, now)
 }
@@ -69,7 +69,7 @@ func (s *Service) cimdClient(ctx context.Context, clientID string) (Client, erro
 // interna; o documento recusado pelas guardas daqui não entra no cache negativo.
 func (s *Service) fetchCIMDClient(ctx context.Context, clientID string, now time.Time) (Client, error) {
 	if until, failed := s.failures.failedUntil(clientID, now); failed {
-		return Client{}, unusableMetadataError(clientID, fmt.Errorf("oauth: busca do documento cimd de %s falhou ha pouco; esperada nova tentativa a partir de %s",
+		return Client{}, unusableMetadataError(clientID, fmt.Errorf("oauth: cimd document fetch for %s failed recently; expected a new attempt from %s",
 			ClientValue(clientID), until.Format(time.RFC3339)))
 	}
 	metadata, err := s.fetchMetadata(ctx, clientID, now)
@@ -106,7 +106,7 @@ func (s *Service) saveCIMDClient(ctx context.Context, clientID string, metadata 
 		return Client{}, unusableMetadataError(clientID, err)
 	}
 	if err != nil {
-		return Client{}, fmt.Errorf("oauth: gravando o cliente cimd %s: %w", ClientValue(clientID), err)
+		return Client{}, fmt.Errorf("oauth: save cimd client %s: %w", ClientValue(clientID), err)
 	}
 	return client, nil
 }
@@ -114,7 +114,7 @@ func (s *Service) saveCIMDClient(ctx context.Context, clientID string, metadata 
 // unusableMetadataError é a recusa genérica do documento CIMD, igual para toda falha;
 // cause fica só para o log.
 func unusableMetadataError(clientID string, cause error) error {
-	recusa := &ProtocolError{Code: errInvalidRequest, Description: "documento de metadados do client_id " + ClientValue(clientID) + " inacessivel ou invalido; esperado " + metadataDocumentShape}
+	recusa := &ProtocolError{Code: errInvalidRequest, Description: "metadata document of client_id " + ClientValue(clientID) + " unreachable or invalid; expected " + metadataDocumentShape}
 	return recusa.WithInternalCause(cause)
 }
 
@@ -123,11 +123,11 @@ func unusableMetadataError(clientID string, cause error) error {
 func checkFetchedMetadata(clientID string, metadata ClientMetadata) error {
 	switch {
 	case metadata.ClientID != clientID:
-		return fmt.Errorf("oauth: documento cimd com client_id %s; esperado %s", ClientValue(metadata.ClientID), ClientValue(clientID))
+		return fmt.Errorf("oauth: cimd document has client_id %s; expected %s", ClientValue(metadata.ClientID), ClientValue(clientID))
 	case len(metadata.RedirectURIs) == 0:
-		return fmt.Errorf("oauth: documento cimd de %s sem redirect_uris; esperada ao menos uma", ClientValue(clientID))
+		return fmt.Errorf("oauth: cimd document of %s has no redirect_uris; expected at least one", ClientValue(clientID))
 	case metadata.TTL <= 0:
-		return fmt.Errorf("oauth: documento cimd de %s com TTL %s; esperado maior que zero", ClientValue(clientID), metadata.TTL)
+		return fmt.Errorf("oauth: cimd document of %s has TTL %s; expected greater than zero", ClientValue(clientID), metadata.TTL)
 	}
 	return nil
 }

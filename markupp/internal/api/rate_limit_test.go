@@ -52,7 +52,7 @@ func esgotaLimite(t *testing.T, router http.Handler, path, remoteAddr, body stri
 }
 
 func TestRateLimit_SextaTentativaDoMesmoIP_Responde429ComRetryAfter(t *testing.T) {
-	rotas := []string{"/auth/login", "/auth/password/forgot", "/auth/password/reset", "/auth/email/verification", "/auth/invites/accept", "/auth/refresh"}
+	rotas := []string{"/auth/login", "/v1/accounts", "/auth/password/forgot", "/auth/password/reset", "/auth/email/verification", "/auth/invites/accept", "/auth/refresh"}
 	for _, rota := range rotas {
 		clock := &fakeRateClock{current: time.Unix(1_000_000, 0)}
 		router := newLimitedRouter(clock)

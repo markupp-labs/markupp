@@ -15,6 +15,7 @@ type RouterDeps struct {
 	Graph          NoteGraph
 	Auth           AuthService
 	Admin          AdminService
+	Vaults         VaultService
 	AccountEmail   AccountEmailService
 	Tokens         TokenValidator
 	Tenants        TenantResolver
@@ -63,8 +64,8 @@ func mustHaveRouterDeps(d RouterDeps) {
 	if d.Tokens == nil {
 		panic("api: Tokens obrigatorio para proteger as rotas")
 	}
-	if d.Tenants == nil && (d.Notes != nil || d.Graph != nil || d.Admin != nil) {
-		panic("api: Tenants obrigatorio para as rotas de notas, do grafo e de administracao")
+	if d.Tenants == nil && (d.Notes != nil || d.Graph != nil || d.Admin != nil || d.Vaults != nil) {
+		panic("api: Tenants obrigatorio para as rotas de notas, do grafo, de administracao e de cofres")
 	}
 	if d.OAuth != nil && d.OAuthMetadata == nil {
 		panic("api: OAuthMetadata obrigatorio para as rotas OAuth, que usam o Issuer")
@@ -78,13 +79,13 @@ func newVersionRoutes(d RouterDeps, current bool) chi.Router {
 	r.Get("/healthz", healthz(d.Probe))
 	limit := limitAccountAttempts(d.AccountRateLimiter)
 	if d.Auth != nil {
-		mountAuthRoutes(r, d.Auth, d.Tokens, limit)
+		mountAuthRoutes(r, d.Auth, d.Tokens, limit, current)
 	}
 	if d.Notes != nil {
 		mountProtectedNotesRoutes(r, d.Notes, d.Tokens, d.Tenants, current)
 	}
-	if d.Graph != nil && current {
-		mountProtectedGraphRoutes(r, d.Graph, d.Tokens, d.Tenants)
+	if current {
+		mountV1OnlyRoutes(r, d)
 	}
 	if d.Admin != nil {
 		mountAdminRoutes(r, d.Admin, d.Tokens, d.Tenants)
@@ -93,6 +94,17 @@ func newVersionRoutes(d RouterDeps, current bool) chi.Router {
 		mountAccountEmailRoutes(r, d.AccountEmail, d.Tokens, limit)
 	}
 	return r
+}
+
+// mountV1OnlyRoutes monta as rotas que nasceram depois da transição e não têm o alias
+// sem prefixo: o grafo e a gestão de cofres.
+func mountV1OnlyRoutes(r chi.Router, d RouterDeps) {
+	if d.Graph != nil {
+		mountProtectedGraphRoutes(r, d.Graph, d.Tokens, d.Tenants)
+	}
+	if d.Vaults != nil {
+		mountVaultRoutes(r, d.Vaults, d.Tokens, d.Tenants)
+	}
 }
 
 // mountProtectedNotesRoutes confere o escopo do token antes de resolver o tenant, para
@@ -126,7 +138,10 @@ func mountProtectedGraphRoutes(r chi.Router, graph NoteGraph, tokenValidator Tok
 	mountNoteGraphRoutes(r.With(acceptOAuthScope(oauth.ScopeNotesRead), RequireAuth(tokenValidator), RequireTenant(tenants)), graph)
 }
 
-func mountAuthRoutes(r chi.Router, authSvc AuthService, tokenValidator TokenValidator, limit func(http.Handler) http.Handler) {
+// mountAuthRoutes monta login, sessão e as rotas da conta; as notificações e o cadastro,
+// nascidos depois da transição, só na versão atual (current). Elas trazem os convites de
+// GET /me/invites, então pedem o mesmo escopo administracao ao token OAuth.
+func mountAuthRoutes(r chi.Router, authSvc AuthService, tokenValidator TokenValidator, limit func(http.Handler) http.Handler, current bool) {
 	h := &authHandler{svc: authSvc}
 	r.With(limit).Post("/auth/login", h.login)
 	r.With(limit).Post("/auth/refresh", h.refresh)
@@ -140,4 +155,8 @@ func mountAuthRoutes(r chi.Router, authSvc AuthService, tokenValidator TokenVali
 	admin.Get("/me/invites", h.myInvites)
 	admin.Post("/me/invites/{id}/accept", h.acceptMyInvite)
 	admin.Post("/me/invites/{id}/decline", h.declineMyInvite)
+	if current {
+		admin.Get("/me/notifications", h.myNotifications)
+		r.With(limit).Post("/accounts", h.createAccount)
+	}
 }

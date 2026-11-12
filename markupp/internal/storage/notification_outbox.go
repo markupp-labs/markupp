@@ -39,7 +39,7 @@ func (o *PostgresNotificationOutbox) ClaimNextDue(ctx context.Context, tokenHash
 			return nil
 		}
 		if err != nil {
-			return fmt.Errorf("reservar notificacao vencida: %w", err)
+			return fmt.Errorf("claim due notification: %w", err)
 		}
 		found = true
 		claim, err = reissue(ctx, q, row, tokenHash)
@@ -67,7 +67,7 @@ func reissue(ctx context.Context, q *gen.Queries, row gen.ClaimDueNotificationRo
 func reissueInvite(ctx context.Context, q *gen.Queries, claim notify.Claim, inviteID, tokenHash string) (notify.Claim, error) {
 	rows, err := q.ReissueInviteToken(ctx, gen.ReissueInviteTokenParams{InviteID: inviteID, TokenHash: tokenHash})
 	if err != nil {
-		return notify.Claim{}, fmt.Errorf("trocar o hash do convite %q: %w", inviteID, err)
+		return notify.Claim{}, fmt.Errorf("replace hash of invite %q: %w", inviteID, err)
 	}
 	if len(rows) == 0 {
 		return claim, nil
@@ -84,12 +84,12 @@ func reissueInvite(ctx context.Context, q *gen.Queries, claim notify.Claim, invi
 func reissueAccountToken(ctx context.Context, q *gen.Queries, claim notify.Claim, tokenID, tokenHash string) (notify.Claim, error) {
 	ttl, ok := accountTokenTTL[claim.Kind]
 	if !ok {
-		return notify.Claim{}, fmt.Errorf("notificacao %q do tipo %q, esperado %q, %q ou %q",
+		return notify.Claim{}, fmt.Errorf("notification %q has kind %q: expected %q, %q or %q",
 			claim.NotificationID, claim.Kind, notify.KindInvite, notify.KindEmailVerification, notify.KindPasswordReset)
 	}
 	rows, err := q.ReissueAccountToken(ctx, gen.ReissueAccountTokenParams{ID: tokenID, Purpose: string(claim.Kind), TokenHash: tokenHash, Ttl: interval(ttl)})
 	if err != nil {
-		return notify.Claim{}, fmt.Errorf("trocar o hash do token %q: %w", tokenID, err)
+		return notify.Claim{}, fmt.Errorf("replace hash of token %q: %w", tokenID, err)
 	}
 	if len(rows) == 0 {
 		return claim, nil
@@ -113,7 +113,7 @@ func (o *PostgresNotificationOutbox) Record(ctx context.Context, notificationID 
 func (o *PostgresNotificationOutbox) inNotifierTx(ctx context.Context, fn func(q *gen.Queries) error) error {
 	return inTx(ctx, o.pool, func(q *gen.Queries) error {
 		if err := q.EnterNotifier(ctx); err != nil {
-			return fmt.Errorf("entrar no papel do notificador: %w", err)
+			return fmt.Errorf("switch to notifier role: %w", err)
 		}
 		return fn(q)
 	})

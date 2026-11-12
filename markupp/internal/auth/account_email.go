@@ -13,8 +13,8 @@ import (
 // Erros dos pedidos de email da conta. Token de email inexistente, vencido, já usado
 // ou de outra conta devolve ErrInvalidToken, o mesmo do JWT.
 var (
-	ErrEmailUnavailable     = errors.New("envio de email indisponivel, sem SMTP configurado")
-	ErrEmailAlreadyVerified = errors.New("email da conta ja verificado")
+	ErrEmailUnavailable     = errors.New("email sending is not set up on this server")
+	ErrEmailAlreadyVerified = errors.New("account email is already verified")
 )
 
 const (
@@ -126,7 +126,7 @@ func (s *AccountEmailService) ResetPassword(ctx context.Context, token, password
 	if err := s.checkPasswordFlow(); err != nil {
 		return err
 	}
-	if err := validatePassword(password); err != nil {
+	if err := checkNewPassword(password); err != nil {
 		return err
 	}
 	if strings.TrimSpace(token) == "" {
