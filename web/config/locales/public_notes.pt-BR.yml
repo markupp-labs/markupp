@@ -1,0 +1,12 @@
+pt-BR:
+  layouts:
+    published:
+      notes: "Notas"
+      published_with: "Publicado com markupp"
+  public_notes:
+    not_found:
+      title: "Nada publicado aqui"
+      hint: "Não há nota pública neste endereço. Confira o link com quem o compartilhou."
+    rate_limited:
+      title: "Pedidos demais"
+      hint: "Este endereço chamou o servidor vezes demais. Espere um minuto e recarregue a página."

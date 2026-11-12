@@ -54,6 +54,12 @@ Rails.application.routes.draw do
     resources :vault_members, path: "vault/members", only: [ :index, :create, :destroy ]
   end
 
+  # Nota pública, lida sem conta (ADR-0048): o fim do endereço é o slug do título e o id público depois do último hífen.
+  # Sem ponto no trecho: o .json do ![[nota]] é o formato.
+  scope "p/:slug_and_id", constraints: { slug_and_id: /[A-Za-z0-9-]+/ } do
+    get "/", to: "public_notes#show", as: :public_note
+  end
+
   # Páginas de erro: o ShowExceptions pede /<status> (config.exceptions_app). O resto que não casa com rota nenhuma é o
   # 404, na coringa de config/initializers/unmatched_route.rb, que entra depois das rotas das gems.
   match "/:code", to: "errors#show", via: :all, constraints: { code: /[45]\d\d/ }
