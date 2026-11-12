@@ -14,7 +14,7 @@ class ShortcutsTest < ActionDispatch::IntegrationTest
     [ "Vim keys: on", "" ], [ "Vim keys: off", "" ], [ "Language: English", "" ], [ "Language: Português (Brasil)", "" ],
     [ "Authorizations", "" ],
     [ "All tenants", "g t" ], [ "Switch tenant", "" ], [ "Tenant: General", "" ], [ "Delete tenant", "" ],
-    [ "Switch vault", "g v" ], [ "New vault", "" ], [ "Vault settings", "" ], [ "Vault members", "" ], [ "Delete vault", "" ],
+    [ "Switch vault", "g v" ], [ "New vault", "" ], [ "Vault settings", "" ], [ "Vault members", "" ], [ "Vault link refusals", "" ], [ "Delete vault", "" ],
     [ "Notifications", "g n" ], [ "Log out", "" ],
     [ "Rename the vault", "v r" ], [ "Add a member to the vault", "v a" ], [ "Leave the vault", "v q" ], [ "Publish the vault", "v o" ], [ "Publications", "v p" ],
     [ "Refuse the automatic link in focus", "r" ],
@@ -49,6 +49,7 @@ class ShortcutsTest < ActionDispatch::IntegrationTest
       "Rename the vault" => [ "v r" ], "Add a member to the vault" => [ "v a" ], "Leave the vault" => [ "v q" ],
       "Publish the vault" => [ "v o" ], "Publications" => [ "v p" ], "Publish the note" => [ "Alt+P" ], "Publish the row in focus" => [ "Alt+Shift+P" ],
       "Remove or revoke the item in focus, in a list" => [ "Delete" ], "Filter tenants" => [ "/" ],
+      "Undo the refusal in focus, in the link refusals" => [ "Delete" ],
       "Move between tenants" => [ "hjkl", "←↓↑→" ], "Indent and outdent in the content" => [ "Tab", "Shift+Tab" ],
       "From the content back to the path (Esc first)" => [ "Esc Shift+Tab" ] }.each do |name, keys|
       assert_equal keys, rows[name], "expected #{name} with #{keys.inspect} in the help"
