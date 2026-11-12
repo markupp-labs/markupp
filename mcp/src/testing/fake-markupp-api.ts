@@ -21,7 +21,8 @@ import type {
   PublicationList,
   PublishRequest,
 } from "../publication.js";
-import { FakeMyInvites, inviteNotFound } from "./fake-my-invites.js";
+import { FakeInvites } from "./fake-invites.js";
+import { FakeMyInvites } from "./fake-my-invites.js";
 import { FakePublications } from "./fake-publications.js";
 import { FakeAccountEmail, FakeAccountId, FakeVaults } from "./fake-vaults.js";
 
@@ -40,18 +41,17 @@ export class FakeMarkuppApi implements MarkuppApi {
   private readonly tenants: TenantMembership[] = [];
   private readonly notes = new Map<string, Note[]>();
   private readonly members = new Map<string, Member[]>();
-  private readonly invites = new Map<string, TenantInvite[]>();
   private readonly myInvites = new FakeMyInvites();
   private clockTick = 0;
   private pendingWrite: PendingWrite | null = null;
   private readonly vaults = new FakeVaults(() => this.tick());
   private readonly publications = new FakePublications(() => this.tick());
+  private readonly invites = new FakeInvites(() => this.tick());
 
   withTenant(id: string, role = "member", name = id): this {
     this.tenants.push({ id, name, role });
     this.notes.set(id, []);
     this.members.set(id, []);
-    this.invites.set(id, []);
     return this;
   }
 
@@ -63,16 +63,8 @@ export class FakeMarkuppApi implements MarkuppApi {
   }
 
   withInvite(tenant: string, email: string, role: string): TenantInvite {
-    const at = this.tick();
-    const invite = {
-      id: `invite-${this.clockTick}`,
-      email,
-      role,
-      expires_at: at,
-      created_at: at,
-    };
-    this.invitesOf(tenant).push(invite);
-    return invite;
+    this.notesIn(tenant);
+    return this.invites.issue(tenant, email, role);
   }
 
   // withMyInvite grava um convite endereçado à conta, para o tenant tenantId ainda fora dela.
@@ -97,7 +89,8 @@ export class FakeMarkuppApi implements MarkuppApi {
   }
 
   invitesIn(tenant: string): TenantInvite[] {
-    return [...this.invitesOf(tenant)];
+    this.notesIn(tenant);
+    return this.invites.listed(tenant);
   }
 
   // withVault grava o cofre direto, sem conferir papel, com a conta como membro.
@@ -252,10 +245,7 @@ export class FakeMarkuppApi implements MarkuppApi {
 
   async revokeInvite(tenant: string, inviteId: string): Promise<void> {
     this.requireAdmin(tenant);
-    const list = this.invitesOf(tenant);
-    const index = list.findIndex((invite) => invite.id === inviteId);
-    if (index < 0) throw inviteNotFound();
-    list.splice(index, 1);
+    this.invites.revoke(tenant, inviteId);
   }
 
   async createTenant(name: string): Promise<TenantMembership> {
@@ -393,11 +383,6 @@ export class FakeMarkuppApi implements MarkuppApi {
   private membersOf(tenant: string): Member[] {
     this.notesIn(tenant);
     return this.members.get(tenant) ?? [];
-  }
-
-  private invitesOf(tenant: string): TenantInvite[] {
-    this.notesIn(tenant);
-    return this.invites.get(tenant) ?? [];
   }
 
   private applyPendingWrite(tenant: string, id: string): void {
