@@ -16,6 +16,7 @@ import {
   type TenantMembership,
   type Vault,
 } from "../markupp-api.js";
+import { FakeMyInvites, inviteNotFound } from "./fake-my-invites.js";
 import { FakeAccountEmail, FakeAccountId, FakeVaults } from "./fake-vaults.js";
 
 type PendingWrite = { id: string; content: string };
@@ -33,7 +34,7 @@ export class FakeMarkuppApi implements MarkuppApi {
   private readonly notes = new Map<string, Note[]>();
   private readonly members = new Map<string, Member[]>();
   private readonly invites = new Map<string, TenantInvite[]>();
-  private readonly myInvites: PendingInvite[] = [];
+  private readonly myInvites = new FakeMyInvites();
   private clockTick = 0;
   private pendingWrite: PendingWrite | null = null;
   private readonly vaults = new FakeVaults(() => this.tick());
@@ -80,8 +81,7 @@ export class FakeMarkuppApi implements MarkuppApi {
       role,
       expires_at: at,
     };
-    this.myInvites.push(invite);
-    return invite;
+    return this.myInvites.add(invite);
   }
 
   membersIn(tenant: string): Member[] {
@@ -257,11 +257,11 @@ export class FakeMarkuppApi implements MarkuppApi {
   }
 
   async listMyInvites(): Promise<PendingInvite[]> {
-    return [...this.myInvites];
+    return this.myInvites.list();
   }
 
   async acceptInvite(inviteId: string): Promise<TenantMembership> {
-    const invite = this.takeMyInvite(inviteId);
+    const invite = this.myInvites.take(inviteId);
     if (this.tenants.some((t) => t.id === invite.tenant_id)) {
       throw new MarkuppApiError(
         409,
@@ -278,7 +278,7 @@ export class FakeMarkuppApi implements MarkuppApi {
   }
 
   async declineInvite(inviteId: string): Promise<void> {
-    this.takeMyInvite(inviteId);
+    this.myInvites.take(inviteId);
   }
 
   async listVaults(tenant: string): Promise<Vault[]> {
@@ -332,13 +332,6 @@ export class FakeMarkuppApi implements MarkuppApi {
     if (userId === FakeAccountId) this.notesIn(tenant);
     else this.requireWriter(tenant);
     this.vaults.remove(tenant, vault, userId);
-  }
-
-  private takeMyInvite(inviteId: string): PendingInvite {
-    const index = this.myInvites.findIndex((invite) => invite.id === inviteId);
-    const [invite] = index < 0 ? [] : this.myInvites.splice(index, 1);
-    if (!invite) throw inviteNotFound();
-    return invite;
   }
 
   private requireAdmin(tenant: string): void {
@@ -460,12 +453,4 @@ export class FakeMarkuppApi implements MarkuppApi {
 function found(note: Note): FoundNote {
   const { id, vault_id, path } = note;
   return { id, vault_id, path };
-}
-
-function inviteNotFound(): MarkuppApiError {
-  return new MarkuppApiError(
-    404,
-    "invite_not_found",
-    "invite not found, expired or already answered",
-  );
 }
