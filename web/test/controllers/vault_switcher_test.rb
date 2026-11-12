@@ -66,12 +66,13 @@ class VaultSwitcherTest < ActionDispatch::IntegrationTest
     sign_in_as
     get root_path
     assert_equal({ "q" => settings_vault_members_path(focus: "leave"), "r" => settings_vault_path(focus: "rename"),
-                   "a" => settings_vault_members_path(focus: "add"), "o" => settings_vault_path(focus: "publish") }, vault_actions)
+                   "a" => settings_vault_members_path(focus: "add"), "o" => settings_vault_path(focus: "publish"),
+                   "p" => settings_publications_path }, vault_actions)
 
     use_fake_api(vaults: VAULTS, tenants: VIEWER)
     sign_in_as
     get root_path
-    assert_equal({ "q" => settings_vault_members_path(focus: "leave") }, vault_actions)
+    assert_equal({ "q" => settings_vault_members_path(focus: "leave"), "p" => settings_publications_path }, vault_actions)
   end
 
   test "the new vault dialog posts a name of up to 100 characters" do

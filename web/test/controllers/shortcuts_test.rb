@@ -15,7 +15,7 @@ class ShortcutsTest < ActionDispatch::IntegrationTest
     [ "All tenants", "g t" ], [ "Switch tenant", "" ], [ "Tenant: General", "" ], [ "Delete tenant", "" ],
     [ "Switch vault", "g v" ], [ "New vault", "" ], [ "Vault settings", "" ], [ "Vault members", "" ], [ "Delete vault", "" ],
     [ "Notifications", "g n" ], [ "Log out", "" ],
-    [ "Rename the vault", "v r" ], [ "Add a member to the vault", "v a" ], [ "Leave the vault", "v q" ], [ "Publish the vault", "v o" ],
+    [ "Rename the vault", "v r" ], [ "Add a member to the vault", "v a" ], [ "Leave the vault", "v q" ], [ "Publish the vault", "v o" ], [ "Publications", "v p" ],
     [ "Show or hide the graph filters", "f" ], [ "Show or hide orphan notes", "o" ], [ "Show or hide unresolved links", "u" ],
     [ "Show or hide inferred links", "i" ], [ "Next and previous community in the graph", "c" ], [ "Clear the graph filters", "x" ]
   ].freeze
@@ -44,7 +44,7 @@ class ShortcutsTest < ActionDispatch::IntegrationTest
       "Next row" => [ "j", "↓" ], "All tenants" => [ "g t" ], "Switch vault" => [ "g v" ],
       "Notifications" => [ "g n" ],
       "Rename the vault" => [ "v r" ], "Add a member to the vault" => [ "v a" ], "Leave the vault" => [ "v q" ],
-      "Publish the vault" => [ "v o" ], "Publish the note" => [ "Alt+P" ], "Publish the row in focus" => [ "Alt+Shift+P" ],
+      "Publish the vault" => [ "v o" ], "Publications" => [ "v p" ], "Publish the note" => [ "Alt+P" ], "Publish the row in focus" => [ "Alt+Shift+P" ],
       "Remove the member in focus, in a member list" => [ "Delete" ], "Filter tenants" => [ "/" ],
       "Move between tenants" => [ "hjkl", "←↓↑→" ], "Indent and outdent in the content" => [ "Tab", "Shift+Tab" ],
       "From the content back to the path (Esc first)" => [ "Esc Shift+Tab" ] }.each do |name, keys|
