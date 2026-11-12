@@ -26,6 +26,11 @@ class GraphPainterTest < ApplicationSystemTestCase
     assert_equal %w[line accent line accent], lit
   end
 
+  # A escrita é cheia, a inferida tracejada e a automática pontilhada, nas mesmas cores: o tipo se lê pelo traço.
+  test "written links are solid, inferred ones dashed and automatic ones dotted" do
+    assert_equal [ "", "3,3", "1,3" ], painted(nodes: "[ node('a', {}), node('b', {}) ]")["linkDashes"]
+  end
+
   # O enquadramento aproxima o grafo para ocupar o canvas; a bolinha para de crescer na tela a partir do zoom 2.
   test "a node stops growing on screen past zoom 2" do
     at_two = painted(nodes: "[ node('a', {}), node('b', {}) ]", zoom: 2)["arcs"].first * 2
@@ -45,9 +50,11 @@ class GraphPainterTest < ApplicationSystemTestCase
             labels = {}
             strokes = []
             arcs = []
-            setTransform() {} clearRect() {} setLineDash() {} beginPath() {} moveTo() {} lineTo() {} fill() {}
+            dashes = []
+            setTransform() {} clearRect() {} beginPath() {}
+            setLineDash(dash) { this.dash = dash.join(",") } moveTo() {} lineTo() {} fill() {}
             arc(x, y, radius) { this.arcs.push(radius) }
-            stroke() { this.strokes.push(this.strokeStyle) }
+            stroke() { this.strokes.push(this.strokeStyle); this.dashes.push(this.dash) }
             strokeText() {}
             fillText(text, x, y) { this.labels[text] = y }
           }
@@ -60,7 +67,7 @@ class GraphPainterTest < ApplicationSystemTestCase
           const colors = { line: "line", ink: "ink", muted: "muted", accent: "accent", halo: "halo", communities: [ "c0" ] }
           const camera = { width: 100, height: 100, k: #{zoom}, apply() {} }
           paintGraph(context, { nodes, links, colors, camera, ratio: 1, emphasis: { active } })
-          done({ labels: context.labels, arcs: context.arcs, linkStrokes: context.strokes.slice(0, active ? 4 : 2) })
+          done({ labels: context.labels, arcs: context.arcs, linkStrokes: context.strokes.slice(0, active ? 4 : 2), linkDashes: context.dashes.slice(0, 3) })
         })
       JS
     end

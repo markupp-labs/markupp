@@ -19,7 +19,8 @@ class ShortcutsTest < ActionDispatch::IntegrationTest
     [ "Rename the vault", "v r" ], [ "Add a member to the vault", "v a" ], [ "Leave the vault", "v q" ], [ "Publish the vault", "v o" ], [ "Publications", "v p" ],
     [ "Refuse the automatic link in focus", "r" ],
     [ "Show or hide the graph filters", "f" ], [ "Show or hide orphan notes", "o" ], [ "Show or hide unresolved links", "u" ],
-    [ "Show or hide inferred links", "i" ], [ "Next and previous community in the graph", "c" ], [ "Clear the graph filters", "x" ]
+    [ "Show or hide inferred links", "i" ], [ "Show or hide automatic links", "a" ],
+    [ "Next and previous community in the graph", "c" ], [ "Clear the graph filters", "x" ]
   ].freeze
 
   setup do
@@ -40,7 +41,8 @@ class ShortcutsTest < ActionDispatch::IntegrationTest
       "Links view" => [ "Ctrl+Shift+L" ], "Graph view" => [ "Ctrl+Shift+G" ], "Full graph" => [ "Alt+G" ],
       "Next and previous note in the graph" => [ "j", "k", "↓", "↑" ], "Zoom the graph in and out" => [ "+", "-" ], "Fit the graph" => [ "0" ],
       "Show or hide the graph filters" => [ "f" ], "Show or hide orphan notes" => [ "o" ], "Show or hide unresolved links" => [ "u" ],
-      "Show or hide inferred links" => [ "i" ], "Next and previous community in the graph" => [ "c", "Shift+C" ],
+      "Show or hide inferred links" => [ "i" ], "Show or hide automatic links" => [ "a" ],
+      "Next and previous community in the graph" => [ "c", "Shift+C" ],
       "Clear the graph filters" => [ "x" ],
       "Refuse the automatic link in focus" => [ "r" ],
       "Focus region left" => [ "Alt+H" ], "Focus region right" => [ "Alt+L" ],
