@@ -98,7 +98,16 @@ func notModified(w http.ResponseWriter, r *http.Request, version int64) bool {
 	if version == 0 {
 		return false
 	}
-	tag := fmt.Sprintf(`"%d"`, version)
+	return notModifiedSince(w, r, fmt.Sprint(version))
+}
+
+// notModifiedSince põe o ETag fraco do validador dado e responde 304 quando o cliente
+// já o tem. Validador vazio não valida nada.
+func notModifiedSince(w http.ResponseWriter, r *http.Request, validator string) bool {
+	if validator == "" {
+		return false
+	}
+	tag := `"` + validator + `"`
 	w.Header().Set("ETag", "W/"+tag)
 	if !matchesETag(r.Header.Get("If-None-Match"), tag) {
 		return false
