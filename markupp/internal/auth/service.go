@@ -64,6 +64,9 @@ func (s *Service) Register(ctx context.Context, email, password string) (TokenPa
 	if err != nil {
 		return TokenPair{}, err
 	}
+	if err := checkNewPassword(password); err != nil {
+		return TokenPair{}, err
+	}
 	hash, err := s.hasher.Hash(password)
 	if err != nil {
 		return TokenPair{}, fmt.Errorf("hash password for %q: %w", normEmail, err)
@@ -121,7 +124,7 @@ func (s *Service) AcceptInvite(ctx context.Context, token, password string) (Tok
 	if !s.cfg.LocalEnabled {
 		return TokenPair{}, ErrLocalAuthDisabled
 	}
-	if err := validatePassword(password); err != nil {
+	if err := checkNewPassword(password); err != nil {
 		return TokenPair{}, err
 	}
 	hash, err := s.hasher.Hash(password)

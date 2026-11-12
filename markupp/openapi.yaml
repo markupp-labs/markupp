@@ -49,7 +49,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/TokenPairResponse'
         '400':
-          description: Email ou senha ausentes, ou senha acima de 72 bytes (invalid_request)
+          description: >
+            Email ou senha ausentes, ou senha acima de 72 bytes (invalid_request), senha com menos de 15 caracteres (password_too_short) ou senha da lista de senhas comuns (common_password)
           content:
             application/json:
               schema:
@@ -174,7 +175,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/TokenPairResponse'
         '400':
-          description: Convite inexistente, vencido ou já aceito (invalid_invite), ou senha inválida
+          description: >
+            Convite inexistente, vencido ou já aceito (invalid_invite), senha ausente ou acima de
+            72 bytes (invalid_request), senha com menos de 15 caracteres (password_too_short) ou senha da lista de senhas comuns (common_password)
           content:
             application/json:
               schema:
@@ -290,7 +293,9 @@ paths:
         '204':
           description: Senha trocada
         '400':
-          description: Token inexistente, vencido ou já usado (invalid_token), ou senha inválida (invalid_request)
+          description: >
+            Token inexistente, vencido ou já usado (invalid_token), senha ausente ou acima de
+            72 bytes (invalid_request), senha com menos de 15 caracteres (password_too_short) ou senha da lista de senhas comuns (common_password)
           content:
             application/json:
               schema:
@@ -2373,7 +2378,11 @@ components:
           type: string
         password:
           type: string
+          minLength: 15
           maxLength: 72
+          description: >
+            Senha nova: de 15 caracteres a 72 bytes, fora da lista de senhas comuns, sem
+            exigir tipos de caractere (NIST SP 800-63B-4)
     EmailTokenRequest:
       type: object
       required: [token]
@@ -2394,7 +2403,11 @@ components:
           type: string
         password:
           type: string
+          minLength: 15
           maxLength: 72
+          description: >
+            Senha nova: de 15 caracteres a 72 bytes, fora da lista de senhas comuns, sem
+            exigir tipos de caractere (NIST SP 800-63B-4)
     InviteRequest:
       type: object
       required: [email, role]

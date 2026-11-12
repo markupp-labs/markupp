@@ -39,7 +39,7 @@ class FakeMarkuppAccountEmail
     # Como a API: a senha é conferida antes do token, e o token vale uma vez.
     def reset_password(body)
       check_password_flow("POST /auth/password/reset")
-      raise MarkuppApi::InvalidRequest, "fake API refuses password of #{body[:password].to_s.bytesize} bytes, expected 1 to #{FakeMarkuppAuth::PASSWORD_LIMIT}" unless valid_password?(body[:password])
+      FakeMarkuppAuth.refuse_new_password(body[:password], "POST /auth/password/reset")
 
       account = consume_token(:password_reset, body[:token], "POST /auth/password/reset")
       account["password"] = body[:password]
@@ -73,8 +73,6 @@ class FakeMarkuppAccountEmail
 
       raise MarkuppApi::EmailAlreadyVerified, "fake API refuses #{call} for #{account["email"]}: email_already_verified"
     end
-
-    def valid_password?(password) = password.to_s.strip.present? && password.bytesize <= FakeMarkuppAuth::PASSWORD_LIMIT
 
     # Tokens seguem a ordem de envio: password_reset-token-1, email_verification-token-2...
     def send_token(kind, account)

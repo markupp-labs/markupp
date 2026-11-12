@@ -3,6 +3,7 @@
 class TokenForm
   include ActiveModel::Model
   include ActiveModel::Attributes
+  include NewPassword
 
   attribute :token, :string
   attribute :password, :string
@@ -16,8 +17,8 @@ class TokenForm
     api.post(path, { token:, password: }.compact) || {}
   rescue MarkuppApi::InvalidToken
     errors.add(:token, :invalid_token) && nil
-  rescue MarkuppApi::InvalidRequest
-    errors.add(:password, :invalid) && nil
+  rescue MarkuppApi::InvalidRequest => e
+    refuse_password(e)
   rescue MarkuppApi::AccountExists
     errors.add(:base, :account_exists) && nil
   rescue MarkuppApi::LocalAuthDisabled

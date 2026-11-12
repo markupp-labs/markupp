@@ -2,6 +2,18 @@
 class FakeMarkuppAuth
   PUBLIC_CALLS = [ "POST /auth/login", "POST /auth/refresh", "POST /auth/logout", "POST /auth/invites/accept", "POST /v1/accounts" ].freeze
   PASSWORD_LIMIT = 72
+  PASSWORD_MINIMUM = 15
+  # Amostra da lista de senhas comuns da API.
+  COMMON_PASSWORDS = %w[qazwsxedcrfvtgb 1q2w3e4r5t6y7u8i].freeze
+
+  # Como a API para senha nova: 1 a 72 bytes, depois 15 caracteres, depois fora da lista comum.
+  def self.refuse_new_password(password, call)
+    unless password.to_s.strip.present? && password.bytesize <= PASSWORD_LIMIT
+      raise MarkuppApi::InvalidRequest, "fake API refuses #{call} with a password of #{password.to_s.bytesize} bytes, expected 1 to #{PASSWORD_LIMIT}"
+    end
+    raise MarkuppApi::PasswordTooShort, "fake API refuses #{call} with #{password.length} characters, expected at least #{PASSWORD_MINIMUM}" if password.length < PASSWORD_MINIMUM
+    raise MarkuppApi::CommonPassword, "fake API refuses #{call} with a common password" if COMMON_PASSWORDS.include?(password.downcase)
+  end
 
   def initialize(accounts, tenants)
     @accounts = accounts
@@ -59,7 +71,7 @@ class FakeMarkuppAuth
     # Como a API: a senha é conferida antes do token, e o convite só é consumido se a conta for criada.
     def accept_invite(body)
       raise MarkuppApi::LocalAuthDisabled, "fake API has local auth disabled on POST /auth/invites/accept" unless @local_auth
-      refuse_bad_password(body[:password], "POST /auth/invites/accept")
+      self.class.refuse_new_password(body[:password], "POST /auth/invites/accept")
 
       invite = @tenants.invite_for_token(body[:token])
       account = @accounts.create(invite["email"], body[:password])
@@ -70,17 +82,11 @@ class FakeMarkuppAuth
     # Como a API: a primeira conta nasce sempre; as outras só com o registro aberto, e sem email confirmado.
     def register(body)
       raise MarkuppApi::LocalAuthDisabled, "fake API has local auth disabled on POST /v1/accounts" unless @local_auth
-      refuse_bad_password(body[:password], "POST /v1/accounts")
+      self.class.refuse_new_password(body[:password], "POST /v1/accounts")
       raise MarkuppApi::RegistrationDisabled, "fake API refuses POST /v1/accounts: registration_disabled" if @registration_closed && @accounts.any?
 
       account = @accounts.create(body[:email].to_s.strip.downcase, body[:password], verified: false)
       @accounts.issue_pair(account)
-    end
-
-    def refuse_bad_password(password, call)
-      return if password.to_s.strip.present? && password.bytesize <= PASSWORD_LIMIT
-
-      raise MarkuppApi::InvalidRequest, "fake API refuses #{call} with a password of #{password.to_s.bytesize} bytes, expected 1 to #{PASSWORD_LIMIT}"
     end
 
     # Como a API: 204 sempre, exista o refresh ou não.

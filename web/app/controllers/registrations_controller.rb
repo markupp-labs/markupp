@@ -10,7 +10,7 @@ class RegistrationsController < ApplicationController
   end
 
   def create
-    @registration = AccountRegistration.new(params.expect(registration: [ :email, :password ]))
+    @registration = AccountRegistration.new(params.expect(registration: [ :email, :password, :password_confirmation ]))
     pair = @registration.submit(credential.public_api)
     return render(:new, status: :unprocessable_content) unless pair
 

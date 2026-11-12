@@ -82,7 +82,7 @@ func TestAccountEmail_SemCredencialLocal_TrocaDeSenhaFicaIndisponivel(t *testing
 	ctx := context.Background()
 
 	assert.ErrorIs(t, svc.RequestPasswordReset(ctx, "a@markupp.dev"), auth.ErrLocalAuthDisabled)
-	assert.ErrorIs(t, svc.ResetPassword(ctx, "tok", "senhaNova123"), auth.ErrLocalAuthDisabled)
+	assert.ErrorIs(t, svc.ResetPassword(ctx, "tok", "senha-nova-de-teste"), auth.ErrLocalAuthDisabled)
 	assert.Empty(t, repo.resetEmail+repo.reset.TokenHash, "nada chega ao banco")
 }
 
@@ -154,10 +154,10 @@ func TestAccountEmail_RequestPasswordReset_EmailVazio_Recusa(t *testing.T) {
 func TestAccountEmail_ResetPassword_GravaOHashDaSenhaNovaEAudita(t *testing.T) {
 	repo := &fakeAccountEmailRepository{}
 
-	require.NoError(t, novoAccountEmail(repo, opcoesDeTeste()).ResetPassword(context.Background(), "tok-1", "senhaNova123"))
+	require.NoError(t, novoAccountEmail(repo, opcoesDeTeste()).ResetPassword(context.Background(), "tok-1", "senha-nova-de-teste"))
 
 	assert.Equal(t, auth.HashOpaqueToken("tok-1"), repo.reset.TokenHash)
-	assert.Equal(t, "hash:senhaNova123", repo.resetHash)
+	assert.Equal(t, "hash:senha-nova-de-teste", repo.resetHash)
 	assert.NotEmpty(t, repo.reset.AuditEventID)
 	assert.Equal(t, defaultClock()(), repo.reset.Now)
 }
@@ -166,7 +166,7 @@ func TestAccountEmail_ResetPassword_TokenInvalido_NaoGastaBcrypt(t *testing.T) {
 	hasher := &countingHasher{}
 	svc := auth.NewAccountEmailService(&fakeAccountEmailRepository{err: auth.ErrInvalidToken}, hasher, defaultClock(), opcoesDeTeste())
 
-	err := svc.ResetPassword(context.Background(), "lixo", "senhaNova123")
+	err := svc.ResetPassword(context.Background(), "lixo", "senha-nova-de-teste")
 
 	assert.ErrorIs(t, err, auth.ErrInvalidToken)
 	assert.Zero(t, hasher.ops, "token lixo nao custa um bcrypt")

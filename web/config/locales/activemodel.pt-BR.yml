@@ -12,9 +12,11 @@ pt-BR:
       account_registration:
         email: "Email"
         password: "Senha"
+        password_confirmation: "Confirme a senha"
       token_form:
         token: "Token"
         password: "Senha"
+        password_confirmation: "Confirme a senha"
     errors:
       models:
         note:
@@ -31,6 +33,10 @@ pt-BR:
           attributes:
             password:
               invalid: "Use uma senha de até 72 bytes."
+              too_short: "Use pelo menos 15 caracteres."
+              common: "Essa senha é conhecida demais. Escolha outra."
+            password_confirmation:
+              confirmation: "As senhas não são iguais."
             base:
               account_exists: "Este email já tem uma conta."
               registration_disabled: "Este servidor só cria contas por convite. Peça um a um administrador."
@@ -42,6 +48,10 @@ pt-BR:
               invalid_token: "Este token é inválido, venceu ou já foi usado."
             password:
               invalid: "Use uma senha de até 72 bytes."
+              too_short: "Use pelo menos 15 caracteres."
+              common: "Essa senha é conhecida demais. Escolha outra."
+            password_confirmation:
+              confirmation: "As senhas não são iguais."
             base:
               account_exists: "Este email já tem conta. Entre e aceite o convite pela sua lista de tenants."
               local_auth_disabled: "O login com senha está desativado neste servidor."

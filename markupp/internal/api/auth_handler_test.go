@@ -120,7 +120,7 @@ func TestAuthHandler_Login_Sucesso(t *testing.T) {
 	}
 	router := setupAuthRouter(svc, nil)
 
-	body := `{"email":"admin@markupp.dev","password":"senhaSegura123"}`
+	body := `{"email":"admin@markupp.dev","password":"senhaSegura123-de-teste"}`
 	req := httptest.NewRequest(http.MethodPost, "/auth/login", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
@@ -426,7 +426,7 @@ func postAccept(router http.Handler, body string) *httptest.ResponseRecorder {
 func TestAuthHandler_AcceptInvite_Sucesso_DevolveSessao(t *testing.T) {
 	svc := &fakeAuthService{acceptPair: auth.TokenPair{AccessToken: "jwt-novo", RefreshToken: "r", ExpiresIn: 900}}
 
-	rec := postAccept(setupAuthRouter(svc, nil), `{"token":"tok-1","password":"senhaNova"}`)
+	rec := postAccept(setupAuthRouter(svc, nil), `{"token":"tok-1","password":"senhaNova-de-teste"}`)
 
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.Equal(t, "tok-1", svc.acceptToken)
@@ -436,7 +436,7 @@ func TestAuthHandler_AcceptInvite_Sucesso_DevolveSessao(t *testing.T) {
 func TestAuthHandler_AcceptInvite_ConviteInvalido_Retorna400(t *testing.T) {
 	svc := &fakeAuthService{acceptErr: auth.ErrInviteInvalid}
 
-	rec := postAccept(setupAuthRouter(svc, nil), `{"token":"velho","password":"senhaNova"}`)
+	rec := postAccept(setupAuthRouter(svc, nil), `{"token":"velho","password":"senhaNova-de-teste"}`)
 
 	assert.Equal(t, http.StatusBadRequest, rec.Code)
 	assert.Contains(t, rec.Body.String(), "invalid_invite")
@@ -445,7 +445,7 @@ func TestAuthHandler_AcceptInvite_ConviteInvalido_Retorna400(t *testing.T) {
 func TestAuthHandler_AcceptInvite_EmailJaTemConta_Retorna409(t *testing.T) {
 	svc := &fakeAuthService{acceptErr: auth.ErrUserAlreadyExists}
 
-	rec := postAccept(setupAuthRouter(svc, nil), `{"token":"tok-1","password":"senhaNova"}`)
+	rec := postAccept(setupAuthRouter(svc, nil), `{"token":"tok-1","password":"senhaNova-de-teste"}`)
 
 	assert.Equal(t, http.StatusConflict, rec.Code)
 	assert.Contains(t, rec.Body.String(), "already_exists")

@@ -10,11 +10,7 @@
     <%= form.email_field :email, required: true, autofocus: true, autocomplete: "username", aria: field_aria,
                          class: "w-full rounded-md border border-line bg-surface px-2 py-1 aria-invalid:border-danger" %>
   </div>
-  <div>
-    <%= form.label :password, class: "block text-ink-muted" %>
-    <%= form.password_field :password, required: true, autocomplete: "current-password", aria: field_aria,
-                            class: "w-full rounded-md border border-line bg-surface px-2 py-1 aria-invalid:border-danger" %>
-  </div>
+  <%= render "passwords/field", form:, attribute: :password, autocomplete: "current-password", error_id: ("session_error" if login_error) %>
   <% if login_error %>
     <p id="session_error" role="alert" class="text-danger"><%= login_error %></p>
   <% end %>
