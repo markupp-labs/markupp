@@ -8,7 +8,6 @@ module Settings
               { id: "ideas", path: "ideas.md", content: "" } ].freeze
     REFUSALS = [ { id: "r2", note_ids: %w[ideas plan], created_at: "2026-11-03T12:00:00Z" },
                  { id: "r1", note_ids: %w[roadmap plan], created_at: "2026-11-01T12:00:00Z" } ].freeze
-    VIEWER_TENANTS = [ FakeMarkuppTenants::DEFAULT_TENANTS.first.merge(members: { FakeMarkuppAccounts::DEFAULT_EMAIL => "viewer" }) ].freeze
 
     def sign_in_with(refusals: REFUSALS, **options)
       use_fake_api(notes: NOTES, link_refusals: refusals, **options)
@@ -42,7 +41,7 @@ module Settings
     end
 
     test "a viewer reads the refusals without undo" do
-      sign_in_with(tenants: VIEWER_TENANTS)
+      sign_in_with(tenants: FakeMarkuppTenants::VIEWER_TENANTS)
 
       get settings_link_refusals_path
 

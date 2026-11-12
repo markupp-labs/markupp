@@ -26,7 +26,6 @@ class NoteLinksControllerTest < ActionDispatch::IntegrationTest
     links: { "plan" => [ { source: PLAN, target: IDEAS, cited_title: "ideas", type: "mentioned", predicate: nil, inferred_target: nil },
                          { source: PLAN, target: ALICE, cited_title: "alice", type: "explicit", predicate: nil, inferred_target: nil } ] }
   }.freeze
-  VIEWER_TENANTS = [ FakeMarkuppTenants::DEFAULT_TENANTS.first.merge(members: { FakeMarkuppAccounts::DEFAULT_EMAIL => "viewer" }) ].freeze
 
   setup do
     @api = use_fake_api(notes: NOTES, graph: GRAPH)
@@ -168,7 +167,7 @@ class NoteLinksControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "a viewer sees the link by mention without the refuse action" do
-    use_fake_api(notes: NOTES, graph: BY_MENTION, tenants: VIEWER_TENANTS)
+    use_fake_api(notes: NOTES, graph: BY_MENTION, tenants: FakeMarkuppTenants::VIEWER_TENANTS)
     sign_in_as
 
     get note_links_path("plan")

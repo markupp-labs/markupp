@@ -163,7 +163,7 @@ class GraphsControllerTest < ActionDispatch::IntegrationTest
     end
     assert_select "main [data-controller=graph-view][data-graph-view-labels-value*=?]", "Refuse the automatic link between %{source} and %{target}?"
 
-    use_fake_api(notes: NOTES, graph: GRAPH, tenants: NoteLinksControllerTest::VIEWER_TENANTS)
+    use_fake_api(notes: NOTES, graph: GRAPH, tenants: FakeMarkuppTenants::VIEWER_TENANTS)
     sign_in_as
     get graph_path
 

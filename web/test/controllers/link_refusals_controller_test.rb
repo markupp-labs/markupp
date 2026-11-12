@@ -49,7 +49,7 @@ class LinkRefusalsControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "a viewer that still had the action gets the reason, not the refusal" do
-    use_fake_api(notes: NOTES, graph: GRAPH, tenants: NoteLinksControllerTest::VIEWER_TENANTS)
+    use_fake_api(notes: NOTES, graph: GRAPH, tenants: FakeMarkuppTenants::VIEWER_TENANTS)
     sign_in_as
 
     post link_refusals_path(format: :json), params: { note_ids: %w[draft plan] }
