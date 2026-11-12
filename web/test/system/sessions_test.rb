@@ -16,4 +16,16 @@ class SessionsTest < ApplicationSystemTestCase
     assert_text "Logged out."
     assert_current_path new_session_path
   end
+
+  test "the eye shows the typed password and hides it again" do
+    visit new_session_path
+    fill_in "Password", with: "senha-de-teste-longa"
+
+    click_on "Show password"
+    assert_field "Password", type: "text", with: "senha-de-teste-longa"
+    assert_selector "button[aria-pressed=true]", accessible_name: "Show password"
+
+    click_on "Show password"
+    assert_field "Password", type: "password"
+  end
 end

@@ -13,7 +13,10 @@ class PasswordResetsControllerTest < ActionDispatch::IntegrationTest
       assert_select "label[for=password_reset_token]", "Token"
       assert_select "input[type=text][name=?][required]", "password_reset[token]"
       assert_select "label[for=password_reset_password]", "New password"
-      assert_select "input[type=password][name=?][required][autocomplete=new-password]", "password_reset[password]"
+      assert_select "input[type=password][name=?][required][minlength=15][autocomplete=new-password]", "password_reset[password]"
+      assert_select "button[type=button][aria-controls=password_reset_password][aria-pressed=false][aria-label=?]", "Show password"
+      assert_select "label[for=password_reset_password_confirmation]", "Confirm password"
+      assert_select "input[type=password][name=?][required][autocomplete=new-password]", "password_reset[password_confirmation]"
       assert_select "button", "Reset password"
     end
     assert_select "nav#sidebar", count: 0

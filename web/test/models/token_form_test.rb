@@ -57,6 +57,28 @@ class TokenFormTest < ActiveSupport::TestCase
     assert_equal [ "This server can't send email, so password reset is off. Ask an administrator." ], form.errors[:base]
   end
 
+  test "submit with a confirmation that differs answers nil before the API" do
+    form = TokenForm.new(token: "tok-1", password: "senha-nova-de-teste", password_confirmation: "senha-nova-de-tesTe")
+
+    assert_nil form.submit(@fake_api, ACCEPT_PATH)
+    assert_equal [ "The passwords don't match." ], form.errors[:password_confirmation]
+    assert token_form("tok-1", "senha-nova-de-teste").submit(@fake_api, ACCEPT_PATH), "the invite is still unused"
+  end
+
+  test "submit with a short password puts the minimum on the password" do
+    form = token_form("tok-1", "curta")
+
+    assert_nil form.submit(@fake_api, ACCEPT_PATH)
+    assert_equal [ "Use at least 15 characters." ], form.errors[:password]
+  end
+
+  test "submit with a common password asks for another one" do
+    form = token_form("tok-1", "QAZWSXEDCRFVTGB")
+
+    assert_nil form.submit(@fake_api, ACCEPT_PATH)
+    assert_equal [ "This password is too common. Choose another one." ], form.errors[:password]
+  end
+
   private
     def token_form(token, password) = TokenForm.new(token:, password:)
 end

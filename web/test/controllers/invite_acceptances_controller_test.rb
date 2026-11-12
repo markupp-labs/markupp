@@ -15,7 +15,10 @@ class InviteAcceptancesControllerTest < ActionDispatch::IntegrationTest
       assert_select "label[for=invite_acceptance_token]", "Token"
       assert_select "input[type=text][name=?][required]", "invite_acceptance[token]"
       assert_select "label[for=invite_acceptance_password]", "Password"
-      assert_select "input[type=password][name=?][required][autocomplete=new-password]", "invite_acceptance[password]"
+      assert_select "input[type=password][name=?][required][minlength=15][autocomplete=new-password]", "invite_acceptance[password]"
+      assert_select "button[type=button][aria-controls=invite_acceptance_password][aria-pressed=false][aria-label=?]", "Show password"
+      assert_select "label[for=invite_acceptance_password_confirmation]", "Confirm password"
+      assert_select "input[type=password][name=?][required][autocomplete=new-password]", "invite_acceptance[password_confirmation]"
       assert_select "button", "Create account"
     end
     assert_select "nav#sidebar", count: 0

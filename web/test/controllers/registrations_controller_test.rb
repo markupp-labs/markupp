@@ -16,7 +16,12 @@ class RegistrationsControllerTest < ActionDispatch::IntegrationTest
       assert_select "label[for=registration_email]", "Email"
       assert_select "input[type=email][name=?][required][autocomplete=email]", "registration[email]"
       assert_select "label[for=registration_password]", "Password"
-      assert_select "input[type=password][name=?][required][autocomplete=new-password]", "registration[password]"
+      assert_select "input[type=password][name=?][required][minlength=15][autocomplete=new-password][aria-describedby=registration_password_hint]", "registration[password]"
+      assert_select "#registration_password_hint", "Use at least 15 characters. Well-known passwords are refused."
+      assert_select "button[type=button][aria-controls=registration_password][aria-pressed=false][aria-label=?]", "Show password"
+      assert_select "label[for=registration_password_confirmation]", "Confirm password"
+      assert_select "input[type=password][name=?][required][autocomplete=new-password]", "registration[password_confirmation]"
+      assert_select "button[type=button][aria-controls=registration_password_confirmation][aria-pressed=false][aria-label=?]", "Show password"
       assert_select "button", "Create account"
     end
     assert_select "nav#sidebar", count: 0
@@ -61,13 +66,44 @@ class RegistrationsControllerTest < ActionDispatch::IntegrationTest
     assert_select "[role=alert]", "This server only creates accounts by invite. Ask an admin for one."
   end
 
+  test "a confirmation that differs from the password shows under it and creates no account" do
+    use_fake_api
+
+    post registration_path, params: { registration: { email: NEW_EMAIL, password: "senha-nova-de-teste", password_confirmation: "senha-nova-de-tesTe" } }
+
+    assert_response :unprocessable_content
+    assert_select "input[name='registration[password_confirmation]'][aria-invalid=true][aria-describedby=registration_password_confirmation_error]"
+    assert_select "#registration_password_confirmation_error", "The passwords don't match."
+    post registration_path, params: { registration: { email: NEW_EMAIL, password: "senha-nova-de-teste" } }
+    assert_redirected_to root_path
+  end
+
+  test "a short password shows the minimum under the password field" do
+    use_fake_api
+
+    post registration_path, params: { registration: { email: NEW_EMAIL, password: "curta", password_confirmation: "curta" } }
+
+    assert_response :unprocessable_content
+    assert_select "input[name='registration[password]'][aria-describedby='registration_password_hint registration_password_error']"
+    assert_select "#registration_password_error", "Use at least 15 characters."
+  end
+
+  test "a common password asks for another one" do
+    use_fake_api
+
+    post registration_path, params: { registration: { email: NEW_EMAIL, password: "qazwsxedcrfvtgb", password_confirmation: "qazwsxedcrfvtgb" } }
+
+    assert_response :unprocessable_content
+    assert_select "#registration_password_error", "This password is too common. Choose another one."
+  end
+
   test "a password the API refuses shows under the password field" do
     use_fake_api
 
     post registration_path, params: { registration: { email: NEW_EMAIL, password: " " } }
 
     assert_response :unprocessable_content
-    assert_select "input[name='registration[password]'][aria-invalid=true][aria-describedby=registration_password_error]"
+    assert_select "input[name='registration[password]'][aria-invalid=true][aria-describedby='registration_password_hint registration_password_error']"
     assert_select "#registration_password_error", "Enter a password up to 72 bytes long."
   end
 end
