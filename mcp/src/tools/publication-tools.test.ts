@@ -91,10 +91,10 @@ describe("publish", () => {
   it("diz no confirm que o nome vem do usuário", async () => {
     client = await MarkuppToolClient.connect(new FakeMarkuppApi());
     const tool = await client.tool("publish");
-    const schema = tool.inputSchema as {
-      properties: { confirm: { description: string } };
-    };
-    expect(schema.properties.confirm.description).toMatch(/user/);
+    const confirm = tool.inputSchema.properties?.confirm;
+    expect(confirm).toMatchObject({
+      description: expect.stringMatching(/user/),
+    });
     expect(tool.annotations).toMatchObject({ readOnlyHint: false });
   });
 });
