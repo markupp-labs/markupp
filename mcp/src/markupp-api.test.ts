@@ -381,3 +381,50 @@ describe("HttpMarkuppApi nos cofres", () => {
     expect(found).toEqual([{ id: "n1", vault_id: "v1", path: "a.md" }]);
   });
 });
+
+describe("HttpMarkuppApi nas publicações", () => {
+  it.each<[string, AdminCall, string, unknown]>([
+    [
+      "publica a pasta com o nome de confirmação",
+      (api) =>
+        api.publish("t1", "v/1", {
+          target: { kind: "folder", path: "docs/deploy" },
+          confirm: "docs/deploy",
+          indexable: false,
+        }),
+      "POST /v1/vaults/v%2F1/publications",
+      {
+        target: { kind: "folder", path: "docs/deploy" },
+        confirm: "docs/deploy",
+        indexable: false,
+      },
+    ],
+    [
+      "despublica",
+      (api) => api.unpublish("t1", "p/1"),
+      "DELETE /v1/publications/p%2F1",
+      null,
+    ],
+    [
+      "lista as publicações do tenant",
+      (api) => api.listPublications("t1"),
+      "GET /v1/publications",
+      null,
+    ],
+    [
+      "lista as publicações do cofre",
+      (api) => api.listPublications("t1", "v 1"),
+      "GET /v1/publications?vault_id=v+1",
+      null,
+    ],
+  ])("%s com o tenant no cabeçalho", async (_name, call, line, body) => {
+    const fake = new FakeFetch().respondWith(200, { items: [], total: 0 });
+    await call(apiWith(fake));
+    const request = onlyRequest(fake);
+    expect(`${request.method} ${request.url}`).toBe(
+      line.replace(" ", " http://api.test"),
+    );
+    expect(request.headers.get("x-markupp-tenant")).toBe("t1");
+    expect(body === null ? null : await request.json()).toEqual(body);
+  });
+});
