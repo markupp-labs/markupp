@@ -73,13 +73,13 @@ const grafoDeTesteJSON = `{"nodes":[
 func TestV1GetVaultGraph_NosEParesDeIndicesComFiltrosEETag(t *testing.T) {
 	graph := &fakeNoteGraph{drawn: grafoDeTeste, version: 42}
 
-	rec := getGrafoDesenhado(t, graph, "/v1/vaults/va/graph?orphans=false&unresolved=false&inferred=false&community=7", nil)
+	rec := getGrafoDesenhado(t, graph, "/v1/vaults/va/graph?orphans=false&unresolved=false&inferred=false&automatic=false&community=7", nil)
 
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
 	assert.JSONEq(t, grafoDeTesteJSON, rec.Body.String())
 	assert.Equal(t, `W/"42"`, rec.Header().Get("ETag"))
 	assert.Equal(t, []any{"vault_graph", "va"}, []any{graph.method, graph.id})
-	assert.Equal(t, notes.GraphFilter{HideOrphans: true, HideUnresolved: true, HideInferred: true, Community: ptr(int64(7))}, graph.query)
+	assert.Equal(t, notes.GraphFilter{HideOrphans: true, HideUnresolved: true, HideInferred: true, HideAutomatic: true, Community: ptr(int64(7))}, graph.query)
 }
 
 func TestV1GetVaultGraph_FiltrosVerdadeirosOuAusentesNaoEscondem(t *testing.T) {

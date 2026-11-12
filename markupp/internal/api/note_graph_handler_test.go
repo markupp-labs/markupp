@@ -256,3 +256,12 @@ func TestGrafo_ErrosDeDominio_ViramStatus(t *testing.T) {
 		assert.NotEmpty(t, corpo["error"], nome)
 	}
 }
+
+func TestV1GetLinks_FiltraPelaLigacaoPorMencao(t *testing.T) {
+	graph := &fakeNoteGraph{}
+
+	rec := getGrafo(t, graph, "member", "/v1/notes/n1/links?type=mentioned")
+
+	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+	assert.Equal(t, notes.LinkFilter{Type: notes.LinkMentioned, Page: notes.Page{Limit: 10}}, graph.query)
+}
