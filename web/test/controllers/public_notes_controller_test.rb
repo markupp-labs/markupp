@@ -21,7 +21,8 @@ class PublicNotesControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select "title", "start | docs"
     assert_select "body[data-area=published]"
-    assert_select "header a[href=?]", public_note_path("setup-#{SETUP}"), text: "docs"
+    assert_select "header span", text: "docs"
+    assert_select "header a", text: "docs", count: 0
     assert_select "nav a[href=?][aria-current=page]", public_note_path("start-#{START}"), text: "start"
     assert_select "nav details summary", text: "guides/"
     assert_select "nav details a[href=?]", public_note_path("setup-#{SETUP}"), text: "setup"

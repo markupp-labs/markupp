@@ -66,7 +66,7 @@ class FakeMarkuppPublicNotes
       publication = @publications.broadest_for(note)
       summary(note).merge("content" => note["content"], "updated_at" => note["updated_at"], "indexable" => publication["indexable"],
                           "publication" => { "kind" => publication["kind"], "title" => publication_title(publication),
-                                             "root_public_id" => siblings(note).first["public_id"] },
+                                             "root_public_id" => (note["public_id"] if publication["kind"] == "note") },
                           "links" => links_of(note))
     end
 
