@@ -37,8 +37,12 @@ en:
         undone: "Refusal undone. These notes may get an automatic link again shortly."
       errors:
         link_refusal_not_found: "That refusal was already undone."
+  graphs:
+    filters:
+      automatic: "Automatic links"
   shortcuts:
     names:
+      graph_automatic: "Show or hide automatic links"
       links_refuse: "Refuse the automatic link in focus"
       vault_link_refusals: "Vault link refusals"
       list_undo_refusal: "Undo the refusal in focus, in the link refusals"

@@ -37,8 +37,12 @@ pt-BR:
         undone: "Recusa desfeita. Essas notas podem voltar a ter ligação automática em instantes."
       errors:
         link_refusal_not_found: "Essa recusa já foi desfeita."
+  graphs:
+    filters:
+      automatic: "Ligações automáticas"
   shortcuts:
     names:
+      graph_automatic: "Mostrar ou esconder as ligações automáticas"
       links_refuse: "Recusar a ligação automática com o foco"
       vault_link_refusals: "Recusas de ligação do cofre"
       list_undo_refusal: "Desfazer a recusa com o foco, nas recusas de ligação"

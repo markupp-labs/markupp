@@ -7,7 +7,9 @@ import { replaceQuery } from "controllers/url_query"
 // vista a cena pausa. O canvas tem o foco: j/k e as setas andam pelas notas do mais central ao menos, Enter abre, + e -
 // dão zoom e 0 enquadra, teclas pelo code. O elemento diz em data-graph-nodes, -links, -running, -zoom e -focus o que
 // está desenhado (os testes leem dali); o status diz o mesmo em texto, e o aviso falado diz a nota com o foco. Uma lista
-// só para o leitor de tela (sr-only) traz um link por nota desenhada, refeita a cada desenho, com os filtros.
+// só para o leitor de tela (sr-only) traz um link por nota desenhada, refeita a cada desenho, com os filtros. Para quem
+// escreve (o form refuseForm na página), clicar numa ligação automática pergunta pelo diálogo do painel se a recusa;
+// aceita, o par vai pelo form em json, a ligação sai do desenho na hora e o status diz o aviso (ou o motivo da recusa).
 const ACTIONS = {
   KeyJ: [ "step", 1 ], ArrowDown: [ "step", 1 ], KeyK: [ "step", -1 ], ArrowUp: [ "step", -1 ], Enter: [ "openFocused" ],
   Equal: [ "zoom", 1 ], NumpadAdd: [ "zoom", 1 ], Minus: [ "zoom", -1 ], NumpadSubtract: [ "zoom", -1 ], Digit0: [ "fit" ], Numpad0: [ "fit" ]
@@ -16,7 +18,7 @@ const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)")
 const darkScheme = window.matchMedia("(prefers-color-scheme: dark)")
 
 export default class extends Controller {
-  static targets = [ "canvas", "empty", "filtered", "refused", "failure", "status", "announce", "list" ]
+  static targets = [ "canvas", "empty", "filtered", "refused", "failure", "status", "announce", "list", "refuseForm", "refuseButton" ]
   static values = { url: String, autofocus: Boolean, filtered: Boolean, labels: Object }
 
   connect() {
@@ -88,8 +90,10 @@ export default class extends Controller {
     this.listNotes([])
     if (!graph.nodes.length) return
 
+    this.total = graph.total
     this.scene = createGraphScene(this.canvasTarget, graph, {
-      reducedMotion: reducedMotion.matches, onState: (state) => this.mirror(state), onOpen: (url) => Turbo.visit(url)
+      reducedMotion: reducedMotion.matches, onState: (state) => this.mirror(state), onOpen: (url) => Turbo.visit(url),
+      onRefuse: this.hasRefuseFormTarget ? (link) => this.offerRefusal(link) : null
     })
     this.listNotes(this.scene.walk)
   }
@@ -101,6 +105,24 @@ export default class extends Controller {
       item.append(Object.assign(document.createElement("a"), { href: url, textContent: title, tabIndex: -1 }))
       return item
     }))
+  }
+
+  // O mesmo diálogo que o Turbo usa no data-turbo-confirm (confirm_dialog_controller.js), com o par no texto.
+  async offerRefusal(link) {
+    const message = this.labelsValue.refuse.replace("%{source}", () => link.source.title).replace("%{target}", () => link.target.title)
+    if (!(await Turbo.config.forms.confirm(message, this.refuseFormTarget, this.refuseButtonTarget))) return
+
+    const answer = await sendRefusal(this.refuseFormTarget, [ link.source.id, link.target.id ], this.labelsValue.refuse_failed)
+    if (answer.ok) this.scene?.removeLink(link)
+    this.showRefusal(answer.message)
+  }
+
+  showRefusal(message) {
+    if (!this.scene) return
+
+    const { nodes, links } = this.scene
+    this.element.dataset.graphLinks = links.length
+    this.statusTarget.textContent = `${this.statusOf({ nodes, links, total: this.total })}  ${message}`
   }
 
   showFailure(error, url) {
@@ -137,6 +159,18 @@ export default class extends Controller {
   statusOf({ nodes, links, total }) {
     const label = total > nodes.length ? this.labelsValue.capped : this.labelsValue.status
     return label.replace("%{nodes}", nodes.length).replace("%{shown}", nodes.length).replace("%{total}", total).replace("%{links}", links.length)
+  }
+}
+
+// O form traz o token do Rails; a resposta em json diz o aviso ou o motivo. Sem resposta legível, failed.
+async function sendRefusal(form, noteIds, failed) {
+  const body = new FormData(form)
+  noteIds.forEach((id) => body.append("note_ids[]", id))
+  try {
+    const response = await fetch(form.action, { method: "POST", body, headers: { Accept: "application/json" } })
+    return { ok: response.ok, message: (await response.json()).message ?? failed }
+  } catch {
+    return { ok: false, message: failed }
   }
 }
 

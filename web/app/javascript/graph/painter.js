@@ -1,5 +1,5 @@
 // Desenho de um quadro do grafo no canvas, sem estado: ligações finas na cor muted, que passa de 3:1 nos dois palcos e
-// nos dois temas (a inferida tracejada; a line, que quase some, fica para as apagadas), nós no matiz da comunidade com
+// nos dois temas (a inferida tracejada e a automática pontilhada; a line, que quase some, fica para as apagadas), nós no matiz da comunidade com
 // o raio do PageRank, o título não resolvido só em contorno, a nota aberta com o anel no accent e a nota
 // com o foco do teclado com o anel no ink. Com um nó em destaque (hover ou foco), ele e as vizinhas ficam e o resto apaga.
 // Os nomes aparecem nos mais centrais, no destaque e nas vizinhas, e em todos a partir de LABEL_ZOOM. Traço e fonte
@@ -7,7 +7,8 @@
 const LABEL_ZOOM = 1.6
 const FADED = 0.3
 const FONT_PX = 11
-const DASH_PX = 3
+// Traço de cada tipo de ligação em px da tela: a escrita cheia, a inferida tracejada, a automática pontilhada.
+const LINK_DASHES = { written: [], inferred: [ 3, 3 ], automatic: [ 1, 3 ] }
 const LABEL_GAP_PX = 3
 // Anéis em px da tela: a distância da borda do nó ao meio do traço e a largura do traço.
 const CURRENT_RING = { gap: 3, width: 2 }
@@ -38,13 +39,17 @@ function litNodes({ active }) {
 }
 
 function paintLinks(context, links, colors, k, lit) {
-  for (const inferred of [ false, true ]) {
-    context.setLineDash(inferred ? [ DASH_PX / k, DASH_PX / k ] : [])
-    strokeLinks(context, links.filter((link) => link.inferred == inferred), lit, { color: lit ? colors.line : colors.muted, width: 1 / k })
-    if (lit) strokeLinks(context, links.filter((link) => link.inferred == inferred && lit.has(link.source) && lit.has(link.target)), null,
-                         { color: colors.accent, width: 1.5 / k })
+  for (const [ kind, dash ] of Object.entries(LINK_DASHES)) {
+    context.setLineDash(dash.map((px) => px / k))
+    const drawn = links.filter((link) => linkKind(link) == kind)
+    strokeLinks(context, drawn, lit, { color: lit ? colors.line : colors.muted, width: 1 / k })
+    if (lit) strokeLinks(context, drawn.filter((link) => lit.has(link.source) && lit.has(link.target)), null, { color: colors.accent, width: 1.5 / k })
   }
   context.setLineDash([])
+}
+
+function linkKind({ inferred, automatic }) {
+  return automatic ? "automatic" : inferred ? "inferred" : "written"
 }
 
 function strokeLinks(context, links, lit, { color, width }) {
