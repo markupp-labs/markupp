@@ -22,11 +22,11 @@ Rails.application.configure do
   # Enable serving of images, stylesheets, and JavaScripts from an asset server.
   # config.asset_host = "http://assets.example.com"
 
-  # Assume all access to the app is happening through a SSL-terminating reverse proxy.
-  config.assume_ssl = true
-
-  # Force all access to the app over SSL, use Strict-Transport-Security, and use secure cookies.
-  config.force_ssl = true
+  # O painel fala HTTP e o TLS fica com o proxy na frente. Um self-host sem HTTPS, como o
+  # compose em http://localhost, desliga com MARKUPP_PANEL_FORCE_SSL=false.
+  force_ssl = ENV.fetch("MARKUPP_PANEL_FORCE_SSL", "true") != "false"
+  config.assume_ssl = force_ssl
+  config.force_ssl = force_ssl
 
   # Skip http-to-https redirect for the default health check endpoint.
   # config.ssl_options = { redirect: { exclude: ->(request) { request.path == "/up" } } }
