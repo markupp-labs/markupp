@@ -32,7 +32,7 @@ class RegistrationsControllerTest < ActionDispatch::IntegrationTest
   test "create makes the account and signs in with it" do
     use_fake_api
 
-    post registration_path, params: { registration: { email: NEW_EMAIL, password: "senha-nova" } }
+    post registration_path, params: { registration: { email: NEW_EMAIL, password: "senha-nova-de-teste" } }
 
     assert_redirected_to root_path
     follow_redirect!
@@ -43,7 +43,7 @@ class RegistrationsControllerTest < ActionDispatch::IntegrationTest
   test "an email that already has an account says so and points to the login" do
     use_fake_api
 
-    post registration_path, params: { registration: { email: FakeMarkuppAccounts::DEFAULT_EMAIL, password: "outra" } }
+    post registration_path, params: { registration: { email: FakeMarkuppAccounts::DEFAULT_EMAIL, password: "outra-senha-de-teste" } }
 
     assert_response :unprocessable_content
     assert_select "[role=alert]", text: /This email already has an account\./ do
@@ -55,7 +55,7 @@ class RegistrationsControllerTest < ActionDispatch::IntegrationTest
   test "a server that only creates accounts by invite says so" do
     use_fake_api.close_registration!
 
-    post registration_path, params: { registration: { email: NEW_EMAIL, password: "senha-nova" } }
+    post registration_path, params: { registration: { email: NEW_EMAIL, password: "senha-nova-de-teste" } }
 
     assert_response :unprocessable_content
     assert_select "[role=alert]", "This server only creates accounts by invite. Ask an admin for one."

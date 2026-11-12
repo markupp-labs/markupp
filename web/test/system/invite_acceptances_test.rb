@@ -7,7 +7,7 @@ class InviteAcceptancesTest < ApplicationSystemTestCase
     visit new_session_path
     click_on "Accept it here."
     fill_in "Token", with: "tok-1"
-    fill_in "Password", with: "senha-nova"
+    fill_in "Password", with: "senha-nova-de-teste"
     click_on "Create account"
 
     assert_selector ".activity-bar-side button[aria-label=Account][title='caio@markupp.dev']"

@@ -13,10 +13,10 @@ class PasswordResetsTest < ApplicationSystemTestCase
     assert_text "If an account uses that email, a reset token is on its way."
     click_on "I have a token"
     fill_in "Token", with: api.sent_tokens.last.fetch(:token)
-    fill_in "New password", with: "senha-nova"
+    fill_in "New password", with: "senha-nova-de-teste"
     click_on "Reset password"
 
     assert_text "Password changed. Log in with the new one."
-    sign_in_through_form(EMAIL, password: "senha-nova")
+    sign_in_through_form(EMAIL, password: "senha-nova-de-teste")
   end
 end

@@ -7,20 +7,20 @@ class TokenFormTest < ActiveSupport::TestCase
   setup { @fake_api = FakeMarkuppApi.new(invites: [ INVITE ]) }
 
   test "submit posts the token and the password and answers the API answer" do
-    pair = token_form("tok-1", "senha-nova").submit(@fake_api, ACCEPT_PATH)
+    pair = token_form("tok-1", "senha-nova-de-teste").submit(@fake_api, ACCEPT_PATH)
 
     assert_equal %w[access_token refresh_token expires_in], pair.keys
   end
 
   test "submit with a blank token answers nil and asks for it" do
-    form = token_form(" ", "senha-nova")
+    form = token_form(" ", "senha-nova-de-teste")
 
     assert_nil form.submit(@fake_api, ACCEPT_PATH)
     assert_equal [ "Paste the token from the email." ], form.errors[:token]
   end
 
   test "submit with a token the API refuses puts the reason on the token" do
-    form = token_form("tok-9", "senha-nova")
+    form = token_form("tok-9", "senha-nova-de-teste")
 
     assert_nil form.submit(@fake_api, ACCEPT_PATH)
     assert_equal [ "This token is invalid, expired or already used." ], form.errors[:token]
@@ -34,7 +34,7 @@ class TokenFormTest < ActiveSupport::TestCase
   end
 
   test "submit for an email that already has an account puts the reason on base" do
-    form = token_form("tok-1", "senha-nova")
+    form = token_form("tok-1", "senha-nova-de-teste")
     @fake_api = FakeMarkuppApi.new(invites: [ INVITE.merge(email: FakeMarkuppAccounts::DEFAULT_EMAIL) ])
 
     assert_nil form.submit(@fake_api, ACCEPT_PATH)
@@ -44,14 +44,14 @@ class TokenFormTest < ActiveSupport::TestCase
 
   test "submit says when the server has password login disabled" do
     @fake_api.disable_local_auth!
-    form = token_form("tok-1", "senha-nova")
+    form = token_form("tok-1", "senha-nova-de-teste")
 
     assert_nil form.submit(@fake_api, ACCEPT_PATH)
     assert_equal [ "Password login is disabled on this server." ], form.errors[:base]
   end
 
   test "submit says when the server can't send email" do
-    form = token_form("tok-1", "senha-nova")
+    form = token_form("tok-1", "senha-nova-de-teste")
 
     assert_nil form.submit(FakeMarkuppApi.new(email_enabled: false), "/auth/password/reset")
     assert_equal [ "This server can't send email, so password reset is off. Ask an administrator." ], form.errors[:base]

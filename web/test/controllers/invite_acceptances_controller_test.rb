@@ -46,7 +46,7 @@ class InviteAcceptancesControllerTest < ActionDispatch::IntegrationTest
   test "create makes the account and opens the notes of the tenant of the invite" do
     api = use_fake_api(invites: [ INVITE ])
 
-    accept_invite("tok-1", "senha-nova")
+    accept_invite("tok-1", "senha-nova-de-teste")
 
     assert_redirected_to root_path
     follow_redirect!
@@ -59,7 +59,7 @@ class InviteAcceptancesControllerTest < ActionDispatch::IntegrationTest
   test "create with a token the API refuses says so under the field and keeps the token" do
     use_fake_api(invites: [ INVITE ])
 
-    accept_invite("tok-9", "senha-nova")
+    accept_invite("tok-9", "senha-nova-de-teste")
 
     assert_response :unprocessable_content
     assert_select "input[name=?][value=tok-9][aria-invalid=true][aria-describedby=invite_acceptance_token_error]", "invite_acceptance[token]"
@@ -70,7 +70,7 @@ class InviteAcceptancesControllerTest < ActionDispatch::IntegrationTest
   test "create with a blank token asks for it" do
     use_fake_api(invites: [ INVITE ])
 
-    accept_invite("", "senha-nova")
+    accept_invite("", "senha-nova-de-teste")
 
     assert_response :unprocessable_content
     assert_select "#invite_acceptance_token_error", "Paste the token from the email."
@@ -89,7 +89,7 @@ class InviteAcceptancesControllerTest < ActionDispatch::IntegrationTest
   test "create for an email that already has an account points to the login" do
     use_fake_api(invites: [ INVITE.merge(email: FakeMarkuppAccounts::DEFAULT_EMAIL) ])
 
-    accept_invite("tok-1", "senha-nova")
+    accept_invite("tok-1", "senha-nova-de-teste")
 
     assert_response :unprocessable_content
     assert_select "[role=alert]", text: /This email already has an account\. Log in and accept the invite from your tenant list\./ do
@@ -100,7 +100,7 @@ class InviteAcceptancesControllerTest < ActionDispatch::IntegrationTest
   test "create says when the server has password login disabled" do
     use_fake_api(invites: [ INVITE ]).disable_local_auth!
 
-    accept_invite("tok-1", "senha-nova")
+    accept_invite("tok-1", "senha-nova-de-teste")
 
     assert_response :unprocessable_content
     assert_select "[role=alert]", "Password login is disabled on this server."
@@ -108,7 +108,7 @@ class InviteAcceptancesControllerTest < ActionDispatch::IntegrationTest
 
   test "a used token does not work twice" do
     use_fake_api(invites: [ INVITE ])
-    accept_invite("tok-1", "senha-nova")
+    accept_invite("tok-1", "senha-nova-de-teste")
     delete session_path
 
     accept_invite("tok-1", "outra-senha")
@@ -120,7 +120,7 @@ class InviteAcceptancesControllerTest < ActionDispatch::IntegrationTest
   test "create answers bad gateway when the API is unreachable" do
     use_fake_api(unreachable: true)
 
-    accept_invite("tok-1", "senha-nova")
+    accept_invite("tok-1", "senha-nova-de-teste")
 
     assert_response :bad_gateway
     assert_select "main", text: /Can't reach the markupp server/
