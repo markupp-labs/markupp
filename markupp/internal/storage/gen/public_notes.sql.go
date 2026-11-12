@@ -147,17 +147,18 @@ func (q *Queries) ListPublicGraphNodes(ctx context.Context, publicationID string
 }
 
 const listPublicNoteLinks = `-- name: ListPublicNoteLinks :many
-SELECT DISTINCT i.cited_title, i.kind, t.public_id
+SELECT DISTINCT i.cited_title, i.kind, t.public_id, i.target_path
 FROM note_link_items i
 LEFT JOIN public_notes t ON t.note_id = i.target_id
 WHERE i.source_id = $1 AND i.kind <> 'inferred'
-ORDER BY i.cited_title, i.kind, t.public_id NULLS FIRST
+ORDER BY i.cited_title, i.kind, t.public_id NULLS FIRST, i.target_path
 `
 
 type ListPublicNoteLinksRow struct {
 	CitedTitle string
 	Kind       string
 	PublicID   pgtype.Text
+	TargetPath pgtype.Text
 }
 
 // As ligações escritas da nota. O alvo privado não existe para o leitor: a ligação fica
@@ -171,7 +172,12 @@ func (q *Queries) ListPublicNoteLinks(ctx context.Context, noteID string) ([]Lis
 	var items []ListPublicNoteLinksRow
 	for rows.Next() {
 		var i ListPublicNoteLinksRow
-		if err := rows.Scan(&i.CitedTitle, &i.Kind, &i.PublicID); err != nil {
+		if err := rows.Scan(
+			&i.CitedTitle,
+			&i.Kind,
+			&i.PublicID,
+			&i.TargetPath,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

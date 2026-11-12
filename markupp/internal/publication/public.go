@@ -52,11 +52,13 @@ type PublicScope struct {
 	RootPublicID *string
 }
 
-// PublicLink é uma ligação da nota. PublicID é nil quando o alvo não é público.
+// PublicLink é uma ligação da nota. PublicID e TargetTitle são nil quando o alvo não é
+// público.
 type PublicLink struct {
-	CitedTitle string
-	Kind       string
-	PublicID   *string
+	CitedTitle  string
+	Kind        string
+	PublicID    *string
+	TargetTitle *string
 }
 
 // PublicTreeItem é uma nota da mesma publicação, com o caminho relativo à pasta publicada.

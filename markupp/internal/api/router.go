@@ -27,6 +27,15 @@ type RouterDeps struct {
 	MCPUpstreamURL string
 	// AccountRateLimiter limita as rotas de conta (ADR-0044). Nil deixa as rotas livres.
 	AccountRateLimiter *AccountRateLimiter
+	// Publications publica e despublica notas, pastas e cofres (ADR-0048).
+	Publications PublicationService
+	// PublicNotes lê as notas públicas sem conta, pelo id público.
+	PublicNotes PublicNoteReader
+	// PublicRateLimiter limita a leitura pública por IP. Nil deixa as rotas livres.
+	PublicRateLimiter *AccountRateLimiter
+	// PublicRelay confere o servidor MCP, cujo X-Forwarded-For conta no limite da leitura
+	// pública como o IP do agente. Nil não confia em nenhum relay.
+	PublicRelay RelayAuthenticator
 }
 
 // NewRouter monta o roteador com sonda, rotas de autenticação, de notas e de
@@ -41,6 +50,7 @@ func NewRouter(d RouterDeps) chi.Router {
 	r.Use(middleware.Recoverer)
 	mountOAuthServerRoutes(r, d)
 	mountMCPProxy(r, d.MCPUpstreamURL)
+	mountPublicNoteRoutes(r, d.PublicNotes, limitPublicReads(d.PublicRateLimiter, d.PublicRelay))
 	r.Group(func(g chi.Router) {
 		g.Use(allowOrigins(d.AllowedOrigins))
 		mountAPIRoutes(g, d)
@@ -64,8 +74,8 @@ func mustHaveRouterDeps(d RouterDeps) {
 	if d.Tokens == nil {
 		panic("api: Tokens obrigatorio para proteger as rotas")
 	}
-	if d.Tenants == nil && (d.Notes != nil || d.Graph != nil || d.Admin != nil || d.Vaults != nil) {
-		panic("api: Tenants obrigatorio para as rotas de notas, do grafo, de administracao e de cofres")
+	if d.Tenants == nil && (d.Notes != nil || d.Graph != nil || d.Admin != nil || d.Vaults != nil || d.Publications != nil) {
+		panic("api: Tenants obrigatorio para as rotas de notas, do grafo, de administracao, de cofres e de publicacao")
 	}
 	if d.OAuth != nil && d.OAuthMetadata == nil {
 		panic("api: OAuthMetadata obrigatorio para as rotas OAuth, que usam o Issuer")
@@ -97,13 +107,16 @@ func newVersionRoutes(d RouterDeps, current bool) chi.Router {
 }
 
 // mountV1OnlyRoutes monta as rotas que nasceram depois da transição e não têm o alias
-// sem prefixo: o grafo e a gestão de cofres.
+// sem prefixo: o grafo, a gestão de cofres e a publicação.
 func mountV1OnlyRoutes(r chi.Router, d RouterDeps) {
 	if d.Graph != nil {
 		mountProtectedGraphRoutes(r, d.Graph, d.Tokens, d.Tenants)
 	}
 	if d.Vaults != nil {
 		mountVaultRoutes(r, d.Vaults, d.Tokens, d.Tenants)
+	}
+	if d.Publications != nil {
+		mountPublicationRoutes(r, d.Publications, d.Tokens, d.Tenants)
 	}
 }
 

@@ -10,11 +10,11 @@ FROM markupp_public_scope(sqlc.arg(public_id)::text);
 -- As ligações escritas da nota. O alvo privado não existe para o leitor: a ligação fica
 -- não resolvida e sem id público.
 -- name: ListPublicNoteLinks :many
-SELECT DISTINCT i.cited_title, i.kind, t.public_id
+SELECT DISTINCT i.cited_title, i.kind, t.public_id, i.target_path
 FROM note_link_items i
 LEFT JOIN public_notes t ON t.note_id = i.target_id
 WHERE i.source_id = sqlc.arg(note_id) AND i.kind <> 'inferred'
-ORDER BY i.cited_title, i.kind, t.public_id NULLS FIRST;
+ORDER BY i.cited_title, i.kind, t.public_id NULLS FIRST, i.target_path;
 
 -- name: ListPublicTree :many
 SELECT pn.public_id, n.path

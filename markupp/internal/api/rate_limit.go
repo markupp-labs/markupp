@@ -91,6 +91,21 @@ func limitRequests(allow func(*http.Request) (time.Duration, bool)) func(http.Ha
 	}
 }
 
+// publicReadsKey prefixa a chave do limite da leitura pública, que é uma só por IP
+// para todas as rotas, para o id público não abrir limites novos.
+const publicReadsKey = "public ip "
+
+// limitPublicReads limita a leitura pública sem conta por IP (ADR-0048), o do agente
+// quando o pedido vem do relay autenticado. Limitador nil deixa as rotas livres.
+func limitPublicReads(l *AccountRateLimiter, relay RelayAuthenticator) func(http.Handler) http.Handler {
+	if l == nil {
+		return passThrough
+	}
+	return limitRequests(func(r *http.Request) (time.Duration, bool) {
+		return l.Allow(publicReadsKey + l.publicClientIP(r, relay))
+	})
+}
+
 func passThrough(next http.Handler) http.Handler {
 	return next
 }

@@ -57,7 +57,8 @@ func toPublicNote(publicID string, s publication.Scope, row gen.Note, links []ge
 func toPublicLink(r gen.ListPublicNoteLinksRow) publication.PublicLink {
 	link := publication.PublicLink{CitedTitle: r.CitedTitle, Kind: r.Kind}
 	if r.PublicID.Valid {
-		link.PublicID = &r.PublicID.String
+		title := indexing.Title(r.TargetPath.String)
+		link.PublicID, link.TargetTitle = &r.PublicID.String, &title
 	}
 	return link
 }

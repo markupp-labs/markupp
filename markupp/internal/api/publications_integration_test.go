@@ -33,9 +33,11 @@ func servidorDePublicacao(t *testing.T, role string) (*httptest.Server, *pgxpool
 	require.NoError(t, storage.Migrate(context.Background(), pool))
 	ctx := storagetest.SeedMember(t, pool, identity.Actor{UserID: "u1", TenantID: "t1", Role: role}, "va")
 	agora := time.Date(2026, 11, 12, 9, 0, 0, 0, time.UTC)
-	storagetest.SaveNote(ctx, t, storage.NewPostgresNotesRepository(pool, "simple"),
+	notesRepo := storage.NewPostgresNotesRepository(pool, "simple")
+	storagetest.SaveNote(ctx, t, notesRepo,
 		notes.Note{ID: "n1", VaultID: "va", Path: "docs/Comece aqui.md", Content: "# Comece aqui", CreatedAt: agora, UpdatedAt: agora})
 	router := api.NewRouter(api.RouterDeps{
+		Notes:        notes.NewService(notesRepo, 1<<20),
 		Tenants:      &fakeTenantResolver{membership: auth.Membership{TenantID: "t1", Role: role}},
 		Tokens:       &fakeTokenValidator{claims: auth.Claims{Subject: "u1"}},
 		Publications: publication.NewService(storage.NewPostgresPublications(pool), time.Now, uuid.NewString),
