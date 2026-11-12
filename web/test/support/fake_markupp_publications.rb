@@ -96,7 +96,10 @@ class FakeMarkuppPublications
       raise MarkuppApi::NotFound, "fake API has nothing to publish at #{target.inspect}: #{target["kind"]}_not_found"
     end
 
+    # Chamada de confiança, sem conta (role nil), passa.
     def refuse_role(kind, role, call)
+      return if role.nil?
+
       allowed = kind == "note" ? role != "viewer" : ADMIN_ROLES.include?(role)
       raise MarkuppApi::PublishForbidden, "fake API refuses #{call} of a #{kind} for role #{role.inspect}: publish_forbidden" unless allowed
     end

@@ -53,7 +53,8 @@ class PublicationTest < ActiveSupport::TestCase
     id = Publication.all(@fake_api).first.id
 
     assert Publication.change_indexing(@fake_api, id, true).indexable
-    assert_not Publication.all(@fake_api).first.indexable
+    assert Publication.all(@fake_api).first.indexable
+    assert_not Publication.change_indexing(@fake_api, id, false).indexable
   end
 
   test "unpublish removes the publication, and its notes stop being public" do

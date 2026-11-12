@@ -14,6 +14,11 @@ Graph = Data.define(:nodes, :links) do
     revalidated(api, MarkuppApi.path("v1", "notes", note_id, "graph", **filters), store)
   end
 
+  # A publicação da nota pública, lida sem conta (ADR-0048), com os nós pelo id público.
+  def self.of_public_note(api, public_id, store: Rails.cache)
+    revalidated(api, MarkuppApi.path("v1", "public", "notes", public_id, "graph"), store)
+  end
+
   def self.revalidated(api, path, store)
     key = "panel/graph#{path}"
     kept = store.read(key)

@@ -14,6 +14,9 @@ class Note
   attribute :degree, :integer
   attribute :pagerank, :float
   attribute :community, :integer
+  # Id público da nota coberta por uma publicação (ADR-0048), nil na privada; na árvore pública vem com o slug do título.
+  attribute :public_id, :string
+  attribute :title_slug, :string
 
   def self.find(api, id) = from_api(api.get(api_path(id)))
 
