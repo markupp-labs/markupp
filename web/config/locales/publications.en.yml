@@ -5,7 +5,7 @@ en:
   shortcuts:
     names:
       publish_note: "Publish the note"
-      publish_row: "Publish the row in focus"
+      publish: "Publish the row in focus"
       vault_publications: "Publications"
       vault_publish: "Publish the vault"
   notes:

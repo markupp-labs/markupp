@@ -96,7 +96,7 @@ module ShortcutsHelper
       Shortcut.of(:delete, "Delete"),
       Shortcut.of(:copy_path, "Alt+Shift+C"),
       Shortcut.of(:copy_wikilink, "Alt+Shift+W"),
-      Shortcut.of(:publish_row, "Alt+Shift+P")
+      Shortcut.of(:publish, "Alt+Shift+P")
     ],
     lists: [
       Shortcut.of(:list_move, "↓", "↑"),

@@ -5,7 +5,7 @@ pt-BR:
   shortcuts:
     names:
       publish_note: "Publicar a nota"
-      publish_row: "Publicar a linha com o foco"
+      publish: "Publicar a linha com o foco"
       vault_publications: "Publicações"
       vault_publish: "Publicar o cofre"
   notes:
