@@ -1,4 +1,9 @@
 import { toApiError } from "./api-error.js";
+import type {
+  Publication,
+  PublicationList,
+  PublishRequest,
+} from "./publication.js";
 import type { ApiTokenSource } from "./session.js";
 
 export { MarkuppApiError, toApiError } from "./api-error.js";
@@ -122,6 +127,13 @@ export interface MarkuppApi {
     vault: string,
     userId: string,
   ): Promise<void>;
+  publish(
+    tenant: string,
+    vault: string,
+    request: PublishRequest,
+  ): Promise<Publication>;
+  unpublish(tenant: string, publication: string): Promise<void>;
+  listPublications(tenant: string, vault?: string): Promise<PublicationList>;
 }
 
 export type FetchFunction = (
@@ -379,6 +391,31 @@ export class HttpMarkuppApi implements MarkuppApi {
   ): Promise<void> {
     const path = `${vaultPath(vault)}/members/${encodeURIComponent(userId)}`;
     await this.send({ method: "DELETE", path, tenant });
+  }
+
+  publish(
+    tenant: string,
+    vault: string,
+    request: PublishRequest,
+  ): Promise<Publication> {
+    const path = `${vaultPath(vault)}/publications`;
+    return this.json({ method: "POST", path, tenant, body: request });
+  }
+
+  async unpublish(tenant: string, publication: string): Promise<void> {
+    const path = `/v1/publications/${encodeURIComponent(publication)}`;
+    await this.send({ method: "DELETE", path, tenant });
+  }
+
+  // listPublications sem cofre lista as publicações visíveis em todo o tenant.
+  listPublications(tenant: string, vault?: string): Promise<PublicationList> {
+    const query =
+      vault === undefined ? "" : `?${new URLSearchParams({ vault_id: vault })}`;
+    return this.json({
+      method: "GET",
+      path: `/v1/publications${query}`,
+      tenant,
+    });
   }
 
   private async json<T>(call: ApiCall): Promise<T> {
