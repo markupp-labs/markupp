@@ -36,6 +36,15 @@ type InstanceSecret struct {
 	CreatedAt time.Time
 }
 
+type LinkRefusal struct {
+	ID        string
+	VaultID   string
+	LowID     string
+	HighID    string
+	CreatedBy string
+	CreatedAt time.Time
+}
+
 type Note struct {
 	ID            string
 	Path          string
@@ -45,6 +54,26 @@ type Note struct {
 	TenantID      string
 	VaultID       string
 	ContentSha256 []byte
+}
+
+type NoteAutomaticEdge struct {
+	SourceID   string
+	TargetID   string
+	VaultID    string
+	Kind       string
+	Predicate  pgtype.Text
+	TitleKey   pgtype.Text
+	CitedTitle pgtype.Text
+	Score      float64
+}
+
+type NoteAutomaticLink struct {
+	SourceID   string
+	TargetID   string
+	VaultID    string
+	Kind       string
+	CitedTitle pgtype.Text
+	Score      float64
 }
 
 type NoteCentrality struct {
@@ -133,6 +162,16 @@ type NoteUnresolvedLinkItem struct {
 	Predicate          pgtype.Text
 	InferredTargetID   pgtype.Text
 	InferredTargetPath pgtype.Text
+}
+
+type NoteWrittenEdge struct {
+	SourceID   string
+	TargetID   string
+	VaultID    string
+	Kind       string
+	Predicate  pgtype.Text
+	TitleKey   string
+	CitedTitle string
 }
 
 type Notification struct {
