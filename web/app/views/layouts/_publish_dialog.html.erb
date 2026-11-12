@@ -5,7 +5,7 @@
         data-action="turbo:before-fetch-request->publish-dialog#show close->publish-dialog#restoreFocus"
         class="layer mx-auto mt-[15vh] w-[min(32rem,calc(100vw-2rem))] layer-panel p-4">
   <%= turbo_frame_tag "publish_preview", data: { publish_dialog_target: "frame" } do %>
-    <%= busy_spinner %>
+    <%= busy_spinner(busy_when: "#publish_preview[aria-busy]") %>
   <% end %>
-  <template data-publish-dialog-target="waiting"><%= busy_spinner %></template>
+  <template data-publish-dialog-target="waiting"><%= busy_spinner(busy_when: "#publish_preview[aria-busy]") %></template>
 </dialog>
