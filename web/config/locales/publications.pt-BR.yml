@@ -1,0 +1,48 @@
+pt-BR:
+  markupp_api:
+    errors:
+      publish_forbidden: "Só o owner e os admins publicam pastas e cofres; a nota, quem a edita."
+  shortcuts:
+    names:
+      publish_note: "Publicar a nota"
+      publish_row: "Publicar a linha com o foco"
+      vault_publish: "Publicar o cofre"
+  notes:
+    form:
+      publish: "Publicar"
+      public: "Pública"
+      public_hint: "Qualquer pessoa com o link lê esta nota. Abre a página pública dela."
+    sidebar:
+      public: "pública"
+    tree_menu:
+      publish: "Publicar"
+  publications:
+    new:
+      title:
+        note: "Publicar a nota %{name}"
+        folder: "Publicar a pasta %{name}"
+        vault: "Publicar o cofre %{name}"
+      note_count:
+        one: "1 nota fica pública."
+        other: "%{count} notas ficam públicas."
+      includes_future: "As notas que entrarem em %{name} depois também ficam públicas."
+      readers: "Qualquer pessoa com o link as lê, pessoas e agentes de IA sem conta, e pode buscar nelas e seguir os links delas."
+      type_name: "Digite %{name} para confirmar"
+      indexable: "Deixar os buscadores listarem"
+      publish: "Publicar"
+      cancel: "Cancelar"
+    create:
+      published_note: "Publicada. Qualquer pessoa com o link a lê: %{url}"
+      published:
+        one: "1 nota publicada. Configurações > Publicações lista tudo que está público."
+        other: "%{count} notas publicadas. Configurações > Publicações lista tudo que está público."
+    refused:
+      confirmation_mismatch: "Nada foi publicado: digite %{name} exatamente como aparece."
+      already_published: "Isto já está público. Configurações > Publicações o lista."
+      not_found: "Nada foi publicado: a nota ou a pasta não existe mais."
+  settings:
+    vault_general:
+      show:
+        publication: "Publicação"
+        publication_hint: "Publicar o cofre abre todas as notas dele, e as que entrarem depois, a qualquer pessoa com o link, sem conta."
+        publish_vault: "Publicar cofre"

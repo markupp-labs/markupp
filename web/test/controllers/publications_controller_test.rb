@@ -33,7 +33,7 @@ class PublicationsControllerTest < ActionDispatch::IntegrationTest
         assert_select "button[disabled][data-publish-dialog-target=submit]", text: "Publish"
       end
     end
-    assert_select "[data-publish-dialog-expected-value=docs]"
+    assert_select "input[name=confirm][data-expected=docs]"
   end
 
   test "the dialog of a note makes only that note public" do

@@ -59,13 +59,14 @@ class VaultSwitcherTest < ActionDispatch::IntegrationTest
     assert_select "#vault_switcher a[href=?]", settings_vault_path, count: 0
   end
 
-  # v r, v a e v q abrem a página da ação com o foco nela; renomear e adicionar só para quem escreve.
+  # v r, v a, v q e v o abrem a página da ação com o foco nela; renomear e adicionar só para quem escreve, publicar o
+  # cofre só para owner e admin.
   test "the vault shortcuts get the pages of their actions, rename and add only for a writer" do
     use_fake_api(vaults: VAULTS)
     sign_in_as
     get root_path
     assert_equal({ "q" => settings_vault_members_path(focus: "leave"), "r" => settings_vault_path(focus: "rename"),
-                   "a" => settings_vault_members_path(focus: "add") }, vault_actions)
+                   "a" => settings_vault_members_path(focus: "add"), "o" => settings_vault_path(focus: "publish") }, vault_actions)
 
     use_fake_api(vaults: VAULTS, tenants: VIEWER)
     sign_in_as

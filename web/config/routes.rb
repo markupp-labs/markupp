@@ -30,6 +30,7 @@ Rails.application.routes.draw do
   resource :current_tenant, only: :update
   resource :current_vault, only: :update
   resources :vaults, only: [ :create, :update, :destroy ]
+  resources :publications, only: [ :new, :create ]
   resources :my_invites, only: [ :index, :update, :destroy ]
   resource :notifications, only: :show
 

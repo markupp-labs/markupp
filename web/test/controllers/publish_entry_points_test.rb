@@ -21,7 +21,7 @@ class PublishEntryPointsTest < ActionDispatch::IntegrationTest
 
     get note_path("start")
 
-    assert_select "a#publish_note[href=?][data-turbo-frame=publish_preview][aria-keyshortcuts=Alt+P]",
+    assert_select "a#publish_note[href=?][data-turbo-frame=publish_preview][aria-keyshortcuts='Alt+P']",
                   new_publication_path(kind: "note", note_id: "start"), text: /Publish/
   end
 
@@ -55,7 +55,7 @@ class PublishEntryPointsTest < ActionDispatch::IntegrationTest
     get note_path("start")
 
     assert_select "nav [data-note-tree-publish-url-value=?][data-note-tree-publish-folders-value=true]", new_publication_path
-    assert_select "#tree_menu [role=menuitem][aria-keyshortcuts=Alt+Shift+P]", text: /Publish/
+    assert_select "#tree_menu [role=menuitem][aria-keyshortcuts='Alt+Shift+P']", text: /Publish/
   end
 
   test "a member publishes notes from the tree, not folders" do

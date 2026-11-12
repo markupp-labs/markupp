@@ -16,6 +16,19 @@
       <%= form.button t(".save"), class: "btn self-start md:self-auto" %>
     <% end %>
 
+    <% if current_tenant.admin? %>
+      <%# Publicar o cofre é de owner e admin; abre o diálogo de publicar do layout. O v o de qualquer página chega com
+          focus=publish; aqui mesmo, o atalho abre o diálogo. %>
+      <section id="vault_publication" aria-labelledby="vault_publication_title" class="mt-8">
+        <h2 id="vault_publication_title" class="md-heading font-semibold"><%= t(".publication") %></h2>
+        <p class="mt-1 max-w-[65ch] text-ink-muted"><%= t(".publication_hint") %></p>
+        <%= link_to new_publication_path(kind: "vault"), id: "publish_vault", class: "btn mt-3", autofocus: params[:focus] == "publish",
+                    data: { turbo_frame: "publish_preview", vault_action: "o" } do %>
+          <%= icon("eye") %><%= t(".publish_vault") %>
+        <% end %>
+      </section>
+    <% end %>
+
     <%= render "settings/danger_zone", id: "delete_vault", action: t(".delete_vault"), hint: t(".delete_hint"), name: vault.name,
                                        confirm: t(".confirm_delete", name: vault.name), path: vault_path(vault.id) %>
   <% else %>

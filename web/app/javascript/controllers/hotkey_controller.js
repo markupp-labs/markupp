@@ -11,7 +11,8 @@ export default class extends Controller {
     if (!this.matches(event) || event.defaultPrevented) return
 
     event.preventDefault()
-    if (!this.element.matches("input, textarea")) return this.element.click()
+    // O foco vai antes ao botão ou link, para quem ele abrir (o diálogo de publicar) devolver o foco a ele.
+    if (!this.element.matches("input, textarea")) return this.element.focus() || this.element.click()
     this.element.focus()
     this.element.select()
   }

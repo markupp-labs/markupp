@@ -64,6 +64,19 @@
     <% else %>
       <p class="py-1 text-ink-muted"><%= t(".read_only") %></p>
     <% end %>
+    <% if @note.public_id %>
+      <%# A nota pública abre a página dela; o endereço sem o título redireciona ao atual. %>
+      <%= link_to public_note_path(@note.public_id), class: "public-mark btn max-md:px-1.5", target: "_blank", rel: "noopener", title: t(".public_hint") do %>
+        <%= icon("eye") %><span class="max-md:sr-only"><%= t(".public") %></span>
+      <% end %>
+    <% elsif writer && @note.persisted? %>
+      <%# Abre o diálogo de publicar do layout pelo frame dele; Alt+P de qualquer lugar da página. %>
+      <%= link_to new_publication_path(kind: "note", note_id: @note.id), id: "publish_note", class: "btn max-md:px-1.5",
+                  title: "#{t(".publish")} (#{shortcut_key(:publish_note)})", aria: { keyshortcuts: shortcut_key(:publish_note) },
+                  data: { turbo_frame: "publish_preview", controller: "hotkey", hotkey_code_value: "KeyP", hotkey_alt_value: true, action: "keydown@window->hotkey#press" } do %>
+        <%= icon("eye") %><span class="max-md:sr-only"><%= t(".publish") %></span>
+      <% end %>
+    <% end %>
     <% if writer && @note.persisted? %>
       <%# Fora do form de salvar (form não aninha): o botão aponta para o form de excluir pelo atributo form. %>
       <%= tag.button form: "delete_note", title: t(".delete"), data: { turbo_confirm: t(".confirm_delete", path: @note.location) }, class: "btn btn-danger max-md:px-1.5" do %>
