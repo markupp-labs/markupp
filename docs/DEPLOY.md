@@ -131,6 +131,11 @@ todos os pedidos com o IP dele, então o limite precisa caber no tráfego do sit
 que o cache por ETag dele economiza. A migração 00040 cria o papel `markupp_reader`, sem login,
 para essa leitura, com o mesmo CREATEROLE que a migração já exige para os outros papéis.
 
+O painel serve as notas públicas em /p/ (ADR-0048) e lê a API pelo Service, passando o IP de
+quem visita no X-Forwarded-For. Para o limite por IP da leitura pública contar cada visitante, e
+não o painel, `MARKUPP_TRUSTED_PROXIES` precisa listar também a rede de onde o painel chega à API;
+sem ela, todos os visitantes do painel dividem um limite só.
+
 Sem outra opção, o componente cria um Gateway próprio nas portas 80 e 443. Em cluster onde
 outro Gateway já ocupa essas portas, como o Cilium em hostNetwork, que exige porta única por
 Gateway, informe `existingGateway` com nome, namespace e listener. O componente cria só o
