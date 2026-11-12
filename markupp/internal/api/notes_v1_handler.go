@@ -23,13 +23,15 @@ func toNoteRankResponse(r notes.NoteRank) noteRankResponse {
 
 // noteV1Response é a nota em /v1: a das rotas sem prefixo mais a organização
 // derivada.
+// PublicID é o id público, null quando a nota não está publicada (ADR-0048).
 type noteV1Response struct {
 	noteResponse
 	noteRankResponse
+	PublicID *string `json:"public_id"`
 }
 
 func toV1Response(n notes.Note) any {
-	return noteV1Response{noteResponse: toNoteResponse(n), noteRankResponse: toNoteRankResponse(n.Rank)}
+	return noteV1Response{noteResponse: toNoteResponse(n), noteRankResponse: toNoteRankResponse(n.Rank), PublicID: n.PublicID}
 }
 
 // noteListItemResponse é a nota na coleção das notas do cofre: o resumo, a versão e
@@ -39,12 +41,13 @@ type noteListItemResponse struct {
 	UpdatedAt     time.Time `json:"updated_at"`
 	ContentSHA256 string    `json:"content_sha256"`
 	noteRankResponse
+	PublicID *string `json:"public_id"`
 }
 
 func toListItemResponse(n notes.Note) any {
 	return noteListItemResponse{
 		NoteSummary: notes.Summarize(n.ID, n.Path), UpdatedAt: n.UpdatedAt,
-		ContentSHA256: n.ContentSHA256, noteRankResponse: toNoteRankResponse(n.Rank),
+		ContentSHA256: n.ContentSHA256, noteRankResponse: toNoteRankResponse(n.Rank), PublicID: n.PublicID,
 	}
 }
 

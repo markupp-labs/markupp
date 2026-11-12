@@ -17,7 +17,7 @@ import (
 // Note é uma nota persistida, identificada por ID e endereçada por Path dentro
 // do cofre VaultID. ContentSHA256 é o SHA-256 dos bytes UTF-8 de Content, em hex
 // minúsculo. Rank é a organização derivada que o segundo estágio do indexador
-// gravou para ela.
+// gravou para ela. PublicID é o id público, nil quando a nota não está publicada.
 type Note struct {
 	ID            string
 	VaultID       string
@@ -27,6 +27,7 @@ type Note struct {
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
 	Rank          NoteRank
+	PublicID      *string
 }
 
 // SearchResult é a projeção de uma nota devolvida pela busca: sem o conteúdo, com o
