@@ -156,8 +156,8 @@ class NoteLinksControllerTest < ActionDispatch::IntegrationTest
 
     get note_links_path("plan")
 
-    assert_select "#links_backlinks li form[action=?][data-turbo-frame=note_links]", link_refusals_path do
-      assert_equal %w[draft plan], css_select("input[type=hidden][name='note_ids[]']").map { it["value"] }
+    assert_select "#links_backlinks li form[action=?][data-turbo-frame=note_links]", link_refusals_path do |form|
+      assert_equal %w[draft plan], css_select(form.first, "input[type=hidden][name='note_ids[]']").map { it["value"] }
       assert_select "input[type=hidden][name=note_id][value=plan]"
       assert_select "button[data-links-refuse][aria-label=?][aria-keyshortcuts=R][title=?][data-turbo-confirm=?][data-confirm-button=?]",
                     "Refuse link with draft", "Refuse link (r)",

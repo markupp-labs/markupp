@@ -54,7 +54,8 @@ class LinkTest < ActiveSupport::TestCase
   end
 
   test "only the link by mention is automatic" do
-    mentioned = Link.from_api({ "source" => PLAN.stringify_keys, "target" => MEETING.stringify_keys, "cited_title" => "meeting", "type" => "mentioned" })
+    mentioned = Link.from_api({ "source" => PLAN.stringify_keys, "target" => MEETING.stringify_keys, "cited_title" => "meeting", "type" => "mentioned",
+                                "predicate" => nil, "inferred_target" => nil })
 
     assert mentioned.automatic?
     assert_not Link.from_note(@api, "1").any?(&:automatic?)

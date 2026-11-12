@@ -9,7 +9,7 @@ class LinkRefusalsControllerTest < ActionDispatch::IntegrationTest
             { id: "elsewhere", path: "elsewhere.md", content: "", vault_id: "vault-2" } ].freeze
   GRAPH = { backlinks: { "plan" => [ { source: DRAFT, target: PLAN, cited_title: "plan", type: "mentioned", predicate: nil, inferred_target: nil } ] } }.freeze
   REFUSED = "Link refused. It stays out until you undo it in the vault settings."
-  FRAME = { "Turbo-Frame" => "note_links" }.freeze
+  FRAME = { "Turbo-Frame" => "note_links" }
 
   setup do
     use_fake_api(notes: NOTES, graph: GRAPH)
@@ -20,18 +20,18 @@ class LinkRefusalsControllerTest < ActionDispatch::IntegrationTest
     post link_refusals_path, params: { note_ids: %w[draft plan], note_id: "plan" }, headers: FRAME
 
     assert_redirected_to note_links_path("plan")
-    follow_redirect!(headers: FRAME)
+    follow_redirect!(headers: FRAME.dup)
     assert_select "#links_backlinks .links-none", text: "No backlinks yet"
     assert_select "[role=status][data-note-links-target=status][data-message=?]", REFUSED
   end
 
   test "a refusal the API turns down comes back to the links view with the reason" do
     post link_refusals_path, params: { note_ids: %w[plan elsewhere], note_id: "plan" }, headers: FRAME
-    follow_redirect!(headers: FRAME)
+    follow_redirect!(headers: FRAME.dup)
     assert_select "[role=status][data-message=?]", "One of these notes is no longer in this vault."
 
     post link_refusals_path, params: { note_ids: %w[plan plan], note_id: "plan" }, headers: FRAME
-    follow_redirect!(headers: FRAME)
+    follow_redirect!(headers: FRAME.dup)
     assert_select "[role=status][data-message=?]", "A note can't refuse a link with itself."
     assert_select "#links_backlinks a[href=?]", note_path("draft")
   end
