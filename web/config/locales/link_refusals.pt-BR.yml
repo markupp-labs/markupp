@@ -18,6 +18,27 @@ pt-BR:
       note_outside_vault: "Uma dessas notas não está mais neste cofre."
       read_only: "Seu papel neste tenant é viewer, que só lê."
       vault_unavailable: "Você não tem mais acesso a esse cofre."
+  settings:
+    nav:
+      link_refusals: "Recusas de ligação"
+    link_refusals:
+      index:
+        hint: "As notas de um par recusado não ganham ligação automática entre elas. Desfaça a recusa para que voltem a se ligar."
+        empty: "Nenhuma ligação recusada"
+        empty_hint: "Recuse uma ligação automática pela visão Links de uma nota, e ela aparece aqui."
+        notes: "Notas"
+        refused: "Recusada em"
+      link_refusal:
+        and: "e"
+        refused: "Recusada em"
+        undo: "Desfazer"
+        undo_label: "Desfazer a recusa entre %{first} e %{second}"
+      destroy:
+        undone: "Recusa desfeita. Essas notas podem voltar a ter ligação automática em instantes."
+      errors:
+        link_refusal_not_found: "Essa recusa já foi desfeita."
   shortcuts:
     names:
       links_refuse: "Recusar a ligação automática com o foco"
+      vault_link_refusals: "Recusas de ligação do cofre"
+      list_undo_refusal: "Desfazer a recusa com o foco, nas recusas de ligação"

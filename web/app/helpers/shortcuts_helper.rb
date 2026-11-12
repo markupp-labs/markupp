@@ -65,6 +65,7 @@ module ShortcutsHelper
       # As seções do cofre ativo; só com cofre, que é quando o nome dele está na trilha.
       Shortcut.of(:vault_settings, run: { href: :settings_vault_path, when: "[data-current-vault]" }),
       Shortcut.of(:vault_members, run: { href: :settings_vault_members_path, when: "[data-current-vault]" }),
+      Shortcut.of(:vault_link_refusals, run: { href: :settings_link_refusals_path, when: "[data-current-vault]" }),
       # Só na Danger zone da General do cofre, para quem escreve: abre a mesma confirmação com o nome do cofre.
       Shortcut.of(:delete_vault, run: { click: "#delete_vault" }),
       # g e depois n abre o sino da barra de atividades (tenants_shortcut_controller.js), com o foco dentro dele.
@@ -105,6 +106,8 @@ module ShortcutsHelper
       Shortcut.of(:menu_move, "j", "k"),
       # Nas listas de Settings com context_menu_controller.js (membros, autorizações), com o foco numa linha: pede confirmação.
       Shortcut.of(:list_delete, "Delete"),
+      # Na lista de recusas de ligação do cofre, com o foco numa linha: desfaz a recusa, que se refaz pela visão Links.
+      Shortcut.of(:list_undo_refusal, "Delete"),
       Shortcut.of(:list_choose, "Enter"),
       Shortcut.of(:list_close, "Esc")
     ],

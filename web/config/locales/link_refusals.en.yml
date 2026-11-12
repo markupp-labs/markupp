@@ -18,6 +18,27 @@ en:
       note_outside_vault: "One of these notes is no longer in this vault."
       read_only: "Your role in this tenant is viewer, it can only read."
       vault_unavailable: "You no longer have access to that vault."
+  settings:
+    nav:
+      link_refusals: "Link refusals"
+    link_refusals:
+      index:
+        hint: "Notes in a refused pair get no automatic link between them. Undo a refusal to let them link again."
+        empty: "No refused links"
+        empty_hint: "Refuse an automatic link from the Links view of a note, and it shows up here."
+        notes: "Notes"
+        refused: "Refused"
+      link_refusal:
+        and: "and"
+        refused: "Refused"
+        undo: "Undo"
+        undo_label: "Undo the refusal between %{first} and %{second}"
+      destroy:
+        undone: "Refusal undone. These notes may get an automatic link again shortly."
+      errors:
+        link_refusal_not_found: "That refusal was already undone."
   shortcuts:
     names:
       links_refuse: "Refuse the automatic link in focus"
+      vault_link_refusals: "Vault link refusals"
+      list_undo_refusal: "Undo the refusal in focus, in the link refusals"
