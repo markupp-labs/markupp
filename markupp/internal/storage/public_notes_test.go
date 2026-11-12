@@ -52,9 +52,10 @@ func TestNotaPublica_NaPasta_TrazConteudoPublicacaoELigacoesSemOAlvoPrivado(t *t
 	assert.Contains(t, n.Content, "[[Passo]]")
 	assert.False(t, n.Indexable)
 	assert.Equal(t, publication.PublicScope{Kind: "folder", Title: "docs"}, n.Publication)
+	tituloDoPasso := "Passo"
 	assert.Equal(t, []publication.PublicLink{
-		{CitedTitle: "Passo", Kind: "embed", PublicID: &passo},
-		{CitedTitle: "Passo", Kind: "explicit", PublicID: &passo},
+		{CitedTitle: "Passo", Kind: "embed", PublicID: &passo, TargetTitle: &tituloDoPasso},
+		{CitedTitle: "Passo", Kind: "explicit", PublicID: &passo, TargetTitle: &tituloDoPasso},
 		{CitedTitle: "Segredo", Kind: "explicit"},
 	}, n.Links)
 }
