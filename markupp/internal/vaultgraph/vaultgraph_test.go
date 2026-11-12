@@ -179,7 +179,7 @@ func TestPageRank_LigacaoAutomaticaLevaMetadeDoPesoDaEscrita(t *testing.T) {
 
 	rank, _ := g.PageRank()
 
-	assert.InDelta(t, 0.85*rank["a"]/3, rank["b"]-rank["c"], 1e-9, "a reparte a massa em 2/3 para a escrita e 1/3 para a automatica")
+	assert.InDelta(t, 0.85*rank["a"]/3, rank["b"]-rank["c"], 3e-6, "a reparte a massa em 2/3 para a escrita e 1/3 para a automatica, a menos da tolerancia de N x 1e-6")
 }
 
 func TestPageRank_LigacaoRepetidaFicaComOPesoMaior(t *testing.T) {

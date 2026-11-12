@@ -36,17 +36,17 @@ type louvainLimits struct {
 // passadas; o teto só segura o grafo patológico.
 var louvainCaps = louvainLimits{levels: 10, passes: 100}
 
-// louvain devolve a comunidade de cada nó do grafo de vizinhos adj, simétrico e sem
-// laço, pelo Louvain (Blondel et al., 2008) com resolução 1: movimentos locais que
+// louvain devolve a comunidade de cada nó do grafo de vizinhos ponderados adj,
+// simétrico e sem laço, pelo Louvain (Blondel et al., 2008) com resolução 1: movimentos locais que
 // aumentam a modularidade, agregação de cada comunidade num nó e repetição até não
 // haver movimento ou até os tetos de limits, e diz como parou. A ordem de visita sai
 // de uma semente fixa, então o mesmo grafo dá sempre a mesma partição. O gonum faz o
 // mesmo, mas soma o grau da comunidade membro a membro a cada movimento, e levava
 // dezenas de segundos num cofre de 10 mil notas.
-func louvain(adj [][]int, seed uint64, limits louvainLimits) ([]int, Convergence) {
+func louvain(adj [][]weightedEdge, seed uint64, limits louvainLimits) ([]int, Convergence) {
 	membership := singletons(len(adj))
 	rng := rand.New(rand.NewPCG(seed, seed)) //nolint:gosec // G404: a ordem precisa ser reprodutivel, nao imprevisivel
-	g := unitGraph(adj)
+	g := firstLevel(adj)
 	var stop Convergence
 	for {
 		phase := g.moveNodes(rng, limits.passes)
@@ -73,14 +73,10 @@ func singletons(n int) []int {
 	return membership
 }
 
-// unitGraph é o primeiro nível: peso 1 em cada ligação.
-func unitGraph(adj [][]int) *weightedGraph {
+// firstLevel é o primeiro nível: o grafo de vizinhos ponderados, sem laço.
+func firstLevel(adj [][]weightedEdge) *weightedGraph {
 	g := newWeightedGraph(len(adj))
-	for i, ns := range adj {
-		for _, j := range ns {
-			g.neighbors[i] = append(g.neighbors[i], weightedEdge{to: j, weight: 1})
-		}
-	}
+	g.neighbors = adj
 	g.computeDegrees()
 	return g
 }
