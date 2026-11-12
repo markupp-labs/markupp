@@ -24,12 +24,15 @@ de IA, pela mesma interface.
 
 ## Rodando
 
+Copie o `example.env` para `.env`, preencha a senha do banco e o `SECRET_KEY_BASE`, e suba:
+
 ```bash
-docker compose up
+docker compose up -d
 ```
 
-Sobe o servidor em `localhost:8080` e o painel web em `localhost:3000`. Para usar a imagem publicada em vez de buildar do código, veja
-[DEPLOY](docs/DEPLOY.md).
+Sobe o servidor em `localhost:8080` e o painel web em `localhost:3000`, a partir das imagens
+publicadas. Proxy HTTPS, email e atualização estão em [DEPLOY](docs/DEPLOY.md#docker), e o
+ambiente de desenvolvimento roda com `make run`.
 
 ## Documentação
 

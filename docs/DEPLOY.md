@@ -5,6 +5,37 @@ REST que os clientes consomem. A imagem é publicada em `ghcr.io/markupp-labs/ma
 tag `v*`, e a configuração vem de variáveis de ambiente, descritas no
 [README do servidor](../markupp/README.md#configuração).
 
+## Docker
+
+Para rodar o markupp numa máquina, sem cluster, o `docker-compose.yaml` da raiz sobe o
+PostgreSQL, as migrações, o servidor, o indexador, o notificador, o painel e o servidor MCP a
+partir das imagens publicadas, sem buildar nada. Baixe o `docker-compose.yaml` e o
+`example.env` da raiz do repositório para uma pasta, copie o `example.env` para `.env` e
+preencha:
+
+- `POSTGRES_PASSWORD`, só com letras e números;
+- `SECRET_KEY_BASE`, gerado com `openssl rand -hex 64`;
+- `MARKUPP_VERSION`, a versão das imagens, sem o `v` da tag.
+
+```sh
+docker compose up -d
+```
+
+Servidor em `http://localhost:8080`, painel em `http://localhost:3000` e servidor MCP em
+`http://localhost:8080/mcp`. Na primeira subida o servidor gera os próprios segredos e os guarda
+no banco (ADR-0041).
+
+Com um proxy HTTPS na frente (Caddy, Traefik, Nginx), aponte `MARKUPP_PUBLIC_URL` e
+`MARKUPP_PANEL_URL` para os domínios públicos e troque `MARKUPP_PANEL_FORCE_SSL` para `true`.
+O painel e a API ficam em origens separadas, porque as rotas dos dois colidem.
+
+Sem `MARKUPP_SMTP_URL`, a instância roda sem email: o notificador fica ocioso e o convite
+devolve o token para ser repassado à mão. Com SMTP, preencha também `MARKUPP_SMTP_FROM`, e o
+convite passa a sair por email.
+
+Para atualizar, troque `MARKUPP_VERSION` no `.env` e rode `docker compose up -d` de novo. As
+migrações rodam antes do servidor.
+
 ## Kubernetes
 
 A instalação em Kubernetes é o componente Pulumi em `deploy/pulumi` (ADR-0025). Ele cria, no
@@ -159,11 +190,11 @@ com o indexador e o notificador em laço e o Mailpit, que recebe todo email de d
 make run
 ```
 
-Nada precisa ser configurado antes: `docker compose up` também funciona. Servidor em
-`http://localhost:8080`, servidor MCP em `http://localhost:8080/mcp` e caixa de email em
-`http://localhost:8025`. Na primeira subida o servidor gera os próprios segredos e os guarda no
-banco (ADR-0041). O consentimento do OAuth abre no painel em `http://localhost:3999`, que roda
-fora do compose. Os testes rodam no host e precisam de Go e de Docker:
+O ambiente de desenvolvimento vive em `compose.dev.yaml`. Nada precisa ser configurado antes:
+`docker compose -f compose.dev.yaml up` também funciona. Servidor em `http://localhost:8080`,
+painel em `http://localhost:3000`, servidor MCP em `http://localhost:8080/mcp` e caixa de email
+em `http://localhost:8025`. Na primeira subida o servidor gera os próprios segredos e os guarda
+no banco (ADR-0041). Os testes rodam no host e precisam de Go e de Docker:
 
 ```sh
 make test
