@@ -95,7 +95,7 @@ func listGraphNotes(ctx context.Context, q *gen.Queries, vaultID string, noteIDs
 }
 
 func listGraphEdges(ctx context.Context, q *gen.Queries, vaultID string, noteIDs []string, f notes.GraphFilter) ([]notes.GraphEdge, error) {
-	rows, err := q.ListGraphEdges(ctx, gen.ListGraphEdgesParams{VaultID: vaultID, NoteIds: noteIDs, HideInferred: f.HideInferred})
+	rows, err := q.ListGraphEdges(ctx, gen.ListGraphEdgesParams{VaultID: vaultID, NoteIds: noteIDs, HideInferred: f.HideInferred, HideAutomatic: f.HideAutomatic})
 	if err != nil {
 		return nil, fmt.Errorf("read graph links of vault %q: %w", vaultID, err)
 	}

@@ -66,7 +66,7 @@ func readPage(qr *queryReader) notes.Page {
 }
 
 func readLinkFilter(qr *queryReader) notes.LinkFilter {
-	return notes.LinkFilter{Type: qr.oneOf("type", notes.LinkExplicit, notes.LinkEmbed, notes.LinkTyped, notes.LinkInferred), Page: readPage(qr)}
+	return notes.LinkFilter{Type: qr.oneOf("type", notes.LinkExplicit, notes.LinkEmbed, notes.LinkTyped, notes.LinkInferred, notes.LinkMentioned), Page: readPage(qr)}
 }
 
 func readVaultLinkQuery(qr *queryReader) notes.VaultLinkQuery {

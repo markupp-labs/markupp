@@ -81,13 +81,15 @@ FROM note_edges
 WHERE vault_id = $1
   AND ($2::text[] IS NULL OR source_id = ANY ($2::text[]) OR target_id = ANY ($2::text[]))
   AND NOT ($3::bool AND kind = 'inferred')
+  AND NOT ($4::bool AND kind IN ('mentioned', 'related', 'semantic'))
 ORDER BY source_id, target_id, kind, predicate NULLS FIRST
 `
 
 type ListGraphEdgesParams struct {
-	VaultID      string
-	NoteIds      []string
-	HideInferred bool
+	VaultID       string
+	NoteIds       []string
+	HideInferred  bool
+	HideAutomatic bool
 }
 
 type ListGraphEdgesRow struct {
@@ -99,7 +101,12 @@ type ListGraphEdgesRow struct {
 
 // Ligações resolvidas, uma por par de notas, tipo e predicado.
 func (q *Queries) ListGraphEdges(ctx context.Context, arg ListGraphEdgesParams) ([]ListGraphEdgesRow, error) {
-	rows, err := q.db.Query(ctx, listGraphEdges, arg.VaultID, arg.NoteIds, arg.HideInferred)
+	rows, err := q.db.Query(ctx, listGraphEdges,
+		arg.VaultID,
+		arg.NoteIds,
+		arg.HideInferred,
+		arg.HideAutomatic,
+	)
 	if err != nil {
 		return nil, err
 	}

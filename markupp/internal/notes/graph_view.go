@@ -9,12 +9,13 @@ const (
 
 // GraphFilter recorta o grafo que o cliente desenha: HideOrphans tira as notas de
 // grau zero, HideUnresolved os nós sem nota (títulos não resolvidos e anexos),
-// HideInferred as ligações inferidas, e Community, quando não nil, fica só com as
-// notas da comunidade.
+// HideInferred as ligações inferidas, HideAutomatic as automáticas, e Community,
+// quando não nil, fica só com as notas da comunidade.
 type GraphFilter struct {
 	HideOrphans    bool
 	HideUnresolved bool
 	HideInferred   bool
+	HideAutomatic  bool
 	Community      *int64
 }
 
