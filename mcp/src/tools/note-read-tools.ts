@@ -5,8 +5,10 @@ import type { MarkuppSession } from "../session.js";
 import {
   apiFor,
   callApi,
+  limitParameter,
   noteHeader,
   noteLocator,
+  offsetParameter,
   readOnlyAnnotations,
   tenantParameter,
   vaultIdParameter,
@@ -58,20 +60,8 @@ const searchNotesParameters = z.object({
     .describe(
       'Words to find in the note content; every word must appear. Takes a "quoted phrase", OR between words and -word to exclude, as in a web search.',
     ),
-  limit: z
-    .number()
-    .int()
-    .min(1)
-    .max(100)
-    .optional()
-    .describe("Max results. Default 10."),
-  offset: z
-    .number()
-    .int()
-    .min(0)
-    .max(10000)
-    .optional()
-    .describe("Results to skip, to page past the first ones."),
+  limit: limitParameter,
+  offset: offsetParameter,
   vault_id: vaultIdParameter
     .optional()
     .describe(

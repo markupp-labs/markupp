@@ -51,6 +51,23 @@ export const vaultIdParameter = z
   .min(1)
   .describe("Vault id from list_vaults.");
 
+// limitParameter e offsetParameter paginam as listas, nas faixas que a API aceita.
+export const limitParameter = z
+  .number()
+  .int()
+  .min(1)
+  .max(100)
+  .optional()
+  .describe("Max results. Default 10.");
+
+export const offsetParameter = z
+  .number()
+  .int()
+  .min(0)
+  .max(10000)
+  .optional()
+  .describe("Results to skip, to page past the first ones.");
+
 // vaultLocator aponta um cofre: o tenant e o id dele.
 export const vaultLocator = z.object({
   tenant: tenantParameter,
