@@ -204,6 +204,26 @@ type OauthToken struct {
 	CreatedAt       time.Time
 }
 
+type PublicNote struct {
+	NoteID        string
+	PublicID      string
+	VaultID       string
+	PublicationID string
+	CreatedAt     time.Time
+}
+
+type Publication struct {
+	ID          string
+	TenantID    string
+	VaultID     string
+	Kind        string
+	NoteID      pgtype.Text
+	FolderPath  pgtype.Text
+	Indexable   bool
+	PublishedBy string
+	PublishedAt time.Time
+}
+
 type RefreshToken struct {
 	TokenHash string
 	UserID    string
