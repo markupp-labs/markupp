@@ -113,7 +113,9 @@ WHERE i.indrelid = 'note_centrality'::regclass
 }
 
 func TestListVaultNotes_LigacaoInferidaContaParaNotaOrfa(t *testing.T) {
-	_, repo, _ := cofreComErroDeDigitacao(t)
+	db, repo, _ := cofreComErroDeDigitacao(t)
+	recusaAsLigacoesPorMencao(t, db)
+	indexaTodosOsCofres(t, db, "simple")
 
 	orfas := notasDoCofre(ctxDeTeste, t, repo, notes.VaultNotesQuery{Orphan: ptr(true), Limit: 100})
 

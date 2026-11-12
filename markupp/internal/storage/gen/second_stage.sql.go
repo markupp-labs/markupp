@@ -83,6 +83,15 @@ func (q *Queries) DeleteNoteCommunities(ctx context.Context, vaultID string) err
 	return err
 }
 
+const deleteVaultMentionLinks = `-- name: DeleteVaultMentionLinks :exec
+DELETE FROM note_automatic_links WHERE vault_id = $1 AND kind = 'mentioned'
+`
+
+func (q *Queries) DeleteVaultMentionLinks(ctx context.Context, vaultID string) error {
+	_, err := q.db.Exec(ctx, deleteVaultMentionLinks, vaultID)
+	return err
+}
+
 const listNoteCommunities = `-- name: ListNoteCommunities :many
 SELECT note_id, community_id FROM note_communities WHERE vault_id = $1 ORDER BY note_id
 `
@@ -147,14 +156,17 @@ func (q *Queries) ListVaultCitations(ctx context.Context, vaultID string) ([]Lis
 }
 
 const listVaultEdges = `-- name: ListVaultEdges :many
-SELECT source_id, target_id FROM note_edges WHERE vault_id = $1 ORDER BY source_id, target_id
+SELECT source_id, target_id, (kind IN ('mentioned', 'related', 'semantic'))::bool AS automatic
+FROM note_edges WHERE vault_id = $1 ORDER BY source_id, target_id
 `
 
 type ListVaultEdgesRow struct {
-	SourceID string
-	TargetID string
+	SourceID  string
+	TargetID  string
+	Automatic bool
 }
 
+// A ligação automática pesa menos no PageRank e nas comunidades (ADR-0053).
 func (q *Queries) ListVaultEdges(ctx context.Context, vaultID string) ([]ListVaultEdgesRow, error) {
 	rows, err := q.db.Query(ctx, listVaultEdges, vaultID)
 	if err != nil {
@@ -164,7 +176,36 @@ func (q *Queries) ListVaultEdges(ctx context.Context, vaultID string) ([]ListVau
 	var items []ListVaultEdgesRow
 	for rows.Next() {
 		var i ListVaultEdgesRow
-		if err := rows.Scan(&i.SourceID, &i.TargetID); err != nil {
+		if err := rows.Scan(&i.SourceID, &i.TargetID, &i.Automatic); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listVaultNoteContents = `-- name: ListVaultNoteContents :many
+SELECT id, content FROM notes WHERE vault_id = $1 ORDER BY id
+`
+
+type ListVaultNoteContentsRow struct {
+	ID      string
+	Content string
+}
+
+func (q *Queries) ListVaultNoteContents(ctx context.Context, vaultID string) ([]ListVaultNoteContentsRow, error) {
+	rows, err := q.db.Query(ctx, listVaultNoteContents, vaultID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListVaultNoteContentsRow
+	for rows.Next() {
+		var i ListVaultNoteContentsRow
+		if err := rows.Scan(&i.ID, &i.Content); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

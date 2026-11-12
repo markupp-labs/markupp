@@ -12,16 +12,21 @@ import (
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/storage/gen"
 )
 
-// saveGraphMarkingChange grava o grafo do lote e marca o cofre para o segundo estágio
-// quando o lote mudou títulos, caminhos ou ligações: nota nova, renomeada, movida de
-// pasta ou com outras ligações. A exclusão de nota marca o cofre por trigger.
-func saveGraphMarkingChange(ctx context.Context, q *gen.Queries, cs indexing.Changeset, indexed []indexing.IndexedNote) error {
+// saveGraphMarkingChange grava o grafo do lote, com as ligações por menção que as
+// notas dele fazem, e marca o cofre para o segundo estágio quando o lote mudou
+// títulos, caminhos ou ligações: nota nova, renomeada, movida de pasta, com outras
+// ligações ou que passou a citar outros títulos. A exclusão de nota marca o cofre por
+// trigger. searchConfig é a configuração de texto do índice léxico.
+func saveGraphMarkingChange(ctx context.Context, q *gen.Queries, cs indexing.Changeset, indexed []indexing.IndexedNote, searchConfig string) error {
 	noteIDs := batchNoteIDs(indexed)
 	before, err := q.NoteGraphFingerprint(ctx, noteIDs)
 	if err != nil {
 		return fmt.Errorf("read graph fingerprint of %d notes in vault %q: %w", len(noteIDs), cs.VaultID, err)
 	}
 	if err := saveGraph(ctx, q, cs, indexed); err != nil {
+		return err
+	}
+	if err := refreshNoteMentionLinks(ctx, q, cs.VaultID, searchConfig, cs.Notes); err != nil {
 		return err
 	}
 	after, err := q.NoteGraphFingerprint(ctx, noteIDs)

@@ -163,7 +163,7 @@ func (x *PostgresVaultIndexer) applyBatch(ctx context.Context, q *gen.Queries, c
 	if err := saveTerms(ctx, q, cs, indexed); err != nil {
 		return err
 	}
-	return saveGraphMarkingChange(ctx, q, cs, indexed)
+	return saveGraphMarkingChange(ctx, q, cs, indexed, x.searchConfig)
 }
 
 func toChangeset(vault gen.ReservePendingVaultRow, rows []gen.ListPendingNotesRow) indexing.Changeset {

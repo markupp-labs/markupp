@@ -30,6 +30,7 @@ func cofreComTituloComum(t *testing.T) (*pgxpool.Pool, *storage.PostgresNoteGrap
 	}
 	semeiaNotas(t, db, "u", "o projeto segue o plano diretor", 6)
 	indexaTodosOsCofres(t, db, "simple")
+	recusaAsLigacoesPorMencao(t, db)
 	return db, storage.NewPostgresNoteGraph(db, "simple")
 }
 
@@ -71,6 +72,7 @@ func TestNoteGraph_Mentions_CofrePequenoUsaOPisoDeCincoNotas(t *testing.T) {
 	semeiaNotas(t, db, "u", "o projeto segue o plano diretor", 5)
 	semeiaNotas(t, db, "kb", "kubernetes", 4)
 	indexaTodosOsCofres(t, db, "simple")
+	recusaAsLigacoesPorMencao(t, db)
 	graph := storage.NewPostgresNoteGraph(db, "simple")
 
 	assert.Equal(t, []string{"Kubernetes.md kubernetes"}, resumoDasMencoes(mencoes(t, graph, "mentions", "m", 0, 100)),

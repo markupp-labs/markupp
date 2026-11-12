@@ -75,7 +75,7 @@ func TestLigacaoInferida_ParentescoDecideEntreDistanciaEProbabilidade(t *testing
 	_, _, graph := cofreComErroDeDigitacao(t)
 
 	assert.Equal(t, []string{"hub", "s"}, backlinks(ctxDeTeste, t, graph, "x"), "p esta mais perto; x e mais ligada e divide o hub com s")
-	assert.Empty(t, backlinks(ctxDeTeste, t, graph, "p"))
+	assert.Equal(t, []string{"m"}, backlinks(ctxDeTeste, t, graph, "p"), "so a ligacao por mencao de m")
 }
 
 func TestLigacaoInferida_NaoViraNaoResolvidaEMarcaOPalpite(t *testing.T) {
@@ -130,6 +130,6 @@ func TestLigacaoInferida_TituloComumNaoEntraNoPriorJaNoPrimeiroJob(t *testing.T)
 	indexaTodosOsCofres(t, db, "simple")
 	graph := storage.NewPostgresNoteGraph(db, "simple")
 
-	assert.Equal(t, []string{"s"}, backlinks(ctxDeTeste, t, graph, "p"), "sem o prior de x, distancia e prior ficam com p")
+	assert.Equal(t, []string{"m", "s"}, backlinks(ctxDeTeste, t, graph, "p"), "sem o prior de x, distancia e prior ficam com p; m liga por mencao")
 	assert.NotContains(t, backlinks(ctxDeTeste, t, graph, "x"), "s")
 }
