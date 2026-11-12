@@ -21,10 +21,10 @@ func minhasNotificacoes(t *testing.T, url, token string) map[string]any {
 // devolve os tokens das duas.
 func conviteDeOutroTenant(t *testing.T, url string) (tokenAna, tokenBia string) {
 	t.Helper()
-	_, sessaoA := sendJSON(t, http.MethodPost, url+"/v1/accounts", "", `{"email":"ana@x.dev","password":"senha-ana"}`)
+	_, sessaoA := sendJSON(t, http.MethodPost, url+"/v1/accounts", "", `{"email":"ana@x.dev","password":"senha-ana-de-teste"}`)
 	tokenAna = sessaoA["access_token"].(string)
 	_, convite := sendJSON(t, http.MethodPost, url+"/users/invites", tokenAna, `{"email":"bia@x.dev","role":"member"}`)
-	_, sessaoB := sendJSON(t, http.MethodPost, url+"/auth/invites/accept", "", `{"token":"`+convite["token"].(string)+`","password":"senha-bia"}`)
+	_, sessaoB := sendJSON(t, http.MethodPost, url+"/auth/invites/accept", "", `{"token":"`+convite["token"].(string)+`","password":"senha-bia-de-teste"}`)
 	tokenBia = sessaoB["access_token"].(string)
 	_, tenantB := sendJSON(t, http.MethodPost, url+"/tenants", tokenBia, `{"name":"Estudio da Bia"}`)
 	status, _ := sendAs(t, http.MethodPost, url+"/users/invites", tokenBia, tenantB["id"].(string), `{"email":"ana@x.dev","role":"viewer"}`)
