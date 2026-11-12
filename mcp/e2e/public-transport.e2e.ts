@@ -11,7 +11,7 @@ const marker = `publico-${Date.now()}`;
 const publicMcpUrl = new URL(`${markuppUrl()}/mcp/public`);
 const client = new Client({ name: "markupp-e2e-public", version: "0.0.0" });
 
-type CreatedNote = { id: string; vault_id: string; title: string };
+type CreatedNote = { id: string; vault_id: string };
 type Publication = { id: string; public_id: string };
 type PublicPage = { items: { public_id: string }[]; total: number };
 
@@ -36,11 +36,17 @@ class OwnerApi {
     return this.send("POST", "/v1/notes", { vault_id: "", path, content });
   }
 
-  // publishNote confirma pelo título, como o painel pede (ADR-0048).
-  publishNote(note: CreatedNote): Promise<Publication> {
+  // publishNote confirma pelo nome que a prévia devolve, como o painel pede
+  // (ADR-0048): a nota em /v1/notes não traz o título.
+  async publishNote(note: CreatedNote): Promise<Publication> {
     const path = `/v1/vaults/${encodeURIComponent(note.vault_id)}/publications`;
+    const query = new URLSearchParams({ kind: "note", note_id: note.id });
+    const preview = await this.send<{ target_name: string }>(
+      "GET",
+      `${path}/preview?${query}`,
+    );
     const target = { kind: "note", note_id: note.id };
-    return this.send("POST", path, { target, confirm: note.title });
+    return this.send("POST", path, { target, confirm: preview.target_name });
   }
 
   unpublish(publication: Publication): Promise<unknown> {
