@@ -25,6 +25,7 @@ import (
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/config"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/drain"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/indexing"
+	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/linkrefusals"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/notes"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/notify"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/oauth"
@@ -256,8 +257,9 @@ func newHandler(cfg config.Config, pool *pgxpool.Pool, logger *slog.Logger) (htt
 	}
 	deps := api.RouterDeps{
 		Notes: notesSvc, Graph: storage.NewPostgresNoteGraph(pool, cfg.SearchConfig), Auth: authSvc, Admin: adminSvc, AccountEmail: accountEmail,
-		Vaults: vaults.NewService(storage.NewPostgresVaultsRepository(pool), time.Now, uuid.NewString),
-		Tokens: codec, Tenants: authSvc, Probe: pool, AllowedOrigins: cfg.AllowedOrigins,
+		Vaults:       vaults.NewService(storage.NewPostgresVaultsRepository(pool), time.Now, uuid.NewString),
+		LinkRefusals: linkrefusals.NewService(storage.NewPostgresLinkRefusals(pool)),
+		Tokens:       codec, Tenants: authSvc, Probe: pool, AllowedOrigins: cfg.AllowedOrigins,
 		OAuthMetadata: oauthMetadataFrom(cfg), OAuth: oauthSvc, MCPUpstreamURL: cfg.MCPUpstreamURL,
 		AccountRateLimiter: api.NewAccountRateLimiter(cfg.RateLimitPerMinute, time.Minute, time.Now, cfg.TrustedProxies),
 		ExternalLogin:      newExternalLoginService(cfg, authSvc),

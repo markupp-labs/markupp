@@ -16,6 +16,7 @@ type RouterDeps struct {
 	Auth           AuthService
 	Admin          AdminService
 	Vaults         VaultService
+	LinkRefusals   LinkRefusalService
 	AccountEmail   AccountEmailService
 	ExternalLogin  ExternalLoginService
 	Tokens         TokenValidator
@@ -75,8 +76,8 @@ func mustHaveRouterDeps(d RouterDeps) {
 	if d.Tokens == nil {
 		panic("api: Tokens obrigatorio para proteger as rotas")
 	}
-	if d.Tenants == nil && (d.Notes != nil || d.Graph != nil || d.Admin != nil || d.Vaults != nil || d.Publications != nil) {
-		panic("api: Tenants obrigatorio para as rotas de notas, do grafo, de administracao, de cofres e de publicacao")
+	if d.Tenants == nil && (d.Notes != nil || d.Graph != nil || d.Admin != nil || d.Vaults != nil || d.Publications != nil || d.LinkRefusals != nil) {
+		panic("api: Tenants obrigatorio para as rotas de notas, do grafo, de administracao, de cofres, de publicacao e de recusa de ligacao")
 	}
 	if d.OAuth != nil && d.OAuthMetadata == nil {
 		panic("api: OAuthMetadata obrigatorio para as rotas OAuth, que usam o Issuer")
@@ -108,7 +109,8 @@ func newVersionRoutes(d RouterDeps, current bool) chi.Router {
 }
 
 // mountV1OnlyRoutes monta as rotas que nasceram depois da transição e não têm o alias
-// sem prefixo: o grafo, a gestão de cofres, a publicação e o login externo.
+// sem prefixo: o grafo, a gestão de cofres, a publicação, o login externo e a recusa
+// de ligação.
 func mountV1OnlyRoutes(r chi.Router, d RouterDeps) {
 	if d.Graph != nil {
 		mountProtectedGraphRoutes(r, d.Graph, d.Tokens, d.Tenants)
@@ -121,6 +123,9 @@ func mountV1OnlyRoutes(r chi.Router, d RouterDeps) {
 	}
 	if d.Publications != nil {
 		mountPublicationRoutes(r, d.Publications, d.Tokens, d.Tenants)
+	}
+	if d.LinkRefusals != nil {
+		mountLinkRefusalRoutes(r, d.LinkRefusals, d.Tokens, d.Tenants)
 	}
 }
 
