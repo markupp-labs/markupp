@@ -11,7 +11,7 @@ import (
 
 // Caminhos do servidor MCP na mesma origem (ADR-0041): o endpoint Streamable HTTP, a
 // metadata do recurso protegido dele (RFC 9728), que o próprio servidor MCP publica, e
-// o endpoint sem login dos cofres publicados (ADR-0050).
+// o endpoint sem login das notas publicadas (ADR-0050).
 const (
 	mcpEndpointPath         = "/mcp"
 	mcpResourceMetadataPath = "/.well-known/oauth-protected-resource/mcp"
@@ -20,7 +20,7 @@ const (
 
 // mountMCPProxy encaminha o servidor MCP ao container dele, sem CORS nem autenticação: o
 // servidor MCP troca o token do agente e responde 401 sozinho, e em /mcp/public lê só
-// os cofres publicados, pelas rotas /v1/public com o limite delas.
+// as notas publicadas, pelas rotas /v1/public com o limite delas.
 func mountMCPProxy(r chi.Router, upstreamURL string) {
 	if upstreamURL == "" {
 		return

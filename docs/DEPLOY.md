@@ -123,6 +123,14 @@ lista nunca tem o header lido. Liste só as redes dos proxies: um CIDR que cubra
 qualquer um deles escolher o IP que conta. No componente, `trustedProxies` recebe a lista de
 CIDRs e `rateLimitPerMinute` o limite, e os dois vão só para a API.
 
+A leitura sem conta das notas publicadas (ADR-0048), nas rotas `/v1/public/notes/{public_id}`,
+tem limite próprio: 300 pedidos por minuto por IP, somadas todas essas rotas, trocado pela
+variável `MARKUPP_PUBLIC_RATE_LIMIT_PER_MINUTE`, de 1 a 10000. O IP segue as mesmas regras de
+`MARKUPP_TRUSTED_PROXIES`. Um site que renderiza as páginas no servidor lendo essas rotas faz
+todos os pedidos com o IP dele, então o limite precisa caber no tráfego do site, já descontado o
+que o cache por ETag dele economiza. A migração 00040 cria o papel `markupp_reader`, sem login,
+para essa leitura, com o mesmo CREATEROLE que a migração já exige para os outros papéis.
+
 Sem outra opção, o componente cria um Gateway próprio nas portas 80 e 443. Em cluster onde
 outro Gateway já ocupa essas portas, como o Cilium em hostNetwork, que exige porta única por
 Gateway, informe `existingGateway` com nome, namespace e listener. O componente cria só o
@@ -351,6 +359,18 @@ O servidor MCP sobe com `markupp-mcp http` (a imagem já começa assim) e espera
 pelo Go e pelo arquivo do segredo. No cluster, com o MCP em subdomínio próprio (ADR-0045), o
 `MARKUPP_OAUTH_RESOURCES` do Go e o `MARKUPP_MCP_RESOURCE_URL` e o `MARKUPP_MCP_RESOURCE_SECRET`
 do MCP vêm do Secret.
+
+O mesmo servidor atende, sem OAuth, a rota do endpoint seguida de `/public` (`/mcp/public` por
+padrão), que o Go também encaminha (ADR-0050). Ali o agente só lê as notas publicadas, pelo id
+público, com as ferramentas `read_public_note`, `list_public_notes` e `search_public_notes`, que
+chamam as rotas `/v1/public/notes/{public_id}` da API sem token. O limite de
+`MARKUPP_PUBLIC_RATE_LIMIT_PER_MINUTE` vale também para elas, contado pelo IP de cada agente, sem
+configuração: o MCP repassa ao Go o X-Forwarded-For que recebeu em `/mcp/public` junto com o HTTP
+Basic do resource dele (a URL e o segredo que já usa na troca de token). Só com essa credencial o
+Go trata o último salto do header, o que ele mesmo escreveu ao encaminhar, como a conexão do
+agente, e segue dali a regra de `MARKUPP_TRUSTED_PROXIES`, como num pedido direto à API. Sem a
+credencial, o header é ignorado. Não exponha a porta do MCP fora da rede interna: quem a alcança
+sem passar pelo Go escolhe o IP que conta.
 
 ## Aviso
 
