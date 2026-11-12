@@ -6,7 +6,7 @@ import type { PublicMarkuppApi } from "../public-api.js";
 import type { MarkuppSession, PublicSession } from "../session.js";
 import { registerMarkuppTools } from "../tools/register-markupp-tools.js";
 import { registerPublicTools } from "../tools/register-public-tools.js";
-import { FakeApiTokens } from "./fake-markupp-api.js";
+import { FakeApiTokens } from "./fake-api-tokens.js";
 
 type ToolText = { text: string; isError: boolean; parts: string[] };
 type ResourceText = { text: string; mimeType?: string; uri: string };

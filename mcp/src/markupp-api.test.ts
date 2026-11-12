@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { HttpMarkuppApi, MarkuppApiError, type Note } from "./markupp-api.js";
 import { FakeFetch } from "./testing/fake-fetch.js";
-import { FakeApiTokens } from "./testing/fake-markupp-api.js";
+import { FakeApiTokens } from "./testing/fake-api-tokens.js";
 
 const note: Note = {
   id: "n1",
