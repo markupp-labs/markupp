@@ -1,0 +1,12 @@
+<%# A busca e o grafo da publicação, no topo da página pública. / foca a busca e Alt+G abre o grafo, como no painel. %>
+<%= form_with url: public_note_search_path(note), method: :get, role: "search", class: "flex min-w-0 flex-1 items-center gap-2 md:max-w-sm" do |form| %>
+  <%= form.search_field :q, value: local_assigns[:query], placeholder: t(".search"), autocomplete: "off",
+                        aria: { label: t(".search"), keyshortcuts: "/" },
+                        data: { controller: "hotkey", hotkey_key_value: "/", action: "keydown@window->hotkey#press" },
+                        class: "min-w-0 flex-1 rounded-md border border-line bg-surface px-2 py-1" %>
+  <kbd aria-hidden="true" class="text-xs text-ink-muted">/</kbd>
+<% end %>
+<%= link_to public_note_graph_path(note), class: "btn", title: "#{t(".graph")} (Alt+G)",
+            aria: { keyshortcuts: "Alt+G" }, data: { controller: "hotkey", hotkey_code_value: "KeyG", hotkey_alt_value: true, action: "keydown@window->hotkey#press" } do %>
+  <%= icon("graph") %><span class="max-md:sr-only"><%= t(".graph") %></span>
+<% end %>

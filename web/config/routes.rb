@@ -58,6 +58,8 @@ Rails.application.routes.draw do
   # Sem ponto no trecho: o .json do ![[nota]] é o formato.
   scope "p/:slug_and_id", constraints: { slug_and_id: /[A-Za-z0-9-]+/ } do
     get "/", to: "public_notes#show", as: :public_note
+    get "search", to: "public_searches#show", as: :public_note_search
+    get "graph", to: "public_graphs#show", as: :public_note_graph
   end
 
   # Páginas de erro: o ShowExceptions pede /<status> (config.exceptions_app). O resto que não casa com rota nenhuma é o
