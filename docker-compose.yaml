@@ -75,7 +75,7 @@ services:
       # O Thruster escuta na 8080: a 80 da imagem pede root, e a 3000 é a do Puma atrás dele.
       HTTP_PORT: "8080"
       SECRET_KEY_BASE: ${SECRET_KEY_BASE:?defina SECRET_KEY_BASE no .env, gere com openssl rand -hex 64}
-      MARKUPP_PANEL_FORCE_SSL: ${MARKUPP_PANEL_FORCE_SSL:-true}
+      MARKUPP_PANEL_FORCE_SSL: ${MARKUPP_PANEL_FORCE_SSL:-false}
       MARKUPP_API_URL: http://markupp:8080
       MARKUPP_PUBLIC_URL: ${MARKUPP_PUBLIC_URL:-http://localhost:${MARKUPP_PORT:-8080}}
       MARKUPP_MCP_URL: ${MARKUPP_PUBLIC_URL:-http://localhost:${MARKUPP_PORT:-8080}}/mcp
