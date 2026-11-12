@@ -1497,6 +1497,7 @@ paths:
         - $ref: '#/components/parameters/GraphOrphans'
         - $ref: '#/components/parameters/GraphUnresolved'
         - $ref: '#/components/parameters/GraphInferred'
+        - $ref: '#/components/parameters/GraphAutomatic'
         - $ref: '#/components/parameters/GraphCommunity'
         - $ref: '#/components/parameters/GraphIfNoneMatch'
       responses:
@@ -1564,6 +1565,7 @@ paths:
         - $ref: '#/components/parameters/GraphOrphans'
         - $ref: '#/components/parameters/GraphUnresolved'
         - $ref: '#/components/parameters/GraphInferred'
+        - $ref: '#/components/parameters/GraphAutomatic'
         - $ref: '#/components/parameters/GraphCommunity'
         - $ref: '#/components/parameters/GraphIfNoneMatch'
       responses:
@@ -2022,6 +2024,111 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: A conta não é membro do cofre (vault_member_not_found)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /vaults/{id}/link-refusals:
+    get:
+      summary: Lista as recusas de ligação do cofre
+      description: >
+        A recusa de ligação é o par de notas em que o servidor não cria ligação
+        automática de nenhum tipo (ADR-0053). Da mais nova para a mais antiga. O viewer
+        também lê.
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+        - $ref: '#/components/parameters/VaultID'
+        - $ref: '#/components/parameters/PageOffset'
+        - $ref: '#/components/parameters/PageLimit'
+      responses:
+        '200':
+          description: Lista, vazia quando não há nenhuma recusa
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LinkRefusalResponse'
+        '400':
+          description: offset ou limit não inteiros (invalid_request)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Cofre inexistente ou de que a conta não é membro (vault_forbidden)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      summary: Recusa a ligação automática entre duas notas
+      description: >
+        Qualquer membro do cofre que não é viewer recusa. A ligação automática entre as
+        duas notas, em qualquer sentido e de qualquer tipo, sai das listas na hora e do
+        grafo, do PageRank e das comunidades no próximo segundo estágio. Recusar um par
+        já recusado devolve a recusa que existe.
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+        - $ref: '#/components/parameters/VaultID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LinkRefusalRequest'
+      responses:
+        '201':
+          description: Par recusado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LinkRefusalResponse'
+        '400':
+          description: JSON inválido ou sem exatamente duas notas (invalid_request), ou a mesma nota duas vezes (same_note)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Cofre inexistente ou de que a conta não é membro (vault_forbidden), ou papel viewer (read_only)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Alguma das notas não é do cofre (note_outside_vault)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /vaults/{id}/link-refusals/{refusal_id}:
+    delete:
+      summary: Desfaz a recusa de ligação
+      description: >
+        Qualquer membro do cofre que não é viewer desfaz. O servidor volta a poder ligar
+        o par no próximo segundo estágio.
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+        - $ref: '#/components/parameters/VaultID'
+        - $ref: '#/components/parameters/LinkRefusalID'
+      responses:
+        '204':
+          description: Recusa desfeita
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Cofre inexistente ou de que a conta não é membro (vault_forbidden), ou papel viewer (read_only)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Recusa inexistente no cofre (link_refusal_not_found)
           content:
             application/json:
               schema:
@@ -2491,6 +2598,14 @@ components:
       schema:
         type: boolean
         default: true
+    GraphAutomatic:
+      name: automatic
+      in: query
+      required: false
+      description: false esconde as ligações automáticas, como a por menção
+      schema:
+        type: boolean
+        default: true
     GraphCommunity:
       name: community
       in: query
@@ -2550,11 +2665,11 @@ components:
       required: false
       description: |
         Só as ligações do tipo: explicit para wikilink e link markdown, embed para
-        ![[...]], typed para a ligação tipada do frontmatter e inferred para a ligação
-        inferida
+        ![[...]], typed para a ligação tipada do frontmatter, inferred para a ligação
+        inferida e mentioned para a ligação por menção
       schema:
         type: string
-        enum: [explicit, embed, typed, inferred]
+        enum: [explicit, embed, typed, inferred, mentioned]
     LinkStatus:
       name: status
       in: query
@@ -2578,6 +2693,13 @@ components:
       in: path
       required: true
       description: Id da conta do membro
+      schema:
+        type: string
+    LinkRefusalID:
+      name: refusal_id
+      in: path
+      required: true
+      description: Id da recusa de ligação
       schema:
         type: string
     VaultMemberID:
@@ -2929,6 +3051,33 @@ components:
         name:
           type: string
           description: Aparado nas pontas, de 1 a 100 caracteres (não bytes)
+    LinkRefusalRequest:
+      type: object
+      required: [note_ids]
+      properties:
+        note_ids:
+          type: array
+          minItems: 2
+          maxItems: 2
+          items:
+            type: string
+          description: As duas notas do cofre, em qualquer ordem; o par não tem sentido
+          example: ["n1", "n2"]
+    LinkRefusalResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        notes:
+          type: array
+          minItems: 2
+          maxItems: 2
+          items:
+            $ref: '#/components/schemas/NoteSummary'
+          description: As duas notas do par, na ordem do id
+        created_at:
+          type: string
+          format: date-time
     VaultMemberRequest:
       type: object
       required: [user_id]
@@ -3301,10 +3450,12 @@ components:
           example: "Reunião Semanal"
         type:
           type: string
-          enum: [explicit, embed, typed, inferred]
+          enum: [explicit, embed, typed, inferred, mentioned]
           description: |
             explicit para wikilink e link markdown, embed para ![[...]], typed para a
-            ligação tipada do frontmatter, inferred para a ligação inferida
+            ligação tipada do frontmatter, inferred para a ligação inferida, mentioned
+            para a ligação por menção, que o servidor cria quando a nota cita o título de
+            outra no texto (ADR-0053); nela cited_title é o título citado, sem caixa
         predicate:
           type: string
           nullable: true
@@ -3391,7 +3542,7 @@ components:
           description: Índice, em nodes, do nó a que liga
         type:
           type: string
-          enum: [explicit, embed, typed, inferred]
+          enum: [explicit, embed, typed, inferred, mentioned]
           description: Tipo da ligação, como em LinkResponse
         predicate:
           type: string
