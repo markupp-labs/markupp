@@ -29,8 +29,8 @@ type Scope struct {
 	PublicationID string
 	Kind          string
 	FolderPath    string
-	VaultName     string
 	Indexable     bool
+	VaultName     string
 }
 
 // PublicNote é a nota lida sem conta, pelo id público.
@@ -81,13 +81,11 @@ type PublicGraph struct {
 	Links []PublicGraphLink
 }
 
-// PublicGraphNode é uma nota da publicação com a organização derivada dela.
+// PublicGraphNode é uma nota da publicação com o grau dela no grafo da publicação.
 type PublicGraphNode struct {
-	PublicID  string
-	Title     string
-	Degree    *int
-	PageRank  *float64
-	Community *int64
+	PublicID string
+	Title    string
+	Degree   *int
 }
 
 // PublicGraphLink liga os nós de índices Source e Target em PublicGraph.Nodes.
