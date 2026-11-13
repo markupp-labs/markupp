@@ -21,6 +21,8 @@ jobs:
             context: ./web
           - image: markupp-mcp
             context: ./mcp
+          - image: markupp-postgres
+            context: ./deploy/postgres
     permissions:
       contents: read
       packages: write

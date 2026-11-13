@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"net/url"
+	"strings"
 
 	appsv1 "github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/apps/v1"
 	corev1 "github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/core/v1"
@@ -22,12 +23,14 @@ const (
 	scalerURIKey      = "scaler-uri"
 	scalerPasswordKey = "scaler-password"
 	scalerUser        = "markupp_scaler"
-	postgresImage     = "postgres:17.9-alpine3.23"
-	postgresPort      = 5432
-	postgresUser      = "markupp"
-	passwordLength    = 32
-	authSecretLength  = 64
-	postgresDataPath  = "/var/lib/postgresql/data"
+	// postgresRepository é a imagem do Postgres com pgvector (deploy/postgres), publicada
+	// ao lado da do servidor, com a mesma tag.
+	postgresRepository = "markupp-postgres"
+	postgresPort       = 5432
+	postgresUser       = "markupp"
+	passwordLength     = 32
+	authSecretLength   = 64
+	postgresDataPath   = "/var/lib/postgresql/data"
 )
 
 // generatedSecrets são os valores aleatórios do Secret do banco.
@@ -147,7 +150,7 @@ func postgresStatefulSetArgs(names resourceNames, args MarkuppArgs, labels pulum
 			Selector:    metav1.LabelSelectorArgs{MatchLabels: labels},
 			Template: corev1.PodTemplateSpecArgs{
 				Metadata: metav1.ObjectMetaArgs{Labels: labels},
-				Spec:     corev1.PodSpecArgs{EnableServiceLinks: noServiceLinks(), Containers: corev1.ContainerArray{postgresContainer(names)}},
+				Spec:     corev1.PodSpecArgs{EnableServiceLinks: noServiceLinks(), Containers: corev1.ContainerArray{postgresContainer(names, args.Database.Image)}},
 			},
 			VolumeClaimTemplates: corev1.PersistentVolumeClaimTypeArray{postgresVolumeClaim(args)},
 		},
@@ -156,10 +159,10 @@ func postgresStatefulSetArgs(names resourceNames, args MarkuppArgs, labels pulum
 
 // postgresContainer aponta PGDATA para um subdiretório porque a raiz de um
 // volume ext4 tem lost+found, e o initdb recusa diretório não vazio.
-func postgresContainer(names resourceNames) corev1.ContainerArgs {
+func postgresContainer(names resourceNames, image string) corev1.ContainerArgs {
 	return corev1.ContainerArgs{
 		Name:  pulumi.String("postgres"),
-		Image: pulumi.String(postgresImage),
+		Image: pulumi.String(image),
 		Env: corev1.EnvVarArray{
 			corev1.EnvVarArgs{Name: pulumi.String("POSTGRES_USER"), Value: pulumi.String(postgresUser)},
 			corev1.EnvVarArgs{Name: pulumi.String("POSTGRES_DB"), Value: pulumi.String(postgresUser)},
@@ -170,6 +173,21 @@ func postgresContainer(names resourceNames) corev1.ContainerArgs {
 		VolumeMounts:   corev1.VolumeMountArray{corev1.VolumeMountArgs{Name: pulumi.String("data"), MountPath: pulumi.String(postgresDataPath)}},
 		ReadinessProbe: corev1.ProbeArgs{Exec: corev1.ExecActionArgs{Command: pulumi.ToStringArray([]string{"pg_isready", "-U", postgresUser})}},
 	}
+}
+
+// siblingPostgresImage troca o nome da imagem do servidor pelo do Postgres, mantendo
+// registro e tag. A imagem por digest não tem par: o digest do Postgres é outro.
+func siblingPostgresImage(serverImage string) (string, error) {
+	if strings.Contains(serverImage, "@") {
+		return "", fmt.Errorf("image=%q por digest, esperado database.image com a imagem do Postgres com pgvector", serverImage)
+	}
+	slash := strings.LastIndex(serverImage, "/")
+	name := serverImage[slash+1:]
+	tag := ""
+	if colon := strings.Index(name, ":"); colon >= 0 {
+		tag = name[colon:]
+	}
+	return serverImage[:slash+1] + postgresRepository + tag, nil
 }
 
 func postgresVolumeClaim(args MarkuppArgs) corev1.PersistentVolumeClaimTypeArgs {

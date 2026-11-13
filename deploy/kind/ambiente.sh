@@ -11,6 +11,8 @@ set -euo pipefail
 REPO="$(cd "$(dirname "$0")/../.." && pwd)"
 STACKS="$REPO/deploy/stacks"
 IMAGE=markupp:dev
+# O Postgres com pgvector que a stack deriva da imagem do servidor, com a mesma tag.
+POSTGRES_IMAGE=markupp-postgres:dev
 URL=https://markupp.local:8443
 AMBIENTE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/markupp-kind"
 PAINEL_PORTA=4466
@@ -35,8 +37,9 @@ recusa_cluster_existente() {
 
 sobe_cluster() {
   docker build -q -t "$IMAGE" "$REPO/markupp" >/dev/null
+  docker build -q -t "$POSTGRES_IMAGE" "$REPO/deploy/postgres" >/dev/null
   "$REPO/deploy/kind/prepara-cluster.sh"
-  kind load docker-image "$IMAGE" --name "$CLUSTER"
+  kind load docker-image "$IMAGE" "$POSTGRES_IMAGE" --name "$CLUSTER"
 }
 
 aplica_stack() {

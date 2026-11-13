@@ -90,6 +90,9 @@ type DatabaseArgs struct {
 	StorageClass string `pulumi:"storageClass,optional"`
 	// Size do volume do PostgreSQL do namespace. Padrão 10Gi.
 	Size string `pulumi:"size,optional"`
+	// Image do PostgreSQL do namespace, que precisa ter o pgvector. Padrão a imagem
+	// markupp-postgres ao lado de image, com a mesma tag.
+	Image string `pulumi:"image,optional"`
 }
 
 // NewMarkupp declara a instalação completa sob o componente name.
@@ -98,7 +101,10 @@ func NewMarkupp(ctx *pulumi.Context, name string, args MarkuppArgs, opts ...pulu
 	if err := validate(args); err != nil {
 		return nil, err
 	}
-	args = withDefaults(args)
+	args, err := withDefaults(args)
+	if err != nil {
+		return nil, err
+	}
 	self := &Markupp{}
 	if err := ctx.RegisterComponentResource(componentType, name, self, opts...); err != nil {
 		return nil, err
@@ -191,7 +197,7 @@ func withoutEmptyBlocks(args MarkuppArgs) MarkuppArgs {
 	return withoutEmptyMCP(withoutEmptyPanel(withoutEmptyGateway(withoutEmptyEmail(args))))
 }
 
-func withDefaults(args MarkuppArgs) MarkuppArgs {
+func withDefaults(args MarkuppArgs) (MarkuppArgs, error) {
 	if args.CertificateIssuer == "" {
 		args.CertificateIssuer = issuerACME
 	}
@@ -205,7 +211,18 @@ func withDefaults(args MarkuppArgs) MarkuppArgs {
 	if args.Database.Size == "" {
 		args.Database.Size = defaultDBSize
 	}
-	return args
+	return withDatabaseImage(args)
+}
+
+// withDatabaseImage completa a imagem do Postgres do namespace; o banco externo não
+// precisa dela.
+func withDatabaseImage(args MarkuppArgs) (MarkuppArgs, error) {
+	if args.Database.Image != "" || args.Database.ExternalURL != nil {
+		return args, nil
+	}
+	image, err := siblingPostgresImage(args.Image)
+	args.Database.Image = image
+	return args, err
 }
 
 // resourceNames centraliza os nomes que um recurso usa para achar outro.

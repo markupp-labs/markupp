@@ -11,7 +11,9 @@ x-servidor: &servidor
 
 services:
   postgres:
-    image: postgres:17.9-alpine3.23
+    # O Postgres oficial em Alpine com o pgvector (deploy/postgres).
+    build:
+      context: ./deploy/postgres
     environment:
       POSTGRES_USER: markupp
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-markupp}
