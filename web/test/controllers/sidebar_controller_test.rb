@@ -219,7 +219,18 @@ class SidebarControllerTest < ActionDispatch::IntegrationTest
     get root_path
 
     assert_select "#sidebar_view_links", text: /Open a note to see its links/
-    assert_select "#sidebar_view_graph", text: /Open a note to see its graph/
+  end
+
+  # Sem nota aberta, a visão Graph desenha o cofre inteiro, com o caminho para a tela cheia; aberta, volta ao grafo local.
+  test "with no note open the Graph view draws the whole vault and leads to the full graph" do
+    get root_path
+
+    assert_select "#sidebar_view_graph [data-controller=graph-view][data-graph-view-url-value=?]", graph_path(format: :json, vault: "vault-1") do
+      assert_select "canvas[data-graph-canvas]"
+    end
+    assert_select "#sidebar_view_graph a[href=?][aria-keyshortcuts='Alt+G'][title=?]", graph_path, "Full graph (Alt+G)"
+    assert_select "#sidebar_view_graph", text: /Whole vault/
+    assert_select "#sidebar_view_graph", text: /Open a note to see its graph/, count: 0
   end
 
   test "the phone drawer carries the same views in a row on its top" do
