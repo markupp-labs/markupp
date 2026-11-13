@@ -97,7 +97,7 @@ func TestUpdate_RemotoComChave_SelaAChaveEGrava(t *testing.T) {
 }
 
 func TestUpdate_SemChaveNoPedido_MantemAChaveAnterior(t *testing.T) {
-	svc, store := servico(instance.EmbeddingRecord{Choice: instance.EmbeddingChoice{Provider: "openai-compat", SealedAPIKey: "selado:velha"}})
+	svc, store := servico(instance.EmbeddingRecord{Choice: instance.EmbeddingChoice{Provider: "openai-compat", SealedAPIKey: "selado:velha"}}) // #nosec G101 -- valor fictício de teste
 
 	_, err := svc.Update(context.Background(), remoto(nil))
 
@@ -106,7 +106,7 @@ func TestUpdate_SemChaveNoPedido_MantemAChaveAnterior(t *testing.T) {
 }
 
 func TestUpdate_ChaveVazia_ApagaAChave(t *testing.T) {
-	svc, store := servico(instance.EmbeddingRecord{Choice: instance.EmbeddingChoice{Provider: "openai-compat", SealedAPIKey: "selado:velha"}})
+	svc, store := servico(instance.EmbeddingRecord{Choice: instance.EmbeddingChoice{Provider: "openai-compat", SealedAPIKey: "selado:velha"}}) // #nosec G101 -- valor fictício de teste
 	vazia := ""
 
 	_, err := svc.Update(context.Background(), remoto(&vazia))
