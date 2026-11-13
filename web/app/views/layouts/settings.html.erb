@@ -1,5 +1,5 @@
 <%# Configurações como no VS Code e no Obsidian: navegação à esquerda, seção à direita; no celular a navegação vira uma linha acima,
-    com os grupos Vault e Tenant numa linha própria cada, para as General não parecerem configuração do app. %>
+    com os grupos Vault, Tenant e Instance numa linha própria cada, para as General não parecerem configuração do app. %>
 <%# Com tenant a barra lateral é a das notas, árvore e New note; sem ele (onboarding) fica só a marca e o rodapé. %>
 <% content_for :area, "settings" %>
 <% if current_tenant %>
@@ -42,6 +42,11 @@
         <%# Publicações para todo membro do tenant: a API só lista o que a conta vê. %>
         <% if current_tenant %>
           <%= settings_nav_link("publications", settings_publications_path) %>
+        <% end %>
+        <%# A instância por último: vale para todos os tenants, e só quem hospeda nomeia quem a administra (ADR-0057). %>
+        <% if credential.instance_admin? %>
+          <%= render "settings/nav_group", label: t("settings.nav.instance"), name: request.host %>
+          <%= settings_nav_link("instance_embedding", settings_instance_embedding_path) %>
         <% end %>
       </nav>
 

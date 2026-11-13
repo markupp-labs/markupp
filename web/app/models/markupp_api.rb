@@ -87,6 +87,10 @@ class MarkuppApi
   class NoteOutsideVault < Error; end
   # Recusa de ligação já desfeita, ou de outro cofre.
   class LinkRefusalNotFound < NotFound; end
+  # A conta não administra a instância (ADR-0057).
+  class InstanceAdminRequired < Forbidden; end
+  # Quem hospeda a instância fixou o provedor de embedding; o painel não muda.
+  class HostLocked < Error; end
 
   # Corpo e ETag de uma leitura que pode voltar 304.
   Revision = Data.define(:body, :etag)
@@ -116,7 +120,8 @@ class MarkuppApi
     "provider_email_missing" => ProviderEmailMissing, "last_identity" => LastIdentity,
     "confirmation_mismatch" => ConfirmationMismatch, "publish_forbidden" => PublishForbidden, "already_published" => AlreadyPublished,
     "publication_not_found" => PublicationNotFound, "rate_limited" => RateLimited,
-    "same_note" => SameNote, "note_outside_vault" => NoteOutsideVault, "link_refusal_not_found" => LinkRefusalNotFound
+    "same_note" => SameNote, "note_outside_vault" => NoteOutsideVault, "link_refusal_not_found" => LinkRefusalNotFound,
+    "instance_admin_required" => InstanceAdminRequired, "host_locked" => HostLocked
   }.freeze
   # Para o status cujo corpo não traz código conhecido.
   ERRORS_BY_STATUS = { "401" => Unauthorized, "403" => Forbidden, "404" => NotFound, "429" => RateLimited }.freeze

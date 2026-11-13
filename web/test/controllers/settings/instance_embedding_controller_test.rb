@@ -63,7 +63,7 @@ module Settings
 
       assert_redirected_to settings_instance_embedding_path
       follow_redirect!
-      assert_select "[role=status]", "Saved. The embedding indexer switches within a minute."
+      assert_select "[role=status]", "Saved. The server switches to it within a minute."
       assert_equal({ provider: "openai-compat", url: "https://api.example/v1", model: "m", api_key: "sk-new" }, fake.instance_embedding_updates.last)
     end
 

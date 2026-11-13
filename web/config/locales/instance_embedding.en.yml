@@ -1,0 +1,46 @@
+en:
+  markupp_api:
+    errors:
+      instance_admin_required: "Only the administrators of this instance can do that."
+  settings:
+    nav:
+      instance: "Instance"
+      instance_embedding: "Embedding"
+    instance_embedding:
+      show:
+        intro: "Semantic links connect notes that cover the same subject. They need an embedding provider, one for the whole instance."
+        locked: "Set by whoever hosts this instance: %{provider}. It can't be changed here."
+        provider: "Provider"
+        providers:
+          none: "None"
+          local: "Local model"
+          openai-compat: "OpenAI-compatible endpoint"
+        provider_hints:
+          none: "No semantic links, and nothing is downloaded."
+          local: "Runs a built-in model on this server, with no outside service. It downloads about 300 MB first."
+          openai-compat: "Sends the text of the notes to an endpoint such as Ollama or the OpenAI API."
+        remote: "OpenAI-compatible endpoint"
+        url: "Endpoint URL"
+        url_hint: "Without /embeddings, such as https://api.openai.com/v1."
+        model: "Model"
+        api_key: "API key"
+        key_set: "A key is set. Leave the field empty to keep it."
+        key_unset: "No key set. Leave the field empty if the endpoint needs none."
+        clear_api_key: "Remove the stored key"
+        reindex_hint: "Changing the provider or the model recomputes the meaning of every note."
+        save: "Save"
+        status: "Model status"
+        no_status: "No model in use."
+        states:
+          downloading: "Downloading the model"
+          ready: "Ready"
+          error: "Error"
+        changed_at: "since %{time}"
+      update:
+        saved: "Saved. The server switches to it within a minute."
+      errors:
+        invalid_request: "Check the provider: the remote endpoint needs an http or https URL and a model."
+        host_locked: "Whoever hosts this instance set the provider, so it can't be changed here."
+  shortcuts:
+    names:
+      instance_embedding: "Instance embedding"

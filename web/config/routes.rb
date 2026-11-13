@@ -62,6 +62,7 @@ Rails.application.routes.draw do
     resources :vault_members, path: "vault/members", only: [ :index, :create, :destroy ]
     resources :publications, only: [ :index, :update, :destroy ]
     resources :link_refusals, path: "vault/link-refusals", only: [ :index, :destroy ]
+    resource :instance_embedding, path: "instance/embedding", only: [ :show, :update ], controller: "instance_embedding"
   end
 
   # Nota pública, lida sem conta (ADR-0048): o fim do endereço é o slug do título e o id público depois do último hífen.
