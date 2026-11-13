@@ -173,3 +173,18 @@ func TestSMTPMailer_RemetenteIlegivel_RetornaErroComOValor(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "sem-arroba")
 }
+
+func TestSMTPMailer_Send_MandaTextoEHTMLComoAlternativas(t *testing.T) {
+	servidor := &servidorSMTPFalso{}
+	mailer, err := notify.NewSMTPMailer(servidor.sobe(t))
+	require.NoError(t, err)
+
+	require.NoError(t, mailer.Send(context.Background(), notify.InviteMessage(detalhesDeTeste(), "tok", "convites@markupp.dev", "")))
+
+	mensagem := servidor.lido(&servidor.mensagem)
+	assert.Regexp(t, `(?m)^Content-Type: multipart/alternative; boundary="[^"]+"\r?$`, mensagem)
+	texto, html := strings.Index(mensagem, "Content-Type: text/plain; charset=utf-8"), strings.Index(mensagem, "Content-Type: text/html; charset=utf-8")
+	assert.Positive(t, texto)
+	assert.Greater(t, html, texto, "o cliente mostra a ultima alternativa que entende, entao o HTML vem depois")
+	assert.Contains(t, mensagem, "Content-Transfer-Encoding: quoted-printable", "o HTML passa do limite de 998 bytes por linha do 8bit")
+}

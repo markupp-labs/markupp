@@ -3,7 +3,6 @@ package notify_test
 import (
 	"context"
 	"errors"
-	"strings"
 	"testing"
 	"time"
 
@@ -205,13 +204,13 @@ func TestVerifyEmailMessage_AvisaQuemNaoSeCadastrou(t *testing.T) {
 	assert.Contains(t, msg.Body, "logado", "o token so vale na conta que pediu")
 }
 
-func TestResetPasswordMessage_LevaOTokenEAvisaQuemNaoPediu(t *testing.T) {
+func TestResetPasswordMessage_LevaOTokenEAValidade(t *testing.T) {
 	msg := notify.ResetPasswordMessage(detalhesDaConta(), "tok-r", "contas@markupp.dev", "")
 
 	assert.Contains(t, msg.Subject, "senha")
 	assert.Contains(t, msg.Body, "tok-r")
 	assert.Contains(t, msg.Body, "2026-10-16 13:30 UTC")
-	assert.Contains(t, msg.Body, "ignore", "quem nao pediu a troca sabe que pode ignorar")
+	assert.NotContains(t, msg.Body, "ignore", "o aviso para quem nao pediu saiu do email de senha")
 }
 
 func TestDeliverNext_CadaTipo_MontaAMensagemDele(t *testing.T) {
@@ -249,7 +248,8 @@ func TestInviteMessage_SemPainel_FicaComoAntes(t *testing.T) {
 
 	esperado := "admin@markupp.dev convidou você para Equipe A no markupp, com o papel member.\n\n" +
 		"Token do convite:\ntok-123\n\n" +
-		"Use o token no cliente do markupp para aceitar. O convite vale até 2026-10-22 12:00 UTC.\n"
+		"Use o token no cliente do markupp para aceitar. O convite vale até 2026-10-22 12:00 UTC.\n\n" +
+		"-- \nmarkupp\nVocê recebeu este email porque este endereço foi convidado para um tenant.\n"
 	assert.Equal(t, esperado, msg.Body)
 }
 
@@ -263,7 +263,7 @@ func TestMensagens_SemPainel_NaoLevamLink(t *testing.T) {
 	}
 }
 
-func TestMensagens_ComPainel_LevamOLinkAntesDoToken(t *testing.T) {
+func TestMensagens_ComPainel_LevamOTokenSoDentroDoLink(t *testing.T) {
 	caminhos := map[string]montaMensagem{
 		"/invite_acceptance/new":  notify.InviteMessage,
 		"/email_confirmation/new": notify.VerifyEmailMessage,
@@ -275,7 +275,7 @@ func TestMensagens_ComPainel_LevamOLinkAntesDoToken(t *testing.T) {
 
 			link := "https://painel.markupp.dev" + caminho + "?token=a%2Bb%2Fc%3D"
 			require.Contains(t, msg.Body, link, base)
-			assert.Less(t, strings.Index(msg.Body, link), strings.Index(msg.Body, ":\na+b/c=\n"), "o token em texto vem logo abaixo do link")
+			assert.NotContains(t, msg.Body, "\na+b/c=\n", "com painel, o token so vai dentro do link")
 		}
 	}
 }
@@ -291,7 +291,7 @@ func TestDeliverNext_ComPainel_EnviaOLinkDoConvite(t *testing.T) {
 	assert.Contains(t, mailer.sent[0].Body, "http://localhost:3999/invite_acceptance/new?token=tok-novo")
 }
 
-func TestMensagens_ComPainel_DizemOQueOLinkFazEOferecemOTokenComoAlternativa(t *testing.T) {
+func TestMensagens_ComPainel_DizemOQueOLinkFazSemOferecerOToken(t *testing.T) {
 	casos := map[string]struct {
 		monta   montaMensagem
 		frase   string
@@ -305,20 +305,20 @@ func TestMensagens_ComPainel_DizemOQueOLinkFazEOferecemOTokenComoAlternativa(t *
 	for nome, c := range casos {
 		msg := c.monta(detalhesDeTeste(), "tok", "contas@markupp.dev", "https://painel.markupp.dev")
 
-		bloco := c.frase + "\nhttps://painel.markupp.dev" + c.caminho + "?token=tok\n\n" +
-			"Se o link não abrir, cole este token no markupp:\ntok\n\n"
+		bloco := c.frase + "\nhttps://painel.markupp.dev" + c.caminho + "?token=tok\n\n"
 		assert.Contains(t, msg.Body, bloco, nome)
+		assert.NotContains(t, msg.Body, "cole este token", nome)
 		assert.NotContains(t, msg.Body, c.rotulo, nome)
 		assert.NotContains(t, msg.Body, "Abra no painel", nome)
 	}
 }
 
-func TestInviteMessage_ComPainel_TrazOLinkPrimeiroEOTokenComoAlternativa(t *testing.T) {
+func TestInviteMessage_ComPainel_TrazSoOLink(t *testing.T) {
 	msg := notify.InviteMessage(detalhesDeTeste(), "tok-123", "convites@markupp.dev", "https://painel.markupp.dev")
 
 	esperado := "admin@markupp.dev convidou você para Equipe A no markupp, com o papel member.\n\n" +
 		"Abra o link para aceitar o convite:\nhttps://painel.markupp.dev/invite_acceptance/new?token=tok-123\n\n" +
-		"Se o link não abrir, cole este token no markupp:\ntok-123\n\n" +
-		"Use o token no cliente do markupp para aceitar. O convite vale até 2026-10-22 12:00 UTC.\n"
+		"O convite vale até 2026-10-22 12:00 UTC.\n\n" +
+		"-- \nmarkupp · painel.markupp.dev\nVocê recebeu este email porque este endereço foi convidado para um tenant.\n"
 	assert.Equal(t, esperado, msg.Body)
 }
