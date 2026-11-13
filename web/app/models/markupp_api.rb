@@ -41,6 +41,8 @@ class MarkuppApi
   class RoleAboveOwn < Forbidden; end
   # Pedido de autorização OAuth inexistente, vencido ou já decidido: a API não distingue.
   class OAuthRequestNotFound < NotFound; end
+  # Autorização inexistente, já revogada ou de outra conta: a API não distingue.
+  class AuthorizationNotFound < NotFound; end
   # Cofre inexistente ou de que a conta não é membro.
   class VaultUnavailable < Forbidden; end
   # Nome de cofre vazio, com espaço nas pontas ou longo demais.
@@ -80,7 +82,7 @@ class MarkuppApi
     "member_not_found" => MemberNotFound, "tenant_not_found" => TenantNotFound, "last_owner" => LastOwner, "role_above_own" => RoleAboveOwn,
     "invalid_invite" => InvalidToken, "invalid_token" => InvalidToken, "already_exists" => AccountExists,
     "email_unavailable" => EmailUnavailable, "email_already_verified" => EmailAlreadyVerified,
-    "vault_forbidden" => VaultUnavailable, "request_not_found" => OAuthRequestNotFound,
+    "vault_forbidden" => VaultUnavailable, "request_not_found" => OAuthRequestNotFound, "authorization_not_found" => AuthorizationNotFound,
     "invalid_name" => InvalidName, "not_tenant_member" => NotTenantMember, "already_vault_member" => AlreadyVaultMember,
     "vault_member_not_found" => VaultMemberNotFound, "no_vault" => NoVault, "registration_disabled" => RegistrationDisabled,
     "email_not_verified" => EmailNotVerified, "invite_limit_reached" => InviteLimitReached,

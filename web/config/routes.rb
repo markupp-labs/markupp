@@ -44,6 +44,7 @@ Rails.application.routes.draw do
   get "settings" => redirect("/settings/account"), as: :settings
   namespace :settings do
     resource :account, only: :show
+    resources :authorizations, only: [ :index, :destroy ]
     resource :appearance, only: :show
     resource :editor, only: :show
     resource :agents, only: :show

@@ -4,6 +4,7 @@ en:
       title: "Settings"
       close: "Close settings"
       accounts: "Account"
+      authorizations: "Authorizations"
       appearances: "Appearance"
       editors: "Editor"
       agents: "Agents"
@@ -24,6 +25,21 @@ en:
         password_hint: "The server emails a token to %{email}; use it to choose the new password."
         change_password: "Change password"
         have_reset_token: "I have a reset token"
+    authorizations:
+      index:
+        hint: "Clients you allowed to act on your account. Revoking one logs it out; the others keep working."
+        empty: "No authorizations yet. Clients such as markupp-mcp and markupp-cli show up here once you log in with them."
+        client: "Client"
+        authorized: "Authorized"
+        scopes: "Scopes"
+      oauth_grant:
+        authorized: "Authorized"
+        scopes: "Scopes"
+        revoke: "Revoke"
+        confirm_revoke: "Revoke the authorization for %{client}?"
+      destroy:
+        revoked: "Authorization revoked."
+        not_found: "That authorization is no longer active."
     appearances:
       show:
         title: "Appearance"
