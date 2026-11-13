@@ -81,7 +81,13 @@ export type LinkedNote = { id: string; title: string; path: string };
 // parecido e semantic a por sentido, entre notas que tratam do mesmo assunto; as três
 // são automáticas (ADR-0053).
 export type LinkType =
-  "explicit" | "embed" | "typed" | "inferred" | "mentioned" | "related" | "semantic";
+  | "explicit"
+  | "embed"
+  | "typed"
+  | "inferred"
+  | "mentioned"
+  | "related"
+  | "semantic";
 
 // Link é uma ligação como GET /v1/notes/{id}/links e /backlinks devolvem; target vem
 // null na ligação não resolvida, e predicate só vem na ligação tipada.

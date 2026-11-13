@@ -22,7 +22,15 @@ const listLinksParameters = noteLocator.extend({
       "outgoing for the links this note makes, incoming for the links other notes make to it.",
     ),
   type: z
-    .enum(["explicit", "embed", "typed", "inferred", "mentioned", "related", "semantic"])
+    .enum([
+      "explicit",
+      "embed",
+      "typed",
+      "inferred",
+      "mentioned",
+      "related",
+      "semantic",
+    ])
     .optional()
     .describe("Only links of this type; omit for every type."),
   limit: limitParameter,

@@ -81,7 +81,10 @@ export class FakeLinks {
   }
 
   private hidden(link: Link): boolean {
-    const automatic = link.type === "mentioned" || link.type === "related" || link.type === "semantic";
+    const automatic =
+      link.type === "mentioned" ||
+      link.type === "related" ||
+      link.type === "semantic";
     if (!automatic || !link.target) return false;
     const ids = [link.source.id, link.target.id];
     return this.refusals.some((r) => samePair(r, ids));
