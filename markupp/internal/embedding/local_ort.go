@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"path"
+	"path/filepath"
 
 	"github.com/knights-analytics/hugot"
 	"github.com/knights-analytics/hugot/pipelines"
@@ -15,9 +16,10 @@ import (
 
 // localProvider roda o granite-embedding no ONNX Runtime pelo hugot, com o pooling CLS.
 type localProvider struct {
-	session  *hugot.Session
-	pipeline *pipelines.FeatureExtractionPipeline
-	name     string
+	session   *hugot.Session
+	pipeline  *pipelines.FeatureExtractionPipeline
+	tokenizer *Tokenizer
+	name      string
 }
 
 // OpenLocalProvider baixa para dir, por fetcher, os arquivos do modelo local que
@@ -34,6 +36,10 @@ func OpenLocalProvider(ctx context.Context, fetcher ModelFetcher, dir string) (P
 // newLocalProvider sobe o modelo baixado em dir com os pesos de weights. A
 // libonnxruntime.so fica em /usr/lib.
 func newLocalProvider(ctx context.Context, dir string, weights ModelFile) (Provider, func() error, error) {
+	tokenizer, err := LoadTokenizer(filepath.Join(dir, graniteTokenizer.Path))
+	if err != nil {
+		return nil, nil, err
+	}
 	session, err := hugot.NewORTSession(ctx)
 	if err != nil {
 		return nil, nil, fmt.Errorf("start ONNX Runtime, expected /usr/lib/libonnxruntime.so: %w", err)
@@ -44,23 +50,13 @@ func newLocalProvider(ctx context.Context, dir string, weights ModelFile) (Provi
 		return nil, nil, errors.Join(fmt.Errorf("load embedding model %s from %s: %w", weights.Path, dir, err), session.Destroy())
 	}
 	name := "local:" + GraniteModel + "@" + GraniteRevision + "/" + weights.Path
-	return &localProvider{session: session, pipeline: pipeline, name: name}, session.Destroy, nil
+	return &localProvider{session: session, pipeline: pipeline, tokenizer: tokenizer, name: name}, session.Destroy, nil
 }
 
 func (p *localProvider) Name() string { return p.name }
 
-// TokenSpans tokeniza com o tokenizador do modelo e deixa de fora os tokens especiais.
-func (p *localProvider) TokenSpans(text string) [][2]int {
-	out := p.pipeline.Model.Tokenizer.GoTokenizer.Tokenizer.EncodeWithAnnotations(text)
-	spans := make([][2]int, 0, len(out.Spans))
-	for i, span := range out.Spans {
-		if i < len(out.SpecialTokensMask) && out.SpecialTokensMask[i] != 0 {
-			continue
-		}
-		spans = append(spans, [2]int{span.Start, span.End})
-	}
-	return spans
-}
+// TokenSpans tokeniza com o tokenizador do modelo, sem os tokens especiais.
+func (p *localProvider) TokenSpans(text string) [][2]int { return p.tokenizer.Spans(text) }
 
 // Embed roda o modelo sem pooling e fica com o CLS de cada texto, normalizado.
 func (p *localProvider) Embed(ctx context.Context, texts []string) ([][]float32, error) {

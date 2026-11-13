@@ -13,6 +13,8 @@ import (
 
 // tokenizadorWordPiece é um tokenizer.json mínimo, no formato do Hugging Face, com o
 // pós-processamento que põe [CLS] e [SEP] como o do modelo local.
+//
+//nolint:gosec // vocabulário de teste, não é credencial
 const tokenizadorWordPiece = `{
   "version": "1.0",
   "added_tokens": [

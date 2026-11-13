@@ -5,6 +5,7 @@ go 1.27.4
 require (
 	github.com/coreos/go-oidc/v3 v3.21.0
 	github.com/go-chi/chi/v5 v5.2.5
+	github.com/gomlx/go-huggingface v0.4.32
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.11.0
 	github.com/knights-analytics/hugot v0.8.6
@@ -48,7 +49,6 @@ require (
 	github.com/gomlx/compute v0.1.28 // indirect
 	github.com/gomlx/compute-onnx v0.1.28 // indirect
 	github.com/gomlx/exceptions v0.0.3 // indirect
-	github.com/gomlx/go-huggingface v0.4.32 // indirect
 	github.com/gomlx/go-xla v0.4.28 // indirect
 	github.com/gomlx/gomlx v0.28.34 // indirect
 	github.com/gomlx/onnx-gomlx v0.5.31 // indirect
