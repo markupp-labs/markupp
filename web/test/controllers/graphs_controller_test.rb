@@ -82,9 +82,9 @@ class GraphsControllerTest < ActionDispatch::IntegrationTest
     get graph_path(note: "roadmap")
 
     assert_select "main .graph-stage ul.graph-legend[aria-label=?]", "Links by method" do
-      assert_select "li[hidden]", 4
+      assert_select "li[hidden]", 5
       [ [ "manual", "manual", nil ], [ "inferred", "inferred", "8 4" ], [ "mentioned", "mention", "1.5 4" ],
-        [ "related", "similar text", "6 3 1.5 3" ] ].each do |origin, label, dash|
+        [ "related", "similar text", "6 3 1.5 3" ], [ "semantic", "meaning", "12 4" ] ].each do |origin, label, dash|
         assert_select "li[data-graph-legend=?]", origin, text: label do
           assert_select dash ? "svg line.graph-link-#{origin}[stroke-dasharray='#{dash}']" : "svg line.graph-link-#{origin}:not([stroke-dasharray])"
         end

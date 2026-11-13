@@ -167,6 +167,18 @@ class NoteLinksControllerTest < ActionDispatch::IntegrationTest
     assert_select "#links_outgoing li:has(a[href='#{note_path('ideas')}']) button[data-links-refuse]"
   end
 
+  test "a link by meaning says meaning and, to the title and the screen reader, that the notes cover the same subject" do
+    use_fake_api(notes: NOTES, graph: { links: { "plan" => [ { source: PLAN, target: IDEAS, cited_title: "", type: "semantic", predicate: nil, inferred_target: nil } ] } })
+    sign_in_as
+
+    get note_links_path("plan")
+
+    assert_select "#links_outgoing a[href=?][title=?]", note_path("ideas"), "ideas.md, linked because the notes cover the same subject" do
+      assert_select ".links-row-kind", text: "meaning"
+    end
+    assert_select "#links_outgoing li form[action=?]", link_refusals_path
+  end
+
   test "an automatic row refuses the link by its button and by r, with the panel confirm, and a written row does not" do
     use_fake_api(notes: NOTES, graph: BY_MENTION)
     sign_in_as
