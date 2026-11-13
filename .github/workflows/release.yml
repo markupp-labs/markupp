@@ -21,8 +21,6 @@ jobs:
             context: ./web
           - image: markupp-mcp
             context: ./mcp
-          - image: markupp-postgres
-            context: ./deploy/postgres
           - image: markupp-embedder
             context: ./markupp
             dockerfile: Dockerfile.embedder
