@@ -17,7 +17,6 @@ class PanelCredential
     @session[:account_id] = account.fetch("id")
     @session[:account_email] = account.fetch("email")
     @session[:password_login] = account["password_login"]
-    @session[:instance_admin] = account["instance_admin"] == true
   end
 
   def sign_out = @session.destroy
@@ -46,9 +45,6 @@ class PanelCredential
 
   # Só false esconde a troca de senha: servidor que ainda não manda o campo mantém o botão.
   def password_login? = @session[:password_login] != false
-
-  # Administra a instância (ADR-0057), como /auth/me disse no login; a API confere de novo a cada chamada.
-  def instance_admin? = @session[:instance_admin] == true
 
   def access_expired? = Time.current.to_i >= @session[:access_expires_at].to_i
 

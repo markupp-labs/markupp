@@ -113,7 +113,7 @@ module Settings
       assert_select "body[data-instance-admin]"
       assert_select "#command_palette_options [role=option][data-command-href=?]", settings_instance_embedding_path, text: /Instance embedding/
     end
-  
+
     test "the instance group follows the admin list at each settings page, with one account read per page" do
       fake = use_fake_api
       sign_in_as

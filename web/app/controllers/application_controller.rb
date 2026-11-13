@@ -11,7 +11,7 @@ class ApplicationController < ActionController::Base
   class_attribute :markupp_api_factory
 
   before_action :require_login
-  helper_method :credential, :current_tenant, :current_tenants, :current_vault, :current_vaults, :explorer_groups
+  helper_method :instance_admin?, :credential, :current_tenant, :current_tenants, :current_vault, :current_vaults, :explorer_groups
 
   # O Rails procura do último para o primeiro: os específicos vêm depois do genérico.
   rescue_from MarkuppApi::Error, with: :render_unreachable
@@ -83,6 +83,19 @@ class ApplicationController < ActionController::Base
     end
 
     def current_tenant = @current_tenant
+
+    # Administra a instância (ADR-0057): /auth/me uma vez por página, para a lista de quem hospeda valer na hora. Com a
+    # API fora, fica sem o grupo Instance em vez de derrubar a página.
+    def instance_admin?
+      return @instance_admin if defined?(@instance_admin)
+
+      @instance_admin = credential.api.get("/auth/me")["instance_admin"] == true
+    rescue MarkuppApi::Error => error
+      raise unless error.instance_of?(MarkuppApi::Error)
+
+      log_api_event("markupp_account_unreachable", error, level: :error)
+      @instance_admin = false
+    end
 
     def current_tenants = @current_tenants ||= Tenant.mine(credential.api)
 

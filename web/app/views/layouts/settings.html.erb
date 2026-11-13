@@ -44,7 +44,7 @@
           <%= settings_nav_link("publications", settings_publications_path) %>
         <% end %>
         <%# A instância por último: vale para todos os tenants, e só quem hospeda nomeia quem a administra (ADR-0057). %>
-        <% if credential.instance_admin? %>
+        <% if instance_admin? %>
           <%= render "settings/nav_group", label: t("settings.nav.instance"), name: request.host %>
           <%= settings_nav_link("instance_embedding", settings_instance_embedding_path) %>
         <% end %>
