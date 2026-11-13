@@ -8,6 +8,9 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"path/filepath"
+	"runtime"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -15,10 +18,13 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/require"
+	"github.com/testcontainers/testcontainers-go"
 	tcpostgres "github.com/testcontainers/testcontainers-go/modules/postgres"
 )
 
-const postgresImage = "postgres:17.9-alpine3.23"
+// postgresImage é a imagem do Postgres com pgvector do deploy (deploy/postgres),
+// construída uma vez e mantida para o cache do Docker servir as próximas rodadas.
+const postgresImage = "markupp-postgres:test"
 
 var (
 	containerOnce sync.Once
@@ -63,7 +69,8 @@ func sharedAdminURL(t *testing.T) string {
 
 func startContainer() (string, error) {
 	ctx := context.Background()
-	ctr, err := tcpostgres.Run(ctx, postgresImage,
+	ctr, err := tcpostgres.Run(ctx, "",
+		testcontainers.CustomizeRequestOption(buildPostgresImage),
 		tcpostgres.WithDatabase("markupp"),
 		tcpostgres.WithUsername("markupp"),
 		tcpostgres.WithPassword("markupp"),
@@ -73,6 +80,16 @@ func startContainer() (string, error) {
 		return "", fmt.Errorf("start container %s: %w", postgresImage, err)
 	}
 	return ctr.ConnectionString(ctx, "sslmode=disable")
+}
+
+func buildPostgresImage(req *testcontainers.GenericContainerRequest) error {
+	_, file, _, _ := runtime.Caller(0)
+	repo, tag, _ := strings.Cut(postgresImage, ":")
+	req.FromDockerfile = testcontainers.FromDockerfile{
+		Context: filepath.Join(filepath.Dir(file), "..", "..", "..", "..", "deploy", "postgres"),
+		Repo:    repo, Tag: tag, KeepImage: true,
+	}
+	return nil
 }
 
 func withDatabase(t *testing.T, rawURL, name string) string {
