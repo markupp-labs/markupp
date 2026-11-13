@@ -265,3 +265,12 @@ func TestV1GetLinks_FiltraPelaLigacaoPorMencao(t *testing.T) {
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
 	assert.Equal(t, notes.LinkFilter{Type: notes.LinkMentioned, Page: notes.Page{Limit: 10}}, graph.query)
 }
+
+func TestV1GetLinks_FiltraPelaLigacaoPorTextoParecido(t *testing.T) {
+	graph := &fakeNoteGraph{}
+
+	rec := getGrafo(t, graph, "member", "/v1/notes/n1/links?type=related")
+
+	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+	assert.Equal(t, notes.LinkFilter{Type: notes.LinkRelated, Page: notes.Page{Limit: 10}}, graph.query)
+}
