@@ -42,7 +42,7 @@ func TestEnsureModelFiles_BaixaEGuardaQuandoOHashConfere(t *testing.T) {
 		[]embedding.ModelFile{{Path: "onnx/model.onnx", SHA256: hashDe("pesos")}})
 
 	require.NoError(t, err)
-	gravado, err := os.ReadFile(filepath.Join(dir, "onnx", "model.onnx"))
+	gravado, err := os.ReadFile(filepath.Join(dir, "onnx", "model.onnx")) //nolint:gosec // caminho dentro do TempDir do teste
 	require.NoError(t, err)
 	assert.Equal(t, "pesos", string(gravado))
 }
@@ -63,8 +63,8 @@ func TestEnsureModelFiles_HashDiferente_RecusaENaoDeixaArquivo(t *testing.T) {
 
 func TestEnsureModelFiles_ArquivoJaGuardadoComOHash_NaoBaixaDeNovo(t *testing.T) {
 	dir := t.TempDir()
-	require.NoError(t, os.MkdirAll(filepath.Join(dir, "onnx"), 0o755))
-	require.NoError(t, os.WriteFile(filepath.Join(dir, "onnx", "model.onnx"), []byte("pesos"), 0o644))
+	require.NoError(t, os.MkdirAll(filepath.Join(dir, "onnx"), 0o750))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "onnx", "model.onnx"), []byte("pesos"), 0o600))
 	fetcher := &fakeModelFetcher{}
 
 	err := embedding.EnsureModelFiles(context.Background(), fetcher, dir, "https://hub.exemplo/repo/resolve/rev",
