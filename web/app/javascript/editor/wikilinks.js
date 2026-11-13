@@ -29,6 +29,8 @@ export function embedRule(state, silent) {
 
 function pushEmbed(state, link) {
   const url = link.name && state.env.wikilinks.resolve(link.name)
+  // Sem motivo a dizer (a leitura pública), o embed de nota que não abre some: nada revela que ela existe.
+  if (!url && !state.env.wikilinks.missingTitle(link.name)) return
   if (!url || state.env.embedded) return pushWikilink(state, link)
 
   state.push("note_embed_open", "span", 1).attrs = [ [ "class", "note-embed" ], [ "data-embed-url", url ] ]
@@ -47,13 +49,14 @@ function parseWikilink(match) {
 
 // Nota achada vira <a> interno (com #slug do título, se houver); só o título rola na própria nota. Nome sem nota
 // vira <span> marcado, com o motivo no title (mouse) e num texto sr-only (leitor de tela, que não lê o title de um
-// span com confiança).
+// span com confiança). Sem motivo (a leitura pública, onde a nota pode só ser privada) fica o texto puro.
 function pushWikilink(state, { name, anchor, text }) {
   const url = name ? state.env.wikilinks.resolve(name) : ""
   const hash = anchor && `#${encodeURIComponent(anchor)}`
   if (url != null) return pushWrapped(state, "link", "a", [ [ "href", `${url}${hash}` ], [ "class", "wikilink" ] ], text)
 
   const reason = state.env.wikilinks.missingTitle(name)
+  if (!reason) return (state.push("text", "", 0).content = text)
   state.push("wikilink_missing_open", "span", 1).attrs = [ [ "class", "wikilink-missing" ], [ "title", reason ] ]
   state.push("text", "", 0).content = text
   pushWrapped(state, "wikilink_reason", "span", [ [ "class", "sr-only" ] ], ` (${reason})`)

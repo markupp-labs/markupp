@@ -59,16 +59,21 @@ LEFT JOIN note_centrality c ON c.note_id = n.id
 LEFT JOIN note_communities m ON m.note_id = n.id
 WHERE n.id = sqlc.arg(note_id);
 
+-- O id público da nota, para o painel marcar a nota pública (ADR-0048).
+-- name: GetNotePublicID :one
+SELECT public_id FROM public_notes WHERE note_id = sqlc.arg(note_id);
+
 -- A coleção não lê o conteúdo, que só GetNoteByID devolve.
 -- A nota sem organização derivada ainda não passou pelo segundo estágio: entra em
 -- orphan=false, como no grafo, fica fora do filtro de comunidade e vai para o fim das
 -- ordens por PageRank e por grau. orphan=true vai por ListVaultOrphanNotes.
 -- name: ListVaultNotes :many
 SELECT n.id, n.vault_id, n.path, n.content_sha256, n.updated_at,
-       c.pagerank, c.in_degree, c.out_degree, m.community_id
+       c.pagerank, c.in_degree, c.out_degree, m.community_id, pn.public_id
 FROM notes n
 LEFT JOIN note_centrality c ON c.note_id = n.id
 LEFT JOIN note_communities m ON m.note_id = n.id
+LEFT JOIN public_notes pn ON pn.note_id = n.id
 WHERE n.vault_id = sqlc.arg(vault_id)
   AND (sqlc.narg(orphan)::bool IS NULL OR COALESCE(c.in_degree + c.out_degree = 0, false) = sqlc.narg(orphan)::bool)
   AND (sqlc.narg(community_id)::bigint IS NULL OR m.community_id = sqlc.narg(community_id)::bigint)
@@ -87,10 +92,11 @@ LIMIT sqlc.arg(page_limit) OFFSET sqlc.arg(page_offset);
 -- as colunas da linha iguais às de ListVaultNotes; o filtro em c o torna interno.
 -- name: ListVaultOrphanNotes :many
 SELECT n.id, n.vault_id, n.path, n.content_sha256, n.updated_at,
-       c.pagerank, c.in_degree, c.out_degree, m.community_id
+       c.pagerank, c.in_degree, c.out_degree, m.community_id, pn.public_id
 FROM notes n
 LEFT JOIN note_centrality c ON c.note_id = n.id
 LEFT JOIN note_communities m ON m.note_id = n.id
+LEFT JOIN public_notes pn ON pn.note_id = n.id
 WHERE c.vault_id = sqlc.arg(vault_id) AND c.in_degree = 0 AND c.out_degree = 0
   AND (sqlc.narg(community_id)::bigint IS NULL OR m.community_id = sqlc.narg(community_id)::bigint)
 ORDER BY

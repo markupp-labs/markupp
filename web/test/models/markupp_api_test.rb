@@ -160,6 +160,37 @@ class MarkuppApiTest < ActiveSupport::TestCase
     server.close
   end
 
+  test "sends the IP of the visitor of the public reading in X-Forwarded-For" do
+    server = FakeHttpServer.new(status: "200 OK", body: "{}")
+    thread = server.serve_once
+
+    MarkuppApi.new(server.url, forwarded_for: "203.0.113.9").get("/v1/public/notes/AbCdEf123456")
+    thread.join
+    assert_equal "203.0.113.9", server.requested_headers["x-forwarded-for"]
+    assert_not server.requested_headers.key?("authorization")
+  ensure
+    server.close
+  end
+
+  test "maps the error codes of the publications to their classes" do
+    {
+      [ "422 Unprocessable Entity", "confirmation_mismatch" ] => MarkuppApi::ConfirmationMismatch,
+      [ "403 Forbidden", "publish_forbidden" ] => MarkuppApi::PublishForbidden,
+      [ "409 Conflict", "already_published" ] => MarkuppApi::AlreadyPublished,
+      [ "404 Not Found", "publication_not_found" ] => MarkuppApi::PublicationNotFound,
+      [ "429 Too Many Requests", "rate_limited" ] => MarkuppApi::RateLimited
+    }.each do |(status, code), error_class|
+      error = assert_post_raises(error_class, %({"error":"#{code}","message":"recusado"}), status:)
+      assert_equal error_class, error.class
+    end
+    assert_operator MarkuppApi::PublishForbidden, :<, MarkuppApi::Forbidden
+    assert_operator MarkuppApi::PublicationNotFound, :<, MarkuppApi::NotFound
+  end
+
+  test "an unknown 429 is RateLimited" do
+    assert_answer_raises(MarkuppApi::RateLimited, "", "429 Too Many Requests") { it.get("/v1/public/notes/AbCdEf123456") }
+  end
+
   test "patch sends the body as JSON" do
     server = FakeHttpServer.new(status: "204 No Content", body: "")
     thread = server.serve_once

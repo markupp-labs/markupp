@@ -5,7 +5,7 @@ require "test_helper"
 # tenants.
 class ShortcutsTest < ActionDispatch::IntegrationTest
   PALETTE = [
-    [ "New note", "Alt N" ], [ "Edit mode", "Ctrl E" ], [ "Read mode", "Ctrl E" ], [ "Side by side", "Ctrl \\" ],
+    [ "New note", "Alt N" ], [ "Edit mode", "Ctrl E" ], [ "Read mode", "Ctrl E" ], [ "Side by side", "Ctrl \\" ], [ "Publish the note", "Alt P" ],
     [ "Keyboard shortcuts", "?" ], [ "Search notes", "Ctrl K" ], [ "Settings", "Ctrl ," ], [ "Toggle sidebar", "Ctrl B" ],
     [ "Focus the note tree", "Ctrl Shift E" ], [ "Links view", "Ctrl Shift L" ], [ "Graph view", "Ctrl Shift G" ], [ "Full graph", "Alt G" ],
     [ "Explorer view", "Alt O" ],
@@ -16,7 +16,7 @@ class ShortcutsTest < ActionDispatch::IntegrationTest
     [ "All tenants", "g t" ], [ "Switch tenant", "" ], [ "Tenant: General", "" ], [ "Delete tenant", "" ],
     [ "Switch vault", "g v" ], [ "New vault", "" ], [ "Vault settings", "" ], [ "Vault members", "" ], [ "Delete vault", "" ],
     [ "Notifications", "g n" ], [ "Log out", "" ],
-    [ "Rename the vault", "v r" ], [ "Add a member to the vault", "v a" ], [ "Leave the vault", "v q" ],
+    [ "Rename the vault", "v r" ], [ "Add a member to the vault", "v a" ], [ "Leave the vault", "v q" ], [ "Publish the vault", "v o" ], [ "Publications", "v p" ],
     [ "Show or hide the graph filters", "f" ], [ "Show or hide orphan notes", "o" ], [ "Show or hide unresolved links", "u" ],
     [ "Show or hide inferred links", "i" ], [ "Next and previous community in the graph", "c" ], [ "Clear the graph filters", "x" ]
   ].freeze
@@ -45,6 +45,7 @@ class ShortcutsTest < ActionDispatch::IntegrationTest
       "Next row" => [ "j", "↓" ], "All tenants" => [ "g t" ], "Switch vault" => [ "g v" ],
       "Notifications" => [ "g n" ],
       "Rename the vault" => [ "v r" ], "Add a member to the vault" => [ "v a" ], "Leave the vault" => [ "v q" ],
+      "Publish the vault" => [ "v o" ], "Publications" => [ "v p" ], "Publish the note" => [ "Alt+P" ], "Publish the row in focus" => [ "Alt+Shift+P" ],
       "Remove or revoke the item in focus, in a list" => [ "Delete" ], "Filter tenants" => [ "/" ],
       "Move between tenants" => [ "hjkl", "←↓↑→" ], "Indent and outdent in the content" => [ "Tab", "Shift+Tab" ],
       "From the content back to the path (Esc first)" => [ "Esc Shift+Tab" ] }.each do |name, keys|

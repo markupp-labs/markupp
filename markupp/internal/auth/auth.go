@@ -28,6 +28,10 @@ var (
 	ErrTenantRequired       = errors.New("user belongs to several tenants and must choose one")
 	ErrNoTenant             = errors.New("user does not belong to any tenant")
 	ErrInvalidTenantName    = errors.New("invalid tenant name")
+	// ErrIdentityAlreadyLinked diz que a identidade externa já pertence a uma conta.
+	ErrIdentityAlreadyLinked = errors.New("identity already linked to an account")
+	// ErrLastIdentity recusa tirar da conta a última forma de entrar.
+	ErrLastIdentity = errors.New("identity is the last way to sign in to the account")
 )
 
 // User representa uma conta da instância com chave estável (UUID). O acesso a cada
@@ -107,6 +111,9 @@ type CreateAccountParams struct {
 	InitialVaultName        string
 	AllowMemberRegistration bool
 	AuditEventID            string
+	// EmailVerified diz que o caminho de cadastro provou o email, como o provedor externo
+	// que o afirma verificado. A primeira conta da instalação nasce verificada de todo jeito.
+	EmailVerified bool
 	// SendVerification enfileira o email de verificação quando a conta nasce sem email
 	// provado, o que só acontece no auto-registro.
 	SendVerification bool
@@ -185,6 +192,9 @@ type Repository interface {
 	AcceptInviteTx(ctx context.Context, params AcceptInviteParams) (User, error)
 	GetUserByID(ctx context.Context, id string) (User, error)
 	GetUserIdentity(ctx context.Context, provider, providerUserID string) (UserIdentity, error)
+	ListUserIdentities(ctx context.Context, userID string) ([]UserIdentity, error)
+	LinkIdentityTx(ctx context.Context, identity UserIdentity, event AuditEventRecord) error
+	UnlinkIdentityTx(ctx context.Context, userID, identityID string, event AuditEventRecord) error
 	ConsumeRefreshToken(ctx context.Context, tokenHash string) (string, error)
 	IssueSessionTx(ctx context.Context, record RefreshTokenRecord, event AuditEventRecord) error
 	GetRefreshToken(ctx context.Context, tokenHash string) (RefreshTokenRecord, error)

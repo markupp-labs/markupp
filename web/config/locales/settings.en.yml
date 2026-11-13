@@ -25,6 +25,15 @@ en:
         password_hint: "The server emails a token to %{email}; use it to choose the new password."
         change_password: "Change password"
         have_reset_token: "I have a reset token"
+      identities:
+        title: "Connected accounts"
+        hint: "Log in with these accounts instead of a password. Disconnecting keeps at least one way to log in."
+        connect: "Connect %{provider}"
+        disconnect: "Disconnect %{provider}"
+    identities:
+      destroy:
+        disconnected: "%{provider} disconnected."
+        last_identity: "This is the only way left to log in to your account. Connect another one first."
     authorizations:
       index:
         hint: "Clients you allowed to act on your account. Revoking one logs it out; the others keep working."

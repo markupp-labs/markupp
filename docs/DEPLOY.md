@@ -123,6 +123,19 @@ lista nunca tem o header lido. Liste só as redes dos proxies: um CIDR que cubra
 qualquer um deles escolher o IP que conta. No componente, `trustedProxies` recebe a lista de
 CIDRs e `rateLimitPerMinute` o limite, e os dois vão só para a API.
 
+A leitura sem conta das notas publicadas (ADR-0048), nas rotas `/v1/public/notes/{public_id}`,
+tem limite próprio: 300 pedidos por minuto por IP, somadas todas essas rotas, trocado pela
+variável `MARKUPP_PUBLIC_RATE_LIMIT_PER_MINUTE`, de 1 a 10000. O IP segue as mesmas regras de
+`MARKUPP_TRUSTED_PROXIES`. Um site que renderiza as páginas no servidor lendo essas rotas faz
+todos os pedidos com o IP dele, então o limite precisa caber no tráfego do site, já descontado o
+que o cache por ETag dele economiza. A migração 00040 cria o papel `markupp_reader`, sem login,
+para essa leitura, com o mesmo CREATEROLE que a migração já exige para os outros papéis.
+
+O painel serve as notas públicas em /p/ (ADR-0048) e lê a API pelo Service, passando o IP de
+quem visita no X-Forwarded-For. Para o limite por IP da leitura pública contar cada visitante, e
+não o painel, `MARKUPP_TRUSTED_PROXIES` precisa listar também a rede de onde o painel chega à API;
+sem ela, todos os visitantes do painel dividem um limite só.
+
 Sem outra opção, o componente cria um Gateway próprio nas portas 80 e 443. Em cluster onde
 outro Gateway já ocupa essas portas, como o Cilium em hostNetwork, que exige porta única por
 Gateway, informe `existingGateway` com nome, namespace e listener. O componente cria só o
@@ -256,6 +269,51 @@ recusado sem o bloco `email`.
 Com SMTP, quem esqueceu a senha pede a troca em `POST /auth/password/forgot` e troca com o token
 do email em `POST /auth/password/reset`.
 
+## Login externo
+
+Opcional e desligado por padrão ([ADR-0054](adrs/ADR-0054-login-por-provedor-externo.md)): a
+instalação pode aceitar login por qualquer provedor OpenID Connect (Google, Keycloak, Authentik)
+e pelo GitHub. Sem configuração, o painel não mostra botão nenhum.
+
+`MARKUPP_LOGIN_PROVIDERS` lista os ids, separados por vírgula, com letras minúsculas, dígitos e
+hífen. Cada id lê as próprias variáveis, com o id em maiúsculas e o hífen virando sublinhado:
+
+- `MARKUPP_LOGIN_<ID>_CLIENT_ID` e `MARKUPP_LOGIN_<ID>_CLIENT_SECRET`: obrigatórias, do cadastro
+  do app no provedor
+- `MARKUPP_LOGIN_<ID>_ISSUER`: o issuer OIDC, exatamente como o provedor publica (Google:
+  `https://accounts.google.com`). Sem ela, só o id `github` é aceito, e usa o GitHub
+- `MARKUPP_LOGIN_<ID>_NAME`: o nome do botão. Padrão: o id
+
+No provedor, cadastre como redirect URI o callback do painel, `MARKUPP_PANEL_URL/auth/<id>/callback`
+(ex.: `https://painel.exemplo.com/auth/google/callback`). No GitHub, crie um OAuth App; o login pede
+os escopos read:user e user:email.
+
+O login só entra em conta que já tem a identidade vinculada. A primeira vez com um provedor é
+cadastro, pelo botão da tela "Criar conta", e segue o auto-registro como o cadastro por senha; a
+conta nasce com o email que o provedor informa, já verificada quando o provedor o afirma
+verificado. Quem já tem conta vincula o provedor logado, em Configurações > Conta, e o servidor
+nunca vincula pelo email. Desvincular recusa a última forma de entrar que vale na instalação.
+
+O docker-compose.yaml não repassa essas variáveis. Ponha-as num `compose.override.yaml` ao lado
+dele, que o docker compose lê sozinho:
+
+```yaml
+services:
+  markupp:
+    environment:
+      MARKUPP_LOGIN_PROVIDERS: google,github
+      MARKUPP_LOGIN_GOOGLE_ISSUER: https://accounts.google.com
+      MARKUPP_LOGIN_GOOGLE_NAME: Google
+      MARKUPP_LOGIN_GOOGLE_CLIENT_ID: ${MARKUPP_LOGIN_GOOGLE_CLIENT_ID}
+      MARKUPP_LOGIN_GOOGLE_CLIENT_SECRET: ${MARKUPP_LOGIN_GOOGLE_CLIENT_SECRET}
+      MARKUPP_LOGIN_GITHUB_NAME: GitHub
+      MARKUPP_LOGIN_GITHUB_CLIENT_ID: ${MARKUPP_LOGIN_GITHUB_CLIENT_ID}
+      MARKUPP_LOGIN_GITHUB_CLIENT_SECRET: ${MARKUPP_LOGIN_GITHUB_CLIENT_SECRET}
+```
+
+Os segredos ficam no `.env`. Um provedor OIDC fora do ar não impede o servidor de subir: a
+descoberta acontece no primeiro login, e o botão responde que o provedor não respondeu.
+
 ## OAuth
 
 O authorization server OAuth 2.1 vem ligado, e nenhuma variável é obrigatória. A única que um
@@ -351,6 +409,18 @@ O servidor MCP sobe com `markupp-mcp http` (a imagem já começa assim) e espera
 pelo Go e pelo arquivo do segredo. No cluster, com o MCP em subdomínio próprio (ADR-0045), o
 `MARKUPP_OAUTH_RESOURCES` do Go e o `MARKUPP_MCP_RESOURCE_URL` e o `MARKUPP_MCP_RESOURCE_SECRET`
 do MCP vêm do Secret.
+
+O mesmo servidor atende, sem OAuth, a rota do endpoint seguida de `/public` (`/mcp/public` por
+padrão), que o Go também encaminha (ADR-0050). Ali o agente só lê as notas publicadas, pelo id
+público, com as ferramentas `read_public_note`, `list_public_notes` e `search_public_notes`, que
+chamam as rotas `/v1/public/notes/{public_id}` da API sem token. O limite de
+`MARKUPP_PUBLIC_RATE_LIMIT_PER_MINUTE` vale também para elas, contado pelo IP de cada agente, sem
+configuração: o MCP repassa ao Go o X-Forwarded-For que recebeu em `/mcp/public` junto com o HTTP
+Basic do resource dele (a URL e o segredo que já usa na troca de token). Só com essa credencial o
+Go trata o último salto do header, o que ele mesmo escreveu ao encaminhar, como a conexão do
+agente, e segue dali a regra de `MARKUPP_TRUSTED_PROXIES`, como num pedido direto à API. Sem a
+credencial, o header é ignorado. Não exponha a porta do MCP fora da rede interna: quem a alcança
+sem passar pelo Go escolhe o IP que conta.
 
 ## Aviso
 

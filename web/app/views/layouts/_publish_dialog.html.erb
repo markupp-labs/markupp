@@ -1,0 +1,11 @@
+<%# Diálogo de publicar, aberto por qualquer link que mire o frame publish_preview (Publish da nota, menu da árvore,
+    General do cofre): abre na hora, com a espera em braille até a prévia chegar (publish_dialog_controller.js). Esc ou
+    clicar fora fecha, e o foco volta a quem abriu. %>
+<dialog id="publish_dialog" closedby="any" aria-labelledby="publish_dialog_title" data-controller="publish-dialog"
+        data-action="turbo:before-fetch-request->publish-dialog#show close->publish-dialog#restoreFocus"
+        class="layer mx-auto mt-[15vh] w-[min(32rem,calc(100vw-2rem))] layer-panel p-4">
+  <%= turbo_frame_tag "publish_preview", data: { publish_dialog_target: "frame" } do %>
+    <%= busy_spinner(busy_when: "#publish_preview[aria-busy]") %>
+  <% end %>
+  <template data-publish-dialog-target="waiting"><%= busy_spinner(busy_when: "#publish_preview[aria-busy]") %></template>
+</dialog>

@@ -31,6 +31,9 @@ class FakeMarkuppAuth
 
   def local_auth? = @local_auth
 
+  # Como a API: a primeira conta nasce sempre, mesmo com o registro fechado.
+  def registration_closed? = @registration_closed && @accounts.any?
+
   # Cenário: a API demora no POST /auth/refresh até `callers` renovações chegarem juntas, ou até o timeout.
   def hold_refreshes_together!(callers, timeout:) = @refresh_gate = FakeRefreshGate.new(callers, timeout:)
 

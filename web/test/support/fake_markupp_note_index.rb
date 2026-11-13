@@ -33,7 +33,7 @@ class FakeMarkuppNoteIndex
       ranked.sort { |a, b| (sign * (a[key] <=> b[key])).nonzero? || a["path"] <=> b["path"] } + unranked.sort_by { it["path"] }
     end
 
-    def list_item(note) = summary(note).merge(note.slice("updated_at", "degree", "pagerank", "community"))
+    def list_item(note) = summary(note).merge(note.slice("updated_at", "degree", "pagerank", "community", "public_id"))
 
     def summary(note) = { "id" => note["id"], "title" => File.basename(note["path"], ".md"), "path" => note["path"] }
 

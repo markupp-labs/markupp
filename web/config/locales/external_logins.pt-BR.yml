@@ -1,0 +1,14 @@
+pt-BR:
+  external_logins:
+    buttons:
+      continue: "Continuar com %{provider}"
+    connected: "%{provider} conectado."
+    errors:
+      expired: "Este login expirou ou veio de outra aba. Comece de novo."
+      cancelled: "O login com %{provider} foi cancelado."
+      not_linked: "Nenhuma conta usa esta identidade do %{provider} ainda. Crie uma conta com ela, ou entre e conecte nas Configurações."
+      account_exists: "Este email já tem uma conta. Entre e conecte o %{provider} em Configurações > Conta."
+      already_linked: "Esta identidade do %{provider} já pertence a uma conta."
+      email_missing: "O %{provider} não compartilhou seu email, então a conta não pode ser criada."
+      rejected: "O %{provider} recusou este login. Comece de novo."
+      unavailable: "O %{provider} não respondeu. Tente de novo mais tarde."

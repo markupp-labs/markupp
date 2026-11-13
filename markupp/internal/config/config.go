@@ -86,6 +86,9 @@ type Config struct {
 	// RateLimitPerMinute é quantas tentativas por minuto cada IP e cada email têm nas
 	// rotas de conta (ADR-0044).
 	RateLimitPerMinute int
+	// PublicRateLimitPerMinute é quantas leituras por minuto cada IP tem nas rotas
+	// públicas das notas publicadas (ADR-0048), somadas todas as rotas.
+	PublicRateLimitPerMinute int
 	// InviteLimitPerAccount e InviteLimitPerTenant são quantos convites cabem em 24
 	// horas, por conta em todos os tenants dela e por tenant (#50).
 	InviteLimitPerAccount int
@@ -93,24 +96,28 @@ type Config struct {
 	// TrustedProxies são as redes dos proxies cujo X-Forwarded-For o limite de
 	// tentativas aceita. Vazia, o limite usa só o IP da conexão.
 	TrustedProxies []netip.Prefix
+	// LoginProviders são os provedores externos de login, na ordem de
+	// MARKUPP_LOGIN_PROVIDERS. Vazia, só há email e senha (ADR-0054).
+	LoginProviders []LoginProvider
 }
 
 // Default devolve a configuração usada nas variáveis não definidas.
 func Default() Config {
 	cfg := Config{
-		Port:                    8080,
-		MaxNoteSize:             50 * 1024 * 1024,
-		AuthSecret:              "",
-		DefaultTenantID:         "default",
-		JWTExpirationMinutes:    15,
-		RefreshExpirationDays:   7,
-		AuthRegistrationEnabled: false,
-		LocalAuthEnabled:        true,
-		SearchConfig:            "simple",
-		IndexInterval:           30 * time.Second,
-		RateLimitPerMinute:      5,
-		InviteLimitPerAccount:   20,
-		InviteLimitPerTenant:    50,
+		Port:                     8080,
+		MaxNoteSize:              50 * 1024 * 1024,
+		AuthSecret:               "",
+		DefaultTenantID:          "default",
+		JWTExpirationMinutes:     15,
+		RefreshExpirationDays:    7,
+		AuthRegistrationEnabled:  false,
+		LocalAuthEnabled:         true,
+		SearchConfig:             "simple",
+		IndexInterval:            30 * time.Second,
+		RateLimitPerMinute:       5,
+		InviteLimitPerAccount:    20,
+		InviteLimitPerTenant:     50,
+		PublicRateLimitPerMinute: 300,
 	}
 	setOAuthDefaults(&cfg)
 	return cfg
@@ -147,19 +154,30 @@ func loadServerSettings(lookup LookupFunc, cfg *Config) error {
 	if err := loadOAuthSettings(lookup, cfg); err != nil {
 		return err
 	}
+	if err := loadLoginProviders(lookup, cfg); err != nil {
+		return err
+	}
 	if err := loadMCPSettings(lookup, cfg); err != nil {
 		return err
 	}
 	if err := loadSMTPSettings(lookup, cfg); err != nil {
 		return err
 	}
-	if err := readLimit(lookup, "MARKUPP_RATE_LIMIT_PER_MINUTE", &cfg.RateLimitPerMinute); err != nil {
+	if err := readRateLimits(lookup, cfg); err != nil {
 		return err
 	}
 	if err := readInviteLimits(lookup, cfg); err != nil {
 		return err
 	}
 	return readTrustedProxies(lookup, &cfg.TrustedProxies)
+}
+
+// readRateLimits lê o limite das rotas de conta e o da leitura pública.
+func readRateLimits(lookup LookupFunc, cfg *Config) error {
+	if err := readLimit(lookup, "MARKUPP_RATE_LIMIT_PER_MINUTE", &cfg.RateLimitPerMinute); err != nil {
+		return err
+	}
+	return readLimit(lookup, "MARKUPP_PUBLIC_RATE_LIMIT_PER_MINUTE", &cfg.PublicRateLimitPerMinute)
 }
 
 func readInviteLimits(lookup LookupFunc, cfg *Config) error {

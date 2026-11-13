@@ -1,0 +1,27 @@
+{
+  "ignored_warnings": [
+    {
+      "warning_type": "Redirect",
+      "warning_code": 18,
+      "fingerprint": "7709e403b959497dd6afe522990e83441fd1d2ef887dafcf384f0167550f6d3f",
+      "check_name": "Redirect",
+      "message": "Possible unprotected redirect",
+      "file": "app/controllers/external_logins_controller.rb",
+      "line": 30,
+      "link": "https://brakemanscanner.org/docs/warning_types/redirect/",
+      "code": "redirect_to(ExternalLoginAttempt.start(session, credential.public_api, :provider => login_providers.find do\n (it.id == params[:provider])\n end.id, :purpose => ([\"login\", \"signup\", \"link\"].find do\n (it == params[:purpose])\n end)), :allow_other_host => true)",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "ExternalLoginsController",
+        "method": "create"
+      },
+      "user_input": "ExternalLoginAttempt.start(session, credential.public_api, :provider => login_providers.find do\n (it.id == params[:provider])\n end.id, :purpose => ([\"login\", \"signup\", \"link\"].find do\n (it == params[:purpose])\n end))",
+      "confidence": "Weak",
+      "cwe_id": [
+        601
+      ],
+      "note": "A URL vem do servidor markupp (POST /v1/login-providers/:id/attempts), nao da requisicao; o provedor e conferido na lista do servidor e a URL so passa se for http(s) absoluta (ExternalLoginAttempt.authorization_url)."
+    }
+  ]
+}

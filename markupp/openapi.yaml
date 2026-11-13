@@ -11,8 +11,13 @@ info:
     continuam servidos sem prefixo, com os cabeçalhos Deprecation (RFC 9745) e
     Link rel="successor-version" apontando o caminho sob /v1; sem prefixo, a nota
     mantém a representação antiga, sem a organização derivada. As rotas /accounts, /oauth/requests,
-    /me/authorizations, /me/notifications, /vaults, /search e as sub-coleções de /notes/{id} nasceram
-    depois da transição e existem só sob /v1, sem o caminho sem prefixo.
+    /accounts/external, /login-providers, /auth/external-login, /me/identities, /me/authorizations,
+    /me/notifications, /vaults, /search, /publications, /public e as sub-coleções de /notes/{id}
+    nasceram depois da transição e existem só sob /v1, sem o caminho sem prefixo.
+
+    As rotas /v1/public/notes/{public_id} leem as notas publicadas sem conta (ADR-0048), pelo
+    id público, com CORS aberto a qualquer origem e limite por IP. Nota não publicada e id
+    inexistente respondem igual, 404 not_found, e o id interno da nota nunca aparece nelas.
 
     Os endpoints do protocolo OAuth (/oauth/authorize, /oauth/token, /oauth/revoke e a
     metadata em /.well-known/oauth-authorization-server) ficam na raiz, fora de /v1, e
@@ -71,6 +76,205 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '429':
           $ref: '#/components/responses/RateLimited'
+  /accounts/external:
+    post:
+      summary: Cria a conta por um provedor externo e abre a sessão dela
+      description: >
+        Troca o código do provedor pela identidade (ADR-0054) e cria a conta com o email que o
+        provedor informa, sem senha. Segue o auto-registro como POST /accounts; o email nasce
+        verificado quando o provedor o afirma verificado. Existe só sob /v1.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExternalCallbackRequest'
+      responses:
+        '201':
+          description: Conta criada, com a sessão aberta
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenPairResponse'
+        '400':
+          $ref: '#/components/responses/ExternalLoginRefused'
+        '401':
+          $ref: '#/components/responses/ExternalLoginRefused'
+        '403':
+          description: Auto-registro desligado e a instalação já tem conta (registration_disabled)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: >
+            A identidade já é de uma conta (identity_already_linked) ou o email já tem conta
+            (already_exists), que vincula o provedor logada em POST /me/identities
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: O provedor não informou email (provider_email_missing)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '502':
+          $ref: '#/components/responses/LoginProviderUnavailable'
+  /login-providers:
+    get:
+      summary: Lista os provedores externos de login da instalação
+      description: Lista vazia quando a instalação não configura nenhum. Existe só sob /v1.
+      security: []
+      responses:
+        '200':
+          description: Provedores na ordem de MARKUPP_LOGIN_PROVIDERS
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LoginProviderResponse'
+  /login-providers/{id}/attempts:
+    post:
+      summary: Começa uma tentativa de login no provedor
+      description: >
+        Devolve a URL do provedor e o state, o verifier PKCE e o nonce, que o cliente guarda
+        até o callback e devolve com o código. O servidor não guarda a tentativa. Existe só
+        sob /v1.
+      security: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '201':
+          description: Tentativa criada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginAttemptResponse'
+        '404':
+          description: Provedor não configurado (not_found)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '502':
+          $ref: '#/components/responses/LoginProviderUnavailable'
+  /auth/external-login:
+    post:
+      summary: Abre a sessão por um provedor externo
+      description: >
+        Troca o código do provedor pela identidade e abre a sessão da conta que a tem
+        vinculada. Nunca cria conta: identidade sem conta responde identity_not_linked.
+        Existe só sob /v1.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExternalCallbackRequest'
+      responses:
+        '200':
+          description: Sessão aberta
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenPairResponse'
+        '400':
+          $ref: '#/components/responses/ExternalLoginRefused'
+        '401':
+          $ref: '#/components/responses/ExternalLoginRefused'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '502':
+          $ref: '#/components/responses/LoginProviderUnavailable'
+  /me/identities:
+    get:
+      summary: Lista as identidades externas da conta
+      description: >
+        A senha não aparece. Só aceita token de login, nunca token OAuth (first_party_only).
+        Existe só sob /v1.
+      responses:
+        '200':
+          description: Identidades na ordem em que foram vinculadas
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/IdentityResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      summary: Vincula um provedor externo à conta logada
+      description: >
+        Troca o código do provedor pela identidade e a vincula à conta do token. O vínculo
+        só nasce assim, nunca pelo email do provedor (ADR-0054). Só aceita token de login.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExternalCallbackRequest'
+      responses:
+        '201':
+          description: Identidade vinculada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdentityResponse'
+        '400':
+          $ref: '#/components/responses/ExternalLoginRefused'
+        '401':
+          $ref: '#/components/responses/ExternalLoginRefused'
+        '409':
+          description: A identidade já é de uma conta (identity_already_linked)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '502':
+          $ref: '#/components/responses/LoginProviderUnavailable'
+  /me/identities/{id}:
+    delete:
+      summary: Desvincula uma identidade externa da conta
+      description: >
+        Recusa quando nenhuma das formas de entrar que restam vale na instalação: a senha
+        desligada ou o provedor fora da configuração não contam. Só aceita token de login.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Identidade desvinculada
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: A conta não tem essa identidade externa (not_found)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: É a última forma de entrar na conta (last_identity)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /auth/login:
     post:
       summary: Abre a sessão com credencial local
@@ -1921,6 +2125,294 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /vaults/{id}/publications/preview:
+    get:
+      summary: Mostra o que publicar o alvo abre para leitura sem conta
+      description: >
+        O nome que a confirmação pede (título da nota, caminho da pasta ou nome do cofre),
+        quantas notas ficam públicas hoje e se as notas que entrarem depois também ficam,
+        o que vale para pasta e cofre. Qualquer membro do cofre lê.
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+        - $ref: '#/components/parameters/VaultID'
+        - name: kind
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [note, folder, vault]
+        - name: note_id
+          in: query
+          description: A nota, com kind=note
+          schema:
+            type: string
+        - name: path
+          in: query
+          description: A pasta, com kind=folder, sem barra no começo nem no fim
+          schema:
+            type: string
+            example: docs/deploy
+      responses:
+        '200':
+          description: Prévia da publicação
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicationPreview'
+        '400':
+          $ref: '#/components/responses/InvalidPublicationTarget'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Cofre inexistente ou de que a conta não é membro (vault_forbidden)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          $ref: '#/components/responses/PublicationTargetNotFound'
+  /vaults/{id}/publications:
+    post:
+      summary: Publica uma nota, uma pasta ou o cofre
+      description: |
+        Publica para leitura sem conta (ADR-0048). A nota pode ser publicada por quem pode
+        editá-la; pasta e cofre, só por owner e admin membros do cofre. confirm traz o nome
+        do alvo, como em GET .../publications/preview, e o pedido sem o nome certo é
+        recusado. A pasta cobre também as notas que entrarem nela depois. Publicações
+        podem se sobrepor: a nota tem um único id público enquanto alguma publicação a
+        cobrir. A ação é auditada (publications.publish).
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+        - $ref: '#/components/parameters/VaultID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PublishRequest'
+      responses:
+        '201':
+          description: Publicação criada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicationResponse'
+        '400':
+          $ref: '#/components/responses/InvalidPublicationTarget'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Cofre inexistente ou de que a conta não é membro (vault_forbidden), ou papel que não publica o alvo (publish_forbidden)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          $ref: '#/components/responses/PublicationTargetNotFound'
+        '409':
+          description: O alvo já tem publicação (already_published), cujo id vem em publication_id
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlreadyPublishedResponse'
+        '422':
+          description: confirm diferente do nome do alvo (confirmation_mismatch); a mensagem cita o que veio e o nome esperado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /publications:
+    get:
+      summary: Lista as publicações do tenant
+      description: >
+        Owner e admin veem todas as publicações do tenant; os demais, as dos cofres de que
+        são membros. Mais recentes primeiro.
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+        - name: vault_id
+          in: query
+          description: Só as publicações deste cofre
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Publicações visíveis à conta
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicationList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /publications/{id}:
+    patch:
+      summary: Liga ou desliga a indexação por buscadores
+      description: >
+        Owner e admin mudam qualquer publicação do tenant; os demais, só a publicação de
+        nota que podem editar. Auditado (publications.update).
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+        - $ref: '#/components/parameters/PublicationID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IndexableRequest'
+      responses:
+        '200':
+          description: Publicação atualizada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicationResponse'
+        '400':
+          description: JSON inválido ou sem indexable (invalid_request)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/PublishForbidden'
+        '404':
+          $ref: '#/components/responses/PublicationNotFound'
+    delete:
+      summary: Despublica
+      description: >
+        Owner e admin despublicam qualquer publicação do tenant; os demais, só a publicação
+        de nota que podem editar. As notas que outra publicação ainda cobre seguem públicas
+        com o mesmo id; as outras ficam privadas, e publicar de novo gera outro id.
+        Auditado (publications.unpublish).
+      parameters:
+        - $ref: '#/components/parameters/TenantHeader'
+        - $ref: '#/components/parameters/PublicationID'
+      responses:
+        '204':
+          description: Publicação apagada
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/PublishForbidden'
+        '404':
+          $ref: '#/components/responses/PublicationNotFound'
+  /public/notes/{public_id}:
+    get:
+      summary: Lê uma nota pública sem conta
+      description: |
+        A nota com a publicação mais ampla que a cobre e as ligações escritas dela. Ligação
+        para nota não pública vem com public_id e title_slug null. O endereço da página é
+        /p/{title_slug}-{public_id}. Responde com ETag e Cache-Control public, no-cache.
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/PublicID'
+      responses:
+        '200':
+          description: Nota pública
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicNoteResponse'
+        '304':
+          description: O If-None-Match já traz o ETag atual
+        '404':
+          $ref: '#/components/responses/PublicNotFound'
+        '429':
+          $ref: '#/components/responses/PublicRateLimited'
+  /public/notes/{public_id}/tree:
+    get:
+      summary: Lista as notas da publicação da nota pública
+      description: >
+        As notas da mesma publicação, por caminho, com o caminho relativo à pasta publicada.
+        Na publicação de nota, só a própria nota.
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/PublicID'
+        - $ref: '#/components/parameters/PageOffset'
+        - $ref: '#/components/parameters/PageLimit'
+      responses:
+        '200':
+          description: Página da árvore
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicTreePage'
+        '304':
+          description: O If-None-Match já traz o ETag atual
+        '400':
+          description: offset ou limit não inteiro (invalid_request)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          $ref: '#/components/responses/PublicNotFound'
+        '429':
+          $ref: '#/components/responses/PublicRateLimited'
+  /public/notes/{public_id}/search:
+    get:
+      summary: Busca na publicação da nota pública
+      description: >
+        Busca léxica só nas notas da mesma publicação. O trecho marca os termos entre
+        U+0002 e U+0003.
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/PublicID'
+        - name: q
+          in: query
+          required: true
+          description: Consulta, até 256 bytes
+          schema:
+            type: string
+            maxLength: 256
+        - $ref: '#/components/parameters/PageOffset'
+        - $ref: '#/components/parameters/PageLimit'
+      responses:
+        '200':
+          description: Página de resultados
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicSearchPage'
+        '304':
+          description: O If-None-Match já traz o ETag atual
+        '400':
+          description: q ausente ou longo demais, ou página fora do formato (invalid_request)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          $ref: '#/components/responses/PublicNotFound'
+        '429':
+          $ref: '#/components/responses/PublicRateLimited'
+  /public/notes/{public_id}/graph:
+    get:
+      summary: Grafo da publicação da nota pública
+      description: >
+        As notas da mesma publicação como nós, pelo id público, e as ligações entre elas. O
+        grau conta só essas ligações. ETag fraco pela versão do grafo do cofre e pela
+        publicação, ausente antes do primeiro segundo estágio.
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/PublicID'
+        - $ref: '#/components/parameters/GraphIfNoneMatch'
+      responses:
+        '200':
+          description: Grafo da publicação
+          headers:
+            ETag:
+              $ref: '#/components/headers/GraphETag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicGraphResponse'
+        '304':
+          description: O If-None-Match já traz o ETag atual
+        '404':
+          $ref: '#/components/responses/PublicNotFound'
+        '429':
+          $ref: '#/components/responses/PublicRateLimited'
   /healthz:
     get:
       security: []
@@ -2115,6 +2607,22 @@ components:
       description: Id da Autorização, um dos de GET /me/authorizations
       schema:
         type: string
+    PublicationID:
+      name: id
+      in: path
+      required: true
+      description: Id da publicação
+      schema:
+        type: string
+    PublicID:
+      name: public_id
+      in: path
+      required: true
+      description: Id público da nota, 12 caracteres base62
+      schema:
+        type: string
+        pattern: '^[A-Za-z0-9]{12}$'
+        example: Ab3dEf6hIj9k
   securitySchemes:
     bearerAuth:
       type: http
@@ -2139,6 +2647,66 @@ components:
         type: string
         enum: [gzip]
   responses:
+    ExternalLoginRefused:
+      description: >
+        Provedor fora da configuração (unknown_login_provider, 400), código, verifier ou nonce
+        recusados pelo provedor ou pela validação (login_rejected, 401) ou, no login, nenhuma
+        conta com a identidade (identity_not_linked, 401)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    InvalidPublicationTarget:
+      description: Alvo fora do formato (invalid_request), com o valor recebido e o formato esperado, ou JSON inválido
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    PublicationTargetNotFound:
+      description: Nota fora do cofre (note_not_found) ou pasta sem nenhuma nota (folder_not_found)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    PublishForbidden:
+      description: Papel que não muda esta publicação (publish_forbidden)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    PublicationNotFound:
+      description: Publicação inexistente ou fora do alcance da conta (publication_not_found)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    PublicNotFound:
+      description: >
+        Id inexistente, fora do formato ou de nota não publicada, todos com a mesma
+        resposta (not_found)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    LoginProviderUnavailable:
+      description: O provedor não respondeu como esperado (provider_unavailable)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    PublicRateLimited:
+      description: >
+        Leituras demais (rate_limited). Cada IP tem 300 por minuto, somadas todas as rotas
+        públicas, ajustável em MARKUPP_PUBLIC_RATE_LIMIT_PER_MINUTE.
+      headers:
+        Retry-After:
+          description: Segundos até a janela do limite acabar
+          schema:
+            type: integer
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
     RateLimited:
       description: >
         Tentativas demais (rate_limited). Cada rota de conta aceita 5 por minuto por IP e,
@@ -2202,6 +2770,52 @@ components:
           schema:
             $ref: '#/components/schemas/ErrorResponse'
   schemas:
+    LoginProviderResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+          description: Nome para o botão
+    LoginAttemptResponse:
+      type: object
+      properties:
+        authorization_url:
+          type: string
+          description: URL do provedor para onde o navegador vai
+        state:
+          type: string
+          description: Volta no callback; o cliente confere antes de chamar o servidor
+        code_verifier:
+          type: string
+          description: Verifier PKCE que o cliente guarda e devolve com o código
+        nonce:
+          type: string
+          description: Nonce do id_token que o cliente guarda e devolve com o código
+    ExternalCallbackRequest:
+      type: object
+      required: [provider, code, code_verifier, nonce]
+      properties:
+        provider:
+          type: string
+        code:
+          type: string
+          description: Código que o provedor devolveu no callback
+        code_verifier:
+          type: string
+        nonce:
+          type: string
+    IdentityResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        provider:
+          type: string
+        created_at:
+          type: string
+          format: date-time
     OAuthAuthorizationResponse:
       type: object
       properties:
@@ -2601,6 +3215,7 @@ components:
       allOf:
         - $ref: '#/components/schemas/NoteResponse'
         - $ref: '#/components/schemas/NoteRank'
+        - $ref: '#/components/schemas/NotePublicID'
     NoteListItem:
       description: |
         A nota na coleção das notas do cofre, sem o conteúdo, que GET /v1/notes/{id}
@@ -2621,6 +3236,16 @@ components:
               description: SHA-256 dos bytes UTF-8 do conteúdo, em hexadecimal minúsculo
               example: "0664077f33cc3ebbaa4bbdacac0eb70e740983080f01dce29929e73b7785a7ad"
         - $ref: '#/components/schemas/NoteRank'
+        - $ref: '#/components/schemas/NotePublicID'
+    NotePublicID:
+      type: object
+      properties:
+        public_id:
+          type: string
+          nullable: true
+          pattern: '^[A-Za-z0-9]{12}$'
+          description: Id público da nota, null quando nenhuma publicação a cobre (ADR-0048)
+          example: Ab3dEf6hIj9k
     NoteRank:
       type: object
       description: A organização derivada da nota, que o segundo estágio do indexador grava
@@ -2866,6 +3491,232 @@ components:
           enum: [ok, unavailable]
           description: Estado do servidor
           example: "ok"
+    PublicationTarget:
+      type: object
+      required: [kind]
+      properties:
+        kind:
+          type: string
+          enum: [note, folder, vault]
+        note_id:
+          type: string
+          description: A nota, com kind note
+        path:
+          type: string
+          description: A pasta, com kind folder, sem barra no começo nem no fim
+          example: docs/deploy
+    PublishRequest:
+      type: object
+      required: [target, confirm]
+      properties:
+        target:
+          $ref: '#/components/schemas/PublicationTarget'
+        confirm:
+          type: string
+          description: O nome do alvo, digitado por quem publica
+          example: docs/deploy
+        indexable:
+          type: boolean
+          default: false
+          description: Deixa buscadores indexarem as páginas
+    PublicationPreview:
+      type: object
+      properties:
+        kind:
+          type: string
+          enum: [note, folder, vault]
+        target_name:
+          type: string
+          description: Título da nota, caminho da pasta ou nome do cofre
+        note_count:
+          type: integer
+        includes_future:
+          type: boolean
+          description: true para pasta e cofre, que cobrem as notas que entrarem depois
+    PublicationResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        vault_id:
+          type: string
+        vault_name:
+          type: string
+        kind:
+          type: string
+          enum: [note, folder, vault]
+        note_id:
+          type: string
+          nullable: true
+        folder_path:
+          type: string
+          nullable: true
+        target_name:
+          type: string
+        note_count:
+          type: integer
+          description: Notas que o alvo cobre hoje
+        indexable:
+          type: boolean
+        published_by:
+          type: object
+          properties:
+            id:
+              type: string
+            name:
+              type: string
+              nullable: true
+              description: Email de quem publicou, null quando a conta saiu do tenant
+        published_at:
+          type: string
+          format: date-time
+        public_id:
+          type: string
+          description: Só na publicação de nota
+        title_slug:
+          type: string
+          description: Só na publicação de nota
+    PublicationList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/PublicationResponse'
+        total:
+          type: integer
+    IndexableRequest:
+      type: object
+      required: [indexable]
+      properties:
+        indexable:
+          type: boolean
+    AlreadyPublishedResponse:
+      allOf:
+        - $ref: '#/components/schemas/ErrorResponse'
+        - type: object
+          properties:
+            publication_id:
+              type: string
+    PublicNoteResponse:
+      type: object
+      properties:
+        public_id:
+          type: string
+        title:
+          type: string
+        title_slug:
+          type: string
+          description: >
+            Título em minúsculas, sem acento, com o que não é letra ou dígito virando hífen,
+            até 60 caracteres; vazio vira nota
+          example: guia-de-deploy
+        content:
+          type: string
+        updated_at:
+          type: string
+          format: date-time
+        indexable:
+          type: boolean
+          description: Da publicação mais ampla que cobre a nota; false pede noindex
+        publication:
+          type: object
+          properties:
+            kind:
+              type: string
+              enum: [note, folder, vault]
+            title:
+              type: string
+              description: Título da nota, último trecho da pasta ou nome do cofre
+            root_public_id:
+              type: string
+              nullable: true
+              description: A própria nota na publicação de nota; null na de pasta e na de cofre
+        links:
+          type: array
+          items:
+            $ref: '#/components/schemas/PublicLink'
+    PublicLink:
+      type: object
+      properties:
+        cited_title:
+          type: string
+        kind:
+          type: string
+          enum: [explicit, embed, typed]
+        public_id:
+          type: string
+          nullable: true
+          description: null quando o alvo não é público
+        title_slug:
+          type: string
+          nullable: true
+    PublicTreePage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              public_id:
+                type: string
+              title:
+                type: string
+              title_slug:
+                type: string
+              path:
+                type: string
+                description: Relativo à pasta publicada; na publicação de nota, só o nome do arquivo
+        total:
+          type: integer
+    PublicSearchPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              public_id:
+                type: string
+              title:
+                type: string
+              title_slug:
+                type: string
+              snippet:
+                type: string
+              rank:
+                type: number
+        total:
+          type: integer
+    PublicGraphResponse:
+      type: object
+      properties:
+        nodes:
+          type: array
+          items:
+            type: object
+            properties:
+              public_id:
+                type: string
+              title:
+                type: string
+              title_slug:
+                type: string
+              degree:
+                type: integer
+        links:
+          type: array
+          items:
+            type: object
+            properties:
+              source:
+                type: integer
+              target:
+                type: integer
+              type:
+                type: string
     ErrorResponse:
       type: object
       properties:

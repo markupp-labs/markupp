@@ -25,6 +25,15 @@ pt-BR:
         password_hint: "O servidor manda um token para %{email}; use-o para escolher a senha nova."
         change_password: "Trocar senha"
         have_reset_token: "Tenho um token de redefinição"
+      identities:
+        title: "Contas conectadas"
+        hint: "Entre com estas contas no lugar da senha. Desconectar sempre deixa ao menos uma forma de entrar."
+        connect: "Conectar %{provider}"
+        disconnect: "Desconectar %{provider}"
+    identities:
+      destroy:
+        disconnected: "%{provider} desconectado."
+        last_identity: "Esta é a única forma que resta de entrar na sua conta. Conecte outra antes."
     authorizations:
       index:
         hint: "Clientes que você autorizou a agir em nome da sua conta. Revogar um desconecta só ele; os outros seguem funcionando."
