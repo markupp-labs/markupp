@@ -41,13 +41,15 @@ services:
       migrate:
         condition: service_completed_successfully
 
-  # Indexador de embedding em laço, sem provedor por padrão. Aqui ele roda sem o ONNX
+  # Indexador de embedding em laço. Sem MARKUPP_EMBEDDING_PROVIDER, vale a escolha do
+  # administrador da instância no painel, sem provedor por padrão. Aqui ele roda sem o ONNX
   # Runtime: o provedor local só existe na imagem markupp-embedder (Dockerfile.embedder).
   embedder:
     <<: *servidor
     environment:
       <<: *ambiente
-      MARKUPP_EMBEDDING_PROVIDER: ${MARKUPP_EMBEDDING_PROVIDER:-none}
+      MARKUPP_EMBEDDING_PROVIDER: ${MARKUPP_EMBEDDING_PROVIDER:-}
+      MARKUPP_SECRET_KEY: ${MARKUPP_SECRET_KEY:-}
       MARKUPP_EMBEDDING_URL: ${MARKUPP_EMBEDDING_URL:-}
       MARKUPP_EMBEDDING_MODEL: ${MARKUPP_EMBEDDING_MODEL:-}
       MARKUPP_EMBEDDING_API_KEY: ${MARKUPP_EMBEDDING_API_KEY:-}
@@ -92,6 +94,10 @@ services:
       MARKUPP_PANEL_URL: ${MARKUPP_PANEL_URL:-http://localhost:${WEB_PORT:-3000}}
       MARKUPP_MCP_UPSTREAM_URL: http://mcp:3000
       MARKUPP_MCP_SECRET_PATH: /run/markupp-mcp/secret
+      # Contas que administram a instância pelo painel, e a chave que cifra os segredos
+      # guardados no banco (ADR-0057).
+      MARKUPP_INSTANCE_ADMINS: ${MARKUPP_INSTANCE_ADMINS:-}
+      MARKUPP_SECRET_KEY: ${MARKUPP_SECRET_KEY:-}
     volumes:
       - ./markupp:/src
       - ${GO_MOD_CACHE:-go_mod_cache}:/go/pkg/mod
