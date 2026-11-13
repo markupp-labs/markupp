@@ -65,4 +65,13 @@ describe("runLogout", () => {
     );
     expect(await rig.store.load()).toBeUndefined();
   });
+
+  it("indica onde revogar a Autorização no painel quando o Go falha", async () => {
+    const rig = await new LogoutRig().seed();
+    rig.upstream.respondWith(503);
+    await expect(runLogout(rig.deps())).rejects.toThrow(
+      "revoke the markupp-mcp authorization in the web panel (Settings > Authorizations)",
+    );
+    expect(await rig.store.load()).toBeUndefined();
+  });
 });

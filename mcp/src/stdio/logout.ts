@@ -1,7 +1,11 @@
 import { errorMessage } from "../resolve-http-config.js";
 import type { CredentialStore, StoredCredential } from "./credential-store.js";
 import { withFileLock, type LockDeps } from "./file-lock.js";
-import { discoverAuthServer, revokeToken } from "./public-client.js";
+import {
+  discoverAuthServer,
+  PUBLIC_CLIENT_ID,
+  revokeToken,
+} from "./public-client.js";
 
 export type LogoutDeps = LockDeps & {
   store: CredentialStore;
@@ -13,7 +17,7 @@ export type LogoutResult = "revoked" | "absent";
 
 // runLogout revoga o refresh no Go (RFC 7009) e apaga a credencial, com o lock para não
 // cruzar com a renovação de um processo stdio. A credencial sai do disco mesmo quando a
-// revogação falha, e o erro diz para revogar a Autorização pelo painel.
+// revogação falha, e o erro diz onde revogar a Autorização pelo painel.
 export async function runLogout(deps: LogoutDeps): Promise<LogoutResult> {
   if ((await deps.store.load()) === undefined) return "absent";
   return withFileLock(deps.store.lockPath, deps, () => logoutUnderLock(deps));
@@ -27,7 +31,7 @@ async function logoutUnderLock(deps: LogoutDeps): Promise<LogoutResult> {
   } catch (error) {
     await deps.store.remove();
     throw new Error(
-      `credential deleted from ${deps.store.path}, but revoking it on markupp failed (${errorMessage(error)}); the login stays valid on the server until it expires`,
+      `credential deleted from ${deps.store.path}, but revoking it on markupp failed (${errorMessage(error)}); the login stays valid on the server until it expires; revoke the ${PUBLIC_CLIENT_ID} authorization in the web panel (Settings > Authorizations)`,
     );
   }
   await deps.store.remove();

@@ -1,0 +1,15 @@
+<%# Cada bloco repete no celular o rótulo que o cabeçalho dá no desktop; os escopos usam os nomes da tela de consentimento. %>
+<li data-oauth-grant="<%= oauth_grant.id %>" data-context-menu-target="item" tabindex="<%= oauth_grant_counter.zero? ? 0 : -1 %>"
+    class="border-t border-line px-2 py-2 md:col-span-4 md:grid md:grid-cols-subgrid md:items-center">
+  <p class="client-name [overflow-wrap:anywhere]"><%= oauth_grant.client_name %></p>
+  <p class="text-ink-muted">
+    <span class="md:sr-only"><%= t(".authorized") %></span> <%= l(oauth_grant.created_at.to_date, format: :short) %>
+  </p>
+  <ul aria-label="<%= t(".scopes") %>">
+    <% oauth_grant.scopes.each do |scope| %>
+      <li><%= t("oauth_authorizations.scopes.#{scope.tr(':', '_')}") %></li>
+    <% end %>
+  </ul>
+  <%= button_to t(".revoke"), settings_authorization_path(oauth_grant.id), method: :delete, form_class: "mt-1 md:mt-0", class: "btn btn-danger",
+                data: { context_menu_delete: "", confirm_button: t(".revoke"), turbo_confirm: t(".confirm_revoke", client: oauth_grant.client_name) } %>
+</li>

@@ -12,6 +12,7 @@ class ShortcutsTest < ActionDispatch::IntegrationTest
     [ "Focus region left", "Alt H" ], [ "Focus region below", "Alt J" ], [ "Focus region above", "Alt K" ], [ "Focus region right", "Alt L" ],
     [ "Light theme", "" ], [ "Dark theme", "" ], [ "Editor style: plain", "" ], [ "Editor style: styled", "" ],
     [ "Vim keys: on", "" ], [ "Vim keys: off", "" ], [ "Language: English", "" ], [ "Language: Português (Brasil)", "" ],
+    [ "Authorizations", "" ],
     [ "All tenants", "g t" ], [ "Switch tenant", "" ], [ "Tenant: General", "" ], [ "Delete tenant", "" ],
     [ "Switch vault", "g v" ], [ "New vault", "" ], [ "Vault settings", "" ], [ "Vault members", "" ], [ "Delete vault", "" ],
     [ "Notifications", "g n" ], [ "Log out", "" ],
@@ -45,7 +46,7 @@ class ShortcutsTest < ActionDispatch::IntegrationTest
       "Notifications" => [ "g n" ],
       "Rename the vault" => [ "v r" ], "Add a member to the vault" => [ "v a" ], "Leave the vault" => [ "v q" ],
       "Publish the vault" => [ "v o" ], "Publications" => [ "v p" ], "Publish the note" => [ "Alt+P" ], "Publish the row in focus" => [ "Alt+Shift+P" ],
-      "Remove the member in focus, in a member list" => [ "Delete" ], "Filter tenants" => [ "/" ],
+      "Remove or revoke the item in focus, in a list" => [ "Delete" ], "Filter tenants" => [ "/" ],
       "Move between tenants" => [ "hjkl", "←↓↑→" ], "Indent and outdent in the content" => [ "Tab", "Shift+Tab" ],
       "From the content back to the path (Esc first)" => [ "Esc Shift+Tab" ] }.each do |name, keys|
       assert_equal keys, rows[name], "expected #{name} with #{keys.inspect} in the help"

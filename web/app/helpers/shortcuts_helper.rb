@@ -51,6 +51,7 @@ module ShortcutsHelper
       Shortcut.of(:vim_keys_off, run: { form: { url: :vim_keys_path, params: { vim_keys: "off" }, turbo: false } }),
       Shortcut.of(:language_en, run: { form: { url: :locale_path, params: { locale: "en" }, turbo: false } }),
       Shortcut.of(:language_pt_br, run: { form: { url: :locale_path, params: { locale: "pt-BR" }, turbo: false } }),
+      Shortcut.of(:authorizations, run: { href: :settings_authorizations_path }),
       Shortcut.of(:tenants, "g t", run: { href: :tenants_path }),
       Shortcut.of(:switch_tenant, run: { click: "button[popovertarget=tenant_switcher]" }),
       # Seção General do tenant ativo nas configurações; só com tenant, que é quando o seletor está na barra.
@@ -102,8 +103,8 @@ module ShortcutsHelper
       Shortcut.of(:list_move, "↓", "↑"),
       Shortcut.of(:palette_move, "Ctrl+J", "Ctrl+K"),
       Shortcut.of(:menu_move, "j", "k"),
-      # Nas listas de membros do cofre e do tenant (context_menu_controller.js), com o foco numa linha: pede confirmação.
-      Shortcut.of(:list_remove_member, "Delete"),
+      # Nas listas de Settings com context_menu_controller.js (membros, autorizações), com o foco numa linha: pede confirmação.
+      Shortcut.of(:list_delete, "Delete"),
       Shortcut.of(:list_choose, "Enter"),
       Shortcut.of(:list_close, "Esc")
     ],

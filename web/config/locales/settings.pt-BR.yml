@@ -4,6 +4,7 @@ pt-BR:
       title: "Configurações"
       close: "Fechar configurações"
       accounts: "Conta"
+      authorizations: "Autorizações"
       appearances: "Aparência"
       editors: "Editor"
       agents: "Agentes"
@@ -33,6 +34,21 @@ pt-BR:
       destroy:
         disconnected: "%{provider} desconectado."
         last_identity: "Esta é a única forma que resta de entrar na sua conta. Conecte outra antes."
+    authorizations:
+      index:
+        hint: "Clientes que você autorizou a agir em nome da sua conta. Revogar um desconecta só ele; os outros seguem funcionando."
+        empty: "Nenhuma autorização ainda. Clientes como o markupp-mcp e o markupp-cli aparecem aqui depois que você faz login por eles."
+        client: "Cliente"
+        authorized: "Autorizado em"
+        scopes: "Escopos"
+      oauth_grant:
+        authorized: "Autorizado em"
+        scopes: "Escopos"
+        revoke: "Revogar"
+        confirm_revoke: "Revogar a autorização de %{client}?"
+      destroy:
+        revoked: "Autorização revogada."
+        not_found: "Essa autorização não está mais ativa."
     appearances:
       show:
         title: "Aparência"

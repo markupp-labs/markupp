@@ -1,0 +1,22 @@
+<% content_for :title, t("settings.nav.authorizations") %>
+
+<div class="max-w-4xl">
+  <h1 class="md-heading text-base font-semibold"><%= t("settings.nav.authorizations") %></h1>
+  <p class="mt-1 max-w-[65ch] text-ink-muted"><%= t(".hint") %></p>
+
+  <% if oauth_grants.empty? %>
+    <p class="mt-4 text-ink-muted"><%= t(".empty") %></p>
+  <% else %>
+    <%# Grade no desktop, blocos empilhados no celular. Pelo teclado como as listas de membros: j/k entre as linhas,
+        Delete na linha com o foco pede para revogar. %>
+    <ul id="oauth_grants" data-controller="context-menu" data-action="keydown->context-menu#navigate keydown->context-menu#deleteFocused"
+        class="mt-4 md:grid md:grid-cols-[1fr_8rem_1fr_auto] md:gap-x-3">
+      <li aria-hidden="true" class="hidden px-2 py-1 text-ink-muted md:col-span-4 md:grid md:grid-cols-subgrid">
+        <span><%= t(".client") %></span>
+        <span><%= t(".authorized") %></span>
+        <span><%= t(".scopes") %></span>
+      </li>
+      <%= render partial: "settings/authorizations/oauth_grant", collection: oauth_grants %>
+    </ul>
+  <% end %>
+</div>
