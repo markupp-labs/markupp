@@ -1,0 +1,7 @@
+<%# O grafo da publicação, só leitura: clicar num nó ou Enter abre a nota; j/k andam pelas notas. %>
+<% content_for :title, t(".title", publication: @note.publication.title) %>
+<% content_for :public_tools, render("public_notes/tools", note: @note) %>
+<% content_for :tree, render("public_notes/tree", tree: @tree, current: @note) %>
+<div class="flex h-[75dvh] flex-col">
+  <%= render "graphs/canvas", id: "public_graph", url: public_note_graph_path(@note, format: :json), class: "graph-view-full", autofocus: true %>
+</div>

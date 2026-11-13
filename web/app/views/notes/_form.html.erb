@@ -8,6 +8,10 @@
 <%# viewer só lê: caminho e texto readonly, sem salvar nem apagar; o editor lê o readonly do textarea. %>
 <% writer = current_tenant.writer? %>
 <% mode = current_note_mode(@note) %>
+<%# Nota que só uma pasta publicada faz pública: o note-form avisa antes de salvar o caminho que sai dela. %>
+<% published_folders = @published_folders.to_a %>
+<% move_warning = { note_form_published_folders_value: published_folders, note_form_move_button_value: t(".move"),
+                    note_form_move_warning_value: t(".move_warning", title: @note.title, folder: published_folders.join(", ")) } if published_folders.any? %>
 
 <%# data-mode escolhe os painéis visíveis (CSS .note-form); Ctrl+E e Ctrl+\ trocam o modo (note_mode_controller.js). %>
 <%= form_with model: @note, class: "note-form flex min-h-0 flex-1 flex-col gap-3",
@@ -15,7 +19,7 @@
                       note_form_blank_title_value: ActiveModel::Error.new(@note, :title, :blank).full_message,
                       note_mode_wikilinks_value: wikilink_targets(@tree), note_mode_folder_value: @note.folder,
                       note_mode_missing_note_value: t(".missing_note"), note_mode_copied_value: t(".copied"),
-                      note_mode_copy_failed_value: t(".copy_failed"), note_form_root_url_value: root_path, note_form_notes_url_value: notes_path,
+                      note_mode_copy_failed_value: t(".copy_failed"), note_form_root_url_value: root_path, note_form_notes_url_value: notes_path, **move_warning.to_h,
                       action: "keydown.ctrl+s@window->note-form#save:prevent keydown.meta+s@window->note-form#save:prevent " \
                               "keydown@window->note-mode#shortcut input->note-mode#render highlight:grammar-loaded@document->note-mode#render turbo:load@document->note-mode#scrollToHash click->note-mode#followAnchor scroll->note-mode#followScroll:capture " \
                               "input->note-form#track submit->note-form#submit turbo:submit-start@document->note-form#allowLeavingOnDelete " \
@@ -64,6 +68,19 @@
     <% else %>
       <p class="py-1 text-ink-muted"><%= t(".read_only") %></p>
     <% end %>
+    <% if @note.public_id %>
+      <%# A nota pública abre a página dela; o endereço sem o título redireciona ao atual. %>
+      <%= link_to public_note_path(@note.public_id), class: "public-mark btn max-md:px-1.5", target: "_blank", rel: "noopener", title: t(".public_hint") do %>
+        <%= icon("eye") %><span class="max-md:sr-only"><%= t(".public") %></span>
+      <% end %>
+    <% elsif writer && @note.persisted? %>
+      <%# Abre o diálogo de publicar do layout pelo frame dele; Alt+P de qualquer lugar da página. %>
+      <%= link_to new_publication_path(kind: "note", note_id: @note.id), id: "publish_note", class: "btn max-md:px-1.5",
+                  title: "#{t(".publish")} (#{shortcut_key(:publish_note)})", aria: { keyshortcuts: shortcut_key(:publish_note) },
+                  data: { turbo_frame: "publish_preview", controller: "hotkey", hotkey_code_value: "KeyP", hotkey_alt_value: true, action: "keydown@window->hotkey#press" } do %>
+        <%= icon("eye") %><span class="max-md:sr-only"><%= t(".publish") %></span>
+      <% end %>
+    <% end %>
     <% if writer && @note.persisted? %>
       <%# Fora do form de salvar (form não aninha): o botão aponta para o form de excluir pelo atributo form. %>
       <%= tag.button form: "delete_note", title: t(".delete"), data: { turbo_confirm: t(".confirm_delete", path: @note.location) }, class: "btn btn-danger max-md:px-1.5" do %>
@@ -91,19 +108,7 @@
     </div>
     <%# Markdown renderizado e sanitizado no navegador (editor/render_markdown.js). Fora do Tab (tabindex -1): o foco chega
         pelo Alt+h/j/k/l e aí as setas rolam o painel. %>
-    <%# Cabeçalho de cada bloco de código da leitura (linguagem e copiar), clonado depois do render (editor/code_blocks.js). %>
-    <template data-note-mode-target="codeTools">
-      <div class="code-header">
-        <span class="code-language"></span>
-        <span class="code-tools">
-          <span role="status" aria-live="polite" class="code-copy-status"></span>
-          <button type="button" class="btn-icon" aria-label="<%= t(".copy_code") %>" title="<%= t(".copy_code") %>"
-                  data-action="note-mode#copyCode"><%= icon("copy") %></button>
-        </span>
-      </div>
-    </template>
-    <%# Indicador de carregamento de cada ![[nota]] enquanto o conteúdo não chega, clonado pelo editor/note_embeds.js. %>
-    <template data-note-mode-target="embedSpinner"><%= busy_spinner %></template>
+    <%= render "notes/reading_templates" %>
     <article data-note-mode-target="preview" data-focus-region="preview" tabindex="-1" aria-label="<%= t(".preview") %>" class="note-preview markdown-body min-w-0"></article>
   </div>
 <% end %>
