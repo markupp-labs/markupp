@@ -128,40 +128,11 @@ func TestNewMarkupp_SemBancoExterno_CriaPostgresNoNamespaceComVolume(t *testing.
 	db := monitor.single(t, "kubernetes:apps/v1:StatefulSet")
 	assert.Equal(t, "markupp", at(t, db, "metadata", "namespace").StringValue())
 	assert.Equal(t, 1.0, at(t, db, "spec", "replicas").NumberValue())
-	assert.Equal(t, "ghcr.io/markupp-labs/markupp-postgres:v1.1.0", firstContainer(t, db)["image"].StringValue(),
-		"o Postgres com pgvector da mesma versão do servidor")
+	assert.Equal(t, "pgvector/pgvector:0.8.7-pg17-trixie", firstContainer(t, db)["image"].StringValue(),
+		"o Postgres com pgvector, na mesma versão fixa do compose e do testcontainers")
 	claim := at(t, db, "spec", "volumeClaimTemplates").ArrayValue()[0].ObjectValue()
 	assert.Equal(t, "longhorn-fast", at(t, claim, "spec", "storageClassName").StringValue())
 	assert.Equal(t, "10Gi", at(t, claim, "spec", "resources", "requests", "storage").StringValue())
-}
-
-func TestNewMarkupp_ImagemDoBancoInformada_UsaEla(t *testing.T) {
-	args := argsDeTeste()
-	args.Database.Image = "registro.local/postgres-pgvector:17"
-
-	db := deploy(t, args).single(t, "kubernetes:apps/v1:StatefulSet")
-
-	assert.Equal(t, "registro.local/postgres-pgvector:17", firstContainer(t, db)["image"].StringValue())
-}
-
-func TestNewMarkupp_ImagemDoServidorSemRegistro_DerivaOBancoAoLado(t *testing.T) {
-	args := argsDeTeste()
-	args.Image = "markupp:dev"
-
-	db := deploy(t, args).single(t, "kubernetes:apps/v1:StatefulSet")
-
-	assert.Equal(t, "markupp-postgres:dev", firstContainer(t, db)["image"].StringValue())
-}
-
-func TestNewMarkupp_ImagemDoServidorPorDigestSemImagemDoBanco_RetornaErroComOCampo(t *testing.T) {
-	args := argsDeTeste()
-	args.Image = "ghcr.io/markupp-labs/markupp@sha256:abc"
-
-	err := declareErr(args)
-
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "database.image")
-	assert.Contains(t, err.Error(), args.Image)
 }
 
 func TestNewMarkupp_SemBancoExterno_GuardaSenhaGeradaEURLNoSecret(t *testing.T) {
