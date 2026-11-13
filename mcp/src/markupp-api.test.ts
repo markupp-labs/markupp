@@ -477,4 +477,21 @@ describe("HttpMarkuppApi nas ligações", () => {
     expect(request.headers.get("x-markupp-tenant")).toBe("t1");
     expect(body === null ? null : await request.json()).toEqual(body);
   });
+
+  it("lê e grava o embedding da instância em /v1/instance/embedding sem tenant", async () => {
+    const view = { provider: "local", api_key_set: false };
+    const fake = new FakeFetch().respondWith(200, view).respondWith(200, view);
+    const api = apiWith(fake);
+    expect(await api.getInstanceEmbedding()).toEqual(view);
+    await api.setInstanceEmbedding({ provider: "local", api_key: "" });
+    const [get, put] = fake.requests;
+    expect(`${get?.method} ${get?.url}`).toBe(
+      "GET http://api.test/v1/instance/embedding",
+    );
+    expect(`${put?.method} ${put?.url}`).toBe(
+      "PUT http://api.test/v1/instance/embedding",
+    );
+    expect(await put?.json()).toEqual({ provider: "local", api_key: "" });
+    expect(put?.headers.has("x-markupp-tenant")).toBe(false);
+  });
 });
