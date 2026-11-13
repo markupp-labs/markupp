@@ -99,6 +99,12 @@ type Config struct {
 	// LoginProviders são os provedores externos de login, na ordem de
 	// MARKUPP_LOGIN_PROVIDERS. Vazia, só há email e senha (ADR-0054).
 	LoginProviders []LoginProvider
+	// InstanceAdmins são os emails, em minúsculas, das contas que administram a
+	// instância. Vazia, ninguém administra pelo painel.
+	InstanceAdmins []string
+	// SecretKey cifra os segredos que o banco guarda, como a chave do provedor de
+	// embedding. Vazia, a chave de cifra vem do banco (ADR-0057).
+	SecretKey string
 }
 
 // Default devolve a configuração usada nas variáveis não definidas.
@@ -131,6 +137,9 @@ func Load(lookup LookupFunc) (Config, error) {
 		return Config{}, err
 	}
 	readString(lookup, "MARKUPP_SCALER_PASSWORD", &cfg.ScalerPassword)
+	if err := readInstanceAdmins(lookup, &cfg.InstanceAdmins); err != nil {
+		return Config{}, err
+	}
 	cfg.AllowedOrigins = splitOrigins(lookup)
 	port := int64(cfg.Port)
 	if err := readBounded(lookup, "MARKUPP_PORT", 1, 65535, "from 1 to 65535", &port); err != nil {
@@ -267,6 +276,9 @@ func LoadIndexer(lookup LookupFunc) (Config, error) {
 	cfg.DatabaseURL = url
 	readString(lookup, "MARKUPP_SEARCH_CONFIG", &cfg.SearchConfig)
 	if err := readInterval(lookup, "MARKUPP_INDEX_INTERVAL", &cfg.IndexInterval); err != nil {
+		return Config{}, err
+	}
+	if err := readSecretKey(lookup, &cfg.SecretKey); err != nil {
 		return Config{}, err
 	}
 	return cfg, nil

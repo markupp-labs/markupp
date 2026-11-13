@@ -27,10 +27,13 @@ type Embedding struct {
 	ModelDir string
 	// ChunkTokens é o tamanho do pedaço de nota que vira um vetor (ADR-0056).
 	ChunkTokens int
+	// HostLocked diz que MARKUPP_EMBEDDING_PROVIDER foi definida, mesmo como none: a
+	// escolha de quem hospeda vence a do banco (ADR-0057).
+	HostLocked bool
 }
 
 // LoadEmbedding lê as variáveis MARKUPP_EMBEDDING_* e confere que o provedor escolhido
-// tem o que precisa.
+// tem o que precisa. Sem provedor na variável, vale a escolha do banco.
 func LoadEmbedding(lookup LookupFunc) (Embedding, error) {
 	cfg := Embedding{Provider: EmbeddingNone, ModelDir: "/var/lib/markupp/models", ChunkTokens: 512}
 	for key, target := range map[string]*string{
@@ -44,6 +47,8 @@ func LoadEmbedding(lookup LookupFunc) (Embedding, error) {
 		return Embedding{}, err
 	}
 	cfg.ChunkTokens = int(chunk)
+	provider, _ := lookup("MARKUPP_EMBEDDING_PROVIDER")
+	cfg.HostLocked = strings.TrimSpace(provider) != ""
 	return cfg, checkEmbeddingProvider(cfg)
 }
 
