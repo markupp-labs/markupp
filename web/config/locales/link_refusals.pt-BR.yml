@@ -2,8 +2,10 @@ pt-BR:
   note_links:
     kinds:
       mentioned: "menção"
+      related: "texto parecido"
     reasons:
       mentioned: "ligada porque o texto cita %{title}"
+      related: "ligada porque os textos se parecem"
     refuse:
       label: "Recusar ligação"
       label_for: "Recusar ligação com %{title}"
