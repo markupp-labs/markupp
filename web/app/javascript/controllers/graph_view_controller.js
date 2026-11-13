@@ -18,7 +18,7 @@ const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)")
 const darkScheme = window.matchMedia("(prefers-color-scheme: dark)")
 
 export default class extends Controller {
-  static targets = [ "canvas", "empty", "filtered", "refused", "failure", "status", "announce", "list", "refuseForm", "refuseButton" ]
+  static targets = [ "canvas", "empty", "filtered", "refused", "failure", "status", "announce", "list", "refuseForm", "refuseButton", "legend" ]
   static values = { url: String, autofocus: Boolean, filtered: Boolean, labels: Object }
 
   connect() {
@@ -96,6 +96,15 @@ export default class extends Controller {
       onRefuse: this.hasRefuseFormTarget ? (link) => this.offerRefusal(link) : null
     })
     this.listNotes(this.scene.walk)
+    this.showLegend()
+  }
+
+  // A legenda do grafo cheio mostra só os métodos de ligação que estão no desenho.
+  showLegend() {
+    if (!this.hasLegendTarget) return
+
+    const drawn = new Set(this.scene?.links.map((link) => link.origin) ?? [])
+    this.legendTarget.querySelectorAll("[data-graph-legend]").forEach((item) => { item.hidden = !drawn.has(item.dataset.graphLegend) })
   }
 
   // A lista do leitor de tela: um link por nota desenhada, na ordem do j, fora do Tab (o canvas anda pelas notas).
@@ -114,6 +123,7 @@ export default class extends Controller {
 
     const answer = await sendRefusal(this.refuseFormTarget, [ link.source.id, link.target.id ], this.labelsValue.refuse_failed)
     if (answer.ok) this.scene?.removeLink(link)
+    if (answer.ok) this.showLegend()
     this.showRefusal(answer.message)
   }
 

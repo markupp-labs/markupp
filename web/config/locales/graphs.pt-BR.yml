@@ -3,6 +3,11 @@ pt-BR:
     show:
       title: "Grafo"
       keys: "j k mover  ↵ abrir  + - zoom  0 ajustar  esc voltar"
+    legend:
+      label: "Ligações por método"
+      manual: "manual"
+      inferred: "inferida"
+      mentioned: "menção"
     filters:
       title: "Filtros"
       show: "mostrar"

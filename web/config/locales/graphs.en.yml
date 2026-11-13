@@ -3,6 +3,11 @@ en:
     show:
       title: "Graph"
       keys: "j k move  ↵ open  + - zoom  0 fit  esc back"
+    legend:
+      label: "Links by method"
+      manual: "manual"
+      inferred: "inferred"
+      mentioned: "mention"
     filters:
       title: "Filters"
       show: "show"

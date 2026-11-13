@@ -4,7 +4,8 @@
     lista, só para o leitor de tela, traz um link por nota desenhada, na ordem do j.
     Vazio, recusado ou sem servidor, o estado vazio de cada caso toma o lugar do canvas. region: a região do Alt+hjkl;
     toolbar: os controles acima do canvas, dentro do controller (o seletor de saltos da visão Graph); filterable: o grafo
-    tem filtros (a tela cheia), e o vazio com filtro ligado (filtered) diz isso e oferece limpar.
+    tem filtros (a tela cheia), e o vazio com filtro ligado (filtered) diz isso e oferece limpar; legend: a legenda das
+    ligações por método (a tela cheia).
     Para quem escreve, o form escondido da recusa de ligação: clicar numa ligação automática pergunta pelo diálogo do
     painel e o controller envia o par por ele (o pelo teclado fica na visão Links). %>
 <% region = local_assigns[:region] %>
@@ -20,6 +21,7 @@
                    aria: { label: t("graphs.canvas_label"), roledescription: t("graphs.roledescription"), keyshortcuts: "J K Enter + - 0" },
                    data: { graph_canvas: "", graph_view_target: "canvas" } %>
     <%= busy_spinner(busy_when: "##{id}[aria-busy]", class: "graph-busy") %>
+    <%= render "graphs/legend" if local_assigns[:legend] %>
     <div hidden data-graph-view-target="empty" class="graph-overlay">
       <%= render "layouts/empty_state", title: t("graphs.empty.title"), hint: t("graphs.empty.hint") %>
     </div>

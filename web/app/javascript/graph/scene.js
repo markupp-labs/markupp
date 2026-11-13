@@ -32,7 +32,7 @@ class GraphScene {
   constructor(canvas, graph, { reducedMotion, onState, onOpen, onRefuse }) {
     Object.assign(this, { canvas, reducedMotion, onState, onOpen, onRefuse, context: canvas.getContext("2d") })
     this.nodes = graph.nodes.map(nodeOf)
-    this.links = graph.links.map(({ source, target, inferred, automatic }) => ({ source: this.nodes[source], target: this.nodes[target], inferred, automatic }))
+    this.links = graph.links.map(({ source, target, inferred, automatic, origin }) => ({ source: this.nodes[source], target: this.nodes[target], inferred, automatic, origin }))
     connectNeighbors(this.links)
     markProminent(this.nodes)
     this.walk = this.nodes.filter((node) => node.url).sort(byRank)

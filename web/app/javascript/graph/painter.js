@@ -1,5 +1,5 @@
-// Desenho de um quadro do grafo no canvas, sem estado: ligações finas na cor muted, que passa de 3:1 nos dois palcos e
-// nos dois temas (a inferida tracejada e a automática pontilhada; a line, que quase some, fica para as apagadas), nós no matiz da comunidade com
+// Desenho de um quadro do grafo no canvas, sem estado: cada método de ligação (origin) na sua cor e no seu traço, a
+// manual fina e cheia no muted e as do markupp mais grossas, todas acima de 3:1 nos dois palcos e nos dois temas; a line, que quase some, fica para as apagadas. Nós no matiz da comunidade com
 // o raio do PageRank, o título não resolvido só em contorno, a nota aberta com o anel no accent e a nota
 // com o foco do teclado com o anel no ink. Com um nó em destaque (hover ou foco), ele e as vizinhas ficam e o resto apaga;
 // com uma ligação em destaque (hover), ficam as duas pontas e as vizinhas de cada uma.
@@ -8,8 +8,15 @@
 const LABEL_ZOOM = 1.6
 const FADED = 0.3
 const FONT_PX = 11
-// Traço de cada tipo de ligação em px da tela: a escrita cheia, a inferida tracejada, a automática pontilhada.
-const LINK_DASHES = { written: [], inferred: [ 3, 3 ], automatic: [ 1, 3 ] }
+// Traço de cada método de ligação em px da tela, que se lê mesmo sem a cor: a manual fina e cheia, e as que o markupp
+// faz mais grossas, cada uma num desenho (a inferida em traços longos, a menção em pontos redondos). Sem origin
+// conhecido, a automática fica nos pontos.
+const LINK_STYLES = {
+  manual: { dash: [], width: 1 },
+  inferred: { dash: [ 8, 4 ], width: 1.75 },
+  mentioned: { dash: [ 1.5, 4 ], width: 1.75 }
+}
+const LIT_EXTRA_WIDTH = 0.5
 const LABEL_GAP_PX = 3
 // Anéis em px da tela: a distância da borda do nó ao meio do traço e a largura do traço.
 const CURRENT_RING = { gap: 3, width: 2 }
@@ -49,17 +56,30 @@ function emphasized(node, { active }) {
 }
 
 function paintLinks(context, links, colors, k, lit) {
-  for (const [ kind, dash ] of Object.entries(LINK_DASHES)) {
+  for (const origin of new Set(links.map(originOf))) {
+    const { dash, width } = LINK_STYLES[origin] ?? LINK_STYLES.mentioned
     context.setLineDash(dash.map((px) => px / k))
-    const drawn = links.filter((link) => linkKind(link) == kind)
-    strokeLinks(context, drawn, lit, { color: lit ? colors.line : colors.muted, width: 1 / k })
-    if (lit) strokeLinks(context, drawn.filter((link) => lit.has(link.source) && lit.has(link.target)), null, { color: colors.accent, width: 1.5 / k })
+    context.lineCap = origin == "manual" ? "butt" : "round"
+    const drawn = links.filter((link) => originOf(link) == origin)
+    strokeLinks(context, drawn, lit, { color: lit ? colors.line : restColor(origin, colors), width: width / k })
+    if (lit) strokeLinks(context, drawn.filter((link) => lit.has(link.source) && lit.has(link.target)), null, { color: litColor(origin, colors), width: (width + LIT_EXTRA_WIDTH) / k })
   }
   context.setLineDash([])
+  context.lineCap = "butt"
 }
 
-function linkKind({ inferred, automatic }) {
-  return automatic ? "automatic" : inferred ? "inferred" : "written"
+// O método da ligação; sem origin, pelo tipo.
+function originOf({ origin, inferred, automatic }) {
+  return origin ?? (automatic ? "automatic" : inferred ? "inferred" : "manual")
+}
+
+// A manual é neutra; cada método do markupp tem a sua cor, e o que não tem cor própria fica no accent.
+function restColor(origin, colors) {
+  return origin == "manual" ? colors.muted : colors.links?.[origin] ?? colors.accent
+}
+
+function litColor(origin, colors) {
+  return origin == "manual" ? colors.ink : restColor(origin, colors)
 }
 
 function strokeLinks(context, links, lit, { color, width }) {

@@ -19,7 +19,7 @@
   </header>
   <% if @vault_id %>
     <%= render "graphs/canvas", id: "vault_graph", url: graph_path(format: :json, vault: @vault_id, note: @origin&.id, **@filters), region: "graph",
-                                autofocus: true, filterable: true, filtered: @filters.any?, class: "graph-view-full" %>
+                                autofocus: true, filterable: true, filtered: @filters.any?, legend: true, class: "graph-view-full" %>
   <% else %>
     <%= render "layouts/empty_state", title: t("graphs.empty.title"), hint: t("graphs.empty.hint") %>
   <% end %>

@@ -113,6 +113,14 @@
   --community-7: var(--code-builtin);
 }
 
+/* Cor de cada método de ligação no grafo (graph/painter.js) e na legenda: a manual fica no ink-muted, e cada método do
+   markupp numa cor de sintaxe, com o mesmo contraste das comunidades. */
+:root {
+  --link-manual: var(--ink-muted);
+  --link-inferred: var(--code-constant);
+  --link-mentioned: var(--code-function);
+}
+
 /* Visões planas do Explorer (notes/_explorer_groups): a linha da árvore sem as guias, título, pasta apagada e o número
    à direita; por comunidade, a marca quadrada e a borda na cor dela, como um bloco de código com a margem pintada. */
 @layer components {
