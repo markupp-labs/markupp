@@ -52,6 +52,26 @@ services:
       migrate:
         condition: service_completed_successfully
 
+  # Indexador de embedding, da ligação por sentido (ADR-0053). Sem
+  # MARKUPP_EMBEDDING_PROVIDER fica ocioso; com local, baixa o modelo no volume na
+  # primeira subida.
+  embedder:
+    image: ghcr.io/markupp-labs/markupp-embedder:${MARKUPP_VERSION}
+    environment:
+      <<: *ambiente
+      MARKUPP_EMBEDDING_PROVIDER: ${MARKUPP_EMBEDDING_PROVIDER:-none}
+      MARKUPP_EMBEDDING_URL: ${MARKUPP_EMBEDDING_URL:-}
+      MARKUPP_EMBEDDING_MODEL: ${MARKUPP_EMBEDDING_MODEL:-}
+      MARKUPP_EMBEDDING_API_KEY: ${MARKUPP_EMBEDDING_API_KEY:-}
+      MARKUPP_EMBEDDING_CHUNK_TOKENS: ${MARKUPP_EMBEDDING_CHUNK_TOKENS:-512}
+    command: ["embed-loop"]
+    volumes:
+      - embedding_models:/var/lib/markupp/models
+    restart: unless-stopped
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
   markupp:
     <<: *servidor
     environment:
@@ -103,3 +123,4 @@ services:
 volumes:
   postgres_data:
   mcp_secret:
+  embedding_models:

@@ -42,6 +42,22 @@ services:
       migrate:
         condition: service_completed_successfully
 
+  # Indexador de embedding em laço, sem provedor por padrão. Aqui ele roda sem o ONNX
+  # Runtime: o provedor local só existe na imagem markupp-embedder (Dockerfile.embedder).
+  embedder:
+    <<: *servidor
+    environment:
+      <<: *ambiente
+      MARKUPP_EMBEDDING_PROVIDER: ${MARKUPP_EMBEDDING_PROVIDER:-none}
+      MARKUPP_EMBEDDING_URL: ${MARKUPP_EMBEDDING_URL:-}
+      MARKUPP_EMBEDDING_MODEL: ${MARKUPP_EMBEDDING_MODEL:-}
+      MARKUPP_EMBEDDING_API_KEY: ${MARKUPP_EMBEDDING_API_KEY:-}
+    command: ["go", "run", "-C", "/src", "./cmd/markupp", "embed-loop"]
+    restart: unless-stopped
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
   mailpit:
     image: axllent/mailpit:v1.31.4
     ports:
