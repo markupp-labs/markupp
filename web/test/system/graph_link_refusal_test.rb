@@ -35,6 +35,16 @@ class GraphLinkRefusalTest < ApplicationSystemTestCase
     assert_no_selector "main canvas[data-graph-canvas][data-hovering]"
   end
 
+  # A legenda do grafo cheio mostra só os métodos desenhados.
+  test "the legend shows only the methods in the drawing" do
+    draw_with("mentioned")
+
+    within("main .graph-legend") do
+      assert_selector "li", count: 1
+      assert_selector "li", text: "mention"
+    end
+  end
+
   test "a click on a written link asks nothing" do
     draw_with("explicit")
 

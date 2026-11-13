@@ -1,8 +1,8 @@
 require "application_system_test_case"
 
 # Desenho de um quadro do grafo (graph/painter.js) contra um contexto de canvas falso que anota cada traço e cada nome:
-# o nome fica abaixo do anel mais de fora do nó, e as ligações em repouso usam a cor muted, que contrasta 3:1 ou mais
-# com o palco; a line fica só para as apagadas.
+# o nome fica abaixo do anel mais de fora do nó, cada método de ligação tem a sua cor e o seu traço, e a line fica só
+# para as apagadas.
 class GraphPainterTest < ApplicationSystemTestCase
   setup do
     use_fake_api(notes: [])
@@ -18,17 +18,31 @@ class GraphPainterTest < ApplicationSystemTestCase
     assert_in_delta 5 + 3, labels["plain"]
   end
 
-  test "links at rest are stroked in the muted ink and the faded ones in line" do
-    rest = painted(nodes: "[ node('a', {}), node('b', {}) ]")["linkStrokes"]
-    lit = painted(nodes: "[ node('a', {}), node('b', {}) ]", active: 0)["linkStrokes"]
+  # A cor diz o método: a manual fica no muted (no ink quando acesa) e cada método do markupp na cor dele, mais grosso
+  # quando aceso.
+  test "each link method has its own color, the manual one muted, at rest and lit" do
+    colors = lambda do |active|
+      evaluate_async_script(<<~JS)
+        const done = arguments[arguments.length - 1]
+        import("graph/painter").then(({ paintGraph }) => {
+          const byDash = {}
+          let dash = ""
+          const context = new Proxy({}, { get: (target, key) => ({ setLineDash: (d) => { dash = d.join(",") }, stroke: () => { (byDash[dash] ||= []).push(target.strokeStyle) } })[key] ?? target[key] ?? (() => {}),
+                                           set: (target, key, value) => { target[key] = value; return true } })
+          const node = (title) => ({ title, x: 0, y: 0, radius: 5, hue: 0, neighbors: [] })
+          const [ a, b ] = [ node("a"), node("b") ]
+          a.neighbors = [ b ]; b.neighbors = [ a ]
+          const links = [ { source: a, target: b, origin: "manual" }, { source: a, target: b, origin: "inferred" }, { source: a, target: b, origin: "mentioned" } ]
+          const colors = { line: "line", ink: "ink", muted: "muted", accent: "accent", halo: "halo", communities: [ "c0" ],
+                           links: { inferred: "yellow", mentioned: "blue" } }
+          paintGraph(context, { nodes: [ a, b ], links, colors, camera: { width: 100, height: 100, k: 1, apply() {} }, ratio: 1, emphasis: { active: #{active} } })
+          done(byDash)
+        }).catch((error) => done({ error: String(error) }))
+      JS
+    end
 
-    assert_equal %w[muted muted], rest
-    assert_equal %w[line accent line accent], lit
-  end
-
-  # A escrita é cheia, a inferida tracejada e a automática pontilhada, nas mesmas cores: o tipo se lê pelo traço.
-  test "written links are solid, inferred ones dashed and automatic ones dotted" do
-    assert_equal [ "", "3,3", "1,3" ], painted(nodes: "[ node('a', {}), node('b', {}) ]")["linkDashes"]
+    assert_equal({ "" => [ "muted" ], "8,4" => [ "yellow" ], "1.5,4" => [ "blue" ] }, colors.call("null"))
+    assert_equal({ "" => %w[line ink], "8,4" => %w[line yellow], "1.5,4" => %w[line blue] }, colors.call("a"))
   end
 
   # O enquadramento aproxima o grafo para ocupar o canvas; a bolinha para de crescer na tela a partir do zoom 2.

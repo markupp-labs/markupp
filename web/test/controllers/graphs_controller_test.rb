@@ -25,8 +25,8 @@ class GraphsControllerTest < ActionDispatch::IntegrationTest
     assert_equal [ [ "plan", note_path("plan"), 1, 0.6, false, false ], [ "roadmap", note_path("roadmap"), nil, 0.3, false, true ],
                    [ "Ghost", nil, nil, nil, true, false ] ],
                  Array(body["nodes"]).map { it.values_at("title", "url", "hue", "rank", "unresolved", "current") }
-    assert_equal [ [ 0, 1, false, false ], [ 1, 0, true, false ], [ 0, 2, false, false ], [ 1, 0, false, true ] ],
-                 Array(body["links"]).map { it.values_at("source", "target", "inferred", "automatic") }
+    assert_equal [ [ 0, 1, false, false, "manual" ], [ 1, 0, true, false, "inferred" ], [ 0, 2, false, false, "manual" ], [ 1, 0, false, true, "mentioned" ] ],
+                 Array(body["links"]).map { it.values_at("source", "target", "inferred", "automatic", "origin") }
     assert_equal 3, body["total"]
   end
 
@@ -73,6 +73,24 @@ class GraphsControllerTest < ActionDispatch::IntegrationTest
     assert_select "main a[href=?][aria-keyshortcuts=Escape][data-controller=area-back]", note_path("roadmap")
     assert_select "main h1", text: "Graph"
     assert_select "nav#sidebar [role=treeitem]", text: /roadmap/
+  end
+
+  # A legenda nomeia cada método com a amostra do traço na cor dele; começa escondida e o canvas mostra os métodos desenhados.
+  test "the full graph page has a quiet legend of the link methods and the local graph has none" do
+    get graph_path(note: "roadmap")
+
+    assert_select "main .graph-stage ul.graph-legend[aria-label=?]", "Links by method" do
+      assert_select "li[hidden]", 3
+      [ [ "manual", "manual", nil ], [ "inferred", "inferred", "8 4" ], [ "mentioned", "mention", "1.5 4" ] ].each do |origin, label, dash|
+        assert_select "li[data-graph-legend=?]", origin, text: label do
+          assert_select dash ? "svg line.graph-link-#{origin}[stroke-dasharray='#{dash}']" : "svg line.graph-link-#{origin}:not([stroke-dasharray])"
+        end
+      end
+    end
+
+    cookies[:sidebar_view] = "graph"
+    get note_path("plan")
+    assert_select ".graph-legend", count: 0
   end
 
   test "the full graph page opened from a note shows that note in the Links and Graph views of the sidebar" do
