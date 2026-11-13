@@ -81,6 +81,20 @@ describe("list_links", () => {
     expect(tool.description).toMatch(/related is an automatic link/);
   });
 
+  it("filtra pela ligação por sentido e a descreve como automática", async () => {
+    const api = new FakeMarkuppApi().withTenant("t1", "member");
+    const vault = api.withVault("t1", "Casa").id;
+    const a = api.withNote("t1", "a.md", "fala do jardim", vault);
+    const c = api.withNote("t1", "c.md", "trata das plantas", vault);
+    api.withLink(a, c, "semantic").withLink(c, a, "explicit");
+    client = await MarkuppToolClient.connect(api);
+    const args = { tenant: "t1", id: a.id, type: "semantic" };
+    const result = await client.call("list_links", args);
+    expect(linkTypes(result.text)).toEqual(["semantic"]);
+    const tool = await client.tool("list_links");
+    expect(tool.description).toMatch(/semantic is an automatic link/);
+  });
+
   it("aponta search_notes quando a nota não existe", async () => {
     const { api } = vaultWithMention();
     client = await MarkuppToolClient.connect(api);

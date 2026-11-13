@@ -21,6 +21,9 @@ jobs:
             context: ./web
           - image: markupp-mcp
             context: ./mcp
+          - image: markupp-embedder
+            context: ./markupp
+            dockerfile: Dockerfile.embedder
     permissions:
       contents: read
       packages: write
@@ -69,7 +72,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: ${{ matrix.context }}
-          file: ${{ matrix.context }}/Dockerfile
+          file: ${{ matrix.context }}/${{ matrix.dockerfile || 'Dockerfile' }}
           platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.tags }}

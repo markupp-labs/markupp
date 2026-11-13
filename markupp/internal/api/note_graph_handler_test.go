@@ -257,6 +257,15 @@ func TestGrafo_ErrosDeDominio_ViramStatus(t *testing.T) {
 	}
 }
 
+func TestV1GetLinks_FiltraPelaLigacaoPorSentido(t *testing.T) {
+	graph := &fakeNoteGraph{}
+
+	rec := getGrafo(t, graph, "member", "/v1/notes/n1/links?type=semantic")
+
+	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+	assert.Equal(t, notes.LinkFilter{Type: notes.LinkSemantic, Page: notes.Page{Limit: 10}}, graph.query)
+}
+
 func TestV1GetLinks_FiltraPelaLigacaoPorMencao(t *testing.T) {
 	graph := &fakeNoteGraph{}
 

@@ -11,7 +11,8 @@ x-servidor: &servidor
 
 services:
   postgres:
-    image: postgres:17.9-alpine3.23
+    # O Postgres com o pgvector, na imagem oficial do pgvector.
+    image: pgvector/pgvector:0.8.7-pg17-trixie
     environment:
       POSTGRES_USER: markupp
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-markupp}
@@ -35,6 +36,22 @@ services:
   indexer:
     <<: *servidor
     command: ["go", "run", "-C", "/src", "./cmd/markupp", "index-loop"]
+    restart: unless-stopped
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  # Indexador de embedding em laço, sem provedor por padrão. Aqui ele roda sem o ONNX
+  # Runtime: o provedor local só existe na imagem markupp-embedder (Dockerfile.embedder).
+  embedder:
+    <<: *servidor
+    environment:
+      <<: *ambiente
+      MARKUPP_EMBEDDING_PROVIDER: ${MARKUPP_EMBEDDING_PROVIDER:-none}
+      MARKUPP_EMBEDDING_URL: ${MARKUPP_EMBEDDING_URL:-}
+      MARKUPP_EMBEDDING_MODEL: ${MARKUPP_EMBEDDING_MODEL:-}
+      MARKUPP_EMBEDDING_API_KEY: ${MARKUPP_EMBEDDING_API_KEY:-}
+    command: ["go", "run", "-C", "/src", "./cmd/markupp", "embed-loop"]
     restart: unless-stopped
     depends_on:
       migrate:

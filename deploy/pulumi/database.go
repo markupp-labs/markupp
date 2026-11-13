@@ -22,7 +22,7 @@ const (
 	scalerURIKey      = "scaler-uri"
 	scalerPasswordKey = "scaler-password"
 	scalerUser        = "markupp_scaler"
-	postgresImage     = "postgres:17.9-alpine3.23"
+	postgresImage     = "pgvector/pgvector:0.8.7-pg17-trixie"
 	postgresPort      = 5432
 	postgresUser      = "markupp"
 	passwordLength    = 32

@@ -33,17 +33,17 @@ class GraphPainterTest < ApplicationSystemTestCase
           const [ a, b ] = [ node("a"), node("b") ]
           a.neighbors = [ b ]; b.neighbors = [ a ]
           const links = [ { source: a, target: b, origin: "manual" }, { source: a, target: b, origin: "inferred" }, { source: a, target: b, origin: "mentioned" },
-                          { source: a, target: b, origin: "related" } ]
+                          { source: a, target: b, origin: "related" }, { source: a, target: b, origin: "semantic" } ]
           const colors = { line: "line", ink: "ink", muted: "muted", accent: "accent", halo: "halo", communities: [ "c0" ],
-                           links: { inferred: "yellow", mentioned: "blue", related: "green" } }
+                           links: { inferred: "yellow", mentioned: "blue", related: "green", semantic: "purple" } }
           paintGraph(context, { nodes: [ a, b ], links, colors, camera: { width: 100, height: 100, k: 1, apply() {} }, ratio: 1, emphasis: { active: #{active} } })
           done(byDash)
         }).catch((error) => done({ error: String(error) }))
       JS
     end
 
-    assert_equal({ "" => [ "muted" ], "8,4" => [ "yellow" ], "1.5,4" => [ "blue" ], "6,3,1.5,3" => [ "green" ] }, colors.call("null"))
-    assert_equal({ "" => %w[line ink], "8,4" => %w[line yellow], "1.5,4" => %w[line blue], "6,3,1.5,3" => %w[line green] }, colors.call("a"))
+    assert_equal({ "" => [ "muted" ], "8,4" => [ "yellow" ], "1.5,4" => [ "blue" ], "6,3,1.5,3" => [ "green" ], "12,4" => [ "purple" ] }, colors.call("null"))
+    assert_equal({ "" => %w[line ink], "8,4" => %w[line yellow], "1.5,4" => %w[line blue], "6,3,1.5,3" => %w[line green], "12,4" => %w[line purple] }, colors.call("a"))
   end
 
   # Passar sobre um método da legenda acende só as ligações dele e as notas das pontas; o resto apaga.

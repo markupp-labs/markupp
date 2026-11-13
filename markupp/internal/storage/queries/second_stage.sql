@@ -21,6 +21,36 @@ DELETE FROM note_automatic_links WHERE vault_id = sqlc.arg(vault_id) AND kind = 
 -- name: DeleteVaultRelatedLinks :exec
 DELETE FROM note_automatic_links WHERE vault_id = sqlc.arg(vault_id) AND kind = 'related';
 
+-- name: DeleteVaultSemanticLinks :exec
+DELETE FROM note_automatic_links WHERE vault_id = sqlc.arg(vault_id) AND kind = 'semantic';
+
+-- O HNSW filtra o cofre depois de achar os vizinhos; a busca iterativa continua até
+-- achar os k do cofre, na ordem exata. Vale até o fim da transação.
+-- shortcut: a busca para em hnsw.max_scan_tuples (20 mil); um cofre pequeno numa tabela
+-- grande pode ficar com menos de 5 vizinhos, e então vale subir o teto ou filtrar antes.
+-- name: AllowFilteredVectorScan :exec
+SELECT set_config('hnsw.iterative_scan', 'strict_order', true);
+
+-- Ligação por sentido: o par em que cada nota está entre as 5 de maior cosseno da
+-- outra (kNN mútuo), sem mínimo, gravado nos dois sentidos com o cosseno.
+-- name: SaveVaultSemanticLinks :exec
+WITH knn AS (
+    SELECT e.note_id AS source_id, n.note_id AS target_id, n.similarity
+    FROM note_embeddings e
+    CROSS JOIN LATERAL (
+        SELECT o.note_id, 1 - (o.embedding <=> e.embedding) AS similarity
+        FROM note_embeddings o
+        WHERE o.vault_id = e.vault_id AND o.note_id <> e.note_id
+        ORDER BY o.embedding <=> e.embedding
+        LIMIT 5
+    ) n
+    WHERE e.vault_id = sqlc.arg(vault_id)
+)
+INSERT INTO note_automatic_links (source_id, target_id, vault_id, kind, score)
+SELECT a.source_id, a.target_id, sqlc.arg(vault_id), 'semantic', a.similarity
+FROM knn a
+JOIN knn b ON b.source_id = a.target_id AND b.target_id = a.source_id;
+
 -- name: ListVaultTitleKeys :many
 SELECT note_id, title_key FROM note_titles WHERE vault_id = sqlc.arg(vault_id) ORDER BY note_id, title_key;
 

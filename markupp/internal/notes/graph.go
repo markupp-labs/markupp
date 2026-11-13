@@ -24,6 +24,7 @@ const (
 	LinkInferred  = "inferred"
 	LinkMentioned = "mentioned"
 	LinkRelated   = "related"
+	LinkSemantic  = "semantic"
 )
 
 // Situações de resolução de uma ligação.

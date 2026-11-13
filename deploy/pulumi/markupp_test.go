@@ -128,8 +128,8 @@ func TestNewMarkupp_SemBancoExterno_CriaPostgresNoNamespaceComVolume(t *testing.
 	db := monitor.single(t, "kubernetes:apps/v1:StatefulSet")
 	assert.Equal(t, "markupp", at(t, db, "metadata", "namespace").StringValue())
 	assert.Equal(t, 1.0, at(t, db, "spec", "replicas").NumberValue())
-	assert.Equal(t, "postgres:17.9-alpine3.23", firstContainer(t, db)["image"].StringValue(),
-		"mesma versão fixa do compose e do testcontainers")
+	assert.Equal(t, "pgvector/pgvector:0.8.7-pg17-trixie", firstContainer(t, db)["image"].StringValue(),
+		"o Postgres com pgvector, na mesma versão fixa do compose e do testcontainers")
 	claim := at(t, db, "spec", "volumeClaimTemplates").ArrayValue()[0].ObjectValue()
 	assert.Equal(t, "longhorn-fast", at(t, claim, "spec", "storageClassName").StringValue())
 	assert.Equal(t, "10Gi", at(t, claim, "spec", "resources", "requests", "storage").StringValue())

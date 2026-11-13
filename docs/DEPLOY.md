@@ -8,8 +8,8 @@ tag `v*`, e a configuração vem de variáveis de ambiente, descritas no
 ## Docker
 
 Para rodar o markupp numa máquina, sem cluster, o `docker-compose.yaml` da raiz sobe o
-PostgreSQL, as migrações, o servidor, o indexador, o notificador, o painel e o servidor MCP a
-partir das imagens publicadas, sem buildar nada. Baixe o `docker-compose.yaml` e o
+PostgreSQL, as migrações, o servidor, o indexador, o indexador de embedding, o notificador, o
+painel e o servidor MCP a partir das imagens publicadas, sem buildar nada. Baixe o `docker-compose.yaml` e o
 `example.env` da raiz do repositório para uma pasta, copie o `example.env` para `.env` e
 preencha:
 
@@ -313,6 +313,35 @@ services:
 
 Os segredos ficam no `.env`. Um provedor OIDC fora do ar não impede o servidor de subir: a
 descoberta acontece no primeiro login, e o botão responde que o provedor não respondeu.
+
+## Ligação por sentido
+
+Opcional e desligada por padrão ([ADR-0053](adrs/ADR-0053-ligacoes-automaticas.md)): o
+indexador de embedding transforma cada nota num vetor, e o servidor liga as notas que tratam do
+mesmo assunto. Ele roda com `embed-loop` na imagem `ghcr.io/markupp-labs/markupp-embedder`, que
+é o serviço `embedder` do `docker-compose.yaml`, e lê `MARKUPP_EMBEDDING_PROVIDER`:
+
+- vazio ou `none`: sem ligação por sentido, e nada é baixado. O embedder fica ocioso e apaga os
+  vetores de um provedor anterior;
+- `local`: o modelo roda na própria máquina, no ONNX Runtime, em amd64 ou arm64. Na primeira
+  subida ele baixa os arquivos do modelo para `MARKUPP_EMBEDDING_MODEL_DIR` (padrão
+  `/var/lib/markupp/models`, um volume no compose), uns 300 MB em x86 com AVX2 e 1,2 GB nas
+  outras CPUs, e recusa arquivo com hash diferente
+  ([ADR-0056](adrs/ADR-0056-pedacos-e-media.md));
+- `openai-compat`: pede os vetores a um endpoint `/embeddings` no formato da OpenAI, com
+  `MARKUPP_EMBEDDING_URL` (a base, sem `/embeddings`), `MARKUPP_EMBEDDING_MODEL` e, se o
+  servidor pedir, `MARKUPP_EMBEDDING_API_KEY`. O texto das notas sai da máquina.
+
+`MARKUPP_EMBEDDING_CHUNK_TOKENS` (padrão 512) é o tamanho do pedaço de nota que vira um vetor.
+Trocar de provedor ou de modelo apaga os vetores e refaz os de todas as notas.
+
+Os vetores ficam no Postgres, com o pgvector ([ADR-0055](adrs/ADR-0055-vetores-no-postgres.md)).
+O compose e o componente Pulumi usam a imagem oficial do pgvector, `pgvector/pgvector`, com o
+Postgres 17 em Debian. Num PostgreSQL externo, instale o pgvector e crie a extensão com um
+superusuário (`CREATE EXTENSION vector;`) antes de migrar.
+
+O banco criado antes, na imagem `postgres` em Alpine, ordena o texto de outro jeito que o
+Debian; a migração da ligação por sentido refaz os índices das tabelas do markupp uma vez.
 
 ## OAuth
 
