@@ -3,6 +3,8 @@ pt-BR:
     show:
       title: "Grafo"
       keys: "j k mover  ↵ abrir  + - zoom  0 ajustar  esc voltar"
+    vault:
+      label: "Cofre inteiro"
     legend:
       label: "Ligações por método"
       manual: "manual"

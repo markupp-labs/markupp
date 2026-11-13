@@ -3,6 +3,8 @@ en:
     show:
       title: "Graph"
       keys: "j k move  ↵ open  + - zoom  0 fit  esc back"
+    vault:
+      label: "Whole vault"
     legend:
       label: "Links by method"
       manual: "manual"

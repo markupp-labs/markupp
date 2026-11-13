@@ -9,6 +9,9 @@
 <% if @origin %>
   <% content_for :note_links, note_links_frame(@origin) %>
   <% content_for :note_graph, render("graphs/local", note: @origin) %>
+<% else %>
+  <%# Sem nota, a visão Graph não repete o cofre que o main já desenha. %>
+  <% content_for :note_graph, render("layouts/empty_state", title: t("layouts.application.graph_empty.title"), hint: t("layouts.application.graph_empty.hint")) %>
 <% end %>
 <div class="graph-page">
   <header class="flex items-center gap-3">

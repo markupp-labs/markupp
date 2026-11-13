@@ -112,7 +112,7 @@ class ActivityBarTest < ApplicationSystemTestCase
     send_keys [ :control, :shift, "g" ]
 
     assert_selector "nav#sidebar"
-    assert_selector "#sidebar_view_graph:focus"
+    assert_selector "#sidebar_view_graph canvas[data-graph-canvas]:focus"
   end
 
   test "j, k and the arrows walk the icons and enter shows the view" do

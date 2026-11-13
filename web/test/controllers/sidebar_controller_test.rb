@@ -223,6 +223,9 @@ class SidebarControllerTest < ActionDispatch::IntegrationTest
 
   # Sem nota aberta, a visão Graph desenha o cofre inteiro, com o caminho para a tela cheia; aberta, volta ao grafo local.
   test "with no note open the Graph view draws the whole vault and leads to the full graph" do
+    use_fake_api
+    sign_in_as
+
     get root_path
 
     assert_select "#sidebar_view_graph [data-controller=graph-view][data-graph-view-url-value=?]", graph_path(format: :json, vault: "vault-1") do
