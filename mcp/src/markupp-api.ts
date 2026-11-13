@@ -1,4 +1,13 @@
 import { toApiError } from "./api-error.js";
+import {
+  linkRefusalsPath,
+  memberPath,
+  myInvitePath,
+  notePath,
+  vaultPath,
+  withPage,
+  withQuery,
+} from "./api-paths.js";
 import type {
   Publication,
   PublicationList,
@@ -463,40 +472,6 @@ export class HttpMarkuppApi implements MarkuppApi {
     if (call.body !== undefined) headers["content-type"] = "application/json";
     return headers;
   }
-}
-
-function notePath(id: string): string {
-  return `/v1/notes/${encodeURIComponent(id)}`;
-}
-
-function memberPath(userId: string): string {
-  return `/v1/users/${encodeURIComponent(userId)}`;
-}
-
-function vaultPath(vault: string): string {
-  return `/v1/vaults/${encodeURIComponent(vault)}`;
-}
-
-function linkRefusalsPath(vault: string): string {
-  return `${vaultPath(vault)}/link-refusals`;
-}
-
-// withQuery só põe o ? quando há parâmetro.
-function withQuery(path: string, params: URLSearchParams): string {
-  const query = params.toString();
-  return query ? `${path}?${query}` : path;
-}
-
-// withPage põe na query string o limit e o offset que vieram, para o servidor usar o
-// padrão dele nos que faltam.
-function withPage(params: URLSearchParams, page: SearchPage): URLSearchParams {
-  if (page.limit !== undefined) params.set("limit", String(page.limit));
-  if (page.offset !== undefined) params.set("offset", String(page.offset));
-  return params;
-}
-
-function myInvitePath(inviteId: string): string {
-  return `/v1/me/invites/${encodeURIComponent(inviteId)}`;
 }
 
 export function noteSummary(note: NoteSummary): NoteSummary {
