@@ -6,6 +6,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"mime"
+	"mime/quotedprintable"
 	"net"
 	"net/mail"
 	"net/smtp"
@@ -199,9 +200,34 @@ func encode(msg Message, sender *mail.Address) []byte {
 		"Subject: " + mime.QEncoding.Encode("utf-8", msg.Subject),
 		"Date: " + time.Now().UTC().Format(time.RFC1123Z),
 		"MIME-Version: 1.0",
-		"Content-Type: text/plain; charset=utf-8",
-		"Content-Transfer-Encoding: 8bit",
 	}
-	body := strings.ReplaceAll(msg.Body, "\n", "\r\n")
-	return []byte(strings.Join(headers, "\r\n") + "\r\n\r\n" + body)
+	return []byte(strings.Join(headers, "\r\n") + "\r\n" + content(msg))
+}
+
+// content é o corpo com o cabeçalho do tipo dele. Com HTML, texto e HTML vão como
+// alternativas, o HTML por último porque o cliente mostra a última que entende.
+func content(msg Message) string {
+	plain := "Content-Type: text/plain; charset=utf-8\r\nContent-Transfer-Encoding: 8bit\r\n\r\n" + crlf(msg.Body)
+	if msg.HTML == "" {
+		return plain
+	}
+	boundary := rand.Text()
+	return "Content-Type: multipart/alternative; boundary=\"" + boundary + "\"\r\n\r\n" +
+		"--" + boundary + "\r\n" + plain + "\r\n" +
+		"--" + boundary + "\r\n" + htmlPart(msg.HTML) + "\r\n" +
+		"--" + boundary + "--\r\n"
+}
+
+// htmlPart vai em quoted-printable porque linha de HTML pode passar dos 998 bytes
+// que o 8bit aceita.
+func htmlPart(html string) string {
+	var encoded strings.Builder
+	w := quotedprintable.NewWriter(&encoded)
+	_, _ = w.Write([]byte(crlf(html)))
+	_ = w.Close()
+	return "Content-Type: text/html; charset=utf-8\r\nContent-Transfer-Encoding: quoted-printable\r\n\r\n" + encoded.String()
+}
+
+func crlf(text string) string {
+	return strings.ReplaceAll(text, "\n", "\r\n")
 }

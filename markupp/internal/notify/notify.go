@@ -6,17 +6,16 @@ package notify
 import (
 	"context"
 	"fmt"
-	"net/url"
-	"strings"
 	"time"
 )
 
-// Message é um email de texto puro.
+// Message é um email com a mesma mensagem em texto puro e em HTML.
 type Message struct {
 	From    string
 	To      string
 	Subject string
 	Body    string
+	HTML    string
 }
 
 // Mailer entrega uma mensagem a um servidor de email.
@@ -79,55 +78,43 @@ type Outbox interface {
 // InviteMessage monta o email que leva o token do convite e, com panelURL, o link
 // do painel para aceitar.
 func InviteMessage(d TokenDetails, token, from, panelURL string) Message {
-	body := fmt.Sprintf("%s convidou você para %s no markupp, com o papel %s.\n\n"+
-		"%s"+
-		"Use o token no cliente do markupp para aceitar. O convite vale até %s.\n",
-		d.InviterEmail, d.TenantName, d.Role, tokenBlock(panelURL, inviteLink, token), validUntil(d.ExpiresAt))
 	// O nome do tenant é escolhido por quem convida: no assunto, ele seria a isca de um
 	// phishing que sai do remetente da instância (#50). No corpo, vem com quem convidou.
-	return Message{From: from, To: d.Email, Subject: "Convite para um tenant no markupp", Body: body}
+	return letter{
+		subject: "Convite para um tenant no markupp",
+		lead:    fmt.Sprintf("%s convidou você para %s no markupp, com o papel %s.", d.InviterEmail, d.TenantName, d.Role),
+		route:   inviteLink,
+		usage:   "Use o token no cliente do markupp para aceitar. O convite vale até " + validUntil(d.ExpiresAt) + ".",
+		expiry:  "O convite vale até " + validUntil(d.ExpiresAt) + ".",
+		reason:  "este endereço foi convidado para um tenant.",
+	}.message(from, d.Email, token, panelURL)
 }
 
 // VerifyEmailMessage monta o email que leva o token de verificação da conta e,
 // com panelURL, o link do painel para confirmar.
 func VerifyEmailMessage(d TokenDetails, token, from, panelURL string) Message {
-	body := fmt.Sprintf("Confirme que este email é seu para receber convites no markupp.\n\n"+
-		"%s"+
-		"Use o token no cliente do markupp, logado na conta que você criou. Ele vale até %s.\n\n"+
-		"Se não foi você que criou a conta, ignore este email e não use o token.\n",
-		tokenBlock(panelURL, verifyLink, token), validUntil(d.ExpiresAt))
-	return Message{From: from, To: d.Email, Subject: "Confirme seu email no markupp", Body: body}
+	return letter{
+		subject: "Confirme seu email no markupp",
+		lead:    "Confirme que este email é seu para receber convites no markupp.",
+		route:   verifyLink,
+		usage:   "Use o token no cliente do markupp, logado na conta que você criou. Ele vale até " + validUntil(d.ExpiresAt) + ".",
+		expiry:  "Abra o link logado na conta que você criou. Ele vale até " + validUntil(d.ExpiresAt) + ".",
+		caution: "Se não foi você que criou a conta, ignore este email e não use o token.",
+		reason:  "uma conta do markupp foi criada com este endereço.",
+	}.message(from, d.Email, token, panelURL)
 }
 
 // ResetPasswordMessage monta o email que leva o token de troca de senha e, com
 // panelURL, o link do painel para trocar.
 func ResetPasswordMessage(d TokenDetails, token, from, panelURL string) Message {
-	body := fmt.Sprintf("Alguém pediu a troca da senha da sua conta no markupp.\n\n"+
-		"%s"+
-		"Use o token no cliente do markupp. Ele vale até %s.\n\n"+
-		"Se não foi você, ignore este email: a senha só muda com o token.\n",
-		tokenBlock(panelURL, resetLink, token), validUntil(d.ExpiresAt))
-	return Message{From: from, To: d.Email, Subject: "Troca de senha no markupp", Body: body}
-}
-
-// tokenLink é a rota do painel que recebe o token, o que o link faz e o rótulo do
-// token quando não há painel.
-type tokenLink struct{ path, action, label string }
-
-var (
-	inviteLink = tokenLink{"/invite_acceptance/new", "Abra o link para aceitar o convite:", "Token do convite:"}
-	verifyLink = tokenLink{"/email_confirmation/new", "Abra o link para confirmar seu email:", "Token de verificação:"}
-	resetLink  = tokenLink{"/password_reset/new", "Abra o link para trocar sua senha:", "Token de troca de senha:"}
-)
-
-// tokenBlock devolve o parágrafo do token. Com panelURL, o link da rota do painel vem
-// primeiro e o token fica como alternativa; sem, só o token com o rótulo.
-func tokenBlock(panelURL string, l tokenLink, token string) string {
-	if panelURL == "" {
-		return l.label + "\n" + token + "\n\n"
-	}
-	link := strings.TrimSuffix(panelURL, "/") + l.path + "?token=" + url.QueryEscape(token)
-	return l.action + "\n" + link + "\n\nSe o link não abrir, cole este token no markupp:\n" + token + "\n\n"
+	return letter{
+		subject: "Troca de senha no markupp",
+		lead:    "Alguém pediu a troca da senha da sua conta no markupp.",
+		route:   resetLink,
+		usage:   "Use o token no cliente do markupp. Ele vale até " + validUntil(d.ExpiresAt) + ".",
+		expiry:  "O link vale até " + validUntil(d.ExpiresAt) + ".",
+		reason:  "pediram a troca da senha da conta deste endereço.",
+	}.message(from, d.Email, token, panelURL)
 }
 
 // validUntil mostra a validade com hora e fuso, em UTC.
