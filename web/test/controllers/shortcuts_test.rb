@@ -12,6 +12,7 @@ class ShortcutsTest < ActionDispatch::IntegrationTest
     [ "Focus region left", "Alt H" ], [ "Focus region below", "Alt J" ], [ "Focus region above", "Alt K" ], [ "Focus region right", "Alt L" ],
     [ "Light theme", "" ], [ "Dark theme", "" ], [ "Editor style: plain", "" ], [ "Editor style: styled", "" ],
     [ "Vim keys: on", "" ], [ "Vim keys: off", "" ], [ "Language: English", "" ], [ "Language: Português (Brasil)", "" ],
+    [ "Authorizations", "" ],
     [ "All tenants", "g t" ], [ "Switch tenant", "" ], [ "Tenant: General", "" ], [ "Delete tenant", "" ],
     [ "Switch vault", "g v" ], [ "New vault", "" ], [ "Vault settings", "" ], [ "Vault members", "" ], [ "Delete vault", "" ],
     [ "Notifications", "g n" ], [ "Log out", "" ],
