@@ -32,6 +32,17 @@ func (q *Queries) DeleteNoteMentionLinks(ctx context.Context, noteIds []string) 
 	return err
 }
 
+const deleteNoteRelatedLinks = `-- name: DeleteNoteRelatedLinks :exec
+DELETE FROM note_automatic_links
+WHERE (source_id = ANY ($1::text[]) OR target_id = ANY ($1::text[])) AND kind = 'related'
+`
+
+// A ligação por texto parecido fica gravada nos dois sentidos: a da nota sai pelos dois.
+func (q *Queries) DeleteNoteRelatedLinks(ctx context.Context, noteIds []string) error {
+	_, err := q.db.Exec(ctx, deleteNoteRelatedLinks, noteIds)
+	return err
+}
+
 const deleteNoteTerms = `-- name: DeleteNoteTerms :exec
 DELETE FROM note_terms WHERE note_id = ANY ($1::text[])
 `
@@ -81,6 +92,69 @@ type EnterIndexerParams struct {
 func (q *Queries) EnterIndexer(ctx context.Context, arg EnterIndexerParams) error {
 	_, err := q.db.Exec(ctx, enterIndexer, arg.TenantID, arg.VaultID)
 	return err
+}
+
+const listLexicalNeighbors = `-- name: ListLexicalNeighbors :many
+SELECT x.note_id::text AS note_id, c.neighbor_id::text AS neighbor_id, c.score::float8 AS score
+FROM note_terms x
+CROSS JOIN LATERAL (
+    SELECT o.note_id AS neighbor_id, d.dot / nullif(o.norm * x.norm, 0) AS score
+    FROM note_terms o
+    CROSS JOIN LATERAL (
+        SELECT sum(o.weights[u.ord] * x.weights[v.ord]) AS dot
+        FROM unnest(o.terms) WITH ORDINALITY AS u (term, ord)
+        JOIN unnest(x.terms) WITH ORDINALITY AS v (term, ord) ON v.term = u.term
+    ) d
+    WHERE o.vault_id = $1 AND o.terms && x.terms AND o.note_id <> x.note_id
+      AND d.dot / nullif(o.norm * x.norm, 0) >= $2::float8
+    ORDER BY score DESC, o.note_id
+    LIMIT $3::int
+) c
+WHERE x.vault_id = $1 AND x.note_id = ANY ($4::text[])
+ORDER BY x.note_id, c.score DESC, c.neighbor_id
+`
+
+type ListLexicalNeighborsParams struct {
+	VaultID  string
+	MinScore float64
+	K        int32
+	NoteIds  []string
+}
+
+type ListLexicalNeighborsRow struct {
+	NoteID     string
+	NeighborID string
+	Score      float64
+}
+
+// As k notas do cofre de maior cosseno tf-idf com cada nota de note_ids, de min_score
+// para cima, sobre as postagens gravadas, como markupp_lexical_similarity, mas sem
+// tirar as já ligadas: a vizinhança é do texto, e note_edges escolhe a ligação que vale.
+// Candidata é a nota que divide algum termo, achada pelo GIN. O nullif evita dividir
+// por zero a nota de pesos todos zero.
+func (q *Queries) ListLexicalNeighbors(ctx context.Context, arg ListLexicalNeighborsParams) ([]ListLexicalNeighborsRow, error) {
+	rows, err := q.db.Query(ctx, listLexicalNeighbors,
+		arg.VaultID,
+		arg.MinScore,
+		arg.K,
+		arg.NoteIds,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListLexicalNeighborsRow
+	for rows.Next() {
+		var i ListLexicalNeighborsRow
+		if err := rows.Scan(&i.NoteID, &i.NeighborID, &i.Score); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listPendingNotes = `-- name: ListPendingNotes :many
@@ -143,8 +217,8 @@ SELECT md5(
                                 ORDER BY ROW(l.note_id, l.title_key, l.target_path, l.kind, l.predicate)::text)
               FROM note_links l WHERE l.note_id = ANY ($1::text[]) AND l.kind <> 'inferred'), '')
     || ';' ||
-    coalesce((SELECT string_agg(ROW(a.source_id, a.target_id, a.cited_title)::text, ',' ORDER BY ROW(a.source_id, a.target_id, a.cited_title)::text)
-              FROM note_automatic_links a WHERE a.source_id = ANY ($1::text[]) AND a.kind = 'mentioned'), '')
+    coalesce((SELECT string_agg(ROW(a.source_id, a.target_id, a.kind, a.cited_title)::text, ',' ORDER BY ROW(a.source_id, a.target_id, a.kind, a.cited_title)::text)
+              FROM note_automatic_links a WHERE a.source_id = ANY ($1::text[]) AND a.kind IN ('mentioned', 'related')), '')
 )::text AS fingerprint
 `
 

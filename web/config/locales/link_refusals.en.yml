@@ -2,8 +2,10 @@ en:
   note_links:
     kinds:
       mentioned: "mention"
+      related: "similar text"
     reasons:
       mentioned: "linked because the text cites %{title}"
+      related: "linked because the texts are similar"
     refuse:
       label: "Refuse link"
       label_for: "Refuse link with %{title}"

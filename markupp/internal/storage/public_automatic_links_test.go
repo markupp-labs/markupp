@@ -39,6 +39,30 @@ func TestGrafoPublico_MostraALigacaoPorMencaoESemARecusada(t *testing.T) {
 	assert.Equal(t, []publication.PublicGraphLink{{Source: indexOf(g, alfa), Target: indexOf(g, beta), Type: "mentioned"}}, g.Links)
 }
 
+// alfa e beta falam quase do mesmo jeito, e gama, de outra coisa, dá o idf: o grafo
+// público mostra a ligação por texto parecido, e a nota não a lista com as ligações do
+// texto, porque ela não cita título.
+func TestNotaPublica_LigacaoPorTextoParecidoFicaSoNoGrafo(t *testing.T) {
+	db := setupTestDB(t)
+	repo := storage.NewPostgresNotesRepository(db, "simple")
+	ctx := storagetest.SeedMember(t, db, identity.Actor{UserID: "ua", TenantID: "t1", Role: "owner"}, "va")
+	storagetest.SaveNote(ctx, t, repo, notaPublica("alfa", "Alfa.md", "va", "kubernetes cluster pod deploy helm"))
+	storagetest.SaveNote(ctx, t, repo, notaPublica("beta", "Beta.md", "va", "kubernetes cluster pod deploy helm chart"))
+	storagetest.SaveNote(ctx, t, repo, notaPublica("gama", "Gama.md", "va", "receita de bolo"))
+	publica(t, db, "p-va", "t1", "va", alvoCofre())
+	indexaTodosOsCofres(t, db, "simple")
+	alfa, beta := idPublicoDe(t, db, "alfa"), idPublicoDe(t, db, "beta")
+	leitura := storage.NewPostgresPublicNotes(db, "simple")
+
+	g, err := leitura.PublicGraph(context.Background(), alfa)
+	require.NoError(t, err)
+	nota, err := leitura.PublicNote(context.Background(), alfa)
+	require.NoError(t, err)
+
+	assert.Contains(t, g.Links, publication.PublicGraphLink{Source: indexOf(g, alfa), Target: indexOf(g, beta), Type: "related"})
+	assert.Empty(t, nota.Links)
+}
+
 func indexOf(g publication.PublicGraph, publicID string) int {
 	for i, n := range g.Nodes {
 		if n.PublicID == publicID {

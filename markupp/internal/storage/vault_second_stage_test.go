@@ -176,7 +176,7 @@ func TestSegundoEstagio_NotaMovidaDePasta_Recalcula(t *testing.T) {
 	db := setupNotesDB(t)
 	repo := storage.NewPostgresNotesRepository(db, "simple")
 	storagetest.SaveNote(ctxDeTeste, t, repo, notaComCaminho("x1", "a/alvo.md", "x"))
-	storagetest.SaveNote(ctxDeTeste, t, repo, notaComCaminho("x2", "b/alvo.md", "x"))
+	storagetest.SaveNote(ctxDeTeste, t, repo, notaComCaminho("x2", "b/alvo.md", "y"))
 	storagetest.SaveNote(ctxDeTeste, t, repo, notaComCaminho("o", "o.md", "[l](a/alvo.md)"))
 	indexaTodosOsCofres(t, db, "simple")
 	require.Zero(t, grauDeEntrada(t, db, "x2"), "o caminho citado existe e liga so a x1")

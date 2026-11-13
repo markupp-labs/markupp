@@ -10,7 +10,8 @@ class GraphsControllerTest < ActionDispatch::IntegrationTest
     { id: nil, title: "Ghost", path: nil, degree: nil, pagerank: nil, community: nil, unresolved: true }
   ].freeze
   LINKS = [ { source: 0, target: 1, type: "explicit", predicate: nil }, { source: 1, target: 0, type: "inferred", predicate: nil },
-            { source: 0, target: 2, type: "typed", predicate: "next" }, { source: 1, target: 0, type: "mentioned", predicate: nil } ].freeze
+            { source: 0, target: 2, type: "typed", predicate: "next" }, { source: 1, target: 0, type: "mentioned", predicate: nil },
+            { source: 0, target: 1, type: "related", predicate: nil } ].freeze
   GRAPH = { graph: { "vault-1" => { nodes: NODES, links: LINKS }, "plan" => { nodes: NODES, links: LINKS } } }.freeze
 
   setup do
@@ -25,7 +26,8 @@ class GraphsControllerTest < ActionDispatch::IntegrationTest
     assert_equal [ [ "plan", note_path("plan"), 1, 0.6, false, false ], [ "roadmap", note_path("roadmap"), nil, 0.3, false, true ],
                    [ "Ghost", nil, nil, nil, true, false ] ],
                  Array(body["nodes"]).map { it.values_at("title", "url", "hue", "rank", "unresolved", "current") }
-    assert_equal [ [ 0, 1, false, false, "manual" ], [ 1, 0, true, false, "inferred" ], [ 0, 2, false, false, "manual" ], [ 1, 0, false, true, "mentioned" ] ],
+    assert_equal [ [ 0, 1, false, false, "manual" ], [ 1, 0, true, false, "inferred" ], [ 0, 2, false, false, "manual" ], [ 1, 0, false, true, "mentioned" ],
+                   [ 0, 1, false, true, "related" ] ],
                  Array(body["links"]).map { it.values_at("source", "target", "inferred", "automatic", "origin") }
     assert_equal 3, body["total"]
   end
@@ -80,8 +82,9 @@ class GraphsControllerTest < ActionDispatch::IntegrationTest
     get graph_path(note: "roadmap")
 
     assert_select "main .graph-stage ul.graph-legend[aria-label=?]", "Links by method" do
-      assert_select "li[hidden]", 3
-      [ [ "manual", "manual", nil ], [ "inferred", "inferred", "8 4" ], [ "mentioned", "mention", "1.5 4" ] ].each do |origin, label, dash|
+      assert_select "li[hidden]", 4
+      [ [ "manual", "manual", nil ], [ "inferred", "inferred", "8 4" ], [ "mentioned", "mention", "1.5 4" ],
+        [ "related", "similar text", "6 3 1.5 3" ] ].each do |origin, label, dash|
         assert_select "li[data-graph-legend=?]", origin, text: label do
           assert_select dash ? "svg line.graph-link-#{origin}[stroke-dasharray='#{dash}']" : "svg line.graph-link-#{origin}:not([stroke-dasharray])"
         end

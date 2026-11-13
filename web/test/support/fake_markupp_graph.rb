@@ -49,5 +49,5 @@ class FakeMarkuppGraph
 
     def of_type(items, type) = type ? items.select { it["type"] == type } : items
 
-    def unrefused(items) = items.reject { it["type"] == "mentioned" && @refusals.refused?(it.dig("source", "id"), it.dig("target", "id")) }
+    def unrefused(items) = items.reject { Link::AUTOMATIC_TYPES.include?(it["type"]) && @refusals.refused?(it.dig("source", "id"), it.dig("target", "id")) }
 end

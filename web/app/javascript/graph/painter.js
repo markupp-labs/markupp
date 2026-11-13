@@ -9,12 +9,13 @@ const LABEL_ZOOM = 1.6
 const FADED = 0.3
 const FONT_PX = 11
 // Traço de cada método de ligação em px da tela, que se lê mesmo sem a cor: a manual fina e cheia, e as que o markupp
-// faz mais grossas, cada uma num desenho (a inferida em traços longos, a menção em pontos redondos). Sem origin
+// faz mais grossas, cada uma num desenho (a inferida em traços longos, a menção em pontos redondos, o texto parecido em traço e ponto). Sem origin
 // conhecido, a automática fica nos pontos.
 const LINK_STYLES = {
   manual: { dash: [], width: 1 },
   inferred: { dash: [ 8, 4 ], width: 1.75 },
-  mentioned: { dash: [ 1.5, 4 ], width: 1.75 }
+  mentioned: { dash: [ 1.5, 4 ], width: 1.75 },
+  related: { dash: [ 6, 3, 1.5, 3 ], width: 1.75 }
 }
 const LIT_EXTRA_WIDTH = 0.5
 const LABEL_GAP_PX = 3

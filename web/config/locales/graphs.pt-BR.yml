@@ -10,6 +10,7 @@ pt-BR:
       manual: "manual"
       inferred: "inferida"
       mentioned: "menção"
+      related: "texto parecido"
     filters:
       title: "Filtros"
       show: "mostrar"

@@ -2602,7 +2602,7 @@ components:
       name: automatic
       in: query
       required: false
-      description: false esconde as ligações automáticas, como a por menção
+      description: false esconde as ligações automáticas, como a por menção e a por texto parecido
       schema:
         type: boolean
         default: true
@@ -2666,10 +2666,11 @@ components:
       description: |
         Só as ligações do tipo: explicit para wikilink e link markdown, embed para
         ![[...]], typed para a ligação tipada do frontmatter, inferred para a ligação
-        inferida e mentioned para a ligação por menção
+        inferida, mentioned para a ligação por menção e related para a ligação por
+        texto parecido
       schema:
         type: string
-        enum: [explicit, embed, typed, inferred, mentioned]
+        enum: [explicit, embed, typed, inferred, mentioned, related]
     LinkStatus:
       name: status
       in: query
@@ -3450,12 +3451,15 @@ components:
           example: "Reunião Semanal"
         type:
           type: string
-          enum: [explicit, embed, typed, inferred, mentioned]
+          enum: [explicit, embed, typed, inferred, mentioned, related]
           description: |
             explicit para wikilink e link markdown, embed para ![[...]], typed para a
             ligação tipada do frontmatter, inferred para a ligação inferida, mentioned
             para a ligação por menção, que o servidor cria quando a nota cita o título de
-            outra no texto (ADR-0053); nela cited_title é o título citado, sem caixa
+            outra no texto (ADR-0053); nela cited_title é o título citado, sem caixa.
+            related é a ligação por texto parecido, que o servidor cria nos dois
+            sentidos quando cada nota está entre as de texto mais parecido da outra; nela
+            cited_title vem vazio
         predicate:
           type: string
           nullable: true
@@ -3542,7 +3546,7 @@ components:
           description: Índice, em nodes, do nó a que liga
         type:
           type: string
-          enum: [explicit, embed, typed, inferred, mentioned]
+          enum: [explicit, embed, typed, inferred, mentioned, related]
           description: Tipo da ligação, como em LinkResponse
         predicate:
           type: string

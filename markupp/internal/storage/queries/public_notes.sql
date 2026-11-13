@@ -8,12 +8,12 @@ SELECT note_id::text AS note_id, vault_id::text AS vault_id, publication_id::tex
 FROM markupp_public_scope(sqlc.arg(public_id)::text);
 
 -- As ligações escritas da nota. O alvo privado não existe para o leitor: a ligação fica
--- não resolvida e sem id público.
+-- não resolvida e sem id público. A ligação por texto parecido não cita título no texto.
 -- name: ListPublicNoteLinks :many
 SELECT DISTINCT i.cited_title, i.kind, t.public_id, i.target_path
 FROM note_link_items i
 LEFT JOIN public_notes t ON t.note_id = i.target_id
-WHERE i.source_id = sqlc.arg(note_id) AND i.kind <> 'inferred'
+WHERE i.source_id = sqlc.arg(note_id) AND i.kind NOT IN ('inferred', 'related')
 ORDER BY i.cited_title, i.kind, t.public_id NULLS FIRST, i.target_path;
 
 -- name: ListPublicTree :many

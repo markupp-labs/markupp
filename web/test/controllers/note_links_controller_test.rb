@@ -27,6 +27,11 @@ class NoteLinksControllerTest < ActionDispatch::IntegrationTest
                          { source: PLAN, target: ALICE, cited_title: "alice", type: "explicit", predicate: nil, inferred_target: nil } ] }
   }.freeze
 
+  # Ligação por texto parecido: plan e ideas falam do mesmo jeito, sem título citado.
+  BY_SIMILAR_TEXT = {
+    links: { "plan" => [ { source: PLAN, target: IDEAS, cited_title: "", type: "related", predicate: nil, inferred_target: nil } ] }
+  }.freeze
+
   setup do
     @api = use_fake_api(notes: NOTES, graph: GRAPH)
     sign_in_as
@@ -147,6 +152,19 @@ class NoteLinksControllerTest < ActionDispatch::IntegrationTest
     end
     assert_select "#links_outgoing a[href=?] .links-row-kind", note_path("ideas"), text: "mention"
     assert_select "#links_outgoing a[href=?] .links-row-kind", note_path("alice"), count: 0
+  end
+
+  test "a link by similar text says similar text and why, and is refused like any automatic link" do
+    use_fake_api(notes: NOTES, graph: BY_SIMILAR_TEXT)
+    sign_in_as
+
+    get note_links_path("plan")
+
+    assert_select "#links_outgoing a[href=?][title=?]", note_path("ideas"), "ideas.md, linked because the texts are similar" do
+      assert_select ".links-row-kind", text: "similar text"
+      assert_select ".sr-only", text: "(linked because the texts are similar)"
+    end
+    assert_select "#links_outgoing li:has(a[href='#{note_path('ideas')}']) button[data-links-refuse]"
   end
 
   test "an automatic row refuses the link by its button and by r, with the panel confirm, and a written row does not" do
