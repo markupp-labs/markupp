@@ -92,6 +92,15 @@ func (q *Queries) DeleteVaultMentionLinks(ctx context.Context, vaultID string) e
 	return err
 }
 
+const deleteVaultRelatedLinks = `-- name: DeleteVaultRelatedLinks :exec
+DELETE FROM note_automatic_links WHERE vault_id = $1 AND kind = 'related'
+`
+
+func (q *Queries) DeleteVaultRelatedLinks(ctx context.Context, vaultID string) error {
+	_, err := q.db.Exec(ctx, deleteVaultRelatedLinks, vaultID)
+	return err
+}
+
 const listNoteCommunities = `-- name: ListNoteCommunities :many
 SELECT note_id, community_id FROM note_communities WHERE vault_id = $1 ORDER BY note_id
 `

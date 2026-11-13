@@ -23,6 +23,7 @@ const (
 	LinkTyped     = "typed"
 	LinkInferred  = "inferred"
 	LinkMentioned = "mentioned"
+	LinkRelated   = "related"
 )
 
 // Situações de resolução de uma ligação.

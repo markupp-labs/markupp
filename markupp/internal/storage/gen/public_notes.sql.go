@@ -150,7 +150,7 @@ const listPublicNoteLinks = `-- name: ListPublicNoteLinks :many
 SELECT DISTINCT i.cited_title, i.kind, t.public_id, i.target_path
 FROM note_link_items i
 LEFT JOIN public_notes t ON t.note_id = i.target_id
-WHERE i.source_id = $1 AND i.kind <> 'inferred'
+WHERE i.source_id = $1 AND i.kind NOT IN ('inferred', 'related')
 ORDER BY i.cited_title, i.kind, t.public_id NULLS FIRST, i.target_path
 `
 
@@ -162,7 +162,7 @@ type ListPublicNoteLinksRow struct {
 }
 
 // As ligações escritas da nota. O alvo privado não existe para o leitor: a ligação fica
-// não resolvida e sem id público.
+// não resolvida e sem id público. A ligação por texto parecido não cita título no texto.
 func (q *Queries) ListPublicNoteLinks(ctx context.Context, noteID string) ([]ListPublicNoteLinksRow, error) {
 	rows, err := q.db.Query(ctx, listPublicNoteLinks, noteID)
 	if err != nil {

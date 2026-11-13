@@ -88,12 +88,41 @@ SELECT md5(
                                 ORDER BY ROW(l.note_id, l.title_key, l.target_path, l.kind, l.predicate)::text)
               FROM note_links l WHERE l.note_id = ANY (sqlc.arg(note_ids)::text[]) AND l.kind <> 'inferred'), '')
     || ';' ||
-    coalesce((SELECT string_agg(ROW(a.source_id, a.target_id, a.cited_title)::text, ',' ORDER BY ROW(a.source_id, a.target_id, a.cited_title)::text)
-              FROM note_automatic_links a WHERE a.source_id = ANY (sqlc.arg(note_ids)::text[]) AND a.kind = 'mentioned'), '')
+    coalesce((SELECT string_agg(ROW(a.source_id, a.target_id, a.kind, a.cited_title)::text, ',' ORDER BY ROW(a.source_id, a.target_id, a.kind, a.cited_title)::text)
+              FROM note_automatic_links a WHERE a.source_id = ANY (sqlc.arg(note_ids)::text[]) AND a.kind IN ('mentioned', 'related')), '')
 )::text AS fingerprint;
 
 -- name: DeleteNoteMentionLinks :exec
 DELETE FROM note_automatic_links WHERE source_id = ANY (sqlc.arg(note_ids)::text[]) AND kind = 'mentioned';
+
+-- A ligação por texto parecido fica gravada nos dois sentidos: a da nota sai pelos dois.
+-- name: DeleteNoteRelatedLinks :exec
+DELETE FROM note_automatic_links
+WHERE (source_id = ANY (sqlc.arg(note_ids)::text[]) OR target_id = ANY (sqlc.arg(note_ids)::text[])) AND kind = 'related';
+
+-- As k notas do cofre de maior cosseno tf-idf com cada nota de note_ids, de min_score
+-- para cima, sobre as postagens gravadas, como markupp_lexical_similarity, mas sem
+-- tirar as já ligadas: a vizinhança é do texto, e note_edges escolhe a ligação que vale.
+-- Candidata é a nota que divide algum termo, achada pelo GIN. O nullif evita dividir
+-- por zero a nota de pesos todos zero.
+-- name: ListLexicalNeighbors :many
+SELECT x.note_id::text AS note_id, c.neighbor_id::text AS neighbor_id, c.score::float8 AS score
+FROM note_terms x
+CROSS JOIN LATERAL (
+    SELECT o.note_id AS neighbor_id, d.dot / nullif(o.norm * x.norm, 0) AS score
+    FROM note_terms o
+    CROSS JOIN LATERAL (
+        SELECT sum(o.weights[u.ord] * x.weights[v.ord]) AS dot
+        FROM unnest(o.terms) WITH ORDINALITY AS u (term, ord)
+        JOIN unnest(x.terms) WITH ORDINALITY AS v (term, ord) ON v.term = u.term
+    ) d
+    WHERE o.vault_id = sqlc.arg(vault_id) AND o.terms && x.terms AND o.note_id <> x.note_id
+      AND d.dot / nullif(o.norm * x.norm, 0) >= sqlc.arg(min_score)::float8
+    ORDER BY score DESC, o.note_id
+    LIMIT sqlc.arg(k)::int
+) c
+WHERE x.vault_id = sqlc.arg(vault_id) AND x.note_id = ANY (sqlc.arg(note_ids)::text[])
+ORDER BY x.note_id, c.score DESC, c.neighbor_id;
 
 -- O cofre vem da nota. Nota apagada depois da leitura some no JOIN.
 -- name: SaveAutomaticLinks :exec

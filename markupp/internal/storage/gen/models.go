@@ -62,8 +62,8 @@ type NoteAutomaticEdge struct {
 	VaultID    string
 	Kind       string
 	Predicate  pgtype.Text
-	TitleKey   pgtype.Text
-	CitedTitle pgtype.Text
+	TitleKey   string
+	CitedTitle string
 	Score      float64
 }
 

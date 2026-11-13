@@ -12,11 +12,12 @@ import (
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/storage/gen"
 )
 
-// saveGraphMarkingChange grava o grafo do lote, com as ligações por menção que as
-// notas dele fazem, e marca o cofre para o segundo estágio quando o lote mudou
+// saveGraphMarkingChange grava o grafo do lote, com as ligações por menção e por texto
+// parecido das notas dele, e marca o cofre para o segundo estágio quando o lote mudou
 // títulos, caminhos ou ligações: nota nova, renomeada, movida de pasta, com outras
-// ligações ou que passou a citar outros títulos. A exclusão de nota marca o cofre por
-// trigger. searchConfig é a configuração de texto do índice léxico.
+// ligações, que passou a citar outros títulos ou a se parecer com outras notas. A
+// exclusão de nota marca o cofre por trigger. searchConfig é a configuração de texto
+// do índice léxico.
 func saveGraphMarkingChange(ctx context.Context, q *gen.Queries, cs indexing.Changeset, indexed []indexing.IndexedNote, searchConfig string) error {
 	noteIDs := batchNoteIDs(indexed)
 	before, err := q.NoteGraphFingerprint(ctx, noteIDs)
@@ -26,7 +27,7 @@ func saveGraphMarkingChange(ctx context.Context, q *gen.Queries, cs indexing.Cha
 	if err := saveGraph(ctx, q, cs, indexed); err != nil {
 		return err
 	}
-	if err := refreshNoteMentionLinks(ctx, q, cs.VaultID, searchConfig, cs.Notes); err != nil {
+	if err := refreshNoteAutomaticLinks(ctx, q, cs, noteIDs, searchConfig); err != nil {
 		return err
 	}
 	after, err := q.NoteGraphFingerprint(ctx, noteIDs)
@@ -37,6 +38,15 @@ func saveGraphMarkingChange(ctx context.Context, q *gen.Queries, cs indexing.Cha
 		return fmt.Errorf("mark vault %q for the second stage: %w", cs.VaultID, err)
 	}
 	return nil
+}
+
+// refreshNoteAutomaticLinks refaz as ligações por menção e por texto parecido das notas
+// noteIDs do lote cs.
+func refreshNoteAutomaticLinks(ctx context.Context, q *gen.Queries, cs indexing.Changeset, noteIDs []string, searchConfig string) error {
+	if err := refreshNoteMentionLinks(ctx, q, cs.VaultID, searchConfig, cs.Notes); err != nil {
+		return err
+	}
+	return refreshNoteRelatedLinks(ctx, q, cs.VaultID, noteIDs)
 }
 
 // runSecondStage recalcula o que depende do cofre inteiro, se ele estiver marcado, e

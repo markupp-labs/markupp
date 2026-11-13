@@ -10,8 +10,8 @@ import (
 )
 
 // refreshVaultGraph refaz o que depende do grafo inteiro do cofre. As ligações
-// inferidas vêm primeiro, porque a ligação por menção não repete par já ligado, e as
-// duas entram no grafo da centralidade e das comunidades. O PageRank e o Louvain que
+// inferidas vêm primeiro, porque a ligação automática não repete par já ligado, e
+// todas entram no grafo da centralidade e das comunidades. O PageRank e o Louvain que
 // param no teto são avisados em logger.
 func refreshVaultGraph(ctx context.Context, q *gen.Queries, vaultID, searchConfig string, logger *slog.Logger) error {
 	if err := q.DeleteInferredLinks(ctx, vaultID); err != nil {
@@ -25,6 +25,9 @@ func refreshVaultGraph(ctx context.Context, q *gen.Queries, vaultID, searchConfi
 		return err
 	}
 	if err := refreshVaultMentionLinks(ctx, q, vaultID, searchConfig); err != nil {
+		return err
+	}
+	if err := refreshVaultRelatedLinks(ctx, q, vaultID); err != nil {
 		return err
 	}
 	if noteIDs, edges, err = loadVaultEdges(ctx, q, vaultID); err != nil {

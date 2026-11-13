@@ -18,6 +18,9 @@ SELECT id, content FROM notes WHERE vault_id = sqlc.arg(vault_id) ORDER BY id;
 -- name: DeleteVaultMentionLinks :exec
 DELETE FROM note_automatic_links WHERE vault_id = sqlc.arg(vault_id) AND kind = 'mentioned';
 
+-- name: DeleteVaultRelatedLinks :exec
+DELETE FROM note_automatic_links WHERE vault_id = sqlc.arg(vault_id) AND kind = 'related';
+
 -- name: ListVaultTitleKeys :many
 SELECT note_id, title_key FROM note_titles WHERE vault_id = sqlc.arg(vault_id) ORDER BY note_id, title_key;
 
