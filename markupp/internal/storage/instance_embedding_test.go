@@ -97,3 +97,19 @@ func TestInstanceEmbedding_PapelDaAPI_NaoLeOsSegredosDaInstancia(t *testing.T) {
 
 	assert.Error(t, err, "a chave de cifra do banco fica fora do papel da aplicação")
 }
+
+func TestInstanceEmbedding_NovoSelo_TrocaSoAChaveSemMudarARevisao(t *testing.T) {
+	pool := bancoDaInstancia(t)
+	app := storage.NewAppInstanceEmbedding(pool)
+	require.NoError(t, app.SaveEmbeddingChoice(comAtor(), instance.EmbeddingChoice{Provider: "openai-compat", URL: "https://x/v1", Model: "m", SealedAPIKey: "velho"}))
+	antes, err := app.LoadEmbedding(comAtor())
+	require.NoError(t, err)
+
+	require.NoError(t, app.ResealAPIKey(comAtor(), "outro", "perdido"))
+	require.NoError(t, app.ResealAPIKey(comAtor(), "velho", "novo"))
+	depois, err := app.LoadEmbedding(comAtor())
+
+	require.NoError(t, err)
+	assert.Equal(t, "novo", depois.Choice.SealedAPIKey, "só troca o selo que leu")
+	assert.Equal(t, antes.Choice.UpdatedAt, depois.Choice.UpdatedAt)
+}

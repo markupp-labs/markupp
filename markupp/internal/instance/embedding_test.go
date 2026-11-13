@@ -15,12 +15,21 @@ import (
 
 // FakeEmbeddingStore guarda o registro do embedding em memória.
 type FakeEmbeddingStore struct {
-	record instance.EmbeddingRecord
-	saves  int
+	record  instance.EmbeddingRecord
+	saves   int
+	reseals int
 }
 
 func (f *FakeEmbeddingStore) LoadEmbedding(context.Context) (instance.EmbeddingRecord, error) {
 	return f.record, nil
+}
+
+func (f *FakeEmbeddingStore) ResealAPIKey(_ context.Context, old, fresh string) error {
+	f.reseals++
+	if f.record.Choice.SealedAPIKey == old {
+		f.record.Choice.SealedAPIKey = fresh
+	}
+	return nil
 }
 
 func (f *FakeEmbeddingStore) SaveEmbeddingChoice(_ context.Context, choice instance.EmbeddingChoice) error {
@@ -30,17 +39,20 @@ func (f *FakeEmbeddingStore) SaveEmbeddingChoice(_ context.Context, choice insta
 	return nil
 }
 
-// FakeSealer "cifra" pondo um prefixo, para o teste ver o que foi selado.
+// FakeSealer "cifra" pondo um prefixo, para o teste ver o que foi selado. O prefixo
+// velho: é o da chave antiga do chaveiro, que abre e pede novo selo.
 type FakeSealer struct{}
 
 func (FakeSealer) Seal(plain string) (string, error) { return "selado:" + plain, nil }
 
-func (FakeSealer) Open(sealed string) (string, error) {
-	plain, ok := strings.CutPrefix(sealed, "selado:")
-	if !ok {
-		return "", errors.New("nao selado")
+func (FakeSealer) Open(sealed string) (string, bool, error) {
+	if plain, ok := strings.CutPrefix(sealed, "selado:"); ok {
+		return plain, false, nil
 	}
-	return plain, nil
+	if plain, ok := strings.CutPrefix(sealed, "velho:"); ok {
+		return plain, true, nil
+	}
+	return "", false, errors.New("nao selado")
 }
 
 func servico(record instance.EmbeddingRecord) (*instance.EmbeddingService, *FakeEmbeddingStore) {
@@ -168,4 +180,36 @@ func TestPlainChoice_ChaveDeOutraCifra_RetornaErro(t *testing.T) {
 	_, err := svc.PlainChoice(context.Background())
 
 	assert.Error(t, err)
+}
+
+func TestSettings_ChaveSeladaComAChaveAntiga_SelaDeNovoComAAtiva(t *testing.T) {
+	svc, store := servico(instance.EmbeddingRecord{Choice: instance.EmbeddingChoice{Provider: "openai-compat", SealedAPIKey: "velho:sk"}})
+
+	view, err := svc.Settings(context.Background())
+
+	require.NoError(t, err)
+	assert.True(t, view.APIKeySet)
+	assert.Equal(t, "selado:sk", store.record.Choice.SealedAPIKey)
+	assert.Zero(t, store.saves, "o novo selo não muda a escolha nem a revisão")
+}
+
+func TestSettings_ChaveJaComAAtivaOuIlegivel_NaoSelaDeNovo(t *testing.T) {
+	for _, selada := range []string{"selado:sk", "de-outra-chave"} {
+		svc, store := servico(instance.EmbeddingRecord{Choice: instance.EmbeddingChoice{Provider: "openai-compat", SealedAPIKey: selada}})
+
+		_, err := svc.Settings(context.Background())
+
+		require.NoError(t, err, selada)
+		assert.Zero(t, store.reseals, selada)
+	}
+}
+
+func TestPlainChoice_ChaveSeladaComAChaveAntiga_DecifraSemSelarDeNovo(t *testing.T) {
+	svc, store := servico(instance.EmbeddingRecord{Choice: instance.EmbeddingChoice{Provider: "openai-compat", SealedAPIKey: "velho:sk"}})
+
+	choice, err := svc.PlainChoice(context.Background())
+
+	require.NoError(t, err)
+	assert.Equal(t, "sk", choice.APIKey)
+	assert.Zero(t, store.reseals, "o indexador de embedding só decifra")
 }
