@@ -24,6 +24,17 @@ class GraphLinkRefusalTest < ApplicationSystemTestCase
     assert_selector "main [role=status]", text: "Link refused."
   end
 
+  # A mão aparece só onde o clique faz algo: na ligação automática, que se recusa.
+  test "the pointer over an automatic link turns into a hand and over a written one does not" do
+    draw_with("mentioned")
+    find("main canvas[data-graph-canvas]").hover
+    assert_selector "main canvas[data-graph-canvas][data-hovering]"
+
+    draw_with("explicit")
+    find("main canvas[data-graph-canvas]").hover
+    assert_no_selector "main canvas[data-graph-canvas][data-hovering]"
+  end
+
   test "a click on a written link asks nothing" do
     draw_with("explicit")
 

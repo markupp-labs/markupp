@@ -39,6 +39,28 @@ class GraphPainterTest < ApplicationSystemTestCase
     assert_in_delta at_two, at_four
   end
 
+  # Passar sobre uma ligação acende as duas pontas e as vizinhas delas, como o destaque de um nó, com o nome das pontas no ink.
+  test "a link in emphasis lights both ends and their neighbors and names the ends in ink" do
+    painted = evaluate_async_script(<<~JS)
+      const done = arguments[arguments.length - 1]
+      import("graph/painter").then(({ paintGraph }) => {
+        const fills = {}
+        const context = new Proxy({}, { get: (target, key) => key == "fillText" ? (text) => { fills[text] = { color: target.fillStyle, alpha: target.globalAlpha } } : target[key] ?? (() => {}),
+                                         set: (target, key, value) => { target[key] = value; return true } })
+        const node = (title) => ({ title, x: 0, y: 0, radius: 5, hue: 0, neighbors: [] })
+        const [ a, b, c, far ] = [ node("a"), node("b"), node("c"), node("far") ]
+        a.neighbors = [ b ]; b.neighbors = [ a, c ]; c.neighbors = [ b ]
+        const links = [ { source: a, target: b }, { source: b, target: c } ]
+        const colors = { line: "line", ink: "ink", muted: "muted", accent: "accent", halo: "halo", communities: [ "c0" ] }
+        paintGraph(context, { nodes: [ a, b, c, far ], links, colors, camera: { width: 100, height: 100, k: 1, apply() {} }, ratio: 1, emphasis: { active: links[0] } })
+        done(fills)
+      }).catch((error) => done({ error: String(error) }))
+    JS
+
+    assert_equal %w[a b c], painted.keys.sort, "only the lit notes are named"
+    assert_equal %w[ink ink muted], %w[a b c].map { painted[it]["color"] }
+  end
+
   private
     # Pinta com o FakeCanvasContext e devolve o y de cada nome (o nó está em y 0, raio 5), o raio de cada arco e a cor de cada
     # traço de ligação, na ordem.
