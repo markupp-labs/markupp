@@ -341,13 +341,7 @@ Postgres 17 em Debian. Num PostgreSQL externo, instale o pgvector e crie a exten
 superusuário (`CREATE EXTENSION vector;`) antes de migrar.
 
 O banco criado antes, na imagem `postgres` em Alpine, ordena o texto de outro jeito que o
-Debian. Depois de subir a versão nova, refaça os índices uma vez, antes de usar a instalação:
-
-```sh
-docker compose exec postgres psql -U markupp -d markupp -c 'REINDEX DATABASE markupp;'
-```
-
-No componente Pulumi, rode o mesmo `psql` com `kubectl exec` no pod do Postgres do namespace.
+Debian; a migração da ligação por sentido refaz os índices das tabelas do markupp uma vez.
 
 ## OAuth
 

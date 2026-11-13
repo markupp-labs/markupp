@@ -31,7 +31,7 @@ externo precisa ter o pgvector instalado
 ## Consequências
 
 - Quem faz self-host continua com um banco só, numa imagem mantida pelo pgvector
-- Trocar musl por glibc muda a ordenação do texto: o banco que já existe precisa de um
-  REINDEX uma vez, depois da atualização
+- Trocar musl por glibc muda a ordenação do texto: a migração refaz os índices das tabelas
+  uma vez, e a atualização trava as tabelas enquanto isso
 - O banco externo sem pgvector não migra até alguém instalar a extensão
 - Modelo de mais de 2000 dimensões fica sem índice, e o kNN lê o cofre inteiro
