@@ -22,7 +22,7 @@ const listLinksParameters = noteLocator.extend({
       "outgoing for the links this note makes, incoming for the links other notes make to it.",
     ),
   type: z
-    .enum(["explicit", "embed", "typed", "inferred", "mentioned"])
+    .enum(["explicit", "embed", "typed", "inferred", "mentioned", "related"])
     .optional()
     .describe("Only links of this type; omit for every type."),
   limit: limitParameter,
@@ -62,7 +62,7 @@ function addListLinks(
   server.addTool({
     name: "list_links",
     description:
-      "Lists a note's links: the ones it makes (outgoing) or the ones other notes make to it (incoming), each with source, target (null when unresolved), cited_title and type. Types: explicit is a wikilink or markdown link, embed is ![[...]], typed is a frontmatter key whose value is a wikilink (the key is the predicate), inferred is the server's guess for a link that does not resolve, and mentioned is an automatic link the server created because the note cites the other note's title in its text. When the user says a mentioned link is wrong, remove it with refuse_link.",
+      "Lists a note's links: the ones it makes (outgoing) or the ones other notes make to it (incoming), each with source, target (null when unresolved), cited_title and type. Types: explicit is a wikilink or markdown link, embed is ![[...]], typed is a frontmatter key whose value is a wikilink (the key is the predicate), inferred is the server's guess for a link that does not resolve, mentioned is an automatic link the server created because the note cites the other note's title in its text, and related is an automatic link the server created in both directions because the two notes' texts are similar (cited_title is empty). When the user says a mentioned or related link is wrong, remove it with refuse_link.",
     parameters: listLinksParameters,
     annotations: readOnlyAnnotations,
     execute: async ({ tenant, id, ...query }, context) => {
@@ -81,7 +81,7 @@ function addRefuseLink(
   server.addTool({
     name: "refuse_link",
     description:
-      "Use it when the user says two notes should not be linked automatically. The server then never creates an automatic link (type mentioned) between them, in either direction, until undo_link_refusal; written links are not affected. The link leaves list_links at once and the graph measures on the next indexing pass. Refusing the same pair again returns the existing refusal.",
+      "Use it when the user says two notes should not be linked automatically. The server then never creates an automatic link (type mentioned or related) between them, in either direction, until undo_link_refusal; written links are not affected. The link leaves list_links at once and the graph measures on the next indexing pass. Refusing the same pair again returns the existing refusal.",
     parameters: refuseLinkParameters,
     annotations: { ...writeAnnotations, idempotentHint: true },
     execute: async ({ tenant, vault_id, note_ids }, context) => {

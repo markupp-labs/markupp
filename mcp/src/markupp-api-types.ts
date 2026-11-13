@@ -77,9 +77,10 @@ export type PendingInvite = {
 export type LinkedNote = { id: string; title: string; path: string };
 
 // LinkType é o tipo da ligação; mentioned é a ligação por menção, automática, que o
-// servidor cria quando a nota cita o título de outra no texto (ADR-0053).
+// servidor cria quando a nota cita o título de outra no texto, e related é a por texto
+// parecido, também automática (ADR-0053).
 export type LinkType =
-  "explicit" | "embed" | "typed" | "inferred" | "mentioned";
+  "explicit" | "embed" | "typed" | "inferred" | "mentioned" | "related";
 
 // Link é uma ligação como GET /v1/notes/{id}/links e /backlinks devolvem; target vem
 // null na ligação não resolvida, e predicate só vem na ligação tipada.
