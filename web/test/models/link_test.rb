@@ -53,11 +53,14 @@ class LinkTest < ActiveSupport::TestCase
     assert_equal [ "work/plan.md" ], Link.to_note(@api, "2").map { it.source.path }
   end
 
-  test "only the link by mention is automatic" do
+  test "only the links by mention and by similar text are automatic" do
     mentioned = Link.from_api({ "source" => PLAN.stringify_keys, "target" => MEETING.stringify_keys, "cited_title" => "meeting", "type" => "mentioned",
                                 "predicate" => nil, "inferred_target" => nil })
+    related = Link.from_api({ "source" => PLAN.stringify_keys, "target" => MEETING.stringify_keys, "cited_title" => "", "type" => "related",
+                              "predicate" => nil, "inferred_target" => nil })
 
     assert mentioned.automatic?
+    assert related.automatic?
     assert_not Link.from_note(@api, "1").any?(&:automatic?)
   end
 end
