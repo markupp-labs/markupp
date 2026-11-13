@@ -71,7 +71,9 @@ func TestPostgresAuthRepo_ListUserIdentities_DevolveTodasNaOrdemDeCriacao(t *tes
 	require.NoError(t, err)
 	require.Len(t, identities, 2)
 	assert.Equal(t, "local", identities[0].Provider)
-	assert.Equal(t, github, identities[1])
+	assert.Equal(t, github.ID, identities[1].ID)
+	assert.Equal(t, "42", identities[1].ProviderUserID)
+	assert.True(t, github.CreatedAt.Equal(identities[1].CreatedAt), "o banco devolve o instante no fuso da sessao")
 }
 
 func TestPostgresAuthRepo_LinkIdentityTx_IdentidadeJaUsada_Recusa(t *testing.T) {
