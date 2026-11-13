@@ -138,7 +138,7 @@ func TestNewMarkupp_SemBancoExterno_CriaPostgresNoNamespaceComVolume(t *testing.
 func TestNewMarkupp_SemBancoExterno_GuardaSenhaGeradaEURLNoSecret(t *testing.T) {
 	monitor := deploy(t, argsDeTeste())
 
-	require.Len(t, monitor.byType(randomPasswordType), 3, "banco, JWT e scaler")
+	require.Len(t, monitor.byType(randomPasswordType), 4, "banco, JWT, scaler e chave secreta")
 	secret := monitor.single(t, "kubernetes:core/v1:Secret")
 	assert.Equal(t, senhaDeTeste, plain(at(t, secret, "stringData", "password")).StringValue())
 	assert.Equal(t, senhaDeTeste, plain(at(t, secret, "stringData", "auth-secret")).StringValue())
@@ -169,7 +169,7 @@ func TestNewMarkupp_ComBancoExterno_NaoCriaPostgresEGuardaURLEmSecret(t *testing
 	monitor := deploy(t, args)
 
 	assert.Empty(t, monitor.byType("kubernetes:apps/v1:StatefulSet"))
-	require.Len(t, monitor.byType(randomPasswordType), 2, "JWT e scaler")
+	require.Len(t, monitor.byType(randomPasswordType), 3, "JWT, scaler e chave secreta")
 	secret := monitor.single(t, "kubernetes:core/v1:Secret")
 	assert.Equal(t, "postgres://markupp@db.externo:5432/markupp",
 		at(t, secret, "stringData", "uri").StringValue())
@@ -191,7 +191,7 @@ func TestNewMarkupp_DeploymentDaAPI_LeOBancoESegredoDoSecret(t *testing.T) {
 	api := monitor.single(t, "kubernetes:apps/v1:Deployment")
 	container := firstContainer(t, api)
 	envs := container["env"].ArrayValue()
-	require.Len(t, envs, 3)
+	require.Len(t, envs, 4)
 	assert.Equal(t, "MARKUPP_DATABASE_URL", envs[0].ObjectValue()["name"].StringValue())
 	assert.Equal(t, "MARKUPP_AUTH_SECRET", envs[1].ObjectValue()["name"].StringValue())
 	refDB := at(t, envs[0].ObjectValue(), "valueFrom", "secretKeyRef")
