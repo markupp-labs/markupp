@@ -63,6 +63,24 @@ describe("list_links", () => {
     expect(JSON.parse(result.text)).toEqual([]);
   });
 
+  it("filtra pela ligação related, a por texto parecido", async () => {
+    const api = new FakeMarkuppApi().withTenant("t1", "member");
+    const vault = api.withVault("t1", "Casa").id;
+    const a = api.withNote("t1", "a.md", "kubernetes no cluster", vault);
+    const b = api.withNote("t1", "b.md", "cluster de kubernetes", vault);
+    api.withLink(a, b, "related").withLink(a, b, "explicit");
+    client = await MarkuppToolClient.connect(api);
+    const args = { tenant: "t1", id: a.id, type: "related" };
+    const result = await client.call("list_links", args);
+    expect(linkTypes(result.text)).toEqual(["related"]);
+  });
+
+  it("descreve a ligação related como automática", async () => {
+    client = await MarkuppToolClient.connect(new FakeMarkuppApi());
+    const tool = await client.tool("list_links");
+    expect(tool.description).toMatch(/related is an automatic link/);
+  });
+
   it("aponta search_notes quando a nota não existe", async () => {
     const { api } = vaultWithMention();
     client = await MarkuppToolClient.connect(api);

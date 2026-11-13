@@ -12,8 +12,9 @@ import {
 type StoredRefusal = LinkRefusal & { vault: string };
 
 // FakeLinks guarda as ligações e as recusas de ligação de cada cofre. A recusa esconde a
-// ligação mentioned entre o par, nos dois sentidos, como a API. Tenant, papel e cofre
-// ficam com a FakeMarkuppApi, que confere tudo antes de chamar.
+// ligação automática (mentioned ou related) entre o par, nos dois sentidos, como a
+// API. Tenant, papel e cofre ficam com a FakeMarkuppApi, que confere tudo antes de
+// chamar.
 export class FakeLinks {
   private readonly links: Link[] = [];
   private readonly refusals: StoredRefusal[] = [];
@@ -80,7 +81,8 @@ export class FakeLinks {
   }
 
   private hidden(link: Link): boolean {
-    if (link.type !== "mentioned" || !link.target) return false;
+    const automatic = link.type === "mentioned" || link.type === "related";
+    if (!automatic || !link.target) return false;
     const ids = [link.source.id, link.target.id];
     return this.refusals.some((r) => samePair(r, ids));
   }
