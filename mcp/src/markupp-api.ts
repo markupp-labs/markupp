@@ -8,6 +8,8 @@ import type { ApiTokenSource } from "./session.js";
 import type {
   Account,
   FoundNote,
+  InstanceEmbedding,
+  InstanceEmbeddingUpdate,
   IssuedInvite,
   Link,
   LinkQuery,
@@ -96,6 +98,10 @@ export interface MarkuppApi {
     vault: string,
     refusalId: string,
   ): Promise<void>;
+  getInstanceEmbedding(): Promise<InstanceEmbedding>;
+  setInstanceEmbedding(
+    update: InstanceEmbeddingUpdate,
+  ): Promise<InstanceEmbedding>;
 }
 
 export type FetchFunction = (
@@ -121,6 +127,8 @@ type SearchHit = { note: { id: string; path: string }; vault_id: string };
 
 // TenantHeader é onde a API lê em qual tenant da conta a requisição age.
 const TenantHeader = "X-Markupp-Tenant";
+
+const InstanceEmbeddingPath = "/v1/instance/embedding";
 
 // MaxLimit e MaxOffset são o maior limit e o maior offset que a API aceita numa página.
 const MaxLimit = 100;
@@ -418,6 +426,18 @@ export class HttpMarkuppApi implements MarkuppApi {
   ): Promise<void> {
     const path = `${linkRefusalsPath(vault)}/${encodeURIComponent(refusalId)}`;
     await this.send({ method: "DELETE", path, tenant });
+  }
+
+  // O embedding é da instância: sem tenant, só para quem administra a instância.
+  getInstanceEmbedding(): Promise<InstanceEmbedding> {
+    return this.json({ method: "GET", path: InstanceEmbeddingPath });
+  }
+
+  setInstanceEmbedding(
+    update: InstanceEmbeddingUpdate,
+  ): Promise<InstanceEmbedding> {
+    const call = { method: "PUT", path: InstanceEmbeddingPath, body: update };
+    return this.json(call as ApiCall);
   }
 
   private async json<T>(call: ApiCall): Promise<T> {

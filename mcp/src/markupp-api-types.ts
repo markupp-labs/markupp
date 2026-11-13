@@ -113,3 +113,30 @@ export type LinkRefusal = {
   notes: LinkedNote[];
   created_at: string;
 };
+
+// EmbeddingProvider é o provedor de embedding da instância (ADR-0057).
+export type EmbeddingProvider = "none" | "openai-compat" | "local";
+
+// InstanceEmbedding é a escolha como GET /v1/instance/embedding devolve: nunca a chave,
+// só se há uma; locked diz que a configuração de quem hospeda vence.
+export type InstanceEmbedding = {
+  provider: EmbeddingProvider;
+  url: string;
+  model: string;
+  api_key_set: boolean;
+  locked: boolean;
+  host_provider: string;
+  model_status: {
+    state: "downloading" | "ready" | "error";
+    error: string;
+    changed_at: string;
+  } | null;
+};
+
+// InstanceEmbeddingUpdate é o corpo do PUT. Sem api_key a chave guardada fica; vazia a apaga.
+export type InstanceEmbeddingUpdate = {
+  provider: EmbeddingProvider;
+  url?: string;
+  model?: string;
+  api_key?: string;
+};

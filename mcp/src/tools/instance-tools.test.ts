@@ -93,10 +93,8 @@ describe("set_embedding_provider", () => {
     client = await MarkuppToolClient.connect(
       new FakeMarkuppApi().withInstanceAdmin(),
     );
-    const result = await client.call("set_embedding_provider", {
-      provider: "ollama",
-    });
-    expect(result.isError).toBe(true);
+    const call = client.call("set_embedding_provider", { provider: "ollama" });
+    await expect(call).rejects.toThrow(/provider: Invalid option/);
   });
 
   it("anuncia escrita idempotente", async () => {
