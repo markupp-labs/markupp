@@ -92,7 +92,7 @@ func TestSegundoEstagio_EmAndamento_NaoPrendeOCofreParaOLote(t *testing.T) {
 	idx := novoIndexador(t, db, "simple")
 	solta, terminou := segundoEstagioPreso(t, db, idx)
 
-	_, err := repo.Update(ctxDeTeste, "solta", "solta.md", "agora [[a]] alfaomega", time.Now(), time.Time{}, true)
+	_, err := repo.Update(ctxDeTeste, "solta", "solta.md", "agora [[a]] alfaomega com outras palavras diferentes", time.Now(), time.Time{}, true)
 	require.NoError(t, err)
 	found, _ := indexaProximo(t, idx)
 

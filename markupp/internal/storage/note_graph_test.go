@@ -19,7 +19,8 @@ import (
 
 // cofreLigado monta um cofre indexado com ligações de todos os casos: wikilink,
 // alias com outra caixa, link markdown por caminho, título ambíguo, ligação para si
-// mesma, embed de anexo e título inexistente.
+// mesma, embed de anexo e título inexistente. a e c só citam b em comum, o bastante
+// para a ligação por texto parecido.
 func cofreLigado(t *testing.T) (*pgxpool.Pool, *storage.PostgresNotesRepository, *storage.PostgresNoteGraph) {
 	t.Helper()
 	db := setupNotesDB(t)
@@ -76,7 +77,7 @@ func TestNoteGraph_Backlinks_ResolvemPorTituloAliasECaminho(t *testing.T) {
 	_, _, graph := cofreLigado(t)
 
 	assert.Equal(t, []string{"a", "c", "d"}, backlinks(ctxDeTeste, t, graph, "b"), "titulo e alias sem caixa nem forma Unicode")
-	assert.Equal(t, []string{"f", "b"}, backlinks(ctxDeTeste, t, graph, "c"), "link markdown com caminho existente liga so a ele; ordem por caminho")
+	assert.Equal(t, []string{"a", "f", "b"}, backlinks(ctxDeTeste, t, graph, "c"), "link markdown com caminho existente liga so a ele; a pelo texto parecido; ordem por caminho")
 	assert.Equal(t, []string{"f"}, backlinks(ctxDeTeste, t, graph, "c2"), "titulo ambiguo liga a todas as notas com ele")
 	assert.Empty(t, backlinks(ctxDeTeste, t, graph, "g"), "ligacao para si mesma nao conta")
 }
@@ -101,6 +102,7 @@ func TestNoteGraph_Links_SaidaResolvidaAmbiguaENaoResolvida(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, []notes.Link{
+		{Source: resumo("a", "a.md"), Target: resumoPtr("c", "c.md"), Type: notes.LinkRelated},
 		{Source: resumo("a", "a.md"), Target: resumoPtr("b", "pasta/b.md"), CitedTitle: "B", Type: "explicit"},
 		{Source: resumo("a", "a.md"), CitedTitle: "foto.png", Type: "embed"},
 		{Source: resumo("a", "a.md"), CitedTitle: "Inexistente", Type: "explicit"},
@@ -132,8 +134,8 @@ func TestNoteGraph_VaultLinks_PorStatusDeResolucao(t *testing.T) {
 		{Source: resumo("a", "a.md"), CitedTitle: "foto.png", Type: "embed"},
 		{Source: resumo("a", "a.md"), CitedTitle: "Inexistente", Type: "explicit"},
 	}, soltas)
-	assert.Len(t, resolvidas, 6, "a, c, d e o link markdown de b ligam uma vez; f liga a c e a c2")
-	assert.Len(t, todasDoCofre, 8)
+	assert.Len(t, resolvidas, 8, "a, c, d e o link markdown de b ligam uma vez; f liga a c e a c2; a e c pelo texto parecido")
+	assert.Len(t, todasDoCofre, 10)
 }
 
 func TestNoteGraph_NotaRenomeada_ResolveNaLeituraSemReindexarQuemCita(t *testing.T) {
@@ -184,7 +186,7 @@ func TestNoteGraph_ViewerLe(t *testing.T) {
 	assert.Equal(t, []string{"a", "c", "d"}, backlinks(ctxViewer, t, graph, "b"))
 	lidas, err := graph.Links(ctxViewer, "a", todas)
 	require.NoError(t, err)
-	assert.Len(t, lidas, 3)
+	assert.Len(t, lidas, 4)
 }
 
 func TestMigracao00029_DownEUp(t *testing.T) {
@@ -204,7 +206,7 @@ func TestNoteGraph_WikilinkComPasta_ResolvePeloCaminhoECaiParaOTitulo(t *testing
 	repo := storage.NewPostgresNotesRepository(db, "simple")
 	for _, nota := range []notes.Note{
 		notaComCaminho("x1", "a/Nota.md", "x"),
-		notaComCaminho("x2", "b/Nota.md", "x"),
+		notaComCaminho("x2", "b/Nota.md", "y"),
 		notaComCaminho("o1", "o1.md", "[[b/Nota]]"),
 		notaComCaminho("o2", "o2.md", "[[c/Nota]]"),
 	} {

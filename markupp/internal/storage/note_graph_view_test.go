@@ -36,9 +36,11 @@ func nosDoGrafo(g notes.Graph) []string {
 	return out
 }
 
+// c e f só citam d em comum, o bastante para a ligação por texto parecido.
 var arestasDosDoisGrupos = []string{
 	"a->b:explicit", "a->indice:explicit", "b->c:explicit", "b->indice:explicit", "c->a:explicit", "c->d:explicit",
 	"c->indice:explicit", "d->e:explicit", "d->indice:inferred", "e->f:explicit", "f->d:explicit", "d->indise:explicit",
+	"c->f:related", "f->c:related",
 }
 
 func TestVaultGraph_NotasLigacoesENoSemNota(t *testing.T) {
@@ -60,7 +62,7 @@ func TestVaultGraph_NotasLigacoesENoSemNota(t *testing.T) {
 func TestVaultGraph_FiltrosEscondemOrfasSemNotaEInferidas(t *testing.T) {
 	_, _, graph := cofreComDoisGrupos(t)
 
-	g, err := graph.VaultGraph(ctxDeTeste, cofreDeTeste, notes.GraphFilter{HideOrphans: true, HideUnresolved: true, HideInferred: true})
+	g, err := graph.VaultGraph(ctxDeTeste, cofreDeTeste, notes.GraphFilter{HideOrphans: true, HideUnresolved: true, HideInferred: true, HideAutomatic: true})
 
 	require.NoError(t, err)
 	assert.Equal(t, []string{"a", "b", "c", "d", "e", "f", "indice"}, nosDoGrafo(g))
@@ -104,6 +106,7 @@ func TestLocalGraph_VizinhancaPelaProfundidadeNosDoisSentidos(t *testing.T) {
 	assert.ElementsMatch(t, []string{"c", "d", "e", "f", "indice", "?indise"}, nosDoGrafo(g2))
 	assert.ElementsMatch(t, []string{
 		"c->d:explicit", "c->indice:explicit", "d->e:explicit", "d->indice:inferred", "e->f:explicit", "f->d:explicit", "d->indise:explicit",
+		"c->f:related", "f->c:related",
 	}, arestasDoGrafo(g2))
 }
 

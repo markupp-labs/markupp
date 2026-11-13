@@ -76,7 +76,7 @@ func TestLigacaoPorMencao_LoteCriaQuandoSoOTextoMuda(t *testing.T) {
 	require.NoError(t, err)
 	indexaTodosOsCofres(t, db, "simple")
 
-	saida, err := graph.Links(ctxDeTeste, "solta", todas)
+	saida, err := graph.Links(ctxDeTeste, "solta", notes.LinkFilter{Type: notes.LinkMentioned, Page: todas.Page})
 	require.NoError(t, err)
 	assert.Equal(t, []notes.Link{mencaoDePara(resumo("solta", "Solta.md"), resumo("pulumi", "Pulumi.md"), "pulumi")}, saida)
 	orfas := notasDoCofre(ctxDeTeste, t, repo, notes.VaultNotesQuery{Orphan: ptr(true), Limit: 100})
