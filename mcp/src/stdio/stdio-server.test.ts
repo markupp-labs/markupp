@@ -3,7 +3,7 @@ import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { describe, expect, it } from "vitest";
 import { TEST_ISSUER } from "../testing/auth-server-metadata.js";
 import { FakeFetch } from "../testing/fake-fetch.js";
-import { FakeApiTokens } from "../testing/fake-markupp-api.js";
+import { FakeApiTokens } from "../testing/fake-api-tokens.js";
 import { createStdioServer, jsonLogger } from "./stdio-server.js";
 
 describe("createStdioServer", () => {

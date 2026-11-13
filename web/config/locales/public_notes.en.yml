@@ -1,0 +1,24 @@
+en:
+  layouts:
+    published:
+      notes: "Notes"
+      published_with: "Published with markupp"
+  public_notes:
+    tools:
+      search: "Search this publication"
+      graph: "Graph"
+    not_found:
+      title: "Nothing published here"
+      hint: "There is no public note at this address. Check the link with whoever shared it."
+    rate_limited:
+      title: "Too many requests"
+      hint: "This address asked the server too often. Wait a minute and reload the page."
+  public_searches:
+    show:
+      title: "%{query} | %{publication}"
+      heading: "Notes that mention %{query}"
+      empty: "No public note mentions %{query}"
+      empty_hint: "Try another word, or browse the notes on the side."
+  public_graphs:
+    show:
+      title: "Graph | %{publication}"

@@ -37,6 +37,10 @@
           <%= settings_nav_link("members", settings_members_path) %>
           <%= settings_nav_link("invites", settings_invites_path) %>
         <% end %>
+        <%# Publicações para todo membro do tenant: a API só lista o que a conta vê. %>
+        <% if current_tenant %>
+          <%= settings_nav_link("publications", settings_publications_path) %>
+        <% end %>
       </nav>
 
       <section class="min-w-0"><%= yield %></section>

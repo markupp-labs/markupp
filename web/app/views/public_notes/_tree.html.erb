@@ -1,0 +1,3 @@
+<%# Árvore da publicação, só links: abre as pastas da nota lida e marca a nota. %>
+<% current_note = tree.notes_within.find { it.public_id == current.public_id } %>
+<%= render "public_notes/folder", folder: tree, current: current.public_id, open_folders: current_note&.folder_names || [] %>

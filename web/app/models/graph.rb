@@ -14,6 +14,11 @@ Graph = Data.define(:nodes, :links) do
     revalidated(api, MarkuppApi.path("v1", "notes", note_id, "graph", **filters), store)
   end
 
+  # A publicação da nota pública, lida sem conta (ADR-0048), com os nós pelo id público.
+  def self.of_public_note(api, public_id, store: Rails.cache)
+    revalidated(api, MarkuppApi.path("v1", "public", "notes", public_id, "graph"), store)
+  end
+
   def self.revalidated(api, path, store)
     key = "panel/graph#{path}"
     kept = store.read(key)
@@ -24,7 +29,11 @@ Graph = Data.define(:nodes, :links) do
     from_api(revision.body)
   end
 
-  def self.from_api(body) = new(nodes: body["nodes"].map { built(Graph::Node, it) }, links: body["links"].map { built(Graph::Link, it) })
+  # O grafo público identifica o nó pelo public_id (o id interno nunca sai da API); vira o id do nó aqui.
+  def self.from_api(body)
+    nodes = body["nodes"].map { built(Graph::Node, { "id" => it["public_id"] }.compact.merge(it)) }
+    new(nodes:, links: body["links"].map { built(Graph::Link, it) })
+  end
 
   def self.built(type, attributes) = type.new(**type.members.to_h { [ it, attributes[it.to_s] ] })
 

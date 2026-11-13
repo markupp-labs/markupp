@@ -28,6 +28,7 @@ import (
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/notes"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/notify"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/oauth"
+	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/publication"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/storage"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/vaults"
 )
@@ -253,15 +254,31 @@ func newHandler(cfg config.Config, pool *pgxpool.Pool, logger *slog.Logger) (htt
 	if err != nil {
 		return nil, err
 	}
-	return api.NewRouter(api.RouterDeps{
+	deps := api.RouterDeps{
 		Notes: notesSvc, Graph: storage.NewPostgresNoteGraph(pool, cfg.SearchConfig), Auth: authSvc, Admin: adminSvc, AccountEmail: accountEmail,
 		Vaults: vaults.NewService(storage.NewPostgresVaultsRepository(pool), time.Now, uuid.NewString),
 		Tokens: codec, Tenants: authSvc, Probe: pool, AllowedOrigins: cfg.AllowedOrigins,
 		OAuthMetadata: oauthMetadataFrom(cfg), OAuth: oauthSvc, MCPUpstreamURL: cfg.MCPUpstreamURL,
 		AccountRateLimiter: api.NewAccountRateLimiter(cfg.RateLimitPerMinute, time.Minute, time.Now, cfg.TrustedProxies),
 		ExternalLogin:      newExternalLoginService(cfg, authSvc),
-	}), nil
+	}
+	addPublication(&deps, cfg, pool)
+	return api.NewRouter(deps), nil
 }
+
+// addPublication liga a publicação de notas, pastas e cofres e a leitura sem conta delas
+// (ADR-0048), com limite por IP próprio.
+func addPublication(deps *api.RouterDeps, cfg config.Config, pool *pgxpool.Pool) {
+	deps.Publications = publication.NewService(storage.NewPostgresPublications(pool), time.Now, uuid.NewString)
+	deps.PublicNotes = storage.NewPostgresPublicNotes(pool, cfg.SearchConfig)
+	deps.PublicRateLimiter = api.NewAccountRateLimiter(cfg.PublicRateLimitPerMinute, time.Minute, time.Now, cfg.TrustedProxies)
+	// O servidor MCP se autentica com o segredo de resource dele e repassa o IP do agente
+	// de /mcp/public (ADR-0050). Sem OAuth não há resource, e o limite fica na conexão.
+	deps.PublicRelay, _ = deps.OAuth.(api.RelayAuthenticator)
+}
+
+// O *oauth.Service confere o servidor MCP da leitura pública.
+var _ api.RelayAuthenticator = (*oauth.Service)(nil)
 
 // newOAuthService monta o authorization server só com o OAuth ligado. Devolve nil de
 // interface, e não um *oauth.Service nil, para o roteador não montar as rotas.

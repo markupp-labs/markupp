@@ -1,0 +1,10 @@
+<%# A nota só em leitura, pelo mesmo note_mode_controller.js do painel (markdown-it e DOMPurify no navegador): o texto
+    vai num textarea escondido, os [[wikilinks]] e o ![[nota]] resolvem só para as notas públicas, e sem o aviso de
+    nota que falta o nome das outras fica como texto. %>
+<%= tag.div data: { controller: "note-mode", mode: "read", note_mode_wikilinks_value: public_wikilink_targets(note),
+                    note_mode_copied_value: t("notes.form.copied"), note_mode_copy_failed_value: t("notes.form.copy_failed"),
+                    action: "highlight:grammar-loaded@document->note-mode#render turbo:load@document->note-mode#scrollToHash click->note-mode#followAnchor" } do %>
+  <%= text_area_tag :content, note.content, id: nil, hidden: true, readonly: true, data: { note_mode_target: "source" } %>
+  <%= render "notes/reading_templates" %>
+  <article data-note-mode-target="preview" aria-label="<%= note.title %>" class="note-preview markdown-body min-w-0"></article>
+<% end %>
