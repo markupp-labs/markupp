@@ -1,7 +1,8 @@
 // Desenho de um quadro do grafo no canvas, sem estado: ligações finas na cor muted, que passa de 3:1 nos dois palcos e
 // nos dois temas (a inferida tracejada e a automática pontilhada; a line, que quase some, fica para as apagadas), nós no matiz da comunidade com
 // o raio do PageRank, o título não resolvido só em contorno, a nota aberta com o anel no accent e a nota
-// com o foco do teclado com o anel no ink. Com um nó em destaque (hover ou foco), ele e as vizinhas ficam e o resto apaga.
+// com o foco do teclado com o anel no ink. Com um nó em destaque (hover ou foco), ele e as vizinhas ficam e o resto apaga;
+// com uma ligação em destaque (hover), ficam as duas pontas e as vizinhas de cada uma.
 // Os nomes aparecem nos mais centrais, no destaque e nas vizinhas, e em todos a partir de LABEL_ZOOM. Traço e fonte
 // dividem pela escala: ficam do mesmo tamanho na tela em qualquer zoom.
 const LABEL_ZOOM = 1.6
@@ -33,9 +34,18 @@ export function paintGraph(context, { nodes, links, colors, camera, ratio, empha
   context.globalAlpha = 1
 }
 
-// O nó em destaque e as vizinhas, ou null sem destaque (nada apaga).
+// O nó em destaque e as vizinhas, as pontas da ligação em destaque e as vizinhas delas, ou null sem destaque (nada apaga).
 function litNodes({ active }) {
-  return active ? new Set([ active, ...active.neighbors ]) : null
+  if (!active) return null
+  return new Set(endsOf(active).flatMap((node) => [ node, ...node.neighbors ]))
+}
+
+function endsOf(active) {
+  return active.source ? [ active.source, active.target ] : [ active ]
+}
+
+function emphasized(node, { active }) {
+  return active != null && endsOf(active).includes(node)
 }
 
 function paintLinks(context, links, colors, k, lit) {
@@ -100,7 +110,7 @@ function paintLabels(context, nodes, colors, camera, emphasis, lit) {
     if (!labelled(node, k, emphasis, lit)) continue
 
     context.globalAlpha = 1
-    context.fillStyle = node == emphasis.active || node.focused ? colors.ink : colors.muted
+    context.fillStyle = emphasized(node, emphasis) || node.focused ? colors.ink : colors.muted
     const y = node.y + labelOffset(node, k)
     context.strokeText(node.title, node.x, y)
     context.fillText(node.title, node.x, y)
@@ -115,7 +125,7 @@ function labelOffset(node, k) {
 }
 
 function labelled(node, k, emphasis, lit) {
-  if (node.focused || node == emphasis.active) return true
+  if (node.focused || emphasized(node, emphasis)) return true
   if (lit) return lit.has(node)
   return node.prominent || node.current || k >= LABEL_ZOOM
 }

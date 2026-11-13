@@ -8,8 +8,9 @@ import { readThemeColors } from "graph/theme_colors"
 // força, a câmera e o desenho. O requestAnimationFrame só roda enquanto a simulação anda, um nó é arrastado ou a vista
 // muda; assentada, a cena para e só redesenha quando algo pede. Fora da vista (setVisible false) a simulação pausa, e
 // numa aba escondida o navegador já não chama o quadro. Com reduced-motion o layout assenta de uma vez, sem animar.
-// Até o primeiro gesto na vista a câmera acompanha o layout, enquadrando os nós; o 0 volta a enquadrar. Tocar numa
-// ligação automática sem arrastar a oferece para recusar (onRefuse); recusada, ela sai do desenho na hora.
+// Até o primeiro gesto na vista a câmera acompanha o layout, enquadrando os nós; o 0 volta a enquadrar. Passar sobre
+// um nó ou uma ligação a destaca; tocar numa ligação automática sem arrastar a oferece para recusar (onRefuse), e
+// recusada ela sai do desenho na hora.
 const RADIUS_MIN = 2.5
 const RADIUS_SPREAD = 4.5
 const UNRESOLVED_RADIUS = 2.5
@@ -93,32 +94,40 @@ class GraphScene {
     return node && Math.hypot(node.x - wx, node.y - wy) <= drawnRadius(node, this.camera.k) + slop ? node : null
   }
 
-  // A ligação automática sob o ponto da tela, com uma folga de alguns px em volta do traço.
-  linkAt(px, py) {
+  // A ligação sob o ponto da tela, com uma folga de alguns px em volta do traço; só as automáticas com automaticOnly.
+  linkAt(px, py, { automaticOnly = false } = {}) {
     const [ wx, wy ] = this.camera.toWorld(px, py)
     const slop = LINK_HIT_PX / this.camera.k
-    return this.links.find((link) => link.automatic && segmentDistance(wx, wy, link.source, link.target) <= slop) ?? null
+    const near = (link) => (link.automatic || !automaticOnly) && segmentDistance(wx, wy, link.source, link.target) <= slop
+    return this.links.find(near) ?? null
   }
 
   // Toque no fundo, sem arrastar: numa ligação automática, quem desenha a cena pergunta se recusa.
   tap(px, py) {
-    const link = this.onRefuse && this.linkAt(px, py)
+    const link = this.onRefuse && this.linkAt(px, py, { automaticOnly: true })
     if (link) this.onRefuse(link)
+  }
+
+  // O nó sob o ponto, senão a ligação: o que o hover destaca.
+  hoverTargetAt(px, py) {
+    return this.nodeAt(px, py) ?? this.linkAt(px, py)
   }
 
   // shortcut: a mola da ligação fica na simulação até o próximo desenho; o layout já assentado não se mexe por ela.
   removeLink(link) {
     this.links = this.links.filter((drawn) => drawn != link)
+    if (this.hovered == link) this.hover(null)
     this.nodes.forEach((node) => node.neighbors.clear())
     connectNeighbors(this.links)
     this.emphasize()
   }
 
-  hover(node) {
-    if (node == this.hovered) return
+  // target é um nó ou uma ligação. A mão aparece onde o clique faz algo: no nó, que abre, e na ligação que se recusa.
+  hover(target) {
+    if (target == this.hovered) return
 
-    this.hovered = node
-    this.canvas.toggleAttribute("data-hovering", node != null)
+    this.hovered = target
+    this.canvas.toggleAttribute("data-hovering", target != null && (!target.source || (target.automatic && this.onRefuse != null)))
     this.emphasize()
   }
 

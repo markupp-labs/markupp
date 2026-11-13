@@ -1,6 +1,6 @@
 // Ponteiro no canvas do grafo, como no graph view do Obsidian: arrastar um nó o leva junto (a simulação reaquece),
 // arrastar o fundo move a vista, a roda e a pinça (dois dedos) dão zoom em volta do ponteiro, tocar num nó sem arrastar
-// abre a nota, tocar no fundo sem arrastar passa o ponto à cena (uma ligação automática ali), e passar por cima (mouse ou caneta) destaca o nó e as vizinhas. A cena (scene.js) recebe cada gesto.
+// abre a nota, tocar no fundo sem arrastar passa o ponto à cena (uma ligação automática ali), e passar por cima (mouse ou caneta) destaca o nó ou a ligação e as vizinhas. A cena (scene.js) recebe cada gesto.
 // Sem listener de scroll: a roda é do próprio canvas e fica nele (preventDefault), sem rolar a página.
 const TAP_SLOP = 4
 const WHEEL_SPEED = 0.0015
@@ -64,7 +64,7 @@ class PointerGestures {
   }
 
   hoverAt(event, point) {
-    if (event.pointerType != "touch") this.scene.hover(this.scene.nodeAt(...point))
+    if (event.pointerType != "touch") this.scene.hover(this.scene.hoverTargetAt(...point))
   }
 
   dragTo(point) {
