@@ -56,12 +56,13 @@ var declaredOAuthPolicies = map[string]oauthRoutePolicy{
 	"PATCH /v1/users/{id}": adminScope, "DELETE /v1/users/{id}": adminScope, "DELETE /v1/users/invites/{id}": adminScope,
 	"POST /v1/tenants": adminScope, "GET /v1/me/invites": adminScope, "GET /v1/me/notifications": adminScope,
 	"POST /v1/me/invites/{id}/accept": adminScope, "POST /v1/me/invites/{id}/decline": adminScope,
+	"GET /v1/instance/embedding": adminScope, "PUT /v1/instance/embedding": adminScope,
 }
 
 // v1OnlyPrefixes são as rotas sem o alias obsoleto sem prefixo, já com os parâmetros
 // trocados por x1: as do OAuth, as da API orientada a recursos (ADR-0040) e as
 // notificações da conta (ADR-0049).
-var v1OnlyPrefixes = []string{"/v1/me/authorizations", "/v1/me/notifications", "/v1/oauth/requests", "/v1/vaults", "/v1/search/", "/v1/notes/x1/"}
+var v1OnlyPrefixes = []string{"/v1/instance/", "/v1/me/authorizations", "/v1/me/notifications", "/v1/oauth/requests", "/v1/vaults", "/v1/search/", "/v1/notes/x1/"}
 
 const allOAuthScopes = "notas:leitura notas:escrita administracao"
 
