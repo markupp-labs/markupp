@@ -151,6 +151,12 @@ admin administram o tenant, só o owner apaga o tenant, e o viewer só lê nos c
 membro, sem gerenciar cofre, mas pode sair dele. O acesso às notas continua sendo pelo cofre.
 _Avoid_: associação, assinatura, membership
 
+**Administrador da instância**:
+A conta que cuida do que vale para a instalação inteira, acima dos tenants, como o provedor de
+embedding. Quem hospeda a instância diz quais contas são, e a configuração dele vence a escolha
+do administrador.
+_Avoid_: superusuário, root, administrador do tenant
+
 **Convite**:
 O pedido de vínculo que owner ou admin emite para um email, com papel e validade. A conta
 desse email aceita ou recusa; quem ainda não tem conta se cadastra pelo token do convite.
