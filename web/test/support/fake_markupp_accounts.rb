@@ -55,6 +55,9 @@ class FakeMarkuppAccounts
 
   def revoke_refresh(token) = @refresh_tokens.delete(token)
 
+  # Cenário: quem hospeda muda a lista de administradores da instância depois do login.
+  def set_instance_admin!(email, admin) = find_by_email(email).store("instance_admin", admin)
+
   def refresh_token_valid?(token) = @refresh_tokens.key?(token)
 
   # Cenário: o token de acesso venceu no servidor, a próxima chamada autenticada leva 401.
