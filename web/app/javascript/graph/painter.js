@@ -34,17 +34,29 @@ export function paintGraph(context, { nodes, links, colors, camera, ratio, empha
   context.setTransform(ratio, 0, 0, ratio, 0, 0)
   context.clearRect(0, 0, camera.width, camera.height)
   camera.apply(context, ratio)
-  const lit = litNodes(emphasis)
-  paintLinks(context, links, colors, camera.k, lit)
+  const lit = litNodes(emphasis, links)
+  paintLinks(context, links, colors, camera.k, lit, litLink(emphasis, lit))
   nodes.forEach((node) => paintNode(context, node, colors, camera.k, lit))
   paintLabels(context, nodes, colors, camera, emphasis, lit)
   context.globalAlpha = 1
 }
 
-// O nó em destaque e as vizinhas, as pontas da ligação em destaque e as vizinhas delas, ou null sem destaque (nada apaga).
-function litNodes({ active }) {
+// O nó em destaque e as vizinhas, as pontas da ligação em destaque e as vizinhas delas, as pontas das ligações do
+// método em destaque (a legenda), ou null sem destaque (nada apaga).
+function litNodes({ active }, links) {
   if (!active) return null
+  if (isMethod(active)) return new Set(links.filter((link) => originOf(link) == active.origin).flatMap((link) => [ link.source, link.target ]))
   return new Set(endsOf(active).flatMap((node) => [ node, ...node.neighbors ]))
+}
+
+// Com um método em destaque acendem só as ligações dele; senão, as que ligam duas notas acesas.
+function litLink({ active }, lit) {
+  if (isMethod(active)) return (link) => originOf(link) == active.origin
+  return (link) => lit.has(link.source) && lit.has(link.target)
+}
+
+function isMethod(active) {
+  return active?.origin != null && !active.source
 }
 
 function endsOf(active) {
@@ -52,17 +64,17 @@ function endsOf(active) {
 }
 
 function emphasized(node, { active }) {
-  return active != null && endsOf(active).includes(node)
+  return active != null && !isMethod(active) && endsOf(active).includes(node)
 }
 
-function paintLinks(context, links, colors, k, lit) {
+function paintLinks(context, links, colors, k, lit, isLit) {
   for (const origin of new Set(links.map(originOf))) {
     const { dash, width } = LINK_STYLES[origin] ?? LINK_STYLES.mentioned
     context.setLineDash(dash.map((px) => px / k))
     context.lineCap = origin == "manual" ? "butt" : "round"
     const drawn = links.filter((link) => originOf(link) == origin)
     strokeLinks(context, drawn, lit, { color: lit ? colors.line : restColor(origin, colors), width: width / k })
-    if (lit) strokeLinks(context, drawn.filter((link) => lit.has(link.source) && lit.has(link.target)), null, { color: litColor(origin, colors), width: (width + LIT_EXTRA_WIDTH) / k })
+    if (lit) strokeLinks(context, drawn.filter(isLit), null, { color: litColor(origin, colors), width: (width + LIT_EXTRA_WIDTH) / k })
   }
   context.setLineDash([])
   context.lineCap = "butt"
@@ -83,6 +95,8 @@ function litColor(origin, colors) {
 }
 
 function strokeLinks(context, links, lit, { color, width }) {
+  if (!links.length) return
+
   context.globalAlpha = lit ? FADED : 1
   context.strokeStyle = color
   context.lineWidth = width

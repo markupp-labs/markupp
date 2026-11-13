@@ -99,6 +99,17 @@ export default class extends Controller {
     this.showLegend()
   }
 
+  // Hover num método da legenda: a cena destaca as ligações dele, e data-graph-method diz qual (os testes leem dali).
+  emphasizeMethod({ currentTarget }) {
+    this.element.dataset.graphMethod = currentTarget.dataset.graphLegend
+    this.scene?.emphasizeMethod(currentTarget.dataset.graphLegend)
+  }
+
+  clearMethod() {
+    delete this.element.dataset.graphMethod
+    this.scene?.emphasizeMethod(null)
+  }
+
   // A legenda do grafo cheio mostra só os métodos de ligação que estão no desenho.
   showLegend() {
     if (!this.hasLegendTarget) return

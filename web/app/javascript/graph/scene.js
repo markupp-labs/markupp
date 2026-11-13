@@ -209,8 +209,14 @@ class GraphScene {
     this.camera.centerOn(node.x, node.y)
   }
 
+  // origin destaca as ligações de um método (o hover na legenda); null devolve o grafo inteiro.
+  emphasizeMethod(origin) {
+    this.method = origin ? { origin } : null
+    this.emphasize()
+  }
+
   emphasize() {
-    this.emphasis.active = this.hovered ?? this.walk[this.focusIndex] ?? null
+    this.emphasis.active = this.hovered ?? this.method ?? this.walk[this.focusIndex] ?? null
     this.requestFrame()
   }
 }

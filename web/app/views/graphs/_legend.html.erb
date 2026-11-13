@@ -1,9 +1,11 @@
 <%# Legenda discreta do grafo cheio: cada método de ligação com a amostra do traço na cor dele, como o canvas desenha
-    (graph/painter.js). Começa escondida; graph_view_controller.js mostra os métodos que estão no desenho. %>
+    (graph/painter.js). Começa escondida; graph_view_controller.js mostra os métodos que estão no desenho, e passar sobre
+    um deles destaca as ligações dele no canvas. %>
 <% methods = [ [ "manual", nil ], [ "inferred", "8 4" ], [ "mentioned", "1.5 4" ] ] %>
 <ul class="graph-legend" aria-label="<%= t("graphs.legend.label") %>" data-graph-view-target="legend">
   <% methods.each do |origin, dash| %>
-    <li hidden data-graph-legend="<%= origin %>">
+    <li hidden tabindex="-1" data-graph-legend="<%= origin %>"
+        data-action="mouseenter->graph-view#emphasizeMethod mouseleave->graph-view#clearMethod">
       <svg aria-hidden="true" width="20" height="4" viewBox="0 0 20 4"><%= tag.line x1: 1, y1: 2, x2: 19, y2: 2, class: "graph-link-#{origin}", "stroke-dasharray": dash %></svg>
       <%= t("graphs.legend.#{origin}") %>
     </li>
