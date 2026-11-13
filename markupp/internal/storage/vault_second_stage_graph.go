@@ -30,6 +30,9 @@ func refreshVaultGraph(ctx context.Context, q *gen.Queries, vaultID, searchConfi
 	if err := refreshVaultRelatedLinks(ctx, q, vaultID); err != nil {
 		return err
 	}
+	if err := refreshVaultSemanticLinks(ctx, q, vaultID); err != nil {
+		return err
+	}
 	if noteIDs, edges, err = loadVaultEdges(ctx, q, vaultID); err != nil {
 		return err
 	}

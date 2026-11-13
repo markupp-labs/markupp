@@ -30,6 +30,12 @@ type AuditEvent struct {
 	OccurredAt time.Time
 }
 
+type EmbeddingModel struct {
+	Singleton bool
+	Name      string
+	Dimension int32
+}
+
 type InstanceSecret struct {
 	Name      string
 	Value     string
@@ -98,6 +104,17 @@ type NoteEdge struct {
 	Predicate  pgtype.Text
 	TitleKey   string
 	CitedTitle string
+}
+
+type NoteEmbedding struct {
+	NoteID    string
+	VaultID   string
+	Embedding string
+}
+
+type NoteEmbeddingQueue struct {
+	NoteID   string
+	Revision int64
 }
 
 type NoteIndexQueue struct {
