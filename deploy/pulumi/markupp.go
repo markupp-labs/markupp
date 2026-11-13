@@ -68,6 +68,9 @@ type MarkuppArgs struct {
 	// RegistrationEnabled abre o cadastro de conta a qualquer pessoa
 	// (MARKUPP_AUTH_REGISTRATION_ENABLED). Exige o email, que prova o email da conta.
 	RegistrationEnabled bool `pulumi:"registrationEnabled,optional"`
+	// InstanceAdmins são os emails das contas que administram a instância pelo painel
+	// (MARKUPP_INSTANCE_ADMINS). Vazio, ninguém administra pelo painel.
+	InstanceAdmins []string `pulumi:"instanceAdmins,optional"`
 }
 
 // GatewayRefArgs aponta para um Gateway de outro namespace. Ele precisa
