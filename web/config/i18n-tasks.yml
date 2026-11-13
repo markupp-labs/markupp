@@ -29,3 +29,5 @@ ignore_unused:
   - settings.members.destroy.left
   - tenants.destroy.name_mismatch
   - settings.vault_members.destroy.left
+  # Recusas do login externo, escolhidas pela classe do erro na tabela REFUSALS do ExternalLoginsController.
+  - external_logins.errors.*

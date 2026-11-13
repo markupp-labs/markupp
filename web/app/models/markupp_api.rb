@@ -61,6 +61,14 @@ class MarkuppApi
   class EmailNotVerified < Error; end
   # A conta ou o tenant chegou ao limite de convites das últimas 24 horas.
   class InviteLimitReached < Error; end
+  # Login externo (ADR-0054): nenhuma conta usa a identidade; o provedor recusou o código; o provedor não respondeu.
+  class IdentityNotLinked < Error; end
+  class LoginRejected < Error; end
+  class ProviderUnavailable < Error; end
+  # A identidade externa já é de uma conta; o provedor não mostrou o email; tirar a última forma de entrar.
+  class IdentityAlreadyLinked < Error; end
+  class ProviderEmailMissing < Error; end
+  class LastIdentity < Error; end
 
   # Corpo e ETag de uma leitura que pode voltar 304.
   Revision = Data.define(:body, :etag)
@@ -84,7 +92,10 @@ class MarkuppApi
     "invalid_name" => InvalidName, "not_tenant_member" => NotTenantMember, "already_vault_member" => AlreadyVaultMember,
     "vault_member_not_found" => VaultMemberNotFound, "no_vault" => NoVault, "registration_disabled" => RegistrationDisabled,
     "email_not_verified" => EmailNotVerified, "invite_limit_reached" => InviteLimitReached,
-    "password_too_short" => PasswordTooShort, "common_password" => CommonPassword
+    "password_too_short" => PasswordTooShort, "common_password" => CommonPassword,
+    "identity_not_linked" => IdentityNotLinked, "login_rejected" => LoginRejected, "provider_unavailable" => ProviderUnavailable,
+    "unknown_login_provider" => NotFound, "identity_already_linked" => IdentityAlreadyLinked,
+    "provider_email_missing" => ProviderEmailMissing, "last_identity" => LastIdentity
   }.freeze
   # Para o status cujo corpo não traz código conhecido.
   ERRORS_BY_STATUS = { "401" => Unauthorized, "403" => Forbidden, "404" => NotFound }.freeze

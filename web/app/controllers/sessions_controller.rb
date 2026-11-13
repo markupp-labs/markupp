@@ -1,4 +1,6 @@
 class SessionsController < ApplicationController
+  include LoginProviders
+
   layout "public"
 
   skip_before_action :require_login

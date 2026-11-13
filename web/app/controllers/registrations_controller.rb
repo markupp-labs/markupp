@@ -1,5 +1,7 @@
 # Criar conta com email e senha. A conta nova entra logada; sem tenant ainda, o painel leva à lista de tenants.
 class RegistrationsController < ApplicationController
+  include LoginProviders
+
   layout "public"
 
   skip_before_action :require_login
