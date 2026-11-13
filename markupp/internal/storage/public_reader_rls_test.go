@@ -25,6 +25,7 @@ var leituraDoLeitor = map[string]bool{
 	"notes": true, "public_notes": true, "note_search_index": true, "note_titles": true,
 	"note_links": true, "note_centrality": true, "note_communities": true, "vault_graph_versions": true,
 	"note_edges": true, "note_link_items": true, "note_unresolved_link_items": true,
+	"note_written_edges": true, "note_automatic_edges": true, "note_automatic_links": true, "link_refusals": true,
 }
 
 // privilegiosDoLeitor lista os privilégios, de tabela ou de alguma coluna, que o leitor
@@ -201,4 +202,12 @@ func TestRLS_LeitorComTenantEUsuarioNaSessao_SoEnxergaAsNotasPublicadas(t *testi
 	})
 
 	require.ErrorIs(t, err, pgx.ErrNoRows, "leitor publico leu a nota do cofre privado")
+}
+
+func TestRLS_Leitor_NaoVeQuemRecusouALigacao(t *testing.T) {
+	db := notaPublicadaEPrivadas(t)
+
+	_, err := comoLeitor(t, db, `SELECT count(created_by) FROM link_refusals`)
+
+	require.Error(t, err, "o leitor so ve o par recusado, nao quem recusou")
 }
