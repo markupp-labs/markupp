@@ -18,7 +18,7 @@ module PublicReading
     def find_public_note
       slug, public_id = PublicNote.id_in(params[:slug_and_id])
       @note = PublicNote.find(public_reader, public_id)
-      redirect_to({ slug_and_id: @note.to_param }, status: :moved_permanently) if slug != @note.title_slug && request.format.html?
+      redirect_to({ slug_and_id: @note.to_param }, status: :moved_permanently) if slug != @note.title_slug && !request.format.json?
     end
 
     def refuse_missing(error)
