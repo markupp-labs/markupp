@@ -45,6 +45,30 @@ class GraphPainterTest < ApplicationSystemTestCase
     assert_equal({ "" => %w[line ink], "8,4" => %w[line yellow], "1.5,4" => %w[line blue] }, colors.call("a"))
   end
 
+  # Passar sobre um método da legenda acende só as ligações dele e as notas das pontas; o resto apaga.
+  test "a link method in emphasis lights only its links and their ends" do
+    painted = evaluate_async_script(<<~JS)
+      const done = arguments[arguments.length - 1]
+      import("graph/painter").then(({ paintGraph }) => {
+        const fills = {}
+        const byDash = {}
+        let dash = ""
+        const context = new Proxy({}, { get: (target, key) => ({ setLineDash: (d) => { dash = d.join(",") }, stroke: () => { (byDash[dash] ||= []).push(target.strokeStyle) },
+                                                                   fillText: (text) => { fills[text] = target.fillStyle } })[key] ?? target[key] ?? (() => {}),
+                                         set: (target, key, value) => { target[key] = value; return true } })
+        const node = (title) => ({ title, x: 0, y: 0, radius: 5, hue: 0, neighbors: [] })
+        const [ a, b, c ] = [ node("a"), node("b"), node("c") ]
+        const links = [ { source: a, target: b, origin: "manual" }, { source: b, target: c, origin: "mentioned" } ]
+        const colors = { line: "line", ink: "ink", muted: "muted", accent: "accent", halo: "halo", communities: [ "c0" ], links: { mentioned: "blue" } }
+        paintGraph(context, { nodes: [ a, b, c ], links, colors, camera: { width: 100, height: 100, k: 1, apply() {} }, ratio: 1, emphasis: { active: { origin: "mentioned" } } })
+        done({ fills, byDash })
+      }).catch((error) => done({ error: String(error) }))
+    JS
+
+    assert_equal %w[b c], painted["fills"].keys.sort, "only the ends of the mention are named"
+    assert_equal({ "" => [ "line" ], "1.5,4" => %w[line blue] }, painted["byDash"], "the manual link fades and the mention lights")
+  end
+
   # O enquadramento aproxima o grafo para ocupar o canvas; a bolinha para de crescer na tela a partir do zoom 2.
   test "a node stops growing on screen past zoom 2" do
     at_two = painted(nodes: "[ node('a', {}), node('b', {}) ]", zoom: 2)["arcs"].first * 2

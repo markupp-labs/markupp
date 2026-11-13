@@ -45,6 +45,17 @@ class GraphLinkRefusalTest < ApplicationSystemTestCase
     end
   end
 
+  # Passar sobre um método da legenda destaca as ligações dele no canvas, e sair devolve o grafo inteiro.
+  test "hovering a method in the legend emphasizes its links in the drawing" do
+    draw_with("mentioned")
+    canvas = find("main canvas[data-graph-canvas]")
+
+    find("main .graph-legend li", text: "mention").hover
+    assert_selector "main [data-graph-method=mentioned]"
+    canvas.hover
+    assert_no_selector "main [data-graph-method]"
+  end
+
   test "a click on a written link asks nothing" do
     draw_with("explicit")
 
