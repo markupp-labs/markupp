@@ -154,6 +154,16 @@ Para subir o servidor MCP, informe `mcp` com `image`. Ele atende na mesma origem
 resource, que vai para a API em `MARKUPP_OAUTH_RESOURCES` e para o MCP em
 `MARKUPP_MCP_RESOURCE_SECRET`.
 
+Para administrar a instância pelo painel, informe `instanceAdmins` com os emails das contas,
+que vão para a API em `MARKUPP_INSTANCE_ADMINS`. O componente gera a `MARKUPP_SECRET_KEY` no
+Secret do banco e a passa à API e ao embedder.
+
+O componente sobe o embedder num Deployment de uma réplica, com a imagem `markupp-embedder` da
+mesma tag de `image` (ou `embedderImage`, obrigatória com `image` fixada por digest), rodando
+`embed-loop`. Os pesos do modelo local ficam num PersistentVolumeClaim de 2Gi em
+`/var/lib/markupp/models`, com a `storageClass` do banco. Sem `MARKUPP_EMBEDDING_PROVIDER`, vale a
+escolha do administrador da instância no painel.
+
 ### Stack dev
 
 O projeto em `deploy/stacks` usa o componente pelo caminho local e tem uma stack, `dev`: um
