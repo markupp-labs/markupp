@@ -15,3 +15,8 @@ WHERE host_locked IS DISTINCT FROM $1 OR host_provider IS DISTINCT FROM $2;
 
 -- name: ReportInstanceEmbeddingModel :exec
 UPDATE instance_embedding SET model_state = $1, model_error = $2, model_state_at = clock_timestamp();
+
+-- Novo selo da chave com a chave de cifra ativa: só troca o selo lido, e não muda a
+-- revisão, para o indexador de embedding não reabrir o provedor.
+-- name: ResealInstanceEmbeddingKey :exec
+UPDATE instance_embedding SET api_key_sealed = sqlc.arg(fresh) WHERE api_key_sealed = sqlc.arg(old);

@@ -56,12 +56,15 @@ type EmbeddingRecord struct {
 type EmbeddingStore interface {
 	LoadEmbedding(ctx context.Context) (EmbeddingRecord, error)
 	SaveEmbeddingChoice(ctx context.Context, choice EmbeddingChoice) error
+	// ResealAPIKey troca a chave selada old por fresh, sem mudar a escolha nem a revisão.
+	ResealAPIKey(ctx context.Context, old, fresh string) error
 }
 
-// Sealer cifra e decifra a chave do endpoint remoto.
+// Sealer cifra e decifra a chave do endpoint remoto. Open diz também, em stale, que a
+// chave abriu com uma chave de cifra antiga e precisa de novo selo.
 type Sealer interface {
 	Seal(plain string) (string, error)
-	Open(sealed string) (string, error)
+	Open(sealed string) (plain string, stale bool, err error)
 }
 
 // EmbeddingUpdate é a escolha pedida. APIKey nil mantém a chave guardada, e vazia a apaga.
@@ -104,13 +107,34 @@ func NewEmbeddingService(store EmbeddingStore, sealer Sealer) *EmbeddingService 
 	return &EmbeddingService{store: store, sealer: sealer}
 }
 
-// Settings devolve a escolha, a trava e o estado do modelo.
+// Settings devolve a escolha, a trava e o estado do modelo, e sela de novo com a chave de
+// cifra ativa a chave guardada com uma antiga.
 func (s *EmbeddingService) Settings(ctx context.Context) (EmbeddingView, error) {
 	record, err := s.store.LoadEmbedding(ctx)
 	if err != nil {
 		return EmbeddingView{}, err
 	}
+	if err := s.resealStaleKey(ctx, record.Choice.SealedAPIKey); err != nil {
+		return EmbeddingView{}, err
+	}
 	return viewOf(record), nil
+}
+
+// resealStaleKey sela de novo a chave que abriu com uma chave de cifra antiga. A que não
+// abre com nenhuma fica como está: só digitando a chave de novo.
+func (s *EmbeddingService) resealStaleKey(ctx context.Context, sealed string) error {
+	if sealed == "" {
+		return nil
+	}
+	plain, stale, err := s.sealer.Open(sealed)
+	if err != nil || !stale {
+		return nil //nolint:nilerr // a chave ilegível não impede ler a escolha; o painel pede para digitá-la de novo
+	}
+	fresh, err := s.sealer.Seal(plain)
+	if err != nil {
+		return fmt.Errorf("reseal embedding API key: %w", err)
+	}
+	return s.store.ResealAPIKey(ctx, sealed, fresh)
 }
 
 // Update confere e grava a escolha, cifrando a chave nova. Recusa com a escolha travada
@@ -148,7 +172,7 @@ func (s *EmbeddingService) PlainChoice(ctx context.Context) (PlainEmbeddingChoic
 	if c.SealedAPIKey == "" {
 		return plain, nil
 	}
-	if plain.APIKey, err = s.sealer.Open(c.SealedAPIKey); err != nil {
+	if plain.APIKey, _, err = s.sealer.Open(c.SealedAPIKey); err != nil {
 		return PlainEmbeddingChoice{}, fmt.Errorf("open embedding API key, expected the same key-encryption secret that sealed it: %w", err)
 	}
 	return plain, nil

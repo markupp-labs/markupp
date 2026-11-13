@@ -79,6 +79,22 @@ func (q *Queries) ReportInstanceEmbeddingModel(ctx context.Context, arg ReportIn
 	return err
 }
 
+const resealInstanceEmbeddingKey = `-- name: ResealInstanceEmbeddingKey :exec
+UPDATE instance_embedding SET api_key_sealed = $1 WHERE api_key_sealed = $2
+`
+
+type ResealInstanceEmbeddingKeyParams struct {
+	Fresh string
+	Old   string
+}
+
+// Novo selo da chave com a chave de cifra ativa: só troca o selo lido, e não muda a
+// revisão, para o indexador de embedding não reabrir o provedor.
+func (q *Queries) ResealInstanceEmbeddingKey(ctx context.Context, arg ResealInstanceEmbeddingKeyParams) error {
+	_, err := q.db.Exec(ctx, resealInstanceEmbeddingKey, arg.Fresh, arg.Old)
+	return err
+}
+
 const saveInstanceEmbeddingChoice = `-- name: SaveInstanceEmbeddingChoice :execrows
 UPDATE instance_embedding
 SET provider = $1, url = $2, model = $3, api_key_sealed = $4, updated_at = clock_timestamp()

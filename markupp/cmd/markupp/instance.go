@@ -29,15 +29,17 @@ func prepareInstance(ctx context.Context, cfg config.Config, secrets config.Inst
 // MARKUPP_SECRET_KEY (ADR-0057).
 const secretKeyName = "secret_key"
 
-// newSecretBox monta a cifra dos segredos guardados no banco. A chave vem de secretKey,
-// a MARKUPP_SECRET_KEY, e sem ela do segredo da instância no banco, gerado na primeira
-// vez: aí quem tem uma cópia do banco também decifra.
-func newSecretBox(ctx context.Context, secretKey string, secrets config.InstanceSecrets) (*secretbox.Box, error) {
-	if secretKey == "" {
-		var err error
-		if secretKey, err = secrets.Secret(ctx, secretKeyName, auth.NewOpaqueToken); err != nil {
-			return nil, err
-		}
+// newSecretBox monta a cifra dos segredos guardados no banco. A chave ativa é secretKey, a
+// MARKUPP_SECRET_KEY, e o segredo da instância no banco, gerado na primeira vez, fica de
+// chave antiga, para abrir o que foi selado antes da variável. Sem a variável, ele é a
+// ativa, e quem tem uma cópia do banco também decifra.
+func newSecretBox(ctx context.Context, secretKey string, secrets config.InstanceSecrets) (*secretbox.Keyring, error) {
+	stored, err := secrets.Secret(ctx, secretKeyName, auth.NewOpaqueToken)
+	if err != nil {
+		return nil, err
 	}
-	return secretbox.New(secretKey)
+	if secretKey == "" {
+		return secretbox.NewKeyring(stored)
+	}
+	return secretbox.NewKeyring(secretKey, stored)
 }

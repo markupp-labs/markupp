@@ -103,3 +103,14 @@ func (r *PostgresInstanceEmbedding) ReportModelStatus(ctx context.Context, state
 	}
 	return nil
 }
+
+// ResealAPIKey troca a chave selada old por fresh, se ela ainda é a guardada.
+func (r *PostgresInstanceEmbedding) ResealAPIKey(ctx context.Context, old, fresh string) error {
+	err := r.enter(ctx, r.pool, func(q *gen.Queries) error {
+		return q.ResealInstanceEmbeddingKey(ctx, gen.ResealInstanceEmbeddingKeyParams{Old: old, Fresh: fresh})
+	})
+	if err != nil {
+		return fmt.Errorf("reseal instance embedding API key: %w", err)
+	}
+	return nil
+}
