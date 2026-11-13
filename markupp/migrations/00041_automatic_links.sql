@@ -104,6 +104,15 @@ CREATE POLICY link_refusals_delete ON link_refusals FOR DELETE TO markupp_app
     USING (vault_id IN (SELECT markupp_member_vaults())
            AND current_setting('markupp.role', true) <> 'viewer');
 
+-- A leitura pública (00040) vê a ligação automática entre duas notas públicas e, da
+-- recusa, só o par, para a recusada não aparecer; quem recusou e quando não saem.
+GRANT SELECT ON note_written_edges, note_automatic_edges, note_automatic_links TO markupp_reader;
+GRANT SELECT (low_id, high_id) ON link_refusals TO markupp_reader;
+CREATE POLICY note_automatic_links_public ON note_automatic_links FOR SELECT TO markupp_reader
+    USING (source_id IN (SELECT markupp_public_note_ids()) AND target_id IN (SELECT markupp_public_note_ids()));
+CREATE POLICY link_refusals_public ON link_refusals FOR SELECT TO markupp_reader
+    USING (low_id IN (SELECT markupp_public_note_ids()) AND high_id IN (SELECT markupp_public_note_ids()));
+
 -- Nenhum cofre tem ligação por menção ainda.
 INSERT INTO vault_second_stage_queue (vault_id) SELECT id FROM vaults
 ON CONFLICT (vault_id) DO UPDATE SET revision = nextval('vault_second_stage_revision_seq');
