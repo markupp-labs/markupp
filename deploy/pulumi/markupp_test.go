@@ -188,7 +188,7 @@ func TestNewMarkupp_JobDeMigracao_RodaOSubcomandoMigrateNaImagem(t *testing.T) {
 func TestNewMarkupp_DeploymentDaAPI_LeOBancoESegredoDoSecret(t *testing.T) {
 	monitor := deploy(t, argsDeTeste())
 
-	api := monitor.single(t, "kubernetes:apps/v1:Deployment")
+	api := deploymentNamed(t, monitor, "markupp-api")
 	container := firstContainer(t, api)
 	envs := container["env"].ArrayValue()
 	require.Len(t, envs, 4)
@@ -205,7 +205,7 @@ func TestNewMarkupp_DeploymentDaAPI_LeOBancoESegredoDoSecret(t *testing.T) {
 func TestNewMarkupp_DeploymentDaAPI_AnunciaOHostComoURLPublica(t *testing.T) {
 	monitor := deploy(t, argsDeTeste())
 
-	container := firstContainer(t, monitor.single(t, "kubernetes:apps/v1:Deployment"))
+	container := firstContainer(t, deploymentNamed(t, monitor, "markupp-api"))
 	var publicURL string
 	for _, env := range container["env"].ArrayValue() {
 		if env.ObjectValue()["name"].StringValue() == "MARKUPP_PUBLIC_URL" {
@@ -218,7 +218,7 @@ func TestNewMarkupp_DeploymentDaAPI_AnunciaOHostComoURLPublica(t *testing.T) {
 func TestNewMarkupp_DeploymentDaAPI_UsaDuasReplicasESondaHealthz(t *testing.T) {
 	monitor := deploy(t, argsDeTeste())
 
-	api := monitor.single(t, "kubernetes:apps/v1:Deployment")
+	api := deploymentNamed(t, monitor, "markupp-api")
 	assert.Equal(t, 2.0, at(t, api, "spec", "replicas").NumberValue())
 	container := firstContainer(t, api)
 	assert.Equal(t, "/v1/healthz", at(t, container, "readinessProbe", "httpGet", "path").StringValue())
@@ -285,7 +285,7 @@ func TestNewMarkupp_ZeroReplicas_DeixaAAPISemPods(t *testing.T) {
 
 	monitor := deploy(t, args)
 
-	api := monitor.single(t, "kubernetes:apps/v1:Deployment")
+	api := deploymentNamed(t, monitor, "markupp-api")
 	assert.Equal(t, 0.0, at(t, api, "spec", "replicas").NumberValue(), "zero réplicas pedido não vira o padrão")
 }
 
@@ -337,7 +337,7 @@ func TestNewMarkupp_GatewayExistenteSemNome_RetornaErroComOCampo(t *testing.T) {
 func TestNewMarkupp_LivenessDaAPI_NaoDependeDoBanco(t *testing.T) {
 	monitor := deploy(t, argsDeTeste())
 
-	container := firstContainer(t, monitor.single(t, "kubernetes:apps/v1:Deployment"))
+	container := firstContainer(t, deploymentNamed(t, monitor, "markupp-api"))
 	liveness := container["livenessProbe"].ObjectValue()
 	assert.True(t, liveness["httpGet"].IsNull(),
 		"liveness no /healthz reinicia a API inteira quando o banco cai")
@@ -375,7 +375,7 @@ func TestNewMarkupp_SemEmail_NaoCriaNotificador(t *testing.T) {
 	monitor := deploy(t, argsDeTeste())
 
 	assert.Empty(t, monitor.byType(scaledObjectType))
-	assert.Len(t, monitor.byType("kubernetes:apps/v1:Deployment"), 1, "so a API")
+	assert.Len(t, monitor.byType("kubernetes:apps/v1:Deployment"), 2, "so a API e o embedder")
 }
 
 func TestNewMarkupp_ComEmail_GuardaAURLDoSMTPNoSecret(t *testing.T) {
