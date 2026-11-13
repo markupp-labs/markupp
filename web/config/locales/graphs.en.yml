@@ -11,6 +11,7 @@ en:
       inferred: "inferred"
       mentioned: "mention"
       related: "similar text"
+      semantic: "meaning"
     filters:
       title: "Filters"
       show: "show"

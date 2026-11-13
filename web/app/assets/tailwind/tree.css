@@ -120,6 +120,7 @@
   --link-inferred: var(--code-constant);
   --link-mentioned: var(--code-function);
   --link-related: var(--code-string);
+  --link-semantic: var(--code-keyword);
 }
 
 /* Visões planas do Explorer (notes/_explorer_groups): a linha da árvore sem as guias, título, pasta apagada e o número

@@ -77,6 +77,12 @@
     stroke-linecap: round;
   }
 
+  .graph-link-semantic {
+    stroke: var(--link-semantic);
+    stroke-width: 1.75;
+    stroke-linecap: round;
+  }
+
   .graph-busy {
     @apply absolute top-2 left-2 text-xs text-ink-muted;
   }

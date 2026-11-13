@@ -11,6 +11,7 @@ pt-BR:
       inferred: "inferida"
       mentioned: "menção"
       related: "texto parecido"
+      semantic: "sentido"
     filters:
       title: "Filtros"
       show: "mostrar"
