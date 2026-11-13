@@ -13,3 +13,10 @@ func TestPageRank_ParaNoTetoDeIteracoes(t *testing.T) {
 
 	assert.Equal(t, Convergence{Iterations: 2, Capped: true}, parada, "a diferenca da primeira iteracao ainda passa da tolerancia")
 }
+
+func TestPageRank_CofreVazio_NaoChegaAoTeto(t *testing.T) {
+	ranks, parada := New(nil, nil).PageRank()
+
+	assert.Empty(t, ranks)
+	assert.False(t, parada.Capped, "sem nota nao ha o que iterar")
+}
