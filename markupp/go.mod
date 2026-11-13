@@ -3,6 +3,7 @@ module github.com/ifsc-ES2/projeto-markupp/markupp
 go 1.26.11
 
 require (
+	github.com/coreos/go-oidc/v3 v3.21.0
 	github.com/go-chi/chi/v5 v5.2.5
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.11.0
@@ -13,6 +14,7 @@ require (
 	github.com/yuin/goldmark v1.8.6
 	go.abhg.dev/goldmark/wikilink v0.6.0
 	golang.org/x/crypto v0.56.0
+	golang.org/x/oauth2 v0.38.0
 	golang.org/x/sync v0.22.0
 	golang.org/x/text v0.41.0
 	gonum.org/v1/gonum v0.17.0
@@ -36,6 +38,7 @@ require (
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/ebitengine/purego v0.10.1 // indirect
 	github.com/felixge/httpsnoop v1.1.0 // indirect
+	github.com/go-jose/go-jose/v4 v4.1.4 // indirect
 	github.com/go-logr/logr v1.4.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect

@@ -10,7 +10,7 @@ import (
 
 // envComProvedores monta um ambiente valido com Google (OIDC) e GitHub; o teste troca o que precisar.
 func envComProvedores() fakeEnv {
-	return fakeEnv{
+	return fakeEnv{ // #nosec G101 -- segredos ficticios de teste
 		"MARKUPP_DATABASE_URL":               urlDeTeste,
 		"MARKUPP_LOGIN_PROVIDERS":            "google, github",
 		"MARKUPP_LOGIN_GOOGLE_ISSUER":        "https://accounts.google.com",
@@ -34,13 +34,13 @@ func TestLoad_ComProvedores_LeCadaUmNaOrdemDaLista(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Equal(t, []config.LoginProvider{
-		{ID: "google", Name: "Google", Issuer: "https://accounts.google.com", ClientID: "id-google", ClientSecret: "segredo-google"},
-		{ID: "github", Name: "github", ClientID: "id-github", ClientSecret: "segredo-github"},
+		{ID: "google", Name: "Google", Issuer: "https://accounts.google.com", ClientID: "id-google", ClientSecret: "segredo-google"}, // #nosec G101 -- segredo ficticio de teste
+		{ID: "github", Name: "github", ClientID: "id-github", ClientSecret: "segredo-github"},                                        // #nosec G101 -- segredo ficticio de teste
 	}, cfg.LoginProviders)
 }
 
 func TestLoad_IdComHifen_LeAsVariaveisComSublinhado(t *testing.T) {
-	env := fakeEnv{
+	env := fakeEnv{ // #nosec G101 -- segredos ficticios de teste
 		"MARKUPP_DATABASE_URL":                urlDeTeste,
 		"MARKUPP_LOGIN_PROVIDERS":             "meu-idp",
 		"MARKUPP_LOGIN_MEU_IDP_ISSUER":        "https://idp.exemplo.org/application/o/markupp/",
@@ -117,7 +117,7 @@ func TestLoad_IdRepetido_Recusa(t *testing.T) {
 }
 
 func TestLoad_IdLocalReservado_Recusa(t *testing.T) {
-	env := fakeEnv{
+	env := fakeEnv{ // #nosec G101 -- segredos ficticios de teste
 		"MARKUPP_DATABASE_URL":              urlDeTeste,
 		"MARKUPP_LOGIN_PROVIDERS":           "local",
 		"MARKUPP_LOGIN_LOCAL_ISSUER":        "https://idp.exemplo.org",
