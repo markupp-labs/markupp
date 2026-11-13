@@ -36,6 +36,20 @@ type EmbeddingModel struct {
 	Dimension int32
 }
 
+type InstanceEmbedding struct {
+	Singleton    bool
+	Provider     string
+	Url          string
+	Model        string
+	ApiKeySealed string
+	UpdatedAt    time.Time
+	HostLocked   bool
+	HostProvider string
+	ModelState   string
+	ModelError   string
+	ModelStateAt pgtype.Timestamptz
+}
+
 type InstanceSecret struct {
 	Name      string
 	Value     string
