@@ -183,7 +183,7 @@ func TestPlainChoice_ChaveDeOutraCifra_RetornaErro(t *testing.T) {
 }
 
 func TestSettings_ChaveSeladaComAChaveAntiga_SelaDeNovoComAAtiva(t *testing.T) {
-	svc, store := servico(instance.EmbeddingRecord{Choice: instance.EmbeddingChoice{Provider: "openai-compat", SealedAPIKey: "velho:sk"}})
+	svc, store := servico(instance.EmbeddingRecord{Choice: instance.EmbeddingChoice{Provider: "openai-compat", SealedAPIKey: "velho:sk"}}) // #nosec G101 -- valor fictício de teste
 
 	view, err := svc.Settings(context.Background())
 
@@ -205,7 +205,7 @@ func TestSettings_ChaveJaComAAtivaOuIlegivel_NaoSelaDeNovo(t *testing.T) {
 }
 
 func TestPlainChoice_ChaveSeladaComAChaveAntiga_DecifraSemSelarDeNovo(t *testing.T) {
-	svc, store := servico(instance.EmbeddingRecord{Choice: instance.EmbeddingChoice{Provider: "openai-compat", SealedAPIKey: "velho:sk"}})
+	svc, store := servico(instance.EmbeddingRecord{Choice: instance.EmbeddingChoice{Provider: "openai-compat", SealedAPIKey: "velho:sk"}}) // #nosec G101 -- valor fictício de teste
 
 	choice, err := svc.PlainChoice(context.Background())
 
