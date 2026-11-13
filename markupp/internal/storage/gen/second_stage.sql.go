@@ -15,6 +15,8 @@ SELECT set_config('hnsw.iterative_scan', 'strict_order', true)
 
 // O HNSW filtra o cofre depois de achar os vizinhos; a busca iterativa continua até
 // achar os k do cofre, na ordem exata. Vale até o fim da transação.
+// shortcut: a busca para em hnsw.max_scan_tuples (20 mil); um cofre pequeno numa tabela
+// grande pode ficar com menos de 5 vizinhos, e então vale subir o teto ou filtrar antes.
 func (q *Queries) AllowFilteredVectorScan(ctx context.Context) error {
 	_, err := q.db.Exec(ctx, allowFilteredVectorScan)
 	return err

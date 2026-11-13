@@ -26,6 +26,8 @@ DELETE FROM note_automatic_links WHERE vault_id = sqlc.arg(vault_id) AND kind = 
 
 -- O HNSW filtra o cofre depois de achar os vizinhos; a busca iterativa continua até
 -- achar os k do cofre, na ordem exata. Vale até o fim da transação.
+-- shortcut: a busca para em hnsw.max_scan_tuples (20 mil); um cofre pequeno numa tabela
+-- grande pode ficar com menos de 5 vizinhos, e então vale subir o teto ou filtrar antes.
 -- name: AllowFilteredVectorScan :exec
 SELECT set_config('hnsw.iterative_scan', 'strict_order', true);
 
