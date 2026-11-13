@@ -61,6 +61,13 @@ class PublicNotesControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to public_note_path("start-#{START}")
   end
 
+  # Robôs, prévias de link e o curl pedem */*, que o Rails não lê como html.
+  test "a client that accepts anything is redirected too" do
+    get public_note_path("old-title-#{START}"), headers: { "Accept" => "*/*" }
+
+    assert_redirected_to public_note_path("start-#{START}")
+  end
+
   test "the embed of a public note comes in json with its content" do
     get public_note_path("setup-#{SETUP}", format: :json)
 
