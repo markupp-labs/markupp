@@ -11,7 +11,8 @@ info:
     continuam servidos sem prefixo, com os cabeçalhos Deprecation (RFC 9745) e
     Link rel="successor-version" apontando o caminho sob /v1; sem prefixo, a nota
     mantém a representação antiga, sem a organização derivada. As rotas /accounts, /oauth/requests,
-    /me/authorizations, /me/notifications, /vaults, /search e as sub-coleções de /notes/{id} nasceram
+    /accounts/external, /login-providers, /auth/external-login, /me/identities, /me/authorizations,
+    /me/notifications, /vaults, /search e as sub-coleções de /notes/{id} nasceram
     depois da transição e existem só sob /v1, sem o caminho sem prefixo.
 
     Os endpoints do protocolo OAuth (/oauth/authorize, /oauth/token, /oauth/revoke e a
@@ -71,6 +72,205 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '429':
           $ref: '#/components/responses/RateLimited'
+  /accounts/external:
+    post:
+      summary: Cria a conta por um provedor externo e abre a sessão dela
+      description: >
+        Troca o código do provedor pela identidade (ADR-0054) e cria a conta com o email que o
+        provedor informa, sem senha. Segue o auto-registro como POST /accounts; o email nasce
+        verificado quando o provedor o afirma verificado. Existe só sob /v1.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExternalCallbackRequest'
+      responses:
+        '201':
+          description: Conta criada, com a sessão aberta
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenPairResponse'
+        '400':
+          $ref: '#/components/responses/ExternalLoginRefused'
+        '401':
+          $ref: '#/components/responses/ExternalLoginRefused'
+        '403':
+          description: Auto-registro desligado e a instalação já tem conta (registration_disabled)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: >
+            A identidade já é de uma conta (identity_already_linked) ou o email já tem conta
+            (already_exists), que vincula o provedor logada em POST /me/identities
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: O provedor não informou email (provider_email_missing)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '502':
+          $ref: '#/components/responses/LoginProviderUnavailable'
+  /login-providers:
+    get:
+      summary: Lista os provedores externos de login da instalação
+      description: Lista vazia quando a instalação não configura nenhum. Existe só sob /v1.
+      security: []
+      responses:
+        '200':
+          description: Provedores na ordem de MARKUPP_LOGIN_PROVIDERS
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LoginProviderResponse'
+  /login-providers/{id}/attempts:
+    post:
+      summary: Começa uma tentativa de login no provedor
+      description: >
+        Devolve a URL do provedor e o state, o verifier PKCE e o nonce, que o cliente guarda
+        até o callback e devolve com o código. O servidor não guarda a tentativa. Existe só
+        sob /v1.
+      security: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '201':
+          description: Tentativa criada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginAttemptResponse'
+        '404':
+          description: Provedor não configurado (not_found)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '502':
+          $ref: '#/components/responses/LoginProviderUnavailable'
+  /auth/external-login:
+    post:
+      summary: Abre a sessão por um provedor externo
+      description: >
+        Troca o código do provedor pela identidade e abre a sessão da conta que a tem
+        vinculada. Nunca cria conta: identidade sem conta responde identity_not_linked.
+        Existe só sob /v1.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExternalCallbackRequest'
+      responses:
+        '200':
+          description: Sessão aberta
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenPairResponse'
+        '400':
+          $ref: '#/components/responses/ExternalLoginRefused'
+        '401':
+          $ref: '#/components/responses/ExternalLoginRefused'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '502':
+          $ref: '#/components/responses/LoginProviderUnavailable'
+  /me/identities:
+    get:
+      summary: Lista as identidades externas da conta
+      description: >
+        A senha não aparece. Só aceita token de login, nunca token OAuth (first_party_only).
+        Existe só sob /v1.
+      responses:
+        '200':
+          description: Identidades na ordem em que foram vinculadas
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/IdentityResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      summary: Vincula um provedor externo à conta logada
+      description: >
+        Troca o código do provedor pela identidade e a vincula à conta do token. O vínculo
+        só nasce assim, nunca pelo email do provedor (ADR-0054). Só aceita token de login.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExternalCallbackRequest'
+      responses:
+        '201':
+          description: Identidade vinculada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdentityResponse'
+        '400':
+          $ref: '#/components/responses/ExternalLoginRefused'
+        '401':
+          $ref: '#/components/responses/ExternalLoginRefused'
+        '409':
+          description: A identidade já é de uma conta (identity_already_linked)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '502':
+          $ref: '#/components/responses/LoginProviderUnavailable'
+  /me/identities/{id}:
+    delete:
+      summary: Desvincula uma identidade externa da conta
+      description: >
+        Recusa quando nenhuma das formas de entrar que restam vale na instalação: a senha
+        desligada ou o provedor fora da configuração não contam. Só aceita token de login.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Identidade desvinculada
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: A conta não tem essa identidade externa (not_found)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: É a última forma de entrar na conta (last_identity)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /auth/login:
     post:
       summary: Abre a sessão com credencial local
@@ -2139,6 +2339,21 @@ components:
         type: string
         enum: [gzip]
   responses:
+    ExternalLoginRefused:
+      description: >
+        Provedor fora da configuração (unknown_login_provider, 400), código, verifier ou nonce
+        recusados pelo provedor ou pela validação (login_rejected, 401) ou, no login, nenhuma
+        conta com a identidade (identity_not_linked, 401)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    LoginProviderUnavailable:
+      description: O provedor não respondeu como esperado (provider_unavailable)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
     RateLimited:
       description: >
         Tentativas demais (rate_limited). Cada rota de conta aceita 5 por minuto por IP e,
@@ -2202,6 +2417,52 @@ components:
           schema:
             $ref: '#/components/schemas/ErrorResponse'
   schemas:
+    LoginProviderResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+          description: Nome para o botão
+    LoginAttemptResponse:
+      type: object
+      properties:
+        authorization_url:
+          type: string
+          description: URL do provedor para onde o navegador vai
+        state:
+          type: string
+          description: Volta no callback; o cliente confere antes de chamar o servidor
+        code_verifier:
+          type: string
+          description: Verifier PKCE que o cliente guarda e devolve com o código
+        nonce:
+          type: string
+          description: Nonce do id_token que o cliente guarda e devolve com o código
+    ExternalCallbackRequest:
+      type: object
+      required: [provider, code, code_verifier, nonce]
+      properties:
+        provider:
+          type: string
+        code:
+          type: string
+          description: Código que o provedor devolveu no callback
+        code_verifier:
+          type: string
+        nonce:
+          type: string
+    IdentityResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        provider:
+          type: string
+        created_at:
+          type: string
+          format: date-time
     OAuthAuthorizationResponse:
       type: object
       properties:
