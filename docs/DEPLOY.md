@@ -87,10 +87,6 @@ resources:
         storageClass: longhorn-fast
 ```
 
-O PostgreSQL do namespace usa a imagem `markupp-postgres` ao lado de `image`, com a mesma tag
-(`ghcr.io/markupp-labs/markupp-postgres:1.0.0-rc.2` no exemplo), que traz o pgvector.
-`database.image` troca essa imagem e é obrigatória quando `image` vem por digest.
-
 Para enviar o convite por email, informe `email` com `smtpUrl`, no formato
 `smtp://usuario:senha@host:porta` ou `smtps://`, e `from`. A URL vai para o Secret do markupp,
 e só o notificador a recebe: a API recebe apenas `MARKUPP_INVITE_BY_EMAIL=true`.
@@ -340,9 +336,18 @@ mesmo assunto. Ele roda com `embed-loop` na imagem `ghcr.io/markupp-labs/markupp
 Trocar de provedor ou de modelo apaga os vetores e refaz os de todas as notas.
 
 Os vetores ficam no Postgres, com o pgvector ([ADR-0055](adrs/ADR-0055-vetores-no-postgres.md)).
-O compose e o componente Pulumi usam a imagem `markupp-postgres`, o Postgres oficial com o
-pgvector, na mesma versão do servidor. Num PostgreSQL externo, instale o pgvector e crie a
-extensão com um superusuário (`CREATE EXTENSION vector;`) antes de migrar.
+O compose e o componente Pulumi usam a imagem oficial do pgvector, `pgvector/pgvector`, com o
+Postgres 17 em Debian. Num PostgreSQL externo, instale o pgvector e crie a extensão com um
+superusuário (`CREATE EXTENSION vector;`) antes de migrar.
+
+O banco criado antes, na imagem `postgres` em Alpine, ordena o texto de outro jeito que o
+Debian. Depois de subir a versão nova, refaça os índices uma vez, antes de usar a instalação:
+
+```sh
+docker compose exec postgres psql -U markupp -d markupp -c 'REINDEX DATABASE markupp;'
+```
+
+No componente Pulumi, rode o mesmo `psql` com `kubectl exec` no pod do Postgres do namespace.
 
 ## OAuth
 

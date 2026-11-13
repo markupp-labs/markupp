@@ -17,20 +17,21 @@ uso e um índice HNSW de cosseno. O segundo estágio faz o kNN mútuo em SQL, co
 estrita para o filtro do cofre não cortar vizinhos. Trocar de modelo apaga os vetores, refaz a
 coluna e o índice e reenfileira todas as notas
 
-O Postgres de todas as instalações passa a ser a imagem oficial em Alpine com o pgvector
-compilado, publicada com a mesma tag do servidor. O banco externo precisa ter o pgvector
-instalado
+O Postgres de todas as instalações passa a ser a imagem oficial do pgvector, em Debian. O banco
+externo precisa ter o pgvector instalado
 
 ## Alternativas consideradas
 
 - Banco vetorial à parte, como o Qdrant: mais um serviço para quem faz self-host subir e manter
 - Vetores na memória do indexador: refaz tudo a cada subida e não cabe num cofre grande
-- Imagem pgvector/pgvector: é Debian, e trocar musl por glibc muda a ordenação do texto, o que
-  deixa fora de ordem os índices de texto do banco que já existe
+- Imagem própria em Alpine com o pgvector compilado: mantém a ordenação do texto do banco que
+  já existe, mas o projeto passa a construir e publicar mais uma imagem
 - Índice IVFFlat: precisa de dados para treinar e perde recall numa tabela que cresce
 
 ## Consequências
 
-- Quem faz self-host continua com um banco só, agora numa imagem do projeto
+- Quem faz self-host continua com um banco só, numa imagem mantida pelo pgvector
+- Trocar musl por glibc muda a ordenação do texto: o banco que já existe precisa de um
+  REINDEX uma vez, depois da atualização
 - O banco externo sem pgvector não migra até alguém instalar a extensão
 - Modelo de mais de 2000 dimensões fica sem índice, e o kNN lê o cofre inteiro
