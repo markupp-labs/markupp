@@ -32,7 +32,7 @@ class FakeMarkuppPublicNotes
     note = public_note(ROUTE.match(path)[:public_id], path)
     return if etag == GRAPH_ETAG
 
-    nodes = siblings(note).map { { "id" => it["public_id"], "title" => title_of(it), "path" => it["path"] } }
+    nodes = siblings(note).map { summary(it).merge("degree" => 0) }
     MarkuppApi::Revision.new(body: { "nodes" => nodes, "links" => [] }, etag: GRAPH_ETAG)
   end
 
