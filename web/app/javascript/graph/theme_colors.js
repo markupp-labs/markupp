@@ -3,7 +3,7 @@
 // (ExplorerHelper#community_hue). O halo atrás dos nomes é o fundo do palco, para o nome ler por cima das ligações.
 const TOKENS = { line: "--line", ink: "--ink", muted: "--ink-muted", accent: "--accent" }
 const COMMUNITY_HUES = 8
-const LINK_ORIGINS = [ "inferred", "mentioned" ]
+const LINK_ORIGINS = [ "inferred", "mentioned", "related" ]
 
 export function readThemeColors(stage) {
   const probe = stage.appendChild(document.createElement("span"))
