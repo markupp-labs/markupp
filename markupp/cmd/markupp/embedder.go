@@ -13,8 +13,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/config"
-	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/drain"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/embedding"
+	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/instance"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/storage"
 )
 
@@ -28,8 +28,9 @@ const (
 	modelDownloadTimeout = 30 * time.Minute
 )
 
-// runEmbedder roda o indexador de embedding em laço (ADR-0053). Sem provedor, desliga
-// o modelo anterior, se havia, e fica ocioso até ser encerrado.
+// runEmbedder roda o indexador de embedding em laço (ADR-0053). O provedor é o de
+// MARKUPP_EMBEDDING_PROVIDER quando quem hospeda o define, e senão o escolhido no banco,
+// relido a cada intervalo (ADR-0057).
 func runEmbedder(ctx context.Context, logger *slog.Logger) error {
 	ctx, stop := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
 	defer stop()
@@ -37,20 +38,17 @@ func runEmbedder(ctx context.Context, logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	provider, closeProvider, err := newEmbeddingProvider(ctx, emb)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = closeProvider() }()
 	pool, err := storage.OpenPool(ctx, cfg.DatabaseURL)
 	if err != nil {
 		return fmt.Errorf("open database: %w", err)
 	}
 	defer pool.Close()
-	if provider == nil {
-		return idleWithoutProvider(ctx, logger, pool)
+	report := storage.NewIndexerInstanceEmbedding(pool)
+	source, err := newSettingSource(ctx, cfg, emb, pool, report)
+	if err != nil {
+		return err
 	}
-	return embedNotes(ctx, logger, pool, provider, emb.ChunkTokens, cfg.IndexInterval)
+	return newEmbeddingSupervisor(pool, emb, source, report, logger).Run(ctx, cfg.IndexInterval)
 }
 
 func loadEmbedderConfig() (config.Config, config.Embedding, error) {
@@ -63,6 +61,48 @@ func loadEmbedderConfig() (config.Config, config.Embedding, error) {
 		return cfg, emb, fmt.Errorf("load embedding config: %w", err)
 	}
 	return cfg, emb, nil
+}
+
+func newEmbeddingSupervisor(pool *pgxpool.Pool, emb config.Embedding, source embedding.SettingSource, report embedding.StatusReporter, logger *slog.Logger) *embedding.Supervisor {
+	return embedding.NewSupervisor(embedding.SupervisorDeps{
+		Source: source, Status: report, Queue: storage.NewPostgresEmbeddingQueue(pool),
+		Open: func(ctx context.Context, s embedding.Setting) (embedding.Provider, func() error, error) {
+			return newEmbeddingProvider(ctx, config.Embedding{Provider: s.Provider, URL: s.URL, Model: s.Model, APIKey: s.APIKey, ModelDir: emb.ModelDir})
+		},
+		Use: func(ctx context.Context, name string, dimension int) (bool, error) {
+			return storage.UseEmbeddingModel(ctx, pool, name, dimension)
+		},
+		HostLocked: emb.HostLocked, HostProvider: emb.Provider, ChunkTokens: emb.ChunkTokens, BatchSize: embedBatchSize, Logger: logger,
+	})
+}
+
+// hostSetting é o provedor fixo de quem hospeda, das variáveis MARKUPP_EMBEDDING_*.
+type hostSetting struct{ setting embedding.Setting }
+
+func (h hostSetting) Current(context.Context) (embedding.Setting, error) { return h.setting, nil }
+
+// storedSetting é o provedor escolhido no banco, com a chave decifrada.
+type storedSetting struct{ svc *instance.EmbeddingService }
+
+func (s storedSetting) Current(ctx context.Context) (embedding.Setting, error) {
+	c, err := s.svc.PlainChoice(ctx)
+	if err != nil {
+		return embedding.Setting{}, err
+	}
+	return embedding.Setting{Provider: c.Provider, URL: c.URL, Model: c.Model, APIKey: c.APIKey, Revision: c.UpdatedAt}, nil
+}
+
+// newSettingSource escolhe de onde vem o provedor. Só a escolha do banco precisa da
+// chave de cifra, que pode ser gerada no banco na primeira vez.
+func newSettingSource(ctx context.Context, cfg config.Config, emb config.Embedding, pool *pgxpool.Pool, store instance.EmbeddingStore) (embedding.SettingSource, error) {
+	if emb.HostLocked {
+		return hostSetting{embedding.Setting{Provider: emb.Provider, URL: emb.URL, Model: emb.Model, APIKey: emb.APIKey}}, nil
+	}
+	box, err := newSecretBox(ctx, cfg.SecretKey, storage.NewPostgresInstanceSecrets(pool))
+	if err != nil {
+		return nil, fmt.Errorf("prepare the key-encryption secret: %w", err)
+	}
+	return storedSetting{instance.NewEmbeddingService(store, box)}, nil
 }
 
 // newEmbeddingProvider monta o provedor da config, nil sem provedor.
@@ -79,37 +119,3 @@ func newEmbeddingProvider(ctx context.Context, emb config.Embedding) (embedding.
 }
 
 func noClose() error { return nil }
-
-// idleWithoutProvider registra a instalação sem modelo, o que apaga os vetores e as
-// ligações por sentido de um modelo anterior, e espera o encerramento.
-func idleWithoutProvider(ctx context.Context, logger *slog.Logger, pool *pgxpool.Pool) error {
-	if _, err := storage.UseEmbeddingModel(ctx, pool, config.EmbeddingNone, 0); err != nil {
-		return err
-	}
-	logger.Warn("indexador de embedding ocioso", "motivo", "MARKUPP_EMBEDDING_PROVIDER vazia, sem ligacao por sentido")
-	<-ctx.Done()
-	return nil
-}
-
-// embedNotes registra o modelo e refaz os vetores pendentes em laço. O erro de um
-// lote vai para o log e espera o intervalo, como no indexador de texto.
-func embedNotes(ctx context.Context, logger *slog.Logger, pool *pgxpool.Pool, provider embedding.Provider, chunkTokens int, interval time.Duration) error {
-	use := func(ctx context.Context, name string, dimension int) (bool, error) {
-		return storage.UseEmbeddingModel(ctx, pool, name, dimension)
-	}
-	changed, err := embedding.Activate(ctx, provider, use)
-	if err != nil {
-		return err
-	}
-	logger.Info("indexador de embedding em laco", "modelo", provider.Name(), "modelo_trocado", changed, "intervalo", interval.String())
-	indexer := embedding.NewIndexer(storage.NewPostgresEmbeddingQueue(pool), provider, chunkTokens, embedBatchSize)
-	next := func(ctx context.Context) (bool, error) {
-		found, err := indexer.IndexNext(ctx)
-		if err != nil {
-			logger.Error("refazer vetores do proximo lote", "err", err)
-			return false, nil
-		}
-		return found, nil
-	}
-	return drain.Run(ctx, next, drain.WaitInterval(interval))
-}
