@@ -44,7 +44,7 @@ class ShortcutsTest < ActionDispatch::IntegrationTest
       "Next row" => [ "j", "↓" ], "All tenants" => [ "g t" ], "Switch vault" => [ "g v" ],
       "Notifications" => [ "g n" ],
       "Rename the vault" => [ "v r" ], "Add a member to the vault" => [ "v a" ], "Leave the vault" => [ "v q" ],
-      "Remove the member in focus, in a member list" => [ "Delete" ], "Filter tenants" => [ "/" ],
+      "Remove or revoke the item in focus, in a list" => [ "Delete" ], "Filter tenants" => [ "/" ],
       "Move between tenants" => [ "hjkl", "←↓↑→" ], "Indent and outdent in the content" => [ "Tab", "Shift+Tab" ],
       "From the content back to the path (Esc first)" => [ "Esc Shift+Tab" ] }.each do |name, keys|
       assert_equal keys, rows[name], "expected #{name} with #{keys.inspect} in the help"

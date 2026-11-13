@@ -10,7 +10,6 @@ pt-BR:
     groups:
       vault: "Cofre"
     names:
-      list_remove_member: "Remover o membro em foco, numa lista de membros"
       vault_rename: "Renomear o cofre"
       vault_add_member: "Adicionar um membro ao cofre"
       vault_leave: "Sair do cofre"

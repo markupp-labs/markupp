@@ -99,8 +99,8 @@ module ShortcutsHelper
       Shortcut.of(:list_move, "↓", "↑"),
       Shortcut.of(:palette_move, "Ctrl+J", "Ctrl+K"),
       Shortcut.of(:menu_move, "j", "k"),
-      # Nas listas de membros do cofre e do tenant (context_menu_controller.js), com o foco numa linha: pede confirmação.
-      Shortcut.of(:list_remove_member, "Delete"),
+      # Nas listas de Settings com context_menu_controller.js (membros, autorizações), com o foco numa linha: pede confirmação.
+      Shortcut.of(:list_delete, "Delete"),
       Shortcut.of(:list_choose, "Enter"),
       Shortcut.of(:list_close, "Esc")
     ],
