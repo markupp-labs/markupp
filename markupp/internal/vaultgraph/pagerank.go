@@ -25,6 +25,9 @@ type Convergence struct {
 // o teleporte dá (1-d)/n a cada uma. Para quando a norma 1 da diferença entre duas
 // iterações fica abaixo de n x tol, ou em maxIterations.
 func pageRank(out [][]graph.Node, weights [][]float64, d, tol float64, maxIterations int) ([]float64, Convergence) {
+	if len(out) == 0 {
+		return nil, Convergence{}
+	}
 	rank, next := make([]float64, len(out)), make([]float64, len(out))
 	for i := range rank {
 		rank[i] = 1 / float64(len(out))
