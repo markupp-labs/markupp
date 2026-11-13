@@ -18,6 +18,9 @@ O provedor de embedding transforma cada nota num vetor para a ligação por sent
 O administrador da instância escolhe no painel, em Settings, grupo Instance, seção Embedding, ou
 pela API em `PUT /v1/instance/embedding`, ou pela ferramenta MCP `set_embedding_provider`. Quem
 administra é a conta de email verificado listada em `MARKUPP_INSTANCE_ADMINS`.
+O administrador pode apontar a URL do endpoint remoto para endereços dentro da rede de quem
+hospeda, como um Ollama no mesmo compose ou cluster, e o indexador de embedding faz os pedidos
+de lá. Liste como administrador só quem pode ter esse alcance.
 
 Quem hospeda pode fixar o provedor nas variáveis `MARKUPP_EMBEDDING_*` do indexador de
 embedding. Com `MARKUPP_EMBEDDING_PROVIDER` definida, mesmo como `none`, ela vence, e o painel

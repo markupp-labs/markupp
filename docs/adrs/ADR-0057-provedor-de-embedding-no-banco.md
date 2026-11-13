@@ -35,6 +35,8 @@ que passa a valer também para essa chave
 
 - Quem faz self-host liga a ligação por sentido pelo painel, sem editar arquivo
 - Sem `MARKUPP_SECRET_KEY`, quem tem uma cópia do banco também decifra a chave
+- O administrador aponta a URL remota para dentro da rede de quem hospeda, então a lista só
+  leva quem pode ter esse alcance
 - Perder ou trocar a `MARKUPP_SECRET_KEY` torna a chave guardada ilegível, e ela precisa ser
   gravada de novo
 - O administrador vem da lista no login; tirar alguém dela vale no painel no próximo login, e
