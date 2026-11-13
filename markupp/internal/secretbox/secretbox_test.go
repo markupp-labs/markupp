@@ -67,3 +67,52 @@ func TestNew_ChaveVazia_Recusa(t *testing.T) {
 
 	assert.Error(t, err)
 }
+
+func chaveiro(t *testing.T, ativa string, antigas ...string) *secretbox.Keyring {
+	t.Helper()
+	ring, err := secretbox.NewKeyring(ativa, antigas...)
+	require.NoError(t, err)
+	return ring
+}
+
+func TestKeyring_SeladoComAAtiva_AbreSemPedirNovoSelo(t *testing.T) {
+	ring := chaveiro(t, "chave-nova", "chave-do-banco")
+	selado, err := ring.Seal("sk")
+	require.NoError(t, err)
+
+	aberto, stale, err := ring.Open(selado)
+
+	require.NoError(t, err)
+	assert.Equal(t, "sk", aberto)
+	assert.False(t, stale)
+}
+
+func TestKeyring_SeladoComAAntiga_AbreEPedeNovoSelo(t *testing.T) {
+	selado, err := caixa(t, "chave-do-banco").Seal("sk")
+	require.NoError(t, err)
+
+	aberto, stale, err := chaveiro(t, "chave-nova", "chave-do-banco").Open(selado)
+
+	require.NoError(t, err)
+	assert.Equal(t, "sk", aberto)
+	assert.True(t, stale)
+}
+
+func TestKeyring_SeladoComOutraChave_Recusa(t *testing.T) {
+	selado, err := caixa(t, "outra").Seal("sk")
+	require.NoError(t, err)
+
+	_, _, err = chaveiro(t, "chave-nova", "chave-do-banco").Open(selado)
+
+	assert.Error(t, err)
+}
+
+func TestNewKeyring_AntigaIgualAAtiva_NaoPedeNovoSelo(t *testing.T) {
+	selado, err := caixa(t, "mesma").Seal("sk")
+	require.NoError(t, err)
+
+	_, stale, err := chaveiro(t, "mesma", "mesma").Open(selado)
+
+	require.NoError(t, err)
+	assert.False(t, stale)
+}
