@@ -4,6 +4,22 @@
 -- O banco externo precisa ter o pgvector instalado; quem cria a extensão é superusuário.
 CREATE EXTENSION IF NOT EXISTS vector;
 
+-- A imagem do Postgres passa do Alpine (musl) para a do pgvector (Debian, glibc), que
+-- ordena o texto de outro jeito: os índices montados antes ficariam fora de ordem.
+-- REINDEX TABLE roda dentro da transação e só pede ser dono da tabela; em banco novo
+-- ou que já estava no glibc, só refaz o que já estava certo.
+-- +goose StatementBegin
+DO $$
+DECLARE
+    t record;
+BEGIN
+    FOR t IN SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tableowner = current_user LOOP
+        EXECUTE format('REINDEX TABLE public.%I', t.tablename);
+    END LOOP;
+END
+$$;
+-- +goose StatementEnd
+
 -- Fila própria do indexador de embedding, separada da do indexador de texto: cada um
 -- tira a nota da sua quando termina. Mesma revisão por escrita da note_index_queue.
 CREATE SEQUENCE note_embedding_revision_seq;
