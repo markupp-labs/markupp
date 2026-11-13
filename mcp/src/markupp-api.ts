@@ -1,4 +1,12 @@
+import { toApiError } from "./api-error.js";
+import type {
+  Publication,
+  PublicationList,
+  PublishRequest,
+} from "./publication.js";
 import type { ApiTokenSource } from "./session.js";
+
+export { MarkuppApiError, toApiError } from "./api-error.js";
 
 // TenantMembership é um vínculo da conta como GET /v1/me/tenants devolve.
 export type TenantMembership = { id: string; name: string; role: string };
@@ -119,18 +127,13 @@ export interface MarkuppApi {
     vault: string,
     userId: string,
   ): Promise<void>;
-}
-
-// MarkuppApiError é a resposta de erro {error, message} da API, com o status HTTP.
-export class MarkuppApiError extends Error {
-  constructor(
-    readonly status: number,
-    readonly code: string,
-    message: string,
-  ) {
-    super(message);
-    this.name = "MarkuppApiError";
-  }
+  publish(
+    tenant: string,
+    vault: string,
+    request: PublishRequest,
+  ): Promise<Publication>;
+  unpublish(tenant: string, publication: string): Promise<void>;
+  listPublications(tenant: string, vault?: string): Promise<PublicationList>;
 }
 
 export type FetchFunction = (
@@ -390,6 +393,31 @@ export class HttpMarkuppApi implements MarkuppApi {
     await this.send({ method: "DELETE", path, tenant });
   }
 
+  publish(
+    tenant: string,
+    vault: string,
+    request: PublishRequest,
+  ): Promise<Publication> {
+    const path = `${vaultPath(vault)}/publications`;
+    return this.json({ method: "POST", path, tenant, body: request });
+  }
+
+  async unpublish(tenant: string, publication: string): Promise<void> {
+    const path = `/v1/publications/${encodeURIComponent(publication)}`;
+    await this.send({ method: "DELETE", path, tenant });
+  }
+
+  // listPublications sem cofre lista as publicações visíveis em todo o tenant.
+  listPublications(tenant: string, vault?: string): Promise<PublicationList> {
+    const query =
+      vault === undefined ? "" : `?${new URLSearchParams({ vault_id: vault })}`;
+    return this.json({
+      method: "GET",
+      path: `/v1/publications${query}`,
+      tenant,
+    });
+  }
+
   private async json<T>(call: ApiCall): Promise<T> {
     const response = await this.send(call);
     return (await response.json()) as T;
@@ -437,40 +465,6 @@ function withPage(params: URLSearchParams, page: SearchPage): URLSearchParams {
 
 function myInvitePath(inviteId: string): string {
   return `/v1/me/invites/${encodeURIComponent(inviteId)}`;
-}
-
-// toApiError lê o corpo {error, message}; um corpo fora desse formato (um proxy no
-// meio, por exemplo) vira o código unexpected_response com o status e o texto recebido.
-async function toApiError(
-  call: ApiCall,
-  response: Response,
-): Promise<MarkuppApiError> {
-  const text = await response.text();
-  const parsed = parseErrorBody(text);
-  if (parsed)
-    return new MarkuppApiError(response.status, parsed.error, parsed.message);
-  const message = `${call.method} ${call.path} answered ${response.status} with a body that does not match {error, message}: ${text.slice(0, 200)}`;
-  return new MarkuppApiError(response.status, "unexpected_response", message);
-}
-
-function parseErrorBody(
-  text: string,
-): { error: string; message: string } | null {
-  try {
-    const body: unknown = JSON.parse(text);
-    if (!isErrorBody(body)) return null;
-    return body;
-  } catch {
-    return null;
-  }
-}
-
-function isErrorBody(
-  body: unknown,
-): body is { error: string; message: string } {
-  if (typeof body !== "object" || body === null) return false;
-  const fields = body as Record<string, unknown>;
-  return typeof fields.error === "string" && typeof fields.message === "string";
 }
 
 export function noteSummary(note: NoteSummary): NoteSummary {

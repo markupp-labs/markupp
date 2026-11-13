@@ -106,6 +106,17 @@ const nextStepByCode = {
   already_vault_member:
     "They already belong to the vault: see list_vault_members.",
   vault_member_not_found: "Find the current user id with list_vault_members.",
+  confirmation_mismatch:
+    "Tell the user what becomes public and ask them to type the exact name this message expects, then retry with it in confirm.",
+  publish_forbidden:
+    "Publish a note you can edit, or ask a user whose role in list_tenants is owner or admin to publish folders, vaults or someone else's note.",
+  already_published:
+    "It is already public: see list_publications, and unpublish it first to publish it again with other settings.",
+  note_not_found: "Find the current note id with list_notes or search_notes.",
+  folder_not_found:
+    "No note lives under this folder path: check it with list_notes, without leading or trailing slash.",
+  publication_not_found:
+    "Find the current publication id with list_publications.",
   no_vault:
     "The tenant has no vault for you: create one with create_vault, or pass vault_id from list_vaults.",
 } as const satisfies Record<string, string>;
@@ -144,7 +155,15 @@ function unauthenticated(reason: string): UserError {
 }
 
 export function toUserError(error: MarkuppApiError): UserError {
-  const nextStep = nextStepFor(error.code);
+  return userErrorWithStep(error, nextStepFor(error.code));
+}
+
+// userErrorWithStep junta o código, a mensagem da API e o próximo passo, quando há, no
+// texto que o agente lê.
+export function userErrorWithStep(
+  error: MarkuppApiError,
+  nextStep: string | undefined,
+): UserError {
   const text = `${error.code}: ${error.message}`;
   return new UserError(nextStep ? `${text}. ${nextStep}` : text, {
     code: error.code,
@@ -152,8 +171,14 @@ export function toUserError(error: MarkuppApiError): UserError {
   });
 }
 
-// nextStepFor lê só as chaves próprias do mapa, para "toString" não achar um método.
 export function nextStepFor(code: string): string | undefined {
-  if (!Object.hasOwn(nextStepByCode, code)) return undefined;
-  return nextStepByCode[code as keyof typeof nextStepByCode];
+  return stepFrom(nextStepByCode, code);
+}
+
+// stepFrom lê só as chaves próprias do mapa, para "toString" não achar um método.
+export function stepFrom(
+  steps: Readonly<Record<string, string>>,
+  code: string,
+): string | undefined {
+  return Object.hasOwn(steps, code) ? steps[code] : undefined;
 }
