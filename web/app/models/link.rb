@@ -1,6 +1,6 @@
 # Ligação, como a API lista: source liga a target; a não resolvida tem target nil e, se o indexador
 # adivinhou a nota, inferred_target; type é explicit, embed, typed (com predicate), inferred ou, na ligação automática
-# que o servidor cria, mentioned (cited_title é o título citado) e related (texto parecido, cited_title vazio).
+# que o servidor cria, mentioned (cited_title é o título citado), related (texto parecido) e semantic (sentido), com cited_title vazio.
 Link = Data.define(:source, :target, :cited_title, :type, :predicate, :inferred_target) do
   extend V1Listing
 
@@ -24,5 +24,5 @@ Link = Data.define(:source, :target, :cited_title, :type, :predicate, :inferred_
   def automatic? = Link::AUTOMATIC_TYPES.include?(type)
 end
 
-# Os tipos da ligação automática (ADR-0053): por menção e por texto parecido.
-Link::AUTOMATIC_TYPES = %w[mentioned related].freeze
+# Os tipos da ligação automática (ADR-0053): por menção, por texto parecido e por sentido.
+Link::AUTOMATIC_TYPES = %w[mentioned related semantic].freeze

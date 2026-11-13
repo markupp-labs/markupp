@@ -3,9 +3,11 @@ pt-BR:
     kinds:
       mentioned: "menção"
       related: "texto parecido"
+      semantic: "sentido"
     reasons:
       mentioned: "ligada porque o texto cita %{title}"
       related: "ligada porque os textos se parecem"
+      semantic: "ligada porque as notas tratam do mesmo assunto"
     refuse:
       label: "Recusar ligação"
       label_for: "Recusar ligação com %{title}"

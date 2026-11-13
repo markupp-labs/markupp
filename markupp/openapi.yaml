@@ -2666,11 +2666,11 @@ components:
       description: |
         Só as ligações do tipo: explicit para wikilink e link markdown, embed para
         ![[...]], typed para a ligação tipada do frontmatter, inferred para a ligação
-        inferida, mentioned para a ligação por menção e related para a ligação por
-        texto parecido
+        inferida, mentioned para a ligação por menção, related para a ligação por
+        texto parecido e semantic para a ligação por sentido
       schema:
         type: string
-        enum: [explicit, embed, typed, inferred, mentioned, related]
+        enum: [explicit, embed, typed, inferred, mentioned, related, semantic]
     LinkStatus:
       name: status
       in: query
@@ -3451,7 +3451,7 @@ components:
           example: "Reunião Semanal"
         type:
           type: string
-          enum: [explicit, embed, typed, inferred, mentioned, related]
+          enum: [explicit, embed, typed, inferred, mentioned, related, semantic]
           description: |
             explicit para wikilink e link markdown, embed para ![[...]], typed para a
             ligação tipada do frontmatter, inferred para a ligação inferida, mentioned
@@ -3460,6 +3460,9 @@ components:
             related é a ligação por texto parecido, que o servidor cria nos dois
             sentidos quando cada nota está entre as de texto mais parecido da outra; nela
             cited_title vem vazio
+            semantic é a ligação por sentido, que o servidor cria entre notas que tratam
+            do mesmo assunto, quando a instalação tem provedor de embedding; nela
+            cited_title é vazio
         predicate:
           type: string
           nullable: true
@@ -3546,7 +3549,7 @@ components:
           description: Índice, em nodes, do nó a que liga
         type:
           type: string
-          enum: [explicit, embed, typed, inferred, mentioned, related]
+          enum: [explicit, embed, typed, inferred, mentioned, related, semantic]
           description: Tipo da ligação, como em LinkResponse
         predicate:
           type: string

@@ -3,9 +3,11 @@ en:
     kinds:
       mentioned: "mention"
       related: "similar text"
+      semantic: "meaning"
     reasons:
       mentioned: "linked because the text cites %{title}"
       related: "linked because the texts are similar"
+      semantic: "linked because the notes cover the same subject"
     refuse:
       label: "Refuse link"
       label_for: "Refuse link with %{title}"
