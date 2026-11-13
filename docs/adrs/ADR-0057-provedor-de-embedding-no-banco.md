@@ -37,7 +37,7 @@ que passa a valer também para essa chave
 - Sem `MARKUPP_SECRET_KEY`, quem tem uma cópia do banco também decifra a chave
 - O administrador aponta a URL remota para dentro da rede de quem hospeda, então a lista só
   leva quem pode ter esse alcance
-- Perder ou trocar a `MARKUPP_SECRET_KEY` torna a chave guardada ilegível, e ela precisa ser
-  gravada de novo
+- Definir a `MARKUPP_SECRET_KEY` depois sela de novo a chave sozinho; perder ou trocar o valor
+  dela torna a chave guardada ilegível, e ela precisa ser gravada de novo
 - O administrador vem da lista no login; tirar alguém dela vale no painel no próximo login, e
   na API na hora

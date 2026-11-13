@@ -362,7 +362,8 @@ A chave escolhida pelo painel fica no banco, cifrada com AES-256-GCM, e a API nu
 A chave de cifra é a `MARKUPP_SECRET_KEY` (ao menos 32 bytes, gere com
 `openssl rand -hex 32`), que a API e o embedder precisam receber iguais. Sem ela, o servidor gera
 uma no banco na primeira subida, e aí quem tem uma cópia do banco também decifra a chave.
-Trocar ou perder a `MARKUPP_SECRET_KEY` deixa a chave guardada ilegível, e ela precisa ser
+Definir a `MARKUPP_SECRET_KEY` depois é tratado sozinho: a API sela de novo a chave guardada
+com ela. Trocar o valor ou perder a `MARKUPP_SECRET_KEY` deixa a chave guardada ilegível, e ela precisa ser
 gravada de novo pelo painel.
 
 `MARKUPP_EMBEDDING_CHUNK_TOKENS` (padrão 512) é o tamanho do pedaço de nota que vira um vetor.

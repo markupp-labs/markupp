@@ -80,6 +80,8 @@ MARKUPP_EMBEDDING_MODEL=nomic-embed-text
 URL `https://api.openai.com/v1`, modelo `text-embedding-3-small` e a chave da API. A chave dada
 no painel fica no banco cifrada com a `MARKUPP_SECRET_KEY`, e a API nunca a devolve; sem essa
 variável, a chave de cifra fica no próprio banco, e uma cópia do banco revela a chave.
+Definir a `MARKUPP_SECRET_KEY` depois é tratado sozinho: a chave guardada ganha novo selo com
+ela. Trocar o valor dela por outro pede digitar a chave da API de novo no painel.
 
 ## local
 
