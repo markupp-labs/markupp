@@ -319,18 +319,41 @@ descoberta acontece no primeiro login, e o botão responde que o provedor não r
 Opcional e desligada por padrão ([ADR-0053](adrs/ADR-0053-ligacoes-automaticas.md)): o
 indexador de embedding transforma cada nota num vetor, e o servidor liga as notas que tratam do
 mesmo assunto. Ele roda com `embed-loop` na imagem `ghcr.io/markupp-labs/markupp-embedder`, que
-é o serviço `embedder` do `docker-compose.yaml`, e lê `MARKUPP_EMBEDDING_PROVIDER`:
+é o serviço `embedder` do `docker-compose.yaml`.
 
-- vazio ou `none`: sem ligação por sentido, e nada é baixado. O embedder fica ocioso e apaga os
+O provedor se escolhe de dois jeitos ([ADR-0057](adrs/ADR-0057-provedor-de-embedding-no-banco.md)):
+
+- pelo painel, em Settings, grupo Instance, seção Embedding, que só aparece para o
+  administrador da instância: a conta cujo email, já verificado, está em
+  `MARKUPP_INSTANCE_ADMINS` (emails separados por vírgula, lida pela API). Sem a variável,
+  ninguém administra pelo painel. A API expõe o mesmo em `GET` e `PUT /v1/instance/embedding`,
+  e o servidor MCP nas ferramentas `get_embedding_provider` e `set_embedding_provider`. O
+  embedder relê a escolha a cada `MARKUPP_INDEX_INTERVAL` e troca de provedor sem reiniciar;
+- pela variável `MARKUPP_EMBEDDING_PROVIDER` do embedder. Definida, mesmo como `none`, ela vence
+  a escolha do painel, que aparece travada. Vazia ou ausente, vale a escolha do painel, com
+  `none` como padrão.
+
+Os provedores são:
+
+- `none`: sem ligação por sentido, e nada é baixado. O embedder fica ocioso e apaga os
   vetores de um provedor anterior;
-- `local`: o modelo roda na própria máquina, no ONNX Runtime, em amd64 ou arm64. Na primeira
-  subida ele baixa os arquivos do modelo para `MARKUPP_EMBEDDING_MODEL_DIR` (padrão
+- `local`: o modelo roda na própria máquina, no ONNX Runtime, em amd64 ou arm64. Ao ligar, ele
+  baixa os arquivos do modelo para `MARKUPP_EMBEDDING_MODEL_DIR` (padrão
   `/var/lib/markupp/models`, um volume no compose), uns 300 MB em x86 com AVX2 e 1,2 GB nas
   outras CPUs, e recusa arquivo com hash diferente
-  ([ADR-0056](adrs/ADR-0056-pedacos-e-media.md));
-- `openai-compat`: pede os vetores a um endpoint `/embeddings` no formato da OpenAI, com
-  `MARKUPP_EMBEDDING_URL` (a base, sem `/embeddings`), `MARKUPP_EMBEDDING_MODEL` e, se o
-  servidor pedir, `MARKUPP_EMBEDDING_API_KEY`. O texto das notas sai da máquina.
+  ([ADR-0056](adrs/ADR-0056-pedacos-e-media.md)). O painel mostra o estado do modelo: baixando,
+  pronto ou erro, com a mensagem. Gravar a mesma escolha de novo tenta outra vez;
+- `openai-compat`: pede os vetores a um endpoint `/embeddings` no formato da OpenAI, com a URL
+  (a base, sem `/embeddings`), o modelo e, se o servidor pedir, a chave. Pelas variáveis, são
+  `MARKUPP_EMBEDDING_URL`, `MARKUPP_EMBEDDING_MODEL` e `MARKUPP_EMBEDDING_API_KEY`. O texto das
+  notas sai da máquina.
+
+A chave escolhida pelo painel fica no banco, cifrada com AES-256-GCM, e a API nunca a devolve.
+A chave de cifra é a `MARKUPP_SECRET_KEY` (ao menos 32 bytes, gere com
+`openssl rand -hex 32`), que a API e o embedder precisam receber iguais. Sem ela, o servidor gera
+uma no banco na primeira subida, e aí quem tem uma cópia do banco também decifra a chave.
+Trocar ou perder a `MARKUPP_SECRET_KEY` deixa a chave guardada ilegível, e ela precisa ser
+gravada de novo pelo painel.
 
 `MARKUPP_EMBEDDING_CHUNK_TOKENS` (padrão 512) é o tamanho do pedaço de nota que vira um vetor.
 Trocar de provedor ou de modelo apaga os vetores e refaz os de todas as notas.

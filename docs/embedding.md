@@ -1,46 +1,50 @@
 # Embedding
 
-Configuração planejada, ainda não implementada. A razão de ser plugável está no ADR-0029.
+O provedor de embedding transforma cada nota num vetor para a ligação por sentido
+([ADR-0053](adrs/ADR-0053-ligacoes-automaticas.md)). A razão de ser plugável está no ADR-0029.
 
 ## Escolha rápida
 
 | Provedor | Onde o modelo roda | Custo | Quando usar |
 | --- | --- | --- | --- |
 | `none` | nenhum | zero | Padrão do self-host. Busca léxica e grafo funcionam sem vetor |
-| `openai-compat` | máquina de quem hospeda | elétrico | Self-host que quer busca semântica sem serviço externo |
-| `openai-compat` | API da OpenAI | por token | Quem já tem chave e não quer rodar modelo |
-| `bedrock` | AWS | por token | Padrão em instalações na AWS |
 | `local` | dentro do indexador de embedding | elétrico | Self-host sem nenhum serviço externo, nem container extra |
+| `openai-compat` | máquina de quem hospeda | elétrico | Self-host que já roda Ollama, LocalAI ou vLLM |
+| `openai-compat` | API da OpenAI | por token | Quem já tem chave e não quer rodar modelo |
+| `bedrock` | AWS | por token | Planejado, ainda não implementado |
+
+## Onde se escolhe
+
+O administrador da instância escolhe no painel, em Settings, grupo Instance, seção Embedding, ou
+pela API em `PUT /v1/instance/embedding`, ou pela ferramenta MCP `set_embedding_provider`. Quem
+administra é a conta de email verificado listada em `MARKUPP_INSTANCE_ADMINS`.
+
+Quem hospeda pode fixar o provedor nas variáveis `MARKUPP_EMBEDDING_*` do indexador de
+embedding. Com `MARKUPP_EMBEDDING_PROVIDER` definida, mesmo como `none`, ela vence, e o painel
+mostra a escolha travada ([ADR-0057](adrs/ADR-0057-provedor-de-embedding-no-banco.md)).
 
 ## Como funciona
 
 ```mermaid
 flowchart LR
-    I[Indexador] --> P[Provedor de embedding]
+    B[(escolha no banco)] --> I[Indexador de embedding]
+    V[MARKUPP_EMBEDDING_*] -->|vence quando definida| I
+    I --> P[Provedor de embedding]
     P -->|none| D[sem vetor]
-    P -->|openai-compat| H["HTTP POST /v1/embeddings"]
-    P -->|bedrock| S[AWS SDK]
+    P -->|openai-compat| H["HTTP POST /embeddings"]
     P -->|local| M[modelo carregado no processo]
     H --> O[Ollama]
     H --> L[LocalAI, vLLM, llama.cpp]
     H --> A[API da OpenAI]
-    S --> T[Titan, Cohere]
 ```
 
-Uma interface, três implementações. As ferramentas de inferência expõem endpoint compatível com
-a OpenAI, então apontar para um Ollama no cluster ou para a API da OpenAI usa o mesmo cliente
-HTTP, mudando só a URL. O provedor `local` dispensa até esse container.
+O indexador relê a escolha a cada intervalo e troca de provedor sem reiniciar. Ele grava no
+banco o estado do modelo, que o painel mostra: baixando, pronto ou erro.
 
 ## none
 
-Padrão. Omita o bloco `embedding` ou escreva:
-
-```json
-{ "embedding": { "provider": "none" } }
-```
-
-Busca léxica (ADR-0017) e grafo de ligações continuam completos. Sugestão de ligação cai para
-o método estrutural, sem o braço semântico.
+Padrão. Busca léxica (ADR-0017) e grafo de ligações continuam completos, sem a ligação por
+sentido.
 
 ## openai-compat com Ollama
 
@@ -59,81 +63,32 @@ Baixe o modelo uma vez:
 docker compose exec ollama ollama pull nomic-embed-text
 ```
 
-Configuração:
+No painel, escolha o endpoint compatível com a OpenAI, com a URL `http://ollama:11434/v1` e o
+modelo `nomic-embed-text`. Pelas variáveis:
 
-```json
-{
-  "embedding": {
-    "provider": "openai-compat",
-    "base_url": "http://ollama:11434/v1",
-    "model": "nomic-embed-text",
-    "dimensions": 768
-  }
-}
+```bash
+MARKUPP_EMBEDDING_PROVIDER=openai-compat
+MARKUPP_EMBEDDING_URL=http://ollama:11434/v1
+MARKUPP_EMBEDDING_MODEL=nomic-embed-text
 ```
-
-Alternativa com mais qualidade e mais RAM: `mxbai-embed-large`, 1024 dimensões.
 
 ## openai-compat com a API da OpenAI
 
-```json
-{
-  "embedding": {
-    "provider": "openai-compat",
-    "base_url": "https://api.openai.com/v1",
-    "api_key": "${OPENAI_API_KEY}",
-    "model": "text-embedding-3-small",
-    "dimensions": 1536
-  }
-}
-```
-
-`text-embedding-3-large` tem 3072 dimensões. Os dois aceitam redução de dimensão pelo campo
-`dimensions`, o que diminui armazenamento e custo de índice com perda pequena de qualidade.
-
-## bedrock
-
-Padrão em instalações na AWS. Sem chave no arquivo: a credencial vem da identidade do pod.
-
-```json
-{
-  "embedding": {
-    "provider": "bedrock",
-    "region": "us-east-1",
-    "model": "amazon.titan-embed-text-v2:0",
-    "dimensions": 1024
-  }
-}
-```
-
-O Titan v2 aceita 256, 512 ou 1024. Para acervo multilíngue, `cohere.embed-multilingual-v3`
-com 1024.
+URL `https://api.openai.com/v1`, modelo `text-embedding-3-small` e a chave da API. A chave dada
+no painel fica no banco cifrada com a `MARKUPP_SECRET_KEY`, e a API nunca a devolve; sem essa
+variável, a chave de cifra fica no próprio banco, e uma cópia do banco revela a chave.
 
 ## local
 
-Carrega o modelo dentro do processo do indexador de embedding, sem container nem serviço
-externo. Só existe onde a indexação roda como Job dedicado (ADR-0027 e ADR-0028), porque a
-imagem fica grande.
-
-```json
-{
-  "embedding": {
-    "provider": "local",
-    "model_path": "/models/nomic-embed-text-v1.5.onnx",
-    "dimensions": 768
-  }
-}
-```
-
-É a única opção que dá busca semântica sem depender de terceiro nem de componente extra no
-compose.
+Roda o modelo fixo do ADR-0056 dentro do processo do indexador de embedding, sem container nem
+serviço externo, e só na imagem `markupp-embedder`, que traz o ONNX Runtime. Ao ligar, baixa os
+pesos para `MARKUPP_EMBEDDING_MODEL_DIR`, numa revisão fixa e com sha256 conferido. Se o
+download falhar, gravar a mesma escolha de novo tenta outra vez.
 
 ## Trocar de modelo obriga reindexar
 
 Vetor de modelo diferente não é comparável: cada modelo produz um espaço próprio, e a dimensão
-muda. Trocar `model` sem reconstruir faz a busca semântica devolver resultado sem sentido, e
-sem erro nenhum.
-
-O modelo ativo fica registrado junto dos vetores. Ao detectar divergência, o indexador apaga a
-tabela de vetores e refaz. Isso é seguro porque vetor é dado derivado (ADR-0012), mas custa uma
-passada de embedding sobre todas as notas, o que no Bedrock é custo por chamada.
+muda. O modelo ativo fica registrado junto dos vetores. Ao trocar de provedor ou de modelo, o
+indexador apaga os vetores e refaz os de todas as notas. Isso é seguro porque vetor é dado
+derivado (ADR-0012), mas custa uma passada de embedding sobre todas as notas, o que num
+provedor pago é custo por chamada.
