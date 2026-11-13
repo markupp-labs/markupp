@@ -1,10 +1,10 @@
 # Grafo do cofre inteiro em tela cheia, como o graph view do Obsidian: a página desenha o canvas, que pede os nós e as
 # ligações em json. O cofre é o ativo; o Esc volta à nota de onde a tela foi aberta (note), ou ao começo. Os filtros vêm na query da página e do json, com os nomes da API: orphans,
-# unresolved e inferred false escondem, community recorta; valor que a API não aceita fica de fora.
+# unresolved, inferred e automatic false escondem, community recorta; valor que a API não aceita fica de fora.
 class GraphsController < ApplicationController
   include GraphDrawing
 
-  HIDING_FILTERS = %i[orphans unresolved inferred].freeze
+  HIDING_FILTERS = %i[orphans unresolved inferred automatic].freeze
   # Comunidades que o seletor oferece, as maiores primeiro: uma página da API.
   # ponytail: cofre com mais comunidades que isso não lista as menores; paginar o seletor se aparecer.
   COMMUNITY_CHOICES = 100

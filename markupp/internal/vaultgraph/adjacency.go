@@ -2,6 +2,7 @@ package vaultgraph
 
 import (
 	"cmp"
+	"maps"
 	"slices"
 
 	"gonum.org/v1/gonum/graph"
@@ -13,8 +14,9 @@ import (
 // vizinhos sempre em ordem de id: o grafo do pacote simple percorre mapas, e a
 // ordem de visita mudaria a partição do Louvain de uma execução para outra.
 type adjacency struct {
-	from [][]graph.Node
-	to   [][]graph.Node
+	from    [][]graph.Node
+	to      [][]graph.Node
+	weights [][]float64 // peso de cada ligação de from, na mesma ordem
 }
 
 var (
@@ -74,38 +76,54 @@ func (a adjacency) EdgeBetween(xid, yid int64) graph.Edge {
 	return a.Edge(xid, yid)
 }
 
-// adjacencyBuilder junta as arestas sem repetição antes de ordenar os vizinhos.
+// adjacencyBuilder junta as arestas sem repetição, com o peso maior da repetida,
+// antes de ordenar os vizinhos.
 type adjacencyBuilder struct {
-	out []map[int64]bool
+	out []map[int64]float64
 }
 
 func newAdjacencyBuilder(n int) *adjacencyBuilder {
-	b := &adjacencyBuilder{out: make([]map[int64]bool, n)}
+	b := &adjacencyBuilder{out: make([]map[int64]float64, n)}
 	for i := range b.out {
-		b.out[i] = make(map[int64]bool)
+		b.out[i] = make(map[int64]float64)
 	}
 	return b
 }
 
-func (b *adjacencyBuilder) add(from, to int64) {
-	b.out[from][to] = true
+func (b *adjacencyBuilder) add(from, to int64, weight float64) {
+	b.out[from][to] = max(b.out[from][to], weight)
 }
 
-// build devolve o grafo dirigido e a projeção não dirigida dele.
-func (b *adjacencyBuilder) build() (directed, undirected adjacency) {
+// build devolve o grafo dirigido, a projeção não dirigida dele e os pesos da
+// projeção, em que o par ligado nos dois sentidos fica com o peso maior.
+func (b *adjacencyBuilder) build() (directed, undirected adjacency, undirectedWeighted [][]weightedEdge) {
 	n := len(b.out)
-	directed = adjacency{from: make([][]graph.Node, n), to: make([][]graph.Node, n)}
+	directed = adjacency{from: make([][]graph.Node, n), to: make([][]graph.Node, n), weights: make([][]float64, n)}
+	both := newAdjacencyBuilder(n).out
 	for from, targets := range b.out {
-		for to := range targets {
+		for _, to := range slices.Sorted(maps.Keys(targets)) {
+			w := targets[to]
 			directed.from[from] = append(directed.from[from], simple.Node(to))
+			directed.weights[from] = append(directed.weights[from], w)
 			directed.to[to] = append(directed.to[to], simple.Node(from))
+			both[from][to], both[to][int64(from)] = max(both[from][to], w), max(both[to][int64(from)], w)
 		}
 	}
-	sortEach(directed.from)
 	sortEach(directed.to)
 	undirected = adjacency{from: mergeSorted(directed.from, directed.to)}
 	undirected.to = undirected.from
-	return directed, undirected
+	return directed, undirected, weightedNeighbors(both)
+}
+
+// weightedNeighbors passa os pesos de cada nó para a lista de vizinhos em ordem.
+func weightedNeighbors(both []map[int64]float64) [][]weightedEdge {
+	out := make([][]weightedEdge, len(both))
+	for i, ws := range both {
+		for _, j := range slices.Sorted(maps.Keys(ws)) {
+			out[i] = append(out[i], weightedEdge{to: int(j), weight: ws[j]})
+		}
+	}
+	return out
 }
 
 // mergeSorted junta, nó a nó, duas listas de vizinhos, em ordem e sem repetir.

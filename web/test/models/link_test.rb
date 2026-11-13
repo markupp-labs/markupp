@@ -52,4 +52,12 @@ class LinkTest < ActiveSupport::TestCase
   test "to_note builds the backlinks from other notes" do
     assert_equal [ "work/plan.md" ], Link.to_note(@api, "2").map { it.source.path }
   end
+
+  test "only the link by mention is automatic" do
+    mentioned = Link.from_api({ "source" => PLAN.stringify_keys, "target" => MEETING.stringify_keys, "cited_title" => "meeting", "type" => "mentioned",
+                                "predicate" => nil, "inferred_target" => nil })
+
+    assert mentioned.automatic?
+    assert_not Link.from_note(@api, "1").any?(&:automatic?)
+  end
 end

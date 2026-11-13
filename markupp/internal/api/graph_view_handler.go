@@ -38,6 +38,7 @@ func readGraphFilter(qr *queryReader) notes.GraphFilter {
 		HideOrphans:    isFalse(qr.boolean("orphans")),
 		HideUnresolved: isFalse(qr.boolean("unresolved")),
 		HideInferred:   isFalse(qr.boolean("inferred")),
+		HideAutomatic:  isFalse(qr.boolean("automatic")),
 		Community:      qr.int64("community"),
 	}
 }

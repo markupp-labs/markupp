@@ -42,6 +42,9 @@ describe("toUserError", () => {
     ["already_vault_member", 409, /list_vault_members/],
     ["vault_member_not_found", 404, /list_vault_members/],
     ["no_vault", 409, /create_vault/],
+    ["same_note", 400, /two different notes/],
+    ["note_outside_vault", 422, /list_notes .*vault_id/],
+    ["link_refusal_not_found", 404, /list_link_refusals/],
   ])("dá o próximo passo de %s", (code, status, nextStep) => {
     const error = toUserError(new MarkuppApiError(status, code, "x"));
     expect(error.message).toMatch(nextStep);

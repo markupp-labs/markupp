@@ -87,7 +87,23 @@ SELECT md5(
     coalesce((SELECT string_agg(ROW(l.note_id, l.title_key, l.target_path, l.kind, l.predicate)::text, ','
                                 ORDER BY ROW(l.note_id, l.title_key, l.target_path, l.kind, l.predicate)::text)
               FROM note_links l WHERE l.note_id = ANY (sqlc.arg(note_ids)::text[]) AND l.kind <> 'inferred'), '')
+    || ';' ||
+    coalesce((SELECT string_agg(ROW(a.source_id, a.target_id, a.cited_title)::text, ',' ORDER BY ROW(a.source_id, a.target_id, a.cited_title)::text)
+              FROM note_automatic_links a WHERE a.source_id = ANY (sqlc.arg(note_ids)::text[]) AND a.kind = 'mentioned'), '')
 )::text AS fingerprint;
+
+-- name: DeleteNoteMentionLinks :exec
+DELETE FROM note_automatic_links WHERE source_id = ANY (sqlc.arg(note_ids)::text[]) AND kind = 'mentioned';
+
+-- O cofre vem da nota. Nota apagada depois da leitura some no JOIN.
+-- name: SaveAutomaticLinks :exec
+INSERT INTO note_automatic_links (source_id, target_id, vault_id, kind, cited_title, score)
+SELECT s.id, t.id, s.vault_id, d.kind, nullif(d.cited_title, ''), d.score
+FROM (SELECT unnest(sqlc.arg(source_ids)::text[]) AS source_id, unnest(sqlc.arg(target_ids)::text[]) AS target_id,
+             unnest(sqlc.arg(kinds)::text[]) AS kind, unnest(sqlc.arg(cited_titles)::text[]) AS cited_title,
+             unnest(sqlc.arg(scores)::float8[]) AS score) d
+JOIN notes s ON s.id = d.source_id
+JOIN notes t ON t.id = d.target_id AND t.vault_id = s.vault_id;
 
 -- name: MarkSecondStage :exec
 INSERT INTO vault_second_stage_queue (vault_id) VALUES (sqlc.arg(vault_id))

@@ -65,6 +65,7 @@ module ShortcutsHelper
       # As seções do cofre ativo; só com cofre, que é quando o nome dele está na trilha.
       Shortcut.of(:vault_settings, run: { href: :settings_vault_path, when: "[data-current-vault]" }),
       Shortcut.of(:vault_members, run: { href: :settings_vault_members_path, when: "[data-current-vault]" }),
+      Shortcut.of(:vault_link_refusals, run: { href: :settings_link_refusals_path, when: "[data-current-vault]" }),
       # Só na Danger zone da General do cofre, para quem escreve: abre a mesma confirmação com o nome do cofre.
       Shortcut.of(:delete_vault, run: { click: "#delete_vault" }),
       # g e depois n abre o sino da barra de atividades (tenants_shortcut_controller.js), com o foco dentro dele.
@@ -105,6 +106,8 @@ module ShortcutsHelper
       Shortcut.of(:menu_move, "j", "k"),
       # Nas listas de Settings com context_menu_controller.js (membros, autorizações), com o foco numa linha: pede confirmação.
       Shortcut.of(:list_delete, "Delete"),
+      # Na lista de recusas de ligação do cofre, com o foco numa linha: desfaz a recusa, que se refaz pela visão Links.
+      Shortcut.of(:list_undo_refusal, "Delete"),
       Shortcut.of(:list_choose, "Enter"),
       Shortcut.of(:list_close, "Esc")
     ],
@@ -142,7 +145,10 @@ module ShortcutsHelper
     links: [
       Shortcut.of(:links_move, "j", "k", "↓", "↑"),
       Shortcut.of(:links_open, "Enter"),
-      Shortcut.of(:links_copy_wikilink, "y")
+      Shortcut.of(:links_copy_wikilink, "y"),
+      # Na linha da ligação automática com o foco, para quem escreve: pede confirmação. A paleta aperta o botão da linha
+      # que tinha o foco antes de ela abrir.
+      Shortcut.of(:links_refuse, "r", run: { click: ".links-item:focus-within [data-links-refuse]", when: "[data-links-refuse]" })
     ],
     # Canvas do grafo, na visão Graph e na tela cheia (graph_view_controller.js), com o foco nele.
     graph: [
@@ -156,6 +162,7 @@ module ShortcutsHelper
       Shortcut.of(:graph_orphans, "o", run: GRAPH_FILTER_PRESS.("O")),
       Shortcut.of(:graph_unresolved, "u", run: GRAPH_FILTER_PRESS.("U")),
       Shortcut.of(:graph_inferred, "i", run: GRAPH_FILTER_PRESS.("I")),
+      Shortcut.of(:graph_automatic, "a", run: GRAPH_FILTER_PRESS.("A")),
       Shortcut.of(:graph_community, "c", "Shift+C", run: GRAPH_FILTER_PRESS.("C")),
       Shortcut.of(:graph_clear_filters, "x", run: GRAPH_FILTER_PRESS.("X"))
     ]

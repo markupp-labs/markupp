@@ -1,0 +1,11 @@
+<%# Recusar ligação da linha automática: pede a confirmação do painel e recarrega só o frame da visão, que volta sem a
+    linha e com o aviso no status (LinkRefusalsController). note: a nota da linha, que nomeia o botão. %>
+<% label = t("note_links.refuse.label") %>
+<%= button_to link_refusals_path, params: { note_ids: [ link.source.id, link.target.id ], note_id: params[:note_id] },
+              class: "links-refuse", form: { class: "contents", data: { turbo_frame: "note_links" } },
+              title: t("note_links.refuse.title", keys: shortcut_key(:links_refuse)),
+              aria: { label: t("note_links.refuse.label_for", title: note.title), keyshortcuts: shortcut_key(:links_refuse).upcase },
+              data: { links_refuse: "", confirm_button: label,
+                      turbo_confirm: t("note_links.refuse.confirm", source: link.source.title, target: link.target.title) } do %>
+  <%= icon("x") %>
+<% end %>

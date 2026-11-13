@@ -3,6 +3,7 @@
 #     communities: { "vault-1" => [CommunityResponse] }, graph: { "vault-1" => GraphResponse }, graph_etag: 'W/"1"' }
 # O grafo filtrado vem do cenário com a query na chave ("vault-1?orphans=false"), senão o do id.
 # Id sem cenário responde lista vazia e grafo sem nós. Sem graph_etag o grafo vem sem ETag, como antes do indexador.
+# A ligação automática de um par recusado (refusals, a FakeMarkuppLinkRefusals) sai das listas na hora, como na API.
 class FakeMarkuppGraph
   ROUTE = %r{\A/v1/(?:notes|vaults)/(?<id>[^/?]+)/(?<resource>[a-z]+)(?:\?|\z)}
   EMPTY_GRAPH = { "nodes" => [], "links" => [] }.freeze
@@ -10,8 +11,9 @@ class FakeMarkuppGraph
   # Os If-None-Match recebidos e a query de cada grafo pedido, na ordem.
   attr_reader :received_etags, :graph_queries
 
-  def initialize(scenario)
+  def initialize(scenario, refusals)
     @scenario = scenario.deep_stringify_keys
+    @refusals = refusals
     @received_etags = []
     @graph_queries = []
   end
@@ -21,7 +23,7 @@ class FakeMarkuppGraph
     params = FakeMarkuppPaging.query(path)
     return graph(route[:id], params) if route[:resource] == "graph"
 
-    FakeMarkuppPaging.page(of_type(@scenario.dig(route[:resource], route[:id]) || [], params["type"]), params)
+    FakeMarkuppPaging.page(of_type(unrefused(@scenario.dig(route[:resource], route[:id]) || []), params["type"]), params)
   end
 
   # Como a API: nil (304) quando o If-None-Match traz a versão atual do grafo; sem versão, sempre o corpo.
@@ -46,4 +48,6 @@ class FakeMarkuppGraph
     end
 
     def of_type(items, type) = type ? items.select { it["type"] == type } : items
+
+    def unrefused(items) = items.reject { it["type"] == "mentioned" && @refusals.refused?(it.dig("source", "id"), it.dig("target", "id")) }
 end

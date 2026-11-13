@@ -44,6 +44,33 @@
     @apply mt-1 ml-[calc(0.25rem+1ch+0.75rem)];
   }
 
+  /* Legenda das ligações por método, no canto de baixo: miúda, no muted, e só a partir do sm. Só os itens pegam o
+     ponteiro (o hover destaca o método no canvas); o resto da caixa deixa arrastar o grafo por baixo. */
+  .graph-legend {
+    @apply pointer-events-none absolute bottom-2 left-2 hidden flex-col gap-0.5 rounded-md bg-surface/80 px-1.5 py-1 text-xs text-ink-muted sm:flex;
+
+    & li:not([hidden]) {
+      @apply pointer-events-auto flex items-center gap-1.5 rounded-sm px-0.5 hover:bg-accent-soft hover:text-ink;
+    }
+  }
+
+  .graph-link-manual {
+    stroke: var(--link-manual);
+    stroke-width: 1;
+  }
+
+  .graph-link-inferred {
+    stroke: var(--link-inferred);
+    stroke-width: 1.75;
+    stroke-linecap: round;
+  }
+
+  .graph-link-mentioned {
+    stroke: var(--link-mentioned);
+    stroke-width: 1.75;
+    stroke-linecap: round;
+  }
+
   .graph-busy {
     @apply absolute top-2 left-2 text-xs text-ink-muted;
   }

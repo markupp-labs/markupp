@@ -93,13 +93,14 @@ WHERE t.vault_id = sqlc.arg(vault_id)
 
 -- Para cada par (título, nota com o título): se o título é stopword em português ou
 -- inglês, se é comum (em mais de max(5% das notas do cofre, 5)), as notas do cofre com o
--- título no corpo (ocorrências), as notas que ligam à nota por esse título e as notas
--- do cofre com o título (candidatas). Stopword não paga a contagem.
+-- título no corpo (ocorrências), as notas que ligam à nota por esse título, por escrito
+-- ou por inferência, e as notas do cofre com o título (candidatas). Stopword não paga a
+-- contagem, e a ligação por menção não conta, porque nasce desta mesma probabilidade.
 -- name: MentionAnchorStats :many
 SELECT a.title_key::text AS title_key, a.target_id::text AS target_id, w.stopword::bool AS stopword,
        (NOT w.stopword AND o.occurrences IS NULL)::bool AS common,
        coalesce(o.occurrences, 0)::int AS occurrences,
-       (SELECT count(DISTINCT e.source_id) FROM note_edges e
+       (SELECT count(DISTINCT e.source_id) FROM note_written_edges e
         WHERE e.target_id = a.target_id AND e.title_key = a.title_key)::int AS anchor_links,
        (SELECT count(*) FROM note_titles t
         WHERE t.vault_id = sqlc.arg(vault_id) AND t.title_key = a.title_key)::int AS candidates

@@ -31,7 +31,7 @@ class ActivityBarTest < ApplicationSystemTestCase
 
     tab("Graph").click
     assert_selector "nav#sidebar"
-    assert_text "Open a note to see its graph"
+    assert_selector "#sidebar_view_graph canvas[data-graph-canvas]"
     assert_selector "button[aria-controls=sidebar][aria-expanded=true]"
   end
 
@@ -112,7 +112,7 @@ class ActivityBarTest < ApplicationSystemTestCase
     send_keys [ :control, :shift, "g" ]
 
     assert_selector "nav#sidebar"
-    assert_selector "#sidebar_view_graph:focus"
+    assert_selector "#sidebar_view_graph canvas[data-graph-canvas]:focus"
   end
 
   test "j, k and the arrows walk the icons and enter shows the view" do
@@ -175,7 +175,7 @@ class ActivityBarTest < ApplicationSystemTestCase
     assert_no_selector ".activity-bar-side"
 
     find(".activity-bar-drawer [role=tab][aria-label=Graph]").click
-    assert_text "Open a note to see its graph"
+    assert_selector "#sidebar_view_graph canvas[data-graph-canvas]"
     assert_selector "nav#sidebar:popover-open"
   ensure
     page.current_window.resize_to(1400, 900)

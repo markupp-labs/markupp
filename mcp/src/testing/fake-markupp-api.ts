@@ -4,6 +4,10 @@ import {
   noteSummary,
   type FoundNote,
   type IssuedInvite,
+  type Link,
+  type LinkQuery,
+  type LinkRefusal,
+  type LinkType,
   type MarkuppApi,
   type Member,
   type Note,
@@ -21,7 +25,9 @@ import type {
   PublicationList,
   PublishRequest,
 } from "../publication.js";
-import { FakeMyInvites, inviteNotFound } from "./fake-my-invites.js";
+import { FakeInvites } from "./fake-invites.js";
+import { FakeLinks } from "./fake-links.js";
+import { FakeMyInvites } from "./fake-my-invites.js";
 import { FakePublications } from "./fake-publications.js";
 import { FakeAccountEmail, FakeAccountId, FakeVaults } from "./fake-vaults.js";
 
@@ -33,25 +39,25 @@ const DefaultVaultId = "vault-default";
 // FakeMarkuppApi guarda tenants, notas, membros, convites e cofres em memória e responde
 // com os mesmos códigos de erro da API: tenant_forbidden, read_only, not_found,
 // duplicate_path, conflict, forbidden, member_not_found, invite_not_found,
-// already_member e os dos cofres e das publicações, que FakeVaults e FakePublications
-// descrevem.
+// already_member e os dos cofres, das publicações e das ligações, que FakeVaults,
+// FakePublications e FakeLinks descrevem.
 export class FakeMarkuppApi implements MarkuppApi {
   readonly revisions: NoteRevision[] = [];
   private readonly tenants: TenantMembership[] = [];
   private readonly notes = new Map<string, Note[]>();
   private readonly members = new Map<string, Member[]>();
-  private readonly invites = new Map<string, TenantInvite[]>();
   private readonly myInvites = new FakeMyInvites();
   private clockTick = 0;
   private pendingWrite: PendingWrite | null = null;
   private readonly vaults = new FakeVaults(() => this.tick());
   private readonly publications = new FakePublications(() => this.tick());
+  private readonly invites = new FakeInvites(() => this.tick());
+  private readonly links = new FakeLinks(() => this.tick());
 
   withTenant(id: string, role = "member", name = id): this {
     this.tenants.push({ id, name, role });
     this.notes.set(id, []);
     this.members.set(id, []);
-    this.invites.set(id, []);
     return this;
   }
 
@@ -63,16 +69,8 @@ export class FakeMarkuppApi implements MarkuppApi {
   }
 
   withInvite(tenant: string, email: string, role: string): TenantInvite {
-    const at = this.tick();
-    const invite = {
-      id: `invite-${this.clockTick}`,
-      email,
-      role,
-      expires_at: at,
-      created_at: at,
-    };
-    this.invitesOf(tenant).push(invite);
-    return invite;
+    this.notesIn(tenant);
+    return this.invites.issue(tenant, email, role);
   }
 
   // withMyInvite grava um convite endereçado à conta, para o tenant tenantId ainda fora dela.
@@ -97,7 +95,8 @@ export class FakeMarkuppApi implements MarkuppApi {
   }
 
   invitesIn(tenant: string): TenantInvite[] {
-    return [...this.invitesOf(tenant)];
+    this.notesIn(tenant);
+    return this.invites.listed(tenant);
   }
 
   // withVault grava o cofre direto, sem conferir papel, com a conta como membro.
@@ -116,6 +115,12 @@ export class FakeMarkuppApi implements MarkuppApi {
     const note = this.newNote(path, content, vault);
     this.notesIn(tenant).push(note);
     return note;
+  }
+
+  // withLink grava a ligação de source para target, como o indexador faria.
+  withLink(source: Note, target: Note, type: LinkType): this {
+    this.links.add(source, target, type);
+    return this;
   }
 
   // concurrentWriteOnNextRead simula outro cliente gravando logo depois da próxima
@@ -252,10 +257,7 @@ export class FakeMarkuppApi implements MarkuppApi {
 
   async revokeInvite(tenant: string, inviteId: string): Promise<void> {
     this.requireAdmin(tenant);
-    const list = this.invitesOf(tenant);
-    const index = list.findIndex((invite) => invite.id === inviteId);
-    if (index < 0) throw inviteNotFound();
-    list.splice(index, 1);
+    this.invites.revoke(tenant, inviteId);
   }
 
   async createTenant(name: string): Promise<TenantMembership> {
@@ -342,6 +344,45 @@ export class FakeMarkuppApi implements MarkuppApi {
     this.vaults.remove(tenant, vault, userId);
   }
 
+  async listLinks(
+    tenant: string,
+    note: string,
+    query: LinkQuery,
+  ): Promise<Link[]> {
+    this.find(tenant, note);
+    return this.links.list(note, query);
+  }
+
+  async listLinkRefusals(
+    tenant: string,
+    vault: string,
+    page: SearchPage = {},
+  ): Promise<LinkRefusal[]> {
+    this.notesIn(tenant);
+    this.vaults.find(tenant, vault);
+    return this.links.refusalsIn(vault, page);
+  }
+
+  async refuseLink(
+    tenant: string,
+    vault: string,
+    noteIds: string[],
+  ): Promise<LinkRefusal> {
+    this.requireWriter(tenant);
+    this.vaults.find(tenant, vault);
+    return this.links.refuse(vault, noteIds, this.notesIn(tenant));
+  }
+
+  async undoLinkRefusal(
+    tenant: string,
+    vault: string,
+    refusalId: string,
+  ): Promise<void> {
+    this.requireWriter(tenant);
+    this.vaults.find(tenant, vault);
+    this.links.undo(vault, refusalId);
+  }
+
   private requireAdmin(tenant: string): void {
     this.notesIn(tenant);
     const role = this.tenants.find((t) => t.id === tenant)?.role;
@@ -393,11 +434,6 @@ export class FakeMarkuppApi implements MarkuppApi {
   private membersOf(tenant: string): Member[] {
     this.notesIn(tenant);
     return this.members.get(tenant) ?? [];
-  }
-
-  private invitesOf(tenant: string): TenantInvite[] {
-    this.notesIn(tenant);
-    return this.invites.get(tenant) ?? [];
   }
 
   private applyPendingWrite(tenant: string, id: string): void {

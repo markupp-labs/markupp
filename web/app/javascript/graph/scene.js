@@ -8,12 +8,15 @@ import { readThemeColors } from "graph/theme_colors"
 // força, a câmera e o desenho. O requestAnimationFrame só roda enquanto a simulação anda, um nó é arrastado ou a vista
 // muda; assentada, a cena para e só redesenha quando algo pede. Fora da vista (setVisible false) a simulação pausa, e
 // numa aba escondida o navegador já não chama o quadro. Com reduced-motion o layout assenta de uma vez, sem animar.
-// Até o primeiro gesto na vista a câmera acompanha o layout, enquadrando os nós; o 0 volta a enquadrar.
+// Até o primeiro gesto na vista a câmera acompanha o layout, enquadrando os nós; o 0 volta a enquadrar. Passar sobre
+// um nó ou uma ligação a destaca; tocar numa ligação automática sem arrastar a oferece para recusar (onRefuse), e
+// recusada ela sai do desenho na hora.
 const RADIUS_MIN = 2.5
 const RADIUS_SPREAD = 4.5
 const UNRESOLVED_RADIUS = 2.5
 const PROMINENT_LABELS = 8
 const HIT_SLOP_PX = 4
+const LINK_HIT_PX = 6
 const ZOOM_STEP = 1.25
 
 export function createGraphScene(canvas, graph, callbacks) {
@@ -26,10 +29,10 @@ class GraphScene {
   following = true
   visible = true
 
-  constructor(canvas, graph, { reducedMotion, onState, onOpen }) {
-    Object.assign(this, { canvas, reducedMotion, onState, onOpen, context: canvas.getContext("2d") })
+  constructor(canvas, graph, { reducedMotion, onState, onOpen, onRefuse }) {
+    Object.assign(this, { canvas, reducedMotion, onState, onOpen, onRefuse, context: canvas.getContext("2d") })
     this.nodes = graph.nodes.map(nodeOf)
-    this.links = graph.links.map(({ source, target, inferred }) => ({ source: this.nodes[source], target: this.nodes[target], inferred }))
+    this.links = graph.links.map(({ source, target, inferred, automatic, origin }) => ({ source: this.nodes[source], target: this.nodes[target], inferred, automatic, origin }))
     connectNeighbors(this.links)
     markProminent(this.nodes)
     this.walk = this.nodes.filter((node) => node.url).sort(byRank)
@@ -91,11 +94,40 @@ class GraphScene {
     return node && Math.hypot(node.x - wx, node.y - wy) <= drawnRadius(node, this.camera.k) + slop ? node : null
   }
 
-  hover(node) {
-    if (node == this.hovered) return
+  // A ligação sob o ponto da tela, com uma folga de alguns px em volta do traço; só as automáticas com automaticOnly.
+  linkAt(px, py, { automaticOnly = false } = {}) {
+    const [ wx, wy ] = this.camera.toWorld(px, py)
+    const slop = LINK_HIT_PX / this.camera.k
+    const near = (link) => (link.automatic || !automaticOnly) && segmentDistance(wx, wy, link.source, link.target) <= slop
+    return this.links.find(near) ?? null
+  }
 
-    this.hovered = node
-    this.canvas.toggleAttribute("data-hovering", node != null)
+  // Toque no fundo, sem arrastar: numa ligação automática, quem desenha a cena pergunta se recusa.
+  tap(px, py) {
+    const link = this.onRefuse && this.linkAt(px, py, { automaticOnly: true })
+    if (link) this.onRefuse(link)
+  }
+
+  // O nó sob o ponto, senão a ligação: o que o hover destaca.
+  hoverTargetAt(px, py) {
+    return this.nodeAt(px, py) ?? this.linkAt(px, py)
+  }
+
+  // shortcut: a mola da ligação fica na simulação até o próximo desenho; o layout já assentado não se mexe por ela.
+  removeLink(link) {
+    this.links = this.links.filter((drawn) => drawn != link)
+    if (this.hovered == link) this.hover(null)
+    this.nodes.forEach((node) => node.neighbors.clear())
+    connectNeighbors(this.links)
+    this.emphasize()
+  }
+
+  // target é um nó ou uma ligação. A mão aparece onde o clique faz algo: no nó, que abre, e na ligação que se recusa.
+  hover(target) {
+    if (target == this.hovered) return
+
+    this.hovered = target
+    this.canvas.toggleAttribute("data-hovering", target != null && (!target.source || (target.automatic && this.onRefuse != null)))
     this.emphasize()
   }
 
@@ -177,8 +209,14 @@ class GraphScene {
     this.camera.centerOn(node.x, node.y)
   }
 
+  // origin destaca as ligações de um método (o hover na legenda); null devolve o grafo inteiro.
+  emphasizeMethod(origin) {
+    this.method = origin ? { origin } : null
+    this.emphasize()
+  }
+
   emphasize() {
-    this.emphasis.active = this.hovered ?? this.walk[this.focusIndex] ?? null
+    this.emphasis.active = this.hovered ?? this.method ?? this.walk[this.focusIndex] ?? null
     this.requestFrame()
   }
 }
@@ -199,6 +237,13 @@ function markProminent(nodes) {
   const top = Math.max(...nodes.map((node) => node.rank ?? 0)) || 1
   nodes.filter((node) => !node.unresolved).forEach((node) => { node.radius = RADIUS_MIN + RADIUS_SPREAD * Math.sqrt((node.rank ?? 0) / top) })
   nodes.filter((node) => node.rank != null).sort(byRank).slice(0, PROMINENT_LABELS).forEach((node) => { node.prominent = true })
+}
+
+// Distância do ponto ao segmento entre os dois nós, no mundo.
+function segmentDistance(x, y, a, b) {
+  const [ dx, dy ] = [ b.x - a.x, b.y - a.y ]
+  const along = Math.min(Math.max(((x - a.x) * dx + (y - a.y) * dy) / (dx * dx + dy * dy || 1), 0), 1)
+  return Math.hypot(x - a.x - along * dx, y - a.y - along * dy)
 }
 
 function byRank(a, b) {

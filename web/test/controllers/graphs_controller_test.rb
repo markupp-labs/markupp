@@ -10,7 +10,7 @@ class GraphsControllerTest < ActionDispatch::IntegrationTest
     { id: nil, title: "Ghost", path: nil, degree: nil, pagerank: nil, community: nil, unresolved: true }
   ].freeze
   LINKS = [ { source: 0, target: 1, type: "explicit", predicate: nil }, { source: 1, target: 0, type: "inferred", predicate: nil },
-            { source: 0, target: 2, type: "typed", predicate: "next" } ].freeze
+            { source: 0, target: 2, type: "typed", predicate: "next" }, { source: 1, target: 0, type: "mentioned", predicate: nil } ].freeze
   GRAPH = { graph: { "vault-1" => { nodes: NODES, links: LINKS }, "plan" => { nodes: NODES, links: LINKS } } }.freeze
 
   setup do
@@ -18,14 +18,15 @@ class GraphsControllerTest < ActionDispatch::IntegrationTest
     sign_in_as
   end
 
-  test "the vault graph comes ready to draw: the note url, the community hue, the rank and the inferred links" do
+  test "the vault graph comes ready to draw: the note url, the community hue, the rank, the inferred and the automatic links" do
     get graph_path(format: :json, vault: "vault-1", note: "roadmap")
 
     body = response.parsed_body
     assert_equal [ [ "plan", note_path("plan"), 1, 0.6, false, false ], [ "roadmap", note_path("roadmap"), nil, 0.3, false, true ],
                    [ "Ghost", nil, nil, nil, true, false ] ],
                  Array(body["nodes"]).map { it.values_at("title", "url", "hue", "rank", "unresolved", "current") }
-    assert_equal [ [ 0, 1, false ], [ 1, 0, true ], [ 0, 2, false ] ], Array(body["links"]).map { it.values_at("source", "target", "inferred") }
+    assert_equal [ [ 0, 1, false, false, "manual" ], [ 1, 0, true, false, "inferred" ], [ 0, 2, false, false, "manual" ], [ 1, 0, false, true, "mentioned" ] ],
+                 Array(body["links"]).map { it.values_at("source", "target", "inferred", "automatic", "origin") }
     assert_equal 3, body["total"]
   end
 
@@ -74,6 +75,24 @@ class GraphsControllerTest < ActionDispatch::IntegrationTest
     assert_select "nav#sidebar [role=treeitem]", text: /roadmap/
   end
 
+  # A legenda nomeia cada método com a amostra do traço na cor dele; começa escondida e o canvas mostra os métodos desenhados.
+  test "the full graph page has a quiet legend of the link methods and the local graph has none" do
+    get graph_path(note: "roadmap")
+
+    assert_select "main .graph-stage ul.graph-legend[aria-label=?]", "Links by method" do
+      assert_select "li[hidden]", 3
+      [ [ "manual", "manual", nil ], [ "inferred", "inferred", "8 4" ], [ "mentioned", "mention", "1.5 4" ] ].each do |origin, label, dash|
+        assert_select "li[data-graph-legend=?]", origin, text: label do
+          assert_select dash ? "svg line.graph-link-#{origin}[stroke-dasharray='#{dash}']" : "svg line.graph-link-#{origin}:not([stroke-dasharray])"
+        end
+      end
+    end
+
+    cookies[:sidebar_view] = "graph"
+    get note_path("plan")
+    assert_select ".graph-legend", count: 0
+  end
+
   test "the full graph page opened from a note shows that note in the Links and Graph views of the sidebar" do
     get graph_path(note: "roadmap")
 
@@ -91,8 +110,9 @@ class GraphsControllerTest < ActionDispatch::IntegrationTest
   test "the vault graph passes on the filters of the query, the way the API takes them, and drops the rest" do
     get graph_path(format: :json, vault: "vault-1", orphans: "false", unresolved: "true", inferred: "false", community: "9")
     get graph_path(format: :json, vault: "vault-1", orphans: "no", community: "nine")
+    get graph_path(format: :json, vault: "vault-1", automatic: "false")
 
-    assert_equal [ { "community" => "9", "inferred" => "false", "orphans" => "false" }, {} ], @api.graph_queries
+    assert_equal [ { "community" => "9", "inferred" => "false", "orphans" => "false" }, {}, { "automatic" => "false" } ], @api.graph_queries
   end
 
   test "the full graph page draws the graph of the filters in its query, with the filters panel open and set the same way" do
@@ -107,6 +127,7 @@ class GraphsControllerTest < ActionDispatch::IntegrationTest
       assert_select "input[type=checkbox][name=orphans]:not([checked])"
       assert_select "input[type=checkbox][name=unresolved][checked]"
       assert_select "input[type=checkbox][name=inferred][checked]"
+      assert_select "label:has(input[name=automatic][checked][aria-keyshortcuts=A])", text: /Automatic links/
       assert_select "select[name=community] option", count: 3
       assert_select "select[name=community] option[value='']", text: "All communities"
       assert_select "select[name=community] option[selected][value='9']", text: "plan (2)"
@@ -150,5 +171,21 @@ class GraphsControllerTest < ActionDispatch::IntegrationTest
     end
     assert_select "#sidebar_view_graph a[href=?][aria-keyshortcuts='Alt+G'][title=?]", graph_path(note: "plan"), "Full graph (Alt+G)"
     assert_select "#sidebar_view_graph", text: /Open a note to see its graph/, count: 0
+  end
+
+  test "the canvas of a writer carries the form that refuses an automatic link, with the panel confirm, and a viewer's does not" do
+    get graph_path
+
+    assert_select "main [data-controller=graph-view] form#vault_graph_refusal[action=?][hidden]", link_refusals_path do
+      assert_select "button[data-graph-view-target=refuseButton][data-confirm-button=?]", "Refuse link"
+    end
+    assert_select "main [data-controller=graph-view][data-graph-view-labels-value*=?]", "Refuse the automatic link between %{source} and %{target}?"
+
+    use_fake_api(notes: NOTES, graph: GRAPH, tenants: FakeMarkuppTenants::VIEWER_TENANTS)
+    sign_in_as
+    get graph_path
+
+    assert_select "main [data-controller=graph-view]"
+    assert_select "form#vault_graph_refusal", count: 0
   end
 end

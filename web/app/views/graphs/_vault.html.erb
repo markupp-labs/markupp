@@ -1,0 +1,13 @@
+<%# Visão Graph sem nota aberta: o grafo do cofre inteiro no canvas pequeno da barra lateral, com o caminho para a tela
+    cheia (Alt+G, full_graph_shortcut_controller.js). Aberta uma nota, a visão volta ao grafo local dela (graphs/_local). %>
+<% full_graph = t("graphs.local.full") %>
+<% toolbar = capture do %>
+<div class="graph-toolbar">
+  <span class="text-xs text-ink-muted"><%= t("graphs.vault.label") %></span>
+  <%= link_to graph_path, class: "btn-icon", title: "#{full_graph} (#{shortcut_key(:full_graph)})",
+              aria: { label: full_graph, keyshortcuts: shortcut_key(:full_graph) } do %>
+    <%= icon("arrows-out-simple") %>
+  <% end %>
+</div>
+<% end %>
+<%= render "graphs/canvas", id: "vault_sidebar_graph", url: graph_path(format: :json, vault: vault.id), class: "graph-view-local", toolbar: %>

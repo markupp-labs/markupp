@@ -9,6 +9,8 @@ Rails.application.routes.draw do
     resource :graph, only: :show, controller: "note_graphs"
   end
   resource :graph, only: :show
+  # Recusar ligação pela visão Links e pelo grafo; a lista e o desfazer ficam nas configurações do cofre.
+  resources :link_refusals, only: :create
   resource :search, only: :show
   resource :explorer, only: :show
 
@@ -59,6 +61,7 @@ Rails.application.routes.draw do
     resource :vault, only: :show, controller: "vault_general"
     resources :vault_members, path: "vault/members", only: [ :index, :create, :destroy ]
     resources :publications, only: [ :index, :update, :destroy ]
+    resources :link_refusals, path: "vault/link-refusals", only: [ :index, :destroy ]
   end
 
   # Nota pública, lida sem conta (ADR-0048): o fim do endereço é o slug do título e o id público depois do último hífen.

@@ -6,7 +6,7 @@ module NoteLinksHelper
   # O controller fica no frame, que o Turbo mantém: só o conteúdo dele troca.
   def note_links_frame(note)
     turbo_frame_tag "note_links", src: note_links_path(note), loading: :lazy, target: "_top",
-                    data: { controller: "note-links", action: "keydown->note-links#navigate turbo:frame-load->note-links#frameLoaded",
+                    data: { controller: "note-links", action: "keydown->note-links#navigate turbo:frame-load->note-links#frameLoaded turbo:submit-start->note-links#remember",
                             note_links_copied_value: t("notes.sidebar.copied"), note_links_copy_failed_value: t("notes.form.copy_failed") } do
       busy_spinner(busy_when: "#note_links[aria-busy]", class: "px-2")
     end
@@ -29,10 +29,16 @@ module NoteLinksHelper
   # Frame de uma página da seção a partir de offset: o Show more da página anterior e, depois de carregar, as linhas.
   def links_page_frame_id(section, offset) = "links_#{section}_#{offset}"
 
-  # O que a linha mostra à direita: o predicado na ligação tipada, embed e inferred nas outras que não são o wikilink comum.
+  # O que a linha mostra à direita: o tipo traduzido na ligação automática, o predicado na tipada, embed e inferred nas
+  # outras que não são o wikilink comum.
   def link_kind(link)
+    return t("note_links.kinds.#{link.type}") if link.automatic?
+
     link.type == "typed" ? link.predicate : link.type.presence_in(%w[embed inferred])
   end
+
+  # Por que o servidor ligou as notas, na ligação automática: o title da linha e o texto do leitor de tela.
+  def link_reason(link) = (t("note_links.reasons.#{link.type}", title: link.cited_title) if link.automatic?)
 
   private
     def links_section_summary(name, count)

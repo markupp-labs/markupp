@@ -14,11 +14,13 @@ class ShortcutsTest < ActionDispatch::IntegrationTest
     [ "Vim keys: on", "" ], [ "Vim keys: off", "" ], [ "Language: English", "" ], [ "Language: Português (Brasil)", "" ],
     [ "Authorizations", "" ],
     [ "All tenants", "g t" ], [ "Switch tenant", "" ], [ "Tenant: General", "" ], [ "Delete tenant", "" ],
-    [ "Switch vault", "g v" ], [ "New vault", "" ], [ "Vault settings", "" ], [ "Vault members", "" ], [ "Delete vault", "" ],
+    [ "Switch vault", "g v" ], [ "New vault", "" ], [ "Vault settings", "" ], [ "Vault members", "" ], [ "Vault link refusals", "" ], [ "Delete vault", "" ],
     [ "Notifications", "g n" ], [ "Log out", "" ],
     [ "Rename the vault", "v r" ], [ "Add a member to the vault", "v a" ], [ "Leave the vault", "v q" ], [ "Publish the vault", "v o" ], [ "Publications", "v p" ],
+    [ "Refuse the automatic link in focus", "r" ],
     [ "Show or hide the graph filters", "f" ], [ "Show or hide orphan notes", "o" ], [ "Show or hide unresolved links", "u" ],
-    [ "Show or hide inferred links", "i" ], [ "Next and previous community in the graph", "c" ], [ "Clear the graph filters", "x" ]
+    [ "Show or hide inferred links", "i" ], [ "Show or hide automatic links", "a" ],
+    [ "Next and previous community in the graph", "c" ], [ "Clear the graph filters", "x" ]
   ].freeze
 
   setup do
@@ -39,14 +41,17 @@ class ShortcutsTest < ActionDispatch::IntegrationTest
       "Links view" => [ "Ctrl+Shift+L" ], "Graph view" => [ "Ctrl+Shift+G" ], "Full graph" => [ "Alt+G" ],
       "Next and previous note in the graph" => [ "j", "k", "↓", "↑" ], "Zoom the graph in and out" => [ "+", "-" ], "Fit the graph" => [ "0" ],
       "Show or hide the graph filters" => [ "f" ], "Show or hide orphan notes" => [ "o" ], "Show or hide unresolved links" => [ "u" ],
-      "Show or hide inferred links" => [ "i" ], "Next and previous community in the graph" => [ "c", "Shift+C" ],
+      "Show or hide inferred links" => [ "i" ], "Show or hide automatic links" => [ "a" ],
+      "Next and previous community in the graph" => [ "c", "Shift+C" ],
       "Clear the graph filters" => [ "x" ],
+      "Refuse the automatic link in focus" => [ "r" ],
       "Focus region left" => [ "Alt+H" ], "Focus region right" => [ "Alt+L" ],
       "Next row" => [ "j", "↓" ], "All tenants" => [ "g t" ], "Switch vault" => [ "g v" ],
       "Notifications" => [ "g n" ],
       "Rename the vault" => [ "v r" ], "Add a member to the vault" => [ "v a" ], "Leave the vault" => [ "v q" ],
       "Publish the vault" => [ "v o" ], "Publications" => [ "v p" ], "Publish the note" => [ "Alt+P" ], "Publish the row in focus" => [ "Alt+Shift+P" ],
       "Remove or revoke the item in focus, in a list" => [ "Delete" ], "Filter tenants" => [ "/" ],
+      "Undo the refusal in focus, in the link refusals" => [ "Delete" ],
       "Move between tenants" => [ "hjkl", "←↓↑→" ], "Indent and outdent in the content" => [ "Tab", "Shift+Tab" ],
       "From the content back to the path (Esc first)" => [ "Esc Shift+Tab" ] }.each do |name, keys|
       assert_equal keys, rows[name], "expected #{name} with #{keys.inspect} in the help"

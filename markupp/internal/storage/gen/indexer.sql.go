@@ -23,6 +23,15 @@ func (q *Queries) DeleteNoteGraph(ctx context.Context, noteIds []string) error {
 	return err
 }
 
+const deleteNoteMentionLinks = `-- name: DeleteNoteMentionLinks :exec
+DELETE FROM note_automatic_links WHERE source_id = ANY ($1::text[]) AND kind = 'mentioned'
+`
+
+func (q *Queries) DeleteNoteMentionLinks(ctx context.Context, noteIds []string) error {
+	_, err := q.db.Exec(ctx, deleteNoteMentionLinks, noteIds)
+	return err
+}
+
 const deleteNoteTerms = `-- name: DeleteNoteTerms :exec
 DELETE FROM note_terms WHERE note_id = ANY ($1::text[])
 `
@@ -133,6 +142,9 @@ SELECT md5(
     coalesce((SELECT string_agg(ROW(l.note_id, l.title_key, l.target_path, l.kind, l.predicate)::text, ','
                                 ORDER BY ROW(l.note_id, l.title_key, l.target_path, l.kind, l.predicate)::text)
               FROM note_links l WHERE l.note_id = ANY ($1::text[]) AND l.kind <> 'inferred'), '')
+    || ';' ||
+    coalesce((SELECT string_agg(ROW(a.source_id, a.target_id, a.cited_title)::text, ',' ORDER BY ROW(a.source_id, a.target_id, a.cited_title)::text)
+              FROM note_automatic_links a WHERE a.source_id = ANY ($1::text[]) AND a.kind = 'mentioned'), '')
 )::text AS fingerprint
 `
 
@@ -238,6 +250,36 @@ WHERE t.note_id = r.note_id
 // segundo estágio não espera por ele nem o faz esperar além do commit.
 func (q *Queries) ReweightVaultNoteTerms(ctx context.Context, vaultID string) error {
 	_, err := q.db.Exec(ctx, reweightVaultNoteTerms, vaultID)
+	return err
+}
+
+const saveAutomaticLinks = `-- name: SaveAutomaticLinks :exec
+INSERT INTO note_automatic_links (source_id, target_id, vault_id, kind, cited_title, score)
+SELECT s.id, t.id, s.vault_id, d.kind, nullif(d.cited_title, ''), d.score
+FROM (SELECT unnest($1::text[]) AS source_id, unnest($2::text[]) AS target_id,
+             unnest($3::text[]) AS kind, unnest($4::text[]) AS cited_title,
+             unnest($5::float8[]) AS score) d
+JOIN notes s ON s.id = d.source_id
+JOIN notes t ON t.id = d.target_id AND t.vault_id = s.vault_id
+`
+
+type SaveAutomaticLinksParams struct {
+	SourceIds   []string
+	TargetIds   []string
+	Kinds       []string
+	CitedTitles []string
+	Scores      []float64
+}
+
+// O cofre vem da nota. Nota apagada depois da leitura some no JOIN.
+func (q *Queries) SaveAutomaticLinks(ctx context.Context, arg SaveAutomaticLinksParams) error {
+	_, err := q.db.Exec(ctx, saveAutomaticLinks,
+		arg.SourceIds,
+		arg.TargetIds,
+		arg.Kinds,
+		arg.CitedTitles,
+		arg.Scores,
+	)
 	return err
 }
 

@@ -4,7 +4,7 @@
 # Cada entrada vence em Graph::STORED_FOR, e o cache de produção tem teto de tamanho (config/environments/production.rb): as
 # combinações de filtros que ninguém mais pede saem sozinhas.
 Graph = Data.define(:nodes, :links) do
-  # O cofre inteiro; orphans, unresolved e inferred false escondem, community recorta.
+  # O cofre inteiro; orphans, unresolved, inferred e automatic false escondem, community recorta.
   def self.of_vault(api, vault_id, store: Rails.cache, **filters)
     revalidated(api, MarkuppApi.path("v1", "vaults", vault_id, "graph", **filters), store)
   end

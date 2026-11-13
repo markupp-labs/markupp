@@ -29,6 +29,7 @@
           <%= render "settings/nav_group", label: t("settings.nav.vault"), name: current_vault.name %>
           <%= settings_nav_link("vault_general", settings_vault_path) %>
           <%= settings_nav_link("vault_members", settings_vault_members_path) %>
+          <%= settings_nav_link("link_refusals", settings_link_refusals_path) %>
         <% end %>
         <% if current_tenant %>
           <%= render "settings/nav_group", label: t("settings.nav.tenant"), name: current_tenant.name %>

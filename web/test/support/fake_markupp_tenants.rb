@@ -5,6 +5,8 @@ class FakeMarkuppTenants
   attr_reader :invites
 
   DEFAULT_TENANTS = [ { id: "tenant-1", name: "Acme research", members: { FakeMarkuppAccounts::DEFAULT_EMAIL => "owner" } } ].freeze
+  # O mesmo tenant com a conta padrão como viewer, para os testes do que o viewer não vê.
+  VIEWER_TENANTS = [ DEFAULT_TENANTS.first.merge(members: { FakeMarkuppAccounts::DEFAULT_EMAIL => "viewer" }) ].freeze
   NAME_LIMIT = 100
 
   INVITE_ANSWER = %r{\A/me/invites/(?<id>[^/]+)/(?<answer>accept|decline)\z}

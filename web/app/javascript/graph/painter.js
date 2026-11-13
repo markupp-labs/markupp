@@ -1,13 +1,22 @@
-// Desenho de um quadro do grafo no canvas, sem estado: ligações finas na cor muted, que passa de 3:1 nos dois palcos e
-// nos dois temas (a inferida tracejada; a line, que quase some, fica para as apagadas), nós no matiz da comunidade com
+// Desenho de um quadro do grafo no canvas, sem estado: cada método de ligação (origin) na sua cor e no seu traço, a
+// manual fina e cheia no muted e as do markupp mais grossas, todas acima de 3:1 nos dois palcos e nos dois temas; a line, que quase some, fica para as apagadas. Nós no matiz da comunidade com
 // o raio do PageRank, o título não resolvido só em contorno, a nota aberta com o anel no accent e a nota
-// com o foco do teclado com o anel no ink. Com um nó em destaque (hover ou foco), ele e as vizinhas ficam e o resto apaga.
+// com o foco do teclado com o anel no ink. Com um nó em destaque (hover ou foco), ele e as vizinhas ficam e o resto apaga;
+// com uma ligação em destaque (hover), ficam as duas pontas e as vizinhas de cada uma.
 // Os nomes aparecem nos mais centrais, no destaque e nas vizinhas, e em todos a partir de LABEL_ZOOM. Traço e fonte
 // dividem pela escala: ficam do mesmo tamanho na tela em qualquer zoom.
 const LABEL_ZOOM = 1.6
 const FADED = 0.3
 const FONT_PX = 11
-const DASH_PX = 3
+// Traço de cada método de ligação em px da tela, que se lê mesmo sem a cor: a manual fina e cheia, e as que o markupp
+// faz mais grossas, cada uma num desenho (a inferida em traços longos, a menção em pontos redondos). Sem origin
+// conhecido, a automática fica nos pontos.
+const LINK_STYLES = {
+  manual: { dash: [], width: 1 },
+  inferred: { dash: [ 8, 4 ], width: 1.75 },
+  mentioned: { dash: [ 1.5, 4 ], width: 1.75 }
+}
+const LIT_EXTRA_WIDTH = 0.5
 const LABEL_GAP_PX = 3
 // Anéis em px da tela: a distância da borda do nó ao meio do traço e a largura do traço.
 const CURRENT_RING = { gap: 3, width: 2 }
@@ -25,29 +34,69 @@ export function paintGraph(context, { nodes, links, colors, camera, ratio, empha
   context.setTransform(ratio, 0, 0, ratio, 0, 0)
   context.clearRect(0, 0, camera.width, camera.height)
   camera.apply(context, ratio)
-  const lit = litNodes(emphasis)
-  paintLinks(context, links, colors, camera.k, lit)
+  const lit = litNodes(emphasis, links)
+  paintLinks(context, links, colors, camera.k, lit, litLink(emphasis, lit))
   nodes.forEach((node) => paintNode(context, node, colors, camera.k, lit))
   paintLabels(context, nodes, colors, camera, emphasis, lit)
   context.globalAlpha = 1
 }
 
-// O nó em destaque e as vizinhas, ou null sem destaque (nada apaga).
-function litNodes({ active }) {
-  return active ? new Set([ active, ...active.neighbors ]) : null
+// O nó em destaque e as vizinhas, as pontas da ligação em destaque e as vizinhas delas, as pontas das ligações do
+// método em destaque (a legenda), ou null sem destaque (nada apaga).
+function litNodes({ active }, links) {
+  if (!active) return null
+  if (isMethod(active)) return new Set(links.filter((link) => originOf(link) == active.origin).flatMap((link) => [ link.source, link.target ]))
+  return new Set(endsOf(active).flatMap((node) => [ node, ...node.neighbors ]))
 }
 
-function paintLinks(context, links, colors, k, lit) {
-  for (const inferred of [ false, true ]) {
-    context.setLineDash(inferred ? [ DASH_PX / k, DASH_PX / k ] : [])
-    strokeLinks(context, links.filter((link) => link.inferred == inferred), lit, { color: lit ? colors.line : colors.muted, width: 1 / k })
-    if (lit) strokeLinks(context, links.filter((link) => link.inferred == inferred && lit.has(link.source) && lit.has(link.target)), null,
-                         { color: colors.accent, width: 1.5 / k })
+// Com um método em destaque acendem só as ligações dele; senão, as que ligam duas notas acesas.
+function litLink({ active }, lit) {
+  if (isMethod(active)) return (link) => originOf(link) == active.origin
+  return (link) => lit.has(link.source) && lit.has(link.target)
+}
+
+function isMethod(active) {
+  return active?.origin != null && !active.source
+}
+
+function endsOf(active) {
+  return active.source ? [ active.source, active.target ] : [ active ]
+}
+
+function emphasized(node, { active }) {
+  return active != null && !isMethod(active) && endsOf(active).includes(node)
+}
+
+function paintLinks(context, links, colors, k, lit, isLit) {
+  for (const origin of new Set(links.map(originOf))) {
+    const { dash, width } = LINK_STYLES[origin] ?? LINK_STYLES.mentioned
+    context.setLineDash(dash.map((px) => px / k))
+    context.lineCap = origin == "manual" ? "butt" : "round"
+    const drawn = links.filter((link) => originOf(link) == origin)
+    strokeLinks(context, drawn, lit, { color: lit ? colors.line : restColor(origin, colors), width: width / k })
+    if (lit) strokeLinks(context, drawn.filter(isLit), null, { color: litColor(origin, colors), width: (width + LIT_EXTRA_WIDTH) / k })
   }
   context.setLineDash([])
+  context.lineCap = "butt"
+}
+
+// O método da ligação; sem origin, pelo tipo.
+function originOf({ origin, inferred, automatic }) {
+  return origin ?? (automatic ? "automatic" : inferred ? "inferred" : "manual")
+}
+
+// A manual é neutra; cada método do markupp tem a sua cor, e o que não tem cor própria fica no accent.
+function restColor(origin, colors) {
+  return origin == "manual" ? colors.muted : colors.links?.[origin] ?? colors.accent
+}
+
+function litColor(origin, colors) {
+  return origin == "manual" ? colors.ink : restColor(origin, colors)
 }
 
 function strokeLinks(context, links, lit, { color, width }) {
+  if (!links.length) return
+
   context.globalAlpha = lit ? FADED : 1
   context.strokeStyle = color
   context.lineWidth = width
@@ -95,7 +144,7 @@ function paintLabels(context, nodes, colors, camera, emphasis, lit) {
     if (!labelled(node, k, emphasis, lit)) continue
 
     context.globalAlpha = 1
-    context.fillStyle = node == emphasis.active || node.focused ? colors.ink : colors.muted
+    context.fillStyle = emphasized(node, emphasis) || node.focused ? colors.ink : colors.muted
     const y = node.y + labelOffset(node, k)
     context.strokeText(node.title, node.x, y)
     context.fillText(node.title, node.x, y)
@@ -110,7 +159,7 @@ function labelOffset(node, k) {
 }
 
 function labelled(node, k, emphasis, lit) {
-  if (node.focused || node == emphasis.active) return true
+  if (node.focused || emphasized(node, emphasis)) return true
   if (lit) return lit.has(node)
   return node.prominent || node.current || k >= LABEL_ZOOM
 }

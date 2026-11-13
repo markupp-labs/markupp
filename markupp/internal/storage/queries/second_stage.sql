@@ -7,8 +7,16 @@ DELETE FROM note_links WHERE vault_id = sqlc.arg(vault_id) AND kind = 'inferred'
 -- name: ListVaultNoteIDs :many
 SELECT id FROM notes WHERE vault_id = sqlc.arg(vault_id) ORDER BY id;
 
+-- A ligação automática pesa menos no PageRank e nas comunidades (ADR-0053).
 -- name: ListVaultEdges :many
-SELECT source_id, target_id FROM note_edges WHERE vault_id = sqlc.arg(vault_id) ORDER BY source_id, target_id;
+SELECT source_id, target_id, (kind IN ('mentioned', 'related', 'semantic'))::bool AS automatic
+FROM note_edges WHERE vault_id = sqlc.arg(vault_id) ORDER BY source_id, target_id;
+
+-- name: ListVaultNoteContents :many
+SELECT id, content FROM notes WHERE vault_id = sqlc.arg(vault_id) ORDER BY id;
+
+-- name: DeleteVaultMentionLinks :exec
+DELETE FROM note_automatic_links WHERE vault_id = sqlc.arg(vault_id) AND kind = 'mentioned';
 
 -- name: ListVaultTitleKeys :many
 SELECT note_id, title_key FROM note_titles WHERE vault_id = sqlc.arg(vault_id) ORDER BY note_id, title_key;

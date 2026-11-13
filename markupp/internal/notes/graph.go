@@ -18,10 +18,11 @@ func Summarize(id, notePath string) NoteSummary {
 
 // Tipos de ligação.
 const (
-	LinkExplicit = "explicit"
-	LinkEmbed    = "embed"
-	LinkTyped    = "typed"
-	LinkInferred = "inferred"
+	LinkExplicit  = "explicit"
+	LinkEmbed     = "embed"
+	LinkTyped     = "typed"
+	LinkInferred  = "inferred"
+	LinkMentioned = "mentioned"
 )
 
 // Situações de resolução de uma ligação.

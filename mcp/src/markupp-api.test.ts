@@ -428,3 +428,53 @@ describe("HttpMarkuppApi nas publicações", () => {
     expect(body === null ? null : await request.json()).toEqual(body);
   });
 });
+
+describe("HttpMarkuppApi nas ligações", () => {
+  it.each<[string, AdminCall, string, unknown]>([
+    [
+      "lista as ligações que a nota faz",
+      (api) => api.listLinks("t1", "n/1", { direction: "outgoing" }),
+      "GET /v1/notes/n%2F1/links",
+      null,
+    ],
+    [
+      "lista as ligações que chegam na nota, por tipo e página",
+      (api) =>
+        api.listLinks("t1", "n1", {
+          direction: "incoming",
+          type: "mentioned",
+          limit: 5,
+          offset: 10,
+        }),
+      "GET /v1/notes/n1/backlinks?type=mentioned&limit=5&offset=10",
+      null,
+    ],
+    [
+      "lista as recusas de ligação do cofre",
+      (api) => api.listLinkRefusals("t1", "v1", { limit: 20 }),
+      "GET /v1/vaults/v1/link-refusals?limit=20",
+      null,
+    ],
+    [
+      "recusa a ligação entre duas notas",
+      (api) => api.refuseLink("t1", "v1", ["n1", "n2"]),
+      "POST /v1/vaults/v1/link-refusals",
+      { note_ids: ["n1", "n2"] },
+    ],
+    [
+      "desfaz a recusa de ligação",
+      (api) => api.undoLinkRefusal("t1", "v1", "r/1"),
+      "DELETE /v1/vaults/v1/link-refusals/r%2F1",
+      null,
+    ],
+  ])("%s com o tenant no cabeçalho", async (_name, call, line, body) => {
+    const fake = new FakeFetch().respondWith(200, []);
+    await call(apiWith(fake));
+    const request = onlyRequest(fake);
+    expect(`${request.method} ${request.url}`).toBe(
+      line.replace(" ", " http://api.test"),
+    );
+    expect(request.headers.get("x-markupp-tenant")).toBe("t1");
+    expect(body === null ? null : await request.json()).toEqual(body);
+  });
+});
