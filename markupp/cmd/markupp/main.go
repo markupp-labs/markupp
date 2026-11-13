@@ -1,7 +1,7 @@
 // Command markupp sobe o servidor HTTP de notas, aplica as migrações do banco
 // com o subcomando migrate, indexa os cofres pendentes com index (um cofre, para
-// o Job do KEDA) e index-loop (em laço, para o compose), ou reenfileira notas para
-// reindexar com reindex.
+// o Job do KEDA) e index-loop (em laço, para o compose), reenfileira notas para
+// reindexar com reindex, ou refaz os vetores das notas com embed-loop.
 package main
 
 import (
@@ -43,8 +43,8 @@ const (
 
 // command é o subcomando do binário: serve sobe a API, migrate aplica o schema
 // e sai, index indexa um cofre pendente e sai, index-loop indexa em laço, e
-// notify-loop entrega a fila de email em laço, e reindex reenfileira as notas de
-// um cofre ou da instalação.
+// notify-loop entrega a fila de email em laço, reindex reenfileira as notas de
+// um cofre ou da instalação, e embed-loop refaz os vetores das notas em laço.
 type command string
 
 const (
@@ -54,6 +54,7 @@ const (
 	indexLoopCommand  command = "index-loop"
 	notifyLoopCommand command = "notify-loop"
 	reindexCommand    command = "reindex"
+	embedLoopCommand  command = "embed-loop"
 )
 
 // notifyInterval é a espera do notify-loop com a fila vazia. A primeira nova
@@ -79,6 +80,9 @@ func run(ctx context.Context, logger *slog.Logger, args []string) error {
 	if cmd == reindexCommand {
 		return reindexVaults(ctx, logger, args[2:])
 	}
+	if cmd == embedLoopCommand {
+		return runEmbedder(ctx, logger)
+	}
 	cfg, err := config.Load(os.LookupEnv)
 	if err != nil {
 		return fmt.Errorf("load config: %w", err)
@@ -97,11 +101,11 @@ func parseCommand(args []string) (command, error) {
 		return serveCommand, nil
 	}
 	switch cmd := command(args[1]); cmd {
-	case serveCommand, migrateCommand, indexCommand, indexLoopCommand, notifyLoopCommand, reindexCommand:
+	case serveCommand, migrateCommand, indexCommand, indexLoopCommand, notifyLoopCommand, reindexCommand, embedLoopCommand:
 		return cmd, nil
 	}
-	return "", fmt.Errorf("unknown subcommand %q, expected %q, %q, %q, %q, %q or %q",
-		args[1], serveCommand, migrateCommand, indexCommand, indexLoopCommand, notifyLoopCommand, reindexCommand)
+	return "", fmt.Errorf("unknown subcommand %q, expected %q, %q, %q, %q, %q, %q or %q",
+		args[1], serveCommand, migrateCommand, indexCommand, indexLoopCommand, notifyLoopCommand, reindexCommand, embedLoopCommand)
 }
 
 const reindexUsage = "expected reindex --vault <id> for one vault or reindex --all for the whole installation"

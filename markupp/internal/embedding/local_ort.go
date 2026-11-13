@@ -10,6 +10,7 @@ import (
 
 	"github.com/knights-analytics/hugot"
 	"github.com/knights-analytics/hugot/pipelines"
+	"golang.org/x/sys/cpu"
 )
 
 // localProvider roda o granite-embedding no ONNX Runtime pelo hugot, com o pooling CLS.
@@ -19,9 +20,20 @@ type localProvider struct {
 	name     string
 }
 
-// NewLocalProvider sobe o modelo baixado em dir com os pesos de weights, e devolve o
-// provedor e a função que libera o ONNX Runtime. A libonnxruntime.so fica em /usr/lib.
-func NewLocalProvider(ctx context.Context, dir string, weights ModelFile) (Provider, func() error, error) {
+// OpenLocalProvider baixa para dir, por fetcher, os arquivos do modelo local que
+// faltam, conferindo o hash, e sobe o modelo. Devolve também a função que libera o
+// ONNX Runtime.
+func OpenLocalProvider(ctx context.Context, fetcher ModelFetcher, dir string) (Provider, func() error, error) {
+	files := GraniteFiles(cpu.X86.HasAVX2)
+	if err := EnsureModelFiles(ctx, fetcher, dir, GraniteBaseURL, files); err != nil {
+		return nil, nil, err
+	}
+	return newLocalProvider(ctx, dir, files[len(files)-1])
+}
+
+// newLocalProvider sobe o modelo baixado em dir com os pesos de weights. A
+// libonnxruntime.so fica em /usr/lib.
+func newLocalProvider(ctx context.Context, dir string, weights ModelFile) (Provider, func() error, error) {
 	session, err := hugot.NewORTSession(ctx)
 	if err != nil {
 		return nil, nil, fmt.Errorf("start ONNX Runtime, expected /usr/lib/libonnxruntime.so: %w", err)
