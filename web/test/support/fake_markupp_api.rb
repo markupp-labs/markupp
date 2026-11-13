@@ -11,16 +11,18 @@ class FakeMarkuppApi
   delegate :sent_tokens, to: :@account_email
   delegate :received_etags, :graph_queries, :change_graph!, to: :@graph
   delegate :decisions, to: :@oauth_requests, prefix: :oauth
+  delegate :take_provider_down!, :link_identity!, to: :@external_login
   delegate :publications, to: :@publications
   delegate :limit_public_reads!, to: :@public_notes
 
   # email_enabled: false é o servidor sem SMTP, que devolve o token do convite emitido e recusa os fluxos de email da conta.
   # graph é o cenário das ligações, comunidades e grafos sob /v1 (ver FakeMarkuppGraph); oauth_requests, o dos pedidos
   # de autorização OAuth (ver FakeMarkuppOAuthRequests); vaults, o dos cofres de cada tenant (ver FakeMarkuppVaults);
-  # publications, o das notas, pastas e cofres publicados (ver FakeMarkuppPublications).
+  # publications, o das notas, pastas e cofres publicados (ver FakeMarkuppPublications); login_providers, os provedores
+  # de login externo, nenhum por padrão (ver FakeMarkuppExternalLogin).
   def initialize(notes: [], unreachable: false, conflict: false, accounts: FakeMarkuppAccounts::DEFAULT_ACCOUNTS,
                  tenants: FakeMarkuppTenants::DEFAULT_TENANTS, invites: [], email_enabled: true, graph: {}, oauth_requests: [], vaults: nil,
-                 publications: [])
+                 publications: [], login_providers: [])
     @accounts = FakeMarkuppAccounts.new(accounts)
     @tenants = FakeMarkuppTenants.new(tenants, invites)
     @auth = FakeMarkuppAuth.new(@accounts, @tenants)
@@ -32,6 +34,7 @@ class FakeMarkuppApi
     @graph = FakeMarkuppGraph.new(graph)
     @oauth_requests = FakeMarkuppOAuthRequests.new(oauth_requests)
     @vaults = FakeMarkuppVaults.new(vaults, @tenants, @accounts)
+    @external_login = FakeMarkuppExternalLogin.new(login_providers, @accounts, @auth)
     @publications = FakeMarkuppPublications.new(publications, @notes, @vaults)
     @public_notes = FakeMarkuppPublicNotes.new(@publications, @notes)
     @unreachable = unreachable
@@ -100,12 +103,14 @@ class FakeMarkuppApi
     # e as notificações são da conta, sem tenant.
     def tenant_membership(path, account, call)
       return unless account && path.start_with?("/notes", "/users", "/v1/") && !path.start_with?(OAUTH_REQUESTS, FakeMarkuppTenants::NOTIFICATIONS)
+      return if FakeMarkuppExternalLogin.handles?(path)
 
       @tenants.membership_for(account, @credentials[:tenant_id], call)
     end
 
     def authenticate(call)
       return if @credentials.nil? || @auth.public?(call) || @account_email.public?(call) || call.start_with?("GET /v1/public/")
+      return if @external_login.public?(call)
 
       @accounts.account_for_access(@credentials[:access_token], call)
     end
@@ -113,6 +118,7 @@ class FakeMarkuppApi
     def fake_for(call, path)
       return @notes if path.start_with?("/notes") || (call.start_with?("POST ") && FakeMarkuppNoteIndex::VAULT_NOTES.match?(path))
       return @vaults if FakeMarkuppVaults::ROUTE.match?(path)
+      return @external_login if FakeMarkuppExternalLogin.handles?(path)
       return @publications if FakeMarkuppPublications.handles?(path)
       return @public_notes if FakeMarkuppPublicNotes.handles?(path)
       return @oauth_requests if path.start_with?(OAUTH_REQUESTS)

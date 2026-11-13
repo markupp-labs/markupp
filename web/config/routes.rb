@@ -19,6 +19,9 @@ Rails.application.routes.draw do
   resource :vim_keys, only: :update
   resource :session, only: [ :new, :create, :destroy ]
   resource :registration, only: [ :new, :create ]
+  # Login externo (ADR-0054): a ida ao provedor e a volta dele, que o servidor registra como redirect_uri.
+  post "auth/:provider" => "external_logins#create", as: :external_login
+  get "auth/:provider/callback" => "external_logins#callback", as: :external_login_callback
   resource :invite_acceptance, only: [ :new, :create ]
   resource :password_request, only: [ :new, :create ]
   resource :password_reset, only: [ :new, :create ]
@@ -45,6 +48,7 @@ Rails.application.routes.draw do
   get "settings" => redirect("/settings/account"), as: :settings
   namespace :settings do
     resource :account, only: :show
+    resources :identities, only: :destroy
     resource :appearance, only: :show
     resource :editor, only: :show
     resource :agents, only: :show

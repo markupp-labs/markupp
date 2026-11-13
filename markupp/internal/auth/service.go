@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -287,12 +288,19 @@ func (s *Service) RevokeSession(ctx context.Context, rawRefreshToken string) err
 	return s.repo.RevokeRefreshToken(ctx, hash)
 }
 
-// GetAccount busca os detalhes da conta do usuário. Toda conta nasce com identidade
-// local, então PasswordLogin segue só a config; com outro provedor, cruzar com a identidade.
+// GetAccount busca os detalhes da conta do usuário. PasswordLogin pede a senha ligada
+// na instalação e uma identidade local na conta, que a cadastrada por provedor não tem.
 func (s *Service) GetAccount(ctx context.Context, userID string) (User, error) {
 	user, err := s.repo.GetUserByID(ctx, userID)
-	user.PasswordLogin = err == nil && s.cfg.LocalEnabled
-	return user, err
+	if err != nil || !s.cfg.LocalEnabled {
+		return user, err
+	}
+	identities, err := s.repo.ListUserIdentities(ctx, userID)
+	if err != nil {
+		return User{}, fmt.Errorf("list identities of user %q: %w", userID, err)
+	}
+	user.PasswordLogin = slices.ContainsFunc(identities, func(i UserIdentity) bool { return i.Provider == localProvider })
+	return user, nil
 }
 
 // ResolveTenant devolve o vínculo de userID com o tenant requested. Sem pedido, vale o

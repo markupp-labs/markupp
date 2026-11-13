@@ -17,6 +17,7 @@ type RouterDeps struct {
 	Admin          AdminService
 	Vaults         VaultService
 	AccountEmail   AccountEmailService
+	ExternalLogin  ExternalLoginService
 	Tokens         TokenValidator
 	Tenants        TenantResolver
 	Probe          StorageProbe
@@ -107,13 +108,16 @@ func newVersionRoutes(d RouterDeps, current bool) chi.Router {
 }
 
 // mountV1OnlyRoutes monta as rotas que nasceram depois da transição e não têm o alias
-// sem prefixo: o grafo, a gestão de cofres e a publicação.
+// sem prefixo: o grafo, a gestão de cofres, a publicação e o login externo.
 func mountV1OnlyRoutes(r chi.Router, d RouterDeps) {
 	if d.Graph != nil {
 		mountProtectedGraphRoutes(r, d.Graph, d.Tokens, d.Tenants)
 	}
 	if d.Vaults != nil {
 		mountVaultRoutes(r, d.Vaults, d.Tokens, d.Tenants)
+	}
+	if d.ExternalLogin != nil {
+		mountExternalLoginRoutes(r, d.ExternalLogin, d.Tokens, limitAccountAttempts(d.AccountRateLimiter))
 	}
 	if d.Publications != nil {
 		mountPublicationRoutes(r, d.Publications, d.Tokens, d.Tenants)

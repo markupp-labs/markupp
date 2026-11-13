@@ -96,6 +96,9 @@ type Config struct {
 	// TrustedProxies são as redes dos proxies cujo X-Forwarded-For o limite de
 	// tentativas aceita. Vazia, o limite usa só o IP da conexão.
 	TrustedProxies []netip.Prefix
+	// LoginProviders são os provedores externos de login, na ordem de
+	// MARKUPP_LOGIN_PROVIDERS. Vazia, só há email e senha (ADR-0054).
+	LoginProviders []LoginProvider
 }
 
 // Default devolve a configuração usada nas variáveis não definidas.
@@ -149,6 +152,9 @@ func loadServerSettings(lookup LookupFunc, cfg *Config) error {
 		return err
 	}
 	if err := loadOAuthSettings(lookup, cfg); err != nil {
+		return err
+	}
+	if err := loadLoginProviders(lookup, cfg); err != nil {
 		return err
 	}
 	if err := loadMCPSettings(lookup, cfg); err != nil {

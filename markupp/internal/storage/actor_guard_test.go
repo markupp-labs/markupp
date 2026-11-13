@@ -12,7 +12,7 @@ import (
 )
 
 // arquivosForaDoAtor podem usar o pool direto: autenticação roda antes de existir
-// tenant (ADR-0034), o indexador reserva o cofre antes de entrar no papel
+// tenant (ADR-0034), e as identidades da conta são parte dela, o indexador reserva o cofre antes de entrar no papel
 // markupp_indexer, o notificador trabalha no papel markupp_notifier, o authorization
 // server OAuth usa tabelas da instância (ADR-0046), os segredos gerados na primeira
 // subida também são da instância (ADR-0041), e os outros
@@ -25,6 +25,7 @@ var arquivosForaDoAtor = map[string]bool{
 	"vault_indexer.go":       true,
 	"notification_outbox.go": true,
 	"account_email.go":       true,
+	"identities.go":          true,
 	"oauth.go":               true,
 	"oauth_refresh.go":       true,
 	"oauth_code.go":          true,

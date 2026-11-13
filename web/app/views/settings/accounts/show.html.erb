@@ -22,4 +22,6 @@
     <% end %>
     <%= link_to t(".have_reset_token"), new_password_reset_path, class: "text-accent underline" %>
   </div>
+
+  <%= render "identities", identities: @identities if login_providers.any? %>
 </div>

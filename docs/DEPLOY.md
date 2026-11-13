@@ -269,6 +269,51 @@ recusado sem o bloco `email`.
 Com SMTP, quem esqueceu a senha pede a troca em `POST /auth/password/forgot` e troca com o token
 do email em `POST /auth/password/reset`.
 
+## Login externo
+
+Opcional e desligado por padrão ([ADR-0054](adrs/ADR-0054-login-por-provedor-externo.md)): a
+instalação pode aceitar login por qualquer provedor OpenID Connect (Google, Keycloak, Authentik)
+e pelo GitHub. Sem configuração, o painel não mostra botão nenhum.
+
+`MARKUPP_LOGIN_PROVIDERS` lista os ids, separados por vírgula, com letras minúsculas, dígitos e
+hífen. Cada id lê as próprias variáveis, com o id em maiúsculas e o hífen virando sublinhado:
+
+- `MARKUPP_LOGIN_<ID>_CLIENT_ID` e `MARKUPP_LOGIN_<ID>_CLIENT_SECRET`: obrigatórias, do cadastro
+  do app no provedor
+- `MARKUPP_LOGIN_<ID>_ISSUER`: o issuer OIDC, exatamente como o provedor publica (Google:
+  `https://accounts.google.com`). Sem ela, só o id `github` é aceito, e usa o GitHub
+- `MARKUPP_LOGIN_<ID>_NAME`: o nome do botão. Padrão: o id
+
+No provedor, cadastre como redirect URI o callback do painel, `MARKUPP_PANEL_URL/auth/<id>/callback`
+(ex.: `https://painel.exemplo.com/auth/google/callback`). No GitHub, crie um OAuth App; o login pede
+os escopos read:user e user:email.
+
+O login só entra em conta que já tem a identidade vinculada. A primeira vez com um provedor é
+cadastro, pelo botão da tela "Criar conta", e segue o auto-registro como o cadastro por senha; a
+conta nasce com o email que o provedor informa, já verificada quando o provedor o afirma
+verificado. Quem já tem conta vincula o provedor logado, em Configurações > Conta, e o servidor
+nunca vincula pelo email. Desvincular recusa a última forma de entrar que vale na instalação.
+
+O docker-compose.yaml não repassa essas variáveis. Ponha-as num `compose.override.yaml` ao lado
+dele, que o docker compose lê sozinho:
+
+```yaml
+services:
+  markupp:
+    environment:
+      MARKUPP_LOGIN_PROVIDERS: google,github
+      MARKUPP_LOGIN_GOOGLE_ISSUER: https://accounts.google.com
+      MARKUPP_LOGIN_GOOGLE_NAME: Google
+      MARKUPP_LOGIN_GOOGLE_CLIENT_ID: ${MARKUPP_LOGIN_GOOGLE_CLIENT_ID}
+      MARKUPP_LOGIN_GOOGLE_CLIENT_SECRET: ${MARKUPP_LOGIN_GOOGLE_CLIENT_SECRET}
+      MARKUPP_LOGIN_GITHUB_NAME: GitHub
+      MARKUPP_LOGIN_GITHUB_CLIENT_ID: ${MARKUPP_LOGIN_GITHUB_CLIENT_ID}
+      MARKUPP_LOGIN_GITHUB_CLIENT_SECRET: ${MARKUPP_LOGIN_GITHUB_CLIENT_SECRET}
+```
+
+Os segredos ficam no `.env`. Um provedor OIDC fora do ar não impede o servidor de subir: a
+descoberta acontece no primeiro login, e o botão responde que o provedor não respondeu.
+
 ## OAuth
 
 O authorization server OAuth 2.1 vem ligado, e nenhuma variável é obrigatória. A única que um

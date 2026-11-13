@@ -61,6 +61,14 @@ class MarkuppApi
   class EmailNotVerified < Error; end
   # A conta ou o tenant chegou ao limite de convites das últimas 24 horas.
   class InviteLimitReached < Error; end
+  # Login externo (ADR-0054): nenhuma conta usa a identidade; o provedor recusou o código; o provedor não respondeu.
+  class IdentityNotLinked < Error; end
+  class LoginRejected < Error; end
+  class ProviderUnavailable < Error; end
+  # A identidade externa já é de uma conta; o provedor não mostrou o email; tirar a última forma de entrar.
+  class IdentityAlreadyLinked < Error; end
+  class ProviderEmailMissing < Error; end
+  class LastIdentity < Error; end
   # Publicar com um nome que não é o do alvo (ADR-0048).
   class ConfirmationMismatch < Error; end
   # Nota por quem não a edita, pasta e cofre por quem não é owner nem admin.
@@ -95,6 +103,9 @@ class MarkuppApi
     "vault_member_not_found" => VaultMemberNotFound, "no_vault" => NoVault, "registration_disabled" => RegistrationDisabled,
     "email_not_verified" => EmailNotVerified, "invite_limit_reached" => InviteLimitReached,
     "password_too_short" => PasswordTooShort, "common_password" => CommonPassword,
+    "identity_not_linked" => IdentityNotLinked, "login_rejected" => LoginRejected, "provider_unavailable" => ProviderUnavailable,
+    "unknown_login_provider" => NotFound, "identity_already_linked" => IdentityAlreadyLinked,
+    "provider_email_missing" => ProviderEmailMissing, "last_identity" => LastIdentity,
     "confirmation_mismatch" => ConfirmationMismatch, "publish_forbidden" => PublishForbidden, "already_published" => AlreadyPublished,
     "publication_not_found" => PublicationNotFound, "rate_limited" => RateLimited
   }.freeze
