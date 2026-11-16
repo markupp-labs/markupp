@@ -13,7 +13,8 @@ import (
 
 // arquivosForaDoAtor podem usar o pool direto: autenticação roda antes de existir
 // tenant (ADR-0034), e as identidades da conta são parte dela, os indexadores de texto e de
-// embedding escolhem o cofre antes de entrar no papel markupp_indexer, o notificador trabalha no papel markupp_notifier, o authorization
+// embedding escolhem o cofre antes de entrar no papel markupp_indexer (e o de embedding lê ali
+// a escolha do provedor, da instância, ADR-0057), o notificador trabalha no papel markupp_notifier, o authorization
 // server OAuth usa tabelas da instância (ADR-0046), os segredos gerados na primeira
 // subida também são da instância (ADR-0041), e os outros
 // abrem o pool, migram e montam a transação do ator. A leitura sem conta (ADR-0048) é a
@@ -33,6 +34,7 @@ var arquivosForaDoAtor = map[string]bool{
 	"oauth_cimd.go":          true,
 	"oauth_dcr.go":           true,
 	"instance_secrets.go":    true,
+	"instance_embedding.go":  true,
 }
 
 var acessoDiretoAoPool = regexp.MustCompile(`gen\.New\(|\binTx\(|pgx\.BeginFunc|pool\.\w+\(`)
