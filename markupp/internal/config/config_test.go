@@ -27,7 +27,7 @@ func (f fakeEnv) Lookup(key string) (string, bool) {
 func TestDefault_RetornaValoresPadrao(t *testing.T) {
 	cfg := config.Default()
 
-	assert.Equal(t, 8080, cfg.Port)
+	assert.Equal(t, 6275, cfg.Port)
 	assert.Equal(t, int64(50*1024*1024), cfg.MaxNoteSize)
 	assert.Empty(t, cfg.DatabaseURL, "sem default: o banco precisa ser informado")
 	assert.Empty(t, cfg.AllowedOrigins, "sem origem configurada o CORS fica desligado")
@@ -54,8 +54,8 @@ func TestLoad_SoVariaveisObrigatorias_UsaDefaultsNoResto(t *testing.T) {
 	esperado := config.Default()
 	esperado.DatabaseURL = urlDeTeste
 	esperado.AuthSecret = segredoDeTesteValido
-	esperado.PublicURL = "http://localhost:8080"
-	esperado.PanelURL = "http://localhost:3999"
+	esperado.PublicURL = "http://localhost:6275"
+	esperado.PanelURL = "http://localhost:6275"
 	assert.Equal(t, esperado, cfg)
 }
 

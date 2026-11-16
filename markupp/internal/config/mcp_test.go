@@ -77,7 +77,7 @@ func TestWithInstanceSecrets_SemVariaveis_GeraOSegredoDoJWTEODoMCP(t *testing.T)
 
 	require.NoError(t, err)
 	assert.Equal(t, "segredo-gerado-com-mais-de-32-bytes!", resolved.AuthSecret)
-	assert.Equal(t, []config.OAuthResource{{URL: "http://localhost:8080/mcp", Secret: "segredo-gerado-com-mais-de-32-bytes!"}}, resolved.OAuthResources) // #nosec G101 -- valor fictício de teste
+	assert.Equal(t, []config.OAuthResource{{URL: "http://localhost:6275/mcp", Secret: "segredo-gerado-com-mais-de-32-bytes!"}}, resolved.OAuthResources) // #nosec G101 -- valor fictício de teste
 	assert.ElementsMatch(t, []string{"auth_secret", "mcp_resource_secret"}, secrets.generated)
 }
 
