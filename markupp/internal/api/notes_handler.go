@@ -29,7 +29,7 @@ type NoteService interface {
 }
 
 // notesHandler serve as notas pelo serviço, e render dá a representação de cada
-// nota na resposta, que muda entre as rotas sem prefixo e as de /v1.
+// nota na resposta, que muda entre GET /v1/notes e as rotas de item, de cofre e de busca.
 type notesHandler struct {
 	svc    NoteService
 	render func(notes.Note) any

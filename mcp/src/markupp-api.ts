@@ -1,77 +1,42 @@
+import { toApiError } from "./api-error.js";
+import {
+  linkRefusalsPath,
+  memberPath,
+  myInvitePath,
+  notePath,
+  vaultPath,
+  withPage,
+  withQuery,
+} from "./api-paths.js";
+import type {
+  Publication,
+  PublicationList,
+  PublishRequest,
+} from "./publication.js";
 import type { ApiTokenSource } from "./session.js";
+import type {
+  Account,
+  FoundNote,
+  InstanceEmbedding,
+  InstanceEmbeddingUpdate,
+  IssuedInvite,
+  Link,
+  LinkQuery,
+  LinkRefusal,
+  Member,
+  Note,
+  NoteRevision,
+  NoteSummary,
+  PendingInvite,
+  Role,
+  SearchPage,
+  TenantInvite,
+  TenantMembership,
+  Vault,
+} from "./markupp-api-types.js";
 
-// TenantMembership é um vínculo da conta como GET /v1/me/tenants devolve.
-export type TenantMembership = { id: string; name: string; role: string };
-
-// NoteSummary é o que a busca devolve de cada nota, sem o conteúdo.
-export type NoteSummary = {
-  id: string;
-  vault_id: string;
-  path: string;
-  updated_at: string;
-};
-
-// Note é a nota inteira, como as rotas /v1/notes/{id} e POST /v1/notes devolvem.
-export type Note = NoteSummary & { content: string; created_at: string };
-
-// FoundNote é a nota que a busca acha; a busca num cofre não traz updated_at.
-export type FoundNote = Omit<NoteSummary, "updated_at"> & {
-  updated_at?: string;
-};
-
-// Account é a conta do token, como GET /v1/auth/me devolve, sem os campos de login.
-export type Account = { id: string; email: string };
-
-// Vault é um cofre de que a conta é membro, como GET /v1/vaults devolve.
-export type Vault = { id: string; name: string; created_at: string };
-
-// SearchPage pagina a busca; o servidor limita limit a 1..100 e usa 10 se faltar.
-export type SearchPage = { limit?: number; offset?: number };
-
-// NoteRevision é a nova versão da nota com o updated_at lido, que o servidor compara
-// para recusar com 409 a escrita feita sobre uma versão velha.
-export type NoteRevision = {
-  path: string;
-  content: string;
-  lastModifiedAt: string;
-};
-
-// Role é o papel de uma conta no tenant, do maior para o menor.
-export type Role = "owner" | "admin" | "member" | "viewer";
-
-// Member é um membro do tenant como GET /v1/users devolve, ou do cofre como GET
-// /v1/vaults/{id}/members devolve, com o papel no tenant; id é o id da conta.
-export type Member = {
-  id: string;
-  email: string;
-  role: string;
-  joined_at: string;
-};
-
-// TenantInvite é um convite do tenant como GET /v1/users/invites devolve; accepted_at
-// só vem no convite já aceito.
-export type TenantInvite = {
-  id: string;
-  email: string;
-  role: string;
-  invited_by?: string;
-  expires_at: string;
-  accepted_at?: string;
-  created_at: string;
-};
-
-// IssuedInvite é o convite recém-emitido; token só vem quando o servidor não manda o
-// convite por email e o administrador repassa o token à mão.
-export type IssuedInvite = TenantInvite & { token?: string };
-
-// PendingInvite é um convite endereçado à conta como GET /v1/me/invites devolve.
-export type PendingInvite = {
-  id: string;
-  tenant_id: string;
-  tenant_name: string;
-  role: string;
-  expires_at: string;
-};
+export { MarkuppApiError, toApiError } from "./api-error.js";
+export type * from "./markupp-api-types.js";
 
 // MarkuppApi é a fatia da API REST do markupp que as ferramentas MCP usam. tenant é o
 // id do tenant em que a chamada age; vault, quando vem, restringe a nota a esse cofre.
@@ -119,18 +84,33 @@ export interface MarkuppApi {
     vault: string,
     userId: string,
   ): Promise<void>;
-}
-
-// MarkuppApiError é a resposta de erro {error, message} da API, com o status HTTP.
-export class MarkuppApiError extends Error {
-  constructor(
-    readonly status: number,
-    readonly code: string,
-    message: string,
-  ) {
-    super(message);
-    this.name = "MarkuppApiError";
-  }
+  publish(
+    tenant: string,
+    vault: string,
+    request: PublishRequest,
+  ): Promise<Publication>;
+  unpublish(tenant: string, publication: string): Promise<void>;
+  listPublications(tenant: string, vault?: string): Promise<PublicationList>;
+  listLinks(tenant: string, note: string, query: LinkQuery): Promise<Link[]>;
+  listLinkRefusals(
+    tenant: string,
+    vault: string,
+    page?: SearchPage,
+  ): Promise<LinkRefusal[]>;
+  refuseLink(
+    tenant: string,
+    vault: string,
+    noteIds: string[],
+  ): Promise<LinkRefusal>;
+  undoLinkRefusal(
+    tenant: string,
+    vault: string,
+    refusalId: string,
+  ): Promise<void>;
+  getInstanceEmbedding(): Promise<InstanceEmbedding>;
+  setInstanceEmbedding(
+    update: InstanceEmbeddingUpdate,
+  ): Promise<InstanceEmbedding>;
 }
 
 export type FetchFunction = (
@@ -156,6 +136,8 @@ type SearchHit = { note: { id: string; path: string }; vault_id: string };
 
 // TenantHeader é onde a API lê em qual tenant da conta a requisição age.
 const TenantHeader = "X-Markupp-Tenant";
+
+const InstanceEmbeddingPath = "/v1/instance/embedding";
 
 // MaxLimit e MaxOffset são o maior limit e o maior offset que a API aceita numa página.
 const MaxLimit = 100;
@@ -390,6 +372,83 @@ export class HttpMarkuppApi implements MarkuppApi {
     await this.send({ method: "DELETE", path, tenant });
   }
 
+  publish(
+    tenant: string,
+    vault: string,
+    request: PublishRequest,
+  ): Promise<Publication> {
+    const path = `${vaultPath(vault)}/publications`;
+    return this.json({ method: "POST", path, tenant, body: request });
+  }
+
+  async unpublish(tenant: string, publication: string): Promise<void> {
+    const path = `/v1/publications/${encodeURIComponent(publication)}`;
+    await this.send({ method: "DELETE", path, tenant });
+  }
+
+  // listPublications sem cofre lista as publicações visíveis em todo o tenant.
+  listPublications(tenant: string, vault?: string): Promise<PublicationList> {
+    const query =
+      vault === undefined ? "" : `?${new URLSearchParams({ vault_id: vault })}`;
+    return this.json({
+      method: "GET",
+      path: `/v1/publications${query}`,
+      tenant,
+    });
+  }
+
+  // listLinks lê as ligações que a nota faz, em /links, ou as que chegam nela, em
+  // /backlinks.
+  listLinks(tenant: string, note: string, query: LinkQuery): Promise<Link[]> {
+    const { direction, type, ...page } = query;
+    const params = withPage(new URLSearchParams(type ? { type } : {}), page);
+    const route = direction === "incoming" ? "backlinks" : "links";
+    const path = withQuery(`${notePath(note)}/${route}`, params);
+    return this.json({ method: "GET", path, tenant });
+  }
+
+  listLinkRefusals(
+    tenant: string,
+    vault: string,
+    page: SearchPage = {},
+  ): Promise<LinkRefusal[]> {
+    const params = withPage(new URLSearchParams(), page);
+    const path = withQuery(linkRefusalsPath(vault), params);
+    return this.json({ method: "GET", path, tenant });
+  }
+
+  // refuseLink manda as duas notas do par; recusar de novo devolve a recusa que existe.
+  refuseLink(
+    tenant: string,
+    vault: string,
+    noteIds: string[],
+  ): Promise<LinkRefusal> {
+    const path = linkRefusalsPath(vault);
+    const body = { note_ids: noteIds };
+    return this.json({ method: "POST", path, tenant, body });
+  }
+
+  async undoLinkRefusal(
+    tenant: string,
+    vault: string,
+    refusalId: string,
+  ): Promise<void> {
+    const path = `${linkRefusalsPath(vault)}/${encodeURIComponent(refusalId)}`;
+    await this.send({ method: "DELETE", path, tenant });
+  }
+
+  // O embedding é da instância: sem tenant, só para quem administra a instância.
+  getInstanceEmbedding(): Promise<InstanceEmbedding> {
+    return this.json({ method: "GET", path: InstanceEmbeddingPath });
+  }
+
+  setInstanceEmbedding(
+    update: InstanceEmbeddingUpdate,
+  ): Promise<InstanceEmbedding> {
+    const call = { method: "PUT", path: InstanceEmbeddingPath, body: update };
+    return this.json(call as ApiCall);
+  }
+
   private async json<T>(call: ApiCall): Promise<T> {
     const response = await this.send(call);
     return (await response.json()) as T;
@@ -413,64 +472,6 @@ export class HttpMarkuppApi implements MarkuppApi {
     if (call.body !== undefined) headers["content-type"] = "application/json";
     return headers;
   }
-}
-
-function notePath(id: string): string {
-  return `/v1/notes/${encodeURIComponent(id)}`;
-}
-
-function memberPath(userId: string): string {
-  return `/v1/users/${encodeURIComponent(userId)}`;
-}
-
-function vaultPath(vault: string): string {
-  return `/v1/vaults/${encodeURIComponent(vault)}`;
-}
-
-// withPage põe na query string o limit e o offset que vieram, para o servidor usar o
-// padrão dele nos que faltam.
-function withPage(params: URLSearchParams, page: SearchPage): URLSearchParams {
-  if (page.limit !== undefined) params.set("limit", String(page.limit));
-  if (page.offset !== undefined) params.set("offset", String(page.offset));
-  return params;
-}
-
-function myInvitePath(inviteId: string): string {
-  return `/v1/me/invites/${encodeURIComponent(inviteId)}`;
-}
-
-// toApiError lê o corpo {error, message}; um corpo fora desse formato (um proxy no
-// meio, por exemplo) vira o código unexpected_response com o status e o texto recebido.
-async function toApiError(
-  call: ApiCall,
-  response: Response,
-): Promise<MarkuppApiError> {
-  const text = await response.text();
-  const parsed = parseErrorBody(text);
-  if (parsed)
-    return new MarkuppApiError(response.status, parsed.error, parsed.message);
-  const message = `${call.method} ${call.path} answered ${response.status} with a body that does not match {error, message}: ${text.slice(0, 200)}`;
-  return new MarkuppApiError(response.status, "unexpected_response", message);
-}
-
-function parseErrorBody(
-  text: string,
-): { error: string; message: string } | null {
-  try {
-    const body: unknown = JSON.parse(text);
-    if (!isErrorBody(body)) return null;
-    return body;
-  } catch {
-    return null;
-  }
-}
-
-function isErrorBody(
-  body: unknown,
-): body is { error: string; message: string } {
-  if (typeof body !== "object" || body === null) return false;
-  const fields = body as Record<string, unknown>;
-  return typeof fields.error === "string" && typeof fields.message === "string";
 }
 
 export function noteSummary(note: NoteSummary): NoteSummary {

@@ -42,10 +42,10 @@ func TestLoad_SoComOBanco_LigaOOAuthComOsPadroesDoSelfHost(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.True(t, cfg.OAuthEnabled())
-	assert.Equal(t, "http://localhost:8080", cfg.PublicURL)
-	assert.Equal(t, "http://localhost:3999", cfg.PanelURL)
+	assert.Equal(t, "http://localhost:6275", cfg.PublicURL)
+	assert.Equal(t, "http://localhost:6275", cfg.PanelURL, "o painel na raiz da mesma origem")
 	assert.Empty(t, cfg.OAuthResources, "o resource padrao recebe o segredo do banco na subida")
-	assert.Equal(t, "http://localhost:8080/mcp", cfg.DefaultMCPResourceURL())
+	assert.Equal(t, "http://localhost:6275/mcp", cfg.DefaultMCPResourceURL())
 }
 
 func TestLoad_SemPublicURL_UsaAPortaDoServidor(t *testing.T) {
@@ -119,14 +119,14 @@ func TestLoad_PublicURLComSenha_RetornaErroSemVazarASenha(t *testing.T) {
 	assert.NotContains(t, err.Error(), "segredo")
 }
 
-func TestLoad_OAuthSemPainel_UsaOPainelLocal(t *testing.T) {
+func TestLoad_OAuthSemPainel_UsaAURLPublica(t *testing.T) {
 	env := envComOAuth()
 	delete(env, "MARKUPP_PANEL_URL")
 
 	cfg, err := config.Load(env.Lookup)
 
 	require.NoError(t, err)
-	assert.Equal(t, "http://localhost:3999", cfg.PanelURL)
+	assert.Equal(t, "https://notas.markupp.dev", cfg.PanelURL)
 }
 
 func TestLoad_PainelForaDoFormato_RetornaErroComOValor(t *testing.T) {

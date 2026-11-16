@@ -27,7 +27,7 @@ func (f fakeEnv) Lookup(key string) (string, bool) {
 func TestDefault_RetornaValoresPadrao(t *testing.T) {
 	cfg := config.Default()
 
-	assert.Equal(t, 8080, cfg.Port)
+	assert.Equal(t, 6275, cfg.Port)
 	assert.Equal(t, int64(50*1024*1024), cfg.MaxNoteSize)
 	assert.Empty(t, cfg.DatabaseURL, "sem default: o banco precisa ser informado")
 	assert.Empty(t, cfg.AllowedOrigins, "sem origem configurada o CORS fica desligado")
@@ -54,8 +54,8 @@ func TestLoad_SoVariaveisObrigatorias_UsaDefaultsNoResto(t *testing.T) {
 	esperado := config.Default()
 	esperado.DatabaseURL = urlDeTeste
 	esperado.AuthSecret = segredoDeTesteValido
-	esperado.PublicURL = "http://localhost:8080"
-	esperado.PanelURL = "http://localhost:3999"
+	esperado.PublicURL = "http://localhost:6275"
+	esperado.PanelURL = "http://localhost:6275"
 	assert.Equal(t, esperado, cfg)
 }
 
@@ -420,6 +420,72 @@ func TestLoad_LimiteDeTentativasForaDaFaixa_RetornaErroComOValor(t *testing.T) {
 
 		require.Error(t, err, valor)
 		assert.Contains(t, err.Error(), "MARKUPP_RATE_LIMIT_PER_MINUTE", valor)
+		assert.Contains(t, err.Error(), "from 1 to 10000", valor)
+	}
+}
+
+func TestDefault_LimitesDeConvite_VintePorContaECinquentaPorTenant(t *testing.T) {
+	env := fakeEnv{"MARKUPP_DATABASE_URL": urlDeTeste, "MARKUPP_AUTH_SECRET": segredoDeTesteValido}
+
+	cfg, err := config.Load(env.Lookup)
+
+	require.NoError(t, err)
+	assert.Equal(t, 20, cfg.InviteLimitPerAccount)
+	assert.Equal(t, 50, cfg.InviteLimitPerTenant)
+}
+
+func TestLoad_LimitesDeConviteDefinidos_LeOsValores(t *testing.T) {
+	env := fakeEnv{"MARKUPP_DATABASE_URL": urlDeTeste, "MARKUPP_AUTH_SECRET": segredoDeTesteValido,
+		"MARKUPP_INVITE_LIMIT_PER_ACCOUNT": "5", "MARKUPP_INVITE_LIMIT_PER_TENANT": "200"}
+
+	cfg, err := config.Load(env.Lookup)
+
+	require.NoError(t, err)
+	assert.Equal(t, 5, cfg.InviteLimitPerAccount)
+	assert.Equal(t, 200, cfg.InviteLimitPerTenant)
+}
+
+func TestLoad_LimiteDeConviteForaDaFaixa_RetornaErroComAVariavel(t *testing.T) {
+	for _, nome := range []string{"MARKUPP_INVITE_LIMIT_PER_ACCOUNT", "MARKUPP_INVITE_LIMIT_PER_TENANT"} {
+		for _, valor := range []string{"0", "-1", "vinte", "10001"} {
+			env := fakeEnv{"MARKUPP_DATABASE_URL": urlDeTeste, "MARKUPP_AUTH_SECRET": segredoDeTesteValido, nome: valor}
+
+			_, err := config.Load(env.Lookup)
+
+			require.Error(t, err, nome+"="+valor)
+			assert.Contains(t, err.Error(), nome, valor)
+			assert.Contains(t, err.Error(), "from 1 to 10000", valor)
+		}
+	}
+}
+
+func TestLoad_SemLimiteDaLeituraPublica_UsaTrezentosPorMinuto(t *testing.T) {
+	env := fakeEnv{"MARKUPP_DATABASE_URL": urlDeTeste, "MARKUPP_AUTH_SECRET": segredoDeTesteValido}
+
+	cfg, err := config.Load(env.Lookup)
+
+	require.NoError(t, err)
+	assert.Equal(t, 300, cfg.PublicRateLimitPerMinute)
+}
+
+func TestLoad_LimiteDaLeituraPublicaDefinido_LeOValor(t *testing.T) {
+	env := fakeEnv{"MARKUPP_DATABASE_URL": urlDeTeste, "MARKUPP_AUTH_SECRET": segredoDeTesteValido, "MARKUPP_PUBLIC_RATE_LIMIT_PER_MINUTE": "1200"}
+
+	cfg, err := config.Load(env.Lookup)
+
+	require.NoError(t, err)
+	assert.Equal(t, 1200, cfg.PublicRateLimitPerMinute)
+	assert.Equal(t, 5, cfg.RateLimitPerMinute, "o limite das rotas de conta segue o dele")
+}
+
+func TestLoad_LimiteDaLeituraPublicaForaDaFaixa_RetornaErroComOValor(t *testing.T) {
+	for _, valor := range []string{"0", "-1", "muitos", "10001"} {
+		env := fakeEnv{"MARKUPP_DATABASE_URL": urlDeTeste, "MARKUPP_AUTH_SECRET": segredoDeTesteValido, "MARKUPP_PUBLIC_RATE_LIMIT_PER_MINUTE": valor}
+
+		_, err := config.Load(env.Lookup)
+
+		require.Error(t, err, valor)
+		assert.Contains(t, err.Error(), "MARKUPP_PUBLIC_RATE_LIMIT_PER_MINUTE", valor)
 		assert.Contains(t, err.Error(), "from 1 to 10000", valor)
 	}
 }

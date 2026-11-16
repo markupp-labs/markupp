@@ -1,4 +1,4 @@
-# Segura cada POST /auth/refresh da FakeMarkuppAuth até `callers` chamadas chegarem juntas, ou até o timeout.
+# Segura cada POST /v1/auth/refresh da FakeMarkuppAuth até `callers` chamadas chegarem juntas, ou até o timeout.
 # Faz o papel da API lenta: com o Net::HTTP de verdade a thread solta a GVL e a outra requisição entra no meio.
 class FakeRefreshGate
   def initialize(callers, timeout:)

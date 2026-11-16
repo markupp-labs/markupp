@@ -1,0 +1,82 @@
+<%# Embedding da instância: o provedor, a URL, o modelo e a chave, que nunca volta (o campo vazio a mantém). Com a escolha
+    travada por quem hospeda, o fieldset desabilitado tira tudo do Tab. O estado do modelo fica embaixo. %>
+<% embedding = @embedding %>
+<div class="max-w-[65ch]">
+  <%= render "settings/section_heading", title: t("settings.nav.instance_embedding"), subtitle: false %>
+  <p class="mt-1 text-ink-muted"><%= t(".intro") %></p>
+
+  <% if @refusal %>
+    <p role="alert" class="mt-3 text-danger"><%= @refusal %></p>
+  <% end %>
+  <% if embedding.locked %>
+    <p id="embedding_locked" class="mt-3"><%= t(".locked", provider: t(".providers.#{embedding.host_provider}", default: embedding.host_provider)) %></p>
+  <% end %>
+
+  <%= form_with scope: :embedding, url: settings_instance_embedding_path, method: :patch, id: "instance_embedding", class: "mt-4" do |form| %>
+    <fieldset <%= "disabled" if embedding.locked %> class="flex flex-col gap-4">
+      <fieldset>
+        <legend class="font-semibold"><%= t(".provider") %></legend>
+        <% InstanceEmbedding::PROVIDERS.each do |provider| %>
+          <div class="mt-2 flex items-start gap-2">
+            <%= form.radio_button :provider, provider, checked: embedding.provider == provider, class: "mt-1",
+                                  autofocus: provider == embedding.provider && !embedding.locked,
+                                  aria: { describedby: "embedding_provider_#{provider}_hint" } %>
+            <div>
+              <%= form.label :provider, t(".providers.#{provider}"), value: provider %>
+              <p id="embedding_provider_<%= provider %>_hint" class="text-ink-muted"><%= t(".provider_hints.#{provider}") %></p>
+            </div>
+          </div>
+        <% end %>
+      </fieldset>
+
+      <fieldset class="flex flex-col gap-3">
+        <legend class="font-semibold"><%= t(".remote") %></legend>
+        <div>
+          <%= form.label :url, t(".url"), class: "block text-ink-muted" %>
+          <%= form.url_field :url, value: embedding.url, maxlength: 2048, autocomplete: "off", spellcheck: false,
+                             placeholder: "https://api.openai.com/v1", aria: { describedby: "embedding_url_hint" },
+                             class: "w-full rounded-md border border-line bg-surface px-2 py-1" %>
+          <p id="embedding_url_hint" class="text-ink-muted"><%= t(".url_hint") %></p>
+        </div>
+        <div>
+          <%= form.label :model, t(".model"), class: "block text-ink-muted" %>
+          <%= form.text_field :model, value: embedding.model, maxlength: 2048, autocomplete: "off", spellcheck: false,
+                              class: "w-full rounded-md border border-line bg-surface px-2 py-1" %>
+        </div>
+        <div>
+          <%= form.label :api_key, t(".api_key"), class: "block text-ink-muted" %>
+          <%= form.password_field :api_key, maxlength: 2048, autocomplete: "off", aria: { describedby: "embedding_api_key_hint" },
+                                  class: "w-full rounded-md border border-line bg-surface px-2 py-1" %>
+          <p id="embedding_api_key_hint" class="text-ink-muted"><%= embedding.api_key_set ? t(".key_set") : t(".key_unset") %></p>
+          <% if embedding.api_key_set %>
+            <div class="mt-1 flex items-center gap-2">
+              <%= form.check_box :clear_api_key %>
+              <%= form.label :clear_api_key, t(".clear_api_key") %>
+            </div>
+          <% end %>
+        </div>
+      </fieldset>
+
+      <p class="text-ink-muted"><%= t(".reindex_hint") %></p>
+      <%= form.button t(".save"), class: "btn self-start" %>
+    </fieldset>
+  <% end %>
+
+  <section id="embedding_status" aria-labelledby="embedding_status_title" class="mt-8">
+    <h2 id="embedding_status_title" class="md-heading font-semibold"><%= t(".status") %></h2>
+    <% status = embedding.model_status %>
+    <% if status %>
+      <p class="mt-1">
+        <%= t(".states.#{status.state}") %>
+        <% if status.changed_at %>
+          <span class="text-ink-muted"><%= t(".changed_at", time: l(status.changed_at, format: :short)) %></span>
+        <% end %>
+      </p>
+      <% if status.error.present? %>
+        <p class="mt-1 text-danger [overflow-wrap:anywhere]"><%= status.error %></p>
+      <% end %>
+    <% else %>
+      <p class="mt-1 text-ink-muted"><%= t(".no_status") %></p>
+    <% end %>
+  </section>
+</div>

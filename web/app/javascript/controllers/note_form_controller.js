@@ -9,7 +9,8 @@ import { Turbo } from "@hotwired/turbo-rails"
 // A resolução do caminho (relativo, absoluto, .md) é só do servidor (Note#resolve); aqui só o nome vazio.
 export default class extends Controller {
   static targets = [ "source", "path", "unsaved", "save", "pending", "pathError" ]
-  static values = { leaveMessage: String, new: Boolean, blankTitle: String, rootUrl: String, notesUrl: String }
+  static values = { leaveMessage: String, new: Boolean, blankTitle: String, rootUrl: String, notesUrl: String,
+                    publishedFolders: Array, moveWarning: String, moveButton: String }
 
   connect() {
     this.originals = this.fields.map((field) => field.defaultValue)
@@ -93,12 +94,38 @@ export default class extends Controller {
     this.pathTarget.setSelectionRange(this.pathTarget.value.length, this.pathTarget.value.length)
   }
 
-  // Nome em branco: avisa sob o campo e devolve o foco a ele, com o caminho digitado e o conteúdo como estão.
+  // Nome em branco: avisa sob o campo e devolve o foco a ele, com o caminho digitado e o conteúdo como estão. Caminho
+  // que tira a nota da pasta publicada pergunta antes, porque ela fica privada.
   submit(event) {
-    if (nameOf(this.pathTarget.value)) return this.allowLeaving()
+    if (!nameOf(this.pathTarget.value)) {
+      event.preventDefault()
+      return this.refuseBlankName()
+    }
+    if (this.leavesPublishedFolders()) {
+      event.preventDefault()
+      return this.confirmMove()
+    }
+    this.allowLeaving()
+  }
 
-    event.preventDefault()
-    this.refuseBlankName()
+  // shortcut: lê só o caminho absoluto ou relativo à pasta da nota, sem . e ..; o servidor resolve o resto (Note#resolve).
+  leavesPublishedFolders() {
+    if (!this.publishedFoldersValue.length || this.moveConfirmed) return false
+
+    const typed = this.pathTarget.value.trim()
+    const folder = this.element.querySelector("[name=origin_path]").value.split("/").slice(0, -1).join("/")
+    const path = typed.startsWith("/") ? typed.replace(/^\/+/, "") : [ folder, typed ].filter(Boolean).join("/")
+    return !this.publishedFoldersValue.some((published) => path.startsWith(`${published}/`))
+  }
+
+  // O diálogo do painel com o rótulo Move; confirmado, o envio sai de novo, já sem perguntar.
+  async confirmMove() {
+    const asker = document.createElement("button")
+    asker.dataset.confirmButton = this.moveButtonValue
+    if (!(await Turbo.config.forms.confirm(this.moveWarningValue, this.element, asker))) return
+
+    this.moveConfirmed = true
+    this.element.requestSubmit()
   }
 
   refuseBlankName() {

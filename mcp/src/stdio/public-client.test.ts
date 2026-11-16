@@ -37,7 +37,7 @@ describe("discoverAuthServer", () => {
     await expect(
       discoverAuthServer(TEST_ISSUER, upstream.fetch),
     ).rejects.toThrow(
-      'issuer at http://localhost:8080/.well-known/oauth-authorization-server="https://outro.exemplo"',
+      'issuer at http://localhost:6275/.well-known/oauth-authorization-server="https://outro.exemplo"',
     );
   });
 

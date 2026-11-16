@@ -88,9 +88,9 @@ func oauthServiceDeIntegracao(pool *pgxpool.Pool, codec *auth.TokenCodec, opcoes
 
 func loginDeIntegracao(t *testing.T, server *httptest.Server) string {
 	t.Helper()
-	resp := postJSON(t, server.URL+"/v1/auth/login", `{"email":"admin@markupp.dev","password":"senhaForte123"}`)
+	resp := postJSON(t, server.URL+"/v1/accounts", `{"email":"admin@markupp.dev","password":"senhaForte123-de-teste"}`)
 	defer func() { _ = resp.Body.Close() }()
-	require.Equal(t, http.StatusOK, resp.StatusCode)
+	require.Equal(t, http.StatusCreated, resp.StatusCode)
 	token, _ := decodeJSON(t, resp.Body)["access_token"].(string)
 	require.NotEmpty(t, token)
 	return token
@@ -122,8 +122,8 @@ func iniciarAutorizacaoDe(t *testing.T, server *httptest.Server, clientID, scope
 	require.Equal(t, http.StatusFound, resp.StatusCode)
 	consent, err := url.Parse(resp.Header.Get("Location"))
 	require.NoError(t, err)
-	pedido, found := strings.CutPrefix(consent.Path, "/oauth/authorize/")
-	assert.True(t, found, "esperado o pedido no caminho /oauth/authorize/<id>, veio %q", consent.Path)
+	pedido, found := strings.CutPrefix(consent.Path, "/oauth/requests/")
+	assert.True(t, found, "esperado o pedido no caminho /oauth/requests/<id>, veio %q", consent.Path)
 	assert.Equal(t, painelDeIntegracao, consent.Scheme+"://"+consent.Host)
 	return pedido
 }

@@ -28,9 +28,9 @@ func notesRequestAs(role, method, path, body string) *httptest.ResponseRecorder 
 
 func TestNotes_Viewer_EscritaRetorna403ELeituraSegue(t *testing.T) {
 	escritas := [][3]string{
-		{http.MethodPost, "/notes", `{"path":"x.md","content":"y"}`},
-		{http.MethodPut, "/notes/id-x", `{"path":"x.md","content":"y","force":true}`},
-		{http.MethodDelete, "/notes/id-x", ""},
+		{http.MethodPost, "/v1/notes", `{"path":"x.md","content":"y"}`},
+		{http.MethodPut, "/v1/notes/id-x", `{"path":"x.md","content":"y","force":true}`},
+		{http.MethodDelete, "/v1/notes/id-x", ""},
 	}
 	for _, e := range escritas {
 		rec := notesRequestAs("viewer", e[0], e[1], e[2])
@@ -38,6 +38,6 @@ func TestNotes_Viewer_EscritaRetorna403ELeituraSegue(t *testing.T) {
 		assert.Equal(t, http.StatusForbidden, rec.Code, "%s %s", e[0], e[1])
 		assert.Contains(t, rec.Body.String(), "read_only")
 	}
-	assert.Equal(t, http.StatusOK, notesRequestAs("viewer", http.MethodGet, "/notes", "").Code)
-	assert.Equal(t, http.StatusCreated, notesRequestAs("member", http.MethodPost, "/notes", `{"path":"x.md","content":"y"}`).Code)
+	assert.Equal(t, http.StatusOK, notesRequestAs("viewer", http.MethodGet, "/v1/notes", "").Code)
+	assert.Equal(t, http.StatusCreated, notesRequestAs("member", http.MethodPost, "/v1/notes", `{"path":"x.md","content":"y"}`).Code)
 }

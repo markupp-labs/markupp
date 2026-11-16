@@ -7,5 +7,7 @@
       <%= render "note_links/page", section: name, items: @sections[name], offset: 0 %>
     <% end %>
   <% end %>
-  <p role="status" data-note-links-target="status" class="truncate px-2 text-xs text-ink-muted"></p>
+  <%# O aviso da recusa de ligação chega em data-message, e o controller o põe no status depois de o frame entrar: texto
+      que já vem dentro da região viva não é lido. %>
+  <%= tag.p role: "status", class: "truncate px-2 text-xs text-ink-muted", data: { note_links_target: "status", message: flash[:links_status] } %>
 <% end %>

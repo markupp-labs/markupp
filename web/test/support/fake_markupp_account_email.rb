@@ -1,7 +1,7 @@
 # Rotas de email da conta na FakeMarkuppApi: esqueci a senha, troca por token, pedido e confirmação de verificação.
 # Cada token emitido vai para sent_tokens, a caixa de entrada da fake, de onde o teste tira o token como a pessoa tiraria do email.
 class FakeMarkuppAccountEmail
-  PUBLIC_CALLS = [ "POST /auth/password/forgot", "POST /auth/password/reset" ].freeze
+  PUBLIC_CALLS = [ "POST /v1/auth/password/forgot", "POST /v1/auth/password/reset" ].freeze
 
   # [{ kind: :password_reset | :email_verification, email:, token:, used: }], na ordem de envio.
   attr_reader :sent_tokens
@@ -17,18 +17,18 @@ class FakeMarkuppAccountEmail
 
   def post(path, body, account:, **)
     case path
-    when "/auth/password/forgot" then forgot_password(body)
-    when "/auth/password/reset" then reset_password(body)
-    when "/auth/email/verification" then request_verification(account)
-    when "/auth/email/verify" then confirm_email(body, account)
-    else raise ArgumentError, "fake API has no route for POST #{path}, expected /auth/password/forgot, /auth/password/reset, /auth/email/verification or /auth/email/verify"
+    when "/v1/auth/password/forgot" then forgot_password(body)
+    when "/v1/auth/password/reset" then reset_password(body)
+    when "/v1/auth/email/verification" then request_verification(account)
+    when "/v1/auth/email/verify" then confirm_email(body, account)
+    else raise ArgumentError, "fake API has no route for POST #{path}, expected /v1/auth/password/forgot, /v1/auth/password/reset, /v1/auth/email/verification or /v1/auth/email/verify"
     end
   end
 
   private
     # Como a API: 202 exista a conta ou não; só a conta que existe recebe o token.
     def forgot_password(body)
-      check_password_flow("POST /auth/password/forgot")
+      check_password_flow("POST /v1/auth/password/forgot")
       raise MarkuppApi::InvalidRequest, "fake API refuses POST /auth/password/forgot with #{body.inspect}, expected an email" if body[:email].blank?
 
       account = @accounts.find_by_email(body[:email])
@@ -38,17 +38,17 @@ class FakeMarkuppAccountEmail
 
     # Como a API: a senha é conferida antes do token, e o token vale uma vez.
     def reset_password(body)
-      check_password_flow("POST /auth/password/reset")
-      raise MarkuppApi::InvalidRequest, "fake API refuses password of #{body[:password].to_s.bytesize} bytes, expected 1 to #{FakeMarkuppAuth::PASSWORD_LIMIT}" unless valid_password?(body[:password])
+      check_password_flow("POST /v1/auth/password/reset")
+      FakeMarkuppAuth.refuse_new_password(body[:password], "POST /v1/auth/password/reset")
 
-      account = consume_token(:password_reset, body[:token], "POST /auth/password/reset")
+      account = consume_token(:password_reset, body[:token], "POST /v1/auth/password/reset")
       account["password"] = body[:password]
       nil
     end
 
     def request_verification(account)
       raise MarkuppApi::EmailUnavailable, "fake API has no email on POST /auth/email/verification: email_unavailable" unless @email_enabled
-      raise_already_verified(account, "POST /auth/email/verification")
+      raise_already_verified(account, "POST /v1/auth/email/verification")
 
       send_token(:email_verification, account)
       nil
@@ -56,9 +56,9 @@ class FakeMarkuppAccountEmail
 
     # Como a API: o token só serve à conta logada que o pediu.
     def confirm_email(body, account)
-      raise_already_verified(account, "POST /auth/email/verify")
+      raise_already_verified(account, "POST /v1/auth/email/verify")
 
-      consume_token(:email_verification, body[:token], "POST /auth/email/verify", account:)
+      consume_token(:email_verification, body[:token], "POST /v1/auth/email/verify", account:)
       account["verified"] = true
       nil
     end
@@ -73,8 +73,6 @@ class FakeMarkuppAccountEmail
 
       raise MarkuppApi::EmailAlreadyVerified, "fake API refuses #{call} for #{account["email"]}: email_already_verified"
     end
-
-    def valid_password?(password) = password.to_s.strip.present? && password.bytesize <= FakeMarkuppAuth::PASSWORD_LIMIT
 
     # Tokens seguem a ordem de envio: password_reset-token-1, email_verification-token-2...
     def send_token(kind, account)

@@ -10,7 +10,7 @@ class OAuthAuthorizationsTest < ApplicationSystemTestCase
     use_fake_api(oauth_requests: [ consent_request ])
     sign_in_through_form
 
-    visit "/oauth/authorize/r1"
+    visit "/oauth/requests/r1"
     assert_text "Claude wants to access your markupp"
     assert_equal "Approve", evaluate_script("document.activeElement.textContent.trim()")
     page.driver.browser.action.send_keys(:enter).perform
@@ -22,7 +22,7 @@ class OAuthAuthorizationsTest < ApplicationSystemTestCase
     use_fake_api(oauth_requests: [ consent_request ])
     sign_in_through_form
 
-    visit "/oauth/authorize/r1"
+    visit "/oauth/requests/r1"
     assert_text "Claude wants to access your markupp"
     page.driver.browser.action.send_keys(:escape).perform
 
@@ -33,7 +33,7 @@ class OAuthAuthorizationsTest < ApplicationSystemTestCase
     use_fake_api(oauth_requests: [ consent_request ])
     sign_in_through_form
 
-    visit "/oauth/authorize/r1"
+    visit "/oauth/requests/r1"
     assert_button "Deny"
     click_on "Deny"
 
@@ -44,7 +44,7 @@ class OAuthAuthorizationsTest < ApplicationSystemTestCase
     use_fake_api(oauth_requests: [ consent_request(already_authorized: true) ])
     sign_in_through_form
 
-    visit "/oauth/authorize/r1"
+    visit "/oauth/requests/r1"
 
     assert_current_path "/up?code=code-r1&state=state-r1"
   end
@@ -52,7 +52,7 @@ class OAuthAuthorizationsTest < ApplicationSystemTestCase
   test "without a session the login comes first and the consent after it" do
     use_fake_api(oauth_requests: [ consent_request ])
 
-    visit "/oauth/authorize/r1"
+    visit "/oauth/requests/r1"
     assert_current_path new_session_path
     fill_in "Email", with: FakeMarkuppAccounts::DEFAULT_EMAIL
     fill_in "Password", with: FakeMarkuppAccounts::DEFAULT_PASSWORD
@@ -67,7 +67,7 @@ class OAuthAuthorizationsTest < ApplicationSystemTestCase
     use_fake_api(oauth_requests: [ consent_request(expires_at: 1.minute.ago.utc.iso8601) ])
     sign_in_through_form
 
-    visit "/oauth/authorize/r1"
+    visit "/oauth/requests/r1"
 
     assert_text "This authorization request is no longer valid"
     assert_no_button "Approve"

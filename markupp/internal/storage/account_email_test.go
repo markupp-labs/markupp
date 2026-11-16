@@ -156,7 +156,7 @@ func TestAccountEmail_ContaVerificada_PassaAVerOsConvites(t *testing.T) {
 	ctx := storagetest.SeedMember(t, db, adminDoConvite, "va")
 	inv := conviteDe(adminDoConvite, "c1", "nova@markupp.dev")
 	inv.ExpiresAt = validadeDoConvite
-	require.NoError(t, storage.NewPostgresAdminRepository(db).CreateInviteTx(ctx, inv, auth.HashOpaqueToken("tok-c"), eventoDoConvite(inv), false))
+	require.NoError(t, storage.NewPostgresAdminRepository(db).CreateInviteTx(ctx, inv, auth.HashOpaqueToken("tok-c"), eventoDoConvite(inv), false, semLimite))
 	authRepo := storage.NewPostgresAuthRepository(db)
 	antes, err := authRepo.ListPendingInvites(context.Background(), "u1", time.Now())
 	require.NoError(t, err)

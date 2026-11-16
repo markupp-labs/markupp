@@ -1,0 +1,26 @@
+<%# locals: (form:, attribute:, label: nil, error: nil, error_id: nil, autocomplete: "new-password", autofocus: false, rule: false) -%>
+<%# Campo de senha com o olho que mostra o que se digita. rule põe o mínimo de 15 caracteres e a dica dele, para a senha nova.
+    error vem embaixo do campo; error_id aponta um erro que a página mostra em outro lugar. %>
+<% id = form.field_id(attribute) %>
+<% hint_id = "#{id}_hint" if rule %>
+<% error_id ||= "#{id}_error" if error %>
+<div>
+  <%= form.label attribute, label, class: "block text-ink-muted" %>
+  <div class="flex items-center gap-1" data-controller="password-visibility">
+    <%= form.password_field attribute, required: true, minlength: (15 if rule), autocomplete:, autofocus:,
+                            data: { password_visibility_target: "field" },
+                            aria: { invalid: error_id.present?, describedby: [ hint_id, error_id ].compact.join(" ").presence },
+                            class: "w-full rounded-md border border-line bg-surface px-2 py-1 aria-invalid:border-danger" %>
+    <button type="button" class="btn-icon group" aria-controls="<%= id %>" aria-pressed="false" aria-label="<%= t("passwords.field.show") %>"
+            title="<%= t("passwords.field.show") %>" data-action="password-visibility#toggle">
+      <%= icon("eye", class: "size-4 group-aria-pressed:hidden") %>
+      <%= icon("eye-slash", class: "size-4 hidden group-aria-pressed:block") %>
+    </button>
+  </div>
+  <% if rule %>
+    <p id="<%= hint_id %>" class="text-ink-muted"><%= t("passwords.field.rule") %></p>
+  <% end %>
+  <% if error %>
+    <p id="<%= error_id %>" class="text-danger"><%= error %></p>
+  <% end %>
+</div>

@@ -15,8 +15,9 @@ import (
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/storage/storagetest"
 )
 
-// cofreComSugestoes monta um cofre indexado em que x e y ligam a z, lex fala do mesmo
-// assunto que x sem ligação, l já liga a x e longe não tem nada em comum com x.
+// cofreComSugestoes monta um cofre indexado em que x e y ligam a z, lex fala de parte
+// do assunto de x, pouco para a ligação por texto parecido, l já liga a x e longe não
+// tem nada em comum com x.
 func cofreComSugestoes(t *testing.T) *storage.PostgresNoteGraph {
 	t.Helper()
 	db := setupNotesDB(t)
@@ -26,7 +27,7 @@ func cofreComSugestoes(t *testing.T) *storage.PostgresNoteGraph {
 		notaComCaminho("y", "y.md", "[[z]]"),
 		notaComCaminho("z", "z.md", "alvo"),
 		notaComCaminho("l", "l.md", "[[x]] kubernetes orquestra conteineres"),
-		notaComCaminho("lex", "lex.md", "kubernetes orquestra conteineres"),
+		notaComCaminho("lex", "lex.md", "kubernetes orquestra sistemas distribuidos"),
 		notaComCaminho("longe", "longe.md", "nada a ver"),
 	} {
 		storagetest.SaveNote(ctxDeTeste, t, repo, nota)
@@ -101,7 +102,7 @@ func TestNoteGraph_Suggestions_ViewerLeEEstranhoNaoVe(t *testing.T) {
 	db := setupNotesDB(t)
 	repo := storage.NewPostgresNotesRepository(db, "simple")
 	storagetest.SaveNote(ctxDeTeste, t, repo, notaComCaminho("a", "a.md", "kubernetes orquestra"))
-	storagetest.SaveNote(ctxDeTeste, t, repo, notaComCaminho("b", "b.md", "kubernetes orquestra"))
+	storagetest.SaveNote(ctxDeTeste, t, repo, notaComCaminho("b", "b.md", "kubernetes"))
 	storagetest.SaveNote(ctxDeTeste, t, repo, notaComCaminho("c", "c.md", "outro assunto"))
 	indexaTodosOsCofres(t, db, "simple")
 	graph := storage.NewPostgresNoteGraph(db, "simple")

@@ -1,6 +1,7 @@
 # Grafo em json pronto para o canvas (graph_view_controller.js), o mesmo para o cofre inteiro e para o local da nota: o
 # link de cada nota, o matiz da comunidade (a mesma conta do Explorer), o PageRank que dá o raio, a ligação inferida, que
-# o canvas desenha tracejada, e a nota aberta, que fica em destaque.
+# o canvas desenha tracejada, a automática, pontilhada, o método de cada ligação (origin: manual, inferred ou o tipo da
+# automática), que dá a cor, e a nota aberta, que fica em destaque.
 module GraphDrawing
   extend ActiveSupport::Concern
 
@@ -18,11 +19,18 @@ module GraphDrawing
     end
 
     def graph_node(node, current)
-      { id: node.id, title: node.title, url: (note_path(node.id) if node.id), hue: (helpers.community_hue(node.community) if node.community),
+      { id: node.id, title: node.title, url: (graph_note_url(node) if node.id), hue: (helpers.community_hue(node.community) if node.community),
         rank: node.pagerank, unresolved: node.unresolved == true, current: node.id.present? && node.id == current }
     end
 
-    def graph_link(link) = { source: link.source, target: link.target, inferred: link.type == "inferred" }
+    # O link do nó que é nota: a página dela no painel. A leitura sem conta troca pelo endereço público.
+    def graph_note_url(node) = note_path(node.id)
+
+    def graph_link(link)
+      automatic = Link::AUTOMATIC_TYPES.include?(link.type)
+      inferred = link.type == "inferred"
+      { source: link.source, target: link.target, inferred:, automatic:, origin: inferred || automatic ? link.type : "manual" }
+    end
 
     # Cofre que a conta não lê mais: o canvas mostra a recusa no lugar do grafo.
     def refuse_graph(error)

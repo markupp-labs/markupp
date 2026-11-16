@@ -5,9 +5,11 @@ class FakeMarkuppTenants
   attr_reader :invites
 
   DEFAULT_TENANTS = [ { id: "tenant-1", name: "Acme research", members: { FakeMarkuppAccounts::DEFAULT_EMAIL => "owner" } } ].freeze
+  # O mesmo tenant com a conta padrão como viewer, para os testes do que o viewer não vê.
+  VIEWER_TENANTS = [ DEFAULT_TENANTS.first.merge(members: { FakeMarkuppAccounts::DEFAULT_EMAIL => "viewer" }) ].freeze
   NAME_LIMIT = 100
 
-  INVITE_ANSWER = %r{\A/me/invites/(?<id>[^/]+)/(?<answer>accept|decline)\z}
+  INVITE_ANSWER = %r{\A/v1/me/invites/(?<id>[^/]+)/(?<answer>accept|decline)\z}
   NOTIFICATIONS = "/v1/me/notifications".freeze
 
   # tenants: [{ id:, name:, members: { email => papel }, notes_count:, last_note_at: }]; as estatísticas são opcionais,
@@ -22,17 +24,17 @@ class FakeMarkuppTenants
   end
 
   def get(path, account:, **)
-    return memberships(account) if path == "/me/tenants"
-    return pending_invites(account) if path == "/me/invites"
+    return memberships(account) if path == "/v1/me/tenants"
+    return pending_invites(account) if path == "/v1/me/invites"
     return notifications(account) if path == NOTIFICATIONS
 
-    raise ArgumentError, "fake API has no route for GET #{path}, expected /me/tenants, /me/invites or #{NOTIFICATIONS}"
+    raise ArgumentError, "fake API has no route for GET #{path}, expected /v1/me/tenants, /v1/me/invites or #{NOTIFICATIONS}"
   end
 
   def post(path, body, account:, **)
-    return create_tenant(body, account) if path == "/tenants"
+    return create_tenant(body, account) if path == "/v1/tenants"
 
-    answer = INVITE_ANSWER.match(path) or raise ArgumentError, "fake API has no route for POST #{path}, expected /tenants or #{INVITE_ANSWER.source}"
+    answer = INVITE_ANSWER.match(path) or raise ArgumentError, "fake API has no route for POST #{path}, expected /v1/tenants or #{INVITE_ANSWER.source}"
     answer[:answer] == "accept" ? accept_invite(answer[:id], account) : decline_invite(answer[:id], account)
   end
 

@@ -12,6 +12,7 @@ import (
 
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/api"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/auth"
+	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/instance"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/oauth"
 )
 
@@ -64,8 +65,9 @@ func serveScopedWith(route scopedRoute, scope string, tenants api.TenantResolver
 // routerWithAllServices monta o roteador com todos os serviços falsos ligados.
 func routerWithAllServices(tokens api.TokenValidator, tenants api.TenantResolver) chi.Router {
 	return api.NewRouter(api.RouterDeps{
-		Notes: &fakeService{}, Graph: &fakeNoteGraph{}, Auth: &fakeAuthService{}, Admin: &fakeAdminService{},
+		Notes: &fakeService{}, Graph: &fakeNoteGraph{}, Auth: &fakeAuthService{accountUser: administradorDaInstancia}, Admin: &fakeAdminService{},
 		AccountEmail: &fakeAccountEmailService{}, OAuth: &fakeOAuthService{}, Vaults: &fakeVaultService{},
+		InstanceAdmins: instance.Admins{emailDoAdministrador}, InstanceEmbedding: &fakeInstanceEmbedding{},
 		OAuthMetadata: &api.OAuthMetadata{Issuer: issuerDeTeste}, Probe: &fakeProbe{},
 		Tokens: tokens, Tenants: tenants,
 	})

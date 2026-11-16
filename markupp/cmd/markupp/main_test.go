@@ -148,14 +148,15 @@ func TestParseCommand_NotifyLoop_RetornaEnvioEmLaco(t *testing.T) {
 	assert.Equal(t, notifyLoopCommand, cmd)
 }
 
-func TestRun_NotifyLoopSemSMTP_RecusaNomeandoAVariavel(t *testing.T) {
+func TestRun_NotifyLoopSemSMTP_FicaOciosoAteEncerrarSemAbrirOBanco(t *testing.T) {
 	t.Setenv("MARKUPP_DATABASE_URL", "postgres://ninguem@127.0.0.1:1/nada?connect_timeout=1")
 	t.Setenv("MARKUPP_AUTH_SECRET", "12345678901234567890123456789012")
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
 
-	err := run(context.Background(), slog.New(slog.DiscardHandler), []string{"markupp", "notify-loop"})
+	err := run(ctx, slog.New(slog.DiscardHandler), []string{"markupp", "notify-loop"})
 
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "MARKUPP_SMTP_URL")
+	require.NoError(t, err)
 }
 
 func TestRun_NotifyLoopComSMTPEBancoInalcancavel_RetornaErroDoBanco(t *testing.T) {

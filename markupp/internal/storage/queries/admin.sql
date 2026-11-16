@@ -21,6 +21,11 @@ WHERE NOT EXISTS (
     WHERE m.tenant_id = sqlc.arg(tenant_id) AND u.email = sqlc.arg(email)
 );
 
+-- Cota de quem convida na janela que começa em since (00038). Trava o tenant e a conta
+-- até o fim da transação.
+-- name: GetInviteQuota :one
+SELECT inviter_verified::boolean, by_inviter::bigint, by_tenant::bigint FROM markupp_invite_quota(sqlc.arg(since)::timestamptz);
+
 -- Trava os owners do tenant para que duas mudanças simultâneas não o deixem sem owner.
 -- name: LockTenantOwners :many
 SELECT user_id FROM tenant_memberships WHERE role = 'owner' FOR UPDATE;

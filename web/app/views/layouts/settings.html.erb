@@ -1,5 +1,5 @@
 <%# Configurações como no VS Code e no Obsidian: navegação à esquerda, seção à direita; no celular a navegação vira uma linha acima,
-    com os grupos Vault e Tenant numa linha própria cada, para as General não parecerem configuração do app. %>
+    com os grupos Vault, Tenant e Instance numa linha própria cada, para as General não parecerem configuração do app. %>
 <%# Com tenant a barra lateral é a das notas, árvore e New note; sem ele (onboarding) fica só a marca e o rodapé. %>
 <% content_for :area, "settings" %>
 <% if current_tenant %>
@@ -20,6 +20,7 @@
     <div class="mt-4 grid gap-4 md:grid-cols-[12rem_minmax(0,1fr)] md:gap-8">
       <nav aria-label="<%= t("settings.nav.title") %>" data-focus-region="settings" data-focus-region-target="[aria-current=page]; a" class="flex flex-wrap gap-1 md:flex-col md:flex-nowrap">
         <%= settings_nav_link("accounts", settings_account_path) %>
+        <%= settings_nav_link("authorizations", settings_authorizations_path) %>
         <%= settings_nav_link("appearances", settings_appearance_path) %>
         <%= settings_nav_link("editors", settings_editor_path) %>
         <%= settings_nav_link("agents", settings_agents_path) %>
@@ -28,6 +29,7 @@
           <%= render "settings/nav_group", label: t("settings.nav.vault"), name: current_vault.name %>
           <%= settings_nav_link("vault_general", settings_vault_path) %>
           <%= settings_nav_link("vault_members", settings_vault_members_path) %>
+          <%= settings_nav_link("link_refusals", settings_link_refusals_path) %>
         <% end %>
         <% if current_tenant %>
           <%= render "settings/nav_group", label: t("settings.nav.tenant"), name: current_tenant.name %>
@@ -36,6 +38,15 @@
         <% if current_tenant&.admin? %>
           <%= settings_nav_link("members", settings_members_path) %>
           <%= settings_nav_link("invites", settings_invites_path) %>
+        <% end %>
+        <%# Publicações para todo membro do tenant: a API só lista o que a conta vê. %>
+        <% if current_tenant %>
+          <%= settings_nav_link("publications", settings_publications_path) %>
+        <% end %>
+        <%# A instância por último: vale para todos os tenants, e só quem hospeda nomeia quem a administra (ADR-0057). %>
+        <% if instance_admin? %>
+          <%= render "settings/nav_group", label: t("settings.nav.instance"), name: request.host %>
+          <%= settings_nav_link("instance_embedding", settings_instance_embedding_path) %>
         <% end %>
       </nav>
 

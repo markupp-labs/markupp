@@ -10,8 +10,7 @@ import (
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/oauth"
 )
 
-// mountOAuthAuthorizationRoutes monta as Autorizações da conta só sob /v1, sem o alias
-// obsoleto sem prefixo: exigem login, mas não tenant, porque a Autorização é da conta.
+// mountOAuthAuthorizationRoutes monta as Autorizações da conta sob /v1: exigem login, mas não tenant, porque a Autorização é da conta.
 func mountOAuthAuthorizationRoutes(r chi.Router, svc OAuthService, tokenValidator TokenValidator) {
 	h := &oauthHandler{svc: svc}
 	r.Route(currentVersionPrefix+"/me/authorizations", func(g chi.Router) {

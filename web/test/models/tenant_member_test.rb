@@ -52,7 +52,7 @@ class TenantMemberTest < ActiveSupport::TestCase
   private
     def api_as(email)
       fake_api = FakeMarkuppApi.new(accounts: ACCOUNTS, tenants: TENANTS)
-      pair = fake_api.post("/auth/login", email:, password: PASSWORD)
+      pair = fake_api.post("/v1/auth/login", email:, password: PASSWORD)
       fake_api.as(access_token: pair.fetch("access_token"), tenant_id: "tenant-1")
     end
 end

@@ -41,3 +41,13 @@ MCP num arquivo de volume compartilhado, e o servidor MCP descobre o issuer pela
 - Quem usa o registro dinâmico precisa ligá-lo; Claude, Cursor e VS Code usam CIMD
 - O cluster continua com o servidor MCP em subdomínio próprio (ADR-0045), definindo as
   variáveis por Secret
+
+## Emenda
+
+Em novembro de 2026, o ADR-0057 estendeu o segredo gerado no banco à chave que cifra os segredos
+que o banco guarda, como a chave do provedor de embedding, com `MARKUPP_SECRET_KEY` como override.
+
+## Complementado por
+
+ADR-0058: porta única 6275 e painel na raiz da URL pública, que dispensa `MARKUPP_PANEL_URL`
+no self-host.

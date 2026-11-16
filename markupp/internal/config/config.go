@@ -54,6 +54,9 @@ type Config struct {
 	OAuthResources []OAuthResource
 	// MCPUpstreamURL é o servidor MCP para onde /mcp é encaminhado. Vazia, /mcp não existe.
 	MCPUpstreamURL string
+	// PanelUpstreamURL é o painel para onde a raiz / é encaminhada. Vazia, a raiz não
+	// encaminha nada e o painel vive em host próprio.
+	PanelUpstreamURL string
 	// MCPSecretPath é o arquivo onde o servidor escreve o segredo do MCP da mesma origem,
 	// num volume que o servidor MCP lê.
 	MCPSecretPath string
@@ -86,25 +89,44 @@ type Config struct {
 	// RateLimitPerMinute é quantas tentativas por minuto cada IP e cada email têm nas
 	// rotas de conta (ADR-0044).
 	RateLimitPerMinute int
+	// PublicRateLimitPerMinute é quantas leituras por minuto cada IP tem nas rotas
+	// públicas das notas publicadas (ADR-0048), somadas todas as rotas.
+	PublicRateLimitPerMinute int
+	// InviteLimitPerAccount e InviteLimitPerTenant são quantos convites cabem em 24
+	// horas, por conta em todos os tenants dela e por tenant (#50).
+	InviteLimitPerAccount int
+	InviteLimitPerTenant  int
 	// TrustedProxies são as redes dos proxies cujo X-Forwarded-For o limite de
 	// tentativas aceita. Vazia, o limite usa só o IP da conexão.
 	TrustedProxies []netip.Prefix
+	// LoginProviders são os provedores externos de login, na ordem de
+	// MARKUPP_LOGIN_PROVIDERS. Vazia, só há email e senha (ADR-0054).
+	LoginProviders []LoginProvider
+	// InstanceAdmins são os emails, em minúsculas, das contas que administram a
+	// instância. Vazia, ninguém administra pelo painel.
+	InstanceAdmins []string
+	// SecretKey cifra os segredos que o banco guarda, como a chave do provedor de
+	// embedding. Vazia, a chave de cifra vem do banco (ADR-0057).
+	SecretKey string
 }
 
 // Default devolve a configuração usada nas variáveis não definidas.
 func Default() Config {
 	cfg := Config{
-		Port:                    8080,
-		MaxNoteSize:             50 * 1024 * 1024,
-		AuthSecret:              "",
-		DefaultTenantID:         "default",
-		JWTExpirationMinutes:    15,
-		RefreshExpirationDays:   7,
-		AuthRegistrationEnabled: false,
-		LocalAuthEnabled:        true,
-		SearchConfig:            "simple",
-		IndexInterval:           30 * time.Second,
-		RateLimitPerMinute:      5,
+		Port:                     6275,
+		MaxNoteSize:              50 * 1024 * 1024,
+		AuthSecret:               "",
+		DefaultTenantID:          "default",
+		JWTExpirationMinutes:     15,
+		RefreshExpirationDays:    7,
+		AuthRegistrationEnabled:  false,
+		LocalAuthEnabled:         true,
+		SearchConfig:             "simple",
+		IndexInterval:            30 * time.Second,
+		RateLimitPerMinute:       5,
+		InviteLimitPerAccount:    20,
+		InviteLimitPerTenant:     50,
+		PublicRateLimitPerMinute: 300,
 	}
 	setOAuthDefaults(&cfg)
 	return cfg
@@ -118,6 +140,9 @@ func Load(lookup LookupFunc) (Config, error) {
 		return Config{}, err
 	}
 	readString(lookup, "MARKUPP_SCALER_PASSWORD", &cfg.ScalerPassword)
+	if err := readInstanceAdmins(lookup, &cfg.InstanceAdmins); err != nil {
+		return Config{}, err
+	}
 	cfg.AllowedOrigins = splitOrigins(lookup)
 	port := int64(cfg.Port)
 	if err := readBounded(lookup, "MARKUPP_PORT", 1, 65535, "from 1 to 65535", &port); err != nil {
@@ -141,21 +166,43 @@ func loadServerSettings(lookup LookupFunc, cfg *Config) error {
 	if err := loadOAuthSettings(lookup, cfg); err != nil {
 		return err
 	}
+	if err := loadLoginProviders(lookup, cfg); err != nil {
+		return err
+	}
 	if err := loadMCPSettings(lookup, cfg); err != nil {
 		return err
 	}
 	if err := loadSMTPSettings(lookup, cfg); err != nil {
 		return err
 	}
-	if err := readRateLimit(lookup, &cfg.RateLimitPerMinute); err != nil {
+	if err := readRateLimits(lookup, cfg); err != nil {
+		return err
+	}
+	if err := readInviteLimits(lookup, cfg); err != nil {
 		return err
 	}
 	return readTrustedProxies(lookup, &cfg.TrustedProxies)
 }
 
-func readRateLimit(lookup LookupFunc, target *int) error {
+// readRateLimits lê o limite das rotas de conta e o da leitura pública.
+func readRateLimits(lookup LookupFunc, cfg *Config) error {
+	if err := readLimit(lookup, "MARKUPP_RATE_LIMIT_PER_MINUTE", &cfg.RateLimitPerMinute); err != nil {
+		return err
+	}
+	return readLimit(lookup, "MARKUPP_PUBLIC_RATE_LIMIT_PER_MINUTE", &cfg.PublicRateLimitPerMinute)
+}
+
+func readInviteLimits(lookup LookupFunc, cfg *Config) error {
+	if err := readLimit(lookup, "MARKUPP_INVITE_LIMIT_PER_ACCOUNT", &cfg.InviteLimitPerAccount); err != nil {
+		return err
+	}
+	return readLimit(lookup, "MARKUPP_INVITE_LIMIT_PER_TENANT", &cfg.InviteLimitPerTenant)
+}
+
+// readLimit lê um limite inteiro de 1 a 10000 da variável name.
+func readLimit(lookup LookupFunc, name string, target *int) error {
 	limit := int64(*target)
-	if err := readBounded(lookup, "MARKUPP_RATE_LIMIT_PER_MINUTE", 1, 10000, "from 1 to 10000", &limit); err != nil {
+	if err := readBounded(lookup, name, 1, 10000, "from 1 to 10000", &limit); err != nil {
 		return err
 	}
 	*target = int(limit)
@@ -232,6 +279,9 @@ func LoadIndexer(lookup LookupFunc) (Config, error) {
 	cfg.DatabaseURL = url
 	readString(lookup, "MARKUPP_SEARCH_CONFIG", &cfg.SearchConfig)
 	if err := readInterval(lookup, "MARKUPP_INDEX_INTERVAL", &cfg.IndexInterval); err != nil {
+		return Config{}, err
+	}
+	if err := readSecretKey(lookup, &cfg.SecretKey); err != nil {
 		return Config{}, err
 	}
 	return cfg, nil

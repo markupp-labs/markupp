@@ -1,0 +1,45 @@
+# syntax=docker/dockerfile:1.7
+
+# Imagem do indexador de embedding (ADR-0053): o mesmo servidor, compilado com cgo e
+# a tag ORT para o provedor local rodar no ONNX Runtime. Fica no Debian porque o ONNX
+# Runtime publicado é para glibc. Os pesos do modelo não vêm na imagem: o embed-loop
+# baixa na primeira subida com o provedor local.
+FROM golang:1.27-trixie AS builder
+WORKDIR /src
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+RUN CGO_ENABLED=1 go build -tags ORT -ldflags="-s -w" -o /out/markupp ./cmd/markupp
+
+FROM debian:trixie-slim
+
+# A versão do ONNX Runtime com que o hugot testa, e o SHA-256 de cada tarball do release.
+ARG ONNXRUNTIME_VERSION=1.31.1
+ARG ONNXRUNTIME_SHA256_X64=c849e36a1ef3e22d4ff217b9d1ce4a3cf5b9467b975610913ae959ad5b16bdc9
+ARG ONNXRUNTIME_SHA256_AARCH64=5317505e2da99be65f8e2775ba3c2afd6d2961fd78aba1bd8f56159f48820c78
+ARG TARGETARCH
+
+# O hugot procura a libonnxruntime.so em /usr/lib. A pasta do modelo nasce com o dono
+# do servidor: um volume nomeado novo herda esse dono, e o servidor sem root grava nele.
+RUN set -eux; \
+  case "$TARGETARCH" in \
+    amd64) arch=x64; sum="$ONNXRUNTIME_SHA256_X64" ;; \
+    arm64) arch=aarch64; sum="$ONNXRUNTIME_SHA256_AARCH64" ;; \
+    *) echo "arquitetura $TARGETARCH sem ONNX Runtime publicado, esperado amd64 ou arm64" >&2; exit 1 ;; \
+  esac; \
+  apt-get update; \
+  apt-get install -y --no-install-recommends ca-certificates curl; \
+  curl -fsSL -o /tmp/ort.tgz "https://github.com/microsoft/onnxruntime/releases/download/v${ONNXRUNTIME_VERSION}/onnxruntime-linux-${arch}-${ONNXRUNTIME_VERSION}.tgz"; \
+  echo "${sum}  /tmp/ort.tgz" | sha256sum -c -; \
+  tar -xzf /tmp/ort.tgz -C /tmp; \
+  cp -P "/tmp/onnxruntime-linux-${arch}-${ONNXRUNTIME_VERSION}"/lib/libonnxruntime.so* /usr/lib/; \
+  rm -rf /tmp/ort.tgz "/tmp/onnxruntime-linux-${arch}-${ONNXRUNTIME_VERSION}"; \
+  apt-get purge -y curl; \
+  apt-get autoremove -y; \
+  rm -rf /var/lib/apt/lists/*; \
+  useradd -u 10001 -m markupp; \
+  install -d -o markupp -g markupp /var/lib/markupp/models
+COPY --from=builder /out/markupp /usr/local/bin/markupp
+USER markupp
+ENTRYPOINT ["/usr/local/bin/markupp"]
+CMD ["embed-loop"]

@@ -3,7 +3,8 @@ module Settings
   class InvitesController < TenantAdminController
     # Recusa da emissão: campo do formulário que mostra o motivo e status da resposta.
     FIELD_REFUSALS = { MarkuppApi::InvalidRequest => [ :email, :unprocessable_content ], MarkuppApi::AlreadyMember => [ :email, :conflict ],
-                       MarkuppApi::RoleAboveOwn => [ :role, :forbidden ] }.freeze
+                       MarkuppApi::RoleAboveOwn => [ :role, :forbidden ], MarkuppApi::EmailNotVerified => [ :email, :forbidden ],
+                       MarkuppApi::InviteLimitReached => [ :email, :too_many_requests ] }.freeze
 
     rescue_from(*FIELD_REFUSALS.keys, with: :render_field_refusal)
     helper_method :tenant_invites

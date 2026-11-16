@@ -2,7 +2,9 @@ package storage
 
 import (
 	"context"
+	"errors"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/notes"
@@ -52,7 +54,18 @@ func vaultNotesParams(vaultID string, vq notes.VaultNotesQuery) gen.ListVaultNot
 func toRankedNote(r gen.ListVaultNotesRow) notes.Note {
 	note := toNote(gen.Note{ID: r.ID, VaultID: r.VaultID, Path: r.Path, ContentSha256: r.ContentSha256, UpdatedAt: r.UpdatedAt})
 	note.Rank = toNoteRank(gen.GetNoteRankRow{Pagerank: r.Pagerank, InDegree: r.InDegree, OutDegree: r.OutDegree, CommunityID: r.CommunityID})
+	note.PublicID = optionalText(r.PublicID)
 	return note
+}
+
+// withPublicID lê o id público da nota, que fica nil quando ela não está publicada.
+func withPublicID(ctx context.Context, q *gen.Queries, note notes.Note) (notes.Note, error) {
+	publicID, err := q.GetNotePublicID(ctx, note.ID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return note, nil
+	}
+	note.PublicID = &publicID
+	return note, err
 }
 
 // withRank lê a organização derivada da nota.

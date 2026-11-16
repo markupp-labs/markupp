@@ -9,6 +9,19 @@ import (
 	"context"
 )
 
+const allowFilteredVectorScan = `-- name: AllowFilteredVectorScan :exec
+SELECT set_config('hnsw.iterative_scan', 'strict_order', true)
+`
+
+// O HNSW filtra o cofre depois de achar os vizinhos; a busca iterativa continua até
+// achar os k do cofre, na ordem exata. Vale até o fim da transação.
+// shortcut: a busca para em hnsw.max_scan_tuples (20 mil); um cofre pequeno numa tabela
+// grande pode ficar com menos de 5 vizinhos, e então vale subir o teto ou filtrar antes.
+func (q *Queries) AllowFilteredVectorScan(ctx context.Context) error {
+	_, err := q.db.Exec(ctx, allowFilteredVectorScan)
+	return err
+}
+
 const countTitleOccurrences = `-- name: CountTitleOccurrences :many
 SELECT k.title_key::text AS title_key, (o.occurrences IS NULL)::bool AS common,
        coalesce(o.occurrences, 0)::int AS occurrences
@@ -83,6 +96,33 @@ func (q *Queries) DeleteNoteCommunities(ctx context.Context, vaultID string) err
 	return err
 }
 
+const deleteVaultMentionLinks = `-- name: DeleteVaultMentionLinks :exec
+DELETE FROM note_automatic_links WHERE vault_id = $1 AND kind = 'mentioned'
+`
+
+func (q *Queries) DeleteVaultMentionLinks(ctx context.Context, vaultID string) error {
+	_, err := q.db.Exec(ctx, deleteVaultMentionLinks, vaultID)
+	return err
+}
+
+const deleteVaultRelatedLinks = `-- name: DeleteVaultRelatedLinks :exec
+DELETE FROM note_automatic_links WHERE vault_id = $1 AND kind = 'related'
+`
+
+func (q *Queries) DeleteVaultRelatedLinks(ctx context.Context, vaultID string) error {
+	_, err := q.db.Exec(ctx, deleteVaultRelatedLinks, vaultID)
+	return err
+}
+
+const deleteVaultSemanticLinks = `-- name: DeleteVaultSemanticLinks :exec
+DELETE FROM note_automatic_links WHERE vault_id = $1 AND kind = 'semantic'
+`
+
+func (q *Queries) DeleteVaultSemanticLinks(ctx context.Context, vaultID string) error {
+	_, err := q.db.Exec(ctx, deleteVaultSemanticLinks, vaultID)
+	return err
+}
+
 const listNoteCommunities = `-- name: ListNoteCommunities :many
 SELECT note_id, community_id FROM note_communities WHERE vault_id = $1 ORDER BY note_id
 `
@@ -147,14 +187,17 @@ func (q *Queries) ListVaultCitations(ctx context.Context, vaultID string) ([]Lis
 }
 
 const listVaultEdges = `-- name: ListVaultEdges :many
-SELECT source_id, target_id FROM note_edges WHERE vault_id = $1 ORDER BY source_id, target_id
+SELECT source_id, target_id, (kind IN ('mentioned', 'related', 'semantic'))::bool AS automatic
+FROM note_edges WHERE vault_id = $1 ORDER BY source_id, target_id
 `
 
 type ListVaultEdgesRow struct {
-	SourceID string
-	TargetID string
+	SourceID  string
+	TargetID  string
+	Automatic bool
 }
 
+// A ligação automática pesa menos no PageRank e nas comunidades (ADR-0053).
 func (q *Queries) ListVaultEdges(ctx context.Context, vaultID string) ([]ListVaultEdgesRow, error) {
 	rows, err := q.db.Query(ctx, listVaultEdges, vaultID)
 	if err != nil {
@@ -164,7 +207,36 @@ func (q *Queries) ListVaultEdges(ctx context.Context, vaultID string) ([]ListVau
 	var items []ListVaultEdgesRow
 	for rows.Next() {
 		var i ListVaultEdgesRow
-		if err := rows.Scan(&i.SourceID, &i.TargetID); err != nil {
+		if err := rows.Scan(&i.SourceID, &i.TargetID, &i.Automatic); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listVaultNoteContents = `-- name: ListVaultNoteContents :many
+SELECT id, content FROM notes WHERE vault_id = $1 ORDER BY id
+`
+
+type ListVaultNoteContentsRow struct {
+	ID      string
+	Content string
+}
+
+func (q *Queries) ListVaultNoteContents(ctx context.Context, vaultID string) ([]ListVaultNoteContentsRow, error) {
+	rows, err := q.db.Query(ctx, listVaultNoteContents, vaultID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListVaultNoteContentsRow
+	for rows.Next() {
+		var i ListVaultNoteContentsRow
+		if err := rows.Scan(&i.ID, &i.Content); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -336,5 +408,31 @@ type SaveNoteCommunitiesParams struct {
 
 func (q *Queries) SaveNoteCommunities(ctx context.Context, arg SaveNoteCommunitiesParams) error {
 	_, err := q.db.Exec(ctx, saveNoteCommunities, arg.NoteIds, arg.CommunityIds)
+	return err
+}
+
+const saveVaultSemanticLinks = `-- name: SaveVaultSemanticLinks :exec
+WITH knn AS (
+    SELECT e.note_id AS source_id, n.note_id AS target_id, n.similarity
+    FROM note_embeddings e
+    CROSS JOIN LATERAL (
+        SELECT o.note_id, 1 - (o.embedding <=> e.embedding) AS similarity
+        FROM note_embeddings o
+        WHERE o.vault_id = e.vault_id AND o.note_id <> e.note_id
+        ORDER BY o.embedding <=> e.embedding
+        LIMIT 5
+    ) n
+    WHERE e.vault_id = $1
+)
+INSERT INTO note_automatic_links (source_id, target_id, vault_id, kind, score)
+SELECT a.source_id, a.target_id, $1, 'semantic', a.similarity
+FROM knn a
+JOIN knn b ON b.source_id = a.target_id AND b.target_id = a.source_id
+`
+
+// Ligação por sentido: o par em que cada nota está entre as 5 de maior cosseno da
+// outra (kNN mútuo), sem mínimo, gravado nos dois sentidos com o cosseno.
+func (q *Queries) SaveVaultSemanticLinks(ctx context.Context, vaultID string) error {
+	_, err := q.db.Exec(ctx, saveVaultSemanticLinks, vaultID)
 	return err
 }

@@ -1,4 +1,4 @@
-# Consentimento OAuth (ADR-0047): o servidor manda o navegador a /oauth/authorize/<id>, a conta logada aprova ou recusa,
+# Consentimento OAuth (ADR-0047): o servidor manda o navegador a /oauth/requests/<id>, a conta logada aprova ou recusa,
 # e o navegador volta ao cliente pelo endereço que a API devolve, e só por ele.
 class OAuthAuthorizationsController < ApplicationController
   layout "public"

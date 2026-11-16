@@ -55,7 +55,7 @@ func commitAccount(ctx context.Context, qtx *gen.Queries, p auth.CreateAccountPa
 	if userCount > 0 && !p.AllowMemberRegistration {
 		return auth.ErrRegistrationDisabled
 	}
-	if err := insertUserRows(ctx, qtx, p.User, p.Identity, userCount == 0); err != nil {
+	if err := insertUserRows(ctx, qtx, p.User, p.Identity, userCount == 0 || p.EmailVerified); err != nil {
 		return err
 	}
 	if userCount > 0 {
@@ -105,7 +105,8 @@ func adoptExistingVaults(ctx context.Context, qtx *gen.Queries, tenantID string,
 }
 
 // insertUserRows grava a conta e a identidade. emailVerified diz se o caminho que criou
-// a conta provou o email: o primeiro acesso e o token de convite provam, o auto-registro não.
+// a conta provou o email: o primeiro acesso, o token de convite e o provedor externo que o
+// afirma verificado provam; o auto-registro por senha não.
 func insertUserRows(ctx context.Context, q *gen.Queries, u auth.User, ident auth.UserIdentity, emailVerified bool) error {
 	err := q.CreateUser(ctx, gen.CreateUserParams{ID: u.ID, Email: u.Email, EmailVerified: emailVerified, CreatedAt: u.CreatedAt, UpdatedAt: u.UpdatedAt})
 	if err == nil {

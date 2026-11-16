@@ -1,0 +1,4 @@
+<% content_for :title, "#{@note.title} | #{@note.publication.title}" %>
+<% content_for :public_tools, render("public_notes/tools", note: @note) %>
+<% content_for :tree, render("public_notes/tree", tree: @tree, current: @note) %>
+<%= render "public_notes/note", note: @note %>

@@ -309,6 +309,20 @@ func (q *Queries) DeleteEmptyTenants(ctx context.Context) error {
 	return err
 }
 
+const deleteUserIdentity = `-- name: DeleteUserIdentity :exec
+DELETE FROM user_identities WHERE id = $1 AND user_id = $2
+`
+
+type DeleteUserIdentityParams struct {
+	ID     string
+	UserID string
+}
+
+func (q *Queries) DeleteUserIdentity(ctx context.Context, arg DeleteUserIdentityParams) error {
+	_, err := q.db.Exec(ctx, deleteUserIdentity, arg.ID, arg.UserID)
+	return err
+}
+
 const ensureTenant = `-- name: EnsureTenant :exec
 INSERT INTO tenants (id, name, created_at) VALUES ($1, $1, $2)
 ON CONFLICT DO NOTHING
@@ -562,6 +576,40 @@ func (q *Queries) ListTenantSummaries(ctx context.Context, userID string) ([]Lis
 	return items, nil
 }
 
+const listUserIdentities = `-- name: ListUserIdentities :many
+SELECT id, user_id, provider, provider_user_id, password_hash, created_at
+FROM user_identities
+WHERE user_id = $1
+ORDER BY created_at, id
+`
+
+func (q *Queries) ListUserIdentities(ctx context.Context, userID string) ([]UserIdentity, error) {
+	rows, err := q.db.Query(ctx, listUserIdentities, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []UserIdentity
+	for rows.Next() {
+		var i UserIdentity
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.Provider,
+			&i.ProviderUserID,
+			&i.PasswordHash,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const lockFirstAdmin = `-- name: LockFirstAdmin :exec
 SELECT pg_advisory_xact_lock($1::bigint)
 `
@@ -569,6 +617,17 @@ SELECT pg_advisory_xact_lock($1::bigint)
 // Serializa a criação de contas para que só o primeiro usuário vire admin.
 func (q *Queries) LockFirstAdmin(ctx context.Context, key int64) error {
 	_, err := q.db.Exec(ctx, lockFirstAdmin, key)
+	return err
+}
+
+const lockUserIdentities = `-- name: LockUserIdentities :exec
+SELECT 1 FROM users WHERE id = $1 FOR UPDATE
+`
+
+// Trava a conta enquanto as identidades mudam: duas remoções simultâneas não deixam a
+// conta sem forma de entrar.
+func (q *Queries) LockUserIdentities(ctx context.Context, id string) error {
+	_, err := q.db.Exec(ctx, lockUserIdentities, id)
 	return err
 }
 

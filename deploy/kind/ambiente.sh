@@ -11,6 +11,8 @@ set -euo pipefail
 REPO="$(cd "$(dirname "$0")/../.." && pwd)"
 STACKS="$REPO/deploy/stacks"
 IMAGE=markupp:dev
+# A do indexador de embedding, que a stack deriva da do servidor, com a mesma tag.
+EMBEDDER_IMAGE=markupp-embedder:dev
 URL=https://markupp.local:8443
 AMBIENTE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/markupp-kind"
 PAINEL_PORTA=4466
@@ -35,8 +37,9 @@ recusa_cluster_existente() {
 
 sobe_cluster() {
   docker build -q -t "$IMAGE" "$REPO/markupp" >/dev/null
+  docker build -q -t "$EMBEDDER_IMAGE" -f "$REPO/markupp/Dockerfile.embedder" "$REPO/markupp" >/dev/null
   "$REPO/deploy/kind/prepara-cluster.sh"
-  kind load docker-image "$IMAGE" --name "$CLUSTER"
+  kind load docker-image "$IMAGE" "$EMBEDDER_IMAGE" --name "$CLUSTER"
 }
 
 aplica_stack() {
@@ -54,10 +57,15 @@ curl_api() {
   curl -sfk --resolve markupp.local:8443:127.0.0.1 "$@"
 }
 
+SMOKE_ACCOUNT='{"email":"admin@markupp.local","password":"senha-forte-do-smoke"}'
+
+# login_smoke cria a conta do smoke, que no banco vazio vira owner; num banco que já tem
+# a conta, o cadastro responde 409 e o login segue.
 login_smoke() {
+  curl -sk --resolve markupp.local:8443:127.0.0.1 -o /dev/null -X POST "$URL/v1/accounts" \
+    -H 'Content-Type: application/json' -d "$SMOKE_ACCOUNT"
   curl_api -X POST "$URL/v1/auth/login" \
-    -H 'Content-Type: application/json' \
-    -d '{"email":"admin@markupp.local","password":"senhaForte123"}' \
+    -H 'Content-Type: application/json' -d "$SMOKE_ACCOUNT" \
     | grep -o '"access_token":"[^"]*"' | cut -d'"' -f4
 }
 

@@ -171,3 +171,35 @@ func TestInheritCommunityIDs_IdHerdadoUmaVezSo(t *testing.T) {
 
 	assert.Equal(t, []int64{1, 0}, ids, "a comunidade dividida ao meio passa o id so para a primeira")
 }
+
+func TestPageRank_LigacaoAutomaticaLevaMetadeDoPesoDaEscrita(t *testing.T) {
+	g := vaultgraph.New([]string{"a", "b", "c"}, []vaultgraph.Edge{
+		{Source: "a", Target: "b"}, {Source: "a", Target: "c", Automatic: true},
+	})
+
+	rank, _ := g.PageRank()
+
+	assert.InDelta(t, 0.85*rank["a"]/3, rank["b"]-rank["c"], 3e-6, "a reparte a massa em 2/3 para a escrita e 1/3 para a automatica, a menos da tolerancia de N x 1e-6")
+}
+
+func TestPageRank_LigacaoRepetidaFicaComOPesoMaior(t *testing.T) {
+	soEscrita := vaultgraph.New([]string{"a", "b", "c"}, []vaultgraph.Edge{
+		{Source: "a", Target: "b"}, {Source: "a", Target: "c", Automatic: true},
+	})
+	repetida := vaultgraph.New([]string{"a", "b", "c"}, []vaultgraph.Edge{
+		{Source: "a", Target: "b", Automatic: true}, {Source: "a", Target: "b"}, {Source: "a", Target: "c", Automatic: true},
+	})
+
+	esperado, _ := soEscrita.PageRank()
+	rank, _ := repetida.PageRank()
+
+	assert.InDeltaMapValues(t, esperado, rank, 1e-12)
+}
+
+func TestDegree_ContaALigacaoAutomatica(t *testing.T) {
+	g := vaultgraph.New([]string{"a", "b"}, []vaultgraph.Edge{{Source: "a", Target: "b", Automatic: true}})
+
+	in, out := g.Degree("b")
+
+	assert.Equal(t, []int{1, 0}, []int{in, out}, "a nota so com ligacao automatica nao e orfa")
+}

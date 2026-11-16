@@ -3,8 +3,8 @@ import { Turbo } from "@hotwired/turbo-rails"
 import { isTyping } from "controllers/typing"
 
 // g e depois t, fora de campo de texto, abre a lista de tenants; g e depois v, o seletor de cofres da trilha, com o foco
-// no primeiro cofre (context_menu_controller.js); g e depois n, o sino, com o foco dentro dele. v e depois r, a ou q age no cofre ativo: renomear, adicionar membro e
-// sair. Com a ação na página (data-vault-action), foca o campo ou aperta o botão; sem ela, abre a página da ação
+// no primeiro cofre (context_menu_controller.js); g e depois n, o sino, com o foco dentro dele. v e depois r, a, q, o ou p age no cofre ativo: renomear, adicionar membro,
+// sair, publicar e ver as publicações. Com a ação na página (data-vault-action), foca o campo ou aperta o botão; sem ela, abre a página da ação
 // (vaultActions, de ShortcutsHelper#vault_shortcut_paths), que chega com o foco nela. Atalho em sequência como o gt do
 // Vim e o g n do GitHub, sem disputar Ctrl ou Alt com o navegador. Qualquer outra tecla no meio desfaz o prefixo.
 const PREFIXES = [ "g", "v" ]
@@ -52,7 +52,7 @@ export default class extends Controller {
     const path = this.vaultActionsValue[event.key]
     if (!target) return this.onPageOf(path) || Turbo.visit(path)
 
-    target.matches("button") ? target.click() : target.focus()
+    target.matches("button, a") ? target.click() : target.focus()
   }
 
   onPageOf(path) {

@@ -41,10 +41,15 @@ class MarkuppApi
   class RoleAboveOwn < Forbidden; end
   # Pedido de autorização OAuth inexistente, vencido ou já decidido: a API não distingue.
   class OAuthRequestNotFound < NotFound; end
+  # Autorização inexistente, já revogada ou de outra conta: a API não distingue.
+  class AuthorizationNotFound < NotFound; end
   # Cofre inexistente ou de que a conta não é membro.
   class VaultUnavailable < Forbidden; end
   # Nome de cofre vazio, com espaço nas pontas ou longo demais.
   class InvalidName < InvalidRequest; end
+  # Senha nova abaixo do mínimo de caracteres, ou da lista de senhas comuns.
+  class PasswordTooShort < InvalidRequest; end
+  class CommonPassword < InvalidRequest; end
   # A conta escolhida para o cofre não é do tenant.
   class NotTenantMember < Error; end
   class AlreadyVaultMember < Error; end
@@ -52,6 +57,40 @@ class MarkuppApi
   class VaultMemberNotFound < NotFound; end
   # Nota nova sem cofre onde cair.
   class NoVault < Error; end
+  # A instalação só cria conta por convite: o registro está desligado no servidor.
+  class RegistrationDisabled < Error; end
+  # Com SMTP, só convida quem já confirmou o email.
+  class EmailNotVerified < Error; end
+  # A conta ou o tenant chegou ao limite de convites das últimas 24 horas.
+  class InviteLimitReached < Error; end
+  # Login externo (ADR-0054): nenhuma conta usa a identidade; o provedor recusou o código; o provedor não respondeu.
+  class IdentityNotLinked < Error; end
+  class LoginRejected < Error; end
+  class ProviderUnavailable < Error; end
+  # A identidade externa já é de uma conta; o provedor não mostrou o email; tirar a última forma de entrar.
+  class IdentityAlreadyLinked < Error; end
+  class ProviderEmailMissing < Error; end
+  class LastIdentity < Error; end
+  # Publicar com um nome que não é o do alvo (ADR-0048).
+  class ConfirmationMismatch < Error; end
+  # Nota por quem não a edita, pasta e cofre por quem não é owner nem admin.
+  class PublishForbidden < Forbidden; end
+  # O mesmo alvo já está publicado.
+  class AlreadyPublished < Error; end
+  # Publicação despublicada por outra pessoa, ou de outro tenant.
+  class PublicationNotFound < NotFound; end
+  # Pedidos demais do mesmo IP na janela do limite da leitura pública.
+  class RateLimited < Error; end
+  # Recusa de ligação com a mesma nota nas duas pontas.
+  class SameNote < InvalidRequest; end
+  # Recusa de ligação com uma nota de fora do cofre: apagada ou movida no meio.
+  class NoteOutsideVault < Error; end
+  # Recusa de ligação já desfeita, ou de outro cofre.
+  class LinkRefusalNotFound < NotFound; end
+  # A conta não administra a instância (ADR-0057).
+  class InstanceAdminRequired < Forbidden; end
+  # Quem hospeda a instância fixou o provedor de embedding; o painel não muda.
+  class HostLocked < Error; end
 
   # Corpo e ETag de uma leitura que pode voltar 304.
   Revision = Data.define(:body, :etag)
@@ -71,18 +110,30 @@ class MarkuppApi
     "member_not_found" => MemberNotFound, "tenant_not_found" => TenantNotFound, "last_owner" => LastOwner, "role_above_own" => RoleAboveOwn,
     "invalid_invite" => InvalidToken, "invalid_token" => InvalidToken, "already_exists" => AccountExists,
     "email_unavailable" => EmailUnavailable, "email_already_verified" => EmailAlreadyVerified,
-    "vault_forbidden" => VaultUnavailable, "request_not_found" => OAuthRequestNotFound,
+    "vault_forbidden" => VaultUnavailable, "request_not_found" => OAuthRequestNotFound, "authorization_not_found" => AuthorizationNotFound,
     "invalid_name" => InvalidName, "not_tenant_member" => NotTenantMember, "already_vault_member" => AlreadyVaultMember,
-    "vault_member_not_found" => VaultMemberNotFound, "no_vault" => NoVault
+    "vault_member_not_found" => VaultMemberNotFound, "no_vault" => NoVault, "registration_disabled" => RegistrationDisabled,
+    "email_not_verified" => EmailNotVerified, "invite_limit_reached" => InviteLimitReached,
+    "password_too_short" => PasswordTooShort, "common_password" => CommonPassword,
+    "identity_not_linked" => IdentityNotLinked, "login_rejected" => LoginRejected, "provider_unavailable" => ProviderUnavailable,
+    "unknown_login_provider" => NotFound, "identity_already_linked" => IdentityAlreadyLinked,
+    "provider_email_missing" => ProviderEmailMissing, "last_identity" => LastIdentity,
+    "confirmation_mismatch" => ConfirmationMismatch, "publish_forbidden" => PublishForbidden, "already_published" => AlreadyPublished,
+    "publication_not_found" => PublicationNotFound, "rate_limited" => RateLimited,
+    "same_note" => SameNote, "note_outside_vault" => NoteOutsideVault, "link_refusal_not_found" => LinkRefusalNotFound,
+    "instance_admin_required" => InstanceAdminRequired, "host_locked" => HostLocked
   }.freeze
   # Para o status cujo corpo não traz código conhecido.
-  ERRORS_BY_STATUS = { "401" => Unauthorized, "403" => Forbidden, "404" => NotFound }.freeze
+  ERRORS_BY_STATUS = { "401" => Unauthorized, "403" => Forbidden, "404" => NotFound, "429" => RateLimited }.freeze
 
-  def initialize(base_url, access_token: nil, tenant_id: nil, read_timeout: READ_TIMEOUT)
+  # forwarded_for é o IP de quem lê a nota pública sem conta: vai no X-Forwarded-For para o limite por IP da API contar
+  # o visitante, e não o painel, quando o painel é um proxy em que a API confia.
+  def initialize(base_url, access_token: nil, tenant_id: nil, read_timeout: READ_TIMEOUT, forwarded_for: nil)
     @base_url = base_url
     @access_token = access_token
     @tenant_id = tenant_id
     @read_timeout = read_timeout
+    @forwarded_for = forwarded_for
   end
 
   # Caminho da API a partir dos segmentos, cada um codificado: id com barra ou espaço não vira outra rota.
@@ -127,6 +178,7 @@ class MarkuppApi
       http_request = verb.new(uri, headers)
       http_request["Authorization"] = "Bearer #{@access_token}" if @access_token
       http_request["X-Markupp-Tenant"] = @tenant_id if @tenant_id
+      http_request["X-Forwarded-For"] = @forwarded_for if @forwarded_for
       return http_request if body.nil?
 
       http_request.content_type = "application/json"

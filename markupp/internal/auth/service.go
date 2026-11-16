@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -53,7 +54,33 @@ func NewService(repo Repository, tokens TokenIssuer, hasher PasswordHasher, cfg 
 	}
 }
 
-// LoginLocal autentica via email e senha ou inicializa a primeira conta de administrador.
+// Register cria a conta local e abre a sessão. A primeira conta da instalação vira
+// owner do tenant inicial mesmo com o registro desligado; as outras só nascem com ele
+// ligado, sem tenant, e com SMTP recebem o email de verificação.
+func (s *Service) Register(ctx context.Context, email, password string) (TokenPair, error) {
+	if !s.cfg.LocalEnabled {
+		return TokenPair{}, ErrLocalAuthDisabled
+	}
+	normEmail, err := s.validateCredentials(email, password)
+	if err != nil {
+		return TokenPair{}, err
+	}
+	if err := checkNewPassword(password); err != nil {
+		return TokenPair{}, err
+	}
+	hash, err := s.hasher.Hash(password)
+	if err != nil {
+		return TokenPair{}, fmt.Errorf("hash password for %q: %w", normEmail, err)
+	}
+	user, err := s.repo.CreateAccountTx(ctx, s.buildAccountParams(normEmail, hash))
+	if err != nil {
+		return TokenPair{}, fmt.Errorf("create account for %q: %w", normEmail, err)
+	}
+	return s.issueAndPersist(ctx, user, "auth.login")
+}
+
+// LoginLocal autentica via email e senha. Email sem conta é recusado como senha
+// errada: o login nunca cria conta, senão um erro de digitação vira conta nova.
 func (s *Service) LoginLocal(ctx context.Context, email, password string) (TokenPair, error) {
 	if !s.cfg.LocalEnabled {
 		return TokenPair{}, ErrLocalAuthDisabled
@@ -98,7 +125,7 @@ func (s *Service) AcceptInvite(ctx context.Context, token, password string) (Tok
 	if !s.cfg.LocalEnabled {
 		return TokenPair{}, ErrLocalAuthDisabled
 	}
-	if err := validatePassword(password); err != nil {
+	if err := checkNewPassword(password); err != nil {
 		return TokenPair{}, err
 	}
 	hash, err := s.hasher.Hash(password)
@@ -124,25 +151,12 @@ func (s *Service) acceptInviteParams(token, passwordHash string) AcceptInvitePar
 	}
 }
 
+// handleUnknownUser roda um bcrypt descartado antes de recusar: o custo iguala o de uma
+// senha errada, e o tempo da resposta não denuncia o email inexistente.
 func (s *Service) handleUnknownUser(ctx context.Context, email, password string) (TokenPair, error) {
-	hash, err := s.hasher.Hash(password)
-	if err != nil {
+	if _, err := s.hasher.Hash(password); err != nil {
 		return TokenPair{}, fmt.Errorf("hash password for %q: %w", email, err)
 	}
-	p := s.buildAccountParams(email, hash)
-	user, err := s.repo.CreateAccountTx(ctx, p)
-	if err != nil {
-		if errors.Is(err, ErrRegistrationDisabled) || errors.Is(err, ErrUserAlreadyExists) {
-			return s.rejectUnknownUser(ctx, email)
-		}
-		return TokenPair{}, fmt.Errorf("create account for %q: %w", email, err)
-	}
-	return s.issueAndPersist(ctx, user, "auth.login")
-}
-
-// rejectUnknownUser nao roda bcrypt de novo: o Hash em handleUnknownUser ja igualou o
-// custo ao de uma senha errada, e um segundo bcrypt denunciaria o email inexistente.
-func (s *Service) rejectUnknownUser(ctx context.Context, email string) (TokenPair, error) {
 	if err := s.auditLoginAttempt(ctx, "", email, "failure"); err != nil {
 		return TokenPair{}, fmt.Errorf("audit rejected login for %q: %w", email, err)
 	}
@@ -274,12 +288,19 @@ func (s *Service) RevokeSession(ctx context.Context, rawRefreshToken string) err
 	return s.repo.RevokeRefreshToken(ctx, hash)
 }
 
-// GetAccount busca os detalhes da conta do usuário. Toda conta nasce com identidade
-// local, então PasswordLogin segue só a config; com outro provedor, cruzar com a identidade.
+// GetAccount busca os detalhes da conta do usuário. PasswordLogin pede a senha ligada
+// na instalação e uma identidade local na conta, que a cadastrada por provedor não tem.
 func (s *Service) GetAccount(ctx context.Context, userID string) (User, error) {
 	user, err := s.repo.GetUserByID(ctx, userID)
-	user.PasswordLogin = err == nil && s.cfg.LocalEnabled
-	return user, err
+	if err != nil || !s.cfg.LocalEnabled {
+		return user, err
+	}
+	identities, err := s.repo.ListUserIdentities(ctx, userID)
+	if err != nil {
+		return User{}, fmt.Errorf("list identities of user %q: %w", userID, err)
+	}
+	user.PasswordLogin = slices.ContainsFunc(identities, func(i UserIdentity) bool { return i.Provider == localProvider })
+	return user, nil
 }
 
 // ResolveTenant devolve o vínculo de userID com o tenant requested. Sem pedido, vale o

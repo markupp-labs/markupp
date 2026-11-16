@@ -9,6 +9,8 @@ Rails.application.routes.draw do
     resource :graph, only: :show, controller: "note_graphs"
   end
   resource :graph, only: :show
+  # Recusar ligação pela visão Links e pelo grafo; a lista e o desfazer ficam nas configurações do cofre.
+  resources :link_refusals, only: :create
   resource :search, only: :show
   resource :explorer, only: :show
 
@@ -18,6 +20,10 @@ Rails.application.routes.draw do
   resource :editor_style, only: :update
   resource :vim_keys, only: :update
   resource :session, only: [ :new, :create, :destroy ]
+  resource :registration, only: [ :new, :create ]
+  # Login externo (ADR-0054): a ida ao provedor e a volta dele, que o servidor registra como redirect_uri.
+  post "auth/:provider" => "external_logins#create", as: :external_login
+  get "auth/:provider/callback" => "external_logins#callback", as: :external_login_callback
   resource :invite_acceptance, only: [ :new, :create ]
   resource :password_request, only: [ :new, :create ]
   resource :password_reset, only: [ :new, :create ]
@@ -29,11 +35,12 @@ Rails.application.routes.draw do
   resource :current_tenant, only: :update
   resource :current_vault, only: :update
   resources :vaults, only: [ :create, :update, :destroy ]
+  resources :publications, only: [ :new, :create ]
   resources :my_invites, only: [ :index, :update, :destroy ]
   resource :notifications, only: :show
 
   # Consentimento OAuth: o servidor manda o navegador para cá com o id do pedido.
-  resources :oauth_authorizations, path: "oauth/authorize", only: :show do
+  resources :oauth_authorizations, path: "oauth/requests", only: :show do
     member do
       post :approve
       post :deny
@@ -43,6 +50,8 @@ Rails.application.routes.draw do
   get "settings" => redirect("/settings/account"), as: :settings
   namespace :settings do
     resource :account, only: :show
+    resources :authorizations, only: [ :index, :destroy ]
+    resources :identities, only: :destroy
     resource :appearance, only: :show
     resource :editor, only: :show
     resource :agents, only: :show
@@ -51,6 +60,17 @@ Rails.application.routes.draw do
     resources :invites, only: [ :index, :create, :destroy ]
     resource :vault, only: :show, controller: "vault_general"
     resources :vault_members, path: "vault/members", only: [ :index, :create, :destroy ]
+    resources :publications, only: [ :index, :update, :destroy ]
+    resources :link_refusals, path: "vault/link-refusals", only: [ :index, :destroy ]
+    resource :instance_embedding, path: "instance/embedding", only: [ :show, :update ], controller: "instance_embedding"
+  end
+
+  # Nota pública, lida sem conta (ADR-0048): o fim do endereço é o slug do título e o id público depois do último hífen.
+  # Sem ponto no trecho: o .json do ![[nota]] é o formato.
+  scope "p/:slug_and_id", constraints: { slug_and_id: /[A-Za-z0-9-]+/ } do
+    get "/", to: "public_notes#show", as: :public_note
+    get "search", to: "public_searches#show", as: :public_note_search
+    get "graph", to: "public_graphs#show", as: :public_note_graph
   end
 
   # Páginas de erro: o ShowExceptions pede /<status> (config.exceptions_app). O resto que não casa com rota nenhuma é o

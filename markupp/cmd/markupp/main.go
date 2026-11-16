@@ -1,7 +1,7 @@
 // Command markupp sobe o servidor HTTP de notas, aplica as migrações do banco
 // com o subcomando migrate, indexa os cofres pendentes com index (um cofre, para
-// o Job do KEDA) e index-loop (em laço, para o compose), ou reenfileira notas para
-// reindexar com reindex.
+// o Job do KEDA) e index-loop (em laço, para o compose), reenfileira notas para
+// reindexar com reindex, ou refaz os vetores das notas com embed-loop.
 package main
 
 import (
@@ -25,9 +25,12 @@ import (
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/config"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/drain"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/indexing"
+	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/instance"
+	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/linkrefusals"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/notes"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/notify"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/oauth"
+	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/publication"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/storage"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/vaults"
 )
@@ -41,8 +44,8 @@ const (
 
 // command é o subcomando do binário: serve sobe a API, migrate aplica o schema
 // e sai, index indexa um cofre pendente e sai, index-loop indexa em laço, e
-// notify-loop entrega a fila de email em laço, e reindex reenfileira as notas de
-// um cofre ou da instalação.
+// notify-loop entrega a fila de email em laço, reindex reenfileira as notas de
+// um cofre ou da instalação, e embed-loop refaz os vetores das notas em laço.
 type command string
 
 const (
@@ -52,6 +55,7 @@ const (
 	indexLoopCommand  command = "index-loop"
 	notifyLoopCommand command = "notify-loop"
 	reindexCommand    command = "reindex"
+	embedLoopCommand  command = "embed-loop"
 )
 
 // notifyInterval é a espera do notify-loop com a fila vazia. A primeira nova
@@ -77,6 +81,9 @@ func run(ctx context.Context, logger *slog.Logger, args []string) error {
 	if cmd == reindexCommand {
 		return reindexVaults(ctx, logger, args[2:])
 	}
+	if cmd == embedLoopCommand {
+		return runEmbedder(ctx, logger)
+	}
 	cfg, err := config.Load(os.LookupEnv)
 	if err != nil {
 		return fmt.Errorf("load config: %w", err)
@@ -95,11 +102,11 @@ func parseCommand(args []string) (command, error) {
 		return serveCommand, nil
 	}
 	switch cmd := command(args[1]); cmd {
-	case serveCommand, migrateCommand, indexCommand, indexLoopCommand, notifyLoopCommand, reindexCommand:
+	case serveCommand, migrateCommand, indexCommand, indexLoopCommand, notifyLoopCommand, reindexCommand, embedLoopCommand:
 		return cmd, nil
 	}
-	return "", fmt.Errorf("unknown subcommand %q, expected %q, %q, %q, %q, %q or %q",
-		args[1], serveCommand, migrateCommand, indexCommand, indexLoopCommand, notifyLoopCommand, reindexCommand)
+	return "", fmt.Errorf("unknown subcommand %q, expected %q, %q, %q, %q, %q, %q or %q",
+		args[1], serveCommand, migrateCommand, indexCommand, indexLoopCommand, notifyLoopCommand, reindexCommand, embedLoopCommand)
 }
 
 const reindexUsage = "expected reindex --vault <id> for one vault or reindex --all for the whole installation"
@@ -146,10 +153,13 @@ func reindexVaults(ctx context.Context, logger *slog.Logger, args []string) erro
 }
 
 // deliverNotifications entrega a fila de email em laço: é o Deployment que o KEDA
-// escala entre zero e uma réplica, e o serviço do compose.
+// escala entre zero e uma réplica, e o serviço do compose. Sem SMTP a instalação roda
+// sem email: o notificador fica ocioso até ser encerrado, sem reiniciar em laço.
 func deliverNotifications(ctx context.Context, logger *slog.Logger, cfg config.Config) error {
 	if cfg.SMTPURL == "" {
-		return fmt.Errorf("MARKUPP_SMTP_URL is empty, expected smtp://user:password@host:port to deliver the email queue")
+		logger.Warn("notificador ocioso", "motivo", "MARKUPP_SMTP_URL vazia, email desligado")
+		<-ctx.Done()
+		return nil
 	}
 	mailer, err := notify.NewSMTPMailer(cfg.SMTPURL)
 	if err != nil {
@@ -223,11 +233,12 @@ func serve(ctx context.Context, logger *slog.Logger, cfg config.Config) error {
 	}
 	defer pool.Close()
 
-	cfg, err = prepareInstance(ctx, cfg, storage.NewPostgresInstanceSecrets(pool))
+	secrets := storage.NewPostgresInstanceSecrets(pool)
+	cfg, err = prepareInstance(ctx, cfg, secrets)
 	if err != nil {
 		return fmt.Errorf("prepare instance: %w", err)
 	}
-	handler, err := newHandler(cfg, pool, logger)
+	handler, err := newHandler(ctx, cfg, pool, logger, secrets)
 	if err != nil {
 		return err
 	}
@@ -236,13 +247,13 @@ func serve(ctx context.Context, logger *slog.Logger, cfg config.Config) error {
 	return server.ListenAndServe()
 }
 
-func newHandler(cfg config.Config, pool *pgxpool.Pool, logger *slog.Logger) (http.Handler, error) {
+func newHandler(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, logger *slog.Logger, secrets config.InstanceSecrets) (http.Handler, error) {
 	repo := storage.NewPostgresNotesRepository(pool, cfg.SearchConfig)
 	notesSvc := notes.NewService(repo, cfg.MaxNoteSize)
 	authSvc, codec := newAuthService(cfg, pool)
 	// A API não recebe o SMTP: o booleano diz que há quem entregue os emails dela.
 	emailEnabled := cfg.InviteByEmail
-	adminSvc := auth.NewAdminService(storage.NewPostgresAdminRepository(pool), time.Now, emailEnabled)
+	adminSvc := auth.NewAdminService(storage.NewPostgresAdminRepository(pool), time.Now, emailEnabled, auth.InviteLimits{PerAccount: cfg.InviteLimitPerAccount, PerTenant: cfg.InviteLimitPerTenant})
 	accountEmail := auth.NewAccountEmailService(storage.NewPostgresAccountEmailRepository(pool), auth.NewBcryptHasher(), time.Now, auth.AccountEmailOptions{
 		EmailEnabled: emailEnabled, LocalEnabled: cfg.LocalAuthEnabled, Background: runDetached, Logger: logger,
 	})
@@ -250,14 +261,47 @@ func newHandler(cfg config.Config, pool *pgxpool.Pool, logger *slog.Logger) (htt
 	if err != nil {
 		return nil, err
 	}
-	return api.NewRouter(api.RouterDeps{
+	deps := api.RouterDeps{
 		Notes: notesSvc, Graph: storage.NewPostgresNoteGraph(pool, cfg.SearchConfig), Auth: authSvc, Admin: adminSvc, AccountEmail: accountEmail,
-		Vaults: vaults.NewService(storage.NewPostgresVaultsRepository(pool), time.Now, uuid.NewString),
-		Tokens: codec, Tenants: authSvc, Probe: pool, AllowedOrigins: cfg.AllowedOrigins,
-		OAuthMetadata: oauthMetadataFrom(cfg), OAuth: oauthSvc, MCPUpstreamURL: cfg.MCPUpstreamURL,
+		Vaults:       vaults.NewService(storage.NewPostgresVaultsRepository(pool), time.Now, uuid.NewString),
+		LinkRefusals: linkrefusals.NewService(storage.NewPostgresLinkRefusals(pool)),
+		Tokens:       codec, Tenants: authSvc, Probe: pool, AllowedOrigins: cfg.AllowedOrigins,
+		OAuthMetadata: oauthMetadataFrom(cfg), OAuth: oauthSvc, MCPUpstreamURL: cfg.MCPUpstreamURL, PanelUpstreamURL: cfg.PanelUpstreamURL,
 		AccountRateLimiter: api.NewAccountRateLimiter(cfg.RateLimitPerMinute, time.Minute, time.Now, cfg.TrustedProxies),
-	}), nil
+		ExternalLogin:      newExternalLoginService(cfg, authSvc),
+	}
+	addPublication(&deps, cfg, pool)
+	if err := addInstance(ctx, &deps, cfg, pool, secrets); err != nil {
+		return nil, err
+	}
+	return api.NewRouter(deps), nil
 }
+
+// addInstance liga as rotas do administrador da instância (ADR-0057), com a cifra da
+// chave do provedor de embedding.
+func addInstance(ctx context.Context, deps *api.RouterDeps, cfg config.Config, pool *pgxpool.Pool, secrets config.InstanceSecrets) error {
+	box, err := newSecretBox(ctx, cfg.SecretKey, secrets)
+	if err != nil {
+		return fmt.Errorf("prepare the key-encryption secret: %w", err)
+	}
+	deps.InstanceAdmins = cfg.InstanceAdmins
+	deps.InstanceEmbedding = instance.NewEmbeddingService(storage.NewAppInstanceEmbedding(pool), box)
+	return nil
+}
+
+// addPublication liga a publicação de notas, pastas e cofres e a leitura sem conta delas
+// (ADR-0048), com limite por IP próprio.
+func addPublication(deps *api.RouterDeps, cfg config.Config, pool *pgxpool.Pool) {
+	deps.Publications = publication.NewService(storage.NewPostgresPublications(pool), time.Now, uuid.NewString)
+	deps.PublicNotes = storage.NewPostgresPublicNotes(pool, cfg.SearchConfig)
+	deps.PublicRateLimiter = api.NewAccountRateLimiter(cfg.PublicRateLimitPerMinute, time.Minute, time.Now, cfg.TrustedProxies)
+	// O servidor MCP se autentica com o segredo de resource dele e repassa o IP do agente
+	// de /mcp/public (ADR-0050). Sem OAuth não há resource, e o limite fica na conexão.
+	deps.PublicRelay, _ = deps.OAuth.(api.RelayAuthenticator)
+}
+
+// O *oauth.Service confere o servidor MCP da leitura pública.
+var _ api.RelayAuthenticator = (*oauth.Service)(nil)
 
 // newOAuthService monta o authorization server só com o OAuth ligado. Devolve nil de
 // interface, e não um *oauth.Service nil, para o roteador não montar as rotas.

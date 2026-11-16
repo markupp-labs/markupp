@@ -30,9 +30,38 @@ type AuditEvent struct {
 	OccurredAt time.Time
 }
 
+type EmbeddingModel struct {
+	Singleton bool
+	Name      string
+	Dimension int32
+}
+
+type InstanceEmbedding struct {
+	Singleton    bool
+	Provider     string
+	Url          string
+	Model        string
+	ApiKeySealed string
+	UpdatedAt    time.Time
+	HostLocked   bool
+	HostProvider string
+	ModelState   string
+	ModelError   string
+	ModelStateAt pgtype.Timestamptz
+}
+
 type InstanceSecret struct {
 	Name      string
 	Value     string
+	CreatedAt time.Time
+}
+
+type LinkRefusal struct {
+	ID        string
+	VaultID   string
+	LowID     string
+	HighID    string
+	CreatedBy string
 	CreatedAt time.Time
 }
 
@@ -45,6 +74,26 @@ type Note struct {
 	TenantID      string
 	VaultID       string
 	ContentSha256 []byte
+}
+
+type NoteAutomaticEdge struct {
+	SourceID   string
+	TargetID   string
+	VaultID    string
+	Kind       string
+	Predicate  pgtype.Text
+	TitleKey   string
+	CitedTitle string
+	Score      float64
+}
+
+type NoteAutomaticLink struct {
+	SourceID   string
+	TargetID   string
+	VaultID    string
+	Kind       string
+	CitedTitle pgtype.Text
+	Score      float64
 }
 
 type NoteCentrality struct {
@@ -69,6 +118,17 @@ type NoteEdge struct {
 	Predicate  pgtype.Text
 	TitleKey   string
 	CitedTitle string
+}
+
+type NoteEmbedding struct {
+	NoteID    string
+	VaultID   string
+	Embedding string
+}
+
+type NoteEmbeddingQueue struct {
+	NoteID   string
+	Revision int64
 }
 
 type NoteIndexQueue struct {
@@ -133,6 +193,16 @@ type NoteUnresolvedLinkItem struct {
 	Predicate          pgtype.Text
 	InferredTargetID   pgtype.Text
 	InferredTargetPath pgtype.Text
+}
+
+type NoteWrittenEdge struct {
+	SourceID   string
+	TargetID   string
+	VaultID    string
+	Kind       string
+	Predicate  pgtype.Text
+	TitleKey   string
+	CitedTitle string
 }
 
 type Notification struct {
@@ -202,6 +272,26 @@ type OauthToken struct {
 	Revoked         bool
 	RotatedAt       pgtype.Timestamptz
 	CreatedAt       time.Time
+}
+
+type PublicNote struct {
+	NoteID        string
+	PublicID      string
+	VaultID       string
+	PublicationID string
+	CreatedAt     time.Time
+}
+
+type Publication struct {
+	ID          string
+	TenantID    string
+	VaultID     string
+	Kind        string
+	NoteID      pgtype.Text
+	FolderPath  pgtype.Text
+	Indexable   bool
+	PublishedBy string
+	PublishedAt time.Time
 }
 
 type RefreshToken struct {

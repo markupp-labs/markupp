@@ -1,0 +1,18 @@
+<%# Uma recusa: as duas notas do par, que abrem, a data e, só para quem escreve, o Undo (também pelo Delete na linha). %>
+<% first, second = link_refusal.notes %>
+<li data-context-menu-target="item" tabindex="<%= link_refusal_counter.zero? ? 0 : -1 %>"
+    class="border-t border-line px-2 py-2 md:col-span-3 md:grid md:grid-cols-subgrid md:items-center">
+  <p class="[overflow-wrap:anywhere]">
+    <%= link_to first.title, note_path(first), title: first.path %>
+    <span class="text-ink-muted"><%= t(".and") %></span>
+    <%= link_to second.title, note_path(second), title: second.path %>
+  </p>
+  <p class="text-ink-muted"><span class="md:sr-only"><%= t(".refused") %></span> <%= l(link_refusal.created_at.to_date, format: :short) %></p>
+  <div class="mt-1 md:mt-0">
+    <% if current_tenant.writer? %>
+      <%= button_to t(".undo"), settings_link_refusal_path(link_refusal.id), method: :delete, class: "btn",
+                    aria: { label: t(".undo_label", first: first.title, second: second.title), keyshortcuts: "Delete" },
+                    data: { context_menu_delete: "" } %>
+    <% end %>
+  </div>
+</li>

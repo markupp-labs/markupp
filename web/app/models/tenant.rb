@@ -1,16 +1,16 @@
-# Vínculo da conta com um tenant, como GET /me/tenants devolve: o papel vem daqui a cada página, sem cache.
+# Vínculo da conta com um tenant, como GET /v1/me/tenants devolve: o papel vem daqui a cada página, sem cache.
 # notes_count e last_note_at são estatísticas que o servidor pode não mandar: sem elas, ficam nil.
 Tenant = Data.define(:id, :name, :role, :notes_count, :last_note_at) do
   # Mesma ordem do servidor, do posto mais alto ao mais baixo.
   self::ROLES = %w[owner admin member viewer].freeze
 
-  def self.mine(api) = api.get("/me/tenants").map { from_api(it) }
+  def self.mine(api) = api.get("/v1/me/tenants").map { from_api(it) }
 
   # Quem cria é owner; nome recusado pela API levanta InvalidRequest, a regra fica no servidor.
-  def self.create(api, name) = from_api(api.post("/tenants", name:))
+  def self.create(api, name) = from_api(api.post("/v1/tenants", name:))
 
   # Apaga de vez o tenant e as notas dele; só o owner pode, e a API decide.
-  def self.delete(api, id) = api.delete(MarkuppApi.path("tenants", id))
+  def self.delete(api, id) = api.delete(MarkuppApi.path("v1", "tenants", id))
 
   def self.from_api(attributes)
     fields = attributes.symbolize_keys.slice(*members)

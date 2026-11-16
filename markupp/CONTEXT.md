@@ -48,13 +48,41 @@ A ligação declarada no frontmatter, em que a chave dá o tipo da relação ent
 título citado.
 _Avoid_: propriedade, metadado, relação quando se refere só ao frontmatter
 
+**Ligação automática**:
+A ligação que o servidor cria entre duas notas sem que o usuário tenha escrito ligação
+nenhuma entre elas. É por menção, por texto parecido ou por sentido, e entre duas notas há
+no máximo uma. Ela existe só no plano de recuperação, nunca é escrita na nota e pesa menos
+que a ligação escrita.
+_Avoid_: ligação inferida, ligação sugerida, link implícito
+
+**Ligação por menção**:
+A ligação automática da nota que cita o título de outra no texto para a nota citada.
+_Avoid_: menção quando se refere à ligação, backlink não ligado
+
+**Ligação por texto parecido**:
+A ligação automática entre duas notas cujo texto é parecido, cada uma entre as mais
+parecidas da outra.
+_Avoid_: ligação relacionada, sugestão quando se refere à ligação
+
+**Ligação por sentido**:
+A ligação automática entre duas notas que tratam do mesmo assunto, mesmo sem dividir
+palavras, cada uma entre as mais próximas da outra.
+_Avoid_: ligação semântica, ligação por embedding
+
+**Recusa de ligação**:
+A decisão do usuário de que duas notas não devem ter ligação automática entre elas, de
+nenhum tipo. Fica no plano de registro, vale até ser desfeita e o servidor a respeita a cada
+vez que refaz as ligações automáticas.
+_Avoid_: remoção, exclusão de ligação, bloqueio
+
 **Menção não ligada**:
-O título de uma nota citado no texto de outra sem que ali exista ligação. É sugestão de
-ligação, nunca ligação.
+O título de uma nota citado no texto de outra sem que ali exista ligação escrita, inferida ou
+automática, porque o título é comum ou porque o par foi recusado.
 _Avoid_: citação, referência implícita, backlink não ligado
 
 **Nota órfã**:
-A nota sem nenhuma ligação, nem de entrada nem de saída.
+A nota sem nenhuma ligação, nem de entrada nem de saída, contando as inferidas e as
+automáticas.
 _Avoid_: nota solta, nota isolada, ligação não resolvida
 
 **Agrupamento**:
@@ -122,6 +150,12 @@ A participação de uma conta num tenant, com um papel: owner, admin, member ou 
 admin administram o tenant, só o owner apaga o tenant, e o viewer só lê nos cofres de que é
 membro, sem gerenciar cofre, mas pode sair dele. O acesso às notas continua sendo pelo cofre.
 _Avoid_: associação, assinatura, membership
+
+**Administrador da instância**:
+A conta que cuida do que vale para a instalação inteira, acima dos tenants, como o provedor de
+embedding. Quem hospeda a instância diz quais contas são, e a configuração dele vence a escolha
+do administrador.
+_Avoid_: superusuário, root, administrador do tenant
 
 **Convite**:
 O pedido de vínculo que owner ou admin emite para um email, com papel e validade. A conta

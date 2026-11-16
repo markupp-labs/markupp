@@ -1,0 +1,20 @@
+<%# Resultados da busca na publicação, como na busca do painel: título e trecho com o termo em <mark>. j/k e as setas
+    andam pela lista (context_menu_controller.js), Enter abre. %>
+<% content_for :title, t(".title", query: @query, publication: @note.publication.title) %>
+<% content_for :public_tools, render("public_notes/tools", note: @note, query: @query) %>
+<% content_for :tree, render("public_notes/tree", tree: @tree, current: @note) %>
+<h1 class="text-base font-semibold"><%= t(".heading", query: @query) %></h1>
+<% if @hits.any? %>
+  <ul data-controller="context-menu" data-action="keydown->context-menu#navigate" class="mt-3 flex flex-col">
+    <% @hits.each_with_index do |hit, index| %>
+      <li>
+        <%= link_to public_note_path(hit), tabindex: index.zero? ? 0 : -1, data: { context_menu_target: "item" }, class: "tree-row block" do %>
+          <span class="block truncate text-ink"><%= hit.title %></span>
+          <span class="block truncate text-xs text-ink-muted"><%= highlighted_snippet(hit.snippet) %></span>
+        <% end %>
+      </li>
+    <% end %>
+  </ul>
+<% else %>
+  <div class="mt-3"><%= render "layouts/empty_state", title: t(".empty", query: @query), hint: t(".empty_hint") %></div>
+<% end %>

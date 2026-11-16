@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { Turbo } from "@hotwired/turbo-rails"
 import { rememberSubmitOrigin, submitFrom, visitFrom } from "motion/busy_origin"
 
 // Árvore de notas da barra lateral (notes/_folder.html.erb), como o treeview de navegação da WAI: um Tab só para a
@@ -6,7 +7,7 @@ import { rememberSubmitOrigin, submitFrom, visitFrom } from "motion/busy_origin"
 // l ou seta direita abre a pasta e entra nela, h ou seta esquerda fecha e sobe ao pai. Enter abre a nota (o link) ou
 // alterna a pasta (o botão).
 // Ações da linha, pelo menu de contexto (notes/_tree_menu.html.erb) ou pela tecla com o foco nela: nova nota na pasta,
-// renomear (F2), apagar (Delete), copiar o caminho (Alt+Shift+C) e o wikilink (Alt+Shift+W). Alt+N de qualquer lugar
+// renomear (F2), apagar (Delete), copiar o caminho (Alt+Shift+C) e o wikilink (Alt+Shift+W) e publicar (Alt+Shift+P). Alt+N de qualquer lugar
 // abre a nota nova na pasta da nota aberta. A tecla vem pelo code: no Mac o Option muda a letra (Option+N é o til).
 const MOVES = {
   ArrowDown: "next", j: "next", ArrowUp: "previous", k: "previous",
@@ -14,14 +15,15 @@ const MOVES = {
 }
 
 // Espelho das teclas do ShortcutsHelper (grupo tree); o shortcuts_helper_test confere que batem.
-const ROW_SHORTCUTS = { F2: "rename", Delete: "delete", "alt+shift+KeyC": "copyPath", "alt+shift+KeyW": "copyWikilink" }
+const ROW_SHORTCUTS = { F2: "rename", Delete: "delete", "alt+shift+KeyC": "copyPath", "alt+shift+KeyW": "copyWikilink", "alt+shift+KeyP": "publish" }
 const STATUS_TIMEOUT = 2000
 const NEW_HERE_ITEM = "[data-action~='note-tree#newHere']"
+const PUBLISH_ITEM = "[data-action~='note-tree#publish']"
 
 export default class extends Controller {
   static targets = [ "status", "deleteForm" ]
   static outlets = [ "context-menu" ]
-  static values = { newNoteUrl: String, copied: String, copyFailed: String, confirmDelete: String }
+  static values = { newNoteUrl: String, copied: String, copyFailed: String, confirmDelete: String, publishUrl: String, publishFolders: Boolean }
 
   connect() {
     this.roveToCurrent()
@@ -121,7 +123,7 @@ export default class extends Controller {
 
   openMenu(row, x, y, fromKeyboard = false) {
     this.menuRow = row
-    this.showMenuItems((item) => !(item.dataset.noteOnly == "true" && isFolder(row)))
+    this.showMenuItems((item) => !(item.dataset.noteOnly == "true" && isFolder(row)) && (!item.matches(PUBLISH_ITEM) || this.allows("publish", row)))
     this.contextMenuOutlet.open({ x, y, opener: row, fromKeyboard })
   }
 
@@ -172,6 +174,14 @@ export default class extends Controller {
     this.deleteFormTarget.dataset.turboConfirm = this.confirmDeleteValue.replace("%{path}", () => row.dataset.path)
   }
 
+  // O diálogo de publicar do layout, pelo frame dele: a pasta pelo caminho, a nota pelo id do link.
+  publish() {
+    const url = new URL(this.publishUrlValue, location.href)
+    const params = isFolder(this.menuRow) ? { kind: "folder", path: this.menuRow.dataset.path.slice(1) } : { kind: "note", note_id: noteIdOf(this.menuRow) }
+    Object.entries(params).forEach(([ name, value ]) => url.searchParams.set(name, value))
+    Turbo.visit(url, { frame: "publish_preview" })
+  }
+
   copyPath() {
     this.copy(this.menuRow.dataset.path)
   }
@@ -206,9 +216,11 @@ export default class extends Controller {
     visitFrom(origin, url)
   }
 
-  // Quem só lê copia; renomear e apagar são de quem escreve, e só valem para nota, como o wikilink.
+  // Quem só lê copia; renomear e apagar são de quem escreve, e só valem para nota, como o wikilink. Publicar a nota é de
+  // quem escreve; a pasta, de owner e admin.
   allows(action, row) {
     if (!row) return false
+    if (action == "publish") return this.hasPublishUrlValue && (!isFolder(row) || this.publishFoldersValue)
     if ([ "rename", "delete" ].includes(action) && !this.hasNewNoteUrlValue) return false
     return action == "copyPath" || !isFolder(row)
   }
@@ -231,6 +243,11 @@ export default class extends Controller {
   get rows() {
     return [ ...this.element.querySelectorAll("[role=treeitem]") ].filter((row) => !row.closest("[role=group][hidden]"))
   }
+}
+
+// O id da nota pelo link dela (/notes/:id).
+function noteIdOf(row) {
+  return decodeURIComponent(new URL(row.href).pathname.split("/").pop())
 }
 
 function isFolder(row) {

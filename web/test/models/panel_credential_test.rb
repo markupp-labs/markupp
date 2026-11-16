@@ -58,19 +58,19 @@ class PanelCredentialTest < ActiveSupport::TestCase
   end
 
   test "bearer_api sends the access token and the active tenant" do
-    @credential.sign_in(@fake_api.post("/auth/login", email: FakeMarkuppAccounts::DEFAULT_EMAIL, password: FakeMarkuppAccounts::DEFAULT_PASSWORD))
+    @credential.sign_in(@fake_api.post("/v1/auth/login", email: FakeMarkuppAccounts::DEFAULT_EMAIL, password: FakeMarkuppAccounts::DEFAULT_PASSWORD))
     @session[:tenant_id] = "tenant-1"
 
-    @credential.bearer_api.get("/notes")
+    @credential.bearer_api.get("/v1/notes")
 
-    assert_equal({ access_token: "access-1", tenant_id: "tenant-1", call: "GET /notes" }, @fake_api.received_credentials.sole)
+    assert_equal({ access_token: "access-1", tenant_id: "tenant-1", call: "GET /v1/notes" }, @fake_api.received_credentials.sole)
   end
 
   test "tenant_id= keeps the active tenant for the next calls" do
-    @credential.sign_in(@fake_api.post("/auth/login", email: FakeMarkuppAccounts::DEFAULT_EMAIL, password: FakeMarkuppAccounts::DEFAULT_PASSWORD))
+    @credential.sign_in(@fake_api.post("/v1/auth/login", email: FakeMarkuppAccounts::DEFAULT_EMAIL, password: FakeMarkuppAccounts::DEFAULT_PASSWORD))
 
     @credential.tenant_id = "tenant-1"
-    @credential.bearer_api.get("/notes")
+    @credential.bearer_api.get("/v1/notes")
 
     assert_equal "tenant-1", @session[:tenant_id]
     assert_equal "tenant-1", @fake_api.received_credentials.sole[:tenant_id]
@@ -104,9 +104,9 @@ class PanelCredentialTest < ActiveSupport::TestCase
   test "public_api goes without token nor tenant" do
     @session[:tenant_id] = "tenant-1"
 
-    @credential.public_api.post("/auth/logout", refresh_token: "refresh-9")
+    @credential.public_api.post("/v1/auth/logout", refresh_token: "refresh-9")
 
-    assert_equal({ access_token: nil, tenant_id: nil, call: "POST /auth/logout" }, @fake_api.received_credentials.sole)
+    assert_equal({ access_token: nil, tenant_id: nil, call: "POST /v1/auth/logout" }, @fake_api.received_credentials.sole)
   end
 
   test "api renews the access token on its own" do

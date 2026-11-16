@@ -30,7 +30,7 @@ func healthRequest(t *testing.T, probe api.StorageProbe) *httptest.ResponseRecor
 	validator := &fakeTokenValidator{}
 	router := api.NewRouter(api.RouterDeps{Notes: &fakeService{}, Tenants: tenantDeTeste, Tokens: validator, Probe: probe})
 	rec := httptest.NewRecorder()
-	router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/healthz", nil))
+	router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/healthz", nil))
 	return rec
 }
 

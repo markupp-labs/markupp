@@ -8,8 +8,15 @@ import (
 
 // triangulosComPonte é a lista de vizinhos de dois triângulos, 0-1-2 e 3-4-5, ligados
 // pela ponte 2-3.
-func triangulosComPonte() [][]int {
-	return [][]int{{1, 2}, {0, 2}, {0, 1, 3}, {2, 4, 5}, {3, 5}, {3, 4}}
+func triangulosComPonte() [][]weightedEdge {
+	vizinhos := [][]int{{1, 2}, {0, 2}, {0, 1, 3}, {2, 4, 5}, {3, 5}, {3, 4}}
+	adj := make([][]weightedEdge, len(vizinhos))
+	for i, ns := range vizinhos {
+		for _, j := range ns {
+			adj[i] = append(adj[i], weightedEdge{to: j, weight: 1})
+		}
+	}
+	return adj
 }
 
 func TestLouvain_ConvergeAntesDosTetos(t *testing.T) {

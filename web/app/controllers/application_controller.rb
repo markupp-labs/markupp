@@ -11,7 +11,7 @@ class ApplicationController < ActionController::Base
   class_attribute :markupp_api_factory
 
   before_action :require_login
-  helper_method :credential, :current_tenant, :current_tenants, :current_vault, :current_vaults, :explorer_groups
+  helper_method :instance_admin?, :credential, :current_tenant, :current_tenants, :current_vault, :current_vaults, :explorer_groups
 
   # O Rails procura do último para o primeiro: os específicos vêm depois do genérico.
   rescue_from MarkuppApi::Error, with: :render_unreachable
@@ -47,7 +47,7 @@ class ApplicationController < ActionController::Base
       return_to = panel_path(session[:return_to]) || root_path
       reset_session
       credential.sign_in(pair)
-      credential.account = credential.api.get("/auth/me")
+      credential.account = credential.api.get("/v1/auth/me")
       return_to
     end
 
@@ -62,7 +62,7 @@ class ApplicationController < ActionController::Base
 
     # A API responde 204 sempre; fora do ar, o painel sai do mesmo jeito e o refresh vence sozinho.
     def revoke_refresh_token
-      credential.public_api.post("/auth/logout", refresh_token: credential.refresh_token)
+      credential.public_api.post("/v1/auth/logout", refresh_token: credential.refresh_token)
     rescue MarkuppApi::Error => error
       log_api_event("markupp_logout_not_revoked", error, level: :warn)
     end
@@ -83,6 +83,19 @@ class ApplicationController < ActionController::Base
     end
 
     def current_tenant = @current_tenant
+
+    # Administra a instância (ADR-0057): /auth/me uma vez por página, para a lista de quem hospeda valer na hora. Com a
+    # API fora, fica sem o grupo Instance em vez de derrubar a página.
+    def instance_admin?
+      return @instance_admin if defined?(@instance_admin)
+
+      @instance_admin = credential.api.get("/v1/auth/me")["instance_admin"] == true
+    rescue MarkuppApi::Error => error
+      raise unless error.instance_of?(MarkuppApi::Error)
+
+      log_api_event("markupp_account_unreachable", error, level: :error)
+      @instance_admin = false
+    end
 
     def current_tenants = @current_tenants ||= Tenant.mine(credential.api)
 

@@ -37,3 +37,8 @@ comunidades
 - Título de candidata em mais de max(5% das notas do cofre, 5) notas é palavra comum e
   fica sem prior (Mihalcea e Csomai, 2007), com o df que o mesmo segundo estágio grava antes
   de inferir
+
+## Emenda
+
+Em novembro de 2026, o ADR-0053 trouxe a ligação automática, que pesa 0,5 no PageRank e nas
+comunidades. A inferida continua com o peso da ligação escrita, e a decisão não mudou

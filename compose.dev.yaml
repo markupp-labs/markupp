@@ -1,0 +1,146 @@
+x-servidor: &servidor
+  build:
+    context: ./markupp
+    dockerfile: Dockerfile.dev
+  environment: &ambiente
+    MARKUPP_DATABASE_URL: postgres://markupp:${POSTGRES_PASSWORD:-markupp}@postgres:5432/markupp?sslmode=disable
+    MARKUPP_AUTH_REGISTRATION_ENABLED: ${MARKUPP_AUTH_REGISTRATION_ENABLED:-false}
+    # Endereço público da instância. O painel fica na raiz dele, salvo MARKUPP_PANEL_URL.
+    MARKUPP_PUBLIC_URL: ${MARKUPP_PUBLIC_URL:-http://localhost:${MARKUPP_PORT:-6275}}
+    MARKUPP_PANEL_URL: ${MARKUPP_PANEL_URL:-}
+  volumes:
+    - ./markupp:/src
+    - ${GO_MOD_CACHE:-go_mod_cache}:/go/pkg/mod
+
+services:
+  postgres:
+    # O Postgres com o pgvector, na imagem oficial do pgvector.
+    image: pgvector/pgvector:0.8.7-pg17-trixie
+    environment:
+      POSTGRES_USER: markupp
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-markupp}
+      POSTGRES_DB: markupp
+    volumes:
+      - ${POSTGRES_VOLUME:-postgres_data}:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U markupp -d markupp"]
+      interval: 2s
+      retries: 15
+
+  migrate:
+    <<: *servidor
+    command: ["go", "run", "-C", "/src", "./cmd/markupp", "migrate"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # O self-host não tem KEDA: o mesmo indexador roda em laço (ADR-0032). Erro do banco
+  # vai para o log e o laço tenta de novo no próximo intervalo.
+  indexer:
+    <<: *servidor
+    command: ["go", "run", "-C", "/src", "./cmd/markupp", "index-loop"]
+    restart: unless-stopped
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  # Indexador de embedding em laço. Sem MARKUPP_EMBEDDING_PROVIDER, vale a escolha do
+  # administrador da instância no painel, sem provedor por padrão. Aqui ele roda sem o ONNX
+  # Runtime: o provedor local só existe na imagem markupp-embedder (Dockerfile.embedder).
+  embedder:
+    <<: *servidor
+    environment:
+      <<: *ambiente
+      MARKUPP_EMBEDDING_PROVIDER: ${MARKUPP_EMBEDDING_PROVIDER:-}
+      MARKUPP_SECRET_KEY: ${MARKUPP_SECRET_KEY:-}
+      MARKUPP_EMBEDDING_URL: ${MARKUPP_EMBEDDING_URL:-}
+      MARKUPP_EMBEDDING_MODEL: ${MARKUPP_EMBEDDING_MODEL:-}
+      MARKUPP_EMBEDDING_API_KEY: ${MARKUPP_EMBEDDING_API_KEY:-}
+    command: ["go", "run", "-C", "/src", "./cmd/markupp", "embed-loop"]
+    restart: unless-stopped
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  mailpit:
+    image: axllent/mailpit:v1.31.4
+    ports:
+      - "127.0.0.1:${MAILPIT_PORT:-8025}:8025"
+
+  # O self-host não tem KEDA: o notificador fica em laço, como o indexador.
+  notifier:
+    <<: *servidor
+    environment:
+      <<: *ambiente
+      # O Mailpit recebe todo email de desenvolvimento; a caixa fica em http://localhost:8025
+      MARKUPP_SMTP_URL: smtp://mailpit:1025?tls=none
+      MARKUPP_SMTP_FROM: convites@markupp.local
+    command: ["go", "run", "-C", "/src", "./cmd/markupp", "notify-loop"]
+    restart: unless-stopped
+    depends_on:
+      mailpit:
+        condition: service_started
+      migrate:
+        condition: service_completed_successfully
+
+  markupp:
+    <<: *servidor
+    environment:
+      <<: *ambiente
+      MARKUPP_INVITE_BY_EMAIL: "true"
+      # Segredos gerados no banco na primeira subida (ADR-0041). O Go é a única porta
+      # publicada: encaminha /mcp ao MCP e o resto ao painel.
+      MARKUPP_MCP_UPSTREAM_URL: http://mcp:3000
+      MARKUPP_PANEL_UPSTREAM_URL: http://web:3000
+      MARKUPP_MCP_SECRET_PATH: /run/markupp-mcp/secret
+      # Contas que administram a instância pelo painel, e a chave que cifra os segredos
+      # guardados no banco (ADR-0057).
+      MARKUPP_INSTANCE_ADMINS: ${MARKUPP_INSTANCE_ADMINS:-}
+      MARKUPP_SECRET_KEY: ${MARKUPP_SECRET_KEY:-}
+    volumes:
+      - ./markupp:/src
+      - ${GO_MOD_CACHE:-go_mod_cache}:/go/pkg/mod
+      - mcp_secret:/run/markupp-mcp
+    ports:
+      - "${MARKUPP_PORT:-6275}:6275"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile.dev
+    environment:
+      BINDING: 0.0.0.0
+      MARKUPP_API_URL: http://markupp:6275
+      # A página Agents mostra aos clientes MCP a URL do MCP, o /mcp da URL pública do
+      # servidor, que o encaminha ao serviço mcp. Sem MARKUPP_MCP_URL a página só avisa
+      # que o MCP está desligado.
+      MARKUPP_PUBLIC_URL: ${MARKUPP_PUBLIC_URL:-http://localhost:${MARKUPP_PORT:-6275}}
+      MARKUPP_MCP_URL: ${MARKUPP_PUBLIC_URL:-http://localhost:${MARKUPP_PORT:-6275}}/mcp
+    volumes:
+      - ./web:/rails
+      - ${BUNDLE_CACHE:-bundle_cache}:/usr/local/bundle
+    depends_on:
+      - markupp
+
+  # Servidor MCP (ADR-0045): descobre o issuer pelo Go e lê o segredo que o Go escreve no
+  # volume compartilhado. Os agentes chegam a ele pelo /mcp do Go.
+  mcp:
+    build:
+      context: ./mcp
+    environment:
+      MARKUPP_MCP_API_URL: http://markupp:6275
+      MARKUPP_MCP_SECRET_PATH: /run/markupp-mcp/secret
+    volumes:
+      - mcp_secret:/run/markupp-mcp:ro
+    depends_on:
+      markupp:
+        condition: service_started
+
+volumes:
+  postgres_data:
+  go_mod_cache:
+  bundle_cache:
+  mcp_secret:

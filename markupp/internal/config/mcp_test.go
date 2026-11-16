@@ -77,7 +77,7 @@ func TestWithInstanceSecrets_SemVariaveis_GeraOSegredoDoJWTEODoMCP(t *testing.T)
 
 	require.NoError(t, err)
 	assert.Equal(t, "segredo-gerado-com-mais-de-32-bytes!", resolved.AuthSecret)
-	assert.Equal(t, []config.OAuthResource{{URL: "http://localhost:8080/mcp", Secret: "segredo-gerado-com-mais-de-32-bytes!"}}, resolved.OAuthResources) // #nosec G101 -- valor fictício de teste
+	assert.Equal(t, []config.OAuthResource{{URL: "http://localhost:6275/mcp", Secret: "segredo-gerado-com-mais-de-32-bytes!"}}, resolved.OAuthResources) // #nosec G101 -- valor fictício de teste
 	assert.ElementsMatch(t, []string{"auth_secret", "mcp_resource_secret"}, secrets.generated)
 }
 
@@ -141,4 +141,22 @@ func TestWriteMCPSecret_DiretorioInacessivel_RetornaErroComOCaminho(t *testing.T
 	err := config.WriteMCPSecret(filepath.Join(bloqueado, "secret"), "x")
 
 	require.ErrorContains(t, err, bloqueado)
+}
+
+func TestLoad_LeOUpstreamDoPainel(t *testing.T) {
+	cfg := carregar(t, fakeEnv{"MARKUPP_DATABASE_URL": urlDeTeste, "MARKUPP_PANEL_UPSTREAM_URL": "http://web:8080/"})
+
+	assert.Equal(t, "http://web:8080", cfg.PanelUpstreamURL)
+}
+
+func TestLoad_UpstreamDoPainelForaDoFormato_RetornaErroComOValor(t *testing.T) {
+	for _, valor := range []string{"ftp://web", "web:8080", "http://web:8080/x"} {
+		env := fakeEnv{"MARKUPP_DATABASE_URL": urlDeTeste, "MARKUPP_PANEL_UPSTREAM_URL": valor}
+
+		_, err := config.Load(env.Lookup)
+
+		require.Error(t, err, valor)
+		assert.Contains(t, err.Error(), "MARKUPP_PANEL_UPSTREAM_URL", valor)
+		assert.Contains(t, err.Error(), valor, valor)
+	}
 }

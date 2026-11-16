@@ -4,7 +4,7 @@ class PasswordChangesController < ApplicationController
   limit_create_attempts to: 5, within: 1.minute, redirect_path: :settings_account_path
 
   def create
-    credential.public_api.post("/auth/password/forgot", email: credential.account_email)
+    credential.public_api.post("/v1/auth/password/forgot", email: credential.account_email)
     redirect_to settings_account_path, notice: t(".sent", email: credential.account_email)
   rescue MarkuppApi::EmailUnavailable, MarkuppApi::LocalAuthDisabled => error
     redirect_to settings_account_path, alert: t("password_requests.create.#{error.reason}")

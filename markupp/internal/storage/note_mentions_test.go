@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -41,7 +42,23 @@ func cofreComMencoes(t *testing.T) (*pgxpool.Pool, *storage.PostgresNoteGraph) {
 		storagetest.SaveNote(ctxDeTeste, t, repo, nota)
 	}
 	indexaTodosOsCofres(t, db, "simple")
+	recusaAsLigacoesPorMencao(t, db)
 	return db, storage.NewPostgresNoteGraph(db, "simple")
+}
+
+// recusaAsLigacoesPorMencao recusa cada par que o segundo estágio ligou por menção,
+// e o par volta para a menção não ligada, que mostra só o que não virou ligação.
+func recusaAsLigacoesPorMencao(t *testing.T, db *pgxpool.Pool) {
+	t.Helper()
+	rows, err := db.Query(context.Background(), "SELECT DISTINCT ARRAY[source_id, target_id] FROM note_automatic_links WHERE kind = 'mentioned'")
+	require.NoError(t, err)
+	pares, err := pgx.CollectRows(rows, pgx.RowTo[[]string])
+	require.NoError(t, err)
+	recusas := storage.NewPostgresLinkRefusals(db)
+	for _, par := range pares {
+		_, err := recusas.Create(ctxDeTeste, cofreDeTeste, par[0], par[1])
+		require.NoError(t, err, "recusar %v", par)
+	}
 }
 
 // mencoes lê as menções da nota noteID em mentions, os títulos que ela menciona, ou

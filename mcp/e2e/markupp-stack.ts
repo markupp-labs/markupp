@@ -2,18 +2,20 @@ import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { setTimeout as sleep } from "node:timers/promises";
 
+import { createAccount } from "./panel-consent.js";
+
 // A stack do e2e roda num projeto do compose só dela, para o down -v do fim não apagar o
 // banco da stack de desenvolvimento, e sem .env, como numa primeira subida (ADR-0041).
 const COMPOSE_PROJECT = "markupp-e2e";
 const COMPOSE_FILE = fileURLToPath(
-  new URL("../../docker-compose.yaml", import.meta.url),
+  new URL("../../compose.dev.yaml", import.meta.url),
 );
 const STARTUP_TIMEOUT_MS = 10 * 60_000;
 const POLL_INTERVAL_MS = 2_000;
 
 // markuppUrl é a URL pública do Go, que o compose deriva de MARKUPP_PORT.
 export function markuppUrl(): string {
-  return `http://localhost:${process.env.MARKUPP_PORT ?? "8080"}`;
+  return `http://localhost:${process.env.MARKUPP_PORT ?? "6275"}`;
 }
 
 function compose(args: string[]): void {
@@ -49,7 +51,8 @@ async function probe(url: string): Promise<string> {
   }
 }
 
-// setup é o globalSetup do Vitest: sobe a stack e espera o Go e o MCP atrás do /mcp.
+// setup é o globalSetup do Vitest: sobe a stack, espera o Go e o MCP atrás do /mcp e
+// cria a conta que os arquivos de teste dividem.
 export async function setup(): Promise<void> {
   compose(["up", "-d", "--build"]);
   try {
@@ -57,6 +60,7 @@ export async function setup(): Promise<void> {
     await waitUntilOk(
       `${markuppUrl()}/.well-known/oauth-protected-resource/mcp`,
     );
+    await createAccount(markuppUrl());
   } catch (error) {
     compose(["logs", "--tail", "100"]);
     teardown();

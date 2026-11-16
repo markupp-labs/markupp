@@ -10,7 +10,7 @@ import (
 )
 
 // StartAuthorization valida o GET /oauth/authorize, grava o Pedido de autorização e
-// devolve a URL da tela de consentimento no painel, /oauth/authorize/<id>. Enquanto cliente e redirect_uri não
+// devolve a URL da tela de consentimento no painel, /oauth/requests/<id>. Enquanto cliente e redirect_uri não
 // estão confirmados, o erro não leva RedirectURI; depois, volta ao cliente por redirect.
 // O cliente apagado entre a busca e a gravação do pedido recebe a mesma recusa do cliente
 // não registrado.
@@ -29,7 +29,7 @@ func (s *Service) StartAuthorization(ctx context.Context, p AuthorizeParams) (st
 	if err != nil {
 		return "", fmt.Errorf("oauth: save authorization request of client %s: %w", ClientValue(p.ClientID), err)
 	}
-	return s.cfg.PanelURL + "/oauth/authorize/" + url.PathEscape(req.ID), nil
+	return s.cfg.PanelURL + "/oauth/requests/" + url.PathEscape(req.ID), nil
 }
 
 // registeredClientShape descreve o client_id aceito, para as mensagens de erro.

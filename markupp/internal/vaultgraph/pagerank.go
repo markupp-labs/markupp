@@ -20,17 +20,21 @@ type Convergence struct {
 }
 
 // pageRank é a iteração de potência de Page et al. (1998) sobre as listas de saída
-// out, a partir do vetor uniforme: a massa da nota sem saída se espalha por todas, e
+// out, com o peso de cada ligação em weights, a partir do vetor uniforme: a nota
+// reparte a massa na proporção do peso, a massa da nota sem saída se espalha por todas, e
 // o teleporte dá (1-d)/n a cada uma. Para quando a norma 1 da diferença entre duas
 // iterações fica abaixo de n x tol, ou em maxIterations.
-func pageRank(out [][]graph.Node, d, tol float64, maxIterations int) ([]float64, Convergence) {
+func pageRank(out [][]graph.Node, weights [][]float64, d, tol float64, maxIterations int) ([]float64, Convergence) {
+	if len(out) == 0 {
+		return nil, Convergence{}
+	}
 	rank, next := make([]float64, len(out)), make([]float64, len(out))
 	for i := range rank {
 		rank[i] = 1 / float64(len(out))
 	}
 	limit := float64(len(out)) * tol
 	for i := 1; i <= maxIterations; i++ {
-		powerStep(out, rank, next, d)
+		powerStep(out, weights, rank, next, d)
 		rank, next = next, rank
 		if floats.Distance(rank, next, 1) < limit {
 			return rank, Convergence{Iterations: i}
@@ -40,7 +44,7 @@ func pageRank(out [][]graph.Node, d, tol float64, maxIterations int) ([]float64,
 }
 
 // powerStep grava em next uma iteração do PageRank a partir de rank.
-func powerStep(out [][]graph.Node, rank, next []float64, d float64) {
+func powerStep(out [][]graph.Node, weights [][]float64, rank, next []float64, d float64) {
 	n := float64(len(out))
 	dangling := 0.0
 	clear(next)
@@ -49,9 +53,9 @@ func powerStep(out [][]graph.Node, rank, next []float64, d float64) {
 			dangling += rank[u]
 			continue
 		}
-		share := d * rank[u] / float64(len(targets))
-		for _, v := range targets {
-			next[v.ID()] += share
+		share := d * rank[u] / floats.Sum(weights[u])
+		for i, v := range targets {
+			next[v.ID()] += share * weights[u][i]
 		}
 	}
 	floats.AddConst((1-d)/n+d*dangling/n, next)

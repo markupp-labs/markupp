@@ -12,7 +12,7 @@ import (
 const (
 	authSecretName        = "auth_secret"
 	mcpResourceSecretName = "mcp_resource_secret" // #nosec G101 -- nome da linha no banco, nao o segredo
-	mcpUpstreamExpected   = "http(s)://host[:port] of the MCP server, without path, query or fragment"
+	upstreamExpected      = "http(s)://host[:port] of the container, without path, query or fragment"
 )
 
 // InstanceSecrets guarda os segredos que o servidor gera na primeira subida (ADR-0041).
@@ -20,25 +20,34 @@ type InstanceSecrets interface {
 	Secret(ctx context.Context, name string, generate func() (string, error)) (string, error)
 }
 
-// loadMCPSettings lê o servidor MCP da mesma origem: para onde /mcp vai e onde o
-// segredo dele é escrito.
+// loadMCPSettings lê os serviços da mesma origem: para onde /mcp vai, onde o segredo do
+// MCP é escrito e para onde a raiz vai, o painel.
 func loadMCPSettings(lookup LookupFunc, cfg *Config) error {
 	readString(lookup, "MARKUPP_MCP_SECRET_PATH", &cfg.MCPSecretPath)
+	if err := readUpstreamURL(lookup, "MARKUPP_MCP_UPSTREAM_URL", &cfg.MCPUpstreamURL); err != nil {
+		return err
+	}
+	return readUpstreamURL(lookup, "MARKUPP_PANEL_UPSTREAM_URL", &cfg.PanelUpstreamURL)
+}
+
+// readUpstreamURL lê em target o endereço interno de um container encaminhado pelo
+// servidor, sem a barra final. Vazia, target fica vazio.
+func readUpstreamURL(lookup LookupFunc, key string, target *string) error {
 	var upstream string
-	readString(lookup, "MARKUPP_MCP_UPSTREAM_URL", &upstream)
+	readString(lookup, key, &upstream)
 	if upstream == "" {
 		return nil
 	}
 	parsed, err := url.Parse(upstream)
-	if err != nil || !mcpUpstreamAllowed(parsed) {
-		return fmt.Errorf("MARKUPP_MCP_UPSTREAM_URL=%q, expected %s", upstream, mcpUpstreamExpected)
+	if err != nil || !upstreamAllowed(parsed) {
+		return fmt.Errorf("%s=%q, expected %s", key, upstream, upstreamExpected)
 	}
-	cfg.MCPUpstreamURL = strings.TrimRight(upstream, "/")
+	*target = strings.TrimRight(upstream, "/")
 	return nil
 }
 
-// mcpUpstreamAllowed aceita http em qualquer host: é o endereço interno do container.
-func mcpUpstreamAllowed(parsed *url.URL) bool {
+// upstreamAllowed aceita http em qualquer host: é o endereço interno do container.
+func upstreamAllowed(parsed *url.URL) bool {
 	if parsed.Scheme != "http" && parsed.Scheme != "https" {
 		return false
 	}

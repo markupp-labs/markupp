@@ -1,0 +1,14 @@
+en:
+  external_logins:
+    buttons:
+      continue: "Continue with %{provider}"
+    connected: "%{provider} connected."
+    errors:
+      expired: "This sign in expired or came from another tab. Start again."
+      cancelled: "Sign in with %{provider} was cancelled."
+      not_linked: "No account uses this %{provider} identity yet. Create an account with it, or log in and connect it in Settings."
+      account_exists: "This email already has an account. Log in and connect %{provider} in Settings > Account."
+      already_linked: "This %{provider} identity already belongs to an account."
+      email_missing: "%{provider} did not share your email, so the account can't be created."
+      rejected: "%{provider} refused this sign in. Start again."
+      unavailable: "%{provider} did not answer. Try again later."
