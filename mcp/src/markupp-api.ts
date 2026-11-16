@@ -1,4 +1,13 @@
 import { toApiError } from "./api-error.js";
+import {
+  linkRefusalsPath,
+  memberPath,
+  myInvitePath,
+  notePath,
+  vaultPath,
+  withPage,
+  withQuery,
+} from "./api-paths.js";
 import type {
   Publication,
   PublicationList,
@@ -8,6 +17,8 @@ import type { ApiTokenSource } from "./session.js";
 import type {
   Account,
   FoundNote,
+  InstanceEmbedding,
+  InstanceEmbeddingUpdate,
   IssuedInvite,
   Link,
   LinkQuery,
@@ -96,6 +107,10 @@ export interface MarkuppApi {
     vault: string,
     refusalId: string,
   ): Promise<void>;
+  getInstanceEmbedding(): Promise<InstanceEmbedding>;
+  setInstanceEmbedding(
+    update: InstanceEmbeddingUpdate,
+  ): Promise<InstanceEmbedding>;
 }
 
 export type FetchFunction = (
@@ -121,6 +136,8 @@ type SearchHit = { note: { id: string; path: string }; vault_id: string };
 
 // TenantHeader é onde a API lê em qual tenant da conta a requisição age.
 const TenantHeader = "X-Markupp-Tenant";
+
+const InstanceEmbeddingPath = "/v1/instance/embedding";
 
 // MaxLimit e MaxOffset são o maior limit e o maior offset que a API aceita numa página.
 const MaxLimit = 100;
@@ -420,6 +437,18 @@ export class HttpMarkuppApi implements MarkuppApi {
     await this.send({ method: "DELETE", path, tenant });
   }
 
+  // O embedding é da instância: sem tenant, só para quem administra a instância.
+  getInstanceEmbedding(): Promise<InstanceEmbedding> {
+    return this.json({ method: "GET", path: InstanceEmbeddingPath });
+  }
+
+  setInstanceEmbedding(
+    update: InstanceEmbeddingUpdate,
+  ): Promise<InstanceEmbedding> {
+    const call = { method: "PUT", path: InstanceEmbeddingPath, body: update };
+    return this.json(call as ApiCall);
+  }
+
   private async json<T>(call: ApiCall): Promise<T> {
     const response = await this.send(call);
     return (await response.json()) as T;
@@ -443,40 +472,6 @@ export class HttpMarkuppApi implements MarkuppApi {
     if (call.body !== undefined) headers["content-type"] = "application/json";
     return headers;
   }
-}
-
-function notePath(id: string): string {
-  return `/v1/notes/${encodeURIComponent(id)}`;
-}
-
-function memberPath(userId: string): string {
-  return `/v1/users/${encodeURIComponent(userId)}`;
-}
-
-function vaultPath(vault: string): string {
-  return `/v1/vaults/${encodeURIComponent(vault)}`;
-}
-
-function linkRefusalsPath(vault: string): string {
-  return `${vaultPath(vault)}/link-refusals`;
-}
-
-// withQuery só põe o ? quando há parâmetro.
-function withQuery(path: string, params: URLSearchParams): string {
-  const query = params.toString();
-  return query ? `${path}?${query}` : path;
-}
-
-// withPage põe na query string o limit e o offset que vieram, para o servidor usar o
-// padrão dele nos que faltam.
-function withPage(params: URLSearchParams, page: SearchPage): URLSearchParams {
-  if (page.limit !== undefined) params.set("limit", String(page.limit));
-  if (page.offset !== undefined) params.set("offset", String(page.offset));
-  return params;
-}
-
-function myInvitePath(inviteId: string): string {
-  return `/v1/me/invites/${encodeURIComponent(inviteId)}`;
 }
 
 export function noteSummary(note: NoteSummary): NoteSummary {

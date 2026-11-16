@@ -28,7 +28,7 @@ func TestLoadEmbedding_Remoto_LeEnderecoModeloEChave(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Equal(t, config.Embedding{Provider: config.EmbeddingOpenAICompat, URL: "https://api.exemplo/v1", Model: "modelo-x",
-		APIKey: "chave", ModelDir: "/var/lib/markupp/models", ChunkTokens: 256}, cfg)
+		APIKey: "chave", ModelDir: "/var/lib/markupp/models", ChunkTokens: 256, HostLocked: true}, cfg)
 }
 
 func TestLoadEmbedding_RemotoSemEndereco_RetornaErroComAVariavel(t *testing.T) {
@@ -67,4 +67,19 @@ func TestLoadEmbedding_Local_LeAPastaDoModelo(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, config.EmbeddingLocal, cfg.Provider)
 	assert.Equal(t, "/modelos", cfg.ModelDir)
+}
+
+func TestLoadEmbedding_SemProvedorNaVariavel_NaoTravaAEscolha(t *testing.T) {
+	cfg, err := config.LoadEmbedding(fakeEnv{"MARKUPP_EMBEDDING_PROVIDER": "  "}.Lookup)
+
+	require.NoError(t, err)
+	assert.False(t, cfg.HostLocked)
+}
+
+func TestLoadEmbedding_NoneExplicito_TravaAEscolha(t *testing.T) {
+	cfg, err := config.LoadEmbedding(fakeEnv{"MARKUPP_EMBEDDING_PROVIDER": "none"}.Lookup)
+
+	require.NoError(t, err)
+	assert.True(t, cfg.HostLocked)
+	assert.Equal(t, config.EmbeddingNone, cfg.Provider)
 }

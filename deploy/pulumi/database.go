@@ -31,7 +31,7 @@ const (
 )
 
 // generatedSecrets são os valores aleatórios do Secret do banco.
-type generatedSecrets struct{ auth, scaler pulumi.StringOutput }
+type generatedSecrets struct{ auth, scaler, key pulumi.StringOutput }
 
 // declareDatabase cria o Postgres do namespace ou o Secret do banco externo,
 // e devolve o recurso de que a migração depende.
@@ -52,7 +52,11 @@ func generateSecrets(ctx *pulumi.Context, names resourceNames, parent pulumi.Res
 		return generatedSecrets{}, err
 	}
 	scaler, err := randomSecret(ctx, names.component+"-scaler-password", passwordLength, parent)
-	return generatedSecrets{auth: auth, scaler: scaler}, err
+	if err != nil {
+		return generatedSecrets{}, err
+	}
+	key, err := randomSecret(ctx, names.component+"-secret-key", authSecretLength, parent)
+	return generatedSecrets{auth: auth, scaler: scaler, key: key}, err
 }
 
 func randomSecret(ctx *pulumi.Context, name string, length int, parent pulumi.ResourceOption) (pulumi.StringOutput, error) {
@@ -75,7 +79,7 @@ func declareExternalDatabase(ctx *pulumi.Context, names resourceNames, args Mark
 	return corev1.NewSecret(ctx, names.dbSecret, &corev1.SecretArgs{
 		Metadata: namespaced(names.dbSecret, args.Namespace),
 		StringData: withEmailSecret(pulumi.StringMap{
-			dbSecretKey: args.Database.ExternalURL, authSecretKey: secrets.auth,
+			dbSecretKey: args.Database.ExternalURL, authSecretKey: secrets.auth, secretKeyKey: secrets.key,
 			scalerPasswordKey: secrets.scaler, scalerURIKey: pulumix.Cast[pulumi.StringOutput](scalerURI),
 		}, args),
 	}, parent)
@@ -116,7 +120,7 @@ func declarePostgresSecret(ctx *pulumi.Context, names resourceNames, args Markup
 	_, err := corev1.NewSecret(ctx, names.dbSecret, &corev1.SecretArgs{
 		Metadata: namespaced(names.dbSecret, args.Namespace),
 		StringData: withEmailSecret(pulumi.StringMap{
-			dbPasswordKey: password, authSecretKey: secrets.auth, scalerPasswordKey: secrets.scaler,
+			dbPasswordKey: password, authSecretKey: secrets.auth, scalerPasswordKey: secrets.scaler, secretKeyKey: secrets.key,
 			dbSecretKey:  pulumi.Sprintf("postgres://%s:%s@%s", postgresUser, password, address),
 			scalerURIKey: pulumi.Sprintf("postgres://%s:%s@%s", scalerUser, secrets.scaler, address),
 		}, args),

@@ -10,6 +10,7 @@ import (
 
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/auth"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/identity"
+	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/instance"
 )
 
 const maxAuthBodyBytes = 4096
@@ -33,6 +34,8 @@ type AuthService interface {
 type authHandler struct {
 	svc    AuthService
 	logger *slog.Logger
+	// admins diz, em GET /auth/me, se a conta administra a instância.
+	admins instance.Admins
 }
 
 type loginRequest struct {
@@ -54,6 +57,7 @@ type userResponse struct {
 	Email         string `json:"email"`
 	EmailVerified bool   `json:"email_verified"`
 	PasswordLogin bool   `json:"password_login"`
+	InstanceAdmin bool   `json:"instance_admin"`
 }
 
 type tenantResponse struct {
@@ -167,7 +171,8 @@ func (h *authHandler) me(w http.ResponseWriter, r *http.Request) {
 		writeError(w, "internal", "internal error", http.StatusInternalServerError)
 		return
 	}
-	writeJSON(w, http.StatusOK, userResponse{ID: user.ID, Email: user.Email, EmailVerified: user.EmailVerified, PasswordLogin: user.PasswordLogin})
+	writeJSON(w, http.StatusOK, userResponse{ID: user.ID, Email: user.Email, EmailVerified: user.EmailVerified, PasswordLogin: user.PasswordLogin,
+		InstanceAdmin: h.admins.Includes(user.Email, user.EmailVerified)})
 }
 
 func (h *authHandler) createTenant(w http.ResponseWriter, r *http.Request) {

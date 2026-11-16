@@ -68,6 +68,12 @@ type MarkuppArgs struct {
 	// RegistrationEnabled abre o cadastro de conta a qualquer pessoa
 	// (MARKUPP_AUTH_REGISTRATION_ENABLED). Exige o email, que prova o email da conta.
 	RegistrationEnabled bool `pulumi:"registrationEnabled,optional"`
+	// InstanceAdmins são os emails das contas que administram a instância pelo painel
+	// (MARKUPP_INSTANCE_ADMINS). Vazio, ninguém administra pelo painel.
+	InstanceAdmins []string `pulumi:"instanceAdmins,optional"`
+	// EmbedderImage é a imagem do indexador de embedding. Padrão: a de image, com
+	// -embedder no repositório e a mesma tag.
+	EmbedderImage string `pulumi:"embedderImage,optional"`
 }
 
 // GatewayRefArgs aponta para um Gateway de outro namespace. Ele precisa
@@ -136,13 +142,16 @@ func declareResources(ctx *pulumi.Context, name string, args MarkuppArgs, parent
 	return declareIngress(ctx, names, args, parent)
 }
 
-// declareWorkers cria o que o KEDA escala a partir de consultas ao banco, e por isso
-// só depois da migração que cria as funções consultadas.
+// declareWorkers cria o que o KEDA escala a partir de consultas ao banco e o embedder,
+// e por isso só depois da migração que cria as funções e as tabelas que eles leem.
 func declareWorkers(ctx *pulumi.Context, names resourceNames, args MarkuppArgs, opts pulumi.ResourceOption) error {
 	if err := declareScalerAuth(ctx, names, args, opts); err != nil {
 		return err
 	}
 	if err := declareIndexer(ctx, names, args, opts); err != nil {
+		return err
+	}
+	if err := declareEmbedder(ctx, names, args, opts); err != nil {
 		return err
 	}
 	return declareNotifier(ctx, names, args, opts)
@@ -210,23 +219,25 @@ func withDefaults(args MarkuppArgs) MarkuppArgs {
 
 // resourceNames centraliza os nomes que um recurso usa para achar outro.
 type resourceNames struct {
-	component, database, dbSecret, api, panel, panelTLS, mcp, indexer, notifier, scaler, gateway, issuer, tlsSecret string
+	component, database, dbSecret, api, panel, panelTLS, mcp, indexer, embedder, embedderModels, notifier, scaler, gateway, issuer, tlsSecret string
 }
 
 func newResourceNames(component string) resourceNames {
 	return resourceNames{
-		component: component,
-		database:  component + "-db",
-		dbSecret:  component + "-db-app",
-		api:       component + "-api",
-		panel:     component + "-panel",
-		panelTLS:  component + "-panel-tls",
-		mcp:       component + "-mcp",
-		indexer:   component + "-indexer",
-		notifier:  component + "-notifier",
-		scaler:    component + "-scaler",
-		gateway:   component + "-gateway",
-		issuer:    component + "-issuer",
-		tlsSecret: component + "-tls",
+		component:      component,
+		database:       component + "-db",
+		dbSecret:       component + "-db-app",
+		api:            component + "-api",
+		panel:          component + "-panel",
+		panelTLS:       component + "-panel-tls",
+		mcp:            component + "-mcp",
+		indexer:        component + "-indexer",
+		embedder:       component + "-embedder",
+		embedderModels: component + "-embedder-models",
+		notifier:       component + "-notifier",
+		scaler:         component + "-scaler",
+		gateway:        component + "-gateway",
+		issuer:         component + "-issuer",
+		tlsSecret:      component + "-tls",
 	}
 }

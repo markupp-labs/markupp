@@ -66,6 +66,8 @@ module ShortcutsHelper
       Shortcut.of(:vault_settings, run: { href: :settings_vault_path, when: "[data-current-vault]" }),
       Shortcut.of(:vault_members, run: { href: :settings_vault_members_path, when: "[data-current-vault]" }),
       Shortcut.of(:vault_link_refusals, run: { href: :settings_link_refusals_path, when: "[data-current-vault]" }),
+      # Embedding da instância, só para quem a administra (data-instance-admin do body, nas configurações).
+      Shortcut.of(:instance_embedding, run: { href: :settings_instance_embedding_path, when: "[data-instance-admin]" }),
       # Só na Danger zone da General do cofre, para quem escreve: abre a mesma confirmação com o nome do cofre.
       Shortcut.of(:delete_vault, run: { click: "#delete_vault" }),
       # g e depois n abre o sino da barra de atividades (tenants_shortcut_controller.js), com o foco dentro dele.

@@ -25,6 +25,7 @@ import (
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/config"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/drain"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/indexing"
+	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/instance"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/linkrefusals"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/notes"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/notify"
@@ -232,11 +233,12 @@ func serve(ctx context.Context, logger *slog.Logger, cfg config.Config) error {
 	}
 	defer pool.Close()
 
-	cfg, err = prepareInstance(ctx, cfg, storage.NewPostgresInstanceSecrets(pool))
+	secrets := storage.NewPostgresInstanceSecrets(pool)
+	cfg, err = prepareInstance(ctx, cfg, secrets)
 	if err != nil {
 		return fmt.Errorf("prepare instance: %w", err)
 	}
-	handler, err := newHandler(cfg, pool, logger)
+	handler, err := newHandler(ctx, cfg, pool, logger, secrets)
 	if err != nil {
 		return err
 	}
@@ -245,7 +247,7 @@ func serve(ctx context.Context, logger *slog.Logger, cfg config.Config) error {
 	return server.ListenAndServe()
 }
 
-func newHandler(cfg config.Config, pool *pgxpool.Pool, logger *slog.Logger) (http.Handler, error) {
+func newHandler(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, logger *slog.Logger, secrets config.InstanceSecrets) (http.Handler, error) {
 	repo := storage.NewPostgresNotesRepository(pool, cfg.SearchConfig)
 	notesSvc := notes.NewService(repo, cfg.MaxNoteSize)
 	authSvc, codec := newAuthService(cfg, pool)
@@ -269,7 +271,22 @@ func newHandler(cfg config.Config, pool *pgxpool.Pool, logger *slog.Logger) (htt
 		ExternalLogin:      newExternalLoginService(cfg, authSvc),
 	}
 	addPublication(&deps, cfg, pool)
+	if err := addInstance(ctx, &deps, cfg, pool, secrets); err != nil {
+		return nil, err
+	}
 	return api.NewRouter(deps), nil
+}
+
+// addInstance liga as rotas do administrador da instância (ADR-0057), com a cifra da
+// chave do provedor de embedding.
+func addInstance(ctx context.Context, deps *api.RouterDeps, cfg config.Config, pool *pgxpool.Pool, secrets config.InstanceSecrets) error {
+	box, err := newSecretBox(ctx, cfg.SecretKey, secrets)
+	if err != nil {
+		return fmt.Errorf("prepare the key-encryption secret: %w", err)
+	}
+	deps.InstanceAdmins = cfg.InstanceAdmins
+	deps.InstanceEmbedding = instance.NewEmbeddingService(storage.NewAppInstanceEmbedding(pool), box)
+	return nil
 }
 
 // addPublication liga a publicação de notas, pastas e cofres e a leitura sem conta delas

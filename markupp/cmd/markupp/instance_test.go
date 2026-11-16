@@ -68,3 +68,44 @@ func TestPrepareInstance_MCPEmSubdominio_NaoEscreveArquivo(t *testing.T) {
 	require.NoError(t, err)
 	assert.NoFileExists(t, path)
 }
+
+func TestNewSecretBox_ComChaveSecreta_SelaComElaEAbreEmOutraReplica(t *testing.T) {
+	secrets := fakeInstanceSecrets{}
+	box, err := newSecretBox(context.Background(), "chave-secreta-de-quem-hospeda-32b", secrets)
+	require.NoError(t, err)
+
+	selado, err := box.Seal("sk")
+	require.NoError(t, err)
+	outra, err := newSecretBox(context.Background(), "chave-secreta-de-quem-hospeda-32b", fakeInstanceSecrets{})
+	require.NoError(t, err)
+	aberto, stale, err := outra.Open(selado)
+
+	require.NoError(t, err)
+	assert.Equal(t, "sk", aberto)
+	assert.False(t, stale)
+}
+
+func TestNewSecretBox_SemChaveSecreta_UsaASegredoDoBanco(t *testing.T) {
+	secrets := fakeInstanceSecrets{}
+
+	_, err := newSecretBox(context.Background(), "", secrets)
+
+	require.NoError(t, err)
+	assert.NotEmpty(t, secrets[secretKeyName])
+}
+
+func TestNewSecretBox_ChaveSecretaDefinidaDepois_AbreOSeladoComOSegredoDoBancoEPedeNovoSelo(t *testing.T) {
+	secrets := fakeInstanceSecrets{}
+	antes, err := newSecretBox(context.Background(), "", secrets)
+	require.NoError(t, err)
+	selado, err := antes.Seal("sk")
+	require.NoError(t, err)
+
+	depois, err := newSecretBox(context.Background(), "chave-secreta-de-quem-hospeda-32b", secrets)
+	require.NoError(t, err)
+	aberto, stale, err := depois.Open(selado)
+
+	require.NoError(t, err)
+	assert.Equal(t, "sk", aberto)
+	assert.True(t, stale, "selado com o segredo do banco, a API sela de novo com a MARKUPP_SECRET_KEY")
+}

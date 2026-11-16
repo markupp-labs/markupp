@@ -5,7 +5,7 @@ class FakeMarkuppApi
   attr_reader :received_credentials
 
   delegate :put_requests, :post_requests, to: :@notes
-  delegate :expire_access_tokens!, :revoke_refresh_tokens!, :refresh_token_valid?, to: :@accounts
+  delegate :expire_access_tokens!, :revoke_refresh_tokens!, :refresh_token_valid?, :set_instance_admin!, to: :@accounts
   delegate :disable_local_auth!, :close_registration!, :hold_refreshes_together!, to: :@auth
   delegate :assign_role!, :deny_notes_in!, :delete_tenant!, :receive_invite!, to: :@tenants
   delegate :sent_tokens, to: :@account_email
@@ -14,16 +14,19 @@ class FakeMarkuppApi
   delegate :take_provider_down!, :link_identity!, to: :@external_login
   delegate :publications, to: :@publications
   delegate :limit_public_reads!, to: :@public_notes
+  delegate :updates, to: :@instance_embedding, prefix: :instance_embedding
 
   # email_enabled: false é o servidor sem SMTP, que devolve o token do convite emitido e recusa os fluxos de email da conta.
   # graph é o cenário das ligações, comunidades e grafos sob /v1 (ver FakeMarkuppGraph); oauth_requests, o dos pedidos
   # de autorização OAuth (ver FakeMarkuppOAuthRequests); authorizations, o das Autorizações de cada conta (ver
   # FakeMarkuppAuthorizations); vaults, o dos cofres de cada tenant (ver FakeMarkuppVaults); publications, o das notas,
   # pastas e cofres publicados (ver FakeMarkuppPublications); login_providers, os provedores de login externo, nenhum
-  # por padrão (ver FakeMarkuppExternalLogin); link_refusals, o das recusas de ligação (ver FakeMarkuppLinkRefusals).
+  # por padrão (ver FakeMarkuppExternalLogin); link_refusals, o das recusas de ligação (ver FakeMarkuppLinkRefusals);
+  # instance_embedding, o do embedding da instância (ver FakeMarkuppInstanceEmbedding).
   def initialize(notes: [], unreachable: false, conflict: false, accounts: FakeMarkuppAccounts::DEFAULT_ACCOUNTS,
                  tenants: FakeMarkuppTenants::DEFAULT_TENANTS, invites: [], email_enabled: true, graph: {}, oauth_requests: [],
-                 authorizations: [], vaults: nil, publications: [], login_providers: [], link_refusals: [])
+                 authorizations: [], vaults: nil, publications: [], login_providers: [], link_refusals: [],
+                 instance_embedding: {})
     @accounts = FakeMarkuppAccounts.new(accounts)
     @tenants = FakeMarkuppTenants.new(tenants, invites)
     @auth = FakeMarkuppAuth.new(@accounts, @tenants)
@@ -40,6 +43,7 @@ class FakeMarkuppApi
     @external_login = FakeMarkuppExternalLogin.new(login_providers, @accounts, @auth)
     @publications = FakeMarkuppPublications.new(publications, @notes, @vaults)
     @public_notes = FakeMarkuppPublicNotes.new(@publications, @notes)
+    @instance_embedding = FakeMarkuppInstanceEmbedding.new(instance_embedding)
     @unreachable = unreachable
     @slow_calls = FakeSlowCalls.new(timeout: 10)
     @received_credentials = []
@@ -111,7 +115,9 @@ class FakeMarkuppApi
       @tenants.membership_for(account, @credentials[:tenant_id], call)
     end
 
-    def account_scoped?(path) = path.start_with?(OAUTH_REQUESTS, FakeMarkuppTenants::NOTIFICATIONS) || FakeMarkuppAuthorizations::ROUTE.match?(path)
+    def account_scoped?(path)
+    path.start_with?(OAUTH_REQUESTS, FakeMarkuppTenants::NOTIFICATIONS, FakeMarkuppInstanceEmbedding::ROUTE) || FakeMarkuppAuthorizations::ROUTE.match?(path)
+  end
 
     def authenticate(call)
       return if @credentials.nil? || @auth.public?(call) || @account_email.public?(call) || call.start_with?("GET /v1/public/")
@@ -131,6 +137,7 @@ class FakeMarkuppApi
       return @tenants if path == FakeMarkuppTenants::NOTIFICATIONS
       return @auth if path == "/v1/accounts"
       return @link_refusals if FakeMarkuppLinkRefusals::ROUTE.match?(path)
+      return @instance_embedding if path == FakeMarkuppInstanceEmbedding::ROUTE
       return @note_index if path.start_with?("/v1/search/") || FakeMarkuppNoteIndex::VAULT_NOTES.match?(path)
       return @graph if path.start_with?("/v1/")
       return @account_email if path.start_with?("/auth/password/", "/auth/email/")

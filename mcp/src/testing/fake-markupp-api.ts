@@ -3,6 +3,8 @@ import {
   type Account,
   noteSummary,
   type FoundNote,
+  type InstanceEmbedding,
+  type InstanceEmbeddingUpdate,
   type IssuedInvite,
   type Link,
   type LinkQuery,
@@ -25,6 +27,7 @@ import type {
   PublicationList,
   PublishRequest,
 } from "../publication.js";
+import { FakeInstanceEmbedding } from "./fake-instance-embedding.js";
 import { FakeInvites } from "./fake-invites.js";
 import { FakeLinks } from "./fake-links.js";
 import { FakeMyInvites } from "./fake-my-invites.js";
@@ -53,6 +56,7 @@ export class FakeMarkuppApi implements MarkuppApi {
   private readonly publications = new FakePublications(() => this.tick());
   private readonly invites = new FakeInvites(() => this.tick());
   private readonly links = new FakeLinks(() => this.tick());
+  private readonly instanceEmbedding = new FakeInstanceEmbedding();
 
   withTenant(id: string, role = "member", name = id): this {
     this.tenants.push({ id, name, role });
@@ -66,6 +70,17 @@ export class FakeMarkuppApi implements MarkuppApi {
     const member = { id, email, role, joined_at: this.tick() };
     this.membersOf(tenant).push(member);
     return member;
+  }
+
+  // withInstanceAdmin faz da conta administradora da instância.
+  withInstanceAdmin(): this {
+    this.instanceEmbedding.admin = true;
+    return this;
+  }
+
+  withEmbeddingLockedByHost(): this {
+    this.instanceEmbedding.locked = true;
+    return this;
   }
 
   withInvite(tenant: string, email: string, role: string): TenantInvite {
@@ -131,6 +146,16 @@ export class FakeMarkuppApi implements MarkuppApi {
 
   stored(tenant: string, id: string): Note {
     return this.find(tenant, id);
+  }
+
+  async getInstanceEmbedding(): Promise<InstanceEmbedding> {
+    return this.instanceEmbedding.view();
+  }
+
+  async setInstanceEmbedding(
+    update: InstanceEmbeddingUpdate,
+  ): Promise<InstanceEmbedding> {
+    return this.instanceEmbedding.update(update);
   }
 
   async getAccount(): Promise<Account> {

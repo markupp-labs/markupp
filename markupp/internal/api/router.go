@@ -6,6 +6,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 
+	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/instance"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/oauth"
 )
 
@@ -38,6 +39,11 @@ type RouterDeps struct {
 	// PublicRelay confere o servidor MCP, cujo X-Forwarded-For conta no limite da leitura
 	// pública como o IP do agente. Nil não confia em nenhum relay.
 	PublicRelay RelayAuthenticator
+	// InstanceAdmins são os emails das contas que administram a instância (ADR-0057).
+	InstanceAdmins instance.Admins
+	// InstanceEmbedding lê e grava a escolha do provedor de embedding. Sem ele, ou sem
+	// Auth, as rotas da instância não existem.
+	InstanceEmbedding InstanceEmbeddingService
 }
 
 // NewRouter monta o roteador com sonda, rotas de autenticação, de notas e de
@@ -91,7 +97,7 @@ func newVersionRoutes(d RouterDeps, current bool) chi.Router {
 	r.Get("/healthz", healthz(d.Probe))
 	limit := limitAccountAttempts(d.AccountRateLimiter)
 	if d.Auth != nil {
-		mountAuthRoutes(r, d.Auth, d.Tokens, limit, current)
+		mountAuthRoutes(r, &authHandler{svc: d.Auth, admins: d.InstanceAdmins}, d.Tokens, limit, current)
 	}
 	if d.Notes != nil {
 		mountProtectedNotesRoutes(r, d.Notes, d.Tokens, d.Tenants, current)
@@ -110,7 +116,7 @@ func newVersionRoutes(d RouterDeps, current bool) chi.Router {
 
 // mountV1OnlyRoutes monta as rotas que nasceram depois da transição e não têm o alias
 // sem prefixo: o grafo, a gestão de cofres, a publicação, o login externo e a recusa
-// de ligação.
+// de ligação, e as da instância.
 func mountV1OnlyRoutes(r chi.Router, d RouterDeps) {
 	if d.Graph != nil {
 		mountProtectedGraphRoutes(r, d.Graph, d.Tokens, d.Tenants)
@@ -126,6 +132,9 @@ func mountV1OnlyRoutes(r chi.Router, d RouterDeps) {
 	}
 	if d.LinkRefusals != nil {
 		mountLinkRefusalRoutes(r, d.LinkRefusals, d.Tokens, d.Tenants)
+	}
+	if d.InstanceEmbedding != nil && d.Auth != nil {
+		mountInstanceRoutes(r, d.InstanceEmbedding, d.Auth, d.InstanceAdmins, d.Tokens)
 	}
 }
 
@@ -163,8 +172,7 @@ func mountProtectedGraphRoutes(r chi.Router, graph NoteGraph, tokenValidator Tok
 // mountAuthRoutes monta login, sessão e as rotas da conta; as notificações e o cadastro,
 // nascidos depois da transição, só na versão atual (current). Elas trazem os convites de
 // GET /me/invites, então pedem o mesmo escopo administracao ao token OAuth.
-func mountAuthRoutes(r chi.Router, authSvc AuthService, tokenValidator TokenValidator, limit func(http.Handler) http.Handler, current bool) {
-	h := &authHandler{svc: authSvc}
+func mountAuthRoutes(r chi.Router, h *authHandler, tokenValidator TokenValidator, limit func(http.Handler) http.Handler, current bool) {
 	r.With(limit).Post("/auth/login", h.login)
 	r.With(limit).Post("/auth/refresh", h.refresh)
 	r.Post("/auth/logout", h.logout)

@@ -53,13 +53,14 @@ services:
         condition: service_completed_successfully
 
   # Indexador de embedding, da ligação por sentido (ADR-0053). Sem
-  # MARKUPP_EMBEDDING_PROVIDER fica ocioso; com local, baixa o modelo no volume na
-  # primeira subida.
+  # MARKUPP_EMBEDDING_PROVIDER vale a escolha do administrador da instância no painel,
+  # sem provedor por padrão; com local, baixa o modelo no volume.
   embedder:
     image: ghcr.io/markupp-labs/markupp-embedder:${MARKUPP_VERSION}
     environment:
       <<: *ambiente
-      MARKUPP_EMBEDDING_PROVIDER: ${MARKUPP_EMBEDDING_PROVIDER:-none}
+      MARKUPP_EMBEDDING_PROVIDER: ${MARKUPP_EMBEDDING_PROVIDER:-}
+      MARKUPP_SECRET_KEY: ${MARKUPP_SECRET_KEY:-}
       MARKUPP_EMBEDDING_URL: ${MARKUPP_EMBEDDING_URL:-}
       MARKUPP_EMBEDDING_MODEL: ${MARKUPP_EMBEDDING_MODEL:-}
       MARKUPP_EMBEDDING_API_KEY: ${MARKUPP_EMBEDDING_API_KEY:-}
@@ -82,6 +83,10 @@ services:
       MARKUPP_PANEL_URL: ${MARKUPP_PANEL_URL:-http://localhost:${WEB_PORT:-3000}}
       MARKUPP_MCP_UPSTREAM_URL: http://mcp:3000
       MARKUPP_MCP_SECRET_PATH: /run/markupp-mcp/secret
+      # Contas que administram a instância pelo painel, e a chave que cifra os segredos
+      # guardados no banco (ADR-0057).
+      MARKUPP_INSTANCE_ADMINS: ${MARKUPP_INSTANCE_ADMINS:-}
+      MARKUPP_SECRET_KEY: ${MARKUPP_SECRET_KEY:-}
     volumes:
       - mcp_secret:/run/markupp-mcp
     ports:
