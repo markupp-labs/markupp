@@ -34,8 +34,8 @@ func adminEMembroConvidado(t *testing.T) (url, tokenAdmin, tokenMembro string) {
 	url = server.URL
 	_, admin := sendJSON(t, http.MethodPost, url+"/v1/accounts", "", `{"email":"admin@markupp.dev","password":"senhaAdmin-de-teste"}`)
 	tokenAdmin = admin["access_token"].(string)
-	_, convite := sendJSON(t, http.MethodPost, url+"/users/invites", tokenAdmin, `{"email":"membro@markupp.dev","role":"member"}`)
-	_, membro := sendJSON(t, http.MethodPost, url+"/auth/invites/accept", "", `{"token":"`+convite["token"].(string)+`","password":"senhaMembro-de-teste"}`)
+	_, convite := sendJSON(t, http.MethodPost, url+"/v1/users/invites", tokenAdmin, `{"email":"membro@markupp.dev","role":"member"}`)
+	_, membro := sendJSON(t, http.MethodPost, url+"/v1/auth/invites/accept", "", `{"token":"`+convite["token"].(string)+`","password":"senhaMembro-de-teste"}`)
 	return url, tokenAdmin, membro["access_token"].(string)
 }
 

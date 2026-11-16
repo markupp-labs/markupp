@@ -23,11 +23,11 @@ func conviteDeOutroTenant(t *testing.T, url string) (tokenAna, tokenBia string) 
 	t.Helper()
 	_, sessaoA := sendJSON(t, http.MethodPost, url+"/v1/accounts", "", `{"email":"ana@x.dev","password":"senha-ana-de-teste"}`)
 	tokenAna = sessaoA["access_token"].(string)
-	_, convite := sendJSON(t, http.MethodPost, url+"/users/invites", tokenAna, `{"email":"bia@x.dev","role":"member"}`)
-	_, sessaoB := sendJSON(t, http.MethodPost, url+"/auth/invites/accept", "", `{"token":"`+convite["token"].(string)+`","password":"senha-bia-de-teste"}`)
+	_, convite := sendJSON(t, http.MethodPost, url+"/v1/users/invites", tokenAna, `{"email":"bia@x.dev","role":"member"}`)
+	_, sessaoB := sendJSON(t, http.MethodPost, url+"/v1/auth/invites/accept", "", `{"token":"`+convite["token"].(string)+`","password":"senha-bia-de-teste"}`)
 	tokenBia = sessaoB["access_token"].(string)
-	_, tenantB := sendJSON(t, http.MethodPost, url+"/tenants", tokenBia, `{"name":"Estudio da Bia"}`)
-	status, _ := sendAs(t, http.MethodPost, url+"/users/invites", tokenBia, tenantB["id"].(string), `{"email":"ana@x.dev","role":"viewer"}`)
+	_, tenantB := sendJSON(t, http.MethodPost, url+"/v1/tenants", tokenBia, `{"name":"Estudio da Bia"}`)
+	status, _ := sendAs(t, http.MethodPost, url+"/v1/users/invites", tokenBia, tenantB["id"].(string), `{"email":"ana@x.dev","role":"viewer"}`)
 	require.Equal(t, http.StatusCreated, status)
 	return tokenAna, tokenBia
 }
@@ -44,7 +44,7 @@ func TestIntegration_Notificacoes_ConviteDeOutroTenantApareceAteSerAceito(t *tes
 	assert.Equal(t, "viewer", item["role"])
 	assert.Equal(t, float64(0), minhasNotificacoes(t, server.URL, tokenBia)["unread"], "quem convida nao e notificado")
 
-	status, _ := sendJSON(t, http.MethodPost, server.URL+"/me/invites/"+item["id"].(string)+"/accept", tokenAna, "")
+	status, _ := sendJSON(t, http.MethodPost, server.URL+"/v1/me/invites/"+item["id"].(string)+"/accept", tokenAna, "")
 	require.Equal(t, http.StatusOK, status)
 	assert.Equal(t, map[string]any{"items": []any{}, "unread": float64(0)}, minhasNotificacoes(t, server.URL, tokenAna))
 }

@@ -28,18 +28,18 @@ func (f *fakeAdminService) RevokeInvite(ctx context.Context, actor identity.Acto
 
 func TestInvites_Revogar_Retorna204EOu404(t *testing.T) {
 	svc := &fakeAdminService{}
-	rec := adminRequest(svc, "admin", http.MethodDelete, "/users/invites/c1", "")
+	rec := adminRequest(svc, "admin", http.MethodDelete, "/v1/users/invites/c1", "")
 	assert.Equal(t, http.StatusNoContent, rec.Code)
 	assert.Equal(t, "c1", svc.revokedInvite)
 
-	rec = adminRequest(&fakeAdminService{memberErr: auth.ErrInviteInvalid}, "admin", http.MethodDelete, "/users/invites/c1", "")
+	rec = adminRequest(&fakeAdminService{memberErr: auth.ErrInviteInvalid}, "admin", http.MethodDelete, "/v1/users/invites/c1", "")
 	assert.Equal(t, http.StatusNotFound, rec.Code)
 }
 
 func TestMembers_TrocarPapel_Retorna204(t *testing.T) {
 	svc := &fakeAdminService{}
 
-	rec := adminRequest(svc, "admin", http.MethodPatch, "/users/u2", `{"role":"viewer"}`)
+	rec := adminRequest(svc, "admin", http.MethodPatch, "/v1/users/u2", `{"role":"viewer"}`)
 
 	assert.Equal(t, http.StatusNoContent, rec.Code)
 	assert.Equal(t, "u2", svc.changedUser)
@@ -49,7 +49,7 @@ func TestMembers_TrocarPapel_Retorna204(t *testing.T) {
 func TestMembers_Remover_Retorna204(t *testing.T) {
 	svc := &fakeAdminService{changedRole: "sujo"}
 
-	rec := adminRequest(svc, "owner", http.MethodDelete, "/users/u2", "")
+	rec := adminRequest(svc, "owner", http.MethodDelete, "/v1/users/u2", "")
 
 	assert.Equal(t, http.StatusNoContent, rec.Code)
 	assert.Equal(t, "u2", svc.changedUser)
@@ -64,7 +64,7 @@ func TestMembers_ErrosDeDominio(t *testing.T) {
 		auth.ErrInvalidRole:        http.StatusBadRequest,
 	}
 	for errDominio, status := range casos {
-		rec := adminRequest(&fakeAdminService{memberErr: errDominio}, "admin", http.MethodPatch, "/users/u2", `{"role":"x"}`)
+		rec := adminRequest(&fakeAdminService{memberErr: errDominio}, "admin", http.MethodPatch, "/v1/users/u2", `{"role":"x"}`)
 
 		assert.Equal(t, status, rec.Code, errDominio.Error())
 	}

@@ -17,7 +17,7 @@ func TestNotesRoutes_SemToken_Retorna401(t *testing.T) {
 	validator := &fakeTokenValidator{}
 	router := api.NewRouter(api.RouterDeps{Notes: svc, Tenants: tenantDeTeste, Tokens: validator, Probe: &fakeProbe{}})
 
-	req := httptest.NewRequest(http.MethodGet, "/notes", nil)
+	req := httptest.NewRequest(http.MethodGet, "/v1/notes", nil)
 	rec := httptest.NewRecorder()
 
 	router.ServeHTTP(rec, req)
@@ -31,7 +31,7 @@ func TestNotesRoutes_TokenInvalido_Retorna401(t *testing.T) {
 	validator := &fakeTokenValidator{err: errors.New("token invalido")}
 	router := api.NewRouter(api.RouterDeps{Notes: svc, Tenants: tenantDeTeste, Tokens: validator, Probe: &fakeProbe{}})
 
-	req := httptest.NewRequest(http.MethodGet, "/notes", nil)
+	req := httptest.NewRequest(http.MethodGet, "/v1/notes", nil)
 	req.Header.Set("Authorization", "Bearer token-falso")
 	rec := httptest.NewRecorder()
 
@@ -50,7 +50,7 @@ func TestNotesRoutes_TokenValido_AcessaNotasComSucesso(t *testing.T) {
 	}
 	router := api.NewRouter(api.RouterDeps{Notes: svc, Tenants: tenantDeTeste, Tokens: validator, Probe: &fakeProbe{}})
 
-	req := httptest.NewRequest(http.MethodGet, "/notes", nil)
+	req := httptest.NewRequest(http.MethodGet, "/v1/notes", nil)
 	req.Header.Set("Authorization", "Bearer token-valido")
 	rec := httptest.NewRecorder()
 

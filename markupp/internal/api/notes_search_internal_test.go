@@ -149,7 +149,7 @@ func conferirFalhaParseQueryInt(t *testing.T, caso casoParseQueryInt, err error)
 
 func buscarNotas(t *testing.T, svc NoteService, queryString string) *httptest.ResponseRecorder {
 	t.Helper()
-	req := httptest.NewRequest(http.MethodGet, "/notes/search?"+queryString, nil)
+	req := httptest.NewRequest(http.MethodGet, "/v1/notes/search?"+queryString, nil)
 	req.Header.Set("Authorization", "Bearer token-valido")
 	rec := httptest.NewRecorder()
 	validator := fakeSearchTokenValidator{}

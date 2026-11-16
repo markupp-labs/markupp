@@ -31,7 +31,7 @@ func sendJSON(t *testing.T, method, url, token, body string) (int, map[string]an
 
 func countNotes(t *testing.T, baseURL, token string) int {
 	t.Helper()
-	resp := getWithAuth(t, baseURL+"/notes", token)
+	resp := getWithAuth(t, baseURL+"/v1/notes", token)
 	defer func() { _ = resp.Body.Close() }()
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 	var lista []map[string]any
@@ -47,31 +47,31 @@ func TestIntegration_ConviteAteNotaIsolada(t *testing.T) {
 	require.Equal(t, http.StatusCreated, status)
 	tokenAdmin := admin["access_token"].(string)
 
-	status, convite := sendJSON(t, http.MethodPost, url+"/users/invites", tokenAdmin, `{"email":"membro@markupp.dev","role":"member"}`)
+	status, convite := sendJSON(t, http.MethodPost, url+"/v1/users/invites", tokenAdmin, `{"email":"membro@markupp.dev","role":"member"}`)
 	require.Equal(t, http.StatusCreated, status)
 
-	status, membro := sendJSON(t, http.MethodPost, url+"/auth/invites/accept", "", `{"token":"`+convite["token"].(string)+`","password":"senhaMembro-de-teste"}`)
+	status, membro := sendJSON(t, http.MethodPost, url+"/v1/auth/invites/accept", "", `{"token":"`+convite["token"].(string)+`","password":"senhaMembro-de-teste"}`)
 	require.Equal(t, http.StatusOK, status)
 	tokenMembro := membro["access_token"].(string)
 
-	status, _ = sendJSON(t, http.MethodPost, url+"/auth/invites/accept", "", `{"token":"`+convite["token"].(string)+`","password":"outra"}`)
+	status, _ = sendJSON(t, http.MethodPost, url+"/v1/auth/invites/accept", "", `{"token":"`+convite["token"].(string)+`","password":"outra"}`)
 	assert.Equal(t, http.StatusBadRequest, status, "convite e de uso unico")
 
-	status, _ = sendJSON(t, http.MethodPost, url+"/notes", tokenMembro, `{"path":"privada.md","content":"so minha"}`)
+	status, _ = sendJSON(t, http.MethodPost, url+"/v1/notes", tokenMembro, `{"path":"privada.md","content":"so minha"}`)
 	require.Equal(t, http.StatusCreated, status)
 	assert.Equal(t, 1, countNotes(t, url, tokenMembro))
 	assert.Equal(t, 0, countNotes(t, url, tokenAdmin), "admin nao e membro do cofre do convidado")
 
-	status, _ = sendJSON(t, http.MethodGet, url+"/users/invites", tokenMembro, "")
+	status, _ = sendJSON(t, http.MethodGet, url+"/v1/users/invites", tokenMembro, "")
 	assert.Equal(t, http.StatusForbidden, status, "convites seguem so para admin")
 	assert.NotEmpty(t, idDaConta(t, url, tokenMembro, "admin@markupp.dev"), "member lista os colegas")
-	status, _ = sendJSON(t, http.MethodPost, url+"/auth/login", "", `{"email":"membro@markupp.dev","password":"senhaMembro-de-teste"}`)
+	status, _ = sendJSON(t, http.MethodPost, url+"/v1/auth/login", "", `{"email":"membro@markupp.dev","password":"senhaMembro-de-teste"}`)
 	assert.Equal(t, http.StatusOK, status, "convidado entra depois com a senha escolhida")
 }
 
 func meusTenants(t *testing.T, url, token string) []map[string]any {
 	t.Helper()
-	resp := getWithAuth(t, url+"/me/tenants", token)
+	resp := getWithAuth(t, url+"/v1/me/tenants", token)
 	defer func() { _ = resp.Body.Close() }()
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 	var tenants []map[string]any
@@ -85,13 +85,13 @@ func TestIntegration_MeusTenants_ContaSoAsNotasDosCofresDaConta(t *testing.T) {
 	url := server.URL
 	_, admin := sendJSON(t, http.MethodPost, url+"/v1/accounts", "", `{"email":"admin@markupp.dev","password":"senhaAdmin-de-teste"}`)
 	tokenAdmin := admin["access_token"].(string)
-	_, convite := sendJSON(t, http.MethodPost, url+"/users/invites", tokenAdmin, `{"email":"membro@markupp.dev","role":"member"}`)
-	_, membro := sendJSON(t, http.MethodPost, url+"/auth/invites/accept", "", `{"token":"`+convite["token"].(string)+`","password":"senhaMembro-de-teste"}`)
+	_, convite := sendJSON(t, http.MethodPost, url+"/v1/users/invites", tokenAdmin, `{"email":"membro@markupp.dev","role":"member"}`)
+	_, membro := sendJSON(t, http.MethodPost, url+"/v1/auth/invites/accept", "", `{"token":"`+convite["token"].(string)+`","password":"senhaMembro-de-teste"}`)
 	tokenMembro := membro["access_token"].(string)
-	status, nota := sendJSON(t, http.MethodPost, url+"/notes", tokenAdmin, `{"path":"do-admin.md","content":"x"}`)
+	status, nota := sendJSON(t, http.MethodPost, url+"/v1/notes", tokenAdmin, `{"path":"do-admin.md","content":"x"}`)
 	require.Equal(t, http.StatusCreated, status)
 	for _, path := range []string{"a.md", "b.md"} {
-		status, _ = sendJSON(t, http.MethodPost, url+"/notes", tokenMembro, `{"path":"`+path+`","content":"x"}`)
+		status, _ = sendJSON(t, http.MethodPost, url+"/v1/notes", tokenMembro, `{"path":"`+path+`","content":"x"}`)
 		require.Equal(t, http.StatusCreated, status)
 	}
 
@@ -126,7 +126,7 @@ func sendAs(t *testing.T, method, url, token, tenantID, body string) (int, map[s
 
 func firstPendingInvite(t *testing.T, url, token string) string {
 	t.Helper()
-	resp := getWithAuth(t, url+"/me/invites", token)
+	resp := getWithAuth(t, url+"/v1/me/invites", token)
 	defer func() { _ = resp.Body.Close() }()
 	var pendentes []map[string]any
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&pendentes))
@@ -139,35 +139,35 @@ func TestIntegration_ContaGlobalEmDoisTenantsComPapeis(t *testing.T) {
 	url := server.URL
 	_, sessaoA := sendJSON(t, http.MethodPost, url+"/v1/accounts", "", `{"email":"ana@x.dev","password":"senha-ana-de-teste"}`)
 	tokenA := sessaoA["access_token"].(string)
-	_, convite := sendJSON(t, http.MethodPost, url+"/users/invites", tokenA, `{"email":"bia@x.dev","role":"member"}`)
-	_, sessaoB := sendJSON(t, http.MethodPost, url+"/auth/invites/accept", "", `{"token":"`+convite["token"].(string)+`","password":"senha-bia-de-teste"}`)
+	_, convite := sendJSON(t, http.MethodPost, url+"/v1/users/invites", tokenA, `{"email":"bia@x.dev","role":"member"}`)
+	_, sessaoB := sendJSON(t, http.MethodPost, url+"/v1/auth/invites/accept", "", `{"token":"`+convite["token"].(string)+`","password":"senha-bia-de-teste"}`)
 	tokenB := sessaoB["access_token"].(string)
-	status, tenantB := sendJSON(t, http.MethodPost, url+"/tenants", tokenB, `{"name":"Estudio da Bia"}`)
+	status, tenantB := sendJSON(t, http.MethodPost, url+"/v1/tenants", tokenB, `{"name":"Estudio da Bia"}`)
 	require.Equal(t, http.StatusCreated, status)
 
-	status, _ = sendJSON(t, http.MethodGet, url+"/notes", tokenB, "")
+	status, _ = sendJSON(t, http.MethodGet, url+"/v1/notes", tokenB, "")
 	assert.Equal(t, http.StatusBadRequest, status, "em dois tenants, bia precisa escolher")
-	status, _ = sendAs(t, http.MethodPost, url+"/notes", tokenB, tenantB["id"].(string), `{"path":"meu.md","content":"x"}`)
+	status, _ = sendAs(t, http.MethodPost, url+"/v1/notes", tokenB, tenantB["id"].(string), `{"path":"meu.md","content":"x"}`)
 	assert.Equal(t, http.StatusCreated, status, "owner do proprio tenant escreve")
 
-	_, convite2 := sendAs(t, http.MethodPost, url+"/users/invites", tokenB, tenantB["id"].(string), `{"email":"ana@x.dev","role":"viewer"}`)
+	_, convite2 := sendAs(t, http.MethodPost, url+"/v1/users/invites", tokenB, tenantB["id"].(string), `{"email":"ana@x.dev","role":"viewer"}`)
 	require.NotEmpty(t, convite2["id"])
-	status, _ = sendJSON(t, http.MethodPost, url+"/me/invites/"+firstPendingInvite(t, url, tokenA)+"/accept", tokenA, "")
+	status, _ = sendJSON(t, http.MethodPost, url+"/v1/me/invites/"+firstPendingInvite(t, url, tokenA)+"/accept", tokenA, "")
 	require.Equal(t, http.StatusOK, status)
-	status, _ = sendAs(t, http.MethodPost, url+"/notes", tokenA, tenantB["id"].(string), `{"path":"da-ana.md","content":"x"}`)
+	status, _ = sendAs(t, http.MethodPost, url+"/v1/notes", tokenA, tenantB["id"].(string), `{"path":"da-ana.md","content":"x"}`)
 	assert.Equal(t, http.StatusForbidden, status, "viewer nao escreve")
 
-	status, _ = sendAs(t, http.MethodGet, url+"/users/invites", tokenA, tenantB["id"].(string), "")
+	status, _ = sendAs(t, http.MethodGet, url+"/v1/users/invites", tokenA, tenantB["id"].(string), "")
 	assert.Equal(t, http.StatusForbidden, status, "viewer nao administra")
-	status, _ = sendAs(t, http.MethodGet, url+"/users", tokenA, tenantB["id"].(string), "")
+	status, _ = sendAs(t, http.MethodGet, url+"/v1/users", tokenA, tenantB["id"].(string), "")
 	assert.Equal(t, http.StatusOK, status, "viewer lista os colegas")
-	status, _ = sendAs(t, http.MethodDelete, url+"/users/"+sessaoUserID(t, url, tokenB), tokenB, tenantB["id"].(string), "")
+	status, _ = sendAs(t, http.MethodDelete, url+"/v1/users/"+sessaoUserID(t, url, tokenB), tokenB, tenantB["id"].(string), "")
 	assert.Equal(t, http.StatusConflict, status, "o ultimo owner nao sai")
 }
 
 func sessaoUserID(t *testing.T, url, token string) string {
 	t.Helper()
-	resp := getWithAuth(t, url+"/auth/me", token)
+	resp := getWithAuth(t, url+"/v1/auth/me", token)
 	defer func() { _ = resp.Body.Close() }()
 	return decodeJSON(t, resp.Body)["id"].(string)
 }

@@ -16,7 +16,7 @@ func corsRequest(t *testing.T, origins []string, method, origin string, prefligh
 	t.Helper()
 	validator := &fakeTokenValidator{}
 	router := api.NewRouter(api.RouterDeps{Notes: &fakeService{listResult: nil}, Tenants: tenantDeTeste, Tokens: validator, Probe: &fakeProbe{}, AllowedOrigins: origins})
-	req := httptest.NewRequest(method, "/notes", nil)
+	req := httptest.NewRequest(method, "/v1/notes", nil)
 	req.Header.Set("Authorization", "Bearer token-valido")
 	if origin != "" {
 		req.Header.Set("Origin", origin)

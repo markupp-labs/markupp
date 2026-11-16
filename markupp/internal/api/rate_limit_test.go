@@ -52,7 +52,7 @@ func esgotaLimite(t *testing.T, router http.Handler, path, remoteAddr, body stri
 }
 
 func TestRateLimit_SextaTentativaDoMesmoIP_Responde429ComRetryAfter(t *testing.T) {
-	rotas := []string{"/auth/login", "/v1/accounts", "/auth/password/forgot", "/auth/password/reset", "/auth/email/verification", "/auth/invites/accept", "/auth/refresh"}
+	rotas := []string{"/v1/auth/login", "/v1/accounts", "/v1/auth/password/forgot", "/v1/auth/password/reset", "/v1/auth/email/verification", "/v1/auth/invites/accept", "/v1/auth/refresh"}
 	for _, rota := range rotas {
 		clock := &fakeRateClock{current: time.Unix(1_000_000, 0)}
 		router := newLimitedRouter(clock)
@@ -69,27 +69,18 @@ func TestRateLimit_SextaTentativaDoMesmoIP_Responde429ComRetryAfter(t *testing.T
 
 func TestRateLimit_OutroIP_TemLimiteProprio(t *testing.T) {
 	router := newLimitedRouter(&fakeRateClock{current: time.Unix(1_000_000, 0)})
-	esgotaLimite(t, router, "/auth/refresh", "10.0.0.1:1234", `{}`)
+	esgotaLimite(t, router, "/v1/auth/refresh", "10.0.0.1:1234", `{}`)
 
-	rec := limitedPost(router, "/auth/refresh", "10.0.0.2:1234", `{}`)
+	rec := limitedPost(router, "/v1/auth/refresh", "10.0.0.2:1234", `{}`)
 
 	assert.NotEqual(t, http.StatusTooManyRequests, rec.Code)
 }
 
-func TestRateLimit_RotaSemPrefixoESobV1_DividemOLimite(t *testing.T) {
-	router := newLimitedRouter(&fakeRateClock{current: time.Unix(1_000_000, 0)})
-	esgotaLimite(t, router, "/auth/refresh", "10.0.0.1:1234", `{}`)
-
-	rec := limitedPost(router, "/v1/auth/refresh", "10.0.0.1:1234", `{}`)
-
-	assert.Equal(t, http.StatusTooManyRequests, rec.Code, "o alias sem prefixo nao dobra o limite")
-}
-
 func TestRateLimit_MesmoIPOutraPorta_ContaComoOMesmoIP(t *testing.T) {
 	router := newLimitedRouter(&fakeRateClock{current: time.Unix(1_000_000, 0)})
-	esgotaLimite(t, router, "/auth/refresh", "10.0.0.1:1234", `{}`)
+	esgotaLimite(t, router, "/v1/auth/refresh", "10.0.0.1:1234", `{}`)
 
-	rec := limitedPost(router, "/auth/refresh", "10.0.0.1:5678", `{}`)
+	rec := limitedPost(router, "/v1/auth/refresh", "10.0.0.1:5678", `{}`)
 
 	assert.Equal(t, http.StatusTooManyRequests, rec.Code)
 }
@@ -97,10 +88,10 @@ func TestRateLimit_MesmoIPOutraPorta_ContaComoOMesmoIP(t *testing.T) {
 func TestRateLimit_MesmoEmailDeIPsDiferentes_Responde429(t *testing.T) {
 	router := newLimitedRouter(&fakeRateClock{current: time.Unix(1_000_000, 0)})
 	for i := 0; i < limiteDeTeste; i++ {
-		limitedPost(router, "/auth/login", "10.0.0."+strconv.Itoa(i+1)+":1234", `{"email":"Ana@Markupp.dev","password":"x"}`)
+		limitedPost(router, "/v1/auth/login", "10.0.0."+strconv.Itoa(i+1)+":1234", `{"email":"Ana@Markupp.dev","password":"x"}`)
 	}
 
-	rec := limitedPost(router, "/auth/login", "10.0.0.99:1234", `{"email":"ana@markupp.dev","password":"x"}`)
+	rec := limitedPost(router, "/v1/auth/login", "10.0.0.99:1234", `{"email":"ana@markupp.dev","password":"x"}`)
 
 	assert.Equal(t, http.StatusTooManyRequests, rec.Code)
 }
@@ -108,10 +99,10 @@ func TestRateLimit_MesmoEmailDeIPsDiferentes_Responde429(t *testing.T) {
 func TestRateLimit_JanelaPassada_LiberaDeNovo(t *testing.T) {
 	clock := &fakeRateClock{current: time.Unix(1_000_000, 0)}
 	router := newLimitedRouter(clock)
-	esgotaLimite(t, router, "/auth/login", "10.0.0.1:1234", `{"email":"ana@markupp.dev"}`)
+	esgotaLimite(t, router, "/v1/auth/login", "10.0.0.1:1234", `{"email":"ana@markupp.dev"}`)
 	clock.current = clock.current.Add(time.Minute)
 
-	rec := limitedPost(router, "/auth/login", "10.0.0.1:1234", `{"email":"ana@markupp.dev"}`)
+	rec := limitedPost(router, "/v1/auth/login", "10.0.0.1:1234", `{"email":"ana@markupp.dev"}`)
 
 	assert.NotEqual(t, http.StatusTooManyRequests, rec.Code)
 }
@@ -124,7 +115,7 @@ func TestRateLimit_RotaLimitada_EntregaOCorpoIntactoAoHandler(t *testing.T) {
 		AccountRateLimiter: api.NewAccountRateLimiter(limiteDeTeste, time.Minute, time.Now, nil),
 	})
 
-	rec := limitedPost(router, "/auth/password/forgot", "10.0.0.1:1234", `{"email":"ana@markupp.dev"}`)
+	rec := limitedPost(router, "/v1/auth/password/forgot", "10.0.0.1:1234", `{"email":"ana@markupp.dev"}`)
 
 	assert.Equal(t, http.StatusAccepted, rec.Code)
 	assert.Equal(t, "ana@markupp.dev", svc.resetEmail)
@@ -133,7 +124,7 @@ func TestRateLimit_RotaLimitada_EntregaOCorpoIntactoAoHandler(t *testing.T) {
 func TestRateLimit_RotaForaDaLista_NaoLimita(t *testing.T) {
 	router := newLimitedRouter(&fakeRateClock{current: time.Unix(1_000_000, 0)})
 	for i := 0; i < limiteDeTeste+1; i++ {
-		rec := limitedPost(router, "/auth/logout", "10.0.0.1:1234", `{}`)
+		rec := limitedPost(router, "/v1/auth/logout", "10.0.0.1:1234", `{}`)
 
 		assert.NotEqual(t, http.StatusTooManyRequests, rec.Code)
 	}
@@ -143,28 +134,28 @@ func TestRateLimit_MesmoEmailComLixoDepoisDoJSON_Responde429(t *testing.T) {
 	router := newLimitedRouter(&fakeRateClock{current: time.Unix(1_000_000, 0)})
 	corpo := `{"email":"ana@markupp.dev","password":"x"}x`
 	for i := 0; i < limiteDeTeste; i++ {
-		limitedPost(router, "/auth/login", "10.0.0."+strconv.Itoa(i+1)+":1234", corpo)
+		limitedPost(router, "/v1/auth/login", "10.0.0."+strconv.Itoa(i+1)+":1234", corpo)
 	}
 
-	rec := limitedPost(router, "/auth/login", "10.0.0.99:1234", corpo)
+	rec := limitedPost(router, "/v1/auth/login", "10.0.0.99:1234", corpo)
 
 	assert.Equal(t, http.StatusTooManyRequests, rec.Code)
 }
 
 func TestRateLimit_IPv6DoMesmoPrefixo64_DividemOLimite(t *testing.T) {
 	router := newLimitedRouter(&fakeRateClock{current: time.Unix(1_000_000, 0)})
-	esgotaLimite(t, router, "/auth/refresh", "[2001:db8:0:1::1]:1234", `{}`)
+	esgotaLimite(t, router, "/v1/auth/refresh", "[2001:db8:0:1::1]:1234", `{}`)
 
-	rec := limitedPost(router, "/auth/refresh", "[2001:db8:0:1:ffff::2]:1234", `{}`)
+	rec := limitedPost(router, "/v1/auth/refresh", "[2001:db8:0:1:ffff::2]:1234", `{}`)
 
 	assert.Equal(t, http.StatusTooManyRequests, rec.Code)
 }
 
 func TestRateLimit_IPv6DeOutroPrefixo64_TemLimiteProprio(t *testing.T) {
 	router := newLimitedRouter(&fakeRateClock{current: time.Unix(1_000_000, 0)})
-	esgotaLimite(t, router, "/auth/refresh", "[2001:db8:0:1::1]:1234", `{}`)
+	esgotaLimite(t, router, "/v1/auth/refresh", "[2001:db8:0:1::1]:1234", `{}`)
 
-	rec := limitedPost(router, "/auth/refresh", "[2001:db8:0:2::1]:1234", `{}`)
+	rec := limitedPost(router, "/v1/auth/refresh", "[2001:db8:0:2::1]:1234", `{}`)
 
 	assert.NotEqual(t, http.StatusTooManyRequests, rec.Code)
 }
@@ -181,7 +172,7 @@ func newRouterAtrasDeProxy() http.Handler {
 }
 
 func refreshPeloProxy(router http.Handler, remoteAddr, forwardedFor string) *httptest.ResponseRecorder {
-	req := httptest.NewRequest(http.MethodPost, "/auth/refresh", bytes.NewBufferString(`{}`))
+	req := httptest.NewRequest(http.MethodPost, "/v1/auth/refresh", bytes.NewBufferString(`{}`))
 	req.RemoteAddr = remoteAddr
 	if forwardedFor != "" {
 		req.Header.Set("X-Forwarded-For", forwardedFor)
