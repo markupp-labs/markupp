@@ -43,7 +43,7 @@ export async function loginByPassword(issuer: string): Promise<string> {
 }
 
 // consentRequestId segue o authorize até a tela de consentimento do painel e lê o id
-// do pedido, que vem no caminho /oauth/authorize/<id>.
+// do pedido, que vem no caminho /oauth/requests/<id>.
 async function consentRequestId(authorizeUrl: URL): Promise<string> {
   const response = await fetch(authorizeUrl, { redirect: "manual" });
   await expectStatus(response, 302, `GET ${authorizeUrl.pathname}`);
@@ -52,7 +52,7 @@ async function consentRequestId(authorizeUrl: URL): Promise<string> {
   const id = /^\/oauth\/authorize\/([^/]+)$/.exec(path)?.[1];
   if (!id) {
     throw new Error(
-      `authorize redirecionou para ${location}, esperado o painel em /oauth/authorize/<id>`,
+      `authorize redirecionou para ${location}, esperado o painel em /oauth/requests/<id>`,
     );
   }
   return decodeURIComponent(id);
