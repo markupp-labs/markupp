@@ -19,7 +19,7 @@ class BusySpinnerTest < ApplicationSystemTestCase
 
   test "a slow note opened from the tree spins next to its name, without a page indicator or the turbo bar" do
     visit note_path("1")
-    @api.hold_calls!("GET /notes/2")
+    @api.hold_calls!("GET /v1/notes/2")
 
     assert_spinner_after_threshold(busy_row("ideas")) { within("nav") { click_on "ideas" } }
     assert_selector ".turbo-progress-bar", visible: :all
@@ -35,7 +35,7 @@ class BusySpinnerTest < ApplicationSystemTestCase
   test "a slow save spins inside the save button" do
     visit note_path("1")
     fill_in "Path", with: "/work/plan"
-    @api.hold_calls!("PUT /notes/1")
+    @api.hold_calls!("PUT /v1/notes/1")
 
     assert_spinner_after_threshold(".note-form button[aria-busy=true]") { click_on "Save" }
     assert_selector ".note-form button[aria-busy=true]", text: "Save"
@@ -48,7 +48,7 @@ class BusySpinnerTest < ApplicationSystemTestCase
   test "a slow ctrl+s spins inside the save button too" do
     visit note_path("1")
     fill_in "Path", with: "/work/plan"
-    @api.hold_calls!("PUT /notes/1")
+    @api.hold_calls!("PUT /v1/notes/1")
 
     assert_spinner_after_threshold(".note-form button[aria-busy=true]") { find_field("Path").send_keys([ :control, "s" ]) }
     assert_selector ".note-form button[aria-busy=true]", text: "Save"
@@ -63,7 +63,7 @@ class BusySpinnerTest < ApplicationSystemTestCase
     click_on "Log out"
     fill_in "Email", with: FakeMarkuppAccounts::DEFAULT_EMAIL
     fill_in "Password", with: FakeMarkuppAccounts::DEFAULT_PASSWORD
-    @api.hold_calls!("POST /auth/login")
+    @api.hold_calls!("POST /v1/auth/login")
 
     assert_spinner_after_threshold("button[aria-busy=true]") { click_on "Log in" }
     assert_selector "button[aria-busy=true]", text: "Log in"
@@ -88,7 +88,7 @@ class BusySpinnerTest < ApplicationSystemTestCase
   # A paleta fica aberta enquanto a página escolhida carrega, com a espera no item.
   test "a slow page from the palette spins in its item, with the palette still open" do
     visit note_path("1")
-    @api.hold_calls!("GET /me/tenants")
+    @api.hold_calls!("GET /v1/me/tenants")
     find("body").send_keys([ :control, :shift, "p" ])
     send_keys "tenants"
 
@@ -117,7 +117,7 @@ class BusySpinnerTest < ApplicationSystemTestCase
   # espera de quando saiu dela.
   test "going back shows the page without the spinner it had when it was left" do
     visit settings_path
-    @api.hold_calls!("GET /notes/2")
+    @api.hold_calls!("GET /v1/notes/2")
     assert_spinner_after_threshold(busy_row("ideas")) { within("nav#sidebar") { click_on "ideas" } }
     @api.release_calls!
     assert_selector "nav a[aria-current=page]", text: "ideas"
@@ -153,7 +153,7 @@ class BusySpinnerTest < ApplicationSystemTestCase
 
   test "slow invites show the spinner with its label in the tenant switcher" do
     visit root_path
-    @api.hold_calls!("GET /me/invites")
+    @api.hold_calls!("GET /v1/me/invites")
 
     assert_spinner_after_threshold("#tenant_switcher .busy-spinner") { click_on "Switch tenant" }
     assert_selector "#tenant_switcher .busy-spinner", text: "Loading"
@@ -164,7 +164,7 @@ class BusySpinnerTest < ApplicationSystemTestCase
   end
 
   test "a slow embed shows the spinner with its label inside the embed" do
-    @api.hold_calls!("GET /notes/2")
+    @api.hold_calls!("GET /v1/notes/2")
     visit note_path("1")
 
     assert_spinner_after_threshold(".note-embed .busy-spinner") { click_on "Read" }
@@ -186,7 +186,7 @@ class BusySpinnerTest < ApplicationSystemTestCase
     visit note_path("1")
     fill_in "Path", with: "/work/plan"
     width = find_button("Save").evaluate_script("this.getBoundingClientRect().width")
-    @api.hold_calls!("PUT /notes/1")
+    @api.hold_calls!("PUT /v1/notes/1")
 
     assert_spinner_after_threshold(".note-form button[aria-busy=true]") { click_on "Save" }
     save = find(".note-form button[aria-busy=true]")
@@ -214,7 +214,7 @@ class BusySpinnerTest < ApplicationSystemTestCase
   test "with reduced motion the still dots sit in the middle of the button" do
     visit note_path("1")
     fill_in "Path", with: "/work/plan"
-    @api.hold_calls!("PUT /notes/1")
+    @api.hold_calls!("PUT /v1/notes/1")
 
     assert_spinner_after_threshold(".note-form button[aria-busy=true]") { click_on "Save" }
     assert_glyph_centered_on find(".note-form button[aria-busy=true]"), axes: [ 1 ], ink: "..."
@@ -227,7 +227,7 @@ class BusySpinnerTest < ApplicationSystemTestCase
     visit note_path("1")
     fill_in "Path", with: "/work/plan"
     assert unsaved_dot_shown?
-    @api.hold_calls!("PUT /notes/1")
+    @api.hold_calls!("PUT /v1/notes/1")
 
     assert_spinner_after_threshold(".note-form button[aria-busy=true]") { find(".note-form button[data-note-form-target=save]").click }
     assert_not unsaved_dot_shown?
@@ -238,7 +238,7 @@ class BusySpinnerTest < ApplicationSystemTestCase
   test "the glyph spinning on a tree row is centered on the row" do
     emulate_motion_preference("no-preference")
     visit note_path("1")
-    @api.hold_calls!("GET /notes/2")
+    @api.hold_calls!("GET /v1/notes/2")
 
     assert_spinner_after_threshold(busy_row("ideas")) { within("nav") { click_on "ideas" } }
     assert_glyph_centered_on find(busy_row("ideas")), axes: [ 1 ]
@@ -262,7 +262,7 @@ class BusySpinnerTest < ApplicationSystemTestCase
   end
 
   test "the braille frames spin every 80ms, and reduced motion shows three still dots instead" do
-    @api.hold_calls!("GET /notes/2")
+    @api.hold_calls!("GET /v1/notes/2")
     visit note_path("1")
     click_on "Read"
     assert_selector ".note-embed .busy-spinner-glyph"

@@ -54,6 +54,9 @@ type Config struct {
 	OAuthResources []OAuthResource
 	// MCPUpstreamURL é o servidor MCP para onde /mcp é encaminhado. Vazia, /mcp não existe.
 	MCPUpstreamURL string
+	// PanelUpstreamURL é o painel para onde a raiz / é encaminhada. Vazia, a raiz não
+	// encaminha nada e o painel vive em host próprio.
+	PanelUpstreamURL string
 	// MCPSecretPath é o arquivo onde o servidor escreve o segredo do MCP da mesma origem,
 	// num volume que o servidor MCP lê.
 	MCPSecretPath string
@@ -110,7 +113,7 @@ type Config struct {
 // Default devolve a configuração usada nas variáveis não definidas.
 func Default() Config {
 	cfg := Config{
-		Port:                     8080,
+		Port:                     6275,
 		MaxNoteSize:              50 * 1024 * 1024,
 		AuthSecret:               "",
 		DefaultTenantID:          "default",

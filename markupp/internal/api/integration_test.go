@@ -41,7 +41,7 @@ func setupIntegrationServer(t *testing.T) (*httptest.Server, *pgxpool.Pool) {
 
 func postNotes(t *testing.T, baseURL, body string) *http.Response {
 	t.Helper()
-	req, err := http.NewRequest(http.MethodPost, baseURL+"/notes", strings.NewReader(body))
+	req, err := http.NewRequest(http.MethodPost, baseURL+"/v1/notes", strings.NewReader(body))
 	require.NoError(t, err)
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer token-valido")
@@ -52,7 +52,7 @@ func postNotes(t *testing.T, baseURL, body string) *http.Response {
 
 func putNote(t *testing.T, baseURL, id, body string) *http.Response {
 	t.Helper()
-	req, err := http.NewRequest(http.MethodPut, baseURL+"/notes/"+id, strings.NewReader(body))
+	req, err := http.NewRequest(http.MethodPut, baseURL+"/v1/notes/"+id, strings.NewReader(body))
 	require.NoError(t, err)
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer token-valido")
@@ -63,7 +63,7 @@ func putNote(t *testing.T, baseURL, id, body string) *http.Response {
 
 func deleteNote(t *testing.T, baseURL, id string) *http.Response {
 	t.Helper()
-	req, err := http.NewRequest(http.MethodDelete, baseURL+"/notes/"+id, nil)
+	req, err := http.NewRequest(http.MethodDelete, baseURL+"/v1/notes/"+id, nil)
 	require.NoError(t, err)
 	req.Header.Set("Authorization", "Bearer token-valido")
 	resp, err := http.DefaultClient.Do(req)
@@ -275,7 +275,7 @@ func TestIntegration_CriarNotaDuplicada_RetornaMensagemLimpa(t *testing.T) {
 func TestIntegration_ListNotes_DBVazio_RetornaArrayVazio(t *testing.T) {
 	server, _ := setupIntegrationServer(t)
 
-	resp := getNotes(t, server.URL+"/notes")
+	resp := getNotes(t, server.URL+"/v1/notes")
 	defer func() { _ = resp.Body.Close() }()
 
 	require.Equal(t, http.StatusOK, resp.StatusCode)
@@ -300,7 +300,7 @@ func TestIntegration_ListNotes_RetornaArrayOrdenadoPorPath(t *testing.T) {
 	require.Equal(t, http.StatusCreated, r3.StatusCode)
 	_ = r3.Body.Close()
 
-	resp := getNotes(t, server.URL+"/notes")
+	resp := getNotes(t, server.URL+"/v1/notes")
 	defer func() { _ = resp.Body.Close() }()
 
 	require.Equal(t, http.StatusOK, resp.StatusCode)
@@ -327,7 +327,7 @@ func TestIntegration_ContentSHA256_IgualNoPostNoPutENoGet(t *testing.T) {
 	assert.Equal(t, sha256DeAcao, createdBody["content_sha256"])
 	id, _ := createdBody["id"].(string)
 
-	got := getNotes(t, server.URL+"/notes/"+id)
+	got := getNotes(t, server.URL+"/v1/notes/"+id)
 	defer func() { _ = got.Body.Close() }()
 	assert.Equal(t, createdBody["content_sha256"], decodeJSON(t, got.Body)["content_sha256"], "POST devolve o hash lido do banco, igual ao do GET")
 

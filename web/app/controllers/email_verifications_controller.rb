@@ -3,7 +3,7 @@ class EmailVerificationsController < ApplicationController
   limit_create_attempts to: 5, within: 1.minute, redirect_path: :settings_account_path
 
   def create
-    credential.api.post("/auth/email/verification", {})
+    credential.api.post("/v1/auth/email/verification", {})
     redirect_to settings_account_path, notice: t(".sent")
   rescue MarkuppApi::EmailAlreadyVerified
     redirect_to settings_account_path, notice: t("settings.accounts.already_confirmed")

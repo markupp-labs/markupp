@@ -59,11 +59,6 @@ var declaredOAuthPolicies = map[string]oauthRoutePolicy{
 	"GET /v1/instance/embedding": adminScope, "PUT /v1/instance/embedding": adminScope,
 }
 
-// v1OnlyPrefixes são as rotas sem o alias obsoleto sem prefixo, já com os parâmetros
-// trocados por x1: as do OAuth, as da API orientada a recursos (ADR-0040) e as
-// notificações da conta (ADR-0049).
-var v1OnlyPrefixes = []string{"/v1/instance/", "/v1/me/authorizations", "/v1/me/notifications", "/v1/oauth/requests", "/v1/vaults", "/v1/search/", "/v1/notes/x1/"}
-
 const allOAuthScopes = "notas:leitura notas:escrita administracao"
 
 var routeParam = regexp.MustCompile(`\{[^}]+\}`)
@@ -72,13 +67,8 @@ func TestOAuthRoutePolicy_TodaRotaRecusaTokenOAuthOuDeclaraOQueAceita(t *testing
 	routes := walkedRoutes(t)
 	require.NotEmpty(t, routes)
 	for _, route := range routes {
-		if route.path == "/*" {
-			continue // alias obsoleto sem prefixo, conferido pelas rotas de /v1
-		}
 		policy := declaredOAuthPolicies[route.method+" "+route.path]
-		for _, path := range pathsWithAlias(routeParam.ReplaceAllString(route.path, "x1")) {
-			assertOAuthRoutePolicy(t, scopedRoute{route.method, path}, policy)
-		}
+		assertOAuthRoutePolicy(t, scopedRoute{route.method, routeParam.ReplaceAllString(route.path, "x1")}, policy)
 	}
 }
 
@@ -102,16 +92,6 @@ func walkedRoutes(t *testing.T) []scopedRoute {
 	})
 	require.NoError(t, err)
 	return routes
-}
-
-// pathsWithAlias junta ao caminho de /v1 o alias obsoleto sem prefixo, quando existe.
-func pathsWithAlias(path string) []string {
-	alias, versioned := strings.CutPrefix(path, "/v1")
-	v1Only := slices.ContainsFunc(v1OnlyPrefixes, func(prefix string) bool { return strings.HasPrefix(path, prefix) })
-	if !versioned || v1Only {
-		return []string{path}
-	}
-	return []string{path, alias}
 }
 
 func assertOAuthRoutePolicy(t *testing.T, route scopedRoute, policy oauthRoutePolicy) {

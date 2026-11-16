@@ -30,8 +30,8 @@ Copie o `example.env` para `.env`, preencha a senha do banco e o `SECRET_KEY_BAS
 docker compose up -d
 ```
 
-Sobe o servidor em `localhost:8080` e o painel web em `localhost:3000`, a partir das imagens
-publicadas. Proxy HTTPS, email e atualização estão em [DEPLOY](docs/DEPLOY.md#docker), e o
+Sobe o markupp em `localhost:6275`, com o painel na raiz, a API em `/v1` e o MCP em `/mcp`, a
+partir das imagens publicadas. Proxy HTTPS, email e atualização estão em [DEPLOY](docs/DEPLOY.md#docker), e o
 ambiente de desenvolvimento roda com `make run`.
 
 ## Documentação

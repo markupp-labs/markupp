@@ -2,6 +2,7 @@
 class FakeMarkuppNotes
   # Cofre de toda nota que o cenário não põe em outro.
   VAULT_ID = "vault-1"
+  ROUTE = %r{\A/v1/notes(?:/[^/?]+)?\z}
 
   attr_reader :notes, :put_requests, :post_requests
 
@@ -14,7 +15,7 @@ class FakeMarkuppNotes
   end
 
   def get(path, **)
-    return @notes if path == "/notes"
+    return @notes if path == "/v1/notes"
 
     note_at("GET", path)
   end
@@ -29,11 +30,11 @@ class FakeMarkuppNotes
     note.merge!(body.slice(:path, :content).stringify_keys)
   end
 
-  # Como a API, recusa caminho já usado. O id segue a ordem dos POSTs: created-1, created-2... A rota sem prefixo grava
-  # no cofre padrão; a de /v1, no cofre da rota.
+  # Como a API, recusa caminho já usado. O id segue a ordem dos POSTs: created-1, created-2... POST /v1/notes grava
+  # no cofre padrão; a do cofre, no cofre da rota.
   def post(path, body, role: nil, **)
-    vault_id = path == "/notes" ? VAULT_ID : FakeMarkuppNoteIndex::VAULT_NOTES.match(path)&.[](:vault_id)
-    raise ArgumentError, "fake API has no route for POST #{path}, expected /notes or /v1/vaults/{id}/notes" unless vault_id
+    vault_id = path == "/v1/notes" ? VAULT_ID : FakeMarkuppNoteIndex::VAULT_NOTES.match(path)&.[](:vault_id)
+    raise ArgumentError, "fake API has no route for POST #{path}, expected /v1/notes or /v1/vaults/{id}/notes" unless vault_id
 
     refuse_viewer(role, "POST #{path}")
     @post_requests << body
@@ -67,8 +68,8 @@ class FakeMarkuppNotes
     end
 
     def note_at(verb, path)
-      id = path.delete_prefix("/notes/")
-      raise ArgumentError, "fake API has no route for #{verb} #{path}, expected /notes/{id}" if id == path
+      id = path.delete_prefix("/v1/notes/")
+      raise ArgumentError, "fake API has no route for #{verb} #{path}, expected /v1/notes/{id}" if id == path
 
       @notes.find { |note| note["id"] == id } or raise MarkuppApi::NotFound, "fake API has no note #{id.inspect}, expected one of #{@notes.map { it["id"] }}"
     end

@@ -14,7 +14,7 @@ import {
   type AuthServerMetadata,
 } from "./public-client.js";
 
-export const DEFAULT_LOGIN_URL = "http://localhost:8080";
+export const DEFAULT_LOGIN_URL = "http://localhost:6275";
 export const CALLBACK_TIMEOUT_MS = 5 * 60_000;
 
 // LoginDeps é o I/O do login: o Go, o disco, o servidor do callback, o navegador, o

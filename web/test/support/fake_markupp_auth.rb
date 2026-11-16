@@ -1,6 +1,6 @@
 # Rotas /auth da FakeMarkuppApi: login, renovação com rotação, logout, /auth/me e aceite de convite por token.
 class FakeMarkuppAuth
-  PUBLIC_CALLS = [ "POST /auth/login", "POST /auth/refresh", "POST /auth/logout", "POST /auth/invites/accept", "POST /v1/accounts" ].freeze
+  PUBLIC_CALLS = [ "POST /v1/auth/login", "POST /v1/auth/refresh", "POST /v1/auth/logout", "POST /v1/auth/invites/accept", "POST /v1/accounts" ].freeze
   PASSWORD_LIMIT = 72
   PASSWORD_MINIMUM = 15
   # Amostra da lista de senhas comuns da API.
@@ -34,22 +34,22 @@ class FakeMarkuppAuth
   # Como a API: a primeira conta nasce sempre, mesmo com o registro fechado.
   def registration_closed? = @registration_closed && @accounts.any?
 
-  # Cenário: a API demora no POST /auth/refresh até `callers` renovações chegarem juntas, ou até o timeout.
+  # Cenário: a API demora no POST /v1/auth/refresh até `callers` renovações chegarem juntas, ou até o timeout.
   def hold_refreshes_together!(callers, timeout:) = @refresh_gate = FakeRefreshGate.new(callers, timeout:)
 
   # password_login e instance_admin só saem quando a conta da fake os define, como o servidor que ainda não manda o campo.
   def get(path, account:, **)
-    raise ArgumentError, "fake API has no route for GET #{path}, expected /auth/me" unless path == "/auth/me"
+    raise ArgumentError, "fake API has no route for GET #{path}, expected /v1/auth/me" unless path == "/v1/auth/me"
 
     account.slice("id", "email", "password_login", "instance_admin")
   end
 
   def post(path, body, **)
     case path
-    when "/auth/login" then login(body)
-    when "/auth/refresh" then refresh(body)
-    when "/auth/logout" then logout(body)
-    when "/auth/invites/accept" then accept_invite(body)
+    when "/v1/auth/login" then login(body)
+    when "/v1/auth/refresh" then refresh(body)
+    when "/v1/auth/logout" then logout(body)
+    when "/v1/auth/invites/accept" then accept_invite(body)
     when "/v1/accounts" then register(body)
     else raise ArgumentError, "fake API has no route for POST #{path}, expected one of #{PUBLIC_CALLS}"
     end
@@ -74,7 +74,7 @@ class FakeMarkuppAuth
     # Como a API: a senha é conferida antes do token, e o convite só é consumido se a conta for criada.
     def accept_invite(body)
       raise MarkuppApi::LocalAuthDisabled, "fake API has local auth disabled on POST /auth/invites/accept" unless @local_auth
-      self.class.refuse_new_password(body[:password], "POST /auth/invites/accept")
+      self.class.refuse_new_password(body[:password], "POST /v1/auth/invites/accept")
 
       invite = @tenants.invite_for_token(body[:token])
       account = @accounts.create(invite["email"], body[:password])

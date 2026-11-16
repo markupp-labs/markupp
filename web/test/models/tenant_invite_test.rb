@@ -57,7 +57,7 @@ class TenantInviteTest < ActiveSupport::TestCase
   private
     def signed_in_api(email_enabled: true)
       fake_api = FakeMarkuppApi.new(tenants: TENANTS, invites: INVITES, email_enabled:)
-      pair = fake_api.post("/auth/login", email: EMAIL, password: FakeMarkuppAccounts::DEFAULT_PASSWORD)
+      pair = fake_api.post("/v1/auth/login", email: EMAIL, password: FakeMarkuppAccounts::DEFAULT_PASSWORD)
       fake_api.as(access_token: pair.fetch("access_token"), tenant_id: "tenant-1")
     end
 end

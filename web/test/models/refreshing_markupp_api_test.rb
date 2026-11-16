@@ -5,14 +5,14 @@ class RefreshingMarkuppApiTest < ActiveSupport::TestCase
     @fake_api = FakeMarkuppApi.new(notes: [ { id: "1", path: "a.md", content: "x" } ])
     @session = ActionController::TestSession.new
     @credential = PanelCredential.new(@session, ->(**credentials) { @fake_api.as(**credentials) })
-    @credential.sign_in(@fake_api.post("/auth/login", email: FakeMarkuppAccounts::DEFAULT_EMAIL, password: FakeMarkuppAccounts::DEFAULT_PASSWORD))
+    @credential.sign_in(@fake_api.post("/v1/auth/login", email: FakeMarkuppAccounts::DEFAULT_EMAIL, password: FakeMarkuppAccounts::DEFAULT_PASSWORD))
     @api = RefreshingMarkuppApi.new(@credential)
   end
 
   test "calls the API with the current access token" do
-    assert_equal "a.md", @api.get("/notes").sole["path"]
+    assert_equal "a.md", @api.get("/v1/notes").sole["path"]
 
-    assert_equal [ "access-1" ], access_tokens_sent("GET /notes")
+    assert_equal [ "access-1" ], access_tokens_sent("GET /v1/notes")
   end
 
   test "conditional_get passes the ETag on with the current access token" do
@@ -27,9 +27,9 @@ class RefreshingMarkuppApiTest < ActiveSupport::TestCase
   test "renews the token before calling once it has expired" do
     travel 901.seconds
 
-    @api.get("/notes")
+    @api.get("/v1/notes")
 
-    assert_equal [ "access-2" ], access_tokens_sent("GET /notes")
+    assert_equal [ "access-2" ], access_tokens_sent("GET /v1/notes")
     assert_equal "refresh-2", @credential.refresh_token
     assert_not @fake_api.refresh_token_valid?("refresh-1")
   end
@@ -37,9 +37,9 @@ class RefreshingMarkuppApiTest < ActiveSupport::TestCase
   test "renews the token and repeats the call once when the API answers 401" do
     @fake_api.expire_access_tokens!
 
-    @api.put("/notes/1", path: "a.md", content: "y")
+    @api.put("/v1/notes/1", path: "a.md", content: "y")
 
-    assert_equal [ "access-1", "access-2" ], access_tokens_sent("PUT /notes/1")
+    assert_equal [ "access-1", "access-2" ], access_tokens_sent("PUT /v1/notes/1")
     assert_equal 1, @fake_api.put_requests.size
     assert_not @credential.access_expired?
   end
@@ -48,21 +48,21 @@ class RefreshingMarkuppApiTest < ActiveSupport::TestCase
     @fake_api.expire_access_tokens!
     @fake_api.revoke_refresh_tokens!
 
-    error = assert_raises(MarkuppApi::SessionExpired) { @api.delete("/notes/1") }
+    error = assert_raises(MarkuppApi::SessionExpired) { @api.delete("/v1/notes/1") }
 
-    assert_match "DELETE /notes/1", error.message
-    assert_equal [ "access-1" ], access_tokens_sent("DELETE /notes/1")
+    assert_match "DELETE /v1/notes/1", error.message
+    assert_equal [ "access-1" ], access_tokens_sent("DELETE /v1/notes/1")
   end
 
   test "forwards post and patch with their bodies" do
-    @api.post("/notes", path: "b.md", content: "")
+    @api.post("/v1/notes", path: "b.md", content: "")
 
     assert_equal [ { path: "b.md", content: "" } ], @fake_api.post_requests
     error = assert_raises(ArgumentError) { @api.patch("/nowhere", role: "admin") }
     assert_match "PATCH /nowhere", error.message
   end
 
-  test "two renewals of the same refresh token call /auth/refresh once and share the new pair" do
+  test "two renewals of the same refresh token call /v1/auth/refresh once and share the new pair" do
     renewed_pairs = ActiveSupport::Cache::MemoryStore.new
     twin = PanelCredential.new(ActionController::TestSession.new(@session.to_hash), ->(**credentials) { @fake_api.as(**credentials) })
     @fake_api.hold_refreshes_together!(2, timeout: 0.3)
@@ -70,7 +70,7 @@ class RefreshingMarkuppApiTest < ActiveSupport::TestCase
 
     [ @credential, twin ].map { |credential| Thread.new { renew_and_list_notes(credential, renewed_pairs) } }.each(&:join)
 
-    assert_equal 1, @fake_api.received_credentials.count { it[:call] == "POST /auth/refresh" }
+    assert_equal 1, @fake_api.received_credentials.count { it[:call] == "POST /v1/auth/refresh" }
     assert_equal [ "refresh-2", "refresh-2" ], [ @credential.refresh_token, twin.refresh_token ]
     assert renewed_pairs.exist?("panel/renewed_pair/#{Digest::SHA256.hexdigest("refresh-1")}")
   end
@@ -79,7 +79,7 @@ class RefreshingMarkuppApiTest < ActiveSupport::TestCase
     renewed_pairs = ActiveSupport::Cache::MemoryStore.new
     travel 901.seconds
 
-    RefreshingMarkuppApi.new(@credential, renewed_pairs:).get("/notes")
+    RefreshingMarkuppApi.new(@credential, renewed_pairs:).get("/v1/notes")
 
     sealed = renewed_pairs.read(renewed_pair_key("refresh-1")).to_s
     [ "access-1", "refresh-1", "access-2", "refresh-2" ].each { assert_not_includes sealed, it }
@@ -101,12 +101,12 @@ class RefreshingMarkuppApiTest < ActiveSupport::TestCase
     renewed_pairs = CacheWithoutExpiry.new
     twin = PanelCredential.new(ActionController::TestSession.new(@session.to_hash), ->(**credentials) { @fake_api.as(**credentials) })
     travel 901.seconds
-    RefreshingMarkuppApi.new(@credential, renewed_pairs:).get("/notes")
+    RefreshingMarkuppApi.new(@credential, renewed_pairs:).get("/v1/notes")
 
     travel RefreshingMarkuppApi::RENEWED_PAIR_TTL + 1.second
     renew_and_list_notes(twin, renewed_pairs)
 
-    assert_equal 2, @fake_api.received_credentials.count { it[:call] == "POST /auth/refresh" }
+    assert_equal 2, @fake_api.received_credentials.count { it[:call] == "POST /v1/auth/refresh" }
     assert_not_equal "refresh-2", twin.refresh_token
   end
 
@@ -114,7 +114,7 @@ class RefreshingMarkuppApiTest < ActiveSupport::TestCase
     def renewed_pair_key(refresh_token) = "panel/renewed_pair/#{Digest::SHA256.hexdigest(refresh_token)}"
     # A segunda renovação com o refresh já usado é recusada; o teste confere a contagem de chamadas, não a exceção.
     def renew_and_list_notes(credential, renewed_pairs)
-      RefreshingMarkuppApi.new(credential, renewed_pairs:).get("/notes")
+      RefreshingMarkuppApi.new(credential, renewed_pairs:).get("/v1/notes")
     rescue MarkuppApi::SessionExpired
       nil
     end

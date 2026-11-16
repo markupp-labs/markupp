@@ -82,7 +82,7 @@ func TestIntegration_Auth_FluxoCompleto(t *testing.T) {
 	require.NotEmpty(t, accessToken)
 	require.NotEmpty(t, refreshToken)
 
-	meResp := getWithAuth(t, server.URL+"/auth/me", accessToken)
+	meResp := getWithAuth(t, server.URL+"/v1/auth/me", accessToken)
 	defer func() { _ = meResp.Body.Close() }()
 	require.Equal(t, http.StatusOK, meResp.StatusCode)
 
@@ -91,7 +91,7 @@ func TestIntegration_Auth_FluxoCompleto(t *testing.T) {
 	assert.Equal(t, true, meBody["email_verified"], "o primeiro acesso nasce com email verificado")
 	assert.Equal(t, true, meBody["password_login"], "login local ligado e conta com senha")
 
-	tenantsResp := getWithAuth(t, server.URL+"/me/tenants", accessToken)
+	tenantsResp := getWithAuth(t, server.URL+"/v1/me/tenants", accessToken)
 	defer func() { _ = tenantsResp.Body.Close() }()
 	var tenants []map[string]any
 	require.NoError(t, json.NewDecoder(tenantsResp.Body).Decode(&tenants))
@@ -106,7 +106,7 @@ func TestIntegration_Auth_FluxoCompleto(t *testing.T) {
 	assert.GreaterOrEqual(t, auditCount, 1)
 
 	refPayload, _ := json.Marshal(map[string]string{"refresh_token": refreshToken})
-	refResp := postJSON(t, server.URL+"/auth/refresh", string(refPayload))
+	refResp := postJSON(t, server.URL+"/v1/auth/refresh", string(refPayload))
 	defer func() { _ = refResp.Body.Close() }()
 	require.Equal(t, http.StatusOK, refResp.StatusCode)
 
@@ -114,7 +114,7 @@ func TestIntegration_Auth_FluxoCompleto(t *testing.T) {
 	newRefresh, _ := newTokens["refresh_token"].(string)
 	assert.NotEmpty(t, newRefresh)
 
-	oldRefResp := postJSON(t, server.URL+"/auth/refresh", string(refPayload))
+	oldRefResp := postJSON(t, server.URL+"/v1/auth/refresh", string(refPayload))
 	_ = oldRefResp.Body.Close()
 	assert.Equal(t, http.StatusUnauthorized, oldRefResp.StatusCode)
 }
@@ -126,11 +126,11 @@ func TestIntegration_Auth_LoginIncorretoERegistroBloqueado(t *testing.T) {
 	_ = firstResp.Body.Close()
 	require.Equal(t, http.StatusCreated, firstResp.StatusCode)
 
-	wrongPassResp := postJSON(t, server.URL+"/auth/login", `{"email":"admin@markupp.dev","password":"senhaErrada"}`)
+	wrongPassResp := postJSON(t, server.URL+"/v1/auth/login", `{"email":"admin@markupp.dev","password":"senhaErrada"}`)
 	_ = wrongPassResp.Body.Close()
 	assert.Equal(t, http.StatusUnauthorized, wrongPassResp.StatusCode)
 
-	unknownUserResp := postJSON(t, server.URL+"/auth/login", `{"email":"intruso@markupp.dev","password":"senhaQualquer"}`)
+	unknownUserResp := postJSON(t, server.URL+"/v1/auth/login", `{"email":"intruso@markupp.dev","password":"senhaQualquer"}`)
 	_ = unknownUserResp.Body.Close()
 	assert.Equal(t, http.StatusUnauthorized, unknownUserResp.StatusCode)
 }

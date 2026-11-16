@@ -5,6 +5,9 @@ x-servidor: &servidor
   environment: &ambiente
     MARKUPP_DATABASE_URL: postgres://markupp:${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD no .env, veja example.env}@postgres:5432/markupp?sslmode=disable
     MARKUPP_AUTH_REGISTRATION_ENABLED: ${MARKUPP_AUTH_REGISTRATION_ENABLED:-false}
+    # Endereço público da instância. O painel fica na raiz dele, salvo MARKUPP_PANEL_URL.
+    MARKUPP_PUBLIC_URL: ${MARKUPP_PUBLIC_URL:-http://localhost:${MARKUPP_PORT:-6275}}
+    MARKUPP_PANEL_URL: ${MARKUPP_PANEL_URL:-}
   restart: unless-stopped
 
 services:
@@ -46,7 +49,6 @@ services:
       <<: *ambiente
       MARKUPP_SMTP_URL: ${MARKUPP_SMTP_URL:-}
       MARKUPP_SMTP_FROM: ${MARKUPP_SMTP_FROM:-}
-      MARKUPP_PANEL_URL: ${MARKUPP_PANEL_URL:-http://localhost:${WEB_PORT:-3000}}
     command: ["notify-loop"]
     depends_on:
       migrate:
@@ -79,9 +81,9 @@ services:
       <<: *ambiente
       # O convite sai por email só quando há SMTP; sem ele, a API devolve o token.
       MARKUPP_INVITE_BY_EMAIL: ${MARKUPP_SMTP_URL:+true}
-      MARKUPP_PUBLIC_URL: ${MARKUPP_PUBLIC_URL:-http://localhost:${MARKUPP_PORT:-8080}}
-      MARKUPP_PANEL_URL: ${MARKUPP_PANEL_URL:-http://localhost:${WEB_PORT:-3000}}
+      # O Go é a única porta publicada: encaminha /mcp ao MCP e o resto ao painel.
       MARKUPP_MCP_UPSTREAM_URL: http://mcp:3000
+      MARKUPP_PANEL_UPSTREAM_URL: http://web:8080
       MARKUPP_MCP_SECRET_PATH: /run/markupp-mcp/secret
       # Contas que administram a instância pelo painel, e a chave que cifra os segredos
       # guardados no banco (ADR-0057).
@@ -90,7 +92,7 @@ services:
     volumes:
       - mcp_secret:/run/markupp-mcp
     ports:
-      - "${MARKUPP_PORT:-8080}:8080"
+      - "${MARKUPP_PORT:-6275}:6275"
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -102,11 +104,9 @@ services:
       HTTP_PORT: "8080"
       SECRET_KEY_BASE: ${SECRET_KEY_BASE:?defina SECRET_KEY_BASE no .env, gere com openssl rand -hex 64}
       MARKUPP_PANEL_FORCE_SSL: ${MARKUPP_PANEL_FORCE_SSL:-false}
-      MARKUPP_API_URL: http://markupp:8080
-      MARKUPP_PUBLIC_URL: ${MARKUPP_PUBLIC_URL:-http://localhost:${MARKUPP_PORT:-8080}}
-      MARKUPP_MCP_URL: ${MARKUPP_PUBLIC_URL:-http://localhost:${MARKUPP_PORT:-8080}}/mcp
-    ports:
-      - "${WEB_PORT:-3000}:8080"
+      MARKUPP_API_URL: http://markupp:6275
+      MARKUPP_PUBLIC_URL: ${MARKUPP_PUBLIC_URL:-http://localhost:${MARKUPP_PORT:-6275}}
+      MARKUPP_MCP_URL: ${MARKUPP_PUBLIC_URL:-http://localhost:${MARKUPP_PORT:-6275}}/mcp
     restart: unless-stopped
     depends_on:
       - markupp
@@ -116,7 +116,7 @@ services:
   mcp:
     image: ghcr.io/markupp-labs/markupp-mcp:${MARKUPP_VERSION}
     environment:
-      MARKUPP_MCP_API_URL: http://markupp:8080
+      MARKUPP_MCP_API_URL: http://markupp:6275
       MARKUPP_MCP_SECRET_PATH: /run/markupp-mcp/secret
     volumes:
       - mcp_secret:/run/markupp-mcp:ro

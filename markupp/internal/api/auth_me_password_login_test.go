@@ -16,7 +16,7 @@ func meResponseFor(t *testing.T, user auth.User) map[string]any {
 	t.Helper()
 	svc := &fakeAuthService{accountUser: user}
 	router := setupAuthRouter(svc, &fakeTokenValidator{claims: auth.Claims{Subject: user.ID}})
-	req := httptest.NewRequest(http.MethodGet, "/auth/me", nil)
+	req := httptest.NewRequest(http.MethodGet, "/v1/auth/me", nil)
 	req.Header.Set("Authorization", "Bearer token-valido")
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)

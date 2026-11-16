@@ -1,10 +1,10 @@
-# Rotas /users da FakeMarkuppApi: membros e convites do tenant do cabeçalho, com as regras de papel da API
+# Rotas /v1/users da FakeMarkuppApi: convites e papel dos membros do tenant do cabeçalho, com as regras de papel da API
 # (só owner e admin entram, ninguém mexe acima do próprio posto, o tenant nunca fica sem owner).
 class FakeMarkuppTenantAdmin
   RANKS = %w[viewer member admin owner].freeze
   JOINED_AT = "2026-09-01T12:00:00Z"
-  INVITE_PATH = %r{\A/users/invites/(?<id>[^/]+)\z}
-  MEMBER_PATH = %r{\A/users/(?<id>[^/]+)\z}
+  INVITE_PATH = %r{\A/v1/users/invites/(?<id>[^/]+)\z}
+  MEMBER_PATH = %r{\A/v1/users/(?<id>[^/]+)\z}
 
   def initialize(tenants, accounts, email_enabled:)
     @tenants = tenants
@@ -15,10 +15,9 @@ class FakeMarkuppTenantAdmin
 
   def get(path, role:, tenant_id:, **)
     refuse_non_admin(role, "GET #{path}")
-    return members(tenant_id) if path == "/users"
-    return invites(tenant_id) if path == "/users/invites"
+    return invites(tenant_id) if path == "/v1/users/invites"
 
-    raise ArgumentError, "fake API has no route for GET #{path}, expected /users or /users/invites"
+    raise ArgumentError, "fake API has no route for GET #{path}, expected /v1/users/invites"
   end
 
   def patch(path, body, role:, tenant_id:, **)
@@ -41,7 +40,7 @@ class FakeMarkuppTenantAdmin
   def post(path, body, account:, role:, tenant_id:, **)
     call = "POST #{path}"
     refuse_non_admin(role, call)
-    raise ArgumentError, "fake API has no route for #{call}, expected /users/invites" unless path == "/users/invites"
+    raise ArgumentError, "fake API has no route for #{call}, expected /v1/users/invites" unless path == "/v1/users/invites"
 
     refuse_over_quota(account, call)
     issue(tenant_id, body[:email].to_s.strip.downcase, body[:role], role, call)
@@ -66,14 +65,9 @@ class FakeMarkuppTenantAdmin
     end
 
     def member_id(path, call)
-      MEMBER_PATH.match(path)&.[](:id) or raise ArgumentError, "fake API has no route for #{call}, expected /users/{id}"
+      MEMBER_PATH.match(path)&.[](:id) or raise ArgumentError, "fake API has no route for #{call}, expected /v1/users/{id}"
     end
 
-    def members(tenant_id)
-      @tenants.tenant(tenant_id)["members"].sort.map do |email, role|
-        { "id" => @accounts.id_for(email), "email" => email, "role" => role, "joined_at" => JOINED_AT }
-      end
-    end
 
     # Como CheckMembershipChange: posto do alvo, posto concedido e último owner; new_role nil remove.
     def change_membership(tenant_id, id, actor_role, new_role, call)

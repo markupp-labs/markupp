@@ -3,6 +3,6 @@ FROM golang:1.27-alpine
 RUN go install github.com/air-verse/air@latest
 
 WORKDIR /data
-EXPOSE 8080
+EXPOSE 6275
 
 CMD ["air", "-c", "/src/.air.toml"]

@@ -15,7 +15,7 @@ const POLL_INTERVAL_MS = 2_000;
 
 // markuppUrl é a URL pública do Go, que o compose deriva de MARKUPP_PORT.
 export function markuppUrl(): string {
-  return `http://localhost:${process.env.MARKUPP_PORT ?? "8080"}`;
+  return `http://localhost:${process.env.MARKUPP_PORT ?? "6275"}`;
 }
 
 function compose(args: string[]): void {

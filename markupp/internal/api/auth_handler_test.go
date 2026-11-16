@@ -121,7 +121,7 @@ func TestAuthHandler_Login_Sucesso(t *testing.T) {
 	router := setupAuthRouter(svc, nil)
 
 	body := `{"email":"admin@markupp.dev","password":"senhaSegura123-de-teste"}`
-	req := httptest.NewRequest(http.MethodPost, "/auth/login", bytes.NewBufferString(body))
+	req := httptest.NewRequest(http.MethodPost, "/v1/auth/login", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
 
@@ -140,7 +140,7 @@ func TestAuthHandler_Login_Sucesso(t *testing.T) {
 func TestAuthHandler_Login_JSONInvalido_Retorna400(t *testing.T) {
 	router := setupAuthRouter(&fakeAuthService{}, nil)
 
-	req := httptest.NewRequest(http.MethodPost, "/auth/login", bytes.NewBufferString("{corrompido"))
+	req := httptest.NewRequest(http.MethodPost, "/v1/auth/login", bytes.NewBufferString("{corrompido"))
 	rec := httptest.NewRecorder()
 
 	router.ServeHTTP(rec, req)
@@ -154,7 +154,7 @@ func TestAuthHandler_Login_CredenciaisInvalidas_Retorna401(t *testing.T) {
 	router := setupAuthRouter(svc, nil)
 
 	body := `{"email":"admin@markupp.dev","password":"senhaErrada"}`
-	req := httptest.NewRequest(http.MethodPost, "/auth/login", bytes.NewBufferString(body))
+	req := httptest.NewRequest(http.MethodPost, "/v1/auth/login", bytes.NewBufferString(body))
 	rec := httptest.NewRecorder()
 
 	router.ServeHTTP(rec, req)
@@ -168,7 +168,7 @@ func TestAuthHandler_Login_AutenticacaoLocalDesativada_Retorna403(t *testing.T) 
 	router := setupAuthRouter(svc, nil)
 
 	body := `{"email":"novo@markupp.dev","password":"senhaQualquer"}`
-	req := httptest.NewRequest(http.MethodPost, "/auth/login", bytes.NewBufferString(body))
+	req := httptest.NewRequest(http.MethodPost, "/v1/auth/login", bytes.NewBufferString(body))
 	rec := httptest.NewRecorder()
 
 	router.ServeHTTP(rec, req)
@@ -182,7 +182,7 @@ func TestAuthHandler_Login_SenhaMuitoLonga_Retorna400(t *testing.T) {
 	router := setupAuthRouter(svc, nil)
 
 	body := `{"email":"admin@markupp.dev","password":"senha"}`
-	req := httptest.NewRequest(http.MethodPost, "/auth/login", bytes.NewBufferString(body))
+	req := httptest.NewRequest(http.MethodPost, "/v1/auth/login", bytes.NewBufferString(body))
 	rec := httptest.NewRecorder()
 
 	router.ServeHTTP(rec, req)
@@ -195,7 +195,7 @@ func TestAuthHandler_Login_CorpoMaiorQue4KiB_Retorna400(t *testing.T) {
 	router := setupAuthRouter(&fakeAuthService{}, nil)
 
 	body := fmt.Sprintf(`{"email":"admin@markupp.dev","password":"%s"}`, strings.Repeat("a", 5000))
-	req := httptest.NewRequest(http.MethodPost, "/auth/login", bytes.NewBufferString(body))
+	req := httptest.NewRequest(http.MethodPost, "/v1/auth/login", bytes.NewBufferString(body))
 	rec := httptest.NewRecorder()
 
 	router.ServeHTTP(rec, req)
@@ -215,7 +215,7 @@ func TestAuthHandler_Refresh_Sucesso(t *testing.T) {
 	router := setupAuthRouter(svc, nil)
 
 	body := `{"refresh_token":"token-antigo"}`
-	req := httptest.NewRequest(http.MethodPost, "/auth/refresh", bytes.NewBufferString(body))
+	req := httptest.NewRequest(http.MethodPost, "/v1/auth/refresh", bytes.NewBufferString(body))
 	rec := httptest.NewRecorder()
 
 	router.ServeHTTP(rec, req)
@@ -229,7 +229,7 @@ func TestAuthHandler_Refresh_TokenRevogado_Retorna401(t *testing.T) {
 	router := setupAuthRouter(svc, nil)
 
 	body := `{"refresh_token":"token-revogado"}`
-	req := httptest.NewRequest(http.MethodPost, "/auth/refresh", bytes.NewBufferString(body))
+	req := httptest.NewRequest(http.MethodPost, "/v1/auth/refresh", bytes.NewBufferString(body))
 	rec := httptest.NewRecorder()
 
 	router.ServeHTTP(rec, req)
@@ -242,7 +242,7 @@ func TestAuthHandler_Refresh_CorpoMaiorQue4KiB_Retorna400(t *testing.T) {
 	router := setupAuthRouter(&fakeAuthService{}, nil)
 
 	body := fmt.Sprintf(`{"refresh_token":"%s"}`, strings.Repeat("x", 5000))
-	req := httptest.NewRequest(http.MethodPost, "/auth/refresh", bytes.NewBufferString(body))
+	req := httptest.NewRequest(http.MethodPost, "/v1/auth/refresh", bytes.NewBufferString(body))
 	rec := httptest.NewRecorder()
 
 	router.ServeHTTP(rec, req)
@@ -256,7 +256,7 @@ func TestAuthHandler_Logout_Sucesso(t *testing.T) {
 	router := setupAuthRouter(svc, nil)
 
 	body := `{"refresh_token":"token-para-revogar"}`
-	req := httptest.NewRequest(http.MethodPost, "/auth/logout", bytes.NewBufferString(body))
+	req := httptest.NewRequest(http.MethodPost, "/v1/auth/logout", bytes.NewBufferString(body))
 	rec := httptest.NewRecorder()
 
 	router.ServeHTTP(rec, req)
@@ -270,7 +270,7 @@ func TestAuthHandler_Logout_FalhaNaRevogacao_RegistraLogERetorna204(t *testing.T
 	router := setupAuthRouter(svc, nil)
 
 	body := `{"refresh_token":"token-para-revogar"}`
-	req := httptest.NewRequest(http.MethodPost, "/auth/logout", bytes.NewBufferString(body))
+	req := httptest.NewRequest(http.MethodPost, "/v1/auth/logout", bytes.NewBufferString(body))
 	rec := httptest.NewRecorder()
 
 	router.ServeHTTP(rec, req)
@@ -283,7 +283,7 @@ func TestAuthHandler_Logout_CorpoMaiorQue4KiB_Retorna400(t *testing.T) {
 	router := setupAuthRouter(&fakeAuthService{}, nil)
 
 	body := fmt.Sprintf(`{"refresh_token":"%s"}`, strings.Repeat("x", 5000))
-	req := httptest.NewRequest(http.MethodPost, "/auth/logout", bytes.NewBufferString(body))
+	req := httptest.NewRequest(http.MethodPost, "/v1/auth/logout", bytes.NewBufferString(body))
 	rec := httptest.NewRecorder()
 
 	router.ServeHTTP(rec, req)
@@ -309,7 +309,7 @@ func TestAuthHandler_Me_Sucesso(t *testing.T) {
 	}
 	router := setupAuthRouter(svc, validator)
 
-	req := httptest.NewRequest(http.MethodGet, "/auth/me", nil)
+	req := httptest.NewRequest(http.MethodGet, "/v1/auth/me", nil)
 	req.Header.Set("Authorization", "Bearer token-valido")
 	rec := httptest.NewRecorder()
 
@@ -330,7 +330,7 @@ func TestAuthHandler_Me_EmailVerificado_DevolveTrue(t *testing.T) {
 	svc := &fakeAuthService{accountUser: auth.User{ID: "user-id-42", Email: "admin@markupp.dev", EmailVerified: true}}
 	router := setupAuthRouter(svc, &fakeTokenValidator{claims: auth.Claims{Subject: "user-id-42"}})
 
-	req := httptest.NewRequest(http.MethodGet, "/auth/me", nil)
+	req := httptest.NewRequest(http.MethodGet, "/v1/auth/me", nil)
 	req.Header.Set("Authorization", "Bearer token-valido")
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
@@ -345,7 +345,7 @@ func TestAuthHandler_Login_EmailOuSenhaVazios_Retorna400(t *testing.T) {
 	router := setupAuthRouter(svc, nil)
 
 	body := `{"email":"","password":"senha"}`
-	req := httptest.NewRequest(http.MethodPost, "/auth/login", bytes.NewBufferString(body))
+	req := httptest.NewRequest(http.MethodPost, "/v1/auth/login", bytes.NewBufferString(body))
 	rec := httptest.NewRecorder()
 
 	router.ServeHTTP(rec, req)
@@ -357,7 +357,7 @@ func TestAuthHandler_Login_EmailOuSenhaVazios_Retorna400(t *testing.T) {
 func TestAuthHandler_Refresh_JSONInvalido_Retorna400(t *testing.T) {
 	router := setupAuthRouter(&fakeAuthService{}, nil)
 
-	req := httptest.NewRequest(http.MethodPost, "/auth/refresh", bytes.NewBufferString("{corrompido"))
+	req := httptest.NewRequest(http.MethodPost, "/v1/auth/refresh", bytes.NewBufferString("{corrompido"))
 	rec := httptest.NewRecorder()
 
 	router.ServeHTTP(rec, req)
@@ -369,7 +369,7 @@ func TestAuthHandler_Refresh_JSONInvalido_Retorna400(t *testing.T) {
 func TestAuthHandler_Logout_JSONInvalido_Retorna400(t *testing.T) {
 	router := setupAuthRouter(&fakeAuthService{}, nil)
 
-	req := httptest.NewRequest(http.MethodPost, "/auth/logout", bytes.NewBufferString("{corrompido"))
+	req := httptest.NewRequest(http.MethodPost, "/v1/auth/logout", bytes.NewBufferString("{corrompido"))
 	rec := httptest.NewRecorder()
 
 	router.ServeHTTP(rec, req)
@@ -387,7 +387,7 @@ func TestAuthHandler_Me_UsuarioNaoEncontrado_Retorna404(t *testing.T) {
 	}
 	router := setupAuthRouter(svc, validator)
 
-	req := httptest.NewRequest(http.MethodGet, "/auth/me", nil)
+	req := httptest.NewRequest(http.MethodGet, "/v1/auth/me", nil)
 	req.Header.Set("Authorization", "Bearer token-valido")
 	rec := httptest.NewRecorder()
 
@@ -406,7 +406,7 @@ func TestAuthHandler_Me_ErroInterno_Retorna500(t *testing.T) {
 	}
 	router := setupAuthRouter(svc, validator)
 
-	req := httptest.NewRequest(http.MethodGet, "/auth/me", nil)
+	req := httptest.NewRequest(http.MethodGet, "/v1/auth/me", nil)
 	req.Header.Set("Authorization", "Bearer token-valido")
 	rec := httptest.NewRecorder()
 
@@ -417,7 +417,7 @@ func TestAuthHandler_Me_ErroInterno_Retorna500(t *testing.T) {
 }
 
 func postAccept(router http.Handler, body string) *httptest.ResponseRecorder {
-	req := httptest.NewRequest(http.MethodPost, "/auth/invites/accept", bytes.NewBufferString(body))
+	req := httptest.NewRequest(http.MethodPost, "/v1/auth/invites/accept", bytes.NewBufferString(body))
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
 	return rec
@@ -457,7 +457,7 @@ func TestAuthHandler_MeusTenants_ListaVinculos(t *testing.T) {
 		{Membership: auth.Membership{TenantID: "t2", TenantName: "Globex", Role: "viewer"}},
 	}}
 	router := setupAuthRouter(svc, &fakeTokenValidator{claims: auth.Claims{Subject: "u1"}})
-	req := httptest.NewRequest(http.MethodGet, "/me/tenants", nil)
+	req := httptest.NewRequest(http.MethodGet, "/v1/me/tenants", nil)
 	req.Header.Set("Authorization", "Bearer token-valido")
 	rec := httptest.NewRecorder()
 
@@ -476,7 +476,7 @@ func TestAuthHandler_MeusTenants_ResumeAsNotasEmRFC3339(t *testing.T) {
 		{Membership: auth.Membership{TenantID: "t1", TenantName: "Acme", Role: "owner"}, NotesCount: 3, LastNoteAt: &ultima},
 	}}
 	router := setupAuthRouter(svc, &fakeTokenValidator{claims: auth.Claims{Subject: "u1"}})
-	req := httptest.NewRequest(http.MethodGet, "/me/tenants", nil)
+	req := httptest.NewRequest(http.MethodGet, "/v1/me/tenants", nil)
 	req.Header.Set("Authorization", "Bearer token-valido")
 	rec := httptest.NewRecorder()
 
@@ -488,7 +488,7 @@ func TestAuthHandler_MeusTenants_ResumeAsNotasEmRFC3339(t *testing.T) {
 
 func postTenant(svc *fakeAuthService, body string) *httptest.ResponseRecorder {
 	router := setupAuthRouter(svc, &fakeTokenValidator{claims: auth.Claims{Subject: "u1"}})
-	req := httptest.NewRequest(http.MethodPost, "/tenants", bytes.NewBufferString(body))
+	req := httptest.NewRequest(http.MethodPost, "/v1/tenants", bytes.NewBufferString(body))
 	req.Header.Set("Authorization", "Bearer token-valido")
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)

@@ -7,13 +7,7 @@ info:
     endereçado direto, a relação é sub-coleção por sentido e a visão sobre uma
     coleção é parâmetro de consulta.
 
-    Todas as rotas vivem sob /v1 (ADR-0026). Durante a transição, os mesmos caminhos
-    continuam servidos sem prefixo, com os cabeçalhos Deprecation (RFC 9745) e
-    Link rel="successor-version" apontando o caminho sob /v1; sem prefixo, a nota
-    mantém a representação antiga, sem a organização derivada. As rotas /accounts, /oauth/requests,
-    /accounts/external, /login-providers, /auth/external-login, /me/identities, /me/authorizations,
-    /me/notifications, /vaults, /search, /publications, /public e as sub-coleções de /notes/{id}
-    nasceram depois da transição e existem só sob /v1, sem o caminho sem prefixo.
+    Todas as rotas vivem sob /v1 (ADR-0026). Caminho sem prefixo responde 404.
 
     As rotas /v1/public/notes/{public_id} leem as notas publicadas sem conta (ADR-0048), pelo
     id público, com CORS aberto a qualquer origem e limite por IP. Nota não publicada e id

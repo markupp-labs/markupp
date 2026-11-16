@@ -8,9 +8,9 @@ function environment(overrides: McpEnvironment = {}): McpEnvironment {
 }
 
 describe("loadHttpEnv", () => {
-  it("usa a API em localhost:8080 e a porta 3000 quando elas faltam", () => {
+  it("usa a API em localhost:6275 e a porta 3000 quando elas faltam", () => {
     expect(loadHttpEnv(environment())).toEqual({
-      apiUrl: "http://localhost:8080",
+      apiUrl: "http://localhost:6275",
       resourceUrl: undefined,
       secret: { kind: "value", value: SECRET },
       port: 3000,

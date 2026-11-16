@@ -33,7 +33,7 @@ func TestStartAuthorization_PedidoValido_CriaPedidoEDevolveConsentimento(t *test
 	consentURL, err := newTestService(repo).StartAuthorization(context.Background(), validAuthorizeParams())
 
 	require.NoError(t, err)
-	assert.Equal(t, testPanelURL+"/oauth/authorize/pedido-1", consentURL)
+	assert.Equal(t, testPanelURL+"/oauth/requests/pedido-1", consentURL)
 	require.Len(t, repo.created, 1)
 	assert.Equal(t, oauth.AuthorizationRequest{
 		ID:            "pedido-1",
@@ -56,7 +56,7 @@ func TestStartAuthorization_IDComCaracteresEspeciais_EscapaNoCaminho(t *testing.
 	consentURL, err := service.StartAuthorization(context.Background(), validAuthorizeParams())
 
 	require.NoError(t, err)
-	assert.Equal(t, testPanelURL+"/oauth/authorize/a%20b&c", consentURL)
+	assert.Equal(t, testPanelURL+"/oauth/requests/a%20b&c", consentURL)
 }
 
 func TestStartAuthorization_Escopos_NormalizaPelaOrdemSuportada(t *testing.T) {

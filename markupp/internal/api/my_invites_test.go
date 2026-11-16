@@ -26,7 +26,7 @@ func TestMyInvites_Lista_DevolvePendentesDaConta(t *testing.T) {
 	expira := time.Date(2026, 10, 22, 12, 0, 0, 0, time.UTC)
 	svc := &fakeAuthService{pending: []auth.PendingInvite{{ID: "c1", TenantID: "t1", TenantName: "Acme", Role: "viewer", ExpiresAt: expira}}}
 
-	rec := myInviteRequest(svc, http.MethodGet, "/me/invites")
+	rec := myInviteRequest(svc, http.MethodGet, "/v1/me/invites")
 
 	assert.Equal(t, http.StatusOK, rec.Code)
 	var resp []map[string]any
@@ -37,7 +37,7 @@ func TestMyInvites_Lista_DevolvePendentesDaConta(t *testing.T) {
 func TestMyInvites_Aceitar_DevolveOTenant(t *testing.T) {
 	svc := &fakeAuthService{acceptedMembership: auth.Membership{TenantID: "t1", TenantName: "Acme", Role: "viewer"}}
 
-	rec := myInviteRequest(svc, http.MethodPost, "/me/invites/c1/accept")
+	rec := myInviteRequest(svc, http.MethodPost, "/v1/me/invites/c1/accept")
 
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.Equal(t, "c1", svc.answeredInvite)
@@ -47,7 +47,7 @@ func TestMyInvites_Aceitar_DevolveOTenant(t *testing.T) {
 func TestMyInvites_Recusar_Retorna204(t *testing.T) {
 	svc := &fakeAuthService{}
 
-	rec := myInviteRequest(svc, http.MethodPost, "/me/invites/c1/decline")
+	rec := myInviteRequest(svc, http.MethodPost, "/v1/me/invites/c1/decline")
 
 	assert.Equal(t, http.StatusNoContent, rec.Code)
 	assert.Equal(t, "c1", svc.answeredInvite)
@@ -56,7 +56,7 @@ func TestMyInvites_Recusar_Retorna204(t *testing.T) {
 func TestMyInvites_ErrosDoAceite(t *testing.T) {
 	casos := map[error]int{auth.ErrInviteInvalid: http.StatusNotFound, auth.ErrAlreadyMember: http.StatusConflict}
 	for errAceite, status := range casos {
-		rec := myInviteRequest(&fakeAuthService{answerErr: errAceite}, http.MethodPost, "/me/invites/c1/accept")
+		rec := myInviteRequest(&fakeAuthService{answerErr: errAceite}, http.MethodPost, "/v1/me/invites/c1/accept")
 
 		assert.Equal(t, status, rec.Code, errAceite.Error())
 	}

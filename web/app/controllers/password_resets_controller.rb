@@ -11,7 +11,7 @@ class PasswordResetsController < ApplicationController
 
   def create
     @form = TokenForm.new(params.expect(password_reset: [ :token, :password, :password_confirmation ]))
-    return render(:new, status: :unprocessable_content) unless @form.submit(credential.public_api, "/auth/password/reset")
+    return render(:new, status: :unprocessable_content) unless @form.submit(credential.public_api, "/v1/auth/password/reset")
 
     redirect_to new_session_path, notice: t(leave_panel_session)
   end
