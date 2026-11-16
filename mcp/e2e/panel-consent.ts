@@ -49,7 +49,7 @@ async function consentRequestId(authorizeUrl: URL): Promise<string> {
   await expectStatus(response, 302, `GET ${authorizeUrl.pathname}`);
   const location = response.headers.get("location") ?? "";
   const path = new URL(location, authorizeUrl).pathname;
-  const id = /^\/oauth\/authorize\/([^/]+)$/.exec(path)?.[1];
+  const id = /^\/oauth\/requests\/([^/]+)$/.exec(path)?.[1];
   if (!id) {
     throw new Error(
       `authorize redirecionou para ${location}, esperado o painel em /oauth/requests/<id>`,
