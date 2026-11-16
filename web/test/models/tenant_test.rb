@@ -6,7 +6,7 @@ class TenantTest < ActiveSupport::TestCase
       { id: "tenant-1", name: "Acme research", members: { FakeMarkuppAccounts::DEFAULT_EMAIL => "owner" } },
       { id: "tenant-2", name: "Home lab", members: { FakeMarkuppAccounts::DEFAULT_EMAIL => "viewer" } }
     ])
-    pair = @fake_api.post("/auth/login", email: FakeMarkuppAccounts::DEFAULT_EMAIL, password: FakeMarkuppAccounts::DEFAULT_PASSWORD)
+    pair = @fake_api.post("/v1/auth/login", email: FakeMarkuppAccounts::DEFAULT_EMAIL, password: FakeMarkuppAccounts::DEFAULT_PASSWORD)
     @api = @fake_api.as(access_token: pair.fetch("access_token"))
   end
 
@@ -21,7 +21,7 @@ class TenantTest < ActiveSupport::TestCase
       { id: "tenant-1", name: "Acme research", members: { email => "owner" }, notes_count: 12, last_note_at: "2026-10-19T10:00:00Z" },
       { id: "tenant-2", name: "Home lab", members: { email => "viewer" }, notes_count: 0, last_note_at: nil }
     ])
-    pair = fake_api.post("/auth/login", email:, password: FakeMarkuppAccounts::DEFAULT_PASSWORD)
+    pair = fake_api.post("/v1/auth/login", email:, password: FakeMarkuppAccounts::DEFAULT_PASSWORD)
 
     assert_equal [ { id: "tenant-1", name: "Acme research", role: "owner", notes_count: 12, last_note_at: Time.zone.parse("2026-10-19T10:00:00Z") },
                    { id: "tenant-2", name: "Home lab", role: "viewer", notes_count: 0, last_note_at: nil } ],

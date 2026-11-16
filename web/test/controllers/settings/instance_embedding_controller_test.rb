@@ -121,7 +121,7 @@ module Settings
 
       get settings_account_path
       assert_select "main nav a[href=?]", settings_instance_embedding_path, text: "Embedding"
-      assert_equal 1, fake.received_credentials.count { it[:call] == "GET /auth/me" } - 1, "one read at login, one for the page"
+      assert_equal 1, fake.received_credentials.count { it[:call] == "GET /v1/auth/me" } - 1, "one read at login, one for the page"
 
       fake.set_instance_admin!(ANA, false)
       get settings_account_path

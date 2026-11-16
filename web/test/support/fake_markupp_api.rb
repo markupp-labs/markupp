@@ -104,19 +104,19 @@ class FakeMarkuppApi
 
     def unreachable?(call, path) = @unreachable || (@notes_unreachable && notes_path?(path)) || (@vaults_unreachable && call == "GET /v1/vaults")
 
-    def notes_path?(path) = path.start_with?("/notes") || FakeMarkuppNoteIndex::VAULT_NOTES.match?(path)
+    def notes_path?(path) = FakeMarkuppNotes::ROUTE.match?(path) || FakeMarkuppNoteIndex::VAULT_NOTES.match?(path)
 
     # Só notas, grafo e administração agem num tenant; chamada de confiança, sem conta, não tem papel. Os pedidos OAuth,
     # as Autorizações e as notificações são da conta, sem tenant.
     def tenant_membership(path, account, call)
-      return unless account && path.start_with?("/notes", "/users", "/v1/") && !account_scoped?(path)
+      return unless account && path.start_with?("/v1/") && !account_scoped?(path)
       return if FakeMarkuppExternalLogin.handles?(path)
 
       @tenants.membership_for(account, @credentials[:tenant_id], call)
     end
 
     def account_scoped?(path)
-    path.start_with?(OAUTH_REQUESTS, FakeMarkuppTenants::NOTIFICATIONS, FakeMarkuppInstanceEmbedding::ROUTE) || FakeMarkuppAuthorizations::ROUTE.match?(path)
+    path.start_with?(OAUTH_REQUESTS, "/v1/auth/", "/v1/me/", "/v1/tenants", FakeMarkuppInstanceEmbedding::ROUTE) || FakeMarkuppAuthorizations::ROUTE.match?(path)
   end
 
     def authenticate(call)
@@ -127,7 +127,7 @@ class FakeMarkuppApi
     end
 
     def fake_for(call, path)
-      return @notes if path.start_with?("/notes") || (call.start_with?("POST ") && FakeMarkuppNoteIndex::VAULT_NOTES.match?(path))
+      return @notes if FakeMarkuppNotes::ROUTE.match?(path) || (call.start_with?("POST ") && FakeMarkuppNoteIndex::VAULT_NOTES.match?(path))
       return @vaults if FakeMarkuppVaults::ROUTE.match?(path)
       return @external_login if FakeMarkuppExternalLogin.handles?(path)
       return @publications if FakeMarkuppPublications.handles?(path)
@@ -139,13 +139,13 @@ class FakeMarkuppApi
       return @link_refusals if FakeMarkuppLinkRefusals::ROUTE.match?(path)
       return @instance_embedding if path == FakeMarkuppInstanceEmbedding::ROUTE
       return @note_index if path.start_with?("/v1/search/") || FakeMarkuppNoteIndex::VAULT_NOTES.match?(path)
-      return @graph if path.start_with?("/v1/")
-      return @account_email if path.start_with?("/auth/password/", "/auth/email/")
-      return @auth if path.start_with?("/auth/")
-      return @tenants if path.start_with?("/me/") || path == "/tenants"
+      return @account_email if path.start_with?("/v1/auth/password/", "/v1/auth/email/")
+      return @auth if path.start_with?("/v1/auth/")
+      return @tenants if path.start_with?("/v1/me/") || path == "/v1/tenants"
       return @tenant_deletion if FakeMarkuppTenantDeletion::TENANT_PATH.match?(path)
-      return @tenant_admin if path.start_with?("/users")
+      return @tenant_admin if path.start_with?("/v1/users")
+      return @graph if path.start_with?("/v1/")
 
-      raise ArgumentError, "fake API has no route for #{call}, expected /notes, /v1, /auth, /me, /tenants or /users"
+      raise ArgumentError, "fake API has no route for #{call}, expected a path under /v1"
     end
 end

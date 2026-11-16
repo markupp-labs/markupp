@@ -2,7 +2,7 @@ require "test_helper"
 
 class TokenFormTest < ActiveSupport::TestCase
   INVITE = { id: "invite-1", tenant_id: "tenant-1", email: "caio@markupp.dev", role: "member", token: "tok-1" }.freeze
-  ACCEPT_PATH = "/auth/invites/accept"
+  ACCEPT_PATH = "/v1/auth/invites/accept"
 
   setup { @fake_api = FakeMarkuppApi.new(invites: [ INVITE ]) }
 
@@ -53,7 +53,7 @@ class TokenFormTest < ActiveSupport::TestCase
   test "submit says when the server can't send email" do
     form = token_form("tok-1", "senha-nova-de-teste")
 
-    assert_nil form.submit(FakeMarkuppApi.new(email_enabled: false), "/auth/password/reset")
+    assert_nil form.submit(FakeMarkuppApi.new(email_enabled: false), "/v1/auth/password/reset")
     assert_equal [ "This server can't send email, so password reset is off. Ask an administrator." ], form.errors[:base]
   end
 

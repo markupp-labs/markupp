@@ -48,7 +48,7 @@ class PendingInviteTest < ActiveSupport::TestCase
   private
     def signed_in_api(accounts: FakeMarkuppAccounts::DEFAULT_ACCOUNTS, invites: [ INVITE ])
       fake_api = FakeMarkuppApi.new(accounts:, tenants: TENANTS, invites:)
-      pair = fake_api.post("/auth/login", email: EMAIL, password: FakeMarkuppAccounts::DEFAULT_PASSWORD)
+      pair = fake_api.post("/v1/auth/login", email: EMAIL, password: FakeMarkuppAccounts::DEFAULT_PASSWORD)
       fake_api.as(access_token: pair.fetch("access_token"))
     end
 end
