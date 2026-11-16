@@ -88,10 +88,10 @@ class RecordingCli implements CliDeps {
 describe("runCli http", () => {
   it("sobe o transporte http só com o caminho do segredo", async () => {
     const cli = new RecordingCli();
-    cli.upstream.respondWith(200, { issuer: "http://localhost:8080" });
+    cli.upstream.respondWith(200, { issuer: "http://localhost:6275" });
     const env = { MARKUPP_MCP_SECRET_PATH: SECRET_PATH };
     expect(await runCli(["http"], env, cli)).toBe(0);
-    expect(cli.served?.resourceUrl).toBe("http://localhost:8080/mcp");
+    expect(cli.served?.resourceUrl).toBe("http://localhost:6275/mcp");
     expect(cli.stderr).toEqual([]);
   });
 
@@ -108,7 +108,7 @@ describe("runCli http", () => {
     const env = { MARKUPP_MCP_SECRET_PATH: SECRET_PATH };
     expect(await runCli(["http"], env, cli)).toBe(1);
     expect(cli.stderr.join("\n")).toContain(
-      "http://localhost:8080/.well-known/oauth-authorization-server",
+      "http://localhost:6275/.well-known/oauth-authorization-server",
     );
     expect(cli.served).toBeUndefined();
   });
