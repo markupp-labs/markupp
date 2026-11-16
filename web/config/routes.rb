@@ -40,7 +40,7 @@ Rails.application.routes.draw do
   resource :notifications, only: :show
 
   # Consentimento OAuth: o servidor manda o navegador para cá com o id do pedido.
-  resources :oauth_authorizations, path: "oauth/authorize", only: :show do
+  resources :oauth_authorizations, path: "oauth/requests", only: :show do
     member do
       post :approve
       post :deny
