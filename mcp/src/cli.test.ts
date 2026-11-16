@@ -138,7 +138,7 @@ describe("runCli stdio", () => {
 });
 
 describe("runCli login e logout", () => {
-  it("faz o login no localhost:8080 por padrão e grava a credencial", async () => {
+  it("faz o login no localhost:6275 por padrão e grava a credencial", async () => {
     const cli = new RecordingCli({ kind: "consent", code: "c1" });
     cli.upstream.respondWith(200, authServerMetadata()).respondWith(200, {
       access_token: "jwt",

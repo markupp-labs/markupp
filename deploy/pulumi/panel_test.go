@@ -79,7 +79,7 @@ func TestNewMarkupp_ComPainel_UmaReplicaFalandoComAAPIPeloService(t *testing.T) 
 		"a renovação do token fica no processo, mais réplicas pedem afinidade no Gateway")
 	container := firstContainer(t, painel)
 	assert.Equal(t, "ghcr.io/markupp-labs/markupp-web:1.1.0", container["image"].StringValue())
-	assert.Equal(t, "http://markupp-api:8080", envNamed(t, container, "MARKUPP_API_URL")["value"].StringValue())
+	assert.Equal(t, "http://markupp-api:6275", envNamed(t, container, "MARKUPP_API_URL")["value"].StringValue())
 }
 
 // A página Agents do painel mostra os comandos de registro com a URL pública da API, onde o MCP fica em /mcp.
