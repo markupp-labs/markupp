@@ -15,5 +15,5 @@ RUN apk add --no-cache ca-certificates \
   && install -d -o markupp -g markupp /run/markupp-mcp
 COPY --from=builder /out/markupp /usr/local/bin/markupp
 USER markupp
-EXPOSE 8080
+EXPOSE 6275
 ENTRYPOINT ["/usr/local/bin/markupp"]

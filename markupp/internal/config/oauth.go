@@ -17,9 +17,6 @@ type OAuthResource struct {
 
 const minOAuthResourceSecretBytes = 32
 
-// defaultPanelURL é onde o painel roda fora do compose (ADR-0041).
-const defaultPanelURL = "http://localhost:3999"
-
 // oauthURLRule descreve o que cada variável de URL do OAuth aceita além do esquema.
 type oauthURLRule struct {
 	key       string
@@ -132,9 +129,9 @@ func (c Config) checkCIMDCacheBounds() error {
 }
 
 // loadPanelURL lê o painel, para onde o authorization server manda o login e o
-// consentimento, com o painel local como padrão (ADR-0041).
+// consentimento. Sem a variável, o painel é a raiz da URL pública (ADR-0041).
 func loadPanelURL(lookup LookupFunc, cfg *Config) error {
-	panel := defaultPanelURL
+	panel := cfg.PublicURL
 	readString(lookup, panelURLRule.key, &panel)
 	var err error
 	cfg.PanelURL, err = normalizeOAuthURL(panel, panelURLRule)

@@ -110,7 +110,7 @@ type Config struct {
 // Default devolve a configuração usada nas variáveis não definidas.
 func Default() Config {
 	cfg := Config{
-		Port:                     8080,
+		Port:                     6275,
 		MaxNoteSize:              50 * 1024 * 1024,
 		AuthSecret:               "",
 		DefaultTenantID:          "default",
