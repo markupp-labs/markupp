@@ -3,6 +3,6 @@
 # o MCP; sem ela a página avisa que o MCP está desligado.
 Rails.application.config.to_prepare do
   Settings::AgentsController.agent_client_catalog = AgentClientCatalog.load(Rails.root.join("config/agent_clients.json"))
-  Settings::AgentsController.agent_instance_url = ENV.fetch("MARKUPP_PUBLIC_URL", "http://localhost:8080")
+  Settings::AgentsController.agent_instance_url = ENV.fetch("MARKUPP_PUBLIC_URL", "http://localhost:6275")
   Settings::AgentsController.agent_mcp_url = ENV["MARKUPP_MCP_URL"].presence
 end

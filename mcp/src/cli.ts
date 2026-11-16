@@ -23,7 +23,7 @@ type Subcommand = {
 
 export const USAGE = `usage: markupp-mcp [login [url] | logout | http | help | --version]
   (no subcommand)   serves MCP over stdio with the stored login
-  login [url]       signs in through the browser (default url http://localhost:8080)
+  login [url]       signs in through the browser (default url http://localhost:6275)
   logout            revokes and deletes the stored login
   http              serves MCP over Streamable HTTP
   help, -h, --help  shows this usage

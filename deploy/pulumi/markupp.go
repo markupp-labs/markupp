@@ -13,7 +13,7 @@ const (
 	issuerSelfSigned    = "selfSigned"
 	defaultAPIReplicas  = 2
 	defaultDBSize       = "10Gi"
-	apiPort             = 8080
+	apiPort             = 6275
 )
 
 // Markupp é a instalação do markupp num namespace do Kubernetes: banco, job de
