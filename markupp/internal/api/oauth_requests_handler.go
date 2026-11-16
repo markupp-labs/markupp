@@ -29,8 +29,8 @@ type oauthDecisionResponse struct {
 // requestDecision é Approve ou Deny do serviço, que devolvem o redirect ao cliente.
 type requestDecision func(ctx context.Context, requestID, userID string) (string, error)
 
-// mountOAuthRequestRoutes monta as rotas da tela de consentimento do painel só sob /v1,
-// sem o alias obsoleto sem prefixo: exigem login, mas não tenant. O id do pedido funciona
+// mountOAuthRequestRoutes monta as rotas da tela de consentimento do painel sob /v1:
+// exigem login, mas não tenant. O id do pedido funciona
 // como portador (ADR-0047): a conta logada que o apresenta pode ver e decidir o pedido.
 func mountOAuthRequestRoutes(r chi.Router, svc OAuthService, tokenValidator TokenValidator) {
 	h := &oauthHandler{svc: svc}

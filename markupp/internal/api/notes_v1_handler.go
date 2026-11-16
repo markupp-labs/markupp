@@ -21,8 +21,8 @@ func toNoteRankResponse(r notes.NoteRank) noteRankResponse {
 	return noteRankResponse{Degree: r.Degree, PageRank: r.PageRank, Community: r.Community}
 }
 
-// noteV1Response é a nota em /v1: a das rotas sem prefixo mais a organização
-// derivada.
+// noteV1Response é a nota em /v1: a representação de GET /v1/notes mais a
+// organização derivada.
 // PublicID é o id público, null quando a nota não está publicada (ADR-0048).
 type noteV1Response struct {
 	noteResponse

@@ -111,7 +111,7 @@ func passThrough(next http.Handler) http.Handler {
 }
 
 func (l *AccountRateLimiter) allowRequest(r *http.Request) (time.Duration, bool) {
-	route := unversionedPath(r.URL.Path)
+	route := r.URL.Path
 	keys := []string{route + " ip " + l.clientIP(r)}
 	if email := peekEmail(r); email != "" {
 		keys = append(keys, route+" email "+email)
@@ -210,13 +210,4 @@ func writeRateLimited(w http.ResponseWriter, wait time.Duration) {
 	seconds := max(1, int(math.Ceil(wait.Seconds())))
 	w.Header().Set("Retry-After", strconv.Itoa(seconds))
 	writeError(w, "rate_limited", "too many attempts, try again in "+strconv.Itoa(seconds)+"s", http.StatusTooManyRequests)
-}
-
-// unversionedPath tira o prefixo /v1 do caminho, para a rota sob /v1 e o alias obsoleto
-// sem prefixo contarem no mesmo limite.
-func unversionedPath(path string) string {
-	if rest, ok := strings.CutPrefix(path, currentVersionPrefix+"/"); ok {
-		return "/" + rest
-	}
-	return path
 }

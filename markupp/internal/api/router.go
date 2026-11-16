@@ -47,8 +47,7 @@ type RouterDeps struct {
 }
 
 // NewRouter monta o roteador com sonda, rotas de autenticação, de notas e de
-// administração, servidas sob /v1 e, durante a transição do ADR-0026, também sem
-// prefixo e marcadas como obsoletas. As rotas do authorization server OAuth que os
+// administração, servidas só sob /v1. As rotas do authorization server OAuth que os
 // clientes acessam ficam na raiz, sem versão e fora da lista de origens do CORS, e as
 // da tela de consentimento só sob /v1.
 func NewRouter(d RouterDeps) chi.Router {
@@ -66,15 +65,13 @@ func NewRouter(d RouterDeps) chi.Router {
 	return r
 }
 
-// mountAPIRoutes monta as rotas sob /v1 e o alias obsoleto sem prefixo, que responde
-// por todo caminho que nenhuma outra rota atende.
+// mountAPIRoutes monta as rotas sob /v1.
 func mountAPIRoutes(r chi.Router, d RouterDeps) {
 	if d.OAuth != nil {
 		mountOAuthRequestRoutes(r, d.OAuth, d.Tokens)
 		mountOAuthAuthorizationRoutes(r, d.OAuth, d.Tokens)
 	}
-	r.Mount(currentVersionPrefix, newVersionRoutes(d, true))
-	r.Mount("/", markDeprecated(newVersionRoutes(d, false)))
+	r.Mount(currentVersionPrefix, newVersionRoutes(d))
 }
 
 // mustHaveRouterDeps barra na montagem as dependências que faltam às rotas ligadas.
@@ -90,21 +87,18 @@ func mustHaveRouterDeps(d RouterDeps) {
 	}
 }
 
-// newVersionRoutes monta as rotas da versão atual (current) ou do alias obsoleto sem
-// prefixo, que não ganha as rotas nascidas depois da transição.
-func newVersionRoutes(d RouterDeps, current bool) chi.Router {
+// newVersionRoutes monta as rotas da versão atual.
+func newVersionRoutes(d RouterDeps) chi.Router {
 	r := chi.NewRouter()
 	r.Get("/healthz", healthz(d.Probe))
 	limit := limitAccountAttempts(d.AccountRateLimiter)
 	if d.Auth != nil {
-		mountAuthRoutes(r, &authHandler{svc: d.Auth, admins: d.InstanceAdmins}, d.Tokens, limit, current)
+		mountAuthRoutes(r, &authHandler{svc: d.Auth, admins: d.InstanceAdmins}, d.Tokens, limit)
 	}
 	if d.Notes != nil {
-		mountProtectedNotesRoutes(r, d.Notes, d.Tokens, d.Tenants, current)
+		mountProtectedNotesRoutes(r, d.Notes, d.Tokens, d.Tenants)
 	}
-	if current {
-		mountV1OnlyRoutes(r, d)
-	}
+	mountV1OnlyRoutes(r, d)
 	if d.Admin != nil {
 		mountAdminRoutes(r, d.Admin, d.Tokens, d.Tenants)
 	}
@@ -114,8 +108,7 @@ func newVersionRoutes(d RouterDeps, current bool) chi.Router {
 	return r
 }
 
-// mountV1OnlyRoutes monta as rotas que nasceram depois da transição e não têm o alias
-// sem prefixo: o grafo, a gestão de cofres, a publicação, o login externo e a recusa
+// mountV1OnlyRoutes monta as rotas que nasceram depois da transição do ADR-0026: o grafo, a gestão de cofres, a publicação, o login externo e a recusa
 // de ligação, e as da instância.
 func mountV1OnlyRoutes(r chi.Router, d RouterDeps) {
 	if d.Graph != nil {
@@ -140,19 +133,13 @@ func mountV1OnlyRoutes(r chi.Router, d RouterDeps) {
 
 // mountProtectedNotesRoutes confere o escopo do token antes de resolver o tenant, para
 // falhar cedo, como em /users.
-// current liga a representação de /v1 (ADR-0040) no item da nota, nas notas do cofre e
-// na busca; o alias sem prefixo mantém a representação antiga.
-func mountProtectedNotesRoutes(r chi.Router, svc NoteService, tokenValidator TokenValidator, tenants TenantResolver, current bool) {
+func mountProtectedNotesRoutes(r chi.Router, svc NoteService, tokenValidator TokenValidator, tenants TenantResolver) {
 	read := r.With(acceptOAuthScope(oauth.ScopeNotesRead), RequireAuth(tokenValidator), RequireTenant(tenants))
 	write := r.With(acceptOAuthScope(oauth.ScopeNotesWrite), RequireAuth(tokenValidator), RequireTenant(tenants), requireWriter)
 	legacy := &notesHandler{svc: svc, render: toResponse}
 	read.Get("/notes", legacy.list)
 	read.Get("/notes/search", legacy.search)
 	write.Post("/notes", legacy.create)
-	if !current {
-		mountNoteItemRoutes(read, write, legacy)
-		return
-	}
 	mountV1NotesRoutes(read, write, svc)
 }
 
@@ -169,10 +156,9 @@ func mountProtectedGraphRoutes(r chi.Router, graph NoteGraph, tokenValidator Tok
 	mountNoteGraphRoutes(r.With(acceptOAuthScope(oauth.ScopeNotesRead), RequireAuth(tokenValidator), RequireTenant(tenants)), graph)
 }
 
-// mountAuthRoutes monta login, sessão e as rotas da conta; as notificações e o cadastro,
-// nascidos depois da transição, só na versão atual (current). Elas trazem os convites de
+// mountAuthRoutes monta login, sessão e as rotas da conta. As notificações trazem os convites de
 // GET /me/invites, então pedem o mesmo escopo administracao ao token OAuth.
-func mountAuthRoutes(r chi.Router, h *authHandler, tokenValidator TokenValidator, limit func(http.Handler) http.Handler, current bool) {
+func mountAuthRoutes(r chi.Router, h *authHandler, tokenValidator TokenValidator, limit func(http.Handler) http.Handler) {
 	r.With(limit).Post("/auth/login", h.login)
 	r.With(limit).Post("/auth/refresh", h.refresh)
 	r.Post("/auth/logout", h.logout)
@@ -185,8 +171,6 @@ func mountAuthRoutes(r chi.Router, h *authHandler, tokenValidator TokenValidator
 	admin.Get("/me/invites", h.myInvites)
 	admin.Post("/me/invites/{id}/accept", h.acceptMyInvite)
 	admin.Post("/me/invites/{id}/decline", h.declineMyInvite)
-	if current {
-		admin.Get("/me/notifications", h.myNotifications)
-		r.With(limit).Post("/accounts", h.createAccount)
-	}
+	admin.Get("/me/notifications", h.myNotifications)
+	r.With(limit).Post("/accounts", h.createAccount)
 }

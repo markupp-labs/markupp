@@ -32,7 +32,7 @@ type Note struct {
 
 // SearchResult é a projeção de uma nota devolvida pela busca: sem o conteúdo, com o
 // trecho cru dele em que os termos da consulta aparecem entre U+0002 e U+0003 e a
-// relevância, que a rota sem prefixo não expõe.
+// relevância, que GET /v1/notes/search não expõe.
 type SearchResult struct {
 	ID        string    `json:"id"`
 	VaultID   string    `json:"vault_id"`
