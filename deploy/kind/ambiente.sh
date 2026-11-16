@@ -11,6 +11,8 @@ set -euo pipefail
 REPO="$(cd "$(dirname "$0")/../.." && pwd)"
 STACKS="$REPO/deploy/stacks"
 IMAGE=markupp:dev
+# A do indexador de embedding, que a stack deriva da do servidor, com a mesma tag.
+EMBEDDER_IMAGE=markupp-embedder:dev
 URL=https://markupp.local:8443
 AMBIENTE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/markupp-kind"
 PAINEL_PORTA=4466
@@ -35,8 +37,9 @@ recusa_cluster_existente() {
 
 sobe_cluster() {
   docker build -q -t "$IMAGE" "$REPO/markupp" >/dev/null
+  docker build -q -t "$EMBEDDER_IMAGE" -f "$REPO/markupp/Dockerfile.embedder" "$REPO/markupp" >/dev/null
   "$REPO/deploy/kind/prepara-cluster.sh"
-  kind load docker-image "$IMAGE" --name "$CLUSTER"
+  kind load docker-image "$IMAGE" "$EMBEDDER_IMAGE" --name "$CLUSTER"
 }
 
 aplica_stack() {
