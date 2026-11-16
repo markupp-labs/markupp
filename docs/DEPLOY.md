@@ -21,13 +21,13 @@ preencha:
 docker compose up -d
 ```
 
-Servidor em `http://localhost:8080`, painel em `http://localhost:3000` e servidor MCP em
-`http://localhost:8080/mcp`. Na primeira subida o servidor gera os próprios segredos e os guarda
+Tudo em `http://localhost:6275`: o painel na raiz, a API em `/v1` e o servidor MCP em `/mcp`.
+Só essa porta é publicada; `MARKUPP_PORT` troca o lado do host. Na primeira subida o servidor gera os próprios segredos e os guarda
 no banco (ADR-0041).
 
-Com um proxy HTTPS na frente (Caddy, Traefik, Nginx), aponte `MARKUPP_PUBLIC_URL` e
-`MARKUPP_PANEL_URL` para os domínios públicos e troque `MARKUPP_PANEL_FORCE_SSL` para `true`.
-O painel e a API ficam em origens separadas, porque as rotas dos dois colidem.
+Com um proxy HTTPS na frente (Caddy, Traefik, Nginx), aponte `MARKUPP_PUBLIC_URL` para o
+domínio público e troque `MARKUPP_PANEL_FORCE_SSL` para `true`. O painel segue na raiz do mesmo
+domínio (ADR-0058); `MARKUPP_PANEL_URL` só é preciso com o painel em subdomínio próprio.
 
 Sem `MARKUPP_SMTP_URL`, a instância roda sem email: o notificador fica ocioso e o convite
 devolve o token para ser repassado à mão. Com SMTP, preencha também `MARKUPP_SMTP_FROM`, e o
@@ -100,7 +100,7 @@ Os emails de convite, verificação de email e troca de senha levam primeiro o l
 painel que recebe o token (/invite_acceptance/new, /email_confirmation/new e
 /password_reset/new, com ?token=), e depois o token em texto para quem não conseguir abrir o
 link. O painel é o de `MARKUPP_PANEL_URL` no notificador, a mesma variável do OAuth descrita
-abaixo, com `http://localhost:3999` como padrão. No componente, ela vem de `email.panelUrl`.
+abaixo, com `MARKUPP_PUBLIC_URL` como padrão. No componente, ela vem de `email.panelUrl`.
 
 Em 24 horas, cada conta emite até 20 convites, somando todos os tenants dela, e cada tenant
 recebe até 50; acima disso a API responde 429 `invite_limit_reached`. Convite revogado continua
@@ -142,8 +142,8 @@ Gateway, informe `existingGateway` com nome, namespace e listener. O componente 
 HTTPRoute, e o Gateway precisa aceitar rotas do namespace do markupp em `allowedRoutes`. Nesse
 caso o certificado fica com quem administra o Gateway.
 
-Para subir o painel, informe `panel` com `image` e `host`. Ele fica num host próprio, porque no
-host da API as rotas dos dois colidem, com uma réplica só: a renovação do token mora na memória
+Para subir o painel, informe `panel` com `image` e `host`. Ele fica num host próprio, sem o
+encaminhamento pelo Go do compose, com uma réplica só: a renovação do token mora na memória
 do processo. O componente gera a `secret_key_base` num Secret, aponta o painel para a API pelo
 Service e passa à API o `MARKUPP_PANEL_URL`, que leva o consentimento do OAuth e os links dos
 emails para o painel. Com `existingGateway`, `panel.sectionName` escolhe o listener do host do
@@ -214,9 +214,9 @@ make run
 ```
 
 O ambiente de desenvolvimento vive em `compose.dev.yaml`. Nada precisa ser configurado antes:
-`docker compose -f compose.dev.yaml up` também funciona. Servidor em `http://localhost:8080`,
-painel em `http://localhost:3000`, servidor MCP em `http://localhost:8080/mcp` e caixa de email
-em `http://localhost:8025`. Na primeira subida o servidor gera os próprios segredos e os guarda
+`docker compose -f compose.dev.yaml up` também funciona. Como no self-host, tudo fica em
+`http://localhost:6275` (painel na raiz, API em `/v1`, MCP em `/mcp`), e a caixa de email do
+Mailpit em `http://127.0.0.1:8025`. Na primeira subida o servidor gera os próprios segredos e os guarda
 no banco (ADR-0041). Os testes rodam no host e precisam de Go e de Docker:
 
 ```sh
@@ -237,16 +237,16 @@ Smoke test pela API. Com o banco vazio, o primeiro cadastro cria a conta como ow
 inicial, e já devolve a sessão:
 
 ```sh
-TOKEN=$(curl -s -X POST http://localhost:8080/v1/accounts \
+TOKEN=$(curl -s -X POST http://localhost:6275/v1/accounts \
   -H 'Content-Type: application/json' \
   -d '{"email":"admin@exemplo.dev","password":"troque-esta-senha"}' \
   | grep -o '"access_token":"[^"]*"' | cut -d'"' -f4)
-ID=$(curl -s -X POST http://localhost:8080/notes \
+ID=$(curl -s -X POST http://localhost:6275/v1/notes \
   -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
   -d '{"path":"validacao.md","content":"oi"}' \
   | grep -o '"id":"[^"]*"' | cut -d'"' -f4)
-curl -s -H "Authorization: Bearer $TOKEN" http://localhost:8080/notes/$ID
-curl -s -X DELETE -H "Authorization: Bearer $TOKEN" http://localhost:8080/notes/$ID -w '%{http_code}\n'
+curl -s -H "Authorization: Bearer $TOKEN" http://localhost:6275/v1/notes/$ID
+curl -s -X DELETE -H "Authorization: Bearer $TOKEN" http://localhost:6275/v1/notes/$ID -w '%{http_code}\n'
 ```
 
 Esperado: o login devolve `access_token`, `POST` retorna JSON com `id` UUID, `GET` traz a nota,
@@ -294,8 +294,8 @@ hífen. Cada id lê as próprias variáveis, com o id em maiúsculas e o hífen 
   `https://accounts.google.com`). Sem ela, só o id `github` é aceito, e usa o GitHub
 - `MARKUPP_LOGIN_<ID>_NAME`: o nome do botão. Padrão: o id
 
-No provedor, cadastre como redirect URI o callback do painel, `MARKUPP_PANEL_URL/auth/<id>/callback`
-(ex.: `https://painel.exemplo.com/auth/google/callback`). No GitHub, crie um OAuth App; o login pede
+No provedor, cadastre como redirect URI o callback do painel, `MARKUPP_PANEL_URL/auth/<id>/callback`, ou
+`MARKUPP_PUBLIC_URL/auth/<id>/callback` com o painel na raiz (ex.: `https://notas.exemplo.com/auth/google/callback`). No GitHub, crie um OAuth App; o login pede
 os escopos read:user e user:email.
 
 O login só entra em conta que já tem a identidade vinculada. A primeira vez com um provedor é
@@ -385,7 +385,8 @@ self-host normalmente define é a URL pública:
 - `MARKUPP_PUBLIC_URL`: o issuer, como `https://notas.exemplo.com`, sem caminho, query nem
   fragmento. Padrão: `http://localhost` na porta do servidor
 - `MARKUPP_PANEL_URL`: o painel que faz o login e o consentimento, como
-  `https://notas.exemplo.com/painel`, sem query nem fragmento. Padrão: `http://localhost:3999`
+  `https://painel.exemplo.com`, sem query nem fragmento. Padrão: `MARKUPP_PUBLIC_URL`, com o
+  painel na raiz, encaminhado pelo Go
 - `MARKUPP_OAUTH_RESOURCES`: os servidores de recursos que aceitam os tokens, em pares
   `url=segredo` separados por vírgula, cada segredo com ao menos 32 bytes (ex.:
   `openssl rand -hex 32`) e cada URL uma vez só, sem query nem fragmento. Sem ela, o único
@@ -462,8 +463,9 @@ pontas:
 | Variável | Onde | Padrão | O que é |
 |---|---|---|---|
 | `MARKUPP_MCP_UPSTREAM_URL` | Go | sem `/mcp` | endereço interno do servidor MCP, para onde `/mcp` é encaminhado |
+| `MARKUPP_PANEL_UPSTREAM_URL` | Go | sem painel na raiz | endereço interno do painel, para onde vai todo caminho que o Go não atende |
 | `MARKUPP_MCP_SECRET_PATH` | Go e MCP | sem arquivo | arquivo do segredo do MCP: o Go escreve e o MCP lê |
-| `MARKUPP_MCP_API_URL` | MCP | `http://localhost:8080` | endereço do servidor Go visto pelo MCP; aceita http em qualquer host |
+| `MARKUPP_MCP_API_URL` | MCP | `http://localhost:6275` | endereço do servidor Go visto pelo MCP; aceita http em qualquer host |
 | `MARKUPP_MCP_RESOURCE_URL` | MCP | issuer + `/mcp` | URL pública do MCP com o caminho do endpoint; o caminho vira a rota |
 | `MARKUPP_MCP_RESOURCE_SECRET` | MCP | o do arquivo | segredo do par em `MARKUPP_OAUTH_RESOURCES`, com ao menos 32 bytes |
 | `MARKUPP_MCP_PORT` | MCP | 3000 | porta em que o MCP escuta, em todas as interfaces |
