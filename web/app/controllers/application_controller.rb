@@ -47,7 +47,7 @@ class ApplicationController < ActionController::Base
       return_to = panel_path(session[:return_to]) || root_path
       reset_session
       credential.sign_in(pair)
-      credential.account = credential.api.get("/auth/me")
+      credential.account = credential.api.get("/v1/auth/me")
       return_to
     end
 
@@ -62,7 +62,7 @@ class ApplicationController < ActionController::Base
 
     # A API responde 204 sempre; fora do ar, o painel sai do mesmo jeito e o refresh vence sozinho.
     def revoke_refresh_token
-      credential.public_api.post("/auth/logout", refresh_token: credential.refresh_token)
+      credential.public_api.post("/v1/auth/logout", refresh_token: credential.refresh_token)
     rescue MarkuppApi::Error => error
       log_api_event("markupp_logout_not_revoked", error, level: :warn)
     end
@@ -89,7 +89,7 @@ class ApplicationController < ActionController::Base
     def instance_admin?
       return @instance_admin if defined?(@instance_admin)
 
-      @instance_admin = credential.api.get("/auth/me")["instance_admin"] == true
+      @instance_admin = credential.api.get("/v1/auth/me")["instance_admin"] == true
     rescue MarkuppApi::Error => error
       raise unless error.instance_of?(MarkuppApi::Error)
 

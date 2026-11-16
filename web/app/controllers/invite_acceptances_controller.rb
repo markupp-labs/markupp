@@ -11,7 +11,7 @@ class InviteAcceptancesController < ApplicationController
 
   def create
     @form = TokenForm.new(params.expect(invite_acceptance: [ :token, :password, :password_confirmation ]))
-    pair = @form.submit(credential.public_api, "/auth/invites/accept")
+    pair = @form.submit(credential.public_api, "/v1/auth/invites/accept")
     return render(:new, status: :unprocessable_content) unless pair
 
     redirect_to start_session(pair)

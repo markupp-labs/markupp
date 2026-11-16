@@ -8,7 +8,7 @@
 class RefreshingMarkuppApi
   RENEWED_PAIR_TTL = 30.seconds
   # Travas do processo, valem para as threads do Puma. Mais réplicas exigem sessão fixa no Gateway (ver config/puma.rb).
-  # ponytail: a trava fica presa durante o POST /auth/refresh e são 64 faixas pelo digest; sessões da mesma faixa
+  # ponytail: a trava fica presa durante o POST /v1/auth/refresh e são 64 faixas pelo digest; sessões da mesma faixa
   # esperam umas pelas outras, até o MarkuppApi::READ_TIMEOUT.
   RENEWAL_LOCKS = Array.new(64) { Mutex.new }
 
@@ -49,7 +49,7 @@ class RefreshingMarkuppApi
     def renew(call)
       @credential.sign_in(renewed_pair(@credential.refresh_token))
     rescue MarkuppApi::RefreshRejected, MarkuppApi::Unauthorized => error
-      raise MarkuppApi::SessionExpired, "#{call} needed a new access token, but POST /auth/refresh refused the refresh token " \
+      raise MarkuppApi::SessionExpired, "#{call} needed a new access token, but POST /v1/auth/refresh refused the refresh token " \
                                         "of the session, expected a valid one: #{error.message}"
     end
 
@@ -58,7 +58,7 @@ class RefreshingMarkuppApi
       digest = Digest::SHA256.hexdigest(refresh_token.to_s)
       key = "panel/renewed_pair/#{digest}"
       RENEWAL_LOCKS[digest.hex % RENEWAL_LOCKS.size].synchronize do
-        remembered_pair(key) || remember_pair(key, @credential.public_api.post("/auth/refresh", refresh_token:))
+        remembered_pair(key) || remember_pair(key, @credential.public_api.post("/v1/auth/refresh", refresh_token:))
       end
     end
 

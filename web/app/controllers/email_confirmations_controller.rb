@@ -8,7 +8,7 @@ class EmailConfirmationsController < Settings::BaseController
 
   def create
     @form = TokenForm.new(params.expect(email_confirmation: [ :token ]))
-    return render(:new, status: :unprocessable_content) unless @form.submit(credential.api, "/auth/email/verify")
+    return render(:new, status: :unprocessable_content) unless @form.submit(credential.api, "/v1/auth/email/verify")
 
     redirect_to settings_account_path, notice: t(".confirmed")
   rescue MarkuppApi::EmailAlreadyVerified

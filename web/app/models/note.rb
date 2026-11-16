@@ -36,7 +36,7 @@ class Note
   # Também monta a nota resumida (id, título e caminho) que vem dentro de ligação, menção, comunidade e busca.
   def self.from_api(attributes) = new(attributes.slice(*attribute_names))
 
-  def self.api_path(id) = MarkuppApi.path("notes", id)
+  def self.api_path(id) = MarkuppApi.path("v1", "notes", id)
 
   MARKDOWN_EXTENSION = ".md"
 
