@@ -28,6 +28,9 @@ type RouterDeps struct {
 	OAuth          OAuthService
 	// MCPUpstreamURL é o servidor MCP para onde /mcp é encaminhado. Vazia, /mcp não existe.
 	MCPUpstreamURL string
+	// PanelUpstreamURL é o painel para onde vai todo caminho que o servidor não atende.
+	// Vazia, a raiz não encaminha nada.
+	PanelUpstreamURL string
 	// AccountRateLimiter limita as rotas de conta (ADR-0044). Nil deixa as rotas livres.
 	AccountRateLimiter *AccountRateLimiter
 	// Publications publica e despublica notas, pastas e cofres (ADR-0048).
@@ -57,6 +60,7 @@ func NewRouter(d RouterDeps) chi.Router {
 	r.Use(middleware.Recoverer)
 	mountOAuthServerRoutes(r, d)
 	mountMCPProxy(r, d.MCPUpstreamURL)
+	mountPanelProxy(r, d.PanelUpstreamURL)
 	mountPublicNoteRoutes(r, d.PublicNotes, limitPublicReads(d.PublicRateLimiter, d.PublicRelay))
 	r.Group(func(g chi.Router) {
 		g.Use(allowOrigins(d.AllowedOrigins))

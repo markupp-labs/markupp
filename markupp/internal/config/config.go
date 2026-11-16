@@ -54,6 +54,9 @@ type Config struct {
 	OAuthResources []OAuthResource
 	// MCPUpstreamURL é o servidor MCP para onde /mcp é encaminhado. Vazia, /mcp não existe.
 	MCPUpstreamURL string
+	// PanelUpstreamURL é o painel para onde a raiz / é encaminhada. Vazia, a raiz não
+	// encaminha nada e o painel vive em host próprio.
+	PanelUpstreamURL string
 	// MCPSecretPath é o arquivo onde o servidor escreve o segredo do MCP da mesma origem,
 	// num volume que o servidor MCP lê.
 	MCPSecretPath string
