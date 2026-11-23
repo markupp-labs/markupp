@@ -42,16 +42,17 @@ func declareAPI(ctx *pulumi.Context, names resourceNames, args MarkuppArgs, opts
 	if _, err := appsv1.NewDeployment(ctx, names.api, apiDeploymentArgs(names, args), opts...); err != nil {
 		return err
 	}
-	return declareService(ctx, names.api, args.Namespace, apiPort, opts...)
+	port := corev1.ServicePortArgs{Port: pulumi.Int(apiServicePort), TargetPort: pulumi.Int(apiPort)}
+	return declareService(ctx, names.api, args.Namespace, port, opts...)
 }
 
 // declareService expõe na porta os pods do Deployment de mesmo nome.
-func declareService(ctx *pulumi.Context, name, namespace string, port int, opts ...pulumi.ResourceOption) error {
+func declareService(ctx *pulumi.Context, name, namespace string, port corev1.ServicePortArgs, opts ...pulumi.ResourceOption) error {
 	_, err := corev1.NewService(ctx, name, &corev1.ServiceArgs{
 		Metadata: namespaced(name, namespace),
 		Spec: corev1.ServiceSpecArgs{
 			Selector: appLabels(name),
-			Ports:    corev1.ServicePortArray{corev1.ServicePortArgs{Port: pulumi.Int(port)}},
+			Ports:    corev1.ServicePortArray{port},
 		},
 	}, opts...)
 	return err

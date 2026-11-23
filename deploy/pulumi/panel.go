@@ -98,7 +98,7 @@ func declarePanel(ctx *pulumi.Context, names resourceNames, args MarkuppArgs, pa
 	if _, err := appsv1.NewDeployment(ctx, names.panel, deployment, parent); err != nil {
 		return err
 	}
-	return declareService(ctx, names.panel, args.Namespace, panelPort, parent)
+	return declareService(ctx, names.panel, args.Namespace, corev1.ServicePortArgs{Port: pulumi.Int(panelPort)}, parent)
 }
 
 // declarePanelSecret guarda a secret_key_base, que cifra o cookie de sessão, e o segredo
@@ -124,7 +124,7 @@ func declarePanelSecret(ctx *pulumi.Context, names resourceNames, args MarkuppAr
 // que mostra aos clientes MCP o endereço do MCP da instância.
 func panelContainer(names resourceNames, args MarkuppArgs) corev1.ContainerArgs {
 	env := corev1.EnvVarArray{
-		plainEnv("MARKUPP_API_URL", fmt.Sprintf("http://%s:%d", names.api, apiPort)),
+		plainEnv("MARKUPP_API_URL", fmt.Sprintf("http://%s:%d", names.api, apiServicePort)),
 		publicURLEnv(args),
 		secretEnv("SECRET_KEY_BASE", names.panel, secretKeyBaseKey),
 		plainEnv("HTTP_PORT", fmt.Sprint(panelPort)),

@@ -62,7 +62,7 @@ func TestNewMarkupp_ComMCP_ServidorFalaComAAPIPeloService(t *testing.T) {
 
 	container := firstContainer(t, deploymentNamed(t, monitor, "markupp-mcp"))
 	assert.Equal(t, "ghcr.io/markupp-labs/markupp-mcp:1.1.0", container["image"].StringValue())
-	assert.Equal(t, "http://markupp-api:6275", envNamed(t, container, "MARKUPP_MCP_API_URL")["value"].StringValue())
+	assert.Equal(t, "http://markupp-api:8080", envNamed(t, container, "MARKUPP_MCP_API_URL")["value"].StringValue())
 	assert.Equal(t, "https://markupp.dev.br/mcp", envNamed(t, container, "MARKUPP_MCP_RESOURCE_URL")["value"].StringValue())
 	ref := at(t, envNamed(t, container, "MARKUPP_MCP_RESOURCE_SECRET"), "valueFrom", "secretKeyRef")
 	assert.Equal(t, "resource-secret", at(t, ref.ObjectValue(), "key").StringValue())
