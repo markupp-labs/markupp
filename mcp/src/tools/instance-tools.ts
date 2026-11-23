@@ -32,7 +32,7 @@ const embeddingChoice = z.object({
     .max(2048)
     .optional()
     .describe(
-      "Endpoint API key, stored encrypted and never returned. Omit to keep the stored key; an empty string removes it.",
+      "Endpoint API key, stored encrypted and never returned. Omit to keep the stored key; an empty string removes it. Switching to another openai-compat URL requires sending it again; switching to local or none without it removes the stored key.",
     ),
 });
 

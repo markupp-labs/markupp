@@ -41,7 +41,7 @@ en:
       errors:
         invalid_request: "Check the provider: the remote endpoint needs an http or https URL and a model."
         host_locked: "Whoever hosts this instance set the provider, so it can't be changed here."
-        api_key_required: "To change the provider or the URL, type the API key again, or tick Remove the stored key."
+        api_key_required: "To use another remote endpoint, type the API key again, or tick Remove the stored key."
   shortcuts:
     names:
       instance_embedding: "Instance embedding"

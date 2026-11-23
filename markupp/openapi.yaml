@@ -2587,7 +2587,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '422':
-          description: Troca de provedor ou de URL sem api_key, com a chave guardada (api_key_required); a chave só vai para o host para o qual foi digitada
+          description: Troca para outro provedor remoto ou outra URL sem api_key, com a chave guardada (api_key_required); a chave só vai para o host para o qual foi digitada. Trocar para local ou none sem api_key apaga a chave guardada
           content:
             application/json:
               schema:
@@ -3337,7 +3337,7 @@ components:
           type: string
           nullable: true
           maxLength: 2048
-          description: Chave do endpoint remoto, guardada cifrada. Ausente ou null mantém a chave guardada; vazia a apaga.
+          description: Chave do endpoint remoto, guardada cifrada. Ausente ou null mantém a chave guardada, exceto com local ou none, que a apagam; vazia a apaga.
     InstanceEmbeddingResponse:
       type: object
       properties:

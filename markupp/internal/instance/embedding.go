@@ -25,7 +25,7 @@ const maxEmbeddingField = 2048
 var (
 	ErrHostLocked       = errors.New("the embedding provider is set by the host configuration")
 	ErrInvalidEmbedding = errors.New("invalid embedding provider choice")
-	ErrAPIKeyRequired   = errors.New("embedding API key required to change the provider or URL")
+	ErrAPIKeyRequired   = errors.New("embedding API key required to change the remote provider or URL")
 )
 
 // EmbeddingChoice é a escolha guardada no banco, com a chave do endpoint remoto cifrada.
@@ -68,7 +68,8 @@ type Sealer interface {
 	Open(sealed string) (plain string, stale bool, err error)
 }
 
-// EmbeddingUpdate é a escolha pedida. APIKey nil mantém a chave guardada, e vazia a apaga.
+// EmbeddingUpdate é a escolha pedida. APIKey nil mantém a chave guardada (exceto com local
+// ou none, que a apagam), e vazia a apaga.
 type EmbeddingUpdate struct {
 	Provider string
 	URL      string
@@ -141,7 +142,7 @@ func (s *EmbeddingService) resealStaleKey(ctx context.Context, sealed string) er
 // Update confere e grava a escolha, cifrando a chave nova. Recusa com a escolha travada
 // por quem hospeda.
 func (s *EmbeddingService) Update(ctx context.Context, update EmbeddingUpdate) (EmbeddingView, error) {
-	update = trimUpdate(update)
+	update = dropKeyWhenKeyless(trimUpdate(update))
 	if err := checkUpdate(update); err != nil {
 		return EmbeddingView{}, err
 	}
@@ -200,7 +201,8 @@ func (s *EmbeddingService) choiceOf(update EmbeddingUpdate, sealedKey string) (E
 }
 
 // checkKeyReuse só deixa reaproveitar a chave guardada com o mesmo provedor e a mesma URL:
-// senão a chave iria no Authorization para um host que quem a digitou não escolheu.
+// senão a chave iria no Authorization para um host que quem a digitou não escolheu. O local e
+// o none chegam aqui já com a chave vazia (dropKeyWhenKeyless).
 func checkKeyReuse(u EmbeddingUpdate, stored EmbeddingChoice) error {
 	if u.APIKey != nil || stored.SealedAPIKey == "" {
 		return nil
@@ -210,6 +212,17 @@ func checkKeyReuse(u EmbeddingUpdate, stored EmbeddingChoice) error {
 	}
 	return fmt.Errorf("%w: provider %q and url %q differ from the stored provider %q and url %q, expected api_key sent again (empty to remove it)",
 		ErrAPIKeyRequired, u.Provider, u.URL, stored.Provider, stored.URL)
+}
+
+// dropKeyWhenKeyless apaga a chave guardada quando o pedido sem api_key vai para um provedor
+// que não manda chave a lugar nenhum: não há o que vazar, e uma volta ao remoto pede a chave.
+func dropKeyWhenKeyless(u EmbeddingUpdate) EmbeddingUpdate {
+	if u.APIKey != nil || (u.Provider != config.EmbeddingLocal && u.Provider != config.EmbeddingNone) {
+		return u
+	}
+	empty := ""
+	u.APIKey = &empty
+	return u
 }
 
 func viewOf(record EmbeddingRecord) EmbeddingView {
