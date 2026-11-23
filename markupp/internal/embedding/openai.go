@@ -32,6 +32,11 @@ func (p *openAICompatProvider) Name() string {
 // TokenSpans conta quatro letras por token: o tokenizador do servidor não é exposto.
 func (p *openAICompatProvider) TokenSpans(text string) [][2]int { return CharSpans(text) }
 
+type embeddingsRequest struct {
+	Model string   `json:"model"`
+	Input []string `json:"input"`
+}
+
 type embeddingsResponse struct {
 	Data []struct {
 		Index     int       `json:"index"`
@@ -60,7 +65,7 @@ func (p *openAICompatProvider) Embed(ctx context.Context, texts []string) ([][]f
 
 func (p *openAICompatProvider) post(ctx context.Context, texts []string) (embeddingsResponse, error) {
 	var out embeddingsResponse
-	body, err := json.Marshal(map[string]any{"model": p.model, "input": texts})
+	body, err := json.Marshal(embeddingsRequest{Model: p.model, Input: texts})
 	if err != nil {
 		return out, fmt.Errorf("encode embeddings request: %w", err)
 	}
