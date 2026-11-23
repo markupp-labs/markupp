@@ -33,6 +33,9 @@ func (f *fakeRepository) LinkIdentityTx(_ context.Context, ident auth.UserIdenti
 }
 
 func (f *fakeRepository) UnlinkIdentityTx(ctx context.Context, userID, identityID string, event auth.AuditEventRecord) error {
+	if f.concurrentUnlink != nil {
+		f.concurrentUnlink()
+	}
 	identities, _ := f.ListUserIdentities(ctx, userID)
 	i := slices.IndexFunc(identities, func(ident auth.UserIdentity) bool { return ident.ID == identityID })
 	if i < 0 {
