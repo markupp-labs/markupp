@@ -91,6 +91,8 @@ class MarkuppApi
   class InstanceAdminRequired < Forbidden; end
   # Quem hospeda a instância fixou o provedor de embedding; o painel não muda.
   class HostLocked < Error; end
+  # Trocar o provedor ou a URL do embedding sem digitar a chave de novo.
+  class ApiKeyRequired < Error; end
 
   # Corpo e ETag de uma leitura que pode voltar 304.
   Revision = Data.define(:body, :etag)
@@ -121,19 +123,22 @@ class MarkuppApi
     "confirmation_mismatch" => ConfirmationMismatch, "publish_forbidden" => PublishForbidden, "already_published" => AlreadyPublished,
     "publication_not_found" => PublicationNotFound, "rate_limited" => RateLimited,
     "same_note" => SameNote, "note_outside_vault" => NoteOutsideVault, "link_refusal_not_found" => LinkRefusalNotFound,
-    "instance_admin_required" => InstanceAdminRequired, "host_locked" => HostLocked
+    "instance_admin_required" => InstanceAdminRequired, "host_locked" => HostLocked,
+    "api_key_required" => ApiKeyRequired
   }.freeze
   # Para o status cujo corpo não traz código conhecido.
   ERRORS_BY_STATUS = { "401" => Unauthorized, "403" => Forbidden, "404" => NotFound, "429" => RateLimited }.freeze
 
   # forwarded_for é o IP de quem lê a nota pública sem conta: vai no X-Forwarded-For para o limite por IP da API contar
-  # o visitante, e não o painel, quando o painel é um proxy em que a API confia.
-  def initialize(base_url, access_token: nil, tenant_id: nil, read_timeout: READ_TIMEOUT, forwarded_for: nil)
+  # o visitante, e não o painel. A API só lê esse header do relay autenticado: relay é a PublicRelayCredential, cujo
+  # HTTP Basic vai junto, ou de um proxy em que ela confia.
+  def initialize(base_url, access_token: nil, tenant_id: nil, read_timeout: READ_TIMEOUT, forwarded_for: nil, relay: nil)
     @base_url = base_url
     @access_token = access_token
     @tenant_id = tenant_id
     @read_timeout = read_timeout
     @forwarded_for = forwarded_for
+    @relay = relay
   end
 
   # Caminho da API a partir dos segmentos, cada um codificado: id com barra ou espaço não vira outra rota.
@@ -176,7 +181,8 @@ class MarkuppApi
 
     def build_request(verb, uri, body, headers)
       http_request = verb.new(uri, headers)
-      http_request["Authorization"] = "Bearer #{@access_token}" if @access_token
+      authorization = credential_header
+      http_request["Authorization"] = authorization if authorization
       http_request["X-Markupp-Tenant"] = @tenant_id if @tenant_id
       http_request["X-Forwarded-For"] = @forwarded_for if @forwarded_for
       return http_request if body.nil?
@@ -184,6 +190,13 @@ class MarkuppApi
       http_request.content_type = "application/json"
       http_request.body = body.to_json
       http_request
+    end
+
+    # O token da conta; sem ele, o relay só na leitura pública, que repassa o visitante.
+    def credential_header
+      return "Bearer #{@access_token}" if @access_token
+
+      @relay&.authorization if @forwarded_for
     end
 
     # O 204 do DELETE chega sem corpo.

@@ -42,13 +42,13 @@ func (r *PostgresAuthRepository) LinkIdentityTx(ctx context.Context, ident auth.
 }
 
 // UnlinkIdentityTx desvincula a identidade da conta com a conta travada, recusando a
-// última, e audita.
-func (r *PostgresAuthRepository) UnlinkIdentityTx(ctx context.Context, userID, identityID string, event auth.AuditEventRecord) error {
+// última ou o que a check recusar, e audita.
+func (r *PostgresAuthRepository) UnlinkIdentityTx(ctx context.Context, userID, identityID string, event auth.AuditEventRecord, check func([]auth.UserIdentity) error) error {
 	return r.inTx(ctx, func(qtx *gen.Queries) error {
 		if err := qtx.LockUserIdentities(ctx, userID); err != nil {
 			return fmt.Errorf("lock identities of user %q: %w", userID, err)
 		}
-		if err := checkUnlinkable(ctx, qtx, userID, identityID); err != nil {
+		if err := checkUnlinkable(ctx, qtx, userID, identityID, check); err != nil {
 			return err
 		}
 		if err := qtx.DeleteUserIdentity(ctx, gen.DeleteUserIdentityParams{ID: identityID, UserID: userID}); err != nil {
@@ -58,17 +58,19 @@ func (r *PostgresAuthRepository) UnlinkIdentityTx(ctx context.Context, userID, i
 	})
 }
 
-// checkUnlinkable exige que a identidade seja da conta e que outra reste depois.
-func checkUnlinkable(ctx context.Context, q *gen.Queries, userID, identityID string) error {
+// checkUnlinkable exige que a identidade seja da conta, que outra reste depois e que a
+// check aceite as que restam.
+func checkUnlinkable(ctx context.Context, q *gen.Queries, userID, identityID string, check func([]auth.UserIdentity) error) error {
 	identities, err := listUserIdentities(ctx, q, userID)
 	if err != nil {
 		return err
 	}
-	if !slices.ContainsFunc(identities, func(i auth.UserIdentity) bool { return i.ID == identityID }) {
+	i := slices.IndexFunc(identities, func(ident auth.UserIdentity) bool { return ident.ID == identityID })
+	if i < 0 {
 		return fmt.Errorf("%w: identity %q of user %q", auth.ErrIdentityNotFound, identityID, userID)
 	}
 	if len(identities) == 1 {
 		return fmt.Errorf("%w: identity %q of user %q", auth.ErrLastIdentity, identityID, userID)
 	}
-	return nil
+	return check(slices.Delete(identities, i, i+1))
 }

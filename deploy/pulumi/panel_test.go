@@ -112,6 +112,27 @@ func TestNewMarkupp_ComPainelEMCP_DaAoPainelAURLDoMCP(t *testing.T) {
 		envNamed(t, container, "MARKUPP_MCP_URL")["value"].StringValue())
 }
 
+// O painel se apresenta à API como o relay do MCP na leitura pública, para o limite por IP
+// contar o visitante e não o painel (ADR-0050).
+func TestNewMarkupp_ComPainelEMCP_DaAoPainelOSegredoDoResourceDoMCP(t *testing.T) {
+	args := argsComPainel()
+	args.MCP = argsComMCP().MCP
+
+	monitor := deploy(t, args)
+
+	container := firstContainer(t, deploymentNamed(t, monitor, "markupp-panel"))
+	ref := at(t, envNamed(t, container, "MARKUPP_MCP_RESOURCE_SECRET"), "valueFrom", "secretKeyRef")
+	assert.Equal(t, "markupp-mcp", at(t, ref.ObjectValue(), "name").StringValue())
+	assert.Equal(t, "resource-secret", at(t, ref.ObjectValue(), "key").StringValue())
+}
+
+func TestNewMarkupp_ComPainelSemMCP_NaoDaAoPainelOSegredoDoResource(t *testing.T) {
+	monitor := deploy(t, argsComPainel())
+
+	container := firstContainer(t, deploymentNamed(t, monitor, "markupp-panel"))
+	assert.NotContains(t, envNames(container), "MARKUPP_MCP_RESOURCE_SECRET")
+}
+
 func TestNewMarkupp_ComPainel_LeOSecretKeyBaseDeUmSecret(t *testing.T) {
 	monitor := deploy(t, argsComPainel())
 

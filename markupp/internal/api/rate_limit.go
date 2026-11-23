@@ -128,10 +128,7 @@ func (l *AccountRateLimiter) allowRequest(r *http.Request) (time.Duration, bool)
 // não confiável do X-Forwarded-For lido da direita, porque o que está à esquerda
 // dele o cliente escreve como quiser. Header vazio ou malformado fica com a conexão.
 func (l *AccountRateLimiter) clientIP(r *http.Request) string {
-	host := r.RemoteAddr
-	if addrPort, err := netip.ParseAddrPort(r.RemoteAddr); err == nil {
-		host = addrPort.Addr().String()
-	}
+	host := connectionHost(r.RemoteAddr)
 	remote, err := netip.ParseAddr(host)
 	if err != nil {
 		return host
@@ -168,7 +165,20 @@ func (l *AccountRateLimiter) forwardedClient(hops []string, remote netip.Addr) (
 }
 
 func (l *AccountRateLimiter) isTrusted(addr netip.Addr) bool {
-	for _, prefix := range l.trusted {
+	return containsAddr(l.trusted, addr)
+}
+
+// connectionHost tira a porta do RemoteAddr; sem porta legível, devolve o valor como veio.
+func connectionHost(remoteAddr string) string {
+	if addrPort, err := netip.ParseAddrPort(remoteAddr); err == nil {
+		return addrPort.Addr().String()
+	}
+	return remoteAddr
+}
+
+// containsAddr diz se addr cai em alguma das redes de prefixes.
+func containsAddr(prefixes []netip.Prefix, addr netip.Addr) bool {
+	for _, prefix := range prefixes {
 		if prefix.Contains(addr) {
 			return true
 		}

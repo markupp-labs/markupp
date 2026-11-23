@@ -3,6 +3,8 @@ package embedding_test
 import (
 	"context"
 	"errors"
+	"fmt"
+	"log/slog"
 	"strings"
 	"testing"
 
@@ -41,6 +43,9 @@ type fakeEmbeddingProvider struct {
 	err   error
 }
 
+// rejeitado é o texto que o provedor recusa como entrada inválida, não por estar fora.
+const rejeitado = "!"
+
 func (f *fakeEmbeddingProvider) Name() string { return "fake" }
 
 func (f *fakeEmbeddingProvider) TokenSpans(text string) [][2]int {
@@ -58,6 +63,9 @@ func (f *fakeEmbeddingProvider) Embed(_ context.Context, texts []string) ([][]fl
 	}
 	vectors := make([][]float32, 0, len(texts))
 	for _, text := range texts {
+		if strings.HasPrefix(text, rejeitado) {
+			return nil, fmt.Errorf("input %q too long: %w", text, embedding.ErrNoteRejected)
+		}
 		if strings.HasPrefix(text, "x") {
 			vectors = append(vectors, []float32{1, 0})
 			continue
@@ -71,11 +79,15 @@ func loteDeTeste(notas ...embedding.PendingNote) *fakeEmbeddingQueue {
 	return &fakeEmbeddingQueue{batches: []embedding.PendingBatch{{TenantID: "t", VaultID: "v", Notes: notas}}}
 }
 
+func novoIndexador(fila embedding.Queue, provedor embedding.Provider, chunkTokens int) *embedding.Indexer {
+	return embedding.NewIndexer(fila, provedor, chunkTokens, 16, slog.New(slog.DiscardHandler))
+}
+
 func TestIndexNext_GravaAMediaNormalizadaDosPedacosDeCadaNota(t *testing.T) {
 	fila := loteDeTeste(embedding.PendingNote{NoteID: "a", Content: "xxyy", Revision: 7})
 	provedor := &fakeEmbeddingProvider{}
 
-	found, err := embedding.NewIndexer(fila, provedor, 2, 16).IndexNext(context.Background())
+	found, err := novoIndexador(fila, provedor, 2).IndexNext(context.Background())
 
 	require.NoError(t, err)
 	assert.True(t, found)
@@ -90,7 +102,7 @@ func TestIndexNext_NotaSemTexto_GravaSemVetorESemChamarOModelo(t *testing.T) {
 	fila := loteDeTeste(embedding.PendingNote{NoteID: "vazia", Content: ""})
 	provedor := &fakeEmbeddingProvider{}
 
-	_, err := embedding.NewIndexer(fila, provedor, 512, 16).IndexNext(context.Background())
+	_, err := novoIndexador(fila, provedor, 512).IndexNext(context.Background())
 
 	require.NoError(t, err)
 	assert.Empty(t, provedor.calls)
@@ -99,7 +111,7 @@ func TestIndexNext_NotaSemTexto_GravaSemVetorESemChamarOModelo(t *testing.T) {
 }
 
 func TestIndexNext_FilaVazia_DevolveFalse(t *testing.T) {
-	found, err := embedding.NewIndexer(&fakeEmbeddingQueue{}, &fakeEmbeddingProvider{}, 512, 16).IndexNext(context.Background())
+	found, err := novoIndexador(&fakeEmbeddingQueue{}, &fakeEmbeddingProvider{}, 512).IndexNext(context.Background())
 
 	require.NoError(t, err)
 	assert.False(t, found)
@@ -109,11 +121,28 @@ func TestIndexNext_ErroDoModelo_NaoGravaNada(t *testing.T) {
 	fila := loteDeTeste(embedding.PendingNote{NoteID: "a", Content: "texto"})
 	provedor := &fakeEmbeddingProvider{err: errors.New("modelo fora do ar")}
 
-	_, err := embedding.NewIndexer(fila, provedor, 512, 16).IndexNext(context.Background())
+	_, err := novoIndexador(fila, provedor, 512).IndexNext(context.Background())
 
 	require.ErrorContains(t, err, "modelo fora do ar")
 	assert.Contains(t, err.Error(), `"a"`)
 	assert.Empty(t, fila.saved)
+}
+
+func TestIndexNext_NotaRecusadaPeloModelo_GravaAsOutrasETiraARecusadaDaFila(t *testing.T) {
+	fila := loteDeTeste(
+		embedding.PendingNote{NoteID: "ruim", Content: rejeitado + "texto", Revision: 3},
+		embedding.PendingNote{NoteID: "boa", Content: "xxyy", Revision: 4},
+	)
+
+	found, err := novoIndexador(fila, &fakeEmbeddingProvider{}, 2).IndexNext(context.Background())
+
+	require.NoError(t, err)
+	assert.True(t, found)
+	require.Len(t, fila.saved, 2, "a recusada sai da fila junto com as outras")
+	assert.Equal(t, "ruim", fila.saved[0].Note.NoteID)
+	assert.Nil(t, fila.saved[0].Vector, "a recusada fica sem vetor")
+	assert.Equal(t, "boa", fila.saved[1].Note.NoteID)
+	assert.InDeltaSlice(t, []float32{0.70710677, 0.70710677}, fila.saved[1].Vector, 1e-6)
 }
 
 func TestActivate_RegistraONomeEADimensaoQueOModeloDevolve(t *testing.T) {

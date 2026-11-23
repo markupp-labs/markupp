@@ -24,16 +24,29 @@ func refreshVaultGraph(ctx context.Context, q *gen.Queries, vaultID, searchConfi
 	if err := inferLinks(ctx, q, vaultID, searchConfig, vaultgraph.New(noteIDs, edges)); err != nil {
 		return err
 	}
+	if err := refreshVaultAutomaticLinks(ctx, q, vaultID, searchConfig); err != nil {
+		return err
+	}
+	return refreshVaultRanking(ctx, q, vaultID, logger)
+}
+
+// refreshVaultAutomaticLinks refaz as ligações automáticas do cofre: menções,
+// relacionadas e semânticas.
+func refreshVaultAutomaticLinks(ctx context.Context, q *gen.Queries, vaultID, searchConfig string) error {
 	if err := refreshVaultMentionLinks(ctx, q, vaultID, searchConfig); err != nil {
 		return err
 	}
 	if err := refreshVaultRelatedLinks(ctx, q, vaultID); err != nil {
 		return err
 	}
-	if err := refreshVaultSemanticLinks(ctx, q, vaultID); err != nil {
-		return err
-	}
-	if noteIDs, edges, err = loadVaultEdges(ctx, q, vaultID); err != nil {
+	return refreshVaultSemanticLinks(ctx, q, vaultID)
+}
+
+// refreshVaultRanking relê o grafo com todas as ligações e grava a centralidade e as
+// comunidades.
+func refreshVaultRanking(ctx context.Context, q *gen.Queries, vaultID string, logger *slog.Logger) error {
+	noteIDs, edges, err := loadVaultEdges(ctx, q, vaultID)
+	if err != nil {
 		return err
 	}
 	g := vaultgraph.New(noteIDs, edges)

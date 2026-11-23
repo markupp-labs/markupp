@@ -264,6 +264,18 @@ func TestExternalLogin_Unlink_SoProvedorQueSaiuDaConfiguracaoRestando_Recusa(t *
 	require.ErrorIs(t, err, auth.ErrLastIdentity)
 }
 
+func TestExternalLogin_Unlink_OutraUtilizavelSaiNoMeio_RecusaSobATrava(t *testing.T) {
+	f := newExternalFixture(t, auth.ServiceConfig{LocalEnabled: false})
+	f.withUser("user-1", localIdentity("ident-local"), githubIdentity("ident-gh", "42"), githubIdentity("ident-gh-2", "43"))
+	f.repo.concurrentUnlink = func() { delete(f.repo.identities, "github:43") }
+
+	err := f.svc.Unlink(context.Background(), "user-1", "ident-gh")
+
+	require.ErrorIs(t, err, auth.ErrLastIdentity, "so a senha desligada restaria")
+	_, err = f.repo.GetUserIdentity(context.Background(), "github", "42")
+	require.NoError(t, err)
+}
+
 func TestExternalLogin_Unlink_CredencialLocal_NaoAcha(t *testing.T) {
 	f := newExternalFixture(t, auth.ServiceConfig{LocalEnabled: true})
 	f.withUser("user-1", localIdentity("ident-local"), githubIdentity("ident-gh", "42"))

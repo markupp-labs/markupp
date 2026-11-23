@@ -172,6 +172,29 @@ class MarkuppApiTest < ActiveSupport::TestCase
     server.close
   end
 
+  test "authenticates as the relay of the public reading when it forwards the IP of the visitor" do
+    server = FakeHttpServer.new(status: "200 OK", body: "{}")
+    thread = server.serve_once
+
+    MarkuppApi.new(server.url, forwarded_for: "203.0.113.9", relay: FakePublicRelay.new("Basic cmVsYXk=")).get("/v1/public/notes/AbCdEf123456")
+    thread.join
+    assert_equal "Basic cmVsYXk=", server.requested_headers["authorization"]
+    assert_equal "203.0.113.9", server.requested_headers["x-forwarded-for"]
+  ensure
+    server.close
+  end
+
+  test "keeps the relay credential out of the calls that do not forward a visitor" do
+    server = FakeHttpServer.new(status: "200 OK", body: "[]")
+    thread = server.serve_once
+
+    MarkuppApi.new(server.url, access_token: "jwt-1", relay: FakePublicRelay.new("Basic cmVsYXk=")).get("/notes")
+    thread.join
+    assert_equal "Bearer jwt-1", server.requested_headers["authorization"]
+  ensure
+    server.close
+  end
+
   test "maps the error codes of the publications to their classes" do
     {
       [ "422 Unprocessable Entity", "confirmation_mismatch" ] => MarkuppApi::ConfirmationMismatch,

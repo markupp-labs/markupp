@@ -255,9 +255,14 @@ func writePublicError(w http.ResponseWriter, err error) {
 	writeLoggedInternal(w, "falha na leitura publica", "ler nota publica", err)
 }
 
+// publicResponseBody são os corpos que a leitura pública responde com ETag.
+type publicResponseBody interface {
+	publicNoteResponse | publicPageResponse[publicTreeItemResponse] | publicPageResponse[publicSearchHitResponse]
+}
+
 // writeTaggedJSON responde body com o ETag do hash do JSON e cache público, ou 304 sem
 // corpo quando o If-None-Match já traz esse ETag.
-func writeTaggedJSON(w http.ResponseWriter, r *http.Request, body any) {
+func writeTaggedJSON[T publicResponseBody](w http.ResponseWriter, r *http.Request, body T) {
 	encoded, err := json.Marshal(body)
 	if err != nil {
 		writeLoggedInternal(w, "falha na leitura publica", "serializar a resposta", err)

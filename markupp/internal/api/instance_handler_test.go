@@ -108,6 +108,7 @@ func TestPutInstanceEmbedding_ErrosDoServico_ViramStatusDoContrato(t *testing.T)
 	}{
 		{fmt.Errorf("%w: provider %q", instance.ErrInvalidEmbedding, "x"), http.StatusBadRequest, "invalid_request"},
 		{instance.ErrHostLocked, http.StatusConflict, "host_locked"},
+		{fmt.Errorf("%w: url %q", instance.ErrAPIKeyRequired, "https://x/v1"), http.StatusUnprocessableEntity, "api_key_required"},
 	}
 	for _, caso := range casos {
 		rec := instanceRequest(administradorDaInstancia, &fakeInstanceEmbedding{err: caso.err}, http.MethodPut, `{"provider":"x"}`)

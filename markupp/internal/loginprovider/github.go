@@ -63,10 +63,8 @@ func (p *githubProvider) Finish(ctx context.Context, code, codeVerifier, _ strin
 		return Identity{}, classifyExchangeError(err)
 	}
 	api := config.Client(ctx, token)
-	var user struct {
-		ID int64 `json:"id"`
-	}
-	if err := p.getJSON(api, "/user", &user); err != nil {
+	user, err := getGitHubJSON[githubUser](api, p.endpoints.APIURL, "/user")
+	if err != nil {
 		return Identity{}, err
 	}
 	email, verified, err := p.primaryEmail(api)
@@ -78,12 +76,8 @@ func (p *githubProvider) Finish(ctx context.Context, code, codeVerifier, _ strin
 
 // primaryEmail devolve o email principal da conta e se o GitHub o verificou.
 func (p *githubProvider) primaryEmail(api *http.Client) (string, bool, error) {
-	var emails []struct {
-		Email    string `json:"email"`
-		Primary  bool   `json:"primary"`
-		Verified bool   `json:"verified"`
-	}
-	if err := p.getJSON(api, "/user/emails", &emails); err != nil {
+	emails, err := getGitHubJSON[[]githubEmail](api, p.endpoints.APIURL, "/user/emails")
+	if err != nil {
 		return "", false, err
 	}
 	for _, e := range emails {
@@ -94,17 +88,29 @@ func (p *githubProvider) primaryEmail(api *http.Client) (string, bool, error) {
 	return "", false, nil
 }
 
-func (p *githubProvider) getJSON(api *http.Client, path string, target any) error {
-	resp, err := api.Get(p.endpoints.APIURL + path)
+type githubUser struct {
+	ID int64 `json:"id"`
+}
+
+type githubEmail struct {
+	Email    string `json:"email"`
+	Primary  bool   `json:"primary"`
+	Verified bool   `json:"verified"`
+}
+
+// getGitHubJSON lê a resposta JSON de um GET na API do GitHub.
+func getGitHubJSON[T githubUser | []githubEmail](api *http.Client, apiURL, path string) (T, error) {
+	var out T
+	resp, err := api.Get(apiURL + path)
 	if err != nil {
-		return fmt.Errorf("%w: GET %s: %w", ErrProviderUnavailable, path, err)
+		return out, fmt.Errorf("%w: GET %s: %w", ErrProviderUnavailable, path, err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("%w: GET %s answered %d, expected 200", ErrProviderUnavailable, path, resp.StatusCode)
+		return out, fmt.Errorf("%w: GET %s answered %d, expected 200", ErrProviderUnavailable, path, resp.StatusCode)
 	}
-	if err := json.NewDecoder(resp.Body).Decode(target); err != nil {
-		return fmt.Errorf("%w: GET %s body: %w", ErrProviderUnavailable, path, err)
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		return out, fmt.Errorf("%w: GET %s body: %w", ErrProviderUnavailable, path, err)
 	}
-	return nil
+	return out, nil
 }

@@ -2586,6 +2586,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Troca de provedor ou de URL sem api_key, com a chave guardada (api_key_required); a chave só vai para o host para o qual foi digitada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 components:
   parameters:
     PageOffset:

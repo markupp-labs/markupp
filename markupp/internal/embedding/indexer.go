@@ -2,8 +2,15 @@ package embedding
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"log/slog"
 )
+
+// ErrNoteRejected marca o erro do provedor que recusa o texto de uma nota, como a
+// entrada longa demais. A nota sai da fila sem vetor; qualquer outro erro é o provedor
+// fora e deixa o lote todo na fila.
+var ErrNoteRejected = errors.New("embedding input rejected")
 
 // Provider transforma texto em vetor. É a fronteira do projeto com o modelo, local
 // ou remoto.
@@ -23,12 +30,13 @@ type Indexer struct {
 	provider    Provider
 	chunkTokens int
 	batchSize   int
+	logger      *slog.Logger
 }
 
 // NewIndexer monta o indexador com pedaços de chunkTokens tokens e lotes de até
-// batchSize notas.
-func NewIndexer(queue Queue, provider Provider, chunkTokens, batchSize int) *Indexer {
-	return &Indexer{queue: queue, provider: provider, chunkTokens: chunkTokens, batchSize: batchSize}
+// batchSize notas, que avisa em logger a nota recusada.
+func NewIndexer(queue Queue, provider Provider, chunkTokens, batchSize int, logger *slog.Logger) *Indexer {
+	return &Indexer{queue: queue, provider: provider, chunkTokens: chunkTokens, batchSize: batchSize, logger: logger}
 }
 
 // IndexNext refaz os vetores do próximo lote e devolve false quando a fila está vazia.
@@ -40,8 +48,11 @@ func (x *Indexer) IndexNext(ctx context.Context) (bool, error) {
 	vectors := make([]NoteVector, 0, len(batch.Notes))
 	for _, note := range batch.Notes {
 		vector, err := x.noteVector(ctx, note.Content)
-		if err != nil {
+		if err != nil && !errors.Is(err, ErrNoteRejected) {
 			return true, fmt.Errorf("embed note %q of vault %q: %w", note.NoteID, batch.VaultID, err)
+		}
+		if err != nil {
+			x.logger.Warn("nota recusada pelo modelo de embedding, fica sem vetor", "cofre", batch.VaultID, "nota", note.NoteID, "revisao", note.Revision, "err", err)
 		}
 		vectors = append(vectors, NoteVector{Note: note, Vector: vector})
 	}

@@ -121,7 +121,9 @@ redes tem o X-Forwarded-For lido da direita para a esquerda, e o IP que conta é
 não é proxy confiável. Header vazio ou malformado fica com o IP da conexão, e conexão de fora da
 lista nunca tem o header lido. Liste só as redes dos proxies: um CIDR que cubra clientes deixa
 qualquer um deles escolher o IP que conta. No componente, `trustedProxies` recebe a lista de
-CIDRs e `rateLimitPerMinute` o limite, e os dois vão só para a API.
+CIDRs e `rateLimitPerMinute` o limite, e os dois vão só para a API. A mesma lista decide o que
+o Go repassa ao painel e ao servidor MCP que encaminha: de proxy confiável, o X-Forwarded-For
+de entrada segue com o salto da conexão no fim; de outra conexão, segue só esse salto.
 
 A leitura sem conta das notas publicadas (ADR-0048), nas rotas `/v1/public/notes/{public_id}`,
 tem limite próprio: 300 pedidos por minuto por IP, somadas todas essas rotas, trocado pela
@@ -132,9 +134,11 @@ que o cache por ETag dele economiza. A migração 00040 cria o papel `markupp_re
 para essa leitura, com o mesmo CREATEROLE que a migração já exige para os outros papéis.
 
 O painel serve as notas públicas em /p/ (ADR-0048) e lê a API pelo Service, passando o IP de
-quem visita no X-Forwarded-For. Para o limite por IP da leitura pública contar cada visitante, e
-não o painel, `MARKUPP_TRUSTED_PROXIES` precisa listar também a rede de onde o painel chega à API;
-sem ela, todos os visitantes do painel dividem um limite só.
+quem visita no X-Forwarded-For. O Go só lê esse IP porque o painel se apresenta como o relay da
+leitura pública, com o HTTP Basic do resource do MCP (ADR-0050): o compose monta no painel o
+volume do segredo do MCP, e o componente dá a ele `MARKUPP_MCP_RESOURCE_SECRET`. Sem o MCP
+ligado não há resource, e todos os visitantes do painel dividem um limite só, salvo se
+`MARKUPP_TRUSTED_PROXIES` listar a rede de onde o painel chega à API.
 
 Sem outra opção, o componente cria um Gateway próprio nas portas 80 e 443. Em cluster onde
 outro Gateway já ocupa essas portas, como o Cilium em hostNetwork, que exige porta única por

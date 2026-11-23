@@ -34,6 +34,9 @@ func linkEvent(id string) auth.AuditEventRecord {
 		OccurredAt: time.Date(2026, 11, 12, 10, 0, 0, 0, time.UTC)}
 }
 
+// qualquerRestante aceita desvincular enquanto sobrar qualquer identidade.
+func qualquerRestante([]auth.UserIdentity) error { return nil }
+
 func TestPostgresAuthRepo_CreateAccountTx_EmailProvadoPeloProvedor_NasceVerificado(t *testing.T) {
 	repo := storage.NewPostgresAuthRepository(setupTestDB(t))
 	withFirstAccount(t, repo)
@@ -96,7 +99,7 @@ func TestPostgresAuthRepo_UnlinkIdentityTx_ComOutraForma_Apaga(t *testing.T) {
 	github := auth.UserIdentity{ID: "identity-gh", UserID: "user-id-1", Provider: "github", ProviderUserID: "42", CreatedAt: time.Now()}
 	require.NoError(t, repo.LinkIdentityTx(ctx, github, linkEvent("audit-link")))
 
-	err := repo.UnlinkIdentityTx(ctx, "user-id-1", "identity-gh", linkEvent("audit-unlink"))
+	err := repo.UnlinkIdentityTx(ctx, "user-id-1", "identity-gh", linkEvent("audit-unlink"), qualquerRestante)
 
 	require.NoError(t, err)
 	_, err = repo.GetUserIdentity(ctx, "github", "42")
@@ -110,7 +113,7 @@ func TestPostgresAuthRepo_UnlinkIdentityTx_UnicaIdentidade_Recusa(t *testing.T) 
 	_, err := repo.CreateAccountTx(ctx, externalAccountParams(true))
 	require.NoError(t, err)
 
-	err = repo.UnlinkIdentityTx(ctx, "user-id-2", "identity-id-2", linkEvent("audit-unlink"))
+	err = repo.UnlinkIdentityTx(ctx, "user-id-2", "identity-id-2", linkEvent("audit-unlink"), qualquerRestante)
 
 	require.ErrorIs(t, err, auth.ErrLastIdentity)
 	_, err = repo.GetUserIdentity(ctx, "github", "42")
@@ -124,7 +127,32 @@ func TestPostgresAuthRepo_UnlinkIdentityTx_IdentidadeDeOutraConta_NaoAcha(t *tes
 	_, err := repo.CreateAccountTx(ctx, externalAccountParams(true))
 	require.NoError(t, err)
 
-	err = repo.UnlinkIdentityTx(ctx, "user-id-1", "identity-id-2", linkEvent("audit-unlink"))
+	err = repo.UnlinkIdentityTx(ctx, "user-id-1", "identity-id-2", linkEvent("audit-unlink"), qualquerRestante)
 
 	require.ErrorIs(t, err, auth.ErrIdentityNotFound)
+}
+
+func TestPostgresAuthRepo_UnlinkIdentityTx_CheckVeORestanteSobATravaERecusa(t *testing.T) {
+	repo := storage.NewPostgresAuthRepository(setupTestDB(t))
+	ctx := context.Background()
+	withFirstAccount(t, repo)
+	for _, ident := range []auth.UserIdentity{
+		{ID: "identity-gh", UserID: "user-id-1", Provider: "github", ProviderUserID: "42", CreatedAt: time.Now()},
+		{ID: "identity-gg", UserID: "user-id-1", Provider: "google", ProviderUserID: "7", CreatedAt: time.Now()},
+	} {
+		require.NoError(t, repo.LinkIdentityTx(ctx, ident, linkEvent("audit-link-"+ident.ID)))
+	}
+	var restante []string
+
+	err := repo.UnlinkIdentityTx(ctx, "user-id-1", "identity-gh", linkEvent("audit-unlink"), func(remaining []auth.UserIdentity) error {
+		for _, i := range remaining {
+			restante = append(restante, i.Provider)
+		}
+		return auth.ErrLastIdentity
+	})
+
+	require.ErrorIs(t, err, auth.ErrLastIdentity)
+	assert.ElementsMatch(t, []string{"local", "google"}, restante)
+	_, err = repo.GetUserIdentity(ctx, "github", "42")
+	require.NoError(t, err, "a recusa da check desfaz a transacao")
 }

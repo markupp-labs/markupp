@@ -86,6 +86,15 @@ module Settings
       assert_select "main [role=alert]", "Check the provider: the remote endpoint needs an http or https URL and a model."
     end
 
+    test "changing the URL without typing the key again stays on the form and asks for the key" do
+      sign_in_admin(provider: "openai-compat", url: "https://api.example/v1", model: "m", api_key: "sk")
+
+      patch settings_instance_embedding_path, params: { embedding: { provider: "openai-compat", url: "https://other.example/v1", model: "m", api_key: "" } }
+
+      assert_response :unprocessable_entity
+      assert_select "main [role=alert]", "To change the provider or the URL, type the API key again, or tick Remove the stored key."
+    end
+
     test "when whoever hosts the instance sets the provider, the form is locked and says by whom, without naming settings" do
       sign_in_admin(locked: true, host_provider: "local")
 

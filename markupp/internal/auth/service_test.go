@@ -48,6 +48,10 @@ type fakeRepository struct {
 	auditEvents   []auth.AuditEventRecord
 	createdVaults []string
 	lastAccount   auth.CreateAccountParams
+
+	// concurrentUnlink roda dentro da trava do UnlinkIdentityTx, como outro pedido que
+	// terminou entre a leitura do serviço e a trava.
+	concurrentUnlink func()
 }
 
 func newFakeRepository(clock func() time.Time) *fakeRepository {

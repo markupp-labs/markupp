@@ -397,7 +397,7 @@ func TestOAuthPublico_ErroDeRoteamento_RecebeCORSAberto(t *testing.T) {
 		status       int
 	}{
 		{http.MethodGet, "/oauth/token", http.StatusMethodNotAllowed},
-		{http.MethodGet, "/oauth/inexistente", http.StatusNotFound},
+		{http.MethodGet, "/oauth/token/inexistente", http.StatusNotFound},
 		{http.MethodPost, "/.well-known/oauth-authorization-server", http.StatusMethodNotAllowed},
 		{http.MethodGet, "/.well-known/oauth-authorization-server/inexistente", http.StatusNotFound},
 	} {

@@ -3,7 +3,7 @@
 module Settings
   class InstanceEmbeddingController < BaseController
     before_action :require_instance_admin
-    rescue_from MarkuppApi::InvalidRequest, MarkuppApi::HostLocked, with: :render_refused
+    rescue_from MarkuppApi::InvalidRequest, MarkuppApi::HostLocked, MarkuppApi::ApiKeyRequired, with: :render_refused
 
     def show
       @embedding = InstanceEmbedding.fetch(credential.api)

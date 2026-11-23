@@ -22,7 +22,8 @@ type PendingBatch struct {
 	Notes    []PendingNote
 }
 
-// NoteVector é o vetor de uma nota pendente, nil quando a nota não tem texto.
+// NoteVector é o vetor de uma nota pendente, nil quando a nota não tem texto ou o
+// provedor recusou o texto dela.
 type NoteVector struct {
 	Note   PendingNote
 	Vector []float32

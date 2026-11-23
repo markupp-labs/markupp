@@ -143,6 +143,18 @@ func TestRefresh_MesmaEscolhaGravadaDeNovo_TentaOutraVez(t *testing.T) {
 	assert.Equal(t, []string{"downloading", "error", "downloading", "ready"}, d.status.states)
 }
 
+func TestRefresh_FalhouComAMesmaEscolha_TentaDeNovoNaProximaVolta(t *testing.T) {
+	d := novoSupervisor(embedding.Setting{Provider: "local"}, true)
+	d.opener.err = errors.New("sem rede")
+	d.sup.Refresh(context.Background())
+	d.opener.err = nil
+
+	d.sup.Refresh(context.Background())
+
+	assert.Len(t, d.opener.opened, 2)
+	assert.Equal(t, []string{"downloading", "error", "downloading", "ready"}, d.status.states)
+}
+
 func TestRefresh_FalhaAoAbrir_InformaErroComAMensagem(t *testing.T) {
 	d := novoSupervisor(embedding.Setting{Provider: "local"}, false)
 	d.opener.err = errors.New("hash diferente")

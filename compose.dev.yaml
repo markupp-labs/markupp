@@ -119,7 +119,11 @@ services:
       # que o MCP está desligado.
       MARKUPP_PUBLIC_URL: ${MARKUPP_PUBLIC_URL:-http://localhost:${MARKUPP_PORT:-6275}}
       MARKUPP_MCP_URL: ${MARKUPP_PUBLIC_URL:-http://localhost:${MARKUPP_PORT:-6275}}/mcp
+      # Com o segredo do MCP o painel se apresenta ao Go como o relay da leitura pública,
+      # e o limite por IP conta cada visitante de /p/, não o painel.
+      MARKUPP_MCP_SECRET_PATH: /run/markupp-mcp/secret
     volumes:
+      - mcp_secret:/run/markupp-mcp:ro
       - ./web:/rails
       - ${BUNDLE_CACHE:-bundle_cache}:/usr/local/bundle
     depends_on:

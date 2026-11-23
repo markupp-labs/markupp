@@ -109,12 +109,35 @@ func TestUpdate_RemotoComChave_SelaAChaveEGrava(t *testing.T) {
 }
 
 func TestUpdate_SemChaveNoPedido_MantemAChaveAnterior(t *testing.T) {
-	svc, store := servico(instance.EmbeddingRecord{Choice: instance.EmbeddingChoice{Provider: "openai-compat", SealedAPIKey: "selado:velha"}}) // #nosec G101 -- valor fictício de teste
+	svc, store := servico(instance.EmbeddingRecord{Choice: instance.EmbeddingChoice{Provider: "openai-compat", URL: "https://api.exemplo/v1", SealedAPIKey: "selado:velha"}}) // #nosec G101 -- valor fictício de teste
 
 	_, err := svc.Update(context.Background(), remoto(nil))
 
 	require.NoError(t, err)
 	assert.Equal(t, "selado:velha", store.record.Choice.SealedAPIKey)
+}
+
+func TestUpdate_SemChaveComOutraURLOuProvedor_RecusaSemGravar(t *testing.T) {
+	casos := map[string]struct {
+		pedido   instance.EmbeddingUpdate
+		esperado []string
+	}{
+		"outra url":      {instance.EmbeddingUpdate{Provider: "openai-compat", URL: "https://atacante.exemplo/v1", Model: "m"}, []string{`"https://atacante.exemplo/v1"`, "api_key"}},
+		"outro provedor": {instance.EmbeddingUpdate{Provider: "local"}, []string{`"local"`, "api_key"}},
+	}
+	for nome, caso := range casos {
+		t.Run(nome, func(t *testing.T) {
+			svc, store := servico(instance.EmbeddingRecord{Choice: instance.EmbeddingChoice{Provider: "openai-compat", URL: "https://api.exemplo/v1", SealedAPIKey: "selado:velha"}}) // #nosec G101 -- valor fictício de teste
+
+			_, err := svc.Update(context.Background(), caso.pedido)
+
+			require.ErrorIs(t, err, instance.ErrAPIKeyRequired)
+			for _, trecho := range caso.esperado {
+				assert.Contains(t, err.Error(), trecho)
+			}
+			assert.Zero(t, store.saves)
+		})
+	}
 }
 
 func TestUpdate_ChaveVazia_ApagaAChave(t *testing.T) {
