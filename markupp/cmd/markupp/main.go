@@ -248,21 +248,28 @@ func serve(ctx context.Context, logger *slog.Logger, cfg config.Config) error {
 }
 
 func newHandler(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, logger *slog.Logger, secrets config.InstanceSecrets) (http.Handler, error) {
-	repo := storage.NewPostgresNotesRepository(pool, cfg.SearchConfig)
-	notesSvc := notes.NewService(repo, cfg.MaxNoteSize)
-	authSvc, codec := newAuthService(cfg, pool)
-	// A API não recebe o SMTP: o booleano diz que há quem entregue os emails dela.
-	emailEnabled := cfg.InviteByEmail
-	adminSvc := auth.NewAdminService(storage.NewPostgresAdminRepository(pool), time.Now, emailEnabled, auth.InviteLimits{PerAccount: cfg.InviteLimitPerAccount, PerTenant: cfg.InviteLimitPerTenant})
-	accountEmail := auth.NewAccountEmailService(storage.NewPostgresAccountEmailRepository(pool), auth.NewBcryptHasher(), time.Now, auth.AccountEmailOptions{
-		EmailEnabled: emailEnabled, LocalEnabled: cfg.LocalAuthEnabled, Background: runDetached, Logger: logger,
-	})
-	oauthSvc, err := newOAuthService(cfg, pool, codec)
+	deps, err := newRouterDeps(cfg, pool, logger)
 	if err != nil {
 		return nil, err
 	}
-	deps := api.RouterDeps{
-		Notes: notesSvc, Graph: storage.NewPostgresNoteGraph(pool, cfg.SearchConfig), Auth: authSvc, Admin: adminSvc, AccountEmail: accountEmail,
+	addPublication(&deps, cfg, pool)
+	if err := addInstance(ctx, &deps, cfg, pool, secrets); err != nil {
+		return nil, err
+	}
+	return api.NewRouter(deps), nil
+}
+
+// newRouterDeps monta os serviços das rotas da conta, das notas e do OAuth.
+func newRouterDeps(cfg config.Config, pool *pgxpool.Pool, logger *slog.Logger) (api.RouterDeps, error) {
+	authSvc, codec := newAuthService(cfg, pool)
+	oauthSvc, err := newOAuthService(cfg, pool, codec)
+	if err != nil {
+		return api.RouterDeps{}, err
+	}
+	return api.RouterDeps{
+		Notes: notes.NewService(storage.NewPostgresNotesRepository(pool, cfg.SearchConfig), cfg.MaxNoteSize),
+		Graph: storage.NewPostgresNoteGraph(pool, cfg.SearchConfig), Auth: authSvc,
+		Admin: newAdminService(cfg, pool), AccountEmail: newAccountEmailService(cfg, pool, logger),
 		Vaults:       vaults.NewService(storage.NewPostgresVaultsRepository(pool), time.Now, uuid.NewString),
 		LinkRefusals: linkrefusals.NewService(storage.NewPostgresLinkRefusals(pool)),
 		Tokens:       codec, Tenants: authSvc, Probe: pool, AllowedOrigins: cfg.AllowedOrigins,
@@ -270,12 +277,22 @@ func newHandler(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, logg
 		TrustedProxies:     cfg.TrustedProxies,
 		AccountRateLimiter: api.NewAccountRateLimiter(cfg.RateLimitPerMinute, time.Minute, time.Now, cfg.TrustedProxies),
 		ExternalLogin:      newExternalLoginService(cfg, authSvc),
-	}
-	addPublication(&deps, cfg, pool)
-	if err := addInstance(ctx, &deps, cfg, pool, secrets); err != nil {
-		return nil, err
-	}
-	return api.NewRouter(deps), nil
+	}, nil
+}
+
+// newAdminService monta a administração da conta. A API não recebe o SMTP: o booleano
+// diz que há quem entregue os emails dela.
+func newAdminService(cfg config.Config, pool *pgxpool.Pool) *auth.AdminService {
+	limits := auth.InviteLimits{PerAccount: cfg.InviteLimitPerAccount, PerTenant: cfg.InviteLimitPerTenant}
+	return auth.NewAdminService(storage.NewPostgresAdminRepository(pool), time.Now, cfg.InviteByEmail, limits)
+}
+
+// newAccountEmailService monta a troca de email da conta, com a mesma regra de entrega
+// de newAdminService.
+func newAccountEmailService(cfg config.Config, pool *pgxpool.Pool, logger *slog.Logger) *auth.AccountEmailService {
+	return auth.NewAccountEmailService(storage.NewPostgresAccountEmailRepository(pool), auth.NewBcryptHasher(), time.Now, auth.AccountEmailOptions{
+		EmailEnabled: cfg.InviteByEmail, LocalEnabled: cfg.LocalAuthEnabled, Background: runDetached, Logger: logger,
+	})
 }
 
 // addInstance liga as rotas do administrador da instância (ADR-0057), com a cifra da
