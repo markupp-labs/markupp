@@ -40,6 +40,49 @@ func TestPanelProxy_EncaminhaARaizEOResto_ComOHostOriginal(t *testing.T) {
 	}
 }
 
+// routerWithPanelAndOAuth monta o padrão do compose: painel na raiz da mesma porta e
+// authorization server ligado.
+func routerWithPanelAndOAuth(upstreamURL string) http.Handler {
+	return api.NewRouter(api.RouterDeps{
+		Tokens: &fakeTokenValidator{}, Probe: &fakeProbe{}, PanelUpstreamURL: upstreamURL,
+		OAuth: &fakeOAuthService{}, OAuthMetadata: &api.OAuthMetadata{Issuer: issuerDeTeste, DynamicRegistration: true},
+	})
+}
+
+func TestPanelProxy_ComOAuth_EncaminhaOConsentimentoAoPainel(t *testing.T) {
+	upstream := newFakePanelUpstream(t)
+	for _, route := range []struct{ method, path string }{
+		{http.MethodGet, "/oauth/requests/r1"},
+		{http.MethodPost, "/oauth/requests/r1/approve"},
+		{http.MethodPost, "/oauth/requests/r1/deny"},
+	} {
+		req := httptest.NewRequest(route.method, route.path, nil)
+		req.Host = "notas.exemplo.com"
+		rec := httptest.NewRecorder()
+
+		routerWithPanelAndOAuth(upstream.URL).ServeHTTP(rec, req)
+
+		assert.Equal(t, http.StatusTeapot, rec.Code, route.path)
+		assert.Equal(t, route.method+" "+route.path+" notas.exemplo.com", rec.Header().Get("X-Recebido"), route.path)
+	}
+}
+
+func TestPanelProxy_ComOAuth_NaoTomaAsRotasDoProtocolo(t *testing.T) {
+	upstream := newFakePanelUpstream(t)
+	for _, route := range []struct{ method, path string }{
+		{http.MethodGet, "/oauth/token"},
+		{http.MethodPost, "/oauth/revoke"},
+		{http.MethodPost, "/oauth/register"},
+		{http.MethodGet, "/oauth/authorize"},
+	} {
+		rec := httptest.NewRecorder()
+
+		routerWithPanelAndOAuth(upstream.URL).ServeHTTP(rec, httptest.NewRequest(route.method, route.path, nil))
+
+		assert.Empty(t, rec.Header().Get("X-Recebido"), route.method+" "+route.path)
+	}
+}
+
 func TestPanelProxy_NaoTomaAsRotasDaAPI(t *testing.T) {
 	upstream := newFakePanelUpstream(t)
 	for _, path := range []string{"/v1/healthz", "/v1/nao-existe"} {
