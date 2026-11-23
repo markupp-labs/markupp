@@ -32,7 +32,7 @@ func (f *fakeRepository) LinkIdentityTx(_ context.Context, ident auth.UserIdenti
 	return nil
 }
 
-func (f *fakeRepository) UnlinkIdentityTx(ctx context.Context, userID, identityID string, event auth.AuditEventRecord) error {
+func (f *fakeRepository) UnlinkIdentityTx(ctx context.Context, userID, identityID string, event auth.AuditEventRecord, check func([]auth.UserIdentity) error) error {
 	if f.concurrentUnlink != nil {
 		f.concurrentUnlink()
 	}
@@ -43,6 +43,9 @@ func (f *fakeRepository) UnlinkIdentityTx(ctx context.Context, userID, identityI
 	}
 	if len(identities) == 1 {
 		return auth.ErrLastIdentity
+	}
+	if err := check(slices.Delete(slices.Clone(identities), i, i+1)); err != nil {
+		return err
 	}
 	delete(f.identities, identities[i].Provider+":"+identities[i].ProviderUserID)
 	f.auditEvents = append(f.auditEvents, event)

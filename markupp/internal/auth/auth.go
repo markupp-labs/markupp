@@ -194,7 +194,9 @@ type Repository interface {
 	GetUserIdentity(ctx context.Context, provider, providerUserID string) (UserIdentity, error)
 	ListUserIdentities(ctx context.Context, userID string) ([]UserIdentity, error)
 	LinkIdentityTx(ctx context.Context, identity UserIdentity, event AuditEventRecord) error
-	UnlinkIdentityTx(ctx context.Context, userID, identityID string, event AuditEventRecord) error
+	// UnlinkIdentityTx passa à check as identidades que restariam, lidas sob a trava da
+	// conta, e desfaz tudo quando ela recusa.
+	UnlinkIdentityTx(ctx context.Context, userID, identityID string, event AuditEventRecord, check func(remaining []UserIdentity) error) error
 	ConsumeRefreshToken(ctx context.Context, tokenHash string) (string, error)
 	IssueSessionTx(ctx context.Context, record RefreshTokenRecord, event AuditEventRecord) error
 	GetRefreshToken(ctx context.Context, tokenHash string) (RefreshTokenRecord, error)

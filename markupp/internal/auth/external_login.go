@@ -183,10 +183,14 @@ func (s *ExternalLoginService) Unlink(ctx context.Context, userID, identityID st
 	if i < 0 {
 		return fmt.Errorf("%w: identity %q of user %q", ErrIdentityNotFound, identityID, userID)
 	}
-	if !slices.ContainsFunc(slices.Delete(slices.Clone(all), i, i+1), s.usable) {
-		return fmt.Errorf("%w: identity %q of user %q", ErrLastIdentity, identityID, userID)
+	// a checagem roda sob a trava: dois desvínculos simultâneos não podem ver um ao outro como saída
+	check := func(remaining []UserIdentity) error {
+		if !slices.ContainsFunc(remaining, s.usable) {
+			return fmt.Errorf("%w: identity %q of user %q", ErrLastIdentity, identityID, userID)
+		}
+		return nil
 	}
-	return s.base.repo.UnlinkIdentityTx(ctx, userID, identityID, s.identityEvent(userID, "auth.identity_unlink", all[i].Provider))
+	return s.base.repo.UnlinkIdentityTx(ctx, userID, identityID, s.identityEvent(userID, "auth.identity_unlink", all[i].Provider), check)
 }
 
 // usable diz se a identidade serve para entrar hoje: senha ligada ou provedor configurado.
