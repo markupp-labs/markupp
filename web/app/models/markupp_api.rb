@@ -91,6 +91,8 @@ class MarkuppApi
   class InstanceAdminRequired < Forbidden; end
   # Quem hospeda a instância fixou o provedor de embedding; o painel não muda.
   class HostLocked < Error; end
+  # Trocar o provedor ou a URL do embedding sem digitar a chave de novo.
+  class ApiKeyRequired < Error; end
 
   # Corpo e ETag de uma leitura que pode voltar 304.
   Revision = Data.define(:body, :etag)
@@ -121,7 +123,8 @@ class MarkuppApi
     "confirmation_mismatch" => ConfirmationMismatch, "publish_forbidden" => PublishForbidden, "already_published" => AlreadyPublished,
     "publication_not_found" => PublicationNotFound, "rate_limited" => RateLimited,
     "same_note" => SameNote, "note_outside_vault" => NoteOutsideVault, "link_refusal_not_found" => LinkRefusalNotFound,
-    "instance_admin_required" => InstanceAdminRequired, "host_locked" => HostLocked
+    "instance_admin_required" => InstanceAdminRequired, "host_locked" => HostLocked,
+    "api_key_required" => ApiKeyRequired
   }.freeze
   # Para o status cujo corpo não traz código conhecido.
   ERRORS_BY_STATUS = { "401" => Unauthorized, "403" => Forbidden, "404" => NotFound, "429" => RateLimited }.freeze

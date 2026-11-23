@@ -25,6 +25,7 @@ const maxEmbeddingField = 2048
 var (
 	ErrHostLocked       = errors.New("the embedding provider is set by the host configuration")
 	ErrInvalidEmbedding = errors.New("invalid embedding provider choice")
+	ErrAPIKeyRequired   = errors.New("embedding API key required to change the provider or URL")
 )
 
 // EmbeddingChoice é a escolha guardada no banco, com a chave do endpoint remoto cifrada.
@@ -151,6 +152,9 @@ func (s *EmbeddingService) Update(ctx context.Context, update EmbeddingUpdate) (
 	if record.HostLocked {
 		return EmbeddingView{}, ErrHostLocked
 	}
+	if err := checkKeyReuse(update, record.Choice); err != nil {
+		return EmbeddingView{}, err
+	}
 	choice, err := s.choiceOf(update, record.Choice.SealedAPIKey)
 	if err != nil {
 		return EmbeddingView{}, err
@@ -193,6 +197,19 @@ func (s *EmbeddingService) choiceOf(update EmbeddingUpdate, sealedKey string) (E
 	}
 	choice.SealedAPIKey = sealed
 	return choice, nil
+}
+
+// checkKeyReuse só deixa reaproveitar a chave guardada com o mesmo provedor e a mesma URL:
+// senão a chave iria no Authorization para um host que quem a digitou não escolheu.
+func checkKeyReuse(u EmbeddingUpdate, stored EmbeddingChoice) error {
+	if u.APIKey != nil || stored.SealedAPIKey == "" {
+		return nil
+	}
+	if u.Provider == stored.Provider && u.URL == stored.URL {
+		return nil
+	}
+	return fmt.Errorf("%w: provider %q and url %q differ from the stored provider %q and url %q, expected api_key sent again (empty to remove it)",
+		ErrAPIKeyRequired, u.Provider, u.URL, stored.Provider, stored.URL)
 }
 
 func viewOf(record EmbeddingRecord) EmbeddingView {

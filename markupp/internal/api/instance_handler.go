@@ -87,6 +87,8 @@ func writeInstanceError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, instance.ErrInvalidEmbedding):
 		writeError(w, "invalid_request", err.Error(), http.StatusBadRequest)
+	case errors.Is(err, instance.ErrAPIKeyRequired):
+		writeError(w, "api_key_required", err.Error(), http.StatusUnprocessableEntity)
 	case errors.Is(err, instance.ErrHostLocked):
 		writeError(w, "host_locked", err.Error(), http.StatusConflict)
 	default:
