@@ -1,18 +1,22 @@
-# HTTP Basic do resource MCP da instância (ADR-0050), com que o painel se apresenta ao Go como o relay da leitura pública:
-# só assim o Go conta o limite por IP pelo visitante do X-Forwarded-For, e não pelo painel. Usuário e senha vão
-# codificados como form (RFC 6749, seção 2.3.1), como o servidor MCP manda. O segredo vem da variável ou do arquivo que o
-# Go escreve na primeira subida; enquanto o arquivo não existe, não há credencial e o limite fica no IP do painel.
+# HTTP Basic com que o painel se apresenta ao Go como o relay da leitura pública (ADR-0050): só assim o Go conta o limite
+# por IP pelo visitante do X-Forwarded-For, e não pelo painel. O segredo é só do painel, gerado pelo Go, e vale com o MCP
+# e o OAuth desligados. Usuário e senha vão codificados como form (RFC 6749, seção 2.3.1), como o Go confere. O segredo
+# vem da variável ou do arquivo que o Go escreve na primeira subida; enquanto o arquivo não existe, não há credencial e o
+# limite fica no IP do painel.
 class PublicRelayCredential
-  # Sem a URL do MCP a instância não serve o MCP, e não há resource para o painel usar.
-  def self.from_env(env)
-    resource_url = env["MARKUPP_MCP_URL"].presence
-    return unless resource_url
+  # O usuário que o Go reconhece como o painel.
+  PANEL_USER = "panel"
 
-    new(resource_url, secret: env["MARKUPP_MCP_RESOURCE_SECRET"].presence, secret_path: env["MARKUPP_MCP_SECRET_PATH"].presence)
+  # Sem a variável nem o arquivo, quem hospeda não deu ao painel o segredo de relay.
+  def self.from_env(env)
+    secret = env["MARKUPP_PANEL_RELAY_SECRET"].presence
+    secret_path = env["MARKUPP_PANEL_RELAY_SECRET_PATH"].presence
+    return unless secret || secret_path
+
+    new(secret:, secret_path:)
   end
 
-  def initialize(resource_url, secret: nil, secret_path: nil, file_reader: File)
-    @resource_url = resource_url
+  def initialize(secret: nil, secret_path: nil, file_reader: File)
     @secret = secret
     @secret_path = secret_path
     @file_reader = file_reader
@@ -22,8 +26,7 @@ class PublicRelayCredential
     secret = current_secret
     return unless secret
 
-    credentials = "#{URI.encode_www_form_component(@resource_url)}:#{URI.encode_www_form_component(secret)}"
-    "Basic #{Base64.strict_encode64(credentials)}"
+    "Basic #{Base64.strict_encode64("#{PANEL_USER}:#{URI.encode_www_form_component(secret)}")}"
   end
 
   private
