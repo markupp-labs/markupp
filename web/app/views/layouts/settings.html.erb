@@ -8,7 +8,8 @@
   <% content_for :sidebar_label, t("settings.nav.title") %>
 <% end %>
 <% content_for :main do %>
-  <div class="max-w-5xl">
+  <%# A barra ocupa a largura da área, com o fechar no canto como num painel; só o conteúdo tem largura máxima. %>
+  <div>
     <div class="flex items-center gap-2 border-b border-line pb-2">
       <%= render "layouts/area_back" %>
       <p class="flex-1 font-semibold"><%= t("settings.nav.title") %></p>
@@ -17,7 +18,7 @@
       <% end %>
     </div>
 
-    <div class="mt-4 grid gap-4 md:grid-cols-[12rem_minmax(0,1fr)] md:gap-8">
+    <div class="mt-4 grid max-w-5xl gap-4 md:grid-cols-[12rem_minmax(0,1fr)] md:gap-8">
       <nav aria-label="<%= t("settings.nav.title") %>" data-focus-region="settings" data-focus-region-target="[aria-current=page]; a" class="flex flex-wrap gap-1 md:flex-col md:flex-nowrap">
         <%= settings_nav_link("accounts", settings_account_path) %>
         <%= settings_nav_link("authorizations", settings_authorizations_path) %>

@@ -23,8 +23,16 @@ class ExternalLoginsControllerTest < ActionDispatch::IntegrationTest
 
     assert_select "form[action=?][method=post]", external_login_path("github") do
       assert_select "input[type=hidden][name=purpose][value=login]"
-      assert_select "button", "Continue with GitHub"
+      assert_select "button[aria-label=?][title=?] svg[data-icon=github-logo]", "Continue with GitHub", "Continue with GitHub"
     end
+  end
+
+  test "a provider without a known logo keeps its name on the button" do
+    use_fake_api(login_providers: [ { "id" => "keycloak", "name" => "Keycloak" } ])
+
+    get new_session_path
+
+    assert_select "form[action=?] button", external_login_path("keycloak"), text: "Continue with Keycloak"
   end
 
   test "the account creation page offers each provider to sign up" do

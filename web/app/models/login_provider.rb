@@ -7,4 +7,12 @@ LoginProvider = Data.define(:id, :name) do
     Rails.logger.warn({ event: "markupp_login_providers_unreachable", message: error.message }.to_json)
     []
   end
+
+  # Logo dos provedores conhecidos, pelo id: github é o único id sem issuer, e google é o id que o DEPLOY.md usa.
+  def icon
+    case id
+    when "github" then "github-logo"
+    when "google" then "google-logo"
+    end
+  end
 end
