@@ -472,6 +472,7 @@ pontas:
 | `MARKUPP_PANEL_UPSTREAM_URL` | Go | sem painel na raiz | endereço interno do painel, para onde vai todo caminho que o Go não atende |
 | `MARKUPP_MCP_SECRET_PATH` | Go e MCP | sem arquivo | arquivo do segredo do MCP: o Go escreve e o MCP lê |
 | `MARKUPP_PANEL_RELAY_SECRET_PATH` | Go e painel | sem arquivo | arquivo do segredo de relay do painel: o Go escreve e o painel lê |
+| `MARKUPP_PANEL_RELAY_SECRET` | Go e painel | o do banco no Go, o do arquivo no painel | segredo de relay do painel, com ao menos 32 bytes |
 | `MARKUPP_MCP_API_URL` | MCP | `http://localhost:6275` | endereço do servidor Go visto pelo MCP; aceita http em qualquer host |
 | `MARKUPP_MCP_RESOURCE_URL` | MCP | issuer + `/mcp` | URL pública do MCP com o caminho do endpoint; o caminho vira a rota |
 | `MARKUPP_MCP_RESOURCE_SECRET` | MCP | o do arquivo | segredo do par em `MARKUPP_OAUTH_RESOURCES`, com ao menos 32 bytes |
