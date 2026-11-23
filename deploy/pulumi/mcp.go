@@ -62,7 +62,7 @@ func declareMCP(ctx *pulumi.Context, names resourceNames, args MarkuppArgs, pare
 	if _, err := appsv1.NewDeployment(ctx, names.mcp, deployment, parent); err != nil {
 		return err
 	}
-	return declareService(ctx, names.mcp, args.Namespace, mcpPort, parent)
+	return declareService(ctx, names.mcp, args.Namespace, corev1.ServicePortArgs{Port: pulumi.Int(mcpPort)}, parent)
 }
 
 // declareMCPSecret guarda o segredo do resource e o par url=segredo que a API lê em
@@ -87,7 +87,7 @@ func mcpContainer(names resourceNames, args MarkuppArgs) corev1.ContainerArgs {
 		Name:  pulumi.String("mcp"),
 		Image: pulumi.String(args.MCP.Image),
 		Env: corev1.EnvVarArray{
-			plainEnv("MARKUPP_MCP_API_URL", fmt.Sprintf("http://%s:%d", names.api, apiPort)),
+			plainEnv("MARKUPP_MCP_API_URL", fmt.Sprintf("http://%s:%d", names.api, apiServicePort)),
 			plainEnv("MARKUPP_MCP_RESOURCE_URL", mcpResourceURL(args)),
 			secretEnv("MARKUPP_MCP_RESOURCE_SECRET", names.mcp, mcpResourceSecretKey),
 		},
