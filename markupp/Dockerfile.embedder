@@ -13,28 +13,28 @@ RUN CGO_ENABLED=1 go build -tags ORT -ldflags="-s -w" -o /out/markupp ./cmd/mark
 
 FROM debian:trixie-slim
 
-# A versão do ONNX Runtime com que o hugot testa, e o SHA-256 de cada tarball do release.
+# A versão do ONNX Runtime com que o hugot testa. Vem do pacote NuGet oficial da
+# Microsoft, que traz a biblioteca das duas arquiteturas: o repositório do ONNX Runtime
+# no GitHub, de onde vinham os tarballs, saiu do ar em 2026-11.
 ARG ONNXRUNTIME_VERSION=1.31.1
-ARG ONNXRUNTIME_SHA256_X64=c849e36a1ef3e22d4ff217b9d1ce4a3cf5b9467b975610913ae959ad5b16bdc9
-ARG ONNXRUNTIME_SHA256_AARCH64=5317505e2da99be65f8e2775ba3c2afd6d2961fd78aba1bd8f56159f48820c78
+ARG ONNXRUNTIME_NUPKG_SHA256=6871ccbc97f3d5bdb4095a1dcec33aa78d56f6ed8de5980ef5fa1d9f2e7c679a
 ARG TARGETARCH
 
 # O hugot procura a libonnxruntime.so em /usr/lib. A pasta do modelo nasce com o dono
 # do servidor: um volume nomeado novo herda esse dono, e o servidor sem root grava nele.
 RUN set -eux; \
   case "$TARGETARCH" in \
-    amd64) arch=x64; sum="$ONNXRUNTIME_SHA256_X64" ;; \
-    arm64) arch=aarch64; sum="$ONNXRUNTIME_SHA256_AARCH64" ;; \
+    amd64) arch=x64 ;; \
+    arm64) arch=arm64 ;; \
     *) echo "arquitetura $TARGETARCH sem ONNX Runtime publicado, esperado amd64 ou arm64" >&2; exit 1 ;; \
   esac; \
   apt-get update; \
-  apt-get install -y --no-install-recommends ca-certificates curl; \
-  curl -fsSL -o /tmp/ort.tgz "https://github.com/microsoft/onnxruntime/releases/download/v${ONNXRUNTIME_VERSION}/onnxruntime-linux-${arch}-${ONNXRUNTIME_VERSION}.tgz"; \
-  echo "${sum}  /tmp/ort.tgz" | sha256sum -c -; \
-  tar -xzf /tmp/ort.tgz -C /tmp; \
-  cp -P "/tmp/onnxruntime-linux-${arch}-${ONNXRUNTIME_VERSION}"/lib/libonnxruntime.so* /usr/lib/; \
-  rm -rf /tmp/ort.tgz "/tmp/onnxruntime-linux-${arch}-${ONNXRUNTIME_VERSION}"; \
-  apt-get purge -y curl; \
+  apt-get install -y --no-install-recommends ca-certificates curl unzip; \
+  curl -fsSL -o /tmp/ort.nupkg "https://api.nuget.org/v3-flatcontainer/microsoft.ml.onnxruntime/${ONNXRUNTIME_VERSION}/microsoft.ml.onnxruntime.${ONNXRUNTIME_VERSION}.nupkg"; \
+  echo "${ONNXRUNTIME_NUPKG_SHA256}  /tmp/ort.nupkg" | sha256sum -c -; \
+  unzip -j /tmp/ort.nupkg "runtimes/linux-${arch}/native/libonnxruntime.so" -d /usr/lib/; \
+  rm /tmp/ort.nupkg; \
+  apt-get purge -y curl unzip; \
   apt-get autoremove -y; \
   rm -rf /var/lib/apt/lists/*; \
   useradd -u 10001 -m markupp; \
