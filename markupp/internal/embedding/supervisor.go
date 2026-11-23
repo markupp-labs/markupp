@@ -21,6 +21,9 @@ const (
 	stateError       = "error"
 )
 
+// maxRetryWait é o teto da espera entre tentativas de abrir a mesma escolha que falhou.
+const maxRetryWait = 30 * time.Minute
+
 // Setting é o provedor a rodar. Revision muda a cada gravação da escolha, e outra
 // revisão reabre o provedor mesmo com os mesmos valores.
 type Setting struct {
@@ -46,7 +49,8 @@ type StatusReporter interface {
 type ProviderOpener func(ctx context.Context, setting Setting) (Provider, func() error, error)
 
 // SupervisorDeps é o que o supervisor usa. HostLocked e HostProvider são o que ele
-// informa a cada volta sobre a configuração de quem hospeda.
+// informa a cada volta sobre a configuração de quem hospeda. RetryBase é a primeira
+// espera depois de uma falha ao abrir, dobrada a cada falha seguida até maxRetryWait.
 type SupervisorDeps struct {
 	Source       SettingSource
 	Status       StatusReporter
@@ -58,6 +62,8 @@ type SupervisorDeps struct {
 	ChunkTokens  int
 	BatchSize    int
 	Logger       *slog.Logger
+	Now          func() time.Time
+	RetryBase    time.Duration
 }
 
 // Supervisor roda o indexador de embedding com o provedor escolhido e o troca, sem
@@ -67,10 +73,16 @@ type Supervisor struct {
 	current       *Setting
 	indexer       *Indexer
 	closeProvider func() error
+	failed        *Setting
+	failures      int
+	retryAt       time.Time
 }
 
-// NewSupervisor monta o supervisor, ainda sem provedor aberto.
+// NewSupervisor monta o supervisor, ainda sem provedor aberto. Sem Now, usa time.Now.
 func NewSupervisor(deps SupervisorDeps) *Supervisor {
+	if deps.Now == nil {
+		deps.Now = time.Now
+	}
 	return &Supervisor{deps: deps}
 }
 
@@ -107,7 +119,41 @@ func (s *Supervisor) Refresh(ctx context.Context) {
 	if s.current != nil && *s.current == setting {
 		return
 	}
+	if s.waitingRetry(setting) {
+		return
+	}
 	s.switchTo(ctx, setting)
+}
+
+// waitingRetry diz se setting é a escolha que falhou e a espera até a próxima tentativa
+// ainda não acabou; uma escolha nova tenta na hora.
+func (s *Supervisor) waitingRetry(setting Setting) bool {
+	return s.failed != nil && *s.failed == setting && s.deps.Now().Before(s.retryAt)
+}
+
+// scheduleRetry conta a falha de setting e marca a próxima tentativa, recomeçando a
+// contagem quando a escolha que falhou é outra.
+func (s *Supervisor) scheduleRetry(setting Setting) {
+	if s.failed == nil || *s.failed != setting {
+		s.failures = 0
+	}
+	s.failed = &setting
+	s.failures++
+	s.retryAt = s.deps.Now().Add(retryWait(s.deps.RetryBase, s.failures))
+}
+
+// clearRetry esquece as falhas depois de abrir um provedor.
+func (s *Supervisor) clearRetry() {
+	s.failed, s.failures = nil, 0
+}
+
+// retryWait é base dobrada a cada falha depois da primeira, limitada a maxRetryWait.
+func retryWait(base time.Duration, failures int) time.Duration {
+	wait := base
+	for i := 1; i < failures && wait < maxRetryWait; i++ {
+		wait *= 2
+	}
+	return min(wait, maxRetryWait)
 }
 
 func (s *Supervisor) hostProvider() string {
@@ -140,6 +186,7 @@ func (s *Supervisor) switchTo(ctx context.Context, setting Setting) {
 // activateNone registra a instalação sem modelo, o que apaga os vetores e as ligações
 // por sentido de um modelo anterior.
 func (s *Supervisor) activateNone(ctx context.Context) {
+	s.clearRetry()
 	if _, err := s.deps.Use(ctx, providerNone, 0); err != nil {
 		s.deps.Logger.Error("registrar a instalacao sem modelo de embedding", "err", err)
 	}
@@ -153,16 +200,18 @@ func (s *Supervisor) activate(ctx context.Context, setting Setting, provider Pro
 		s.fail(ctx, setting, err)
 		return
 	}
+	s.clearRetry()
 	s.indexer = NewIndexer(s.deps.Queue, provider, s.deps.ChunkTokens, s.deps.BatchSize, s.deps.Logger)
 	s.report(ctx, stateReady, "")
 	s.deps.Logger.Info("indexador de embedding em laco", "modelo", provider.Name(), "modelo_trocado", changed)
 }
 
-// fail informa o erro e esquece a escolha, para a próxima volta tentar abrir de novo
+// fail informa o erro e esquece a escolha, para tentar abrir de novo depois da espera
 // mesmo quando quem hospeda trava o provedor e a escolha nunca muda.
 func (s *Supervisor) fail(ctx context.Context, setting Setting, err error) {
 	s.stop()
 	s.current = nil
+	s.scheduleRetry(setting)
 	s.report(ctx, stateError, err.Error())
 	s.deps.Logger.Error("abrir o provedor de embedding", "provedor", setting.Provider, "err", err)
 }

@@ -48,7 +48,7 @@ func runEmbedder(ctx context.Context, logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	return newEmbeddingSupervisor(pool, emb, source, report, logger).Run(ctx, cfg.IndexInterval)
+	return newEmbeddingSupervisor(pool, emb, source, report, cfg.IndexInterval, logger).Run(ctx, cfg.IndexInterval)
 }
 
 func loadEmbedderConfig() (config.Config, config.Embedding, error) {
@@ -63,7 +63,7 @@ func loadEmbedderConfig() (config.Config, config.Embedding, error) {
 	return cfg, emb, nil
 }
 
-func newEmbeddingSupervisor(pool *pgxpool.Pool, emb config.Embedding, source embedding.SettingSource, report embedding.StatusReporter, logger *slog.Logger) *embedding.Supervisor {
+func newEmbeddingSupervisor(pool *pgxpool.Pool, emb config.Embedding, source embedding.SettingSource, report embedding.StatusReporter, retryBase time.Duration, logger *slog.Logger) *embedding.Supervisor {
 	return embedding.NewSupervisor(embedding.SupervisorDeps{
 		Source: source, Status: report, Queue: storage.NewPostgresEmbeddingQueue(pool),
 		Open: func(ctx context.Context, s embedding.Setting) (embedding.Provider, func() error, error) {
@@ -73,6 +73,7 @@ func newEmbeddingSupervisor(pool *pgxpool.Pool, emb config.Embedding, source emb
 			return storage.UseEmbeddingModel(ctx, pool, name, dimension)
 		},
 		HostLocked: emb.HostLocked, HostProvider: emb.Provider, ChunkTokens: emb.ChunkTokens, BatchSize: embedBatchSize, Logger: logger,
+		RetryBase: retryBase,
 	})
 }
 
