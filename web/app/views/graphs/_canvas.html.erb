@@ -4,12 +4,16 @@
     lista, só para o leitor de tela, traz um link por nota desenhada, na ordem do j.
     Vazio, recusado ou sem servidor, o estado vazio de cada caso toma o lugar do canvas. region: a região do Alt+hjkl;
     toolbar: os controles acima do canvas, dentro do controller (o seletor de saltos da visão Graph); filterable: o grafo
-    tem filtros (a tela cheia), e o vazio com filtro ligado (filtered) diz isso e oferece limpar. %>
+    tem filtros (a tela cheia), e o vazio com filtro ligado (filtered) diz isso e oferece limpar; legend: a legenda das
+    ligações por método (a tela cheia).
+    Para quem escreve, o form escondido da recusa de ligação: clicar numa ligação automática pergunta pelo diálogo do
+    painel e o controller envia o par por ele (o pelo teclado fica na visão Links). %>
 <% region = local_assigns[:region] %>
+<% labels = { status: t("graphs.status"), capped: t("graphs.capped"), refuse: t("note_links.refuse.confirm"), refuse_failed: t("notes.unreachable.title") } %>
 <%= tag.div id:, class: [ "graph-view", local_assigns[:class] ],
             data: { controller: "graph-view", action: "keydown->graph-view#press",
                     graph_view_url_value: url, graph_view_autofocus_value: local_assigns[:autofocus] == true, graph_view_filtered_value: local_assigns[:filtered] == true,
-                    graph_view_labels_value: { status: t("graphs.status"), capped: t("graphs.capped") }.to_json,
+                    graph_view_labels_value: labels.to_json,
                     graph_depth: local_assigns[:depth], focus_region: region, focus_region_target: ("[data-graph-canvas]" if region) } do %>
   <%= local_assigns[:toolbar] %>
   <div class="graph-stage">
@@ -17,6 +21,7 @@
                    aria: { label: t("graphs.canvas_label"), roledescription: t("graphs.roledescription"), keyshortcuts: "J K Enter + - 0" },
                    data: { graph_canvas: "", graph_view_target: "canvas" } %>
     <%= busy_spinner(busy_when: "##{id}[aria-busy]", class: "graph-busy") %>
+    <%= render "graphs/legend" if local_assigns[:legend] %>
     <div hidden data-graph-view-target="empty" class="graph-overlay">
       <%= render "layouts/empty_state", title: t("graphs.empty.title"), hint: t("graphs.empty.hint") %>
     </div>
@@ -39,4 +44,10 @@
   <p role="status" data-graph-view-target="status" class="graph-status"></p>
   <p aria-live="polite" data-graph-view-target="announce" class="sr-only"></p>
   <ul aria-label="<%= t("graphs.list_label") %>" data-graph-view-target="list" class="sr-only"></ul>
+  <% if current_tenant&.writer? %>
+    <%= form_with url: link_refusals_path, id: "#{id}_refusal", html: { hidden: true }, data: { turbo: false, graph_view_target: "refuseForm" } do %>
+      <%= tag.button t("note_links.refuse.label"), type: "submit", tabindex: -1,
+                     data: { graph_view_target: "refuseButton", confirm_button: t("note_links.refuse.label") } %>
+    <% end %>
+  <% end %>
 <% end %>

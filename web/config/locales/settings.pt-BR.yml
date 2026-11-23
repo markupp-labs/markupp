@@ -4,6 +4,7 @@ pt-BR:
       title: "Configurações"
       close: "Fechar configurações"
       accounts: "Conta"
+      authorizations: "Autorizações"
       appearances: "Aparência"
       editors: "Editor"
       agents: "Agentes"
@@ -24,6 +25,30 @@ pt-BR:
         password_hint: "O servidor manda um token para %{email}; use-o para escolher a senha nova."
         change_password: "Trocar senha"
         have_reset_token: "Tenho um token de redefinição"
+      identities:
+        title: "Contas conectadas"
+        hint: "Entre com estas contas no lugar da senha. Desconectar sempre deixa ao menos uma forma de entrar."
+        connect: "Conectar %{provider}"
+        disconnect: "Desconectar %{provider}"
+    identities:
+      destroy:
+        disconnected: "%{provider} desconectado."
+        last_identity: "Esta é a única forma que resta de entrar na sua conta. Conecte outra antes."
+    authorizations:
+      index:
+        hint: "Clientes que você autorizou a agir em nome da sua conta. Revogar um desconecta só ele; os outros seguem funcionando."
+        empty: "Nenhuma autorização ainda. Clientes como o markupp-mcp e o markupp-cli aparecem aqui depois que você faz login por eles."
+        client: "Cliente"
+        authorized: "Autorizado em"
+        scopes: "Escopos"
+      oauth_grant:
+        authorized: "Autorizado em"
+        scopes: "Escopos"
+        revoke: "Revogar"
+        confirm_revoke: "Revogar a autorização de %{client}?"
+      destroy:
+        revoked: "Autorização revogada."
+        not_found: "Essa autorização não está mais ativa."
     appearances:
       show:
         title: "Aparência"
@@ -123,3 +148,5 @@ pt-BR:
         invalid_request: "Informe um endereço como nome@exemplo.com."
         already_member: "%{email} já é membro."
         role_above_own: "Você não pode dar nem mudar um papel acima do seu."
+        email_not_verified: "Confirme seu email nas configurações da conta antes de enviar convites."
+        invite_limit_reached: "Você chegou ao limite de convites das últimas 24 horas. Tente de novo mais tarde."

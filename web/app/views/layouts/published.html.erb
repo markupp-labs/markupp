@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<%# Nota pública lida sem conta (/p/..., ADR-0048): o título da publicação no topo, a árvore dela ao lado e a nota no
+    meio, sem a barra de atividades nem os atalhos do painel. No celular a árvore vem antes da nota. noindex salvo
+    quando quem publicou liga a indexação; as páginas de erro nunca entram na busca. %>
+<% content_for :head, tag.meta(name: "robots", content: "noindex") unless @note&.indexable %>
+<%= tag.html lang: I18n.locale, data: { theme: chosen_theme } do %>
+  <%= render "layouts/head" %>
+
+  <body class="min-h-dvh bg-surface font-mono text-sm text-ink" data-area="published">
+    <%= busy_origin_spinner_template %>
+    <header class="flex flex-wrap items-center gap-3 border-b border-line px-4 py-2">
+      <%= mascot(:small) %>
+      <% if @note %>
+        <%= link_to_if (root_path = public_root_path(@note, @tree)), @note.publication.title, root_path, class: "truncate font-semibold" do
+          tag.span(@note.publication.title, class: "truncate font-semibold")
+        end %>
+        <%= yield :public_tools %>
+      <% else %>
+        <span>markupp</span>
+      <% end %>
+      <div class="ml-auto flex items-center gap-1"><%= render "layouts/theme_buttons" %></div>
+    </header>
+
+    <%# Sem a árvore (as páginas de erro) o main toma a largura toda. %>
+    <%= tag.div class: ("md:grid md:grid-cols-[16rem_minmax(0,1fr)]" if content_for?(:tree)) do %>
+      <% if content_for?(:tree) %>
+        <nav aria-label="<%= t(".notes") %>" class="border-b border-line p-3 md:min-h-[calc(100dvh-2.75rem)] md:border-r md:border-b-0">
+          <%= yield :tree %>
+        </nav>
+      <% end %>
+      <main class="@container min-w-0 p-4 md:p-6">
+        <% page = yield %>
+        <% if content_for?(:mascot) %>
+          <div class="flex min-h-[60dvh] items-center justify-center gap-10">
+            <%= yield :mascot %><div class="min-w-0 max-w-[65ch]"><%= page %></div>
+          </div>
+        <% else %>
+          <%= page %>
+        <% end %>
+        <p class="mt-8 border-t border-line pt-3 text-xs text-ink-muted"><%= t(".published_with") %></p>
+      </main>
+    <% end %>
+  </body>
+<% end %>

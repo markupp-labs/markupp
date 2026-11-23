@@ -18,7 +18,8 @@ import (
 	tcpostgres "github.com/testcontainers/testcontainers-go/modules/postgres"
 )
 
-const postgresImage = "postgres:17.9-alpine3.23"
+// postgresImage é a mesma imagem do compose e do Pulumi: o Postgres com o pgvector.
+const postgresImage = "pgvector/pgvector:0.8.7-pg17-trixie"
 
 var (
 	containerOnce sync.Once

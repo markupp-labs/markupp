@@ -79,10 +79,12 @@ func singleReplicaDeploymentArgs(name, namespace string, uid int, container core
 
 func apiDeploymentArgs(names resourceNames, args MarkuppArgs) *appsv1.DeploymentArgs {
 	container := serverContainer(args, names)
-	env := append(databaseURLEnv(names), inviteByEmailEnv(args)...)
+	env := append(databaseURLEnv(names), instanceEnv(names, args)...)
+	env = append(env, inviteByEmailEnv(args)...)
 	env = append(env, publicURLEnv(args))
 	env = append(env, rateLimitEnv(args)...)
-	env = append(env, panelURLEnv(args)...)
+	env = append(env, registrationEnv(args)...)
+	env = append(env, panelAPIEnv(names, args)...)
 	env = append(env, mcpProxyEnv(names, args)...)
 	container.Env = env
 	container.Ports = corev1.ContainerPortArray{corev1.ContainerPortArgs{ContainerPort: pulumi.Int(apiPort)}}

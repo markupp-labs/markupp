@@ -15,17 +15,19 @@ class FakeMarkuppAccounts
   # Id como o de /auth/me e /users; membro sem conta na fake (dono de outro tenant, por exemplo) ganha um pelo email.
   def id_for(email) = @accounts.find { it["email"] == email }&.fetch("id") || "account-#{email[/\A[^@]+/]}"
 
+  def any? = @accounts.any?
+
   def find_by_email(email) = @accounts.find { it["email"] == email }
 
   def find_by_credentials(email, password)
     @accounts.find { |account| account["email"] == email && account["password"] == password }
   end
 
-  # Conta nova do aceite de convite por token: o email veio do convite, então já nasce verificado.
-  def create(email, password)
+  # Conta nova. A do aceite de convite nasce verificada, porque o email veio do convite; a do cadastro, não.
+  def create(email, password, verified: true)
     raise MarkuppApi::AccountExists, "fake API refuses a new account for #{email.inspect}: already_exists" if @accounts.any? { it["email"] == email }
 
-    @accounts << { "email" => email, "password" => password, "verified" => true, "id" => "account-#{@accounts.size + 1}" }
+    @accounts << { "email" => email, "password" => password, "verified" => verified, "id" => "account-#{@accounts.size + 1}" }
     @accounts.last
   end
 
@@ -52,6 +54,9 @@ class FakeMarkuppAccounts
   end
 
   def revoke_refresh(token) = @refresh_tokens.delete(token)
+
+  # Cenário: quem hospeda muda a lista de administradores da instância depois do login.
+  def set_instance_admin!(email, admin) = find_by_email(email).store("instance_admin", admin)
 
   def refresh_token_valid?(token) = @refresh_tokens.key?(token)
 

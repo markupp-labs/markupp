@@ -30,23 +30,23 @@ type titleOccurrence struct {
 }
 
 // inferLinks grava uma ligação inferida para cada título sem nota citado no cofre,
-// quando há candidata, e devolve as arestas gravadas. O grafo g é o das ligações
+// quando há candidata. O grafo g é o das ligações
 // resolvidas, sem inferidas, e dá o parentesco entre a nota que cita e a candidata.
-func inferLinks(ctx context.Context, q *gen.Queries, vaultID, searchConfig string, g *vaultgraph.Graph) ([]vaultgraph.Edge, error) {
+func inferLinks(ctx context.Context, q *gen.Queries, vaultID, searchConfig string, g *vaultgraph.Graph) error {
 	vc, err := loadCitations(ctx, q, vaultID)
 	if err != nil || len(vc.unresolved) == 0 {
-		return nil, err
+		return err
 	}
 	candidates := vc.candidates()
 	occurrences, err := countOccurrences(ctx, q, vaultID, searchConfig, candidates)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	params, edges := vc.chooseTargets(candidates, occurrences, g)
 	if err := q.SaveInferredLinks(ctx, params); err != nil {
-		return nil, fmt.Errorf("save %d inferred links of vault %q: %w", len(edges), vaultID, err)
+		return fmt.Errorf("save %d inferred links of vault %q: %w", len(edges), vaultID, err)
 	}
-	return edges, nil
+	return nil
 }
 
 // loadCitations lê os títulos e as citações do cofre e separa as citações de título

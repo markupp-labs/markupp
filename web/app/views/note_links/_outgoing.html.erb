@@ -16,5 +16,5 @@
     </span>
   </li>
 <% else %>
-  <%= render "note_links/row", note: item.target, kind: link_kind(item) %>
+  <%= render "note_links/row", note: item.target, kind: link_kind(item), link: item %>
 <% end %>

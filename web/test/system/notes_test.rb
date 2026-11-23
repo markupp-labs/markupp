@@ -346,7 +346,7 @@ class NotesTest < ApplicationSystemTestCase
 
     assert_text "Read only: your role here is viewer."
     assert_no_selector "[role=alert]"
-    assert_empty api.received_credentials.select { it[:call] == "PUT /notes/1" }
+    assert_empty api.received_credentials.select { it[:call] == "PUT /v1/notes/1" }
   end
 
   private

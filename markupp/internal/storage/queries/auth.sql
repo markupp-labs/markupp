@@ -165,3 +165,17 @@ FROM users u
 WHERE i.id = sqlc.arg(id) AND u.id = sqlc.arg(user_id) AND u.email = i.email AND u.email_verified
   AND i.accepted_at IS NULL AND i.declined_at IS NULL AND i.expires_at > sqlc.arg(now)
 RETURNING i.tenant_id;
+
+-- name: ListUserIdentities :many
+SELECT id, user_id, provider, provider_user_id, password_hash, created_at
+FROM user_identities
+WHERE user_id = $1
+ORDER BY created_at, id;
+
+-- Trava a conta enquanto as identidades mudam: duas remoções simultâneas não deixam a
+-- conta sem forma de entrar.
+-- name: LockUserIdentities :exec
+SELECT 1 FROM users WHERE id = $1 FOR UPDATE;
+
+-- name: DeleteUserIdentity :exec
+DELETE FROM user_identities WHERE id = $1 AND user_id = $2;

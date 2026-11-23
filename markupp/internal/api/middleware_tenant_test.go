@@ -31,7 +31,7 @@ func serveWithTenant(resolver api.TenantResolver, header string) (*httptest.Resp
 	handler := api.RequireTenant(resolver)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ator, _ = identity.ActorFrom(r.Context())
 	}))
-	req := httptest.NewRequest(http.MethodGet, "/notes", nil)
+	req := httptest.NewRequest(http.MethodGet, "/v1/notes", nil)
 	req = req.WithContext(identity.WithActor(req.Context(), identity.Actor{UserID: "u1"}))
 	if header != "" {
 		req.Header.Set("X-Markupp-Tenant", header)

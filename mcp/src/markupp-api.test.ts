@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { HttpMarkuppApi, MarkuppApiError, type Note } from "./markupp-api.js";
 import { FakeFetch } from "./testing/fake-fetch.js";
-import { FakeApiTokens } from "./testing/fake-markupp-api.js";
+import { FakeApiTokens } from "./testing/fake-api-tokens.js";
 
 const note: Note = {
   id: "n1",
@@ -379,5 +379,119 @@ describe("HttpMarkuppApi nos cofres", () => {
       "http://api.test/v1/search/notes?q=a+b&vault=v1&limit=5",
     );
     expect(found).toEqual([{ id: "n1", vault_id: "v1", path: "a.md" }]);
+  });
+});
+
+describe("HttpMarkuppApi nas publicações", () => {
+  it.each<[string, AdminCall, string, unknown]>([
+    [
+      "publica a pasta com o nome de confirmação",
+      (api) =>
+        api.publish("t1", "v/1", {
+          target: { kind: "folder", path: "docs/deploy" },
+          confirm: "docs/deploy",
+          indexable: false,
+        }),
+      "POST /v1/vaults/v%2F1/publications",
+      {
+        target: { kind: "folder", path: "docs/deploy" },
+        confirm: "docs/deploy",
+        indexable: false,
+      },
+    ],
+    [
+      "despublica",
+      (api) => api.unpublish("t1", "p/1"),
+      "DELETE /v1/publications/p%2F1",
+      null,
+    ],
+    [
+      "lista as publicações do tenant",
+      (api) => api.listPublications("t1"),
+      "GET /v1/publications",
+      null,
+    ],
+    [
+      "lista as publicações do cofre",
+      (api) => api.listPublications("t1", "v 1"),
+      "GET /v1/publications?vault_id=v+1",
+      null,
+    ],
+  ])("%s com o tenant no cabeçalho", async (_name, call, line, body) => {
+    const fake = new FakeFetch().respondWith(200, { items: [], total: 0 });
+    await call(apiWith(fake));
+    const request = onlyRequest(fake);
+    expect(`${request.method} ${request.url}`).toBe(
+      line.replace(" ", " http://api.test"),
+    );
+    expect(request.headers.get("x-markupp-tenant")).toBe("t1");
+    expect(body === null ? null : await request.json()).toEqual(body);
+  });
+});
+
+describe("HttpMarkuppApi nas ligações", () => {
+  it.each<[string, AdminCall, string, unknown]>([
+    [
+      "lista as ligações que a nota faz",
+      (api) => api.listLinks("t1", "n/1", { direction: "outgoing" }),
+      "GET /v1/notes/n%2F1/links",
+      null,
+    ],
+    [
+      "lista as ligações que chegam na nota, por tipo e página",
+      (api) =>
+        api.listLinks("t1", "n1", {
+          direction: "incoming",
+          type: "mentioned",
+          limit: 5,
+          offset: 10,
+        }),
+      "GET /v1/notes/n1/backlinks?type=mentioned&limit=5&offset=10",
+      null,
+    ],
+    [
+      "lista as recusas de ligação do cofre",
+      (api) => api.listLinkRefusals("t1", "v1", { limit: 20 }),
+      "GET /v1/vaults/v1/link-refusals?limit=20",
+      null,
+    ],
+    [
+      "recusa a ligação entre duas notas",
+      (api) => api.refuseLink("t1", "v1", ["n1", "n2"]),
+      "POST /v1/vaults/v1/link-refusals",
+      { note_ids: ["n1", "n2"] },
+    ],
+    [
+      "desfaz a recusa de ligação",
+      (api) => api.undoLinkRefusal("t1", "v1", "r/1"),
+      "DELETE /v1/vaults/v1/link-refusals/r%2F1",
+      null,
+    ],
+  ])("%s com o tenant no cabeçalho", async (_name, call, line, body) => {
+    const fake = new FakeFetch().respondWith(200, []);
+    await call(apiWith(fake));
+    const request = onlyRequest(fake);
+    expect(`${request.method} ${request.url}`).toBe(
+      line.replace(" ", " http://api.test"),
+    );
+    expect(request.headers.get("x-markupp-tenant")).toBe("t1");
+    expect(body === null ? null : await request.json()).toEqual(body);
+  });
+
+  it("lê e grava o embedding da instância em /v1/instance/embedding sem tenant", async () => {
+    const view = { provider: "local", api_key_set: false };
+    const fake = new FakeFetch().respondWith(200, view).respondWith(200, view);
+    const api = apiWith(fake);
+    expect(await api.getInstanceEmbedding()).toEqual(view);
+    await api.setInstanceEmbedding({ provider: "local", api_key: "" });
+    const [get, put] = fake.requests;
+    expect(`${get?.method} ${get?.url}`).toBe(
+      "GET http://api.test/v1/instance/embedding",
+    );
+    expect(`${put?.method} ${put?.url}`).toBe(
+      "PUT http://api.test/v1/instance/embedding",
+    );
+    expect(await put?.json()).toEqual({ provider: "local", api_key: "" });
+    expect(put?.headers.has("x-markupp-tenant")).toBe(false);
   });
 });

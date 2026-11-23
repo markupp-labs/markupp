@@ -4,7 +4,7 @@
 # Cada entrada vence em Graph::STORED_FOR, e o cache de produção tem teto de tamanho (config/environments/production.rb): as
 # combinações de filtros que ninguém mais pede saem sozinhas.
 Graph = Data.define(:nodes, :links) do
-  # O cofre inteiro; orphans, unresolved e inferred false escondem, community recorta.
+  # O cofre inteiro; orphans, unresolved, inferred e automatic false escondem, community recorta.
   def self.of_vault(api, vault_id, store: Rails.cache, **filters)
     revalidated(api, MarkuppApi.path("v1", "vaults", vault_id, "graph", **filters), store)
   end
@@ -12,6 +12,11 @@ Graph = Data.define(:nodes, :links) do
   # As notas a até depth saltos da nota, com os mesmos filtros.
   def self.around_note(api, note_id, store: Rails.cache, **filters)
     revalidated(api, MarkuppApi.path("v1", "notes", note_id, "graph", **filters), store)
+  end
+
+  # A publicação da nota pública, lida sem conta (ADR-0048), com os nós pelo id público.
+  def self.of_public_note(api, public_id, store: Rails.cache)
+    revalidated(api, MarkuppApi.path("v1", "public", "notes", public_id, "graph"), store)
   end
 
   def self.revalidated(api, path, store)
@@ -24,7 +29,11 @@ Graph = Data.define(:nodes, :links) do
     from_api(revision.body)
   end
 
-  def self.from_api(body) = new(nodes: body["nodes"].map { built(Graph::Node, it) }, links: body["links"].map { built(Graph::Link, it) })
+  # O grafo público identifica o nó pelo public_id (o id interno nunca sai da API); vira o id do nó aqui.
+  def self.from_api(body)
+    nodes = body["nodes"].map { built(Graph::Node, { "id" => it["public_id"] }.compact.merge(it)) }
+    new(nodes:, links: body["links"].map { built(Graph::Link, it) })
+  end
 
   def self.built(type, attributes) = type.new(**type.members.to_h { [ it, attributes[it.to_s] ] })
 

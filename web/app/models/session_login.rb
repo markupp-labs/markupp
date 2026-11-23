@@ -8,7 +8,7 @@ class SessionLogin
 
   # Devolve o par de tokens da API, ou nil com o motivo em :base. Campo vazio conta como credencial errada.
   def submit(public_api)
-    public_api.post("/auth/login", email:, password:)
+    public_api.post("/v1/auth/login", email:, password:)
   rescue MarkuppApi::InvalidCredentials, MarkuppApi::InvalidRequest
     errors.add(:base, :invalid_credentials) && nil
   rescue MarkuppApi::LocalAuthDisabled

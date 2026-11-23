@@ -10,8 +10,9 @@ import (
 )
 
 // refreshVaultGraph refaz o que depende do grafo inteiro do cofre. As ligações
-// inferidas vêm primeiro, porque entram no grafo da centralidade e das comunidades.
-// O PageRank e o Louvain que param no teto são avisados em logger.
+// inferidas vêm primeiro, porque a ligação automática não repete par já ligado, e
+// todas entram no grafo da centralidade e das comunidades. O PageRank e o Louvain que
+// param no teto são avisados em logger.
 func refreshVaultGraph(ctx context.Context, q *gen.Queries, vaultID, searchConfig string, logger *slog.Logger) error {
 	if err := q.DeleteInferredLinks(ctx, vaultID); err != nil {
 		return fmt.Errorf("delete inferred links of vault %q: %w", vaultID, err)
@@ -20,18 +21,43 @@ func refreshVaultGraph(ctx context.Context, q *gen.Queries, vaultID, searchConfi
 	if err != nil {
 		return err
 	}
-	inferred, err := inferLinks(ctx, q, vaultID, searchConfig, vaultgraph.New(noteIDs, edges))
+	if err := inferLinks(ctx, q, vaultID, searchConfig, vaultgraph.New(noteIDs, edges)); err != nil {
+		return err
+	}
+	if err := refreshVaultAutomaticLinks(ctx, q, vaultID, searchConfig); err != nil {
+		return err
+	}
+	return refreshVaultRanking(ctx, q, vaultID, logger)
+}
+
+// refreshVaultAutomaticLinks refaz as ligações automáticas do cofre: menções,
+// relacionadas e semânticas.
+func refreshVaultAutomaticLinks(ctx context.Context, q *gen.Queries, vaultID, searchConfig string) error {
+	if err := refreshVaultMentionLinks(ctx, q, vaultID, searchConfig); err != nil {
+		return err
+	}
+	if err := refreshVaultRelatedLinks(ctx, q, vaultID); err != nil {
+		return err
+	}
+	return refreshVaultSemanticLinks(ctx, q, vaultID)
+}
+
+// refreshVaultRanking relê o grafo com todas as ligações e grava a centralidade e as
+// comunidades.
+func refreshVaultRanking(ctx context.Context, q *gen.Queries, vaultID string, logger *slog.Logger) error {
+	noteIDs, edges, err := loadVaultEdges(ctx, q, vaultID)
 	if err != nil {
 		return err
 	}
-	g := vaultgraph.New(noteIDs, append(edges, inferred...))
+	g := vaultgraph.New(noteIDs, edges)
 	if err := saveCentrality(ctx, q, vaultID, noteIDs, g, logger); err != nil {
 		return err
 	}
 	return saveCommunities(ctx, q, vaultID, g, logger)
 }
 
-// loadVaultEdges lê as notas e as ligações resolvidas do cofre.
+// loadVaultEdges lê as notas e as ligações resolvidas do cofre, com as automáticas
+// marcadas.
 func loadVaultEdges(ctx context.Context, q *gen.Queries, vaultID string) ([]string, []vaultgraph.Edge, error) {
 	noteIDs, err := q.ListVaultNoteIDs(ctx, vaultID)
 	if err != nil {
@@ -43,7 +69,7 @@ func loadVaultEdges(ctx context.Context, q *gen.Queries, vaultID string) ([]stri
 	}
 	edges := make([]vaultgraph.Edge, len(rows))
 	for i, r := range rows {
-		edges[i] = vaultgraph.Edge{Source: r.SourceID, Target: r.TargetID}
+		edges[i] = vaultgraph.Edge{Source: r.SourceID, Target: r.TargetID, Automatic: r.Automatic}
 	}
 	return noteIDs, edges, nil
 }

@@ -150,7 +150,13 @@ func compareMentions(a, b notes.Mention) int {
 // par cujo título é stopword ou comum, em mais de max(5% das notas do cofre, 5)
 // (Mihalcea e Csomai, 2007), fica de fora.
 func (g *PostgresNoteGraph) anchorPriors(ctx context.Context, q *gen.Queries, vaultID string, pairs []anchorPair) (map[anchorPair]float64, error) {
-	params := gen.MentionAnchorStatsParams{SearchConfig: g.searchConfig, VaultID: vaultID}
+	return anchorPriors(ctx, q, g.searchConfig, vaultID, pairs)
+}
+
+// anchorPriors é a probabilidade de cada par título e nota com o índice léxico na
+// configuração de texto searchConfig, a mesma do indexador.
+func anchorPriors(ctx context.Context, q *gen.Queries, searchConfig, vaultID string, pairs []anchorPair) (map[anchorPair]float64, error) {
+	params := gen.MentionAnchorStatsParams{SearchConfig: searchConfig, VaultID: vaultID}
 	for _, pair := range uniquePairs(pairs) {
 		params.TitleKeys, params.TargetIds = append(params.TitleKeys, pair.titleKey), append(params.TargetIds, pair.targetID)
 	}

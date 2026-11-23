@@ -54,9 +54,18 @@ type Config struct {
 	OAuthResources []OAuthResource
 	// MCPUpstreamURL é o servidor MCP para onde /mcp é encaminhado. Vazia, /mcp não existe.
 	MCPUpstreamURL string
+	// PanelUpstreamURL é o painel para onde a raiz / é encaminhada. Vazia, a raiz não
+	// encaminha nada e o painel vive em host próprio.
+	PanelUpstreamURL string
 	// MCPSecretPath é o arquivo onde o servidor escreve o segredo do MCP da mesma origem,
 	// num volume que o servidor MCP lê.
 	MCPSecretPath string
+	// PanelRelaySecret é o segredo com que o painel se apresenta como relay da leitura
+	// pública. Vazio no Load, vem do banco em WithInstanceSecrets.
+	PanelRelaySecret string
+	// PanelRelaySecretPath é o arquivo onde o servidor escreve o segredo de relay do
+	// painel, num volume que só o painel lê.
+	PanelRelaySecretPath string
 	// OAuthAccessMinutes é a validade do access token emitido pelo OAuth.
 	OAuthAccessMinutes int
 	// OAuthRefreshDays é a validade do refresh token emitido pelo OAuth.
@@ -86,25 +95,45 @@ type Config struct {
 	// RateLimitPerMinute é quantas tentativas por minuto cada IP e cada email têm nas
 	// rotas de conta (ADR-0044).
 	RateLimitPerMinute int
+	// PublicRateLimitPerMinute é quantas leituras por minuto cada IP tem nas rotas
+	// públicas das notas publicadas (ADR-0048), somadas todas as rotas.
+	PublicRateLimitPerMinute int
+	// InviteLimitPerAccount e InviteLimitPerTenant são quantos convites cabem em 24
+	// horas, por conta em todos os tenants dela e por tenant (#50).
+	InviteLimitPerAccount int
+	InviteLimitPerTenant  int
 	// TrustedProxies são as redes dos proxies cujo X-Forwarded-For o limite de
-	// tentativas aceita. Vazia, o limite usa só o IP da conexão.
+	// tentativas aceita e os proxies do painel e do MCP repassam. Vazia, o limite usa só
+	// o IP da conexão, e os proxies descartam o header de entrada.
 	TrustedProxies []netip.Prefix
+	// LoginProviders são os provedores externos de login, na ordem de
+	// MARKUPP_LOGIN_PROVIDERS. Vazia, só há email e senha (ADR-0054).
+	LoginProviders []LoginProvider
+	// InstanceAdmins são os emails, em minúsculas, das contas que administram a
+	// instância. Vazia, ninguém administra pelo painel.
+	InstanceAdmins []string
+	// SecretKey cifra os segredos que o banco guarda, como a chave do provedor de
+	// embedding. Vazia, a chave de cifra vem do banco (ADR-0057).
+	SecretKey string
 }
 
 // Default devolve a configuração usada nas variáveis não definidas.
 func Default() Config {
 	cfg := Config{
-		Port:                    8080,
-		MaxNoteSize:             50 * 1024 * 1024,
-		AuthSecret:              "",
-		DefaultTenantID:         "default",
-		JWTExpirationMinutes:    15,
-		RefreshExpirationDays:   7,
-		AuthRegistrationEnabled: false,
-		LocalAuthEnabled:        true,
-		SearchConfig:            "simple",
-		IndexInterval:           30 * time.Second,
-		RateLimitPerMinute:      5,
+		Port:                     6275,
+		MaxNoteSize:              50 * 1024 * 1024,
+		AuthSecret:               "",
+		DefaultTenantID:          "default",
+		JWTExpirationMinutes:     15,
+		RefreshExpirationDays:    7,
+		AuthRegistrationEnabled:  false,
+		LocalAuthEnabled:         true,
+		SearchConfig:             "simple",
+		IndexInterval:            30 * time.Second,
+		RateLimitPerMinute:       5,
+		InviteLimitPerAccount:    20,
+		InviteLimitPerTenant:     50,
+		PublicRateLimitPerMinute: 300,
 	}
 	setOAuthDefaults(&cfg)
 	return cfg
@@ -118,6 +147,9 @@ func Load(lookup LookupFunc) (Config, error) {
 		return Config{}, err
 	}
 	readString(lookup, "MARKUPP_SCALER_PASSWORD", &cfg.ScalerPassword)
+	if err := readInstanceAdmins(lookup, &cfg.InstanceAdmins); err != nil {
+		return Config{}, err
+	}
 	cfg.AllowedOrigins = splitOrigins(lookup)
 	port := int64(cfg.Port)
 	if err := readBounded(lookup, "MARKUPP_PORT", 1, 65535, "from 1 to 65535", &port); err != nil {
@@ -141,21 +173,46 @@ func loadServerSettings(lookup LookupFunc, cfg *Config) error {
 	if err := loadOAuthSettings(lookup, cfg); err != nil {
 		return err
 	}
+	if err := loadLoginProviders(lookup, cfg); err != nil {
+		return err
+	}
 	if err := loadMCPSettings(lookup, cfg); err != nil {
+		return err
+	}
+	if err := loadPanelRelaySettings(lookup, cfg); err != nil {
 		return err
 	}
 	if err := loadSMTPSettings(lookup, cfg); err != nil {
 		return err
 	}
-	if err := readRateLimit(lookup, &cfg.RateLimitPerMinute); err != nil {
+	if err := readRateLimits(lookup, cfg); err != nil {
+		return err
+	}
+	if err := readInviteLimits(lookup, cfg); err != nil {
 		return err
 	}
 	return readTrustedProxies(lookup, &cfg.TrustedProxies)
 }
 
-func readRateLimit(lookup LookupFunc, target *int) error {
+// readRateLimits lê o limite das rotas de conta e o da leitura pública.
+func readRateLimits(lookup LookupFunc, cfg *Config) error {
+	if err := readLimit(lookup, "MARKUPP_RATE_LIMIT_PER_MINUTE", &cfg.RateLimitPerMinute); err != nil {
+		return err
+	}
+	return readLimit(lookup, "MARKUPP_PUBLIC_RATE_LIMIT_PER_MINUTE", &cfg.PublicRateLimitPerMinute)
+}
+
+func readInviteLimits(lookup LookupFunc, cfg *Config) error {
+	if err := readLimit(lookup, "MARKUPP_INVITE_LIMIT_PER_ACCOUNT", &cfg.InviteLimitPerAccount); err != nil {
+		return err
+	}
+	return readLimit(lookup, "MARKUPP_INVITE_LIMIT_PER_TENANT", &cfg.InviteLimitPerTenant)
+}
+
+// readLimit lê um limite inteiro de 1 a 10000 da variável name.
+func readLimit(lookup LookupFunc, name string, target *int) error {
 	limit := int64(*target)
-	if err := readBounded(lookup, "MARKUPP_RATE_LIMIT_PER_MINUTE", 1, 10000, "from 1 to 10000", &limit); err != nil {
+	if err := readBounded(lookup, name, 1, 10000, "from 1 to 10000", &limit); err != nil {
 		return err
 	}
 	*target = int(limit)
@@ -234,6 +291,9 @@ func LoadIndexer(lookup LookupFunc) (Config, error) {
 	if err := readInterval(lookup, "MARKUPP_INDEX_INTERVAL", &cfg.IndexInterval); err != nil {
 		return Config{}, err
 	}
+	if err := readSecretKey(lookup, &cfg.SecretKey); err != nil {
+		return Config{}, err
+	}
 	return cfg, nil
 }
 
@@ -286,7 +346,7 @@ func splitOrigins(lookup LookupFunc) []string {
 const minAuthSecretBytes = 32
 
 func loadAuthSettings(lookup LookupFunc, cfg *Config) error {
-	if err := readAuthSecret(lookup, &cfg.AuthSecret); err != nil {
+	if err := readSecret(lookup, "MARKUPP_AUTH_SECRET", &cfg.AuthSecret); err != nil {
 		return err
 	}
 	readString(lookup, "MARKUPP_DEFAULT_TENANT_ID", &cfg.DefaultTenantID)
@@ -310,14 +370,16 @@ func loadAuthFlags(lookup LookupFunc, cfg *Config) error {
 	return readBool(lookup, "MARKUPP_AUTH_LOCAL_ENABLED", &cfg.LocalAuthEnabled)
 }
 
-func readAuthSecret(lookup LookupFunc, target *string) error {
-	val, _ := lookup("MARKUPP_AUTH_SECRET")
+// readSecret lê em target o segredo da variável key, exigindo o tamanho mínimo do segredo
+// do JWT. O erro cita o tamanho, nunca o valor.
+func readSecret(lookup LookupFunc, key string, target *string) error {
+	val, _ := lookup(key)
 	trimmed := strings.TrimSpace(val)
 	if trimmed == "" {
 		return nil
 	}
 	if len(trimmed) < minAuthSecretBytes {
-		return fmt.Errorf("MARKUPP_AUTH_SECRET has %d bytes, expected at least %d bytes of random data", len(trimmed), minAuthSecretBytes)
+		return fmt.Errorf("%s has %d bytes, expected at least %d bytes of random data", key, len(trimmed), minAuthSecretBytes)
 	}
 	*target = trimmed
 	return nil

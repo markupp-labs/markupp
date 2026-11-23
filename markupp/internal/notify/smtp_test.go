@@ -65,7 +65,7 @@ func TestSMTPMailer_Send_EntregaAoServidor(t *testing.T) {
 	var caixa caixaDoMailpit
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&caixa))
 	require.Len(t, caixa.Messages, 1)
-	assert.Contains(t, caixa.Messages[0].Subject, "Equipe A")
+	assert.Equal(t, "Convite para um tenant no markupp", caixa.Messages[0].Subject)
 	assert.Equal(t, "nova@markupp.dev", caixa.Messages[0].To[0].Address)
 }
 
@@ -172,4 +172,19 @@ func TestSMTPMailer_RemetenteIlegivel_RetornaErroComOValor(t *testing.T) {
 
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "sem-arroba")
+}
+
+func TestSMTPMailer_Send_MandaTextoEHTMLComoAlternativas(t *testing.T) {
+	servidor := &servidorSMTPFalso{}
+	mailer, err := notify.NewSMTPMailer(servidor.sobe(t))
+	require.NoError(t, err)
+
+	require.NoError(t, mailer.Send(context.Background(), notify.InviteMessage(detalhesDeTeste(), "tok", "convites@markupp.dev", "")))
+
+	mensagem := servidor.lido(&servidor.mensagem)
+	assert.Regexp(t, `(?m)^Content-Type: multipart/alternative; boundary="[^"]+"\r?$`, mensagem)
+	texto, html := strings.Index(mensagem, "Content-Type: text/plain; charset=utf-8"), strings.Index(mensagem, "Content-Type: text/html; charset=utf-8")
+	assert.Positive(t, texto)
+	assert.Greater(t, html, texto, "o cliente mostra a ultima alternativa que entende, entao o HTML vem depois")
+	assert.Contains(t, mensagem, "Content-Transfer-Encoding: quoted-printable", "o HTML passa do limite de 998 bytes por linha do 8bit")
 }

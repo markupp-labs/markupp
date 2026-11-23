@@ -21,7 +21,7 @@ func TestDeleteTenant_Owner_ApagaEAuditaQuemEQualTenant(t *testing.T) {
 	clock := defaultClock()
 	dona := identity.Actor{UserID: "dona", TenantID: "t1", Role: identity.RoleOwner}
 
-	require.NoError(t, auth.NewAdminService(repo, clock, false).DeleteTenant(context.Background(), dona))
+	require.NoError(t, auth.NewAdminService(repo, clock, false, limitesDeTeste).DeleteTenant(context.Background(), dona))
 
 	assert.True(t, repo.tenantDeleted)
 	assert.Equal(t, auth.AuditEventRecord{
@@ -36,7 +36,7 @@ func TestDeleteTenant_PapelAbaixoDeOwner_RecusaSemApagar(t *testing.T) {
 		repo := &fakeAdminRepository{}
 		ator := identity.Actor{UserID: "u1", TenantID: "t1", Role: papel}
 
-		err := auth.NewAdminService(repo, defaultClock(), false).DeleteTenant(context.Background(), ator)
+		err := auth.NewAdminService(repo, defaultClock(), false, limitesDeTeste).DeleteTenant(context.Background(), ator)
 
 		require.ErrorIs(t, err, auth.ErrNotOwner, papel)
 		assert.Contains(t, err.Error(), `"`+papel+`"`)

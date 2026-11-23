@@ -160,6 +160,60 @@ class MarkuppApiTest < ActiveSupport::TestCase
     server.close
   end
 
+  test "sends the IP of the visitor of the public reading in X-Forwarded-For" do
+    server = FakeHttpServer.new(status: "200 OK", body: "{}")
+    thread = server.serve_once
+
+    MarkuppApi.new(server.url, forwarded_for: "203.0.113.9").get("/v1/public/notes/AbCdEf123456")
+    thread.join
+    assert_equal "203.0.113.9", server.requested_headers["x-forwarded-for"]
+    assert_not server.requested_headers.key?("authorization")
+  ensure
+    server.close
+  end
+
+  test "authenticates as the relay of the public reading when it forwards the IP of the visitor" do
+    server = FakeHttpServer.new(status: "200 OK", body: "{}")
+    thread = server.serve_once
+
+    MarkuppApi.new(server.url, forwarded_for: "203.0.113.9", relay: FakePublicRelay.new("Basic cmVsYXk=")).get("/v1/public/notes/AbCdEf123456")
+    thread.join
+    assert_equal "Basic cmVsYXk=", server.requested_headers["authorization"]
+    assert_equal "203.0.113.9", server.requested_headers["x-forwarded-for"]
+  ensure
+    server.close
+  end
+
+  test "keeps the relay credential out of the calls that do not forward a visitor" do
+    server = FakeHttpServer.new(status: "200 OK", body: "[]")
+    thread = server.serve_once
+
+    MarkuppApi.new(server.url, access_token: "jwt-1", relay: FakePublicRelay.new("Basic cmVsYXk=")).get("/notes")
+    thread.join
+    assert_equal "Bearer jwt-1", server.requested_headers["authorization"]
+  ensure
+    server.close
+  end
+
+  test "maps the error codes of the publications to their classes" do
+    {
+      [ "422 Unprocessable Entity", "confirmation_mismatch" ] => MarkuppApi::ConfirmationMismatch,
+      [ "403 Forbidden", "publish_forbidden" ] => MarkuppApi::PublishForbidden,
+      [ "409 Conflict", "already_published" ] => MarkuppApi::AlreadyPublished,
+      [ "404 Not Found", "publication_not_found" ] => MarkuppApi::PublicationNotFound,
+      [ "429 Too Many Requests", "rate_limited" ] => MarkuppApi::RateLimited
+    }.each do |(status, code), error_class|
+      error = assert_post_raises(error_class, %({"error":"#{code}","message":"recusado"}), status:)
+      assert_equal error_class, error.class
+    end
+    assert_operator MarkuppApi::PublishForbidden, :<, MarkuppApi::Forbidden
+    assert_operator MarkuppApi::PublicationNotFound, :<, MarkuppApi::NotFound
+  end
+
+  test "an unknown 429 is RateLimited" do
+    assert_answer_raises(MarkuppApi::RateLimited, "", "429 Too Many Requests") { it.get("/v1/public/notes/AbCdEf123456") }
+  end
+
   test "patch sends the body as JSON" do
     server = FakeHttpServer.new(status: "204 No Content", body: "")
     thread = server.serve_once
@@ -189,6 +243,12 @@ class MarkuppApiTest < ActiveSupport::TestCase
     error = assert_answer_raises(MarkuppApi::NotFound, '{"error":"request_not_found","message":"recusado"}', "404 Not Found") { it.get("/v1/oauth/requests/r1") }
 
     assert_equal "MarkuppApi::OAuthRequestNotFound", error.class.name
+  end
+
+  test "maps the authorization that is gone to AuthorizationNotFound, a kind of NotFound" do
+    error = assert_answer_raises(MarkuppApi::NotFound, '{"error":"authorization_not_found","message":"recusado"}', "404 Not Found") { it.delete("/v1/me/authorizations/a1") }
+
+    assert_equal "MarkuppApi::AuthorizationNotFound", error.class.name
   end
 
   test "maps the tenant that is gone to TenantNotFound, a kind of NotFound" do
@@ -325,6 +385,16 @@ class MarkuppApiTest < ActiveSupport::TestCase
   test "invalid name is a kind of InvalidRequest and vault member not found a kind of NotFound" do
     assert_operator MarkuppApi::InvalidName, :<, MarkuppApi::InvalidRequest
     assert_operator MarkuppApi::VaultMemberNotFound, :<, MarkuppApi::NotFound
+  end
+
+  test "maps the error codes of the link refusal routes to their classes" do
+    { [ "400 Bad Request", "same_note" ] => MarkuppApi::SameNote,
+      [ "422 Unprocessable Content", "note_outside_vault" ] => MarkuppApi::NoteOutsideVault,
+      [ "404 Not Found", "link_refusal_not_found" ] => MarkuppApi::LinkRefusalNotFound }.each do |(status, code), error_class|
+      assert_answer_raises(error_class, %({"error":"#{code}","message":"recusado"}), status) { it.post("/v1/vaults/v/link-refusals", note_ids: %w[a b]) }
+    end
+    assert_operator MarkuppApi::SameNote, :<, MarkuppApi::InvalidRequest
+    assert_operator MarkuppApi::LinkRefusalNotFound, :<, MarkuppApi::NotFound
   end
 
   test "path appends the query, leaving out the parameters without value" do

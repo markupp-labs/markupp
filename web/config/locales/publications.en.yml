@@ -1,0 +1,88 @@
+en:
+  markupp_api:
+    errors:
+      publish_forbidden: "Only the owner and the admins publish folders and vaults; a note, whoever edits it."
+  shortcuts:
+    names:
+      publish_note: "Publish the note"
+      publish: "Publish the row in focus"
+      vault_publications: "Publications"
+      vault_publish: "Publish the vault"
+  notes:
+    form:
+      publish: "Publish"
+      public: "Public"
+      move: "Move"
+      move_warning: "%{title} is public through the published folder %{folder}. Moving it out of %{folder} makes 1 note private, and its public link stops working."
+      public_hint: "Anyone with the link reads this note. Opens its public page."
+    sidebar:
+      public: "public"
+    tree_menu:
+      publish: "Publish"
+  publications:
+    new:
+      title:
+        note: "Publish the note %{name}"
+        folder: "Publish the folder %{name}"
+        vault: "Publish the vault %{name}"
+      note_count:
+        one: "1 note goes public."
+        other: "%{count} notes go public."
+      includes_future: "Any notes added to %{name} later go public too."
+      readers: "Anyone with the link reads them, people and AI agents without an account, and can search them and follow their links."
+      type_name: "Type %{name} to confirm"
+      indexable: "Let search engines list it"
+      publish: "Publish"
+      cancel: "Cancel"
+    create:
+      published_note: "Published. Anyone with the link reads it: %{url}"
+      published:
+        one: "Published 1 note. Settings > Publications lists everything that is public."
+        other: "Published %{count} notes. Settings > Publications lists everything that is public."
+    refused:
+      confirmation_mismatch: "Nothing was published: type %{name} exactly as shown."
+      already_published: "This is already public. Settings > Publications lists it."
+      not_found: "Nothing was published: the note or the folder is gone."
+  settings:
+    vault_general:
+      show:
+        publication: "Publication"
+        publication_hint: "Publishing the vault opens all its notes, and the ones added later, to anyone with the link, without an account."
+        publish_vault: "Publish vault"
+        vault_public: "The whole vault is public. Unpublish it in"
+    nav:
+      publications: "Publications"
+    publications:
+      gone: "That publication was already gone."
+      index:
+        hint: "Everything here is open to anyone with the link, people and AI agents without an account. Unpublish to make it private again; its public links stop working."
+        vault: "Vault"
+        all_vaults: "All vaults"
+        show: "Show"
+        what: "What"
+        who: "Published by"
+        when: "On"
+        empty:
+          title: "Nothing public here"
+          hint: "Publish a note from its header, a folder from the tree menu, or the vault from its General settings."
+      publication:
+        kinds:
+          note: "Note"
+          folder: "Folder"
+          vault: "Vault"
+        note_count:
+          one: "1 note"
+          other: "%{count} notes"
+        indexed: "search engines may list it"
+        not_indexed: "hidden from search engines"
+        index: "Let search engines list it"
+        hide: "Hide from search engines"
+        unpublish: "Unpublish"
+        confirm_unpublish:
+          one: "Unpublish %{name}? 1 note goes private and its public link stops working, unless a publication of its own covers it."
+          other: "Unpublish %{name}? %{count} notes go private and their public links stop working, except the ones a publication of their own covers."
+      update:
+        indexed: "Search engines may list %{name} now."
+        hidden: "%{name} is hidden from search engines now."
+      destroy:
+        unpublished: "%{name} is private again. Its public links stopped working."

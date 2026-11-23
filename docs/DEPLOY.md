@@ -5,6 +5,37 @@ REST que os clientes consomem. A imagem é publicada em `ghcr.io/markupp-labs/ma
 tag `v*`, e a configuração vem de variáveis de ambiente, descritas no
 [README do servidor](../markupp/README.md#configuração).
 
+## Docker
+
+Para rodar o markupp numa máquina, sem cluster, o `docker-compose.yaml` da raiz sobe o
+PostgreSQL, as migrações, o servidor, o indexador, o indexador de embedding, o notificador, o
+painel e o servidor MCP a partir das imagens publicadas, sem buildar nada. Baixe o `docker-compose.yaml` e o
+`example.env` da raiz do repositório para uma pasta, copie o `example.env` para `.env` e
+preencha:
+
+- `POSTGRES_PASSWORD`, só com letras e números;
+- `SECRET_KEY_BASE`, gerado com `openssl rand -hex 64`;
+- `MARKUPP_VERSION`, a versão das imagens, sem o `v` da tag.
+
+```sh
+docker compose up -d
+```
+
+Tudo em `http://localhost:6275`: o painel na raiz, a API em `/v1` e o servidor MCP em `/mcp`.
+Só essa porta é publicada; `MARKUPP_PORT` troca o lado do host. Na primeira subida o servidor gera os próprios segredos e os guarda
+no banco (ADR-0041).
+
+Com um proxy HTTPS na frente (Caddy, Traefik, Nginx), aponte `MARKUPP_PUBLIC_URL` para o
+domínio público e troque `MARKUPP_PANEL_FORCE_SSL` para `true`. O painel segue na raiz do mesmo
+domínio (ADR-0058); `MARKUPP_PANEL_URL` só é preciso com o painel em subdomínio próprio.
+
+Sem `MARKUPP_SMTP_URL`, a instância roda sem email: o notificador fica ocioso e o convite
+devolve o token para ser repassado à mão. Com SMTP, preencha também `MARKUPP_SMTP_FROM`, e o
+convite passa a sair por email.
+
+Para atualizar, troque `MARKUPP_VERSION` no `.env` e rode `docker compose up -d` de novo. As
+migrações rodam antes do servidor.
+
 ## Kubernetes
 
 A instalação em Kubernetes é o componente Pulumi em `deploy/pulumi` (ADR-0025). Ele cria, no
@@ -69,7 +100,14 @@ Os emails de convite, verificação de email e troca de senha levam primeiro o l
 painel que recebe o token (/invite_acceptance/new, /email_confirmation/new e
 /password_reset/new, com ?token=), e depois o token em texto para quem não conseguir abrir o
 link. O painel é o de `MARKUPP_PANEL_URL` no notificador, a mesma variável do OAuth descrita
-abaixo, com `http://localhost:3999` como padrão. No componente, ela vem de `email.panelUrl`.
+abaixo, com `MARKUPP_PUBLIC_URL` como padrão. No componente, ela vem de `email.panelUrl`.
+
+Em 24 horas, cada conta emite até 20 convites, somando todos os tenants dela, e cada tenant
+recebe até 50; acima disso a API responde 429 `invite_limit_reached`. Convite revogado continua
+contando, e as variáveis `MARKUPP_INVITE_LIMIT_PER_ACCOUNT` e `MARKUPP_INVITE_LIMIT_PER_TENANT`,
+de 1 a 10000, trocam os dois números. A contagem fica no banco e vale entre réplicas. Com SMTP,
+só convida a conta que já confirmou o email, e o assunto do convite não leva o nome do tenant:
+os dois impedem que o remetente da instância vire relay de spam e phishing.
 
 A API limita login, refresh, aceite de convite, pedido de verificação de email e pedido e troca
 de senha a 5 tentativas por minuto por IP e, quando o corpo traz email, por email (ADR-0044).
@@ -83,7 +121,26 @@ redes tem o X-Forwarded-For lido da direita para a esquerda, e o IP que conta é
 não é proxy confiável. Header vazio ou malformado fica com o IP da conexão, e conexão de fora da
 lista nunca tem o header lido. Liste só as redes dos proxies: um CIDR que cubra clientes deixa
 qualquer um deles escolher o IP que conta. No componente, `trustedProxies` recebe a lista de
-CIDRs e `rateLimitPerMinute` o limite, e os dois vão só para a API.
+CIDRs e `rateLimitPerMinute` o limite, e os dois vão só para a API. A mesma lista decide o que
+o Go repassa ao painel e ao servidor MCP que encaminha: de proxy confiável, o X-Forwarded-For
+de entrada segue com o salto da conexão no fim; de outra conexão, segue só esse salto.
+
+A leitura sem conta das notas publicadas (ADR-0048), nas rotas `/v1/public/notes/{public_id}`,
+tem limite próprio: 300 pedidos por minuto por IP, somadas todas essas rotas, trocado pela
+variável `MARKUPP_PUBLIC_RATE_LIMIT_PER_MINUTE`, de 1 a 10000. O IP segue as mesmas regras de
+`MARKUPP_TRUSTED_PROXIES`. Um site que renderiza as páginas no servidor lendo essas rotas faz
+todos os pedidos com o IP dele, então o limite precisa caber no tráfego do site, já descontado o
+que o cache por ETag dele economiza. A migração 00040 cria o papel `markupp_reader`, sem login,
+para essa leitura, com o mesmo CREATEROLE que a migração já exige para os outros papéis.
+
+O painel serve as notas públicas em /p/ (ADR-0048) e lê a API pelo Service, passando o IP de
+quem visita no X-Forwarded-For. O Go só lê esse IP porque o painel se apresenta como o relay da
+leitura pública (ADR-0050), com um segredo só dele, que vale mesmo com o MCP e o OAuth
+desligados e só para a leitura pública. O Go gera esse segredo no banco na primeira subida,
+como o do MCP, e o escreve no arquivo de `MARKUPP_PANEL_RELAY_SECRET_PATH`: o compose monta
+esse volume no Go e no painel, e o painel não monta o segredo do MCP. No cluster, o componente
+gera o segredo num Secret e o passa à API e ao painel em `MARKUPP_PANEL_RELAY_SECRET`, que no
+Go troca o segredo do banco e precisa de ao menos 32 bytes.
 
 Sem outra opção, o componente cria um Gateway próprio nas portas 80 e 443. Em cluster onde
 outro Gateway já ocupa essas portas, como o Cilium em hostNetwork, que exige porta única por
@@ -91,10 +148,10 @@ Gateway, informe `existingGateway` com nome, namespace e listener. O componente 
 HTTPRoute, e o Gateway precisa aceitar rotas do namespace do markupp em `allowedRoutes`. Nesse
 caso o certificado fica com quem administra o Gateway.
 
-Para subir o painel, informe `panel` com `image` e `host`. Ele fica num host próprio, porque no
-host da API as rotas dos dois colidem, com uma réplica só: a renovação do token mora na memória
-do processo. O componente gera a `secret_key_base` num Secret, aponta o painel para a API pelo
-Service e passa à API o `MARKUPP_PANEL_URL`, que leva o consentimento do OAuth e os links dos
+Para subir o painel, informe `panel` com `image` e `host`. Ele fica num host próprio, sem o
+encaminhamento pelo Go do compose, com uma réplica só: a renovação do token mora na memória
+do processo. O componente gera a `secret_key_base` e o segredo de relay do painel num Secret,
+aponta o painel para a API pelo Service e passa à API o `MARKUPP_PANEL_URL`, que leva o consentimento do OAuth e os links dos
 emails para o painel. Com `existingGateway`, `panel.sectionName` escolhe o listener do host do
 painel; com Gateway próprio, o componente abre um listener para ele.
 
@@ -102,6 +159,16 @@ Para subir o servidor MCP, informe `mcp` com `image`. Ele atende na mesma origem
 `/mcp`, encaminhado pelo Go ao Service dele, e o componente guarda num Secret o segredo do
 resource, que vai para a API em `MARKUPP_OAUTH_RESOURCES` e para o MCP em
 `MARKUPP_MCP_RESOURCE_SECRET`.
+
+Para administrar a instância pelo painel, informe `instanceAdmins` com os emails das contas,
+que vão para a API em `MARKUPP_INSTANCE_ADMINS`. O componente gera a `MARKUPP_SECRET_KEY` no
+Secret do banco e a passa à API e ao embedder.
+
+O componente sobe o embedder num Deployment de uma réplica, com a imagem `markupp-embedder` da
+mesma tag de `image` (ou `embedderImage`, obrigatória com `image` fixada por digest), rodando
+`embed-loop`. Os pesos do modelo local ficam num PersistentVolumeClaim de 2Gi em
+`/var/lib/markupp/models`, com a `storageClass` do banco. Sem `MARKUPP_EMBEDDING_PROVIDER`, vale a
+escolha do administrador da instância no painel.
 
 ### Stack dev
 
@@ -152,11 +219,11 @@ com o indexador e o notificador em laço e o Mailpit, que recebe todo email de d
 make run
 ```
 
-Nada precisa ser configurado antes: `docker compose up` também funciona. Servidor em
-`http://localhost:8080`, servidor MCP em `http://localhost:8080/mcp` e caixa de email em
-`http://localhost:8025`. Na primeira subida o servidor gera os próprios segredos e os guarda no
-banco (ADR-0041). O consentimento do OAuth abre no painel em `http://localhost:3999`, que roda
-fora do compose. Os testes rodam no host e precisam de Go e de Docker:
+O ambiente de desenvolvimento vive em `compose.dev.yaml`. Nada precisa ser configurado antes:
+`docker compose -f compose.dev.yaml up` também funciona. Como no self-host, tudo fica em
+`http://localhost:6275` (painel na raiz, API em `/v1`, MCP em `/mcp`), e a caixa de email do
+Mailpit em `http://127.0.0.1:8025`. Na primeira subida o servidor gera os próprios segredos e os guarda
+no banco (ADR-0041). Os testes rodam no host e precisam de Go e de Docker:
 
 ```sh
 make test
@@ -172,20 +239,20 @@ make e2e-mcp
 
 ## Validar
 
-Smoke test pela API. Com o banco vazio, o primeiro login cria a conta como owner do tenant
-inicial:
+Smoke test pela API. Com o banco vazio, o primeiro cadastro cria a conta como owner do tenant
+inicial, e já devolve a sessão:
 
 ```sh
-TOKEN=$(curl -s -X POST http://localhost:8080/auth/login \
+TOKEN=$(curl -s -X POST http://localhost:6275/v1/accounts \
   -H 'Content-Type: application/json' \
   -d '{"email":"admin@exemplo.dev","password":"troque-esta-senha"}' \
   | grep -o '"access_token":"[^"]*"' | cut -d'"' -f4)
-ID=$(curl -s -X POST http://localhost:8080/notes \
+ID=$(curl -s -X POST http://localhost:6275/v1/notes \
   -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
   -d '{"path":"validacao.md","content":"oi"}' \
   | grep -o '"id":"[^"]*"' | cut -d'"' -f4)
-curl -s -H "Authorization: Bearer $TOKEN" http://localhost:8080/notes/$ID
-curl -s -X DELETE -H "Authorization: Bearer $TOKEN" http://localhost:8080/notes/$ID -w '%{http_code}\n'
+curl -s -H "Authorization: Bearer $TOKEN" http://localhost:6275/v1/notes/$ID
+curl -s -X DELETE -H "Authorization: Bearer $TOKEN" http://localhost:6275/v1/notes/$ID -w '%{http_code}\n'
 ```
 
 Esperado: o login devolve `access_token`, `POST` retorna JSON com `id` UUID, `GET` traz a nota,
@@ -202,15 +269,119 @@ lê em cada tenant e quando a mais recente mudou. Qualquer conta cria tenant em
 `POST /tenants` e vira owner dele. Só o owner apaga o tenant, em `DELETE /tenants/{id}`, e
 apaga de vez: cofres, notas, vínculos e convites vão junto, e as contas continuam.
 
+O login só entra em conta que já existe; a conta nasce no cadastro, em `POST /v1/accounts` ou
+na tela "Criar conta" do painel. Depois da primeira, o cadastro só aceita conta nova com
+`MARKUPP_AUTH_REGISTRATION_ENABLED=true`; desligado, ele responde 403 `registration_disabled` e
+a conta nasce só pelo convite.
+
 A conta de auto-registro (`MARKUPP_AUTH_REGISTRATION_ENABLED=true`) nasce sem email provado e
 não recebe convite pela lista até verificar. Com SMTP configurado, ela recebe o email de
 verificação no cadastro, confirma com o token logada nela em `POST /auth/email/verify` e pode
 pedir outro em `POST /auth/email/verification`. Sem SMTP, nada
 prova o email dela, e qualquer pessoa pode ocupar um email alheio antes do dono: só ligue o
-auto-registro com SMTP.
+auto-registro com SMTP. No componente, `registrationEnabled: true` liga o auto-registro, e ele é
+recusado sem o bloco `email`.
 
 Com SMTP, quem esqueceu a senha pede a troca em `POST /auth/password/forgot` e troca com o token
 do email em `POST /auth/password/reset`.
+
+## Login externo
+
+Opcional e desligado por padrão ([ADR-0054](adrs/ADR-0054-login-por-provedor-externo.md)): a
+instalação pode aceitar login por qualquer provedor OpenID Connect (Google, Keycloak, Authentik)
+e pelo GitHub. Sem configuração, o painel não mostra botão nenhum.
+
+`MARKUPP_LOGIN_PROVIDERS` lista os ids, separados por vírgula, com letras minúsculas, dígitos e
+hífen. Cada id lê as próprias variáveis, com o id em maiúsculas e o hífen virando sublinhado:
+
+- `MARKUPP_LOGIN_<ID>_CLIENT_ID` e `MARKUPP_LOGIN_<ID>_CLIENT_SECRET`: obrigatórias, do cadastro
+  do app no provedor
+- `MARKUPP_LOGIN_<ID>_ISSUER`: o issuer OIDC, exatamente como o provedor publica (Google:
+  `https://accounts.google.com`). Sem ela, só o id `github` é aceito, e usa o GitHub
+- `MARKUPP_LOGIN_<ID>_NAME`: o nome do botão. Padrão: o id
+
+No provedor, cadastre como redirect URI o callback do painel, `MARKUPP_PANEL_URL/auth/<id>/callback`, ou
+`MARKUPP_PUBLIC_URL/auth/<id>/callback` com o painel na raiz (ex.: `https://notas.exemplo.com/auth/google/callback`). No GitHub, crie um OAuth App; o login pede
+os escopos read:user e user:email.
+
+O login só entra em conta que já tem a identidade vinculada. A primeira vez com um provedor é
+cadastro, pelo botão da tela "Criar conta", e segue o auto-registro como o cadastro por senha; a
+conta nasce com o email que o provedor informa, já verificada quando o provedor o afirma
+verificado. Quem já tem conta vincula o provedor logado, em Configurações > Conta, e o servidor
+nunca vincula pelo email. Desvincular recusa a última forma de entrar que vale na instalação.
+
+O docker-compose.yaml não repassa essas variáveis. Ponha-as num `compose.override.yaml` ao lado
+dele, que o docker compose lê sozinho:
+
+```yaml
+services:
+  markupp:
+    environment:
+      MARKUPP_LOGIN_PROVIDERS: google,github
+      MARKUPP_LOGIN_GOOGLE_ISSUER: https://accounts.google.com
+      MARKUPP_LOGIN_GOOGLE_NAME: Google
+      MARKUPP_LOGIN_GOOGLE_CLIENT_ID: ${MARKUPP_LOGIN_GOOGLE_CLIENT_ID}
+      MARKUPP_LOGIN_GOOGLE_CLIENT_SECRET: ${MARKUPP_LOGIN_GOOGLE_CLIENT_SECRET}
+      MARKUPP_LOGIN_GITHUB_NAME: GitHub
+      MARKUPP_LOGIN_GITHUB_CLIENT_ID: ${MARKUPP_LOGIN_GITHUB_CLIENT_ID}
+      MARKUPP_LOGIN_GITHUB_CLIENT_SECRET: ${MARKUPP_LOGIN_GITHUB_CLIENT_SECRET}
+```
+
+Os segredos ficam no `.env`. Um provedor OIDC fora do ar não impede o servidor de subir: a
+descoberta acontece no primeiro login, e o botão responde que o provedor não respondeu.
+
+## Ligação por sentido
+
+Opcional e desligada por padrão ([ADR-0053](adrs/ADR-0053-ligacoes-automaticas.md)): o
+indexador de embedding transforma cada nota num vetor, e o servidor liga as notas que tratam do
+mesmo assunto. Ele roda com `embed-loop` na imagem `ghcr.io/markupp-labs/markupp-embedder`, que
+é o serviço `embedder` do `docker-compose.yaml`.
+
+O provedor se escolhe de dois jeitos ([ADR-0057](adrs/ADR-0057-provedor-de-embedding-no-banco.md)):
+
+- pelo painel, em Settings, grupo Instance, seção Embedding, que só aparece para o
+  administrador da instância: a conta cujo email, já verificado, está em
+  `MARKUPP_INSTANCE_ADMINS` (emails separados por vírgula, lida pela API). Sem a variável,
+  ninguém administra pelo painel. A API expõe o mesmo em `GET` e `PUT /v1/instance/embedding`,
+  e o servidor MCP nas ferramentas `get_embedding_provider` e `set_embedding_provider`. O
+  embedder relê a escolha a cada `MARKUPP_INDEX_INTERVAL` e troca de provedor sem reiniciar;
+- pela variável `MARKUPP_EMBEDDING_PROVIDER` do embedder. Definida, mesmo como `none`, ela vence
+  a escolha do painel, que aparece travada. Vazia ou ausente, vale a escolha do painel, com
+  `none` como padrão.
+
+Os provedores são:
+
+- `none`: sem ligação por sentido, e nada é baixado. O embedder fica ocioso e apaga os
+  vetores de um provedor anterior;
+- `local`: o modelo roda na própria máquina, no ONNX Runtime, em amd64 ou arm64. Ao ligar, ele
+  baixa os arquivos do modelo para `MARKUPP_EMBEDDING_MODEL_DIR` (padrão
+  `/var/lib/markupp/models`, um volume no compose), uns 300 MB em x86 com AVX2 e 1,2 GB nas
+  outras CPUs, e recusa arquivo com hash diferente
+  ([ADR-0056](adrs/ADR-0056-pedacos-e-media.md)). O painel mostra o estado do modelo: baixando,
+  pronto ou erro, com a mensagem. Gravar a mesma escolha de novo tenta outra vez;
+- `openai-compat`: pede os vetores a um endpoint `/embeddings` no formato da OpenAI, com a URL
+  (a base, sem `/embeddings`), o modelo e, se o servidor pedir, a chave. Pelas variáveis, são
+  `MARKUPP_EMBEDDING_URL`, `MARKUPP_EMBEDDING_MODEL` e `MARKUPP_EMBEDDING_API_KEY`. O texto das
+  notas sai da máquina.
+
+A chave escolhida pelo painel fica no banco, cifrada com AES-256-GCM, e a API nunca a devolve.
+A chave de cifra é a `MARKUPP_SECRET_KEY` (ao menos 32 bytes, gere com
+`openssl rand -hex 32`), que a API e o embedder precisam receber iguais. Sem ela, o servidor gera
+uma no banco na primeira subida, e aí quem tem uma cópia do banco também decifra a chave.
+Definir a `MARKUPP_SECRET_KEY` depois é tratado sozinho: a API sela de novo a chave guardada
+com ela. Trocar o valor ou perder a `MARKUPP_SECRET_KEY` deixa a chave guardada ilegível, e ela precisa ser
+gravada de novo pelo painel.
+
+`MARKUPP_EMBEDDING_CHUNK_TOKENS` (padrão 512) é o tamanho do pedaço de nota que vira um vetor.
+Trocar de provedor ou de modelo apaga os vetores e refaz os de todas as notas.
+
+Os vetores ficam no Postgres, com o pgvector ([ADR-0055](adrs/ADR-0055-vetores-no-postgres.md)).
+O compose e o componente Pulumi usam a imagem oficial do pgvector, `pgvector/pgvector`, com o
+Postgres 17 em Debian. Num PostgreSQL externo, instale o pgvector e crie a extensão com um
+superusuário (`CREATE EXTENSION vector;`) antes de migrar.
+
+O banco criado antes, na imagem `postgres` em Alpine, ordena o texto de outro jeito que o
+Debian; a migração da ligação por sentido refaz os índices das tabelas do markupp uma vez.
 
 ## OAuth
 
@@ -220,7 +391,8 @@ self-host normalmente define é a URL pública:
 - `MARKUPP_PUBLIC_URL`: o issuer, como `https://notas.exemplo.com`, sem caminho, query nem
   fragmento. Padrão: `http://localhost` na porta do servidor
 - `MARKUPP_PANEL_URL`: o painel que faz o login e o consentimento, como
-  `https://notas.exemplo.com/painel`, sem query nem fragmento. Padrão: `http://localhost:3999`
+  `https://painel.exemplo.com`, sem query nem fragmento. Padrão: `MARKUPP_PUBLIC_URL`, com o
+  painel na raiz, encaminhado pelo Go
 - `MARKUPP_OAUTH_RESOURCES`: os servidores de recursos que aceitam os tokens, em pares
   `url=segredo` separados por vírgula, cada segredo com ao menos 32 bytes (ex.:
   `openssl rand -hex 32`) e cada URL uma vez só, sem query nem fragmento. Sem ela, o único
@@ -297,8 +469,11 @@ pontas:
 | Variável | Onde | Padrão | O que é |
 |---|---|---|---|
 | `MARKUPP_MCP_UPSTREAM_URL` | Go | sem `/mcp` | endereço interno do servidor MCP, para onde `/mcp` é encaminhado |
+| `MARKUPP_PANEL_UPSTREAM_URL` | Go | sem painel na raiz | endereço interno do painel, para onde vai todo caminho que o Go não atende |
 | `MARKUPP_MCP_SECRET_PATH` | Go e MCP | sem arquivo | arquivo do segredo do MCP: o Go escreve e o MCP lê |
-| `MARKUPP_MCP_API_URL` | MCP | `http://localhost:8080` | endereço do servidor Go visto pelo MCP; aceita http em qualquer host |
+| `MARKUPP_PANEL_RELAY_SECRET_PATH` | Go e painel | sem arquivo | arquivo do segredo de relay do painel: o Go escreve e o painel lê |
+| `MARKUPP_PANEL_RELAY_SECRET` | Go e painel | o do banco no Go, o do arquivo no painel | segredo de relay do painel, com ao menos 32 bytes |
+| `MARKUPP_MCP_API_URL` | MCP | `http://localhost:6275` | endereço do servidor Go visto pelo MCP; aceita http em qualquer host |
 | `MARKUPP_MCP_RESOURCE_URL` | MCP | issuer + `/mcp` | URL pública do MCP com o caminho do endpoint; o caminho vira a rota |
 | `MARKUPP_MCP_RESOURCE_SECRET` | MCP | o do arquivo | segredo do par em `MARKUPP_OAUTH_RESOURCES`, com ao menos 32 bytes |
 | `MARKUPP_MCP_PORT` | MCP | 3000 | porta em que o MCP escuta, em todas as interfaces |
@@ -308,8 +483,21 @@ pelo Go e pelo arquivo do segredo. No cluster, com o MCP em subdomínio próprio
 `MARKUPP_OAUTH_RESOURCES` do Go e o `MARKUPP_MCP_RESOURCE_URL` e o `MARKUPP_MCP_RESOURCE_SECRET`
 do MCP vêm do Secret.
 
+O mesmo servidor atende, sem OAuth, a rota do endpoint seguida de `/public` (`/mcp/public` por
+padrão), que o Go também encaminha (ADR-0050). Ali o agente só lê as notas publicadas, pelo id
+público, com as ferramentas `read_public_note`, `list_public_notes` e `search_public_notes`, que
+chamam as rotas `/v1/public/notes/{public_id}` da API sem token. O limite de
+`MARKUPP_PUBLIC_RATE_LIMIT_PER_MINUTE` vale também para elas, contado pelo IP de cada agente, sem
+configuração: o MCP repassa ao Go o X-Forwarded-For que recebeu em `/mcp/public` junto com o HTTP
+Basic do resource dele (a URL e o segredo que já usa na troca de token). Só com essa credencial o
+Go trata o último salto do header, o que ele mesmo escreveu ao encaminhar, como a conexão do
+agente, e segue dali a regra de `MARKUPP_TRUSTED_PROXIES`, como num pedido direto à API. Sem a
+credencial, o header é ignorado. Não exponha a porta do MCP fora da rede interna: quem a alcança
+sem passar pelo Go escolhe o IP que conta.
+
 ## Aviso
 
-Com o banco vazio, quem fizer o primeiro login vira owner do tenant inicial
-([ADR-0035](adrs/ADR-0035-conta-global-com-vinculo-por-tenant.md)).
-Faça esse login antes de expor o servidor publicamente.
+Com o banco vazio, quem criar a primeira conta, pelo painel em "Criar conta" ou em
+`POST /v1/accounts`, vira owner do tenant inicial
+([ADR-0035](adrs/ADR-0035-conta-global-com-vinculo-por-tenant.md)). Isso vale mesmo com o
+auto-registro desligado. Crie essa conta antes de expor o servidor publicamente.

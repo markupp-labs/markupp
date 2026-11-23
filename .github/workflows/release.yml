@@ -21,6 +21,9 @@ jobs:
             context: ./web
           - image: markupp-mcp
             context: ./mcp
+          - image: markupp-embedder
+            context: ./markupp
+            dockerfile: Dockerfile.embedder
     permissions:
       contents: read
       packages: write
@@ -69,7 +72,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: ${{ matrix.context }}
-          file: ${{ matrix.context }}/Dockerfile
+          file: ${{ matrix.context }}/${{ matrix.dockerfile || 'Dockerfile' }}
           platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
@@ -126,8 +129,11 @@ jobs:
           TAG: ${{ github.ref_name }}
         run: npm version "${TAG#v}" --no-git-tag-version
 
+      # O npm pack não cria a pasta de destino; sem ela, falha com ENOENT ao gravar o .tgz.
       - name: Pack tarball
-        run: npm pack --pack-destination "$RUNNER_TEMP/npm"
+        run: |
+          mkdir -p "$RUNNER_TEMP/npm"
+          npm pack --pack-destination "$RUNNER_TEMP/npm"
 
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:

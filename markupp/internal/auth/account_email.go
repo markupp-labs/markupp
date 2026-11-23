@@ -126,7 +126,7 @@ func (s *AccountEmailService) ResetPassword(ctx context.Context, token, password
 	if err := s.checkPasswordFlow(); err != nil {
 		return err
 	}
-	if err := validatePassword(password); err != nil {
+	if err := checkNewPassword(password); err != nil {
 		return err
 	}
 	if strings.TrimSpace(token) == "" {

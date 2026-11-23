@@ -57,8 +57,11 @@ func (r *PostgresAdminRepository) ListInvites(ctx context.Context) ([]auth.Invit
 // CreateInviteTx grava o convite e a auditoria juntos e, com byEmail, a notificação
 // que entrega o convite. Devolve auth.ErrAlreadyMember quando o email já é de um
 // usuário do tenant.
-func (r *PostgresAdminRepository) CreateInviteTx(ctx context.Context, inv auth.Invite, tokenHash string, event auth.AuditEventRecord, byEmail bool) error {
+func (r *PostgresAdminRepository) CreateInviteTx(ctx context.Context, inv auth.Invite, tokenHash string, event auth.AuditEventRecord, byEmail bool, check func(auth.InviteQuota) error) error {
 	return inActorTx(ctx, r.pool, func(q *gen.Queries) error {
+		if err := checkInviteQuota(ctx, q, inv, check); err != nil {
+			return err
+		}
 		rows, err := q.CreateInvite(ctx, toCreateInviteParams(inv, tokenHash))
 		if err != nil {
 			return fmt.Errorf("insert invite for %q: %w", inv.Email, err)
@@ -71,6 +74,16 @@ func (r *PostgresAdminRepository) CreateInviteTx(ctx context.Context, inv auth.I
 		}
 		return q.CreateAuditEvent(ctx, toCreateAuditEventParams(event))
 	})
+}
+
+// checkInviteQuota lê a cota sob as travas do tenant e da conta, que seguram até o fim
+// da transação, e passa a check.
+func checkInviteQuota(ctx context.Context, q *gen.Queries, inv auth.Invite, check func(auth.InviteQuota) error) error {
+	row, err := q.GetInviteQuota(ctx, inv.CreatedAt.Add(-auth.InviteWindow))
+	if err != nil {
+		return fmt.Errorf("read invite quota of %q in tenant %q: %w", inv.InvitedBy, inv.TenantID, err)
+	}
+	return check(auth.InviteQuota{InviterVerified: row.InviterVerified, ByInviter: int(row.ByInviter), ByTenant: int(row.ByTenant)})
 }
 
 func enqueueInvite(ctx context.Context, q *gen.Queries, inviteID string, byEmail bool) error {

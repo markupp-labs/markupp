@@ -53,13 +53,13 @@ func TestV1SearchNotes_CofreSemAcesso_Retorna403(t *testing.T) {
 	assert.Equal(t, http.StatusForbidden, rec.Code)
 }
 
-func TestSearchNotesSemPrefixo_MantemARespostaSemRelevanciaEBuscaEmTodosOsCofres(t *testing.T) {
+func TestV1NotesSearch_MantemARespostaSemRelevanciaEBuscaEmTodosOsCofres(t *testing.T) {
 	svc := &fakeService{searchResult: []notes.SearchResult{resultadoDeTeste}}
 
-	rec := requisicaoV1(svc, nil, "member", http.MethodGet, "/notes/search?query=kubernetes&vault=va", "")
+	rec := requisicaoV1(svc, nil, "member", http.MethodGet, "/v1/notes/search?query=kubernetes&vault=va", "")
 
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
 	assert.JSONEq(t, `[{"id":"n1","vault_id":"va","path":"pasta/kubernetes.md","updated_at":"2026-10-16T12:00:00Z",
 		"snippet":"o \u0002kubernetes\u0003"}]`, rec.Body.String())
-	assert.Empty(t, svc.searchArgs.vaultID, "a rota sem prefixo nao filtra por cofre")
+	assert.Empty(t, svc.searchArgs.vaultID, "/notes/search nao filtra por cofre")
 }

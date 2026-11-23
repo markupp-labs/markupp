@@ -4,6 +4,7 @@ en:
       title: "Settings"
       close: "Close settings"
       accounts: "Account"
+      authorizations: "Authorizations"
       appearances: "Appearance"
       editors: "Editor"
       agents: "Agents"
@@ -24,6 +25,30 @@ en:
         password_hint: "The server emails a token to %{email}; use it to choose the new password."
         change_password: "Change password"
         have_reset_token: "I have a reset token"
+      identities:
+        title: "Connected accounts"
+        hint: "Log in with these accounts instead of a password. Disconnecting keeps at least one way to log in."
+        connect: "Connect %{provider}"
+        disconnect: "Disconnect %{provider}"
+    identities:
+      destroy:
+        disconnected: "%{provider} disconnected."
+        last_identity: "This is the only way left to log in to your account. Connect another one first."
+    authorizations:
+      index:
+        hint: "Clients you allowed to act on your account. Revoking one logs it out; the others keep working."
+        empty: "No authorizations yet. Clients such as markupp-mcp and markupp-cli show up here once you log in with them."
+        client: "Client"
+        authorized: "Authorized"
+        scopes: "Scopes"
+      oauth_grant:
+        authorized: "Authorized"
+        scopes: "Scopes"
+        revoke: "Revoke"
+        confirm_revoke: "Revoke the authorization for %{client}?"
+      destroy:
+        revoked: "Authorization revoked."
+        not_found: "That authorization is no longer active."
     appearances:
       show:
         title: "Appearance"
@@ -123,3 +148,5 @@ en:
         invalid_request: "Enter an address like name@example.com."
         already_member: "%{email} is already a member."
         role_above_own: "You can't give or change a role above your own."
+        email_not_verified: "Confirm your email in account settings before sending invites."
+        invite_limit_reached: "You reached the invite limit for the last 24 hours. Try again later."

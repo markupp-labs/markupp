@@ -20,7 +20,7 @@ class NotesController < ApplicationController
   # com a sessão, o tenant e o papel de quem lê, sem a árvore.
   def show
     respond_to do |format|
-      format.html
+      format.html { @published_folders = published_folders_of(@note) }
       format.json { render json: @note.attributes.slice("path", "content") }
     end
   end
@@ -109,6 +109,22 @@ class NotesController < ApplicationController
 
     def set_tree
       @tree = load_note_tree
+    end
+
+    # As pastas publicadas que cobrem a nota, quando só elas a fazem pública: mover para fora delas a torna privada
+    # (ADR-0048). A nota privada nem pede as publicações; sem a lista, a página segue sem o aviso.
+    def published_folders_of(note)
+      return [] unless note.public_id
+
+      publications = Publication.all(credential.api, vault_id: note.vault_id)
+      return [] if publications.any? { it.kind == "vault" || it.note_id == note.id }
+
+      publications.select { it.kind == "folder" && note.path.start_with?("#{it.folder_path}/") }.map(&:folder_path)
+    rescue MarkuppApi::Error => error
+      raise unless error.instance_of?(MarkuppApi::Error)
+
+      log_api_event("markupp_publications_unreachable", error, level: :error, note_id: note.id)
+      []
     end
 
     def path_error_status = @note.errors.of_kind?(:path, :taken) ? :conflict : :unprocessable_content

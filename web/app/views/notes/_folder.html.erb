@@ -23,7 +23,7 @@
       <%= link_to note_path(entry), role: "treeitem", title: entry.path, data: { path: entry.location },
                   aria: { current: ("page" if entry.id == current&.id) },
                   class: "tree-row aria-[current=page]:bg-accent-soft aria-[current=page]:text-ink" do %>
-        <%= tree_guide(branch) %><span class="truncate"><%= entry.title %></span>
+        <%= tree_guide(branch) %><span class="truncate"><%= entry.title %></span><%= public_note_mark(entry) %>
       <% end %>
     <% end %>
   </li>

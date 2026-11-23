@@ -9,6 +9,8 @@
     <%= tree_menu_item(:rename, note_only: true) %>
     <%# Apagar pede confirmação antes (data-turbo-confirm do form, com o caminho da linha), com o texto do Delete da nota. %>
     <%= tree_menu_item(:delete, note_only: true, danger: true, type: "submit", form: "tree_delete_note") %>
+    <%# A pasta só para owner e admin: o note_tree_controller.js esconde o item na pasta para os outros. %>
+    <%= tree_menu_item(:publish) %>
   <% end %>
   <%= tree_menu_item(:copy_path) %>
   <%= tree_menu_item(:copy_wikilink, note_only: true) %>

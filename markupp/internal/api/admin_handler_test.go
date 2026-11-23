@@ -62,8 +62,8 @@ func adminRequest(svc api.AdminService, role, method, path, body string) *httpte
 // adminOnlyRoutes são as rotas de membros e convites que só owner e admin alcançam;
 // listar os colegas, em GET /users, fica aberto a todo membro do tenant.
 var adminOnlyRoutes = [][2]string{
-	{http.MethodGet, "/users/invites"}, {http.MethodPost, "/users/invites"}, {http.MethodDelete, "/users/invites/c1"},
-	{http.MethodPatch, "/users/u2"}, {http.MethodDelete, "/users/u2"},
+	{http.MethodGet, "/v1/users/invites"}, {http.MethodPost, "/v1/users/invites"}, {http.MethodDelete, "/v1/users/invites/c1"},
+	{http.MethodPatch, "/v1/users/u2"}, {http.MethodDelete, "/v1/users/u2"},
 }
 
 func TestAdminRoutes_PapelSemAdministracao_Retorna403(t *testing.T) {
@@ -77,7 +77,7 @@ func TestAdminRoutes_PapelSemAdministracao_Retorna403(t *testing.T) {
 }
 
 func TestAdminRoutes_Owner_Administra(t *testing.T) {
-	rec := adminRequest(&fakeAdminService{}, "owner", http.MethodGet, "/users/invites", "")
+	rec := adminRequest(&fakeAdminService{}, "owner", http.MethodGet, "/v1/users/invites", "")
 
 	assert.Equal(t, http.StatusOK, rec.Code)
 }
@@ -97,7 +97,7 @@ func TestAdminRoutes_SemToken_Retorna401(t *testing.T) {
 	router := api.NewRouter(api.RouterDeps{Admin: &fakeAdminService{}, Tokens: &fakeTokenValidator{}, Tenants: tenantDeTeste})
 	rec := httptest.NewRecorder()
 
-	router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/users", nil))
+	router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/users", nil))
 
 	assert.Equal(t, http.StatusUnauthorized, rec.Code)
 }
@@ -105,7 +105,7 @@ func TestAdminRoutes_SemToken_Retorna401(t *testing.T) {
 func TestAdminRoutes_ListMembers_Admin_DevolveMembrosComPapel(t *testing.T) {
 	svc := &fakeAdminService{members: []auth.Member{{UserID: "u1", Email: "a@markupp.dev", Role: "owner"}}}
 
-	rec := adminRequest(svc, "admin", http.MethodGet, "/users", "")
+	rec := adminRequest(svc, "admin", http.MethodGet, "/v1/users", "")
 
 	assert.Equal(t, http.StatusOK, rec.Code)
 	var resp []map[string]any
@@ -122,7 +122,7 @@ func TestAdminRoutes_IssueInvite_DevolveTokenUmaVez(t *testing.T) {
 		Token:  "tok-secreto",
 	}}
 
-	rec := adminRequest(svc, "admin", http.MethodPost, "/users/invites", `{"email":"nova@markupp.dev","role":"member"}`)
+	rec := adminRequest(svc, "admin", http.MethodPost, "/v1/users/invites", `{"email":"nova@markupp.dev","role":"member"}`)
 
 	assert.Equal(t, http.StatusCreated, rec.Code)
 	assert.Equal(t, identity.Actor{UserID: "u1", TenantID: "t1", Role: "admin"}, svc.issuedBy)
@@ -136,7 +136,7 @@ func TestAdminRoutes_IssueInvite_DevolveTokenUmaVez(t *testing.T) {
 func TestAdminRoutes_IssueInviteComEmail_OmiteOToken(t *testing.T) {
 	svc := &fakeAdminService{issued: auth.IssuedInvite{Invite: auth.Invite{ID: "c1", Email: "nova@markupp.dev", Role: "member"}}}
 
-	rec := adminRequest(svc, "admin", http.MethodPost, "/users/invites", `{"email":"nova@markupp.dev","role":"member"}`)
+	rec := adminRequest(svc, "admin", http.MethodPost, "/v1/users/invites", `{"email":"nova@markupp.dev","role":"member"}`)
 
 	assert.Equal(t, http.StatusCreated, rec.Code)
 	var resp map[string]any
@@ -151,16 +151,33 @@ func TestAdminRoutes_IssueInvite_ErrosDeDominio(t *testing.T) {
 		auth.ErrAlreadyMember: http.StatusConflict,
 	}
 	for errDominio, status := range casos {
-		rec := adminRequest(&fakeAdminService{issueErr: errDominio}, "admin", http.MethodPost, "/users/invites", `{"email":"x","role":"y"}`)
+		rec := adminRequest(&fakeAdminService{issueErr: errDominio}, "admin", http.MethodPost, "/v1/users/invites", `{"email":"x","role":"y"}`)
 
 		assert.Equal(t, status, rec.Code, errDominio.Error())
+	}
+}
+
+func TestAdminRoutes_IssueInvite_CotaEVerificacao_CodigoEStatus(t *testing.T) {
+	casos := []struct {
+		err    error
+		status int
+		code   string
+	}{
+		{auth.ErrInviteLimit, http.StatusTooManyRequests, "invite_limit_reached"},
+		{auth.ErrEmailNotVerified, http.StatusForbidden, "email_not_verified"},
+	}
+	for _, c := range casos {
+		rec := adminRequest(&fakeAdminService{issueErr: c.err}, "admin", http.MethodPost, "/v1/users/invites", `{"email":"x@y.dev","role":"member"}`)
+
+		assert.Equal(t, c.status, rec.Code, c.code)
+		assert.Contains(t, rec.Body.String(), `"`+c.code+`"`)
 	}
 }
 
 func TestAdminRoutes_ListInvites_NaoExpoeToken(t *testing.T) {
 	svc := &fakeAdminService{invites: []auth.Invite{{ID: "c1", Email: "nova@markupp.dev", Role: "member"}}}
 
-	rec := adminRequest(svc, "admin", http.MethodGet, "/users/invites", "")
+	rec := adminRequest(svc, "admin", http.MethodGet, "/v1/users/invites", "")
 
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.Contains(t, rec.Body.String(), "nova@markupp.dev")

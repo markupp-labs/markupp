@@ -1,15 +1,15 @@
-# Membro do tenant ativo, como GET /users devolve. Posto e último owner quem decide é a API; o painel só espelha.
+# Membro do tenant ativo, como GET /v1/users devolve. Posto e último owner quem decide é a API; o painel só espelha.
 TenantMember = Data.define(:id, :email, :role, :joined_at) do
   extend TimestampedFromApi
 
-  def self.all(api) = api.get("/users").map { from_api(it) }
+  def self.all(api) = api.get("/v1/users").map { from_api(it) }
 
   # Métodos de classe porque o controller só tem o id.
   def self.change_role(api, id, role) = api.patch(member_path(id), role:)
 
   def self.remove(api, id) = api.delete(member_path(id))
 
-  def self.member_path(id) = MarkuppApi.path("users", id)
+  def self.member_path(id) = MarkuppApi.path("v1", "users", id)
 
   def self.from_api(attributes) = timestamped_from(attributes, :joined_at)
 

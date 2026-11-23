@@ -3,6 +3,15 @@ en:
     show:
       title: "Graph"
       keys: "j k move  ↵ open  + - zoom  0 fit  esc back"
+    vault:
+      label: "Whole vault"
+    legend:
+      label: "Links by method"
+      manual: "manual"
+      inferred: "inferred"
+      mentioned: "mention"
+      related: "similar text"
+      semantic: "meaning"
     filters:
       title: "Filters"
       show: "show"

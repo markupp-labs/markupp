@@ -24,7 +24,7 @@ func (f *fakeAdminService) DeleteTenant(ctx context.Context, actor identity.Acto
 func deleteTenant(svc api.AdminService, resolver *fakeTenantResolver, tenantID string) *httptest.ResponseRecorder {
 	validator := &fakeTokenValidator{claims: auth.Claims{Subject: "u1"}}
 	router := api.NewRouter(api.RouterDeps{Admin: svc, Tokens: validator, Tenants: resolver})
-	req := httptest.NewRequest(http.MethodDelete, "/tenants/"+tenantID, nil)
+	req := httptest.NewRequest(http.MethodDelete, "/v1/tenants/"+tenantID, nil)
 	req.Header.Set("Authorization", "Bearer token-valido")
 	req.Header.Set(api.TenantHeader, "tenant-do-cabecalho")
 	rec := httptest.NewRecorder()

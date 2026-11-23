@@ -11,6 +11,7 @@ class SessionsControllerTest < ActionDispatch::IntegrationTest
       assert_select "input[type=email][name=?][required]", "session[email]"
       assert_select "label", "Password"
       assert_select "input[type=password][name=?][required]", "session[password]"
+      assert_select "button[type=button][aria-controls=session_password][aria-pressed=false][aria-label=?]", "Show password"
       assert_select "button", "Log in"
     end
     assert_select "nav#sidebar", count: 0

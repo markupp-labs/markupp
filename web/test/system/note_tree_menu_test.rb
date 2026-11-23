@@ -5,7 +5,7 @@ require "application_system_test_case"
 class NoteTreeMenuTest < ApplicationSystemTestCase
   NOTES = [ { id: "1", path: "work/2026/goals.md", content: "# Goals\n" }, { id: "2", path: "work/plan.md", content: "# Plan\n" },
             { id: "3", path: "ideas.md", content: "# Ideas\n" }, { id: "4", path: "cost$&.md", content: "# Cost\n" } ].freeze
-  NOTE_ITEMS = [ "New note here", "Rename / move", "Delete", "Copy path", "Copy wikilink" ].freeze
+  NOTE_ITEMS = [ "New note here", "Rename / move", "Delete", "Publish", "Copy path", "Copy wikilink" ].freeze
 
   setup do
     use_fake_api(notes: NOTES)
@@ -63,7 +63,7 @@ class NoteTreeMenuTest < ApplicationSystemTestCase
     visit note_path("1")
     row("2026/").right_click
 
-    assert_equal [ "New note here", "Copy path" ], menu_items
+    assert_equal [ "New note here", "Publish", "Copy path" ], menu_items
   end
 
   test "new note here opens a new note in the folder clicked or in the folder of the note" do
@@ -135,7 +135,7 @@ class NoteTreeMenuTest < ApplicationSystemTestCase
     grant_clipboard
     visit note_path("1")
     row("plan").right_click
-    assert_equal [ "Alt+N", "F2", "Delete", "Alt+Shift+C", "Alt+Shift+W" ], all("[role=menuitem]").map { it["aria-keyshortcuts"] }
+    assert_equal [ "Alt+N", "F2", "Delete", "Alt+Shift+P", "Alt+Shift+C", "Alt+Shift+W" ], all("[role=menuitem]").map { it["aria-keyshortcuts"] }
     send_keys :escape
 
     focus_row "plan"

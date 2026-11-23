@@ -21,6 +21,7 @@ FROM note_edges
 WHERE vault_id = sqlc.arg(vault_id)
   AND (sqlc.narg(note_ids)::text[] IS NULL OR source_id = ANY (sqlc.narg(note_ids)::text[]) OR target_id = ANY (sqlc.narg(note_ids)::text[]))
   AND NOT (sqlc.arg(hide_inferred)::bool AND kind = 'inferred')
+  AND NOT (sqlc.arg(hide_automatic)::bool AND kind IN ('mentioned', 'related', 'semantic'))
 ORDER BY source_id, target_id, kind, predicate NULLS FIRST;
 
 -- Ligações não resolvidas, uma por nota, chave de título, tipo e predicado, com a

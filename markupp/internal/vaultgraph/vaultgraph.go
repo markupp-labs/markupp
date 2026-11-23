@@ -13,25 +13,38 @@ const (
 	pageRankTolerance = 1e-6
 	// louvainSeed fixa a ordem de visita do Louvain: o mesmo grafo dá a mesma partição.
 	louvainSeed = 20261016
+	// automaticWeight é o peso da ligação automática no PageRank e nas comunidades; a
+	// escrita e a inferida pesam 1. Não vem de avaliação (ADR-0053).
+	automaticWeight = 0.5
 )
 
-// Edge é uma ligação resolvida de Source para Target.
+// Edge é uma ligação resolvida de Source para Target. Automatic marca a ligação
+// automática, que pesa menos que a escrita.
 type Edge struct {
-	Source string
-	Target string
+	Source    string
+	Target    string
+	Automatic bool
+}
+
+func (e Edge) weight() float64 {
+	if e.Automatic {
+		return automaticWeight
+	}
+	return 1
 }
 
 // Graph é o grafo dirigido das ligações do cofre, sem laço e sem aresta repetida,
 // com a projeção não dirigida ao lado.
 type Graph struct {
-	ids        []string
-	index      map[string]int64
-	directed   adjacency
-	undirected adjacency
+	ids                []string
+	index              map[string]int64
+	directed           adjacency
+	undirected         adjacency
+	undirectedWeighted [][]weightedEdge
 }
 
-// New monta o grafo das notas noteIDs. Ligação para si mesma, repetida ou com ponta
-// fora de noteIDs fica de fora.
+// New monta o grafo das notas noteIDs. Ligação para si mesma ou com ponta fora de
+// noteIDs fica de fora, e a repetida conta uma vez, com o peso maior.
 func New(noteIDs []string, edges []Edge) *Graph {
 	g := &Graph{ids: slices.Clone(noteIDs), index: make(map[string]int64, len(noteIDs))}
 	for i, id := range g.ids {
@@ -42,10 +55,10 @@ func New(noteIDs []string, edges []Edge) *Graph {
 		from, okFrom := g.index[e.Source]
 		to, okTo := g.index[e.Target]
 		if okFrom && okTo && from != to {
-			builder.add(from, to)
+			builder.add(from, to, e.weight())
 		}
 	}
-	g.directed, g.undirected = builder.build()
+	g.directed, g.undirected, g.undirectedWeighted = builder.build()
 	return g
 }
 
@@ -75,11 +88,12 @@ func (g *Graph) ResourceAllocation(a, b string) float64 {
 	return score
 }
 
-// PageRank devolve o PageRank de cada nota com d=0,85, e como a iteração parou: na
-// tolerância ou no teto de iterações. A massa de nota sem ligação de saída se espalha
-// por todas.
+// PageRank devolve o PageRank ponderado de cada nota com d=0,85, e como a iteração
+// parou: na tolerância ou no teto de iterações. A nota reparte a massa entre as
+// ligações de saída na proporção do peso, e a massa de nota sem saída se espalha por
+// todas.
 func (g *Graph) PageRank() (map[string]float64, Convergence) {
-	ranks, stop := pageRank(g.directed.from, damping, pageRankTolerance, pageRankMaxIterations)
+	ranks, stop := pageRank(g.directed.from, g.directed.weights, damping, pageRankTolerance, pageRankMaxIterations)
 	out := make(map[string]float64, len(ranks))
 	for i, r := range ranks {
 		out[g.ids[i]] = r
@@ -87,12 +101,12 @@ func (g *Graph) PageRank() (map[string]float64, Convergence) {
 	return out, stop
 }
 
-// Communities devolve as comunidades do Louvain na projeção não dirigida, com
+// Communities devolve as comunidades do Louvain na projeção não dirigida ponderada, com
 // resolução 1 e semente fixa, e como o Louvain parou: sem movimento ou num dos
 // tetos. Nota sozinha não é comunidade e fica de fora. Cada comunidade sai com os ids
 // em ordem, e a lista por tamanho e pelo primeiro id.
 func (g *Graph) Communities() ([][]string, Convergence) {
-	membership, stop := louvain(g.undirectedIndexes(), louvainSeed, louvainCaps)
+	membership, stop := louvain(g.undirectedWeighted, louvainSeed, louvainCaps)
 	groups := make(map[int][]string)
 	for i, c := range membership {
 		groups[c] = append(groups[c], g.ids[i])
@@ -106,18 +120,6 @@ func (g *Graph) Communities() ([][]string, Convergence) {
 	}
 	slices.SortFunc(out, bySizeThenFirst)
 	return out, stop
-}
-
-// undirectedIndexes devolve os vizinhos de cada nota na projeção não dirigida, por
-// índice e em ordem.
-func (g *Graph) undirectedIndexes() [][]int {
-	adj := make([][]int, len(g.ids))
-	for i, ns := range g.undirected.from {
-		for _, n := range ns {
-			adj[i] = append(adj[i], int(n.ID()))
-		}
-	}
-	return adj
 }
 
 func bySizeThenFirst(a, b []string) int {

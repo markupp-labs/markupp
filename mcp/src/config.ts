@@ -33,7 +33,7 @@ export type PublicUrlRule = {
   expected: string;
 };
 
-const DEFAULT_API_URL = "http://localhost:8080";
+const DEFAULT_API_URL = "http://localhost:6275";
 const DEFAULT_PORT = 3000;
 const MIN_RESOURCE_SECRET_BYTES = 32;
 const LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);

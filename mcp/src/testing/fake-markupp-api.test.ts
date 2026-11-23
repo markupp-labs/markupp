@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { FakeApiTokens, FakeMarkuppApi } from "./fake-markupp-api.js";
+import { FakeApiTokens } from "./fake-api-tokens.js";
+import { FakeMarkuppApi } from "./fake-markupp-api.js";
 import { FakeAccountId } from "./fake-vaults.js";
 
 describe("FakeApiTokens", () => {

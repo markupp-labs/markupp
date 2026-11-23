@@ -1,8 +1,8 @@
 // Faz pela API o que a pessoa faz no painel: entra por senha e aprova o pedido de
 // autorização que o authorize abriu.
 
-// Com o banco vazio, o primeiro login cria a conta como owner do tenant inicial.
-const ACCOUNT = { email: "e2e@markupp.local", password: "senha-do-e2e" };
+// Com o banco vazio, o cadastro cria a conta como owner do tenant inicial.
+const ACCOUNT = { email: "e2e@markupp.local", password: "senha-longa-do-e2e" };
 
 async function expectStatus(
   response: Response,
@@ -14,6 +14,17 @@ async function expectStatus(
   throw new Error(
     `${what} respondeu ${response.status} ${body}, esperado ${expected}`,
   );
+}
+
+// createAccount faz o primeiro cadastro, uma vez no globalSetup: depois dele o cadastro
+// fecha (sem MARKUPP_AUTH_REGISTRATION_ENABLED) e responde 403 a qualquer email.
+export async function createAccount(issuer: string): Promise<void> {
+  const response = await fetch(`${issuer}/v1/accounts`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(ACCOUNT),
+  });
+  await expectStatus(response, 201, "POST /v1/accounts");
 }
 
 // loginByPassword devolve o access token da API da conta do e2e.
@@ -32,16 +43,16 @@ export async function loginByPassword(issuer: string): Promise<string> {
 }
 
 // consentRequestId segue o authorize até a tela de consentimento do painel e lê o id
-// do pedido, que vem no caminho /oauth/authorize/<id>.
+// do pedido, que vem no caminho /oauth/requests/<id>.
 async function consentRequestId(authorizeUrl: URL): Promise<string> {
   const response = await fetch(authorizeUrl, { redirect: "manual" });
   await expectStatus(response, 302, `GET ${authorizeUrl.pathname}`);
   const location = response.headers.get("location") ?? "";
   const path = new URL(location, authorizeUrl).pathname;
-  const id = /^\/oauth\/authorize\/([^/]+)$/.exec(path)?.[1];
+  const id = /^\/oauth\/requests\/([^/]+)$/.exec(path)?.[1];
   if (!id) {
     throw new Error(
-      `authorize redirecionou para ${location}, esperado o painel em /oauth/authorize/<id>`,
+      `authorize redirecionou para ${location}, esperado o painel em /oauth/requests/<id>`,
     );
   }
   return decodeURIComponent(id);

@@ -10,6 +10,7 @@ import (
 
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/auth"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/identity"
+	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/instance"
 )
 
 const maxAuthBodyBytes = 4096
@@ -17,6 +18,7 @@ const maxAuthBodyBytes = 4096
 // AuthService é a interface do serviço de autenticação consumida pelos endpoints HTTP.
 type AuthService interface {
 	LoginLocal(ctx context.Context, email, password string) (auth.TokenPair, error)
+	Register(ctx context.Context, email, password string) (auth.TokenPair, error)
 	RefreshToken(ctx context.Context, rawRefreshToken string) (auth.TokenPair, error)
 	RevokeSession(ctx context.Context, rawRefreshToken string) error
 	GetAccount(ctx context.Context, userID string) (auth.User, error)
@@ -32,6 +34,8 @@ type AuthService interface {
 type authHandler struct {
 	svc    AuthService
 	logger *slog.Logger
+	// admins diz, em GET /auth/me, se a conta administra a instância.
+	admins instance.Admins
 }
 
 type loginRequest struct {
@@ -53,6 +57,7 @@ type userResponse struct {
 	Email         string `json:"email"`
 	EmailVerified bool   `json:"email_verified"`
 	PasswordLogin bool   `json:"password_login"`
+	InstanceAdmin bool   `json:"instance_admin"`
 }
 
 type tenantResponse struct {
@@ -90,6 +95,20 @@ func (h *authHandler) login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, pair)
+}
+
+// createAccount é o cadastro: cria a conta e já devolve a sessão dela, com 201.
+func (h *authHandler) createAccount(w http.ResponseWriter, r *http.Request) {
+	var req loginRequest
+	if !decodeJSONBody(w, r, &req) {
+		return
+	}
+	pair, err := h.svc.Register(r.Context(), req.Email, req.Password)
+	if err != nil {
+		h.handleAuthError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusCreated, pair)
 }
 
 func (h *authHandler) refresh(w http.ResponseWriter, r *http.Request) {
@@ -152,7 +171,8 @@ func (h *authHandler) me(w http.ResponseWriter, r *http.Request) {
 		writeError(w, "internal", "internal error", http.StatusInternalServerError)
 		return
 	}
-	writeJSON(w, http.StatusOK, userResponse{ID: user.ID, Email: user.Email, EmailVerified: user.EmailVerified, PasswordLogin: user.PasswordLogin})
+	writeJSON(w, http.StatusOK, userResponse{ID: user.ID, Email: user.Email, EmailVerified: user.EmailVerified, PasswordLogin: user.PasswordLogin,
+		InstanceAdmin: h.admins.Includes(user.Email, user.EmailVerified)})
 }
 
 func (h *authHandler) createTenant(w http.ResponseWriter, r *http.Request) {
@@ -201,6 +221,10 @@ func writeCredentialInputError(w http.ResponseWriter, err error) bool {
 	switch {
 	case errors.Is(err, auth.ErrEmptyEmail), errors.Is(err, auth.ErrEmptyPassword), errors.Is(err, auth.ErrPasswordTooLong):
 		writeError(w, "invalid_request", err.Error(), http.StatusBadRequest)
+	case errors.Is(err, auth.ErrPasswordTooShort):
+		writeError(w, "password_too_short", err.Error(), http.StatusBadRequest)
+	case errors.Is(err, auth.ErrCommonPassword):
+		writeError(w, "common_password", err.Error(), http.StatusBadRequest)
 	case errors.Is(err, auth.ErrLocalAuthDisabled):
 		writeError(w, "local_auth_disabled", "email and password login is disabled", http.StatusForbidden)
 	default:
@@ -220,6 +244,8 @@ func (h *authHandler) handleAuthError(w http.ResponseWriter, err error) {
 		writeError(w, "invalid_invite", auth.ErrInviteInvalid.Error(), http.StatusBadRequest)
 	case errors.Is(err, auth.ErrUserAlreadyExists):
 		writeError(w, "already_exists", "this email already has an account", http.StatusConflict)
+	case errors.Is(err, auth.ErrRegistrationDisabled):
+		writeError(w, "registration_disabled", "this installation only creates accounts by invite", http.StatusForbidden)
 	case errors.Is(err, auth.ErrRefreshTokenRevoked), errors.Is(err, auth.ErrRefreshTokenExpired), errors.Is(err, auth.ErrRefreshTokenInvalid):
 		writeError(w, "invalid_refresh_token", "refresh token revoked or expired", http.StatusUnauthorized)
 	default:

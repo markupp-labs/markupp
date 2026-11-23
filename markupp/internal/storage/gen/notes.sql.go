@@ -99,6 +99,18 @@ func (q *Queries) GetNoteByID(ctx context.Context, id string) (Note, error) {
 	return i, err
 }
 
+const getNotePublicID = `-- name: GetNotePublicID :one
+SELECT public_id FROM public_notes WHERE note_id = $1
+`
+
+// O id público da nota, para o painel marcar a nota pública (ADR-0048).
+func (q *Queries) GetNotePublicID(ctx context.Context, noteID string) (string, error) {
+	row := q.db.QueryRow(ctx, getNotePublicID, noteID)
+	var public_id string
+	err := row.Scan(&public_id)
+	return public_id, err
+}
+
 const getNoteRank = `-- name: GetNoteRank :one
 SELECT c.pagerank, c.in_degree, c.out_degree, m.community_id
 FROM notes n
@@ -163,10 +175,11 @@ func (q *Queries) ListNotes(ctx context.Context) ([]Note, error) {
 
 const listVaultNotes = `-- name: ListVaultNotes :many
 SELECT n.id, n.vault_id, n.path, n.content_sha256, n.updated_at,
-       c.pagerank, c.in_degree, c.out_degree, m.community_id
+       c.pagerank, c.in_degree, c.out_degree, m.community_id, pn.public_id
 FROM notes n
 LEFT JOIN note_centrality c ON c.note_id = n.id
 LEFT JOIN note_communities m ON m.note_id = n.id
+LEFT JOIN public_notes pn ON pn.note_id = n.id
 WHERE n.vault_id = $1
   AND ($2::bool IS NULL OR COALESCE(c.in_degree + c.out_degree = 0, false) = $2::bool)
   AND ($3::bigint IS NULL OR m.community_id = $3::bigint)
@@ -201,6 +214,7 @@ type ListVaultNotesRow struct {
 	InDegree      pgtype.Int4
 	OutDegree     pgtype.Int4
 	CommunityID   pgtype.Int8
+	PublicID      pgtype.Text
 }
 
 // A coleção não lê o conteúdo, que só GetNoteByID devolve.
@@ -234,6 +248,7 @@ func (q *Queries) ListVaultNotes(ctx context.Context, arg ListVaultNotesParams) 
 			&i.InDegree,
 			&i.OutDegree,
 			&i.CommunityID,
+			&i.PublicID,
 		); err != nil {
 			return nil, err
 		}
@@ -247,10 +262,11 @@ func (q *Queries) ListVaultNotes(ctx context.Context, arg ListVaultNotesParams) 
 
 const listVaultOrphanNotes = `-- name: ListVaultOrphanNotes :many
 SELECT n.id, n.vault_id, n.path, n.content_sha256, n.updated_at,
-       c.pagerank, c.in_degree, c.out_degree, m.community_id
+       c.pagerank, c.in_degree, c.out_degree, m.community_id, pn.public_id
 FROM notes n
 LEFT JOIN note_centrality c ON c.note_id = n.id
 LEFT JOIN note_communities m ON m.note_id = n.id
+LEFT JOIN public_notes pn ON pn.note_id = n.id
 WHERE c.vault_id = $1 AND c.in_degree = 0 AND c.out_degree = 0
   AND ($2::bigint IS NULL OR m.community_id = $2::bigint)
 ORDER BY
@@ -283,6 +299,7 @@ type ListVaultOrphanNotesRow struct {
 	InDegree      pgtype.Int4
 	OutDegree     pgtype.Int4
 	CommunityID   pgtype.Int8
+	PublicID      pgtype.Text
 }
 
 // As órfãs do cofre com o predicado fixo do índice parcial, que o plano genérico de
@@ -314,6 +331,7 @@ func (q *Queries) ListVaultOrphanNotes(ctx context.Context, arg ListVaultOrphanN
 			&i.InDegree,
 			&i.OutDegree,
 			&i.CommunityID,
+			&i.PublicID,
 		); err != nil {
 			return nil, err
 		}

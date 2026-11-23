@@ -51,6 +51,7 @@ module ShortcutsHelper
       Shortcut.of(:vim_keys_off, run: { form: { url: :vim_keys_path, params: { vim_keys: "off" }, turbo: false } }),
       Shortcut.of(:language_en, run: { form: { url: :locale_path, params: { locale: "en" }, turbo: false } }),
       Shortcut.of(:language_pt_br, run: { form: { url: :locale_path, params: { locale: "pt-BR" }, turbo: false } }),
+      Shortcut.of(:authorizations, run: { href: :settings_authorizations_path }),
       Shortcut.of(:tenants, "g t", run: { href: :tenants_path }),
       Shortcut.of(:switch_tenant, run: { click: "button[popovertarget=tenant_switcher]" }),
       # Seção General do tenant ativo nas configurações; só com tenant, que é quando o seletor está na barra.
@@ -64,6 +65,9 @@ module ShortcutsHelper
       # As seções do cofre ativo; só com cofre, que é quando o nome dele está na trilha.
       Shortcut.of(:vault_settings, run: { href: :settings_vault_path, when: "[data-current-vault]" }),
       Shortcut.of(:vault_members, run: { href: :settings_vault_members_path, when: "[data-current-vault]" }),
+      Shortcut.of(:vault_link_refusals, run: { href: :settings_link_refusals_path, when: "[data-current-vault]" }),
+      # Embedding da instância, só para quem a administra (data-instance-admin do body, nas configurações).
+      Shortcut.of(:instance_embedding, run: { href: :settings_instance_embedding_path, when: "[data-instance-admin]" }),
       # Só na Danger zone da General do cofre, para quem escreve: abre a mesma confirmação com o nome do cofre.
       Shortcut.of(:delete_vault, run: { click: "#delete_vault" }),
       # g e depois n abre o sino da barra de atividades (tenants_shortcut_controller.js), com o foco dentro dele.
@@ -78,6 +82,8 @@ module ShortcutsHelper
       Shortcut.of(:edit_mode, "Ctrl+E", run: { click: ".note-mode-edit" }, help: false),
       Shortcut.of(:read_mode, "Ctrl+E", run: { click: ".note-mode-read" }, help: false),
       Shortcut.of(:side_by_side, "Ctrl+\\", run: { click: ".note-mode-split" }),
+      # O diálogo de publicar a nota aberta (layouts/_publish_dialog); só para quem escreve, que é quem tem o botão.
+      Shortcut.of(:publish_note, "Alt+P", run: { click: "#publish_note" }),
       Shortcut.of(:path_to_content, "Tab"),
       Shortcut.of(:indent_content, "Tab", "Shift+Tab"),
       Shortcut.of(:content_to_path, "Esc Shift+Tab")
@@ -93,14 +99,17 @@ module ShortcutsHelper
       Shortcut.of(:rename, "F2"),
       Shortcut.of(:delete, "Delete"),
       Shortcut.of(:copy_path, "Alt+Shift+C"),
-      Shortcut.of(:copy_wikilink, "Alt+Shift+W")
+      Shortcut.of(:copy_wikilink, "Alt+Shift+W"),
+      Shortcut.of(:publish, "Alt+Shift+P")
     ],
     lists: [
       Shortcut.of(:list_move, "↓", "↑"),
       Shortcut.of(:palette_move, "Ctrl+J", "Ctrl+K"),
       Shortcut.of(:menu_move, "j", "k"),
-      # Nas listas de membros do cofre e do tenant (context_menu_controller.js), com o foco numa linha: pede confirmação.
-      Shortcut.of(:list_remove_member, "Delete"),
+      # Nas listas de Settings com context_menu_controller.js (membros, autorizações), com o foco numa linha: pede confirmação.
+      Shortcut.of(:list_delete, "Delete"),
+      # Na lista de recusas de ligação do cofre, com o foco numa linha: desfaz a recusa, que se refaz pela visão Links.
+      Shortcut.of(:list_undo_refusal, "Delete"),
       Shortcut.of(:list_choose, "Enter"),
       Shortcut.of(:list_close, "Esc")
     ],
@@ -122,7 +131,11 @@ module ShortcutsHelper
     vault: [
       Shortcut.of(:vault_rename, "v r", run: { href: :vault_rename_shortcut_path, when: "[data-vault-writer]" }),
       Shortcut.of(:vault_add_member, "v a", run: { href: :vault_add_member_shortcut_path, when: "[data-vault-writer]" }),
-      Shortcut.of(:vault_leave, "v q", run: { href: :vault_leave_shortcut_path, when: "[data-current-vault]" })
+      Shortcut.of(:vault_leave, "v q", run: { href: :vault_leave_shortcut_path, when: "[data-current-vault]" }),
+      # Publicar o cofre inteiro é de owner e admin, como pasta.
+      Shortcut.of(:vault_publish, "v o", run: { href: :vault_publish_shortcut_path, when: "[data-vault-admin]" }),
+      # Tudo que está público no tenant, com o cofre ativo marcado no seletor; na própria seção, foca o seletor.
+      Shortcut.of(:vault_publications, "v p", run: { href: :settings_publications_path, when: "[data-current-vault]" })
     ],
     tenants: [
       Shortcut.of(:filter_tenants, "/"),
@@ -134,7 +147,10 @@ module ShortcutsHelper
     links: [
       Shortcut.of(:links_move, "j", "k", "↓", "↑"),
       Shortcut.of(:links_open, "Enter"),
-      Shortcut.of(:links_copy_wikilink, "y")
+      Shortcut.of(:links_copy_wikilink, "y"),
+      # Na linha da ligação automática com o foco, para quem escreve: pede confirmação. A paleta aperta o botão da linha
+      # que tinha o foco antes de ela abrir.
+      Shortcut.of(:links_refuse, "r", run: { click: ".links-item:focus-within [data-links-refuse]", when: "[data-links-refuse]" })
     ],
     # Canvas do grafo, na visão Graph e na tela cheia (graph_view_controller.js), com o foco nele.
     graph: [
@@ -148,6 +164,7 @@ module ShortcutsHelper
       Shortcut.of(:graph_orphans, "o", run: GRAPH_FILTER_PRESS.("O")),
       Shortcut.of(:graph_unresolved, "u", run: GRAPH_FILTER_PRESS.("U")),
       Shortcut.of(:graph_inferred, "i", run: GRAPH_FILTER_PRESS.("I")),
+      Shortcut.of(:graph_automatic, "a", run: GRAPH_FILTER_PRESS.("A")),
       Shortcut.of(:graph_community, "c", "Shift+C", run: GRAPH_FILTER_PRESS.("C")),
       Shortcut.of(:graph_clear_filters, "x", run: GRAPH_FILTER_PRESS.("X"))
     ]
@@ -156,12 +173,13 @@ module ShortcutsHelper
   SHORTCUTS_BY_NAME = SHORTCUT_GROUPS.values.flatten.index_by(&:name).freeze
 
   # Destinos dos atalhos do cofre ativo, com a tecla depois do v: o da página da ação, que abre com o foco nela. Sem
-  # cofre, nenhum; o viewer só sai.
+  # cofre, nenhum; o viewer só sai e vê as publicações, e publicar o cofre é de owner e admin.
   def vault_shortcut_paths
     return {} unless current_tenant && current_vault
 
-    leave = { q: vault_leave_shortcut_path }
-    current_tenant.writer? ? leave.merge(r: vault_rename_shortcut_path, a: vault_add_member_shortcut_path) : leave
+    paths = { q: vault_leave_shortcut_path, p: settings_publications_path }
+    paths.merge!(r: vault_rename_shortcut_path, a: vault_add_member_shortcut_path) if current_tenant.writer?
+    current_tenant.admin? ? paths.merge(o: vault_publish_shortcut_path) : paths
   end
 
   def vault_rename_shortcut_path = settings_vault_path(focus: "rename")
@@ -169,6 +187,8 @@ module ShortcutsHelper
   def vault_add_member_shortcut_path = settings_vault_members_path(focus: "add")
 
   def vault_leave_shortcut_path = settings_vault_members_path(focus: "leave")
+
+  def vault_publish_shortcut_path = settings_vault_path(focus: "publish")
 
   # Área da página (notas, configurações, tenants), que a view diz com content_for :area; sem ela, são as notas. O layout
   # a põe no data-area do body.

@@ -1,6 +1,6 @@
 require "test_helper"
 
-# Consentimento OAuth: o servidor manda o navegador a /oauth/authorize/<id>, a conta logada aprova ou recusa e volta
+# Consentimento OAuth: o servidor manda o navegador a /oauth/requests/<id>, a conta logada aprova ou recusa e volta
 # ao cliente pelo endereço que a API devolve.
 class OAuthAuthorizationsControllerTest < ActionDispatch::IntegrationTest
   EMAIL = FakeMarkuppAccounts::DEFAULT_EMAIL
@@ -11,18 +11,18 @@ class OAuthAuthorizationsControllerTest < ActionDispatch::IntegrationTest
   test "without a session the consent asks for login and comes back after it" do
     use_fake_api(oauth_requests: [ REQUEST ])
 
-    get "/oauth/authorize/r1"
+    get "/oauth/requests/r1"
     assert_redirected_to new_session_path
     sign_in_as
 
-    assert_redirected_to "/oauth/authorize/r1"
+    assert_redirected_to "/oauth/requests/r1"
   end
 
   test "the consent names the client, where it returns and what it can do" do
     use_fake_api(oauth_requests: [ REQUEST ])
     sign_in_as
 
-    get "/oauth/authorize/r1"
+    get "/oauth/requests/r1"
 
     assert_response :success
     assert_select "h1", "Claude wants to access your markupp"
@@ -38,11 +38,11 @@ class OAuthAuthorizationsControllerTest < ActionDispatch::IntegrationTest
     use_fake_api(oauth_requests: [ REQUEST ])
     sign_in_as
 
-    get "/oauth/authorize/r1"
+    get "/oauth/requests/r1"
 
     assert_select "[data-controller=oauth-consent]" do
-      assert_select "form[action=?][data-turbo=false] button.btn[autofocus]", "/oauth/authorize/r1/approve", text: "Approve"
-      assert_select "form[action=?][data-turbo=false] button.btn.btn-danger", "/oauth/authorize/r1/deny", text: "Deny"
+      assert_select "form[action=?][data-turbo=false] button.btn[autofocus]", "/oauth/requests/r1/approve", text: "Approve"
+      assert_select "form[action=?][data-turbo=false] button.btn.btn-danger", "/oauth/requests/r1/deny", text: "Deny"
     end
   end
 
@@ -50,7 +50,7 @@ class OAuthAuthorizationsControllerTest < ActionDispatch::IntegrationTest
     api = use_fake_api(oauth_requests: [ REQUEST ])
     sign_in_as
 
-    post "/oauth/authorize/r1/approve"
+    post "/oauth/requests/r1/approve"
 
     assert_redirected_to APPROVED
     assert_response :see_other
@@ -61,7 +61,7 @@ class OAuthAuthorizationsControllerTest < ActionDispatch::IntegrationTest
     api = use_fake_api(oauth_requests: [ REQUEST ])
     sign_in_as
 
-    post "/oauth/authorize/r1/deny"
+    post "/oauth/requests/r1/deny"
 
     assert_redirected_to DENIED
     assert_response :see_other
@@ -72,7 +72,7 @@ class OAuthAuthorizationsControllerTest < ActionDispatch::IntegrationTest
     api = use_fake_api(oauth_requests: [ REQUEST.merge(already_authorized: true) ])
     sign_in_as
 
-    get "/oauth/authorize/r1"
+    get "/oauth/requests/r1"
 
     assert_redirected_to APPROVED
     assert_equal [ [ "r1", "approve", EMAIL ] ], api.oauth_decisions
@@ -82,7 +82,7 @@ class OAuthAuthorizationsControllerTest < ActionDispatch::IntegrationTest
     use_fake_api(oauth_requests: [ REQUEST.merge(expires_at: 1.minute.ago.utc.iso8601) ])
     sign_in_as
 
-    get "/oauth/authorize/r1"
+    get "/oauth/requests/r1"
 
     assert_gone_request_page
   end
@@ -91,7 +91,7 @@ class OAuthAuthorizationsControllerTest < ActionDispatch::IntegrationTest
     use_fake_api(oauth_requests: [ REQUEST ])
     sign_in_as
 
-    get "/oauth/authorize/r9"
+    get "/oauth/requests/r9"
 
     assert_gone_request_page
   end
@@ -99,9 +99,9 @@ class OAuthAuthorizationsControllerTest < ActionDispatch::IntegrationTest
   test "deciding a request already decided shows the error page" do
     use_fake_api(oauth_requests: [ REQUEST ])
     sign_in_as
-    post "/oauth/authorize/r1/deny"
+    post "/oauth/requests/r1/deny"
 
-    post "/oauth/authorize/r1/approve"
+    post "/oauth/requests/r1/approve"
 
     assert_gone_request_page
   end
@@ -111,7 +111,7 @@ class OAuthAuthorizationsControllerTest < ActionDispatch::IntegrationTest
     sign_in_as
     api.cut_connection!
 
-    get "/oauth/authorize/r1"
+    get "/oauth/requests/r1"
 
     assert_response :bad_gateway
     assert_select "h1", /Can't reach the markupp server/

@@ -42,12 +42,12 @@ func notaRanqueada() notes.Note {
 }
 
 const notaRanqueadaJSON = `{"id":"n1","vault_id":"va","path":"a.md","content":"x","content_sha256":"abc",
-	"created_at":"2026-10-16T12:00:00Z","updated_at":"2026-10-16T12:00:00Z","degree":3,"pagerank":0.25,"community":7}`
+	"created_at":"2026-10-16T12:00:00Z","updated_at":"2026-10-16T12:00:00Z","degree":3,"pagerank":0.25,"community":7,"public_id":null}`
 
 // notaRanqueadaResumidaJSON é notaRanqueada na representação enxuta da coleção, sem
 // o conteúdo.
 const notaRanqueadaResumidaJSON = `{"id":"n1","title":"a","path":"a.md","updated_at":"2026-10-16T12:00:00Z",
-	"content_sha256":"abc","degree":3,"pagerank":0.25,"community":7}`
+	"content_sha256":"abc","degree":3,"pagerank":0.25,"community":7,"public_id":null}`
 
 func TestV1ListVaultNotes_AntesDoSegundoEstagio_RepresentacaoEnxutaComDerivadosNulos(t *testing.T) {
 	nota := notes.Note{ID: "n1", VaultID: "va", Path: "pasta/b.md", ContentSHA256: "abc", UpdatedAt: momentoDeTeste}
@@ -56,7 +56,7 @@ func TestV1ListVaultNotes_AntesDoSegundoEstagio_RepresentacaoEnxutaComDerivadosN
 
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
 	assert.JSONEq(t, `[{"id":"n1","title":"b","path":"pasta/b.md","updated_at":"2026-10-16T12:00:00Z",
-		"content_sha256":"abc","degree":null,"pagerank":null,"community":null}]`, rec.Body.String())
+		"content_sha256":"abc","degree":null,"pagerank":null,"community":null,"public_id":null}]`, rec.Body.String())
 }
 
 func TestV1GetNote_TrazAOrganizacaoDerivada(t *testing.T) {
@@ -73,7 +73,27 @@ func TestV1GetNote_AntesDoSegundoEstagio_CamposDerivadosNulos(t *testing.T) {
 
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
 	assert.JSONEq(t, `{"id":"n1","vault_id":"va","path":"a.md","content":"","content_sha256":"",
-		"created_at":"2026-10-16T12:00:00Z","updated_at":"2026-10-16T12:00:00Z","degree":null,"pagerank":null,"community":null}`, rec.Body.String())
+		"created_at":"2026-10-16T12:00:00Z","updated_at":"2026-10-16T12:00:00Z","degree":null,"pagerank":null,"community":null,"public_id":null}`, rec.Body.String())
+}
+
+func TestV1GetNote_NotaPublica_TrazOIDPublico(t *testing.T) {
+	nota, idPublico := notaRanqueada(), "Ab3dEf6hIj9k"
+	nota.PublicID = &idPublico
+
+	rec := requisicaoV1(&fakeService{note: nota}, nil, "member", http.MethodGet, "/v1/notes/n1", "")
+
+	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+	assert.Contains(t, rec.Body.String(), `"public_id":"Ab3dEf6hIj9k"`)
+}
+
+func TestV1ListVaultNotes_NotaPublica_TrazOIDPublico(t *testing.T) {
+	nota, idPublico := notaRanqueada(), "Ab3dEf6hIj9k"
+	nota.PublicID = &idPublico
+
+	rec := requisicaoV1(&fakeService{listResult: []notes.Note{nota}}, nil, "member", http.MethodGet, "/v1/vaults/va/notes", "")
+
+	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+	assert.Contains(t, rec.Body.String(), `"public_id":"Ab3dEf6hIj9k"`)
 }
 
 func TestV1PutNote_AtualizaEDevolveARepresentacaoV1(t *testing.T) {

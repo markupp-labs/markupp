@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/api"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/config"
 )
 
@@ -67,4 +68,66 @@ func TestPrepareInstance_MCPEmSubdominio_NaoEscreveArquivo(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.NoFileExists(t, path)
+}
+
+func TestNewSecretBox_ComChaveSecreta_SelaComElaEAbreEmOutraReplica(t *testing.T) {
+	secrets := fakeInstanceSecrets{}
+	box, err := newSecretBox(context.Background(), "chave-secreta-de-quem-hospeda-32b", secrets)
+	require.NoError(t, err)
+
+	selado, err := box.Seal("sk")
+	require.NoError(t, err)
+	outra, err := newSecretBox(context.Background(), "chave-secreta-de-quem-hospeda-32b", fakeInstanceSecrets{})
+	require.NoError(t, err)
+	aberto, stale, err := outra.Open(selado)
+
+	require.NoError(t, err)
+	assert.Equal(t, "sk", aberto)
+	assert.False(t, stale)
+}
+
+func TestNewSecretBox_SemChaveSecreta_UsaASegredoDoBanco(t *testing.T) {
+	secrets := fakeInstanceSecrets{}
+
+	_, err := newSecretBox(context.Background(), "", secrets)
+
+	require.NoError(t, err)
+	assert.NotEmpty(t, secrets[secretKeyName])
+}
+
+func TestNewSecretBox_ChaveSecretaDefinidaDepois_AbreOSeladoComOSegredoDoBancoEPedeNovoSelo(t *testing.T) {
+	secrets := fakeInstanceSecrets{}
+	antes, err := newSecretBox(context.Background(), "", secrets)
+	require.NoError(t, err)
+	selado, err := antes.Seal("sk")
+	require.NoError(t, err)
+
+	depois, err := newSecretBox(context.Background(), "chave-secreta-de-quem-hospeda-32b", secrets)
+	require.NoError(t, err)
+	aberto, stale, err := depois.Open(selado)
+
+	require.NoError(t, err)
+	assert.Equal(t, "sk", aberto)
+	assert.True(t, stale, "selado com o segredo do banco, a API sela de novo com a MARKUPP_SECRET_KEY")
+}
+
+func TestPrepareInstance_EscreveOSegredoDeRelayDoPainel(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "panel", "secret")
+	secrets := fakeInstanceSecrets{"panel_relay_secret": "segredo-de-relay-do-painel-com-32-bytes"} // #nosec G101 -- valor fictício de teste
+	cfg := configSoComOBanco(t, map[string]string{"MARKUPP_PANEL_RELAY_SECRET_PATH": path})
+
+	prepared, err := prepareInstance(context.Background(), cfg, secrets)
+
+	require.NoError(t, err)
+	assert.Equal(t, "segredo-de-relay-do-painel-com-32-bytes", prepared.PanelRelaySecret)
+	content, err := os.ReadFile(path) // #nosec G304 -- arquivo do t.TempDir do proprio teste
+	require.NoError(t, err)
+	assert.Equal(t, "segredo-de-relay-do-painel-com-32-bytes", string(content))
+}
+
+func TestPublicRelays_SemOAuth_AceitaOPainel(t *testing.T) {
+	relays := publicRelays(nil, "segredo-de-relay-do-painel-com-32-bytes")
+
+	assert.True(t, relays.AuthenticatesResource(api.PanelRelayID, "segredo-de-relay-do-painel-com-32-bytes"))
+	assert.False(t, relays.AuthenticatesResource(api.PanelRelayID, "outro"))
 }

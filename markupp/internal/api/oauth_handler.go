@@ -53,7 +53,7 @@ type oauthErrorResponse struct {
 // mountOAuthServerRoutes monta na raiz, fora das rotas versionadas, a metadata e os
 // endpoints de autorização e de token que os clientes OAuth acessam direto. Cada um
 // fica num subroteador próprio para que método não suportado responda 405 ali mesmo,
-// sem cair no alias obsoleto sem prefixo nem no CORS da lista de origens.
+// sem cair no CORS da lista de origens.
 func mountOAuthServerRoutes(r chi.Router, d RouterDeps) {
 	if d.OAuthMetadata == nil {
 		return
@@ -68,25 +68,30 @@ func mountOAuthServerRoutes(r chi.Router, d RouterDeps) {
 	}
 }
 
-// mountOAuthProtocolRoutes deixa o authorize, aberto por navegação, sem CORS, e o resto
-// de /oauth com CORS aberto, inclusive no 404 e no 405. O registro dinâmico só entra
-// quando ligado.
+// mountOAuthProtocolRoutes deixa o authorize, aberto por navegação, sem CORS, e cada
+// endpoint do protocolo num subroteador próprio com CORS aberto, inclusive no 404 e no
+// 405. Um subroteador único em /oauth tomaria /oauth/requests, que é do painel. O
+// registro dinâmico só entra quando ligado.
 func mountOAuthProtocolRoutes(r chi.Router, h *oauthHandler, dynamicRegistration bool) {
 	r.Route(oauthAuthorizePath, func(a chi.Router) {
 		a.Get("/", h.authorize)
 	})
-	r.Route("/oauth", func(p chi.Router) {
+	// A troca de token chega de servidor para servidor, sem navegador, por isso o
+	// preflight não libera o Authorization do Basic.
+	mountOpenPost(r, oauthTokenPath, h.token)
+	mountOpenPost(r, oauthRevokePath, h.revoke)
+	if dynamicRegistration {
+		mountOpenPost(r, oauthRegisterPath, h.register)
+	}
+}
+
+// mountOpenPost monta um endpoint POST público do authorization server com CORS aberto
+// e preflight que libera só o Content-Type.
+func mountOpenPost(r chi.Router, path string, endpoint http.HandlerFunc) {
+	r.Route(path, func(p chi.Router) {
 		p.Use(allowAnyOrigin)
-		p.Post("/token", h.token)
-		// A troca de token chega de servidor para servidor, sem navegador, por isso o
-		// preflight não libera o Authorization do Basic.
-		p.Options("/token", openPreflight(http.MethodPost, "Content-Type"))
-		p.Post("/revoke", h.revoke)
-		p.Options("/revoke", openPreflight(http.MethodPost, "Content-Type"))
-		if dynamicRegistration {
-			p.Post("/register", h.register)
-			p.Options("/register", openPreflight(http.MethodPost, "Content-Type"))
-		}
+		p.Post("/", endpoint)
+		p.Options("/", openPreflight(http.MethodPost, "Content-Type"))
 	})
 }
 

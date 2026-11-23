@@ -3,22 +3,26 @@ package api
 import (
 	"net/http"
 	"net/http/httputil"
+	"net/netip"
 	"net/url"
 	"time"
 
 	"github.com/go-chi/chi/v5"
 )
 
-// Caminhos do servidor MCP na mesma origem (ADR-0041): o endpoint Streamable HTTP e a
-// metadata do recurso protegido dele (RFC 9728), que o próprio servidor MCP publica.
+// Caminhos do servidor MCP na mesma origem (ADR-0041): o endpoint Streamable HTTP, a
+// metadata do recurso protegido dele (RFC 9728), que o próprio servidor MCP publica, e
+// o endpoint sem login das notas publicadas (ADR-0050).
 const (
 	mcpEndpointPath         = "/mcp"
 	mcpResourceMetadataPath = "/.well-known/oauth-protected-resource/mcp"
+	mcpPublicEndpointPath   = "/mcp/public"
 )
 
 // mountMCPProxy encaminha o servidor MCP ao container dele, sem CORS nem autenticação: o
-// servidor MCP troca o token do agente e responde 401 sozinho.
-func mountMCPProxy(r chi.Router, upstreamURL string) {
+// servidor MCP troca o token do agente e responde 401 sozinho, e em /mcp/public lê só
+// as notas publicadas, pelas rotas /v1/public com o limite delas.
+func mountMCPProxy(r chi.Router, upstreamURL string, trusted []netip.Prefix) {
 	if upstreamURL == "" {
 		return
 	}
@@ -26,18 +30,19 @@ func mountMCPProxy(r chi.Router, upstreamURL string) {
 	if err != nil {
 		panic("api: invalid MCPUpstreamURL, the config should have rejected it: " + err.Error())
 	}
-	proxy := withoutWriteDeadline(newMCPReverseProxy(upstream))
+	proxy := withoutWriteDeadline(newMCPReverseProxy(upstream, trusted))
 	r.Handle(mcpEndpointPath, proxy)
 	r.Handle(mcpResourceMetadataPath, proxy)
+	r.Handle(mcpPublicEndpointPath, proxy)
 }
 
 // newMCPReverseProxy repassa cada pedaço da resposta assim que chega, porque o
 // Streamable HTTP responde por SSE.
-func newMCPReverseProxy(upstream *url.URL) *httputil.ReverseProxy {
+func newMCPReverseProxy(upstream *url.URL, trusted []netip.Prefix) *httputil.ReverseProxy {
 	return &httputil.ReverseProxy{
 		Rewrite: func(pr *httputil.ProxyRequest) {
 			pr.SetURL(upstream)
-			pr.SetXForwarded()
+			setForwardedHeaders(pr, trusted)
 		},
 		FlushInterval: -1,
 	}

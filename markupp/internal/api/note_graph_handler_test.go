@@ -256,3 +256,30 @@ func TestGrafo_ErrosDeDominio_ViramStatus(t *testing.T) {
 		assert.NotEmpty(t, corpo["error"], nome)
 	}
 }
+
+func TestV1GetLinks_FiltraPelaLigacaoPorSentido(t *testing.T) {
+	graph := &fakeNoteGraph{}
+
+	rec := getGrafo(t, graph, "member", "/v1/notes/n1/links?type=semantic")
+
+	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+	assert.Equal(t, notes.LinkFilter{Type: notes.LinkSemantic, Page: notes.Page{Limit: 10}}, graph.query)
+}
+
+func TestV1GetLinks_FiltraPelaLigacaoPorMencao(t *testing.T) {
+	graph := &fakeNoteGraph{}
+
+	rec := getGrafo(t, graph, "member", "/v1/notes/n1/links?type=mentioned")
+
+	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+	assert.Equal(t, notes.LinkFilter{Type: notes.LinkMentioned, Page: notes.Page{Limit: 10}}, graph.query)
+}
+
+func TestV1GetLinks_FiltraPelaLigacaoPorTextoParecido(t *testing.T) {
+	graph := &fakeNoteGraph{}
+
+	rec := getGrafo(t, graph, "member", "/v1/notes/n1/links?type=related")
+
+	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+	assert.Equal(t, notes.LinkFilter{Type: notes.LinkRelated, Page: notes.Page{Limit: 10}}, graph.query)
+}

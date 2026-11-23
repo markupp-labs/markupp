@@ -75,6 +75,25 @@ func (q *Queries) DeleteTenant(ctx context.Context, id string) (int64, error) {
 	return result.RowsAffected(), nil
 }
 
+const getInviteQuota = `-- name: GetInviteQuota :one
+SELECT inviter_verified::boolean, by_inviter::bigint, by_tenant::bigint FROM markupp_invite_quota($1::timestamptz)
+`
+
+type GetInviteQuotaRow struct {
+	InviterVerified bool
+	ByInviter       int64
+	ByTenant        int64
+}
+
+// Cota de quem convida na janela que começa em since (00038). Trava o tenant e a conta
+// até o fim da transação.
+func (q *Queries) GetInviteQuota(ctx context.Context, since time.Time) (GetInviteQuotaRow, error) {
+	row := q.db.QueryRow(ctx, getInviteQuota, since)
+	var i GetInviteQuotaRow
+	err := row.Scan(&i.InviterVerified, &i.ByInviter, &i.ByTenant)
+	return i, err
+}
+
 const getMemberRole = `-- name: GetMemberRole :one
 SELECT role FROM tenant_memberships WHERE user_id = $1 FOR UPDATE
 `

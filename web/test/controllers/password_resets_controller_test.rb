@@ -13,7 +13,10 @@ class PasswordResetsControllerTest < ActionDispatch::IntegrationTest
       assert_select "label[for=password_reset_token]", "Token"
       assert_select "input[type=text][name=?][required]", "password_reset[token]"
       assert_select "label[for=password_reset_password]", "New password"
-      assert_select "input[type=password][name=?][required][autocomplete=new-password]", "password_reset[password]"
+      assert_select "input[type=password][name=?][required][minlength=15][autocomplete=new-password]", "password_reset[password]"
+      assert_select "button[type=button][aria-controls=password_reset_password][aria-pressed=false][aria-label=?]", "Show password"
+      assert_select "label[for=password_reset_password_confirmation]", "Confirm password"
+      assert_select "input[type=password][name=?][required][autocomplete=new-password]", "password_reset[password_confirmation]"
       assert_select "button", "Reset password"
     end
     assert_select "nav#sidebar", count: 0
@@ -37,11 +40,11 @@ class PasswordResetsControllerTest < ActionDispatch::IntegrationTest
   test "create changes the password and sends to the login, where the new one works" do
     token = emailed_token(use_fake_api)
 
-    reset_password(token, "senha-nova")
+    reset_password(token, "senha-nova-de-teste")
 
     assert_redirected_to new_session_path
     assert_equal "Password changed. Log in with the new one.", flash[:notice]
-    sign_in_as(EMAIL, password: "senha-nova")
+    sign_in_as(EMAIL, password: "senha-nova-de-teste")
     assert_redirected_to root_path
   end
 
@@ -50,7 +53,7 @@ class PasswordResetsControllerTest < ActionDispatch::IntegrationTest
     token = emailed_token(api)
     sign_in_as
 
-    reset_password(token, "senha-nova")
+    reset_password(token, "senha-nova-de-teste")
 
     assert_redirected_to new_session_path
     assert_equal "Password changed. Log in again.", flash[:notice]
@@ -62,7 +65,7 @@ class PasswordResetsControllerTest < ActionDispatch::IntegrationTest
   test "create with a token the API refuses says so under the field and keeps the token" do
     use_fake_api
 
-    reset_password("tok-9", "senha-nova")
+    reset_password("tok-9", "senha-nova-de-teste")
 
     assert_response :unprocessable_content
     assert_select "input[name=?][value=tok-9][aria-invalid=true][aria-describedby=password_reset_token_error]", "password_reset[token]"
@@ -72,9 +75,9 @@ class PasswordResetsControllerTest < ActionDispatch::IntegrationTest
 
   test "a used token does not work twice" do
     token = emailed_token(use_fake_api)
-    reset_password(token, "senha-nova")
+    reset_password(token, "senha-nova-de-teste")
 
-    reset_password(token, "outra-senha")
+    reset_password(token, "outra-senha-de-teste")
 
     assert_response :unprocessable_content
     assert_select "#password_reset_token_error", "This token is invalid, expired or already used."
@@ -92,7 +95,7 @@ class PasswordResetsControllerTest < ActionDispatch::IntegrationTest
   test "create says when the server can't send email" do
     use_fake_api(email_enabled: false)
 
-    reset_password("tok-1", "senha-nova")
+    reset_password("tok-1", "senha-nova-de-teste")
 
     assert_response :unprocessable_content
     assert_select "[role=alert]", "This server can't send email, so password reset is off. Ask an administrator."
@@ -101,7 +104,7 @@ class PasswordResetsControllerTest < ActionDispatch::IntegrationTest
   test "create answers bad gateway when the API is unreachable" do
     use_fake_api(unreachable: true)
 
-    reset_password("tok-1", "senha-nova")
+    reset_password("tok-1", "senha-nova-de-teste")
 
     assert_response :bad_gateway
     assert_select "main", text: /Can't reach the markupp server/

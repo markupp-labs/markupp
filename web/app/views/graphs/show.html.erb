@@ -9,6 +9,9 @@
 <% if @origin %>
   <% content_for :note_links, note_links_frame(@origin) %>
   <% content_for :note_graph, render("graphs/local", note: @origin) %>
+<% else %>
+  <%# Sem nota, a visão Graph não repete o cofre que o main já desenha. %>
+  <% content_for :note_graph, render("layouts/empty_state", title: t("layouts.application.graph_empty.title"), hint: t("layouts.application.graph_empty.hint")) %>
 <% end %>
 <div class="graph-page">
   <header class="flex items-center gap-3">
@@ -19,7 +22,7 @@
   </header>
   <% if @vault_id %>
     <%= render "graphs/canvas", id: "vault_graph", url: graph_path(format: :json, vault: @vault_id, note: @origin&.id, **@filters), region: "graph",
-                                autofocus: true, filterable: true, filtered: @filters.any?, class: "graph-view-full" %>
+                                autofocus: true, filterable: true, filtered: @filters.any?, legend: true, class: "graph-view-full" %>
   <% else %>
     <%= render "layouts/empty_state", title: t("graphs.empty.title"), hint: t("graphs.empty.hint") %>
   <% end %>

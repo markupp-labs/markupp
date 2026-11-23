@@ -25,7 +25,7 @@ func TestNewMarkupp_TodoPod_NaoRecebeVariaveisDosServices(t *testing.T) {
 	}
 	templates["markupp-indexer"] = at(t, monitor.single(t, scaledJobType), "spec", "jobTargetRef", "template", "spec").ObjectValue()
 
-	assert.Len(t, templates, 7, "api, panel, mcp, notifier, db, migrate e indexer")
+	assert.Len(t, templates, 8, "api, panel, mcp, notifier, db, migrate, indexer e embedder")
 	for name, spec := range templates {
 		links := spec["enableServiceLinks"]
 		assert.True(t, links.IsBool() && !links.BoolValue(), "%s sem enableServiceLinks: false", name)

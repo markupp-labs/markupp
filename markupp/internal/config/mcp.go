@@ -12,7 +12,7 @@ import (
 const (
 	authSecretName        = "auth_secret"
 	mcpResourceSecretName = "mcp_resource_secret" // #nosec G101 -- nome da linha no banco, nao o segredo
-	mcpUpstreamExpected   = "http(s)://host[:port] of the MCP server, without path, query or fragment"
+	upstreamExpected      = "http(s)://host[:port] of the container, without path, query or fragment"
 )
 
 // InstanceSecrets guarda os segredos que o servidor gera na primeira subida (ADR-0041).
@@ -20,25 +20,34 @@ type InstanceSecrets interface {
 	Secret(ctx context.Context, name string, generate func() (string, error)) (string, error)
 }
 
-// loadMCPSettings lê o servidor MCP da mesma origem: para onde /mcp vai e onde o
-// segredo dele é escrito.
+// loadMCPSettings lê os serviços da mesma origem: para onde /mcp vai, onde o segredo do
+// MCP é escrito e para onde a raiz vai, o painel.
 func loadMCPSettings(lookup LookupFunc, cfg *Config) error {
 	readString(lookup, "MARKUPP_MCP_SECRET_PATH", &cfg.MCPSecretPath)
+	if err := readUpstreamURL(lookup, "MARKUPP_MCP_UPSTREAM_URL", &cfg.MCPUpstreamURL); err != nil {
+		return err
+	}
+	return readUpstreamURL(lookup, "MARKUPP_PANEL_UPSTREAM_URL", &cfg.PanelUpstreamURL)
+}
+
+// readUpstreamURL lê em target o endereço interno de um container encaminhado pelo
+// servidor, sem a barra final. Vazia, target fica vazio.
+func readUpstreamURL(lookup LookupFunc, key string, target *string) error {
 	var upstream string
-	readString(lookup, "MARKUPP_MCP_UPSTREAM_URL", &upstream)
+	readString(lookup, key, &upstream)
 	if upstream == "" {
 		return nil
 	}
 	parsed, err := url.Parse(upstream)
-	if err != nil || !mcpUpstreamAllowed(parsed) {
-		return fmt.Errorf("MARKUPP_MCP_UPSTREAM_URL=%q, expected %s", upstream, mcpUpstreamExpected)
+	if err != nil || !upstreamAllowed(parsed) {
+		return fmt.Errorf("%s=%q, expected %s", key, upstream, upstreamExpected)
 	}
-	cfg.MCPUpstreamURL = strings.TrimRight(upstream, "/")
+	*target = strings.TrimRight(upstream, "/")
 	return nil
 }
 
-// mcpUpstreamAllowed aceita http em qualquer host: é o endereço interno do container.
-func mcpUpstreamAllowed(parsed *url.URL) bool {
+// upstreamAllowed aceita http em qualquer host: é o endereço interno do container.
+func upstreamAllowed(parsed *url.URL) bool {
 	if parsed.Scheme != "http" && parsed.Scheme != "https" {
 		return false
 	}
@@ -63,7 +72,8 @@ func (c Config) DefaultMCPResourceSecret() (string, bool) {
 }
 
 // WithInstanceSecrets completa o que as variáveis deixaram vazio com os segredos do
-// banco: o do JWT e, sem MARKUPP_OAUTH_RESOURCES, o do MCP da mesma origem.
+// banco: o do JWT, o de relay do painel e, sem MARKUPP_OAUTH_RESOURCES, o do MCP da
+// mesma origem.
 func (c Config) WithInstanceSecrets(ctx context.Context, secrets InstanceSecrets, generate func() (string, error)) (Config, error) {
 	if c.AuthSecret == "" {
 		secret, err := secrets.Secret(ctx, authSecretName, generate)
@@ -72,8 +82,9 @@ func (c Config) WithInstanceSecrets(ctx context.Context, secrets InstanceSecrets
 		}
 		c.AuthSecret = secret
 	}
-	if len(c.OAuthResources) > 0 {
-		return c, nil
+	c, err := c.withPanelRelaySecret(ctx, secrets, generate)
+	if err != nil || len(c.OAuthResources) > 0 {
+		return c, err
 	}
 	secret, err := secrets.Secret(ctx, mcpResourceSecretName, generate)
 	if err != nil {
@@ -83,30 +94,30 @@ func (c Config) WithInstanceSecrets(ctx context.Context, secrets InstanceSecrets
 	return c, nil
 }
 
-// WriteMCPSecret escreve o segredo no volume que o servidor MCP lê, por arquivo temporário
-// e rename, para o MCP nunca ler o arquivo pela metade. O erro cita o caminho, nunca o
-// segredo.
-func WriteMCPSecret(path, secret string) error {
+// WriteSecretFile escreve o segredo no volume que outro container lê, por arquivo
+// temporário e rename, para quem lê nunca ler o arquivo pela metade. O erro cita o
+// caminho, nunca o segredo.
+func WriteSecretFile(path, secret string) error {
 	dir := filepath.Dir(path)
-	// #nosec G301 -- o servidor MCP roda com outro usuario e precisa atravessar o diretorio
+	// #nosec G301 -- o container que le roda com outro usuario e precisa atravessar o diretorio
 	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return fmt.Errorf("create MCP secret directory %s: %w", dir, err)
+		return fmt.Errorf("create secret directory %s: %w", dir, err)
 	}
 	temp, err := os.CreateTemp(dir, ".secret-*")
 	if err != nil {
-		return fmt.Errorf("create temporary MCP secret file in %s: %w", dir, err)
+		return fmt.Errorf("create temporary secret file in %s: %w", dir, err)
 	}
 	defer func() { _ = os.Remove(temp.Name()) }()
 	if err := writeAndClose(temp, secret); err != nil {
-		return fmt.Errorf("write MCP secret to %s: %w", temp.Name(), err)
+		return fmt.Errorf("write secret to %s: %w", temp.Name(), err)
 	}
 	if err := os.Rename(temp.Name(), path); err != nil {
-		return fmt.Errorf("move MCP secret to %s: %w", path, err)
+		return fmt.Errorf("move secret to %s: %w", path, err)
 	}
 	return nil
 }
 
-// writeAndClose grava o segredo legível pelo usuário do container do MCP, que não é o
+// writeAndClose grava o segredo legível pelo usuário do container que lê, que não é o
 // do servidor; o volume só é montado nos dois.
 func writeAndClose(file *os.File, secret string) error {
 	if _, err := file.WriteString(secret); err != nil {

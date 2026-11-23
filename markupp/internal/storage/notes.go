@@ -134,7 +134,10 @@ func (r *PostgresNotesRepository) GetNoteByID(ctx context.Context, id string) (n
 		if qErr != nil {
 			return notFoundOnNoRows(qErr)
 		}
-		note, qErr = withRank(ctx, q, toNote(row))
+		if note, qErr = withRank(ctx, q, toNote(row)); qErr != nil {
+			return qErr
+		}
+		note, qErr = withPublicID(ctx, q, note)
 		return qErr
 	})
 	return note, err

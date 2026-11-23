@@ -39,7 +39,7 @@ Any other client that takes a JSON config:
 
 ```text
 markupp-mcp               serve MCP over stdio with the stored login
-markupp-mcp login [url]   sign in through the browser (default http://localhost:8080)
+markupp-mcp login [url]   sign in through the browser (default http://localhost:6275)
 markupp-mcp logout        revoke and delete the stored login
 markupp-mcp http          serve MCP over Streamable HTTP (self-hosted deployments)
 ```

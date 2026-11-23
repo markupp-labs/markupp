@@ -93,7 +93,8 @@
     @apply text-ink-muted hover:text-ink focus-visible:text-ink;
   }
 
-  .links-copy {
+  .links-copy,
+  .links-refuse {
     @apply shrink-0 rounded-md p-1 text-ink-muted hover:bg-accent-soft hover:text-ink focus-visible:text-ink;
   }
 }

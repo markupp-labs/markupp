@@ -13,6 +13,9 @@ sql:
             go_type: "time.Time"
           - db_type: "tsvector"
             go_type: "string"
+          # O vetor do pgvector vai e volta como texto, sem biblioteca do pgvector no Go.
+          - db_type: "vector"
+            go_type: "string"
           # A junção lateral da view pode não achar palpite; o sqlc não infere o nulo.
           - column: "note_link_items.inferred_target_id"
             go_type:

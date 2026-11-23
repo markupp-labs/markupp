@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<meta name="supported-color-schemes" content="light dark">
+<title>{{.Subject}}</title>
+<style>
+  /* Kanagawa como no painel: lotus inline no claro e wave aqui no escuro. O
+     !important vence o estilo inline, que é o que os clientes sem <style> leem. */
+  @media (prefers-color-scheme: dark) {
+    .mk-page { background: #16161d !important; }
+    .mk-card { background: #1f1f28 !important; border-color: #2a2a37 !important; }
+    .mk-ink { color: #dcd7ba !important; }
+    .mk-muted { color: #a6a69c !important; }
+    .mk-accent { color: #7e9cd8 !important; }
+    .mk-rule { border-color: #2a2a37 !important; }
+    .mk-button { background: #7e9cd8 !important; color: #1f1f28 !important; }
+    .mk-token { background: #16161d !important; border-color: #2a2a37 !important; color: #dcd7ba !important; }
+  }
+</style>
+</head>
+<body class="mk-page" style="margin:0;padding:0;background:#e7dba0;">
+<table role="presentation" class="mk-page" width="100%" cellpadding="0" cellspacing="0" style="background:#e7dba0;">
+<tr><td align="center" style="padding:32px 16px;">
+<table role="presentation" class="mk-card" width="100%" cellpadding="0" cellspacing="0"
+  style="max-width:560px;background:#f2ecbc;border:1px solid #d5cea3;border-radius:6px;">
+<tr><td class="mk-accent"
+  style="padding:28px 32px 0;font-family:'Fira Code',ui-monospace,SFMono-Regular,Menlo,Consolas,'Liberation Mono',monospace;font-size:18px;font-weight:700;color:#4d699b;">markupp</td></tr>
+<tr><td class="mk-ink"
+  style="padding:20px 32px 0;font-family:'Fira Code',ui-monospace,SFMono-Regular,Menlo,Consolas,'Liberation Mono',monospace;font-size:14px;line-height:1.6;color:#545464;">
+<p style="margin:0 0 24px;">{{.Lead}}</p>
+{{- if .Link}}
+<table role="presentation" cellpadding="0" cellspacing="0"><tr>
+<td class="mk-button" style="border-radius:4px;background:#4d699b;">
+<a class="mk-button" href="{{.Link}}"
+  style="display:inline-block;padding:10px 20px;border-radius:4px;background:#4d699b;color:#f2ecbc;font-weight:600;text-decoration:none;">{{.Button}}</a>
+</td></tr></table>
+<p class="mk-muted" style="margin:24px 0 0;font-size:12px;color:#5f5c52;">Se o botão não funcionar, copie este link no navegador:</p>
+<p style="margin:4px 0 0;font-size:12px;word-break:break-all;"><a class="mk-accent" href="{{.Link}}" style="color:#4d699b;">{{.Link}}</a></p>
+{{- else}}
+<p style="margin:0 0 8px;">{{.Label}}</p>
+<div class="mk-token"
+  style="padding:10px 12px;background:#e7dba0;border:1px solid #d5cea3;border-radius:4px;font-size:13px;word-break:break-all;color:#545464;">{{.Token}}</div>
+{{- end}}
+<p style="margin:24px 0 0;">{{.Closing}}</p>
+{{- with .Caution}}
+<p class="mk-muted" style="margin:16px 0 0;color:#5f5c52;">{{.}}</p>
+{{- end}}
+</td></tr>
+<tr><td style="padding:28px 32px;">
+<div class="mk-rule mk-muted"
+  style="border-top:1px solid #d5cea3;padding-top:16px;font-family:'Fira Code',ui-monospace,SFMono-Regular,Menlo,Consolas,'Liberation Mono',monospace;font-size:12px;line-height:1.6;color:#5f5c52;">
+<p style="margin:0;">markupp{{if .PanelURL}} · <a class="mk-accent" href="{{.PanelURL}}" style="color:#4d699b;">{{.PanelHost}}</a>{{end}}</p>
+<p style="margin:4px 0 0;">{{.Reason}}</p>
+</div>
+</td></tr>
+</table>
+</td></tr>
+</table>
+</body>
+</html>

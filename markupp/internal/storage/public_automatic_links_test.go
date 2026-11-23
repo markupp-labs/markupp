@@ -1,0 +1,77 @@
+package storage_test
+
+import (
+	"context"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/identity"
+	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/notes"
+	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/publication"
+	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/storage"
+	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/storage/storagetest"
+)
+
+// O cofre publicado tem alfa e gama, que citam a beta pelo título; o par gama e beta
+// está recusado, então só a menção de alfa vira ligação, e a leitura pública a vê.
+func TestGrafoPublico_MostraALigacaoPorMencaoESemARecusada(t *testing.T) {
+	db := setupTestDB(t)
+	repo := storage.NewPostgresNotesRepository(db, "simple")
+	ctx := storagetest.SeedMember(t, db, identity.Actor{UserID: "ua", TenantID: "t1", Role: "owner"}, "va")
+	for _, n := range []notes.Note{
+		notaPublica("alfa", "Alfa.md", "va", "o texto de alfa cita a nota Beta"),
+		notaPublica("beta", "Beta.md", "va", "a nota beta"),
+		notaPublica("gama", "Gama.md", "va", "gama também cita Beta"),
+	} {
+		storagetest.SaveNote(ctx, t, repo, n)
+	}
+	_, err := db.Exec(context.Background(), `INSERT INTO link_refusals (vault_id, low_id, high_id, created_by) VALUES ('va', 'beta', 'gama', 'ua')`)
+	require.NoError(t, err)
+	publica(t, db, "p-va", "t1", "va", alvoCofre())
+	indexaTodosOsCofres(t, db, "simple")
+	alfa, beta := idPublicoDe(t, db, "alfa"), idPublicoDe(t, db, "beta")
+
+	g, err := storage.NewPostgresPublicNotes(db, "simple").PublicGraph(context.Background(), alfa)
+
+	require.NoError(t, err)
+	assert.Equal(t, []publication.PublicGraphLink{{Source: indexOf(g, alfa), Target: indexOf(g, beta), Type: "mentioned"}}, g.Links)
+}
+
+// alfa e beta falam quase do mesmo jeito, e gama, de outra coisa, dá o idf: o grafo
+// público mostra a ligação por texto parecido, e a nota não a lista com as ligações do
+// texto. A menção e a ligação semântica, também automáticas, ficam fora da lista.
+func TestNotaPublica_LigacaoPorTextoParecidoFicaSoNoGrafo(t *testing.T) {
+	db := setupTestDB(t)
+	repo := storage.NewPostgresNotesRepository(db, "simple")
+	ctx := storagetest.SeedMember(t, db, identity.Actor{UserID: "ua", TenantID: "t1", Role: "owner"}, "va")
+	storagetest.SaveNote(ctx, t, repo, notaPublica("alfa", "Alfa.md", "va", "kubernetes cluster pod deploy helm"))
+	storagetest.SaveNote(ctx, t, repo, notaPublica("beta", "Beta.md", "va", "kubernetes cluster pod deploy helm chart"))
+	storagetest.SaveNote(ctx, t, repo, notaPublica("gama", "Gama.md", "va", "receita de bolo"))
+	storagetest.SaveNote(ctx, t, repo, notaPublica("delta", "Delta.md", "va", "jardinagem de inverno"))
+	publica(t, db, "p-va", "t1", "va", alvoCofre())
+	indexaTodosOsCofres(t, db, "simple")
+	_, err := db.Exec(context.Background(), `INSERT INTO note_automatic_links (source_id, target_id, vault_id, kind, cited_title, score)
+		VALUES ('alfa', 'gama', 'va', 'semantic', NULL, 0.9), ('alfa', 'delta', 'va', 'mentioned', 'Delta', 1)`)
+	require.NoError(t, err)
+	alfa, beta := idPublicoDe(t, db, "alfa"), idPublicoDe(t, db, "beta")
+	leitura := storage.NewPostgresPublicNotes(db, "simple")
+
+	g, err := leitura.PublicGraph(context.Background(), alfa)
+	require.NoError(t, err)
+	nota, err := leitura.PublicNote(context.Background(), alfa)
+	require.NoError(t, err)
+
+	assert.Contains(t, g.Links, publication.PublicGraphLink{Source: indexOf(g, alfa), Target: indexOf(g, beta), Type: "related"})
+	assert.Empty(t, nota.Links)
+}
+
+func indexOf(g publication.PublicGraph, publicID string) int {
+	for i, n := range g.Nodes {
+		if n.PublicID == publicID {
+			return i
+		}
+	}
+	return -1
+}

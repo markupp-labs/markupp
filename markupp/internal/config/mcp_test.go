@@ -77,13 +77,14 @@ func TestWithInstanceSecrets_SemVariaveis_GeraOSegredoDoJWTEODoMCP(t *testing.T)
 
 	require.NoError(t, err)
 	assert.Equal(t, "segredo-gerado-com-mais-de-32-bytes!", resolved.AuthSecret)
-	assert.Equal(t, []config.OAuthResource{{URL: "http://localhost:8080/mcp", Secret: "segredo-gerado-com-mais-de-32-bytes!"}}, resolved.OAuthResources) // #nosec G101 -- valor fictício de teste
-	assert.ElementsMatch(t, []string{"auth_secret", "mcp_resource_secret"}, secrets.generated)
+	assert.Equal(t, []config.OAuthResource{{URL: "http://localhost:6275/mcp", Secret: "segredo-gerado-com-mais-de-32-bytes!"}}, resolved.OAuthResources) // #nosec G101 -- valor fictício de teste
+	assert.ElementsMatch(t, []string{"auth_secret", "mcp_resource_secret", "panel_relay_secret"}, secrets.generated)
 }
 
 func TestWithInstanceSecrets_ComVariaveis_UsaOOverrideSemGerar(t *testing.T) {
 	secrets := newFakeInstanceSecrets()
 	env := envComOAuth()
+	env["MARKUPP_PANEL_RELAY_SECRET"] = segredoDoPainelDeTeste
 
 	resolved, err := carregar(t, env).WithInstanceSecrets(context.Background(), secrets, gerarSegredo)
 
@@ -120,11 +121,11 @@ func TestDefaultMCPResourceSecret_SemOMCPNaMesmaOrigem_NaoAcha(t *testing.T) {
 	assert.False(t, ok, "o MCP em subdominio recebe o segredo pelo Secret do cluster")
 }
 
-func TestWriteMCPSecret_GravaSoOSegredoESubstituiOAnterior(t *testing.T) {
+func TestWriteSecretFile_GravaSoOSegredoESubstituiOAnterior(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "mcp", "secret")
 
-	require.NoError(t, config.WriteMCPSecret(path, "primeiro"))
-	require.NoError(t, config.WriteMCPSecret(path, "segundo"))
+	require.NoError(t, config.WriteSecretFile(path, "primeiro"))
+	require.NoError(t, config.WriteSecretFile(path, "segundo"))
 
 	content, err := os.ReadFile(path) // #nosec G304 -- arquivo do t.TempDir do proprio teste
 	require.NoError(t, err)
@@ -134,11 +135,29 @@ func TestWriteMCPSecret_GravaSoOSegredoESubstituiOAnterior(t *testing.T) {
 	assert.Len(t, entries, 1, "a escrita atomica nao deixa arquivo temporario")
 }
 
-func TestWriteMCPSecret_DiretorioInacessivel_RetornaErroComOCaminho(t *testing.T) {
+func TestWriteSecretFile_DiretorioInacessivel_RetornaErroComOCaminho(t *testing.T) {
 	bloqueado := filepath.Join(t.TempDir(), "arquivo")
 	require.NoError(t, os.WriteFile(bloqueado, nil, 0o600))
 
-	err := config.WriteMCPSecret(filepath.Join(bloqueado, "secret"), "x")
+	err := config.WriteSecretFile(filepath.Join(bloqueado, "secret"), "x")
 
 	require.ErrorContains(t, err, bloqueado)
+}
+
+func TestLoad_LeOUpstreamDoPainel(t *testing.T) {
+	cfg := carregar(t, fakeEnv{"MARKUPP_DATABASE_URL": urlDeTeste, "MARKUPP_PANEL_UPSTREAM_URL": "http://web:8080/"})
+
+	assert.Equal(t, "http://web:8080", cfg.PanelUpstreamURL)
+}
+
+func TestLoad_UpstreamDoPainelForaDoFormato_RetornaErroComOValor(t *testing.T) {
+	for _, valor := range []string{"ftp://web", "web:8080", "http://web:8080/x"} {
+		env := fakeEnv{"MARKUPP_DATABASE_URL": urlDeTeste, "MARKUPP_PANEL_UPSTREAM_URL": valor}
+
+		_, err := config.Load(env.Lookup)
+
+		require.Error(t, err, valor)
+		assert.Contains(t, err.Error(), "MARKUPP_PANEL_UPSTREAM_URL", valor)
+		assert.Contains(t, err.Error(), valor, valor)
+	}
 }

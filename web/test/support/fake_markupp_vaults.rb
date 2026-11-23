@@ -52,6 +52,9 @@ class FakeMarkuppVaults
     nil
   end
 
+  # O nome do cofre, para quem o cita (a publicação); sem cenário, o do cofre padrão.
+  def name_of(id) = @vaults.find { it["id"] == id }&.fetch("name") || DEFAULT_NAME
+
   private
     # GET e POST agem nas coleções (/v1/vaults e os membros de um cofre); PATCH e DELETE, num item.
     def route_of(verb, path, collection: false)

@@ -138,5 +138,5 @@ func TestNewMarkupp_IndexadorDesligado_NaoCriaScaledJob(t *testing.T) {
 
 	assert.Empty(t, monitor.byType(scaledJobType), "cluster sem KEDA instala banco e API sem o indexador")
 	assert.Empty(t, monitor.byType(triggerAuthType))
-	monitor.single(t, "kubernetes:apps/v1:Deployment")
+	deploymentNamed(t, monitor, "markupp-api")
 }

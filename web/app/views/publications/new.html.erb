@@ -1,0 +1,32 @@
+<%# O que fica público, no frame do diálogo do layout (layouts/_publish_dialog): quantas notas, se as de depois entram
+    e quem lê. O botão só libera com o nome do alvo digitado exato (publish_dialog_controller.js), e Enter no campo não
+    envia antes disso; o form sai do frame (_top) e a página volta com o aviso. %>
+<% name = @preview.target_name %>
+<%= turbo_frame_tag "publish_preview" do %>
+  <h2 id="publish_dialog_title" class="font-semibold [overflow-wrap:anywhere]"><%= t(".title.#{@preview.kind}", name:) %></h2>
+  <p class="mt-2"><%= t(".note_count", count: @preview.note_count) %></p>
+  <% if @preview.includes_future %>
+    <p class="mt-1"><%= t(".includes_future", name:) %></p>
+  <% end %>
+  <p class="mt-1 text-ink-muted"><%= t(".readers") %></p>
+  <%= form_with url: publications_path, data: { turbo_frame: "_top" }, class: "mt-3 flex flex-col gap-3" do |form| %>
+    <%= form.hidden_field :kind, value: @target.kind, id: nil %>
+    <%= form.hidden_field :note_id, value: @target.note_id, id: nil if @target.note_id %>
+    <%= form.hidden_field :path, value: @target.path, id: nil if @target.path %>
+    <div>
+      <%= form.label :confirm, t(".type_name", name:), class: "block text-ink-muted" %>
+      <%= form.text_field :confirm, autocomplete: "off", spellcheck: false, required: true,
+                          data: { publish_dialog_target: "name", expected: name, action: "input->publish-dialog#check" },
+                          class: "w-full rounded-md border border-line bg-surface px-2 py-1" %>
+    </div>
+    <label class="flex items-center gap-2">
+      <%= form.check_box :indexable, { id: "publish_indexable" }, "1", nil %>
+      <span><%= t(".indexable") %></span>
+    </label>
+    <div class="flex gap-2">
+      <%= form.button t(".publish"), disabled: true, data: { publish_dialog_target: "submit" },
+                      class: "btn btn-danger disabled:cursor-not-allowed disabled:border-line disabled:bg-transparent disabled:text-ink-muted" %>
+      <button type="submit" formmethod="dialog" formnovalidate class="btn text-ink-muted"><%= t(".cancel") %></button>
+    </div>
+  <% end %>
+<% end %>

@@ -1,0 +1,47 @@
+pt-BR:
+  markupp_api:
+    errors:
+      instance_admin_required: "Só quem administra esta instância pode fazer isso."
+  settings:
+    nav:
+      instance: "Instância"
+      instance_embedding: "Embedding"
+    instance_embedding:
+      show:
+        intro: "A ligação por sentido liga as notas que tratam do mesmo assunto. Ela precisa de um provedor de embedding, um só para a instância inteira."
+        locked: "Definido por quem hospeda esta instância: %{provider}. Não dá para mudar aqui."
+        provider: "Provedor"
+        providers:
+          none: "Nenhum"
+          local: "Modelo local"
+          openai-compat: "Endpoint compatível com a OpenAI"
+        provider_hints:
+          none: "Sem ligação por sentido, e nada é baixado."
+          local: "Roda um modelo embutido neste servidor, sem serviço de fora. Antes, baixa uns 300 MB."
+          openai-compat: "Manda o texto das notas a um endpoint como o Ollama ou a API da OpenAI."
+        remote: "Endpoint compatível com a OpenAI"
+        url: "URL do endpoint"
+        url_hint: "Sem /embeddings, como https://api.openai.com/v1."
+        model: "Modelo"
+        api_key: "Chave da API"
+        key_set: "Há uma chave guardada. Deixe o campo vazio para mantê-la."
+        key_unset: "Nenhuma chave guardada. Deixe o campo vazio se o endpoint não pede."
+        clear_api_key: "Apagar a chave guardada"
+        reindex_hint: "Trocar de provedor ou de modelo recalcula o sentido de todas as notas."
+        save: "Salvar"
+        status: "Estado do modelo"
+        no_status: "Nenhum modelo em uso."
+        states:
+          downloading: "Baixando o modelo"
+          ready: "Pronto"
+          error: "Erro"
+        changed_at: "desde %{time}"
+      update:
+        saved: "Salvo. O servidor passa a usá-lo em até um minuto."
+      errors:
+        invalid_request: "Confira o provedor: o endpoint remoto pede uma URL http ou https e um modelo."
+        host_locked: "Quem hospeda esta instância definiu o provedor, então não dá para mudar aqui."
+        api_key_required: "Para usar outro endpoint remoto, digite a chave da API de novo ou marque Apagar a chave guardada."
+  shortcuts:
+    names:
+      instance_embedding: "Embedding da instância"

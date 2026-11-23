@@ -76,6 +76,8 @@ pt-BR:
       list_move: "Mover na busca, na paleta e nos menus"
       palette_move: "Mover na paleta e no campo de busca, como no fzf"
       menu_move: "Mover nos menus e nos resultados da busca"
+      authorizations: "Autorizações"
+      list_delete: "Remover ou revogar o item em foco, numa lista"
       list_choose: "Executar o item selecionado"
       list_close: "Fechar"
       vim_write: "Salvar"

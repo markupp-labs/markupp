@@ -10,7 +10,7 @@ class PasswordRequestsController < ApplicationController
 
   def create
     @email = params.expect(password_request: [ :email ])[:email]
-    credential.public_api.post("/auth/password/forgot", email: @email)
+    credential.public_api.post("/v1/auth/password/forgot", email: @email)
     redirect_to new_password_request_path, notice: t(".sent")
   rescue MarkuppApi::InvalidRequest
     @email_error = t(".invalid_email")

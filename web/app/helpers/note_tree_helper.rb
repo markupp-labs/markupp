@@ -13,6 +13,13 @@ module NoteTreeHelper
     tag.span(safe_join(cells), aria: { hidden: true }, class: "tree-guide")
   end
 
+  # A marca da nota pública na linha da árvore e do Explorer: o ícone, e o nome para o leitor de tela.
+  def public_note_mark(note)
+    return unless note.public_id
+
+    tag.span(class: "public-mark shrink-0 pl-1 text-ink-muted", title: t("notes.sidebar.public")) { icon("eye", class: "size-3") + tag.span(" #{t("notes.sidebar.public")}", class: "sr-only") }
+  end
+
   def tree_menu_item(name, shortcut: name, note_only: false, danger: false, **attributes)
     keys = shortcut_key(shortcut)
     tag.button(type: "button", role: "menuitem", tabindex: -1, aria: { keyshortcuts: keys }, class: [ "tree-row context-menu-item", ("btn-danger" if danger) ],
