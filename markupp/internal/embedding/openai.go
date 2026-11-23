@@ -83,10 +83,21 @@ func (p *openAICompatProvider) do(req *http.Request, out *embeddingsResponse) er
 	defer func() { _ = res.Body.Close() }()
 	if res.StatusCode != http.StatusOK {
 		snippet, _ := io.ReadAll(io.LimitReader(res.Body, 512))
-		return fmt.Errorf("embeddings from %s answered %d, expected 200: %s", p.baseURL, res.StatusCode, strings.TrimSpace(string(snippet)))
+		err := fmt.Errorf("embeddings from %s answered %d, expected 200: %s", p.baseURL, res.StatusCode, strings.TrimSpace(string(snippet)))
+		return markRejectedInput(res.StatusCode, err)
 	}
 	if err := json.NewDecoder(res.Body).Decode(out); err != nil {
 		return fmt.Errorf("decode embeddings from %s, expected {\"data\":[{\"index\",\"embedding\"}]}: %w", p.baseURL, err)
 	}
 	return nil
+}
+
+// markRejectedInput marca como nota recusada o status que culpa a entrada (400, 413,
+// 422); falta de chave, cota, modelo errado e erro do servidor são o provedor fora.
+func markRejectedInput(status int, err error) error {
+	switch status {
+	case http.StatusBadRequest, http.StatusRequestEntityTooLarge, http.StatusUnprocessableEntity:
+		return fmt.Errorf("%w: %w", err, ErrNoteRejected)
+	}
+	return err
 }

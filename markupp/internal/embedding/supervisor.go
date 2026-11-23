@@ -153,7 +153,7 @@ func (s *Supervisor) activate(ctx context.Context, setting Setting, provider Pro
 		s.fail(ctx, setting, err)
 		return
 	}
-	s.indexer = NewIndexer(s.deps.Queue, provider, s.deps.ChunkTokens, s.deps.BatchSize)
+	s.indexer = NewIndexer(s.deps.Queue, provider, s.deps.ChunkTokens, s.deps.BatchSize, s.deps.Logger)
 	s.report(ctx, stateReady, "")
 	s.deps.Logger.Info("indexador de embedding em laco", "modelo", provider.Name(), "modelo_trocado", changed)
 }
