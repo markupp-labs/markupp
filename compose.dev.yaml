@@ -135,6 +135,8 @@ services:
       MARKUPP_MCP_SECRET_PATH: /run/markupp-mcp/secret
     volumes:
       - mcp_secret:/run/markupp-mcp:ro
+    # O Go compila com go run e pode passar dos 60s que o MCP espera pelos metadados.
+    restart: unless-stopped
     depends_on:
       markupp:
         condition: service_started
