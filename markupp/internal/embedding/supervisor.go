@@ -158,9 +158,11 @@ func (s *Supervisor) activate(ctx context.Context, setting Setting, provider Pro
 	s.deps.Logger.Info("indexador de embedding em laco", "modelo", provider.Name(), "modelo_trocado", changed)
 }
 
-// fail informa o erro e fica sem provedor até a escolha mudar ou ser gravada de novo.
+// fail informa o erro e esquece a escolha, para a próxima volta tentar abrir de novo
+// mesmo quando quem hospeda trava o provedor e a escolha nunca muda.
 func (s *Supervisor) fail(ctx context.Context, setting Setting, err error) {
 	s.stop()
+	s.current = nil
 	s.report(ctx, stateError, err.Error())
 	s.deps.Logger.Error("abrir o provedor de embedding", "provedor", setting.Provider, "err", err)
 }
