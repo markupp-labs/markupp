@@ -41,7 +41,7 @@ func TestGrafoPublico_MostraALigacaoPorMencaoESemARecusada(t *testing.T) {
 
 // alfa e beta falam quase do mesmo jeito, e gama, de outra coisa, dá o idf: o grafo
 // público mostra a ligação por texto parecido, e a nota não a lista com as ligações do
-// texto, porque ela não cita título.
+// texto. A menção e a ligação semântica, também automáticas, ficam fora da lista.
 func TestNotaPublica_LigacaoPorTextoParecidoFicaSoNoGrafo(t *testing.T) {
 	db := setupTestDB(t)
 	repo := storage.NewPostgresNotesRepository(db, "simple")
@@ -49,8 +49,12 @@ func TestNotaPublica_LigacaoPorTextoParecidoFicaSoNoGrafo(t *testing.T) {
 	storagetest.SaveNote(ctx, t, repo, notaPublica("alfa", "Alfa.md", "va", "kubernetes cluster pod deploy helm"))
 	storagetest.SaveNote(ctx, t, repo, notaPublica("beta", "Beta.md", "va", "kubernetes cluster pod deploy helm chart"))
 	storagetest.SaveNote(ctx, t, repo, notaPublica("gama", "Gama.md", "va", "receita de bolo"))
+	storagetest.SaveNote(ctx, t, repo, notaPublica("delta", "Delta.md", "va", "jardinagem de inverno"))
 	publica(t, db, "p-va", "t1", "va", alvoCofre())
 	indexaTodosOsCofres(t, db, "simple")
+	_, err := db.Exec(context.Background(), `INSERT INTO note_automatic_links (source_id, target_id, vault_id, kind, cited_title, score)
+		VALUES ('alfa', 'gama', 'va', 'semantic', NULL, 0.9), ('alfa', 'delta', 'va', 'mentioned', 'Delta', 1)`)
+	require.NoError(t, err)
 	alfa, beta := idPublicoDe(t, db, "alfa"), idPublicoDe(t, db, "beta")
 	leitura := storage.NewPostgresPublicNotes(db, "simple")
 
