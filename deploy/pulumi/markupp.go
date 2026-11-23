@@ -14,6 +14,10 @@ const (
 	defaultAPIReplicas  = 2
 	defaultDBSize       = "10Gi"
 	apiPort             = 6275
+	// apiServicePort é a porta do Service da API, que encaminha para apiPort. Fica na 8080
+	// das instalações existentes: com server-side apply, trocar a porta de um Service soma a
+	// nova à antiga, e o Kubernetes recusa duas portas sem nome.
+	apiServicePort = 8080
 )
 
 // Markupp é a instalação do markupp num namespace do Kubernetes: banco, job de

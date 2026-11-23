@@ -97,7 +97,7 @@ func httpsListenerSpec(name, host, tlsSecret string) pulumi.Map {
 
 // declareRoutes cria a rota da API e, com painel, a do host do painel.
 func declareRoutes(ctx *pulumi.Context, names resourceNames, args MarkuppArgs, apiGateway, panelGateway pulumi.Map, parent pulumi.ResourceOption) error {
-	if err := declareRoute(ctx, names.api, args.Host, apiPort, args, apiGateway, parent); err != nil {
+	if err := declareRoute(ctx, names.api, args.Host, apiServicePort, args, apiGateway, parent); err != nil {
 		return err
 	}
 	if args.Panel == nil {
