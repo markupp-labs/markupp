@@ -35,6 +35,9 @@ expect_tag latest-1.0 'correcao de linha antiga nao rebaixa a latest' 1.0.1 1.1.
 expect_tag latest-1.1 'versao igual a latest nao vira latest de novo' 1.1.0 1.1.0
 expect_tag next 'prerelease vai para next' 1.2.0-rc.1 1.1.0
 expect_tag next 'prerelease sem latest vai para next' 1.0.0-rc.1 ''
+expect_tag next 'prerelease com latest prerelease vai para next' 1.0.0-rc.8 1.0.0-rc.7
+expect_tag latest 'estavel acima da latest prerelease vai para latest' 1.0.0 1.0.0-rc.7
+expect_tag latest-0.9 'estavel abaixo da latest prerelease nao rebaixa' 0.9.1 1.0.0-rc.7
 expect_rejection 'versao fora do semver reprova' v1.0.0 1.0.0
 expect_rejection 'latest atual fora do semver reprova' 1.0.0 lixo
 expect_rejection 'sem versao reprova'
