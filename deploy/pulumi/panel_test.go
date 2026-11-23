@@ -112,25 +112,34 @@ func TestNewMarkupp_ComPainelEMCP_DaAoPainelAURLDoMCP(t *testing.T) {
 		envNamed(t, container, "MARKUPP_MCP_URL")["value"].StringValue())
 }
 
-// O painel se apresenta à API como o relay do MCP na leitura pública, para o limite por IP
-// contar o visitante e não o painel (ADR-0050).
-func TestNewMarkupp_ComPainelEMCP_DaAoPainelOSegredoDoResourceDoMCP(t *testing.T) {
+// O painel se apresenta à API como o relay da leitura pública com um segredo só dele, para
+// o limite por IP contar o visitante e não o painel (ADR-0050), mesmo sem o MCP.
+func TestNewMarkupp_ComPainelSemMCP_DaAoPainelEAAPIOSegredoDeRelayDoPainel(t *testing.T) {
+	monitor := deploy(t, argsComPainel())
+
+	for _, name := range []string{"markupp-panel", "markupp-api"} {
+		container := firstContainer(t, deploymentNamed(t, monitor, name))
+		ref := at(t, envNamed(t, container, "MARKUPP_PANEL_RELAY_SECRET"), "valueFrom", "secretKeyRef")
+		assert.Equal(t, "markupp-panel", at(t, ref.ObjectValue(), "name").StringValue(), name)
+		assert.Equal(t, "relay-secret", at(t, ref.ObjectValue(), "key").StringValue(), name)
+	}
+}
+
+func TestNewMarkupp_ComPainelEMCP_NaoDaAoPainelOSegredoDoResourceDoMCP(t *testing.T) {
 	args := argsComPainel()
 	args.MCP = argsComMCP().MCP
 
 	monitor := deploy(t, args)
 
 	container := firstContainer(t, deploymentNamed(t, monitor, "markupp-panel"))
-	ref := at(t, envNamed(t, container, "MARKUPP_MCP_RESOURCE_SECRET"), "valueFrom", "secretKeyRef")
-	assert.Equal(t, "markupp-mcp", at(t, ref.ObjectValue(), "name").StringValue())
-	assert.Equal(t, "resource-secret", at(t, ref.ObjectValue(), "key").StringValue())
+	assert.NotContains(t, envNames(container), "MARKUPP_MCP_RESOURCE_SECRET")
 }
 
-func TestNewMarkupp_ComPainelSemMCP_NaoDaAoPainelOSegredoDoResource(t *testing.T) {
-	monitor := deploy(t, argsComPainel())
+func TestNewMarkupp_SemPainel_NaoDaAAPIOSegredoDeRelayDoPainel(t *testing.T) {
+	monitor := deploy(t, argsDeTeste())
 
-	container := firstContainer(t, deploymentNamed(t, monitor, "markupp-panel"))
-	assert.NotContains(t, envNames(container), "MARKUPP_MCP_RESOURCE_SECRET")
+	api := firstContainer(t, deploymentNamed(t, monitor, "markupp-api"))
+	assert.NotContains(t, envNames(api), "MARKUPP_PANEL_RELAY_SECRET")
 }
 
 func TestNewMarkupp_ComPainel_LeOSecretKeyBaseDeUmSecret(t *testing.T) {

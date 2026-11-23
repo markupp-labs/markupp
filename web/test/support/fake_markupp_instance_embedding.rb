@@ -1,8 +1,9 @@
 # Embedding da instância da FakeMarkuppApi sob /v1/instance/embedding, como a API: só a conta com instance_admin lê e
 # grava, a chave fica guardada e nunca volta, a escolha travada por quem hospeda recusa o PUT e o remoto pede URL http(s)
-# e modelo, e trocar provedor ou URL sem mandar a chave de novo é recusado. scenario: { provider:, url:, model:, api_key:, locked:, host_provider:, model_status: }.
+# e modelo, e trocar para outro endpoint remoto sem mandar a chave de novo é recusado; o local e o none não usam chave e apagam a guardada. scenario: { provider:, url:, model:, api_key:, locked:, host_provider:, model_status: }.
 class FakeMarkuppInstanceEmbedding
   ROUTE = "/v1/instance/embedding".freeze
+  KEYLESS_PROVIDERS = %w[local none].freeze
 
   attr_reader :updates
 
@@ -26,6 +27,7 @@ class FakeMarkuppInstanceEmbedding
     refuse_key_reuse(body, call)
     @updates << body
     @choice = @choice.merge(body.slice(:provider, :url, :model, :api_key).compact)
+    @choice[:api_key] = "" if KEYLESS_PROVIDERS.include?(body[:provider]) && !body.key?(:api_key)
     view
   end
 
@@ -44,7 +46,7 @@ class FakeMarkuppInstanceEmbedding
     end
 
     def refuse_key_reuse(body, call)
-      return if body.key?(:api_key) || @choice[:api_key].blank?
+      return if body.key?(:api_key) || @choice[:api_key].blank? || KEYLESS_PROVIDERS.include?(body[:provider])
       return if body[:provider] == @choice[:provider] && body[:url].to_s == @choice[:url]
 
       raise MarkuppApi::ApiKeyRequired, "fake API refuses #{call} with url #{body[:url].inspect}: api_key_required, expected api_key sent again"

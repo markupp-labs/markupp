@@ -41,7 +41,7 @@ pt-BR:
       errors:
         invalid_request: "Confira o provedor: o endpoint remoto pede uma URL http ou https e um modelo."
         host_locked: "Quem hospeda esta instância definiu o provedor, então não dá para mudar aqui."
-        api_key_required: "Para trocar o provedor ou a URL, digite a chave da API de novo ou marque Apagar a chave guardada."
+        api_key_required: "Para usar outro endpoint remoto, digite a chave da API de novo ou marque Apagar a chave guardada."
   shortcuts:
     names:
       instance_embedding: "Embedding da instância"

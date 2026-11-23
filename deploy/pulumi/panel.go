@@ -17,6 +17,7 @@ const (
 	panelListener       = "https-panel"
 	secretKeyBaseKey    = "secret-key-base"
 	secretKeyBaseLength = 128
+	panelRelaySecretKey = "relay-secret"
 )
 
 // PanelArgs liga o painel web (ADR-0031), num host próprio: no host da API as
@@ -59,26 +60,29 @@ func panelURL(args MarkuppArgs) string {
 	return "https://" + args.Panel.Host
 }
 
-// panelURLEnv diz à API para onde mandar o consentimento do OAuth (ADR-0047).
-func panelURLEnv(args MarkuppArgs) corev1.EnvVarArray {
+// panelAPIEnv diz à API para onde mandar o consentimento do OAuth (ADR-0047) e o segredo
+// com que o painel se apresenta como relay da leitura pública (ADR-0050).
+func panelAPIEnv(names resourceNames, args MarkuppArgs) corev1.EnvVarArray {
 	if args.Panel == nil {
 		return nil
 	}
-	return corev1.EnvVarArray{plainEnv("MARKUPP_PANEL_URL", panelURL(args))}
+	return corev1.EnvVarArray{plainEnv("MARKUPP_PANEL_URL", panelURL(args)), panelRelaySecretEnv(names)}
+}
+
+// panelRelaySecretEnv lê o segredo de relay do painel, que só a API e o painel conhecem:
+// com ele o limite por IP da leitura pública conta o visitante, e não o painel.
+func panelRelaySecretEnv(names resourceNames) corev1.EnvVarInput {
+	return secretEnv("MARKUPP_PANEL_RELAY_SECRET", names.panel, panelRelaySecretKey)
 }
 
 // panelMCPEnv dá ao painel o endereço do MCP só quando a API o encaminha: sem
 // ele, a página Agents avisa que o MCP está desligado em vez de anunciar um /mcp
-// que daria 404. O segredo do resource do MCP vai junto: com ele o painel se apresenta à
-// API como o relay da leitura pública, e o limite por IP conta o visitante (ADR-0050).
-func panelMCPEnv(names resourceNames, args MarkuppArgs) corev1.EnvVarArray {
+// que daria 404.
+func panelMCPEnv(args MarkuppArgs) corev1.EnvVarArray {
 	if args.MCP == nil {
 		return nil
 	}
-	return corev1.EnvVarArray{
-		plainEnv("MARKUPP_MCP_URL", mcpResourceURL(args)),
-		secretEnv("MARKUPP_MCP_RESOURCE_SECRET", names.mcp, mcpResourceSecretKey),
-	}
+	return corev1.EnvVarArray{plainEnv("MARKUPP_MCP_URL", mcpResourceURL(args))}
 }
 
 func declarePanel(ctx *pulumi.Context, names resourceNames, args MarkuppArgs, parent pulumi.ResourceOption) error {
@@ -97,15 +101,20 @@ func declarePanel(ctx *pulumi.Context, names resourceNames, args MarkuppArgs, pa
 	return declareService(ctx, names.panel, args.Namespace, panelPort, parent)
 }
 
-// declarePanelSecret guarda a secret_key_base, que cifra o cookie de sessão.
+// declarePanelSecret guarda a secret_key_base, que cifra o cookie de sessão, e o segredo
+// de relay do painel.
 func declarePanelSecret(ctx *pulumi.Context, names resourceNames, args MarkuppArgs, parent pulumi.ResourceOption) error {
 	keyBase, err := randomSecret(ctx, names.panel+"-secret-key-base", secretKeyBaseLength, parent)
 	if err != nil {
 		return err
 	}
+	relay, err := randomSecret(ctx, names.panel+"-relay-secret", mcpSecretLength, parent)
+	if err != nil {
+		return err
+	}
 	_, err = corev1.NewSecret(ctx, names.panel, &corev1.SecretArgs{
 		Metadata:   namespaced(names.panel, args.Namespace),
-		StringData: pulumi.StringMap{secretKeyBaseKey: keyBase},
+		StringData: pulumi.StringMap{secretKeyBaseKey: keyBase, panelRelaySecretKey: relay},
 	}, parent)
 	return err
 }
@@ -119,11 +128,12 @@ func panelContainer(names resourceNames, args MarkuppArgs) corev1.ContainerArgs 
 		publicURLEnv(args),
 		secretEnv("SECRET_KEY_BASE", names.panel, secretKeyBaseKey),
 		plainEnv("HTTP_PORT", fmt.Sprint(panelPort)),
+		panelRelaySecretEnv(names),
 	}
 	return corev1.ContainerArgs{
 		Name:  pulumi.String("panel"),
 		Image: pulumi.String(args.Panel.Image),
-		Env:   append(env, panelMCPEnv(names, args)...),
+		Env:   append(env, panelMCPEnv(args)...),
 		Ports: corev1.ContainerPortArray{corev1.ContainerPortArgs{ContainerPort: pulumi.Int(panelPort)}},
 		ReadinessProbe: corev1.ProbeArgs{HttpGet: corev1.HTTPGetActionArgs{
 			Path: pulumi.String("/up"), Port: pulumi.Int(panelPort),

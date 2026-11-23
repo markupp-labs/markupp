@@ -60,6 +60,12 @@ type Config struct {
 	// MCPSecretPath é o arquivo onde o servidor escreve o segredo do MCP da mesma origem,
 	// num volume que o servidor MCP lê.
 	MCPSecretPath string
+	// PanelRelaySecret é o segredo com que o painel se apresenta como relay da leitura
+	// pública. Vazio no Load, vem do banco em WithInstanceSecrets.
+	PanelRelaySecret string
+	// PanelRelaySecretPath é o arquivo onde o servidor escreve o segredo de relay do
+	// painel, num volume que só o painel lê.
+	PanelRelaySecretPath string
 	// OAuthAccessMinutes é a validade do access token emitido pelo OAuth.
 	OAuthAccessMinutes int
 	// OAuthRefreshDays é a validade do refresh token emitido pelo OAuth.
@@ -171,6 +177,9 @@ func loadServerSettings(lookup LookupFunc, cfg *Config) error {
 		return err
 	}
 	if err := loadMCPSettings(lookup, cfg); err != nil {
+		return err
+	}
+	if err := loadPanelRelaySettings(lookup, cfg); err != nil {
 		return err
 	}
 	if err := loadSMTPSettings(lookup, cfg); err != nil {
@@ -337,7 +346,7 @@ func splitOrigins(lookup LookupFunc) []string {
 const minAuthSecretBytes = 32
 
 func loadAuthSettings(lookup LookupFunc, cfg *Config) error {
-	if err := readAuthSecret(lookup, &cfg.AuthSecret); err != nil {
+	if err := readSecret(lookup, "MARKUPP_AUTH_SECRET", &cfg.AuthSecret); err != nil {
 		return err
 	}
 	readString(lookup, "MARKUPP_DEFAULT_TENANT_ID", &cfg.DefaultTenantID)
@@ -361,14 +370,16 @@ func loadAuthFlags(lookup LookupFunc, cfg *Config) error {
 	return readBool(lookup, "MARKUPP_AUTH_LOCAL_ENABLED", &cfg.LocalAuthEnabled)
 }
 
-func readAuthSecret(lookup LookupFunc, target *string) error {
-	val, _ := lookup("MARKUPP_AUTH_SECRET")
+// readSecret lê em target o segredo da variável key, exigindo o tamanho mínimo do segredo
+// do JWT. O erro cita o tamanho, nunca o valor.
+func readSecret(lookup LookupFunc, key string, target *string) error {
+	val, _ := lookup(key)
 	trimmed := strings.TrimSpace(val)
 	if trimmed == "" {
 		return nil
 	}
 	if len(trimmed) < minAuthSecretBytes {
-		return fmt.Errorf("MARKUPP_AUTH_SECRET has %d bytes, expected at least %d bytes of random data", len(trimmed), minAuthSecretBytes)
+		return fmt.Errorf("%s has %d bytes, expected at least %d bytes of random data", key, len(trimmed), minAuthSecretBytes)
 	}
 	*target = trimmed
 	return nil

@@ -313,9 +313,18 @@ func addPublication(deps *api.RouterDeps, cfg config.Config, pool *pgxpool.Pool)
 	deps.Publications = publication.NewService(storage.NewPostgresPublications(pool), time.Now, uuid.NewString)
 	deps.PublicNotes = storage.NewPostgresPublicNotes(pool, cfg.SearchConfig)
 	deps.PublicRateLimiter = api.NewAccountRateLimiter(cfg.PublicRateLimitPerMinute, time.Minute, time.Now, cfg.TrustedProxies)
-	// O servidor MCP se autentica com o segredo de resource dele e repassa o IP do agente
-	// de /mcp/public (ADR-0050). Sem OAuth não há resource, e o limite fica na conexão.
-	deps.PublicRelay, _ = deps.OAuth.(api.RelayAuthenticator)
+	deps.PublicRelay = publicRelays(deps.OAuth, cfg.PanelRelaySecret)
+}
+
+// publicRelays são quem repassa o IP do visitante à leitura pública: o painel, pelo
+// segredo de relay dele, e o servidor MCP, pelo segredo de resource, que só existe com
+// OAuth (ADR-0050).
+func publicRelays(oauthSvc api.OAuthService, panelSecret string) api.RelayAuthenticators {
+	relays := api.RelayAuthenticators{api.PanelRelay{Secret: panelSecret}}
+	if mcp, ok := oauthSvc.(api.RelayAuthenticator); ok {
+		relays = append(relays, mcp)
+	}
+	return relays
 }
 
 // O *oauth.Service confere o servidor MCP da leitura pública.

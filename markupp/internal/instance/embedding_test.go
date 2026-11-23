@@ -118,16 +118,20 @@ func TestUpdate_SemChaveNoPedido_MantemAChaveAnterior(t *testing.T) {
 }
 
 func TestUpdate_SemChaveComOutraURLOuProvedor_RecusaSemGravar(t *testing.T) {
+	guardado := instance.EmbeddingChoice{Provider: "openai-compat", URL: "https://api.exemplo/v1", SealedAPIKey: "selado:velha"} // #nosec G101 -- valor fictício de teste
+	vindoDoLocal := guardado
+	vindoDoLocal.Provider, vindoDoLocal.URL = "local", ""
 	casos := map[string]struct {
+		guardado instance.EmbeddingChoice
 		pedido   instance.EmbeddingUpdate
 		esperado []string
 	}{
-		"outra url":      {instance.EmbeddingUpdate{Provider: "openai-compat", URL: "https://atacante.exemplo/v1", Model: "m"}, []string{`"https://atacante.exemplo/v1"`, "api_key"}},
-		"outro provedor": {instance.EmbeddingUpdate{Provider: "local"}, []string{`"local"`, "api_key"}},
+		"outra url":      {guardado, instance.EmbeddingUpdate{Provider: "openai-compat", URL: "https://atacante.exemplo/v1", Model: "m"}, []string{`"https://atacante.exemplo/v1"`, "api_key"}},
+		"outro provedor": {vindoDoLocal, remoto(nil), []string{`"openai-compat"`, `"local"`, "api_key"}},
 	}
 	for nome, caso := range casos {
 		t.Run(nome, func(t *testing.T) {
-			svc, store := servico(instance.EmbeddingRecord{Choice: instance.EmbeddingChoice{Provider: "openai-compat", URL: "https://api.exemplo/v1", SealedAPIKey: "selado:velha"}}) // #nosec G101 -- valor fictício de teste
+			svc, store := servico(instance.EmbeddingRecord{Choice: caso.guardado})
 
 			_, err := svc.Update(context.Background(), caso.pedido)
 
@@ -136,6 +140,20 @@ func TestUpdate_SemChaveComOutraURLOuProvedor_RecusaSemGravar(t *testing.T) {
 				assert.Contains(t, err.Error(), trecho)
 			}
 			assert.Zero(t, store.saves)
+		})
+	}
+}
+
+func TestUpdate_SemChaveParaProvedorQueNaoUsaChave_ApagaAChaveGuardada(t *testing.T) {
+	for _, provedor := range []string{"local", "none"} {
+		t.Run(provedor, func(t *testing.T) {
+			svc, store := servico(instance.EmbeddingRecord{Choice: instance.EmbeddingChoice{Provider: "openai-compat", URL: "https://api.exemplo/v1", SealedAPIKey: "selado:velha"}}) // #nosec G101 -- valor fictício de teste
+
+			view, err := svc.Update(context.Background(), instance.EmbeddingUpdate{Provider: provedor})
+
+			require.NoError(t, err)
+			assert.Empty(t, store.record.Choice.SealedAPIKey)
+			assert.False(t, view.APIKeySet)
 		})
 	}
 }

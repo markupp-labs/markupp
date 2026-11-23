@@ -36,3 +36,21 @@ func TestNotaPublica_LinkParaCaminhoPrivadoNaoResolveParaOutraNota(t *testing.T)
 	assert.Equal(t, []publication.PublicLink{{CitedTitle: "Plan", Kind: "explicit"}}, nota.Links)
 	assert.Empty(t, g.Links)
 }
+
+// A função que diz se um caminho existe só responde no cofre de uma nota pública de
+// origem: p1 é pública no cofre pub, p2 é privada no mesmo cofre e s1 é de outro tenant.
+func TestCaminhoExiste_SoRespondeNoCofreDaNotaPublicaDeOrigem(t *testing.T) {
+	db := notaPublicadaEPrivadas(t)
+	casos := map[string]int64{
+		"('p1', 'inicio.md')":  1,
+		"('p2', 'guia.md')":    0,
+		"('p1', 'segredo.md')": 0,
+		"('s1', 'segredo.md')": 0,
+	}
+
+	for args, esperado := range casos {
+		n, err := comoLeitor(t, db, "SELECT count(*) WHERE markupp_public_note_path_exists"+args)
+		require.NoError(t, err, args)
+		assert.Equal(t, esperado, n, args)
+	}
+}
