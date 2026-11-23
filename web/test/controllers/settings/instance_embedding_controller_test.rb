@@ -92,7 +92,17 @@ module Settings
       patch settings_instance_embedding_path, params: { embedding: { provider: "openai-compat", url: "https://other.example/v1", model: "m", api_key: "" } }
 
       assert_response :unprocessable_entity
-      assert_select "main [role=alert]", "To change the provider or the URL, type the API key again, or tick Remove the stored key."
+      assert_select "main [role=alert]", "To use another remote endpoint, type the API key again, or tick Remove the stored key."
+    end
+
+    test "switching to the local model without typing the key saves and removes the stored key" do
+      sign_in_admin(provider: "openai-compat", url: "https://api.example/v1", model: "m", api_key: "sk")
+
+      patch settings_instance_embedding_path, params: { embedding: { provider: "local", api_key: "" } }
+
+      assert_redirected_to settings_instance_embedding_path
+      follow_redirect!
+      assert_select "main", text: /A key is set/, count: 0
     end
 
     test "when whoever hosts the instance sets the provider, the form is locked and says by whom, without naming settings" do
