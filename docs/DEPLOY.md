@@ -134,9 +134,11 @@ que o cache por ETag dele economiza. A migração 00040 cria o papel `markupp_re
 para essa leitura, com o mesmo CREATEROLE que a migração já exige para os outros papéis.
 
 O painel serve as notas públicas em /p/ (ADR-0048) e lê a API pelo Service, passando o IP de
-quem visita no X-Forwarded-For. Para o limite por IP da leitura pública contar cada visitante, e
-não o painel, `MARKUPP_TRUSTED_PROXIES` precisa listar também a rede de onde o painel chega à API;
-sem ela, todos os visitantes do painel dividem um limite só.
+quem visita no X-Forwarded-For. O Go só lê esse IP porque o painel se apresenta como o relay da
+leitura pública, com o HTTP Basic do resource do MCP (ADR-0050): o compose monta no painel o
+volume do segredo do MCP, e o componente dá a ele `MARKUPP_MCP_RESOURCE_SECRET`. Sem o MCP
+ligado não há resource, e todos os visitantes do painel dividem um limite só, salvo se
+`MARKUPP_TRUSTED_PROXIES` listar a rede de onde o painel chega à API.
 
 Sem outra opção, o componente cria um Gateway próprio nas portas 80 e 443. Em cluster onde
 outro Gateway já ocupa essas portas, como o Cilium em hostNetwork, que exige porta única por
