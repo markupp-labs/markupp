@@ -3,6 +3,7 @@ package api
 import (
 	"net/http"
 	"net/http/httputil"
+	"net/netip"
 	"net/url"
 	"time"
 
@@ -21,7 +22,7 @@ const (
 // mountMCPProxy encaminha o servidor MCP ao container dele, sem CORS nem autenticação: o
 // servidor MCP troca o token do agente e responde 401 sozinho, e em /mcp/public lê só
 // as notas publicadas, pelas rotas /v1/public com o limite delas.
-func mountMCPProxy(r chi.Router, upstreamURL string) {
+func mountMCPProxy(r chi.Router, upstreamURL string, trusted []netip.Prefix) {
 	if upstreamURL == "" {
 		return
 	}
@@ -29,7 +30,7 @@ func mountMCPProxy(r chi.Router, upstreamURL string) {
 	if err != nil {
 		panic("api: invalid MCPUpstreamURL, the config should have rejected it: " + err.Error())
 	}
-	proxy := withoutWriteDeadline(newMCPReverseProxy(upstream))
+	proxy := withoutWriteDeadline(newMCPReverseProxy(upstream, trusted))
 	r.Handle(mcpEndpointPath, proxy)
 	r.Handle(mcpResourceMetadataPath, proxy)
 	r.Handle(mcpPublicEndpointPath, proxy)
@@ -37,11 +38,11 @@ func mountMCPProxy(r chi.Router, upstreamURL string) {
 
 // newMCPReverseProxy repassa cada pedaço da resposta assim que chega, porque o
 // Streamable HTTP responde por SSE.
-func newMCPReverseProxy(upstream *url.URL) *httputil.ReverseProxy {
+func newMCPReverseProxy(upstream *url.URL, trusted []netip.Prefix) *httputil.ReverseProxy {
 	return &httputil.ReverseProxy{
 		Rewrite: func(pr *httputil.ProxyRequest) {
 			pr.SetURL(upstream)
-			pr.SetXForwarded()
+			setForwardedHeaders(pr, trusted)
 		},
 		FlushInterval: -1,
 	}

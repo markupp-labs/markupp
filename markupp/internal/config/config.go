@@ -97,7 +97,8 @@ type Config struct {
 	InviteLimitPerAccount int
 	InviteLimitPerTenant  int
 	// TrustedProxies são as redes dos proxies cujo X-Forwarded-For o limite de
-	// tentativas aceita. Vazia, o limite usa só o IP da conexão.
+	// tentativas aceita e os proxies do painel e do MCP repassam. Vazia, o limite usa só
+	// o IP da conexão, e os proxies descartam o header de entrada.
 	TrustedProxies []netip.Prefix
 	// LoginProviders são os provedores externos de login, na ordem de
 	// MARKUPP_LOGIN_PROVIDERS. Vazia, só há email e senha (ADR-0054).

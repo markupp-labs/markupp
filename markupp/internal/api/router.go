@@ -2,6 +2,7 @@ package api
 
 import (
 	"net/http"
+	"net/netip"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -31,6 +32,9 @@ type RouterDeps struct {
 	// PanelUpstreamURL é o painel para onde vai todo caminho que o servidor não atende.
 	// Vazia, a raiz não encaminha nada.
 	PanelUpstreamURL string
+	// TrustedProxies são as redes dos proxies cujo X-Forwarded-For os proxies do painel
+	// e do MCP repassam. De outra conexão, o header de entrada é descartado.
+	TrustedProxies []netip.Prefix
 	// AccountRateLimiter limita as rotas de conta (ADR-0044). Nil deixa as rotas livres.
 	AccountRateLimiter *AccountRateLimiter
 	// Publications publica e despublica notas, pastas e cofres (ADR-0048).
@@ -59,8 +63,8 @@ func NewRouter(d RouterDeps) chi.Router {
 	r.Use(middleware.RequestID)
 	r.Use(middleware.Recoverer)
 	mountOAuthServerRoutes(r, d)
-	mountMCPProxy(r, d.MCPUpstreamURL)
-	mountPanelProxy(r, d.PanelUpstreamURL)
+	mountMCPProxy(r, d.MCPUpstreamURL, d.TrustedProxies)
+	mountPanelProxy(r, d.PanelUpstreamURL, d.TrustedProxies)
 	mountPublicNoteRoutes(r, d.PublicNotes, limitPublicReads(d.PublicRateLimiter, d.PublicRelay))
 	r.Group(func(g chi.Router) {
 		g.Use(allowOrigins(d.AllowedOrigins))

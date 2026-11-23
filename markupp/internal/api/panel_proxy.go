@@ -2,6 +2,7 @@ package api
 
 import (
 	"net/http/httputil"
+	"net/netip"
 	"net/url"
 
 	"github.com/go-chi/chi/v5"
@@ -10,7 +11,7 @@ import (
 // mountPanelProxy encaminha ao painel todo caminho que o servidor não atende, para o
 // painel viver na raiz da mesma origem. O Host original segue para o painel gerar as
 // URLs e conferir a origem dos formulários com o endereço que o navegador vê.
-func mountPanelProxy(r chi.Router, upstreamURL string) {
+func mountPanelProxy(r chi.Router, upstreamURL string, trusted []netip.Prefix) {
 	if upstreamURL == "" {
 		return
 	}
@@ -21,6 +22,6 @@ func mountPanelProxy(r chi.Router, upstreamURL string) {
 	r.Handle("/*", &httputil.ReverseProxy{Rewrite: func(pr *httputil.ProxyRequest) {
 		pr.SetURL(upstream)
 		pr.Out.Host = pr.In.Host
-		pr.SetXForwarded()
+		setForwardedHeaders(pr, trusted)
 	}})
 }

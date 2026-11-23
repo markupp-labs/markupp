@@ -267,6 +267,7 @@ func newHandler(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, logg
 		LinkRefusals: linkrefusals.NewService(storage.NewPostgresLinkRefusals(pool)),
 		Tokens:       codec, Tenants: authSvc, Probe: pool, AllowedOrigins: cfg.AllowedOrigins,
 		OAuthMetadata: oauthMetadataFrom(cfg), OAuth: oauthSvc, MCPUpstreamURL: cfg.MCPUpstreamURL, PanelUpstreamURL: cfg.PanelUpstreamURL,
+		TrustedProxies:     cfg.TrustedProxies,
 		AccountRateLimiter: api.NewAccountRateLimiter(cfg.RateLimitPerMinute, time.Minute, time.Now, cfg.TrustedProxies),
 		ExternalLogin:      newExternalLoginService(cfg, authSvc),
 	}
