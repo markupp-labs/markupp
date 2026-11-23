@@ -67,14 +67,18 @@ func panelURLEnv(args MarkuppArgs) corev1.EnvVarArray {
 	return corev1.EnvVarArray{plainEnv("MARKUPP_PANEL_URL", panelURL(args))}
 }
 
-// panelMCPURLEnv dá ao painel o endereço do MCP só quando a API o encaminha: sem
+// panelMCPEnv dá ao painel o endereço do MCP só quando a API o encaminha: sem
 // ele, a página Agents avisa que o MCP está desligado em vez de anunciar um /mcp
-// que daria 404.
-func panelMCPURLEnv(args MarkuppArgs) corev1.EnvVarArray {
+// que daria 404. O segredo do resource do MCP vai junto: com ele o painel se apresenta à
+// API como o relay da leitura pública, e o limite por IP conta o visitante (ADR-0050).
+func panelMCPEnv(names resourceNames, args MarkuppArgs) corev1.EnvVarArray {
 	if args.MCP == nil {
 		return nil
 	}
-	return corev1.EnvVarArray{plainEnv("MARKUPP_MCP_URL", mcpResourceURL(args))}
+	return corev1.EnvVarArray{
+		plainEnv("MARKUPP_MCP_URL", mcpResourceURL(args)),
+		secretEnv("MARKUPP_MCP_RESOURCE_SECRET", names.mcp, mcpResourceSecretKey),
+	}
 }
 
 func declarePanel(ctx *pulumi.Context, names resourceNames, args MarkuppArgs, parent pulumi.ResourceOption) error {
@@ -119,7 +123,7 @@ func panelContainer(names resourceNames, args MarkuppArgs) corev1.ContainerArgs 
 	return corev1.ContainerArgs{
 		Name:  pulumi.String("panel"),
 		Image: pulumi.String(args.Panel.Image),
-		Env:   append(env, panelMCPURLEnv(args)...),
+		Env:   append(env, panelMCPEnv(names, args)...),
 		Ports: corev1.ContainerPortArray{corev1.ContainerPortArgs{ContainerPort: pulumi.Int(panelPort)}},
 		ReadinessProbe: corev1.ProbeArgs{HttpGet: corev1.HTTPGetActionArgs{
 			Path: pulumi.String("/up"), Port: pulumi.Int(panelPort),
