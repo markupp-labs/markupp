@@ -72,7 +72,8 @@ func (c Config) DefaultMCPResourceSecret() (string, bool) {
 }
 
 // WithInstanceSecrets completa o que as variáveis deixaram vazio com os segredos do
-// banco: o do JWT e, sem MARKUPP_OAUTH_RESOURCES, o do MCP da mesma origem.
+// banco: o do JWT, o de relay do painel e, sem MARKUPP_OAUTH_RESOURCES, o do MCP da
+// mesma origem.
 func (c Config) WithInstanceSecrets(ctx context.Context, secrets InstanceSecrets, generate func() (string, error)) (Config, error) {
 	if c.AuthSecret == "" {
 		secret, err := secrets.Secret(ctx, authSecretName, generate)
@@ -81,8 +82,9 @@ func (c Config) WithInstanceSecrets(ctx context.Context, secrets InstanceSecrets
 		}
 		c.AuthSecret = secret
 	}
-	if len(c.OAuthResources) > 0 {
-		return c, nil
+	c, err := c.withPanelRelaySecret(ctx, secrets, generate)
+	if err != nil || len(c.OAuthResources) > 0 {
+		return c, err
 	}
 	secret, err := secrets.Secret(ctx, mcpResourceSecretName, generate)
 	if err != nil {

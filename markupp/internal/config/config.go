@@ -60,6 +60,12 @@ type Config struct {
 	// MCPSecretPath é o arquivo onde o servidor escreve o segredo do MCP da mesma origem,
 	// num volume que o servidor MCP lê.
 	MCPSecretPath string
+	// PanelRelaySecret é o segredo com que o painel se apresenta como relay da leitura
+	// pública. Vazio no Load, vem do banco em WithInstanceSecrets.
+	PanelRelaySecret string
+	// PanelRelaySecretPath é o arquivo onde o servidor escreve o segredo de relay do
+	// painel, num volume que só o painel lê.
+	PanelRelaySecretPath string
 	// OAuthAccessMinutes é a validade do access token emitido pelo OAuth.
 	OAuthAccessMinutes int
 	// OAuthRefreshDays é a validade do refresh token emitido pelo OAuth.
@@ -171,6 +177,9 @@ func loadServerSettings(lookup LookupFunc, cfg *Config) error {
 		return err
 	}
 	if err := loadMCPSettings(lookup, cfg); err != nil {
+		return err
+	}
+	if err := loadPanelRelaySettings(lookup, cfg); err != nil {
 		return err
 	}
 	if err := loadSMTPSettings(lookup, cfg); err != nil {
