@@ -121,7 +121,9 @@ redes tem o X-Forwarded-For lido da direita para a esquerda, e o IP que conta é
 não é proxy confiável. Header vazio ou malformado fica com o IP da conexão, e conexão de fora da
 lista nunca tem o header lido. Liste só as redes dos proxies: um CIDR que cubra clientes deixa
 qualquer um deles escolher o IP que conta. No componente, `trustedProxies` recebe a lista de
-CIDRs e `rateLimitPerMinute` o limite, e os dois vão só para a API.
+CIDRs e `rateLimitPerMinute` o limite, e os dois vão só para a API. A mesma lista decide o que
+o Go repassa ao painel e ao servidor MCP que encaminha: de proxy confiável, o X-Forwarded-For
+de entrada segue com o salto da conexão no fim; de outra conexão, segue só esse salto.
 
 A leitura sem conta das notas publicadas (ADR-0048), nas rotas `/v1/public/notes/{public_id}`,
 tem limite próprio: 300 pedidos por minuto por IP, somadas todas essas rotas, trocado pela
