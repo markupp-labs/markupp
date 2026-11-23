@@ -20,13 +20,14 @@ ARG ONNXRUNTIME_VERSION=1.31.1
 ARG ONNXRUNTIME_NUPKG_SHA256=6871ccbc97f3d5bdb4095a1dcec33aa78d56f6ed8de5980ef5fa1d9f2e7c679a
 ARG TARGETARCH
 
+# Sem BuildKit o TARGETARCH chega vazio; a arquitetura do próprio Debian vale nesse caso.
 # O hugot procura a libonnxruntime.so em /usr/lib. A pasta do modelo nasce com o dono
 # do servidor: um volume nomeado novo herda esse dono, e o servidor sem root grava nele.
 RUN set -eux; \
-  case "$TARGETARCH" in \
+  case "${TARGETARCH:-$(dpkg --print-architecture)}" in \
     amd64) arch=x64 ;; \
     arm64) arch=arm64 ;; \
-    *) echo "arquitetura $TARGETARCH sem ONNX Runtime publicado, esperado amd64 ou arm64" >&2; exit 1 ;; \
+    *) echo "arquitetura ${TARGETARCH:-$(dpkg --print-architecture)} sem ONNX Runtime publicado, esperado amd64 ou arm64" >&2; exit 1 ;; \
   esac; \
   apt-get update; \
   apt-get install -y --no-install-recommends ca-certificates curl unzip; \
