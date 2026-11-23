@@ -71,7 +71,18 @@ func (f *FakeModelRegistry) Use(_ context.Context, name string, dimension int) (
 	return true, nil
 }
 
+// FakeSupervisorClock é o relógio do supervisor, avançado à mão pelo teste.
+type FakeSupervisorClock struct{ now time.Time }
+
+func (c *FakeSupervisorClock) Now() time.Time { return c.now }
+
+func (c *FakeSupervisorClock) advance(d time.Duration) { c.now = c.now.Add(d) }
+
+// retryBaseDeTeste é a primeira espera depois de uma falha nos testes.
+const retryBaseDeTeste = 30 * time.Second
+
 type supervisorDeTeste struct {
+	clock    *FakeSupervisorClock
 	source   *FakeSettingSource
 	status   *FakeStatusReporter
 	opener   *FakeProviderOpener
@@ -81,11 +92,12 @@ type supervisorDeTeste struct {
 }
 
 func novoSupervisor(setting embedding.Setting, locked bool) supervisorDeTeste {
-	d := supervisorDeTeste{source: &FakeSettingSource{setting: setting}, status: &FakeStatusReporter{},
+	d := supervisorDeTeste{clock: &FakeSupervisorClock{now: time.Unix(1_000_000, 0)}, source: &FakeSettingSource{setting: setting}, status: &FakeStatusReporter{},
 		opener: &FakeProviderOpener{}, registry: &FakeModelRegistry{}, queue: &fakeEmbeddingQueue{}}
 	d.sup = embedding.NewSupervisor(embedding.SupervisorDeps{
 		Source: d.source, Status: d.status, Open: d.opener.Open, Use: d.registry.Use, Queue: d.queue,
 		HostLocked: locked, HostProvider: setting.Provider, ChunkTokens: 2, BatchSize: 16, Logger: slog.New(slog.DiscardHandler),
+		Now: d.clock.Now, RetryBase: retryBaseDeTeste,
 	})
 	return d
 }
@@ -148,6 +160,7 @@ func TestRefresh_FalhouComAMesmaEscolha_TentaDeNovoNaProximaVolta(t *testing.T) 
 	d.opener.err = errors.New("sem rede")
 	d.sup.Refresh(context.Background())
 	d.opener.err = nil
+	d.clock.advance(retryBaseDeTeste)
 
 	d.sup.Refresh(context.Background())
 
