@@ -78,12 +78,13 @@ func TestWithInstanceSecrets_SemVariaveis_GeraOSegredoDoJWTEODoMCP(t *testing.T)
 	require.NoError(t, err)
 	assert.Equal(t, "segredo-gerado-com-mais-de-32-bytes!", resolved.AuthSecret)
 	assert.Equal(t, []config.OAuthResource{{URL: "http://localhost:6275/mcp", Secret: "segredo-gerado-com-mais-de-32-bytes!"}}, resolved.OAuthResources) // #nosec G101 -- valor fictício de teste
-	assert.ElementsMatch(t, []string{"auth_secret", "mcp_resource_secret"}, secrets.generated)
+	assert.ElementsMatch(t, []string{"auth_secret", "mcp_resource_secret", "panel_relay_secret"}, secrets.generated)
 }
 
 func TestWithInstanceSecrets_ComVariaveis_UsaOOverrideSemGerar(t *testing.T) {
 	secrets := newFakeInstanceSecrets()
 	env := envComOAuth()
+	env["MARKUPP_PANEL_RELAY_SECRET"] = segredoDoPainelDeTeste
 
 	resolved, err := carregar(t, env).WithInstanceSecrets(context.Background(), secrets, gerarSegredo)
 
