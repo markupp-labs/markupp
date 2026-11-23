@@ -19,7 +19,7 @@ func prepareInstance(ctx context.Context, cfg config.Config, secrets config.Inst
 	if prepared.MCPSecretPath == "" || !sameOrigin {
 		return prepared, nil
 	}
-	if err := config.WriteMCPSecret(prepared.MCPSecretPath, secret); err != nil {
+	if err := config.WriteSecretFile(prepared.MCPSecretPath, secret); err != nil {
 		return config.Config{}, err
 	}
 	return prepared, nil

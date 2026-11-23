@@ -92,30 +92,30 @@ func (c Config) WithInstanceSecrets(ctx context.Context, secrets InstanceSecrets
 	return c, nil
 }
 
-// WriteMCPSecret escreve o segredo no volume que o servidor MCP lê, por arquivo temporário
-// e rename, para o MCP nunca ler o arquivo pela metade. O erro cita o caminho, nunca o
-// segredo.
-func WriteMCPSecret(path, secret string) error {
+// WriteSecretFile escreve o segredo no volume que outro container lê, por arquivo
+// temporário e rename, para quem lê nunca ler o arquivo pela metade. O erro cita o
+// caminho, nunca o segredo.
+func WriteSecretFile(path, secret string) error {
 	dir := filepath.Dir(path)
-	// #nosec G301 -- o servidor MCP roda com outro usuario e precisa atravessar o diretorio
+	// #nosec G301 -- o container que le roda com outro usuario e precisa atravessar o diretorio
 	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return fmt.Errorf("create MCP secret directory %s: %w", dir, err)
+		return fmt.Errorf("create secret directory %s: %w", dir, err)
 	}
 	temp, err := os.CreateTemp(dir, ".secret-*")
 	if err != nil {
-		return fmt.Errorf("create temporary MCP secret file in %s: %w", dir, err)
+		return fmt.Errorf("create temporary secret file in %s: %w", dir, err)
 	}
 	defer func() { _ = os.Remove(temp.Name()) }()
 	if err := writeAndClose(temp, secret); err != nil {
-		return fmt.Errorf("write MCP secret to %s: %w", temp.Name(), err)
+		return fmt.Errorf("write secret to %s: %w", temp.Name(), err)
 	}
 	if err := os.Rename(temp.Name(), path); err != nil {
-		return fmt.Errorf("move MCP secret to %s: %w", path, err)
+		return fmt.Errorf("move secret to %s: %w", path, err)
 	}
 	return nil
 }
 
-// writeAndClose grava o segredo legível pelo usuário do container do MCP, que não é o
+// writeAndClose grava o segredo legível pelo usuário do container que lê, que não é o
 // do servidor; o volume só é montado nos dois.
 func writeAndClose(file *os.File, secret string) error {
 	if _, err := file.WriteString(secret); err != nil {
