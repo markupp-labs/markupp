@@ -135,10 +135,12 @@ para essa leitura, com o mesmo CREATEROLE que a migração já exige para os out
 
 O painel serve as notas públicas em /p/ (ADR-0048) e lê a API pelo Service, passando o IP de
 quem visita no X-Forwarded-For. O Go só lê esse IP porque o painel se apresenta como o relay da
-leitura pública, com o HTTP Basic do resource do MCP (ADR-0050): o compose monta no painel o
-volume do segredo do MCP, e o componente dá a ele `MARKUPP_MCP_RESOURCE_SECRET`. Sem o MCP
-ligado não há resource, e todos os visitantes do painel dividem um limite só, salvo se
-`MARKUPP_TRUSTED_PROXIES` listar a rede de onde o painel chega à API.
+leitura pública (ADR-0050), com um segredo só dele, que vale mesmo com o MCP e o OAuth
+desligados e só para a leitura pública. O Go gera esse segredo no banco na primeira subida,
+como o do MCP, e o escreve no arquivo de `MARKUPP_PANEL_RELAY_SECRET_PATH`: o compose monta
+esse volume no Go e no painel, e o painel não monta o segredo do MCP. No cluster, o componente
+gera o segredo num Secret e o passa à API e ao painel em `MARKUPP_PANEL_RELAY_SECRET`, que no
+Go troca o segredo do banco e precisa de ao menos 32 bytes.
 
 Sem outra opção, o componente cria um Gateway próprio nas portas 80 e 443. Em cluster onde
 outro Gateway já ocupa essas portas, como o Cilium em hostNetwork, que exige porta única por
@@ -148,8 +150,8 @@ caso o certificado fica com quem administra o Gateway.
 
 Para subir o painel, informe `panel` com `image` e `host`. Ele fica num host próprio, sem o
 encaminhamento pelo Go do compose, com uma réplica só: a renovação do token mora na memória
-do processo. O componente gera a `secret_key_base` num Secret, aponta o painel para a API pelo
-Service e passa à API o `MARKUPP_PANEL_URL`, que leva o consentimento do OAuth e os links dos
+do processo. O componente gera a `secret_key_base` e o segredo de relay do painel num Secret,
+aponta o painel para a API pelo Service e passa à API o `MARKUPP_PANEL_URL`, que leva o consentimento do OAuth e os links dos
 emails para o painel. Com `existingGateway`, `panel.sectionName` escolhe o listener do host do
 painel; com Gateway próprio, o componente abre um listener para ele.
 
@@ -469,6 +471,7 @@ pontas:
 | `MARKUPP_MCP_UPSTREAM_URL` | Go | sem `/mcp` | endereço interno do servidor MCP, para onde `/mcp` é encaminhado |
 | `MARKUPP_PANEL_UPSTREAM_URL` | Go | sem painel na raiz | endereço interno do painel, para onde vai todo caminho que o Go não atende |
 | `MARKUPP_MCP_SECRET_PATH` | Go e MCP | sem arquivo | arquivo do segredo do MCP: o Go escreve e o MCP lê |
+| `MARKUPP_PANEL_RELAY_SECRET_PATH` | Go e painel | sem arquivo | arquivo do segredo de relay do painel: o Go escreve e o painel lê |
 | `MARKUPP_MCP_API_URL` | MCP | `http://localhost:6275` | endereço do servidor Go visto pelo MCP; aceita http em qualquer host |
 | `MARKUPP_MCP_RESOURCE_URL` | MCP | issuer + `/mcp` | URL pública do MCP com o caminho do endpoint; o caminho vira a rota |
 | `MARKUPP_MCP_RESOURCE_SECRET` | MCP | o do arquivo | segredo do par em `MARKUPP_OAUTH_RESOURCES`, com ao menos 32 bytes |
