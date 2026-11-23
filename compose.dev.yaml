@@ -93,6 +93,7 @@ services:
       MARKUPP_MCP_UPSTREAM_URL: http://mcp:3000
       MARKUPP_PANEL_UPSTREAM_URL: http://web:3000
       MARKUPP_MCP_SECRET_PATH: /run/markupp-mcp/secret
+      MARKUPP_PANEL_RELAY_SECRET_PATH: /run/markupp-panel/secret
       # Contas que administram a instância pelo painel, e a chave que cifra os segredos
       # guardados no banco (ADR-0057).
       MARKUPP_INSTANCE_ADMINS: ${MARKUPP_INSTANCE_ADMINS:-}
@@ -101,6 +102,7 @@ services:
       - ./markupp:/src
       - ${GO_MOD_CACHE:-go_mod_cache}:/go/pkg/mod
       - mcp_secret:/run/markupp-mcp
+      - panel_secret:/run/markupp-panel
     ports:
       - "${MARKUPP_PORT:-6275}:6275"
     depends_on:
@@ -119,11 +121,11 @@ services:
       # que o MCP está desligado.
       MARKUPP_PUBLIC_URL: ${MARKUPP_PUBLIC_URL:-http://localhost:${MARKUPP_PORT:-6275}}
       MARKUPP_MCP_URL: ${MARKUPP_PUBLIC_URL:-http://localhost:${MARKUPP_PORT:-6275}}/mcp
-      # Com o segredo do MCP o painel se apresenta ao Go como o relay da leitura pública,
-      # e o limite por IP conta cada visitante de /p/, não o painel.
-      MARKUPP_MCP_SECRET_PATH: /run/markupp-mcp/secret
+      # Com o segredo de relay que o Go gera só para ele, o painel se apresenta como o relay
+      # da leitura pública, e o limite por IP conta cada visitante de /p/, não o painel.
+      MARKUPP_PANEL_RELAY_SECRET_PATH: /run/markupp-panel/secret
     volumes:
-      - mcp_secret:/run/markupp-mcp:ro
+      - panel_secret:/run/markupp-panel:ro
       - ./web:/rails
       - ${BUNDLE_CACHE:-bundle_cache}:/usr/local/bundle
     depends_on:
@@ -150,3 +152,4 @@ volumes:
   go_mod_cache:
   bundle_cache:
   mcp_secret:
+  panel_secret:
