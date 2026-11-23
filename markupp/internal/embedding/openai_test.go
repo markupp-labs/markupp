@@ -3,6 +3,7 @@ package embedding_test
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -61,6 +62,23 @@ func TestOpenAICompat_Embed_StatusDeErro_RetornaErroComOStatus(t *testing.T) {
 
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "429")
+}
+
+func TestOpenAICompat_Embed_EntradaRecusada_RetornaNotaRecusada(t *testing.T) {
+	for _, status := range []int{http.StatusBadRequest, http.StatusRequestEntityTooLarge, http.StatusUnprocessableEntity} {
+		_, err := provedorRemoto(t, &fakeEmbeddingsServer{status: status}).Embed(context.Background(), []string{"um"})
+
+		assert.ErrorIs(t, err, embedding.ErrNoteRejected, "status %d", status)
+	}
+}
+
+func TestOpenAICompat_Embed_ProvedorForaDoAr_NaoRetornaNotaRecusada(t *testing.T) {
+	for _, status := range []int{http.StatusUnauthorized, http.StatusNotFound, http.StatusTooManyRequests, http.StatusInternalServerError, http.StatusServiceUnavailable} {
+		_, err := provedorRemoto(t, &fakeEmbeddingsServer{status: status}).Embed(context.Background(), []string{"um"})
+
+		require.Error(t, err)
+		assert.False(t, errors.Is(err, embedding.ErrNoteRejected), "status %d", status)
+	}
 }
 
 func TestOpenAICompat_Embed_MenosItensQueTextos_RetornaErro(t *testing.T) {
