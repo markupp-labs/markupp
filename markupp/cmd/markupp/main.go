@@ -248,20 +248,23 @@ func serve(ctx context.Context, logger *slog.Logger, cfg config.Config) error {
 }
 
 func newHandler(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, logger *slog.Logger, secrets config.InstanceSecrets) (http.Handler, error) {
-	deps, err := newRouterDeps(cfg, pool, logger)
+	box, err := newSecretBox(ctx, cfg.SecretKey, secrets)
+	if err != nil {
+		return nil, fmt.Errorf("prepare the key-encryption secret: %w", err)
+	}
+	loginProviders := newLoginProviderService(cfg, pool, box)
+	deps, err := newRouterDeps(cfg, pool, logger, newLoginProviderRegistry(loginProviders, logger))
 	if err != nil {
 		return nil, err
 	}
 	addPublication(&deps, cfg, pool)
-	if err := addInstance(ctx, &deps, cfg, pool, secrets); err != nil {
-		return nil, err
-	}
+	addInstance(&deps, cfg, pool, box)
 	return api.NewRouter(deps), nil
 }
 
 // newRouterDeps monta os serviços das rotas da conta, das notas e do OAuth.
-func newRouterDeps(cfg config.Config, pool *pgxpool.Pool, logger *slog.Logger) (api.RouterDeps, error) {
-	registration := newRegistrationService(cfg, pool)
+func newRouterDeps(cfg config.Config, pool *pgxpool.Pool, logger *slog.Logger, loginProviders auth.LoginProviderLookup) (api.RouterDeps, error) {
+	registration := newRegistrationService(cfg, pool, loginProviders)
 	authSvc, codec := newAuthService(cfg, pool, registration)
 	oauthSvc, err := newOAuthService(cfg, pool, codec)
 	if err != nil {
@@ -277,7 +280,7 @@ func newRouterDeps(cfg config.Config, pool *pgxpool.Pool, logger *slog.Logger) (
 		OAuthMetadata: oauthMetadataFrom(cfg), OAuth: oauthSvc, MCPUpstreamURL: cfg.MCPUpstreamURL, PanelUpstreamURL: cfg.PanelUpstreamURL,
 		TrustedProxies:     cfg.TrustedProxies,
 		AccountRateLimiter: api.NewAccountRateLimiter(cfg.RateLimitPerMinute, time.Minute, time.Now, cfg.TrustedProxies),
-		ExternalLogin:      newExternalLoginService(cfg, authSvc),
+		ExternalLogin:      auth.NewExternalLoginService(authSvc, loginProviders),
 		Registration:       registration,
 	}, nil
 }
@@ -299,14 +302,9 @@ func newAccountEmailService(cfg config.Config, pool *pgxpool.Pool, logger *slog.
 
 // addInstance liga as rotas do administrador da instância (ADR-0057), com a cifra da
 // chave do provedor de embedding.
-func addInstance(ctx context.Context, deps *api.RouterDeps, cfg config.Config, pool *pgxpool.Pool, secrets config.InstanceSecrets) error {
-	box, err := newSecretBox(ctx, cfg.SecretKey, secrets)
-	if err != nil {
-		return fmt.Errorf("prepare the key-encryption secret: %w", err)
-	}
+func addInstance(deps *api.RouterDeps, cfg config.Config, pool *pgxpool.Pool, box instance.Sealer) {
 	deps.InstanceAdmins = cfg.InstanceAdmins
 	deps.InstanceEmbedding = instance.NewEmbeddingService(storage.NewAppInstanceEmbedding(pool), box)
-	return nil
 }
 
 // addPublication liga a publicação de notas, pastas e cofres e a leitura sem conta delas
