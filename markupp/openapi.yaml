@@ -2596,8 +2596,9 @@ paths:
     get:
       summary: Diz quais regras do cadastro valem agora
       description: >
-        Para o cliente esconder o que está fechado. Os provedores dizem o próprio cadastro em
-        GET /login-providers. Existe só sob /v1.
+        Para o cliente esconder o que está fechado. Enquanto a instalação não tem conta, todo
+        método configurado aparece aberto, porque a primeira conta nasce sempre. Os provedores
+        dizem o próprio cadastro em GET /login-providers. Existe só sob /v1.
       security: []
       responses:
         '200':
