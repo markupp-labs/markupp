@@ -78,6 +78,10 @@ type MarkuppArgs struct {
 	// EmbedderImage é a imagem do indexador de embedding. Padrão: a de image, com
 	// -embedder no repositório e a mesma tag.
 	EmbedderImage string `pulumi:"embedderImage,optional"`
+	// EmbedderModelVolume guarda os pesos do provedor local num PersistentVolumeClaim.
+	// Padrão: true. Com false, os pesos ficam num emptyDir e o provedor local baixa o
+	// modelo a cada subida do pod; o openai-compat não usa o volume.
+	EmbedderModelVolume *bool `pulumi:"embedderModelVolume,optional"`
 }
 
 // GatewayRefArgs aponta para um Gateway de outro namespace. Ele precisa
