@@ -1,8 +1,7 @@
 # Seção Embedding do grupo Instance (ADR-0057): o administrador da instância escolhe o provedor de embedding da
-# instalação inteira. Quem administra vem de /auth/me a cada página; a API confere de novo e recusa as outras contas.
+# instalação inteira.
 module Settings
-  class InstanceEmbeddingController < BaseController
-    before_action :require_instance_admin
+  class InstanceEmbeddingController < InstanceAdminController
     rescue_from MarkuppApi::InvalidRequest, MarkuppApi::HostLocked, MarkuppApi::ApiKeyRequired, with: :render_refused
 
     def show
@@ -15,10 +14,6 @@ module Settings
     end
 
     private
-      def require_instance_admin
-        redirect_to root_path, alert: t("markupp_api.errors.instance_admin_required") unless instance_admin?
-      end
-
       # A chave em branco fica como está; a caixa Remove apaga a guardada.
       def choice_params
         permitted = params.expect(embedding: [ :provider, :url, :model, :api_key, :clear_api_key ])
