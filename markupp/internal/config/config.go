@@ -29,6 +29,9 @@ type Config struct {
 	RefreshExpirationDays   int
 	AuthRegistrationEnabled bool
 	LocalAuthEnabled        bool
+	// LocalRegistration é MARKUPP_AUTH_LOCAL_REGISTRATION: definida, trava o cadastro por
+	// email e senha nesse valor; nil deixa a escolha ao administrador da instância (ADR-0059).
+	LocalRegistration *bool
 	// SearchConfig é a configuração de texto do PostgreSQL usada pelo indexador.
 	SearchConfig string
 	// IndexInterval é a espera do index-loop entre uma rodada vazia e a próxima.
@@ -367,7 +370,12 @@ func loadAuthFlags(lookup LookupFunc, cfg *Config) error {
 	if err := readBool(lookup, "MARKUPP_AUTH_REGISTRATION_ENABLED", &cfg.AuthRegistrationEnabled); err != nil {
 		return err
 	}
-	return readBool(lookup, "MARKUPP_AUTH_LOCAL_ENABLED", &cfg.LocalAuthEnabled)
+	if err := readBool(lookup, "MARKUPP_AUTH_LOCAL_ENABLED", &cfg.LocalAuthEnabled); err != nil {
+		return err
+	}
+	local, err := readOptionalBool(lookup, "MARKUPP_AUTH_LOCAL_REGISTRATION")
+	cfg.LocalRegistration = local
+	return err
 }
 
 // readSecret lê em target o segredo da variável key, exigindo o tamanho mínimo do segredo
@@ -389,6 +397,18 @@ func readString(lookup LookupFunc, key string, target *string) {
 	if val, ok := lookup(key); ok && strings.TrimSpace(val) != "" {
 		*target = strings.TrimSpace(val)
 	}
+}
+
+// readOptionalBool lê key como booleano, devolvendo nil quando ela não foi definida.
+func readOptionalBool(lookup LookupFunc, key string) (*bool, error) {
+	if val, _ := lookup(key); strings.TrimSpace(val) == "" {
+		return nil, nil
+	}
+	var parsed bool
+	if err := readBool(lookup, key, &parsed); err != nil {
+		return nil, err
+	}
+	return &parsed, nil
 }
 
 func readBool(lookup LookupFunc, key string, target *bool) error {
