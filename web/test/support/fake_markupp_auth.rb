@@ -1,6 +1,8 @@
 # Rotas /auth da FakeMarkuppApi: login, renovação com rotação, logout, /auth/me e aceite de convite por token.
 class FakeMarkuppAuth
-  PUBLIC_CALLS = [ "POST /v1/auth/login", "POST /v1/auth/refresh", "POST /v1/auth/logout", "POST /v1/auth/invites/accept", "POST /v1/accounts" ].freeze
+  PUBLIC_CALLS = [ "POST /v1/auth/login", "POST /v1/auth/refresh", "POST /v1/auth/logout", "POST /v1/auth/invites/accept", "POST /v1/accounts",
+                   "GET /v1/accounts/policy" ].freeze
+  POLICY = "/v1/accounts/policy".freeze
   PASSWORD_LIMIT = 72
   PASSWORD_MINIMUM = 15
   # Amostra da lista de senhas comuns da API.
@@ -29,17 +31,23 @@ class FakeMarkuppAuth
   # Cenário: servidor que só cria conta por convite, como MARKUPP_AUTH_REGISTRATION_ENABLED desligado.
   def close_registration! = @registration_closed = true
 
+  # Cenário: o administrador da instância fechou o cadastro por email e senha (ADR-0059).
+  def close_password_registration! = @password_registration_closed = true
+
   def local_auth? = @local_auth
 
-  # Como a API: a primeira conta nasce sempre, mesmo com o registro fechado.
-  def registration_closed? = @registration_closed && @accounts.any?
+  # Como a API: o interruptor geral de quem hospeda.
+  def registration_enabled? = !@registration_closed
+
+  def password_registration_open? = registration_enabled? && @local_auth && !@password_registration_closed
 
   # Cenário: a API demora no POST /v1/auth/refresh até `callers` renovações chegarem juntas, ou até o timeout.
   def hold_refreshes_together!(callers, timeout:) = @refresh_gate = FakeRefreshGate.new(callers, timeout:)
 
   # password_login e instance_admin só saem quando a conta da fake os define, como o servidor que ainda não manda o campo.
   def get(path, account:, **)
-    raise ArgumentError, "fake API has no route for GET #{path}, expected /v1/auth/me" unless path == "/v1/auth/me"
+    return { "registration_enabled" => registration_enabled?, "password_registration_open" => password_registration_open? } if path == POLICY
+    raise ArgumentError, "fake API has no route for GET #{path}, expected /v1/auth/me or #{POLICY}" unless path == "/v1/auth/me"
 
     account.slice("id", "email", "password_login", "instance_admin")
   end
@@ -86,7 +94,7 @@ class FakeMarkuppAuth
     def register(body)
       raise MarkuppApi::LocalAuthDisabled, "fake API has local auth disabled on POST /v1/accounts" unless @local_auth
       self.class.refuse_new_password(body[:password], "POST /v1/accounts")
-      raise MarkuppApi::RegistrationDisabled, "fake API refuses POST /v1/accounts: registration_disabled" if @registration_closed && @accounts.any?
+      raise MarkuppApi::RegistrationDisabled, "fake API refuses POST /v1/accounts: registration_disabled" if !password_registration_open? && @accounts.any?
 
       account = @accounts.create(body[:email].to_s.strip.downcase, body[:password], verified: false)
       @accounts.issue_pair(account)

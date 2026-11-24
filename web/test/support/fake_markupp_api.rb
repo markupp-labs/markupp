@@ -6,12 +6,12 @@ class FakeMarkuppApi
 
   delegate :put_requests, :post_requests, to: :@notes
   delegate :expire_access_tokens!, :revoke_refresh_tokens!, :refresh_token_valid?, :set_instance_admin!, to: :@accounts
-  delegate :disable_local_auth!, :close_registration!, :hold_refreshes_together!, to: :@auth
+  delegate :disable_local_auth!, :close_registration!, :close_password_registration!, :hold_refreshes_together!, to: :@auth
   delegate :assign_role!, :deny_notes_in!, :delete_tenant!, :receive_invite!, to: :@tenants
   delegate :sent_tokens, to: :@account_email
   delegate :received_etags, :graph_queries, :change_graph!, to: :@graph
   delegate :decisions, to: :@oauth_requests, prefix: :oauth
-  delegate :take_provider_down!, :link_identity!, to: :@external_login
+  delegate :take_provider_down!, :link_identity!, :close_registration_for!, to: :@external_login
   delegate :publications, to: :@publications
   delegate :limit_public_reads!, to: :@public_notes
   delegate :updates, to: :@instance_embedding, prefix: :instance_embedding
@@ -135,7 +135,7 @@ class FakeMarkuppApi
       return @oauth_requests if path.start_with?(OAUTH_REQUESTS)
       return @authorizations if FakeMarkuppAuthorizations::ROUTE.match?(path)
       return @tenants if path == FakeMarkuppTenants::NOTIFICATIONS
-      return @auth if path == "/v1/accounts"
+      return @auth if [ "/v1/accounts", FakeMarkuppAuth::POLICY ].include?(path)
       return @link_refusals if FakeMarkuppLinkRefusals::ROUTE.match?(path)
       return @instance_embedding if path == FakeMarkuppInstanceEmbedding::ROUTE
       return @note_index if path.start_with?("/v1/search/") || FakeMarkuppNoteIndex::VAULT_NOTES.match?(path)
