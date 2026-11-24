@@ -1,0 +1,56 @@
+pt-BR:
+  settings:
+    nav:
+      instance_login_providers: "Login externo"
+    instance_login_providers:
+      index:
+        intro: "Deixe as pessoas entrarem com uma conta que já têm em outro lugar, como GitHub, Google ou qualquer provedor OpenID Connect."
+        locked: "Quem hospeda esta instância fixou esta lista, então não dá para mudar aqui."
+        empty: "Nenhum login externo ainda."
+        new: "Adicionar provedor"
+        presets: "Começar pelo:"
+        create: "Adicionar provedor"
+      provider:
+        issuer: "Issuer"
+        state: "Estado"
+        enabled: "Ligado"
+        disabled: "Desligado"
+        linked: "Contas ligadas"
+        callback: "URL de retorno para registrar no provedor"
+        locked: "Definido por quem hospeda esta instância."
+        save: "Salvar"
+        delete: "Apagar"
+        confirm_delete:
+          zero: "Apagar %{name}? Nenhuma conta entra por ele. Não dá para desfazer."
+          one: "Apagar %{name}? 1 conta perde esta forma de entrar. Não dá para desfazer."
+          other: "Apagar %{name}? %{count} contas perdem esta forma de entrar. Não dá para desfazer."
+      fields:
+        id: "ID"
+        id_hint: "Letras minúsculas, dígitos e hífen. Vai na URL de retorno e não muda depois."
+        name: "Nome"
+        issuer: "Issuer"
+        issuer_hint: "Vazio só para o ID github. Para o Google, https://accounts.google.com."
+        client_id: "Client ID"
+        client_secret: "Client secret"
+        secret_set: "Há um segredo guardado. Deixe o campo vazio para mantê-lo."
+        secret_unset: "Nenhum segredo guardado ainda."
+        enabled: "Ligado: aparece na página de entrada"
+      create:
+        created: "Provedor adicionado. Registre a URL de retorno no provedor."
+      update:
+        saved: "Salvo."
+      destroy:
+        deleted:
+          zero: "Provedor apagado."
+          one: "Provedor apagado. 1 conta perdeu esta forma de entrar."
+          other: "Provedor apagado. %{count} contas perderam esta forma de entrar."
+      errors:
+        invalid_login_provider: "Confira os campos: o ID leva letras minúsculas, dígitos e hífen, o issuer é uma URL https (vazio só para o GitHub), e nome e client ID não ficam vazios."
+        invalid_request: "Confira os campos e tente de novo."
+        host_locked: "Quem hospeda esta instância fixou esta lista, então não dá para mudar aqui."
+        login_provider_exists: "Já existe um provedor com este ID."
+        login_provider_issuer_locked: "O issuer não muda enquanto houver contas entrando por este provedor."
+        login_provider_not_found: "Este provedor não existe mais nesta instância."
+  shortcuts:
+    names:
+      instance_login_providers: "Login externo da instância"

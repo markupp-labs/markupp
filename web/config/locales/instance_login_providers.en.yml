@@ -1,0 +1,56 @@
+en:
+  settings:
+    nav:
+      instance_login_providers: "External login"
+    instance_login_providers:
+      index:
+        intro: "Let people sign in with an account they already have elsewhere, like GitHub, Google or any OpenID Connect provider."
+        locked: "Whoever hosts this instance fixed this list, so it can't be changed here."
+        empty: "No external login yet."
+        new: "Add a provider"
+        presets: "Start from:"
+        create: "Add provider"
+      provider:
+        issuer: "Issuer"
+        state: "State"
+        enabled: "On"
+        disabled: "Off"
+        linked: "Linked accounts"
+        callback: "Callback URL to register at the provider"
+        locked: "Set by whoever hosts this instance."
+        save: "Save"
+        delete: "Delete"
+        confirm_delete:
+          zero: "Delete %{name}? No account signs in with it. This cannot be undone."
+          one: "Delete %{name}? 1 account loses this way to sign in. This cannot be undone."
+          other: "Delete %{name}? %{count} accounts lose this way to sign in. This cannot be undone."
+      fields:
+        id: "ID"
+        id_hint: "Lowercase letters, digits and hyphens. It goes in the callback URL and can't change later."
+        name: "Name"
+        issuer: "Issuer"
+        issuer_hint: "Empty only for the github ID. For Google, https://accounts.google.com."
+        client_id: "Client ID"
+        client_secret: "Client secret"
+        secret_set: "A secret is set. Leave the field empty to keep it."
+        secret_unset: "No secret set yet."
+        enabled: "On: shows on the sign-in page"
+      create:
+        created: "Provider added. Register the callback URL at the provider."
+      update:
+        saved: "Saved."
+      destroy:
+        deleted:
+          zero: "Provider deleted."
+          one: "Provider deleted. 1 account lost this way to sign in."
+          other: "Provider deleted. %{count} accounts lost this way to sign in."
+      errors:
+        invalid_login_provider: "Check the fields: the ID takes lowercase letters, digits and hyphens, the issuer is an https URL (empty only for GitHub), and name and client ID can't be empty."
+        invalid_request: "Check the fields and try again."
+        host_locked: "Whoever hosts this instance fixed this list, so it can't be changed here."
+        login_provider_exists: "There is already a provider with this ID."
+        login_provider_issuer_locked: "The issuer can't change while accounts sign in with this provider."
+        login_provider_not_found: "This provider no longer exists on this instance."
+  shortcuts:
+    names:
+      instance_login_providers: "Instance external login"

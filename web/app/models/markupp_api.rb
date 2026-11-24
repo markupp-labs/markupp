@@ -93,6 +93,11 @@ class MarkuppApi
   class HostLocked < Error; end
   # Trocar o provedor ou a URL do embedding sem digitar a chave de novo.
   class ApiKeyRequired < Error; end
+  # Provedor de login externo da instância: dados recusados, id repetido, issuer preso por contas ligadas, id que não existe.
+  class InvalidLoginProvider < InvalidRequest; end
+  class LoginProviderExists < Error; end
+  class LoginProviderIssuerLocked < Error; end
+  class LoginProviderNotFound < NotFound; end
 
   # Corpo e ETag de uma leitura que pode voltar 304.
   Revision = Data.define(:body, :etag)
@@ -124,7 +129,9 @@ class MarkuppApi
     "publication_not_found" => PublicationNotFound, "rate_limited" => RateLimited,
     "same_note" => SameNote, "note_outside_vault" => NoteOutsideVault, "link_refusal_not_found" => LinkRefusalNotFound,
     "instance_admin_required" => InstanceAdminRequired, "host_locked" => HostLocked,
-    "api_key_required" => ApiKeyRequired
+    "api_key_required" => ApiKeyRequired, "invalid_login_provider" => InvalidLoginProvider,
+    "login_provider_exists" => LoginProviderExists, "login_provider_issuer_locked" => LoginProviderIssuerLocked,
+    "login_provider_not_found" => LoginProviderNotFound
   }.freeze
   # Para o status cujo corpo não traz código conhecido.
   ERRORS_BY_STATUS = { "401" => Unauthorized, "403" => Forbidden, "404" => NotFound, "429" => RateLimited }.freeze
