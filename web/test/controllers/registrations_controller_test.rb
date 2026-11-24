@@ -17,7 +17,7 @@ class RegistrationsControllerTest < ActionDispatch::IntegrationTest
       assert_select "input[type=email][name=?][required][autocomplete=email]", "registration[email]"
       assert_select "label[for=registration_password]", "Password"
       assert_select "input[type=password][name=?][required][minlength=15][autocomplete=new-password][aria-describedby=registration_password_hint]", "registration[password]"
-      assert_select "#registration_password_hint", "Use at least 15 characters. Well-known passwords are refused."
+      assert_select "#registration_password_hint", "Use at least 15 characters."
       assert_select "button[type=button][aria-controls=registration_password][aria-pressed=false][aria-label=?]", "Show password"
       assert_select "label[for=registration_password_confirmation]", "Confirm password"
       assert_select "input[type=password][name=?][required][autocomplete=new-password]", "registration[password_confirmation]"
