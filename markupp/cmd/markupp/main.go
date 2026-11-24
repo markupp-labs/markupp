@@ -259,6 +259,7 @@ func newHandler(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, logg
 	}
 	addPublication(&deps, cfg, pool)
 	addInstance(&deps, cfg, pool, box)
+	deps.InstanceLoginProviders = loginProviders
 	return api.NewRouter(deps), nil
 }
 
