@@ -341,6 +341,23 @@ services:
 Os segredos ficam no `.env`. Um provedor OIDC fora do ar não impede o servidor de subir: a
 descoberta acontece no primeiro login, e o botão responde que o provedor não respondeu.
 
+No componente Pulumi, `loginProviders` lista os provedores, cada um com `id`, `clientId`,
+`clientSecret` (segredo) e, opcionais, `name` e `issuer`. Os segredos ficam num Secret próprio,
+`<nome>-login`; trocar um deles substitui esse Secret, e a API lê o valor novo quando reinicia.
+
+```yaml
+loginProviders:
+  - id: google
+    name: Google
+    issuer: https://accounts.google.com
+    clientId: ${googleClientId}
+    clientSecret: ${googleClientSecret}
+  - id: github
+    name: GitHub
+    clientId: ${githubClientId}
+    clientSecret: ${githubClientSecret}
+```
+
 ## Ligação por sentido
 
 Opcional e desligada por padrão ([ADR-0053](adrs/ADR-0053-ligacoes-automaticas.md)): o
