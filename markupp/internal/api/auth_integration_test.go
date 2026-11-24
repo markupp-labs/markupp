@@ -35,7 +35,6 @@ func setupAuthIntegrationServer(t *testing.T) (*httptest.Server, *pgxpool.Pool) 
 	hasher := auth.NewBcryptHasher()
 	authCfg := auth.ServiceConfig{
 		DefaultTenantID:         "default",
-		RegistrationEnabled:     false,
 		LocalEnabled:            true,
 		RefreshExpirationPeriod: 7 * 24 * time.Hour,
 	}

@@ -126,7 +126,7 @@ func TestExternalLogin_Login_IdentidadeVinculada_AbreASessao(t *testing.T) {
 }
 
 func TestExternalLogin_Login_SemVinculo_RecusaENaoCriaConta(t *testing.T) {
-	f := newExternalFixture(t, auth.ServiceConfig{RegistrationEnabled: true})
+	f := newExternalFixture(t, auth.ServiceConfig{Registration: registrationPolicy(true)})
 
 	_, err := f.svc.Login(context.Background(), callback())
 
@@ -172,7 +172,7 @@ func TestExternalLogin_Register_EmailNaoVerificado_PedeVerificacao(t *testing.T)
 }
 
 func TestExternalLogin_Register_AutoRegistroDesligado_RecusaDepoisDaPrimeiraConta(t *testing.T) {
-	f := newExternalFixture(t, auth.ServiceConfig{RegistrationEnabled: false})
+	f := newExternalFixture(t, auth.ServiceConfig{Registration: FakeRegistrationPolicy{}})
 	f.withUser("user-1", localIdentity("ident-local"))
 
 	_, err := f.svc.Register(context.Background(), callback())
@@ -190,7 +190,7 @@ func TestExternalLogin_Register_SemEmail_Recusa(t *testing.T) {
 }
 
 func TestExternalLogin_Register_IdentidadeJaVinculada_Recusa(t *testing.T) {
-	f := newExternalFixture(t, auth.ServiceConfig{RegistrationEnabled: true})
+	f := newExternalFixture(t, auth.ServiceConfig{Registration: registrationPolicy(true)})
 	f.withUser("user-1", githubIdentity("ident-gh", "42"))
 
 	_, err := f.svc.Register(context.Background(), callback())
@@ -283,4 +283,23 @@ func TestExternalLogin_Unlink_CredencialLocal_NaoAcha(t *testing.T) {
 	err := f.svc.Unlink(context.Background(), "user-1", "ident-local")
 
 	require.ErrorIs(t, err, auth.ErrIdentityNotFound, "a senha nao sai por esta rota")
+}
+
+func TestExternalLogin_Register_ProvedorFechado_RecusaDepoisDaPrimeiraConta(t *testing.T) {
+	f := newExternalFixture(t, auth.ServiceConfig{Registration: FakeRegistrationPolicy{open: map[string]bool{"local": true}}})
+	f.withUser("user-1", localIdentity("ident-local"))
+
+	_, err := f.svc.Register(context.Background(), callback())
+
+	require.ErrorIs(t, err, auth.ErrRegistrationDisabled)
+}
+
+func TestExternalLogin_Register_SoOProvedorAberto_CriaConta(t *testing.T) {
+	f := newExternalFixture(t, auth.ServiceConfig{Registration: FakeRegistrationPolicy{open: map[string]bool{"github": true}}})
+	f.withUser("user-1", localIdentity("ident-local"))
+
+	_, err := f.svc.Register(context.Background(), callback())
+
+	require.NoError(t, err)
+	assert.Len(t, f.repo.users, 2)
 }
