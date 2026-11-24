@@ -82,6 +82,9 @@ type MarkuppArgs struct {
 	// Padrão: true. Com false, os pesos ficam num emptyDir e o provedor local baixa o
 	// modelo a cada subida do pod; o openai-compat não usa o volume.
 	EmbedderModelVolume *bool `pulumi:"embedderModelVolume,optional"`
+	// LoginProviders liga o login e o cadastro por provedor externo (MARKUPP_LOGIN_*).
+	// Vazio, só há email e senha.
+	LoginProviders []LoginProviderArgs `pulumi:"loginProviders,optional"`
 }
 
 // GatewayRefArgs aponta para um Gateway de outro namespace. Ele precisa
@@ -135,6 +138,9 @@ func declareResources(ctx *pulumi.Context, name string, args MarkuppArgs, parent
 		return err
 	}
 	afterMigration := pulumi.DependsOn([]pulumi.Resource{migration})
+	if err := declareLoginSecret(ctx, names, args, parent); err != nil {
+		return err
+	}
 	if err := declareAPI(ctx, names, args, parent, afterMigration); err != nil {
 		return err
 	}
@@ -179,7 +185,7 @@ func validate(args MarkuppArgs) error {
 				r.field, args.Namespace, args.Image, args.Host, args.CertificateIssuer, args.AcmeEmail)
 		}
 	}
-	for _, check := range []func(MarkuppArgs) error{validateEmailServer, validatePanel, validateEmailSender, validateRegistration} {
+	for _, check := range []func(MarkuppArgs) error{validateEmailServer, validatePanel, validateEmailSender, validateRegistration, validateLoginProviders} {
 		if err := check(args); err != nil {
 			return err
 		}
@@ -227,7 +233,7 @@ func withDefaults(args MarkuppArgs) MarkuppArgs {
 
 // resourceNames centraliza os nomes que um recurso usa para achar outro.
 type resourceNames struct {
-	component, database, dbSecret, api, panel, panelTLS, mcp, indexer, embedder, embedderModels, notifier, scaler, gateway, issuer, tlsSecret string
+	component, database, dbSecret, api, panel, panelTLS, mcp, indexer, embedder, embedderModels, notifier, login, scaler, gateway, issuer, tlsSecret string
 }
 
 func newResourceNames(component string) resourceNames {
@@ -243,6 +249,7 @@ func newResourceNames(component string) resourceNames {
 		embedder:       component + "-embedder",
 		embedderModels: component + "-embedder-models",
 		notifier:       component + "-notifier",
+		login:          component + "-login",
 		scaler:         component + "-scaler",
 		gateway:        component + "-gateway",
 		issuer:         component + "-issuer",
