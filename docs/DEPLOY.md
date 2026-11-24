@@ -167,7 +167,10 @@ Secret do banco e a passa à API e ao embedder.
 O componente sobe o embedder num Deployment de uma réplica, com a imagem `markupp-embedder` da
 mesma tag de `image` (ou `embedderImage`, obrigatória com `image` fixada por digest), rodando
 `embed-loop`. Os pesos do modelo local ficam num PersistentVolumeClaim de 2Gi em
-`/var/lib/markupp/models`, com a `storageClass` do banco. Sem `MARKUPP_EMBEDDING_PROVIDER`, vale a
+`/var/lib/markupp/models`, com a `storageClass` do banco. Com `embedderModelVolume: false`, o
+componente não cria o PersistentVolumeClaim e os pesos ficam num emptyDir: serve a quem não pode
+criar volume no namespace ou usa só o provedor `openai-compat`, que não guarda pesos, e o provedor
+local baixa o modelo a cada subida do pod. Sem `MARKUPP_EMBEDDING_PROVIDER`, vale a
 escolha do administrador da instância no painel.
 
 ### Stack dev
