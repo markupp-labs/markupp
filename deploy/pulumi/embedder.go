@@ -26,8 +26,10 @@ func declareEmbedder(ctx *pulumi.Context, names resourceNames, args MarkuppArgs,
 	if err != nil {
 		return err
 	}
-	if _, err := corev1.NewPersistentVolumeClaim(ctx, names.embedderModels, modelVolumeClaimArgs(names, args), opts); err != nil {
-		return err
+	if usesModelVolume(args) {
+		if _, err := corev1.NewPersistentVolumeClaim(ctx, names.embedderModels, modelVolumeClaimArgs(names, args), opts); err != nil {
+			return err
+		}
 	}
 	_, err = appsv1.NewDeployment(ctx, names.embedder, embedderDeploymentArgs(names, args, image), opts)
 	return err
@@ -77,13 +79,28 @@ func embedderDeploymentArgs(names resourceNames, args MarkuppArgs, image string)
 					SecurityContext:    corev1.PodSecurityContextArgs{RunAsNonRoot: pulumi.Bool(true), RunAsUser: pulumi.Int(imageUID), FsGroup: pulumi.Int(imageUID)},
 					Containers:         corev1.ContainerArray{embedderContainer(names, args, image)},
 					Volumes: corev1.VolumeArray{
-						corev1.VolumeArgs{Name: pulumi.String("models"), PersistentVolumeClaim: corev1.PersistentVolumeClaimVolumeSourceArgs{ClaimName: pulumi.String(names.embedderModels)}},
+						modelVolume(names, args),
 						corev1.VolumeArgs{Name: pulumi.String("tmp"), EmptyDir: corev1.EmptyDirVolumeSourceArgs{}},
 					},
 				},
 			},
 		},
 	}
+}
+
+func usesModelVolume(args MarkuppArgs) bool {
+	return args.EmbedderModelVolume == nil || *args.EmbedderModelVolume
+}
+
+// modelVolume é o PersistentVolumeClaim dos pesos ou, sem ele, um emptyDir.
+func modelVolume(names resourceNames, args MarkuppArgs) corev1.VolumeArgs {
+	volume := corev1.VolumeArgs{Name: pulumi.String("models")}
+	if !usesModelVolume(args) {
+		volume.EmptyDir = corev1.EmptyDirVolumeSourceArgs{}
+		return volume
+	}
+	volume.PersistentVolumeClaim = corev1.PersistentVolumeClaimVolumeSourceArgs{ClaimName: pulumi.String(names.embedderModels)}
+	return volume
 }
 
 // embedderContainer só passa o banco e a chave que decifra a chave do endpoint remoto.

@@ -2592,6 +2592,89 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /accounts/policy:
+    get:
+      summary: Diz quais regras do cadastro valem agora
+      description: >
+        Para o cliente esconder o que está fechado. Enquanto a instalação não tem conta, todo
+        método configurado aparece aberto, porque a primeira conta nasce sempre. Os provedores
+        dizem o próprio cadastro em GET /login-providers. Existe só sob /v1.
+      security: []
+      responses:
+        '200':
+          description: Interruptor geral e cadastro por senha
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountPolicyResponse'
+  /instance/registration-methods:
+    get:
+      summary: Lista os métodos de cadastro e se cada um cria conta nova
+      description: >
+        Só o administrador da instância (ADR-0059). Fechar o cadastro de um método não fecha o
+        login por ele, e a primeira conta da instalação nasce sempre.
+      responses:
+        '200':
+          description: Email e senha, quando a credencial local vale, e os provedores na ordem da configuração
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RegistrationMethodResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/InstanceAdminRequired'
+  /instance/registration-methods/{id}:
+    patch:
+      summary: Abre ou fecha o cadastro por um método
+      description: Só o administrador da instância. Vale no próximo cadastro, sem reiniciar.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [open]
+              properties:
+                open:
+                  type: boolean
+      responses:
+        '200':
+          description: Escolha gravada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegistrationMethodResponse'
+        '400':
+          description: JSON inválido ou sem open (invalid_request)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/InstanceAdminRequired'
+        '404':
+          description: Método que a instalação não configura (not_found)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Quem hospeda fixou o método ou desligou o cadastro geral (host_locked)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 components:
   parameters:
     PageOffset:
@@ -2961,6 +3044,9 @@ components:
         name:
           type: string
           description: Nome para o botão
+        registration_open:
+          type: boolean
+          description: Se o provedor cria conta nova agora (ADR-0059); o login de quem já tem conta não depende disso
     LoginAttemptResponse:
       type: object
       properties:
@@ -3338,6 +3424,29 @@ components:
           nullable: true
           maxLength: 2048
           description: Chave do endpoint remoto, guardada cifrada. Ausente ou null mantém a chave guardada, exceto com local ou none, que a apagam; vazia a apaga.
+    AccountPolicyResponse:
+      type: object
+      properties:
+        registration_enabled:
+          type: boolean
+          description: MARKUPP_AUTH_REGISTRATION_ENABLED, o interruptor geral de quem hospeda
+        password_registration_open:
+          type: boolean
+          description: Se o cadastro por email e senha cria conta nova agora
+    RegistrationMethodResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          description: local para email e senha, ou o id do provedor
+        name:
+          type: string
+        open:
+          type: boolean
+          description: Se o método cria conta nova; sem escolha guardada, aberto
+        locked:
+          type: boolean
+          description: Quem hospeda fixou o valor, por MARKUPP_AUTH_LOCAL_REGISTRATION, MARKUPP_LOGIN_<ID>_REGISTRATION ou com o cadastro geral desligado
     InstanceEmbeddingResponse:
       type: object
       properties:

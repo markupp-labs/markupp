@@ -49,6 +49,23 @@ func TestNewMarkupp_Embedder_GuardaOModeloNumVolumeDoNamespace(t *testing.T) {
 	assert.Equal(t, float64(imageUID), at(t, embedder, "spec", "template", "spec", "securityContext", "fsGroup").NumberValue())
 }
 
+// Sem o volume, o provedor openai-compat funciona igual e o local baixa o modelo a cada
+// subida do pod; serve a quem não pode criar PersistentVolumeClaim no namespace.
+func TestNewMarkupp_EmbedderSemVolumeDoModelo_NaoCriaPVCEGuardaOModeloNumEmptyDir(t *testing.T) {
+	args := argsDeTeste()
+	semVolume := false
+	args.EmbedderModelVolume = &semVolume
+	monitor := deploy(t, args)
+
+	assert.Empty(t, monitor.byType(pvcType), "sem volume do modelo, nada de PersistentVolumeClaim")
+	embedder := deploymentNamed(t, monitor, "markupp-embedder")
+	mount := firstContainer(t, embedder)["volumeMounts"].ArrayValue()[0].ObjectValue()
+	assert.Equal(t, "/var/lib/markupp/models", mount["mountPath"].StringValue())
+	volume := at(t, embedder, "spec", "template", "spec", "volumes").ArrayValue()[0].ObjectValue()
+	assert.Equal(t, mount["name"].StringValue(), volume["name"].StringValue())
+	assert.True(t, at(t, volume, "emptyDir").IsObject(), "esperado emptyDir no volume do modelo, recebido %v", volume)
+}
+
 func TestNewMarkupp_EmbedderImage_TrocaAImagemDerivada(t *testing.T) {
 	args := argsDeTeste()
 	args.EmbedderImage = "registro.local/embedder:dev"

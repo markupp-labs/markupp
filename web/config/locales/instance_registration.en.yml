@@ -1,0 +1,23 @@
+en:
+  settings:
+    nav:
+      instance_registration: "Sign-up"
+    instance_registration:
+      show:
+        intro: "Choose how new accounts can be created on this instance. Invites always create accounts."
+        closed_by_host: "Whoever hosts this instance turned sign-up off: only invites create accounts."
+        password: "Email and password"
+        open: "Open"
+        closed: "Closed"
+        locked: "Set by whoever hosts this instance."
+        close: "Close sign-up"
+        reopen: "Open sign-up"
+        login_hint: "Closing sign-up for a method keeps it working to log in for whoever already has an account."
+      update:
+        saved: "Saved. New accounts follow it from now on."
+      errors:
+        host_locked: "Whoever hosts this instance set this method, so it cannot change here."
+        not_found: "This method is no longer available on this instance."
+  shortcuts:
+    names:
+      instance_registration: "Instance sign-up"

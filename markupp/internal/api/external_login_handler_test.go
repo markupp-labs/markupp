@@ -82,7 +82,7 @@ func TestExternalLogin_ListaProvedores_SemLogin(t *testing.T) {
 	rec := doExternal(t, externalRouter(&fakeExternalLogin{}, loginToken), http.MethodGet, "/v1/login-providers", "")
 
 	require.Equal(t, http.StatusOK, rec.Code)
-	assert.JSONEq(t, `[{"id":"github","name":"GitHub"}]`, rec.Body.String())
+	assert.JSONEq(t, `[{"id":"github","name":"GitHub","registration_open":false}]`, rec.Body.String(), "sem o cadastro por método, nenhum provedor cadastra")
 }
 
 func TestExternalLogin_Attempt_DevolveURLEValoresDaTentativa(t *testing.T) {

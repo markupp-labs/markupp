@@ -167,7 +167,10 @@ Secret do banco e a passa à API e ao embedder.
 O componente sobe o embedder num Deployment de uma réplica, com a imagem `markupp-embedder` da
 mesma tag de `image` (ou `embedderImage`, obrigatória com `image` fixada por digest), rodando
 `embed-loop`. Os pesos do modelo local ficam num PersistentVolumeClaim de 2Gi em
-`/var/lib/markupp/models`, com a `storageClass` do banco. Sem `MARKUPP_EMBEDDING_PROVIDER`, vale a
+`/var/lib/markupp/models`, com a `storageClass` do banco. Com `embedderModelVolume: false`, o
+componente não cria o PersistentVolumeClaim e os pesos ficam num emptyDir: serve a quem não pode
+criar volume no namespace ou usa só o provedor `openai-compat`, que não guarda pesos, e o provedor
+local baixa o modelo a cada subida do pod. Sem `MARKUPP_EMBEDDING_PROVIDER`, vale a
 escolha do administrador da instância no painel.
 
 ### Stack dev
@@ -273,6 +276,14 @@ O login só entra em conta que já existe; a conta nasce no cadastro, em `POST /
 na tela "Criar conta" do painel. Depois da primeira, o cadastro só aceita conta nova com
 `MARKUPP_AUTH_REGISTRATION_ENABLED=true`; desligado, ele responde 403 `registration_disabled` e
 a conta nasce só pelo convite.
+
+Com o auto-registro ligado, o administrador da instância abre e fecha o cadastro de cada método,
+email e senha e cada provedor de login externo, em Configurações > Instância > Cadastro, sem reiniciar
+([ADR-0059](adrs/ADR-0059-cadastro-por-metodo.md)). Método sem escolha está aberto. Fechar o
+cadastro de um método não fecha o login de quem já tem conta por ele. Para fixar o valor e travar
+o painel, defina `MARKUPP_AUTH_LOCAL_REGISTRATION` (email e senha) ou
+`MARKUPP_LOGIN_<ID>_REGISTRATION` (um provedor) como `true` ou `false`. Com o auto-registro
+desligado, todos os métodos ficam fechados e travados.
 
 A conta de auto-registro (`MARKUPP_AUTH_REGISTRATION_ENABLED=true`) nasce sem email provado e
 não recebe convite pela lista até verificar. Com SMTP configurado, ela recebe o email de

@@ -213,7 +213,7 @@ func setupAuthService(repo auth.Repository, registrationEnabled bool, clock func
 	hasher := &fakeHasher{}
 	cfg := auth.ServiceConfig{
 		DefaultTenantID:         "default",
-		RegistrationEnabled:     registrationEnabled,
+		Registration:            registrationPolicy(registrationEnabled),
 		LocalEnabled:            true,
 		RefreshExpirationPeriod: 7 * 24 * time.Hour,
 	}
@@ -451,7 +451,7 @@ func TestService_RefreshToken_Expirado_Falha(t *testing.T) {
 	hasher := &fakeHasher{}
 	cfg := auth.ServiceConfig{
 		DefaultTenantID:         "default",
-		RegistrationEnabled:     false,
+		Registration:            FakeRegistrationPolicy{},
 		LocalEnabled:            true,
 		RefreshExpirationPeriod: 1 * time.Hour,
 	}
@@ -501,7 +501,7 @@ func TestService_LoginLocal_AutenticacaoLocalDesativada_RetornaErro(t *testing.T
 	hasher := &fakeHasher{}
 	cfg := auth.ServiceConfig{
 		DefaultTenantID:         "default",
-		RegistrationEnabled:     false,
+		Registration:            FakeRegistrationPolicy{},
 		LocalEnabled:            false,
 		RefreshExpirationPeriod: 7 * 24 * time.Hour,
 	}
@@ -826,7 +826,7 @@ func TestLoginLocal_CadastroConcorrenteDoMesmoEmail_RecusaComoCredencialInvalida
 func servicoComEmail(repo auth.Repository, emailEnabled bool) *auth.Service {
 	clock := defaultClock()
 	cfg := auth.ServiceConfig{
-		DefaultTenantID: "default", RegistrationEnabled: true, LocalEnabled: true,
+		DefaultTenantID: "default", Registration: registrationPolicy(true), LocalEnabled: true,
 		RefreshExpirationPeriod: 7 * 24 * time.Hour, EmailEnabled: emailEnabled,
 	}
 	return auth.NewService(repo, auth.NewTokenCodec("segredo-para-testes-de-servico", 15*time.Minute, clock), &fakeHasher{}, cfg, clock)
@@ -848,4 +848,52 @@ func TestService_AutoRegistroSemSMTP_NaoPedeVerificacao(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.False(t, repo.lastAccount.SendVerification)
+}
+
+func TestService_Register_SenhaFechadaComProvedorAberto_RecusaDepoisDaPrimeira(t *testing.T) {
+	clock := defaultClock()
+	repo := newFakeRepository(clock)
+	cfg := auth.ServiceConfig{
+		DefaultTenantID: "default", LocalEnabled: true, RefreshExpirationPeriod: time.Hour,
+		Registration: FakeRegistrationPolicy{open: map[string]bool{"github": true}},
+	}
+	svc := auth.NewService(repo, auth.NewTokenCodec("segredo-para-testes-de-servico", time.Minute, clock), &fakeHasher{}, cfg, clock)
+	ctx := context.Background()
+	_, err := svc.Register(ctx, "primeiro@markupp.dev", "senha-de-teste-longa")
+	require.NoError(t, err, "a primeira conta nasce mesmo com a senha fechada")
+
+	_, err = svc.Register(ctx, "segundo@markupp.dev", "senha-de-teste-longa")
+
+	require.ErrorIs(t, err, auth.ErrRegistrationDisabled)
+	assert.Len(t, repo.users, 1)
+}
+
+func TestService_Register_SemPoliticaDeCadastro_SoAPrimeiraConta(t *testing.T) {
+	clock := defaultClock()
+	repo := newFakeRepository(clock)
+	cfg := auth.ServiceConfig{DefaultTenantID: "default", LocalEnabled: true, RefreshExpirationPeriod: time.Hour}
+	svc := auth.NewService(repo, auth.NewTokenCodec("segredo-para-testes-de-servico", time.Minute, clock), &fakeHasher{}, cfg, clock)
+	ctx := context.Background()
+	_, err := svc.Register(ctx, "primeiro@markupp.dev", "senha-de-teste-longa")
+	require.NoError(t, err)
+
+	_, err = svc.Register(ctx, "segundo@markupp.dev", "senha-de-teste-longa")
+
+	require.ErrorIs(t, err, auth.ErrRegistrationDisabled)
+}
+
+func TestService_Register_PoliticaFalha_DevolveOErroSemCriarConta(t *testing.T) {
+	clock := defaultClock()
+	repo := newFakeRepository(clock)
+	falha := errors.New("banco fora")
+	cfg := auth.ServiceConfig{
+		DefaultTenantID: "default", LocalEnabled: true, RefreshExpirationPeriod: time.Hour,
+		Registration: FakeRegistrationPolicy{err: falha},
+	}
+	svc := auth.NewService(repo, auth.NewTokenCodec("segredo-para-testes-de-servico", time.Minute, clock), &fakeHasher{}, cfg, clock)
+
+	_, err := svc.Register(context.Background(), "primeiro@markupp.dev", "senha-de-teste-longa")
+
+	require.ErrorIs(t, err, falha)
+	assert.Empty(t, repo.users)
 }

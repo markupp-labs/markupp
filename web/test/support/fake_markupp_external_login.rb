@@ -24,6 +24,9 @@ class FakeMarkuppExternalLogin
 
   def public?(call) = call.split(" ", 2).last.then { it.start_with?(PROVIDERS) || PUBLIC_PATHS.include?(it) }
 
+  # Cenário: o administrador da instância fechou o cadastro pelo provedor id (ADR-0059); o login por ele segue.
+  def close_registration_for!(id) = (@closed_registrations ||= []) << id
+
   # Cenário: o provedor não responde, como o IdP fora do ar.
   def take_provider_down! = @provider_down = true
 
@@ -34,7 +37,7 @@ class FakeMarkuppExternalLogin
   end
 
   def get(path, account:, **)
-    return @providers if path == PROVIDERS
+    return @providers.map { it.merge("registration_open" => registration_open?(it["id"])) } if path == PROVIDERS
     raise ArgumentError, "fake API has no route for GET #{path}, expected #{PROVIDERS} or #{IDENTITIES}" unless path == IDENTITIES
 
     identities_of(account).map { it.slice("id", "provider", "created_at") }
@@ -89,7 +92,9 @@ class FakeMarkuppExternalLogin
 
     def register(identity)
       raise MarkuppApi::IdentityAlreadyLinked, "fake API refuses #{identity}: identity_already_linked" if find_identity(identity)
-      raise MarkuppApi::RegistrationDisabled, "fake API refuses the external account: registration_disabled" if @auth.registration_closed?
+      unless registration_open?(identity[:provider]) || !@accounts.any?
+        raise MarkuppApi::RegistrationDisabled, "fake API refuses the external account: registration_disabled"
+      end
 
       account = @accounts.create(identity[:email], nil)
       account["password_login"] = false
@@ -108,6 +113,8 @@ class FakeMarkuppExternalLogin
                        "account" => account, "created_at" => "2026-11-12T10:00:00Z" }
       @identities.last
     end
+
+    def registration_open?(id) = @auth.registration_enabled? && !Array(@closed_registrations).include?(id)
 
     def find_identity(identity) = @identities.find { it["provider"] == identity[:provider] && it["subject"] == identity[:subject] }
 

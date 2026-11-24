@@ -1,0 +1,23 @@
+pt-BR:
+  settings:
+    nav:
+      instance_registration: "Cadastro"
+    instance_registration:
+      show:
+        intro: "Escolha como contas novas podem ser criadas nesta instância. Convites sempre criam conta."
+        closed_by_host: "Quem hospeda esta instância desligou o cadastro: só convites criam conta."
+        password: "Email e senha"
+        open: "Aberto"
+        closed: "Fechado"
+        locked: "Definido por quem hospeda esta instância."
+        close: "Fechar cadastro"
+        reopen: "Abrir cadastro"
+        login_hint: "Fechar o cadastro de um método não impede quem já tem conta de entrar por ele."
+      update:
+        saved: "Salvo. As contas novas já seguem essa escolha."
+      errors:
+        host_locked: "Quem hospeda esta instância definiu este método, então não dá para mudar aqui."
+        not_found: "Este método não está mais disponível nesta instância."
+  shortcuts:
+    names:
+      instance_registration: "Cadastro da instância"
