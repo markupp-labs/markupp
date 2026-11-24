@@ -48,3 +48,12 @@ func TestInstanceRegistration_GravarSemAtor_Recusa(t *testing.T) {
 
 	require.ErrorIs(t, err, storage.ErrNoActor)
 }
+
+func TestInstanceRegistration_BancoNovo_SemConta(t *testing.T) {
+	repo := storage.NewInstanceRegistration(bancoDaInstancia(t))
+
+	has, err := repo.HasAccounts(context.Background())
+
+	require.NoError(t, err)
+	assert.False(t, has)
+}

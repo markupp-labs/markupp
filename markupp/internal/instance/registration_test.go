@@ -10,9 +10,14 @@ import (
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/instance"
 )
 
-// FakeRegistrationStore guarda a escolha por método em memória.
+// FakeRegistrationStore guarda a escolha por método em memória; noAccounts é a instalação nova.
 type FakeRegistrationStore struct {
-	choices map[string]bool
+	choices    map[string]bool
+	noAccounts bool
+}
+
+func (f *FakeRegistrationStore) HasAccounts(context.Context) (bool, error) {
+	return !f.noAccounts, nil
 }
 
 func (f *FakeRegistrationStore) LoadRegistrationChoices(context.Context) (map[string]bool, error) {
@@ -137,4 +142,16 @@ func TestRegistrationEnabled_SegueOInterruptorGeral(t *testing.T) {
 
 	assert.True(t, ligado.RegistrationEnabled())
 	assert.False(t, desligado.RegistrationEnabled())
+}
+
+func TestRegistrationOpen_InstalacaoSemConta_AbertoMesmoComTudoFechado(t *testing.T) {
+	svc, store := cadastro(false, map[string]bool{"local": false})
+	store.noAccounts = true
+
+	for method, want := range map[string]bool{"local": true, "empresa": true, "gitlab": false} {
+		open, err := svc.RegistrationOpen(context.Background(), method)
+
+		require.NoError(t, err)
+		assert.Equal(t, want, open, method)
+	}
 }
