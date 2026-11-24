@@ -307,7 +307,8 @@ para o administrador da instância ([ADR-0060](adrs/ADR-0060-login-externo-no-ba
 cadastra cada provedor com id, nome, issuer, client id e client secret, e a tela mostra o
 callback a cadastrar no provedor. O segredo fica no banco cifrado como a chave do embedding, e
 a API passa a usar a mudança em alguns segundos, sem reiniciar. A API expõe o mesmo em
-`/v1/instance/login-providers`, e o servidor MCP em ferramentas do administrador. Apagar um
+`/v1/instance/login-providers`, e o servidor MCP nas ferramentas `list_login_providers`,
+`create_login_provider`, `update_login_provider` e `delete_login_provider`. Apagar um
 provedor apaga os vínculos das contas com ele.
 
 Para fixar a lista no deploy, use as variáveis: com `MARKUPP_LOGIN_PROVIDERS` definida, vale só
