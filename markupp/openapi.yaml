@@ -2675,6 +2675,134 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /instance/login-providers:
+    get:
+      summary: Lista os provedores de login externo da instância
+      description: >-
+        Só o administrador da instância (ADR-0060). Nunca devolve o segredo do cliente. Com
+        MARKUPP_LOGIN_PROVIDERS definida, a lista vem de quem hospeda e fica travada.
+      responses:
+        '200':
+          description: Provedores na ordem de criação
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginProvidersResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/InstanceAdminRequired'
+    post:
+      summary: Cria um provedor de login externo
+      description: Só o administrador da instância. Vale no login em alguns segundos, sem reiniciar.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginProviderRequest'
+      responses:
+        '201':
+          description: Provedor criado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginProviderResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/InstanceAdminRequired'
+        '409':
+          description: Id já existe (login_provider_exists) ou lista travada por quem hospeda (host_locked)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Id, issuer, client_id ou client_secret inválido (invalid_login_provider)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /instance/login-providers/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+    put:
+      summary: Troca os campos de um provedor de login externo
+      description: >-
+        Só o administrador da instância. O id é o da rota e não muda. client_secret ausente,
+        null ou vazio mantém o guardado. O issuer só muda sem conta vinculada.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginProviderRequest'
+      responses:
+        '200':
+          description: Provedor gravado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginProviderResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/InstanceAdminRequired'
+        '404':
+          description: Provedor inexistente (login_provider_not_found)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Issuer de provedor com conta vinculada (login_provider_issuer_locked) ou lista travada (host_locked)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Campo inválido (invalid_login_provider)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      summary: Apaga um provedor de login externo e os vínculos das contas com ele
+      description: >-
+        Só o administrador da instância. As contas vinculadas perdem esse jeito de entrar, e um
+        provedor novo com o mesmo id começa sem vínculo.
+      responses:
+        '200':
+          description: Provedor apagado
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [removed_links]
+                properties:
+                  removed_links:
+                    type: integer
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/InstanceAdminRequired'
+        '404':
+          description: Provedor inexistente (login_provider_not_found)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Lista travada por quem hospeda (host_locked)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 components:
   parameters:
     PageOffset:
@@ -3433,6 +3561,60 @@ components:
         password_registration_open:
           type: boolean
           description: Se o cadastro por email e senha cria conta nova agora
+    LoginProviderRequest:
+      type: object
+      required: [client_id]
+      properties:
+        id:
+          type: string
+          description: Só na criação. Letras minúsculas, dígitos e hífen, menos local.
+        name:
+          type: string
+          description: Nome do botão. Vazio usa o id.
+        issuer:
+          type: string
+          description: Issuer OpenID Connect. Vazio só no id github.
+        client_id:
+          type: string
+        client_secret:
+          type: string
+          nullable: true
+          description: Obrigatório na criação; ausente, null ou vazio mantém o guardado.
+        enabled:
+          type: boolean
+    LoginProviderResponse:
+      type: object
+      required: [id, name, issuer, client_id, client_secret_set, enabled, locked, callback_url, linked_accounts]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        issuer:
+          type: string
+        client_id:
+          type: string
+        client_secret_set:
+          type: boolean
+        enabled:
+          type: boolean
+        locked:
+          type: boolean
+        callback_url:
+          type: string
+          description: Redirect URI a cadastrar no provedor.
+        linked_accounts:
+          type: integer
+    LoginProvidersResponse:
+      type: object
+      required: [locked, providers]
+      properties:
+        locked:
+          type: boolean
+        providers:
+          type: array
+          items:
+            $ref: '#/components/schemas/LoginProviderResponse'
     RegistrationMethodResponse:
       type: object
       properties:

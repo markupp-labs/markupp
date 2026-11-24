@@ -10,6 +10,11 @@ import {
   type LinkQuery,
   type LinkRefusal,
   type LinkType,
+  type LoginProvider,
+  type LoginProviderChange,
+  type LoginProviderCreation,
+  type LoginProviderList,
+  type LoginProviderRemoval,
   type MarkuppApi,
   type Member,
   type Note,
@@ -28,6 +33,7 @@ import type {
   PublishRequest,
 } from "../publication.js";
 import { FakeInstanceEmbedding } from "./fake-instance-embedding.js";
+import { FakeInstanceLoginProviders } from "./fake-instance-login-providers.js";
 import { FakeInvites } from "./fake-invites.js";
 import { FakeLinks } from "./fake-links.js";
 import { FakeMembers } from "./fake-members.js";
@@ -56,6 +62,7 @@ export class FakeMarkuppApi implements MarkuppApi {
   private readonly invites = new FakeInvites(() => this.tick());
   private readonly links = new FakeLinks(() => this.tick());
   private readonly instanceEmbedding = new FakeInstanceEmbedding();
+  private readonly loginProviders = new FakeInstanceLoginProviders();
 
   withTenant(id: string, role = "member", name = id): this {
     this.tenants.push({ id, name, role });
@@ -77,6 +84,19 @@ export class FakeMarkuppApi implements MarkuppApi {
   // withInstanceAdmin faz da conta administradora da instância.
   withInstanceAdmin(): this {
     this.instanceEmbedding.admin = true;
+    this.loginProviders.admin = true;
+    return this;
+  }
+
+  withLoginProvidersLockedByHost(): this {
+    this.loginProviders.locked = true;
+    return this;
+  }
+
+  // withLoginProvider grava um provedor de login externo com linkedAccounts contas
+  // ligadas; com conta ligada, o issuer não muda.
+  withLoginProvider(id: string, linkedAccounts = 0): this {
+    this.loginProviders.seed(id, linkedAccounts);
     return this;
   }
 
@@ -157,6 +177,27 @@ export class FakeMarkuppApi implements MarkuppApi {
     update: InstanceEmbeddingUpdate,
   ): Promise<InstanceEmbedding> {
     return this.instanceEmbedding.update(update);
+  }
+
+  async listLoginProviders(): Promise<LoginProviderList> {
+    return this.loginProviders.list();
+  }
+
+  async createLoginProvider(
+    creation: LoginProviderCreation,
+  ): Promise<LoginProvider> {
+    return this.loginProviders.create(creation);
+  }
+
+  async updateLoginProvider(
+    id: string,
+    change: LoginProviderChange,
+  ): Promise<LoginProvider> {
+    return this.loginProviders.update(id, change);
+  }
+
+  async deleteLoginProvider(id: string): Promise<LoginProviderRemoval> {
+    return this.loginProviders.remove(id);
   }
 
   async getAccount(): Promise<Account> {

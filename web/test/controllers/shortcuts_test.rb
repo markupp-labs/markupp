@@ -15,6 +15,7 @@ class ShortcutsTest < ActionDispatch::IntegrationTest
     [ "Authorizations", "" ],
     [ "All tenants", "g t" ], [ "Switch tenant", "" ], [ "Tenant: General", "" ], [ "Delete tenant", "" ],
     [ "Switch vault", "g v" ], [ "New vault", "" ], [ "Vault settings", "" ], [ "Vault members", "" ], [ "Vault link refusals", "" ], [ "Instance embedding", "" ], [ "Instance sign-up", "" ],
+    [ "Instance external login", "" ],
     [ "Delete vault", "" ],
     [ "Notifications", "g n" ], [ "Log out", "" ],
     [ "Rename the vault", "v r" ], [ "Add a member to the vault", "v a" ], [ "Leave the vault", "v q" ], [ "Publish the vault", "v o" ], [ "Publications", "v p" ],

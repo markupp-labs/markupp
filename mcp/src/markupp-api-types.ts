@@ -140,3 +140,43 @@ export type InstanceEmbeddingUpdate = {
   model?: string;
   api_key?: string;
 };
+
+// LoginProvider é um provedor de login externo (OIDC) da instância como a API devolve:
+// nunca o client secret, só se há um; locked diz que quem hospeda trava o issuer.
+export type LoginProvider = {
+  id: string;
+  name: string;
+  issuer: string;
+  client_id: string;
+  client_secret_set: boolean;
+  enabled: boolean;
+  locked: boolean;
+  callback_url: string;
+  linked_accounts: number;
+};
+
+// LoginProviderList é GET /v1/instance/login-providers; locked diz que quem hospeda
+// trava a lista inteira.
+export type LoginProviderList = {
+  locked: boolean;
+  providers: LoginProvider[];
+};
+
+// LoginProviderChange é o corpo do PUT: substitui todos os campos não secretos. Sem
+// client_secret o segredo guardado fica.
+export type LoginProviderChange = {
+  name: string;
+  issuer: string;
+  client_id: string;
+  client_secret?: string;
+  enabled: boolean;
+};
+
+// LoginProviderCreation é o corpo do POST, com o id que nunca muda depois.
+export type LoginProviderCreation = LoginProviderChange & {
+  id: string;
+  client_secret: string;
+};
+
+// LoginProviderRemoval é a resposta do DELETE: quantas contas perderam a ligação.
+export type LoginProviderRemoval = { removed_links: number };

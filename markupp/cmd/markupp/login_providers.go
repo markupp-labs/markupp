@@ -1,22 +1,35 @@
 package main
 
 import (
+	"log/slog"
 	"net/http"
 	"time"
 
-	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/auth"
+	"github.com/jackc/pgx/v5/pgxpool"
+
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/config"
+	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/instance"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/loginprovider"
+	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/storage"
 )
 
-// loginProviderTimeout limita cada chamada ao provedor externo de login.
-const loginProviderTimeout = 10 * time.Second
+const (
+	// loginProviderTimeout limita cada chamada ao provedor externo de login.
+	loginProviderTimeout = 10 * time.Second
+	// loginProvidersRefresh é o máximo que uma réplica da API leva para ver a mudança
+	// que o administrador fez na lista (ADR-0060).
+	loginProvidersRefresh = 5 * time.Second
+)
 
-// newExternalLoginService monta o login externo (ADR-0054). Sem provedor configurado,
-// a lista sai vazia e o painel não mostra botão.
-func newExternalLoginService(cfg config.Config, base *auth.Service) *auth.ExternalLoginService {
-	registry := loginprovider.NewRegistry(loginSettingsFrom(cfg), loginProviderClient())
-	return auth.NewExternalLoginService(base, registry)
+// newLoginProviderService monta os provedores de login do administrador, com os das
+// variáveis de quem hospeda travando a lista quando definidos.
+func newLoginProviderService(cfg config.Config, pool *pgxpool.Pool, sealer instance.Sealer) *instance.LoginProviderService {
+	return instance.NewLoginProviderService(storage.NewInstanceLoginProviders(pool), sealer, loginSettingsFrom(cfg), cfg.LoginRedirectURL)
+}
+
+// newLoginProviderRegistry dá ao login os provedores vigentes, relidos quando mudam.
+func newLoginProviderRegistry(source loginprovider.Source, logger *slog.Logger) *loginprovider.RefreshingRegistry {
+	return loginprovider.NewRefreshingRegistry(source, loginProviderClient(), loginProvidersRefresh, time.Now, logger)
 }
 
 // loginSettingsFrom traduz os provedores da config, com o callback do painel de cada um.

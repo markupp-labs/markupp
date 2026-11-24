@@ -64,6 +64,7 @@ Rails.application.routes.draw do
     resources :link_refusals, path: "vault/link-refusals", only: [ :index, :destroy ]
     resource :instance_embedding, path: "instance/embedding", only: [ :show, :update ], controller: "instance_embedding"
     resource :instance_registration, path: "instance/registration", only: [ :show, :update ], controller: "instance_registration"
+    resources :instance_login_providers, path: "instance/login-providers", only: [ :index, :create, :update, :destroy ]
   end
 
   # Nota pública, lida sem conta (ADR-0048): o fim do endereço é o slug do título e o id público depois do último hífen.

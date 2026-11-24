@@ -51,6 +51,9 @@ type RouterDeps struct {
 	// InstanceEmbedding lê e grava a escolha do provedor de embedding. Sem ele, ou sem
 	// Auth, as rotas da instância não existem.
 	InstanceEmbedding InstanceEmbeddingService
+	// InstanceLoginProviders guarda os provedores de login do administrador da instância
+	// (ADR-0060). Sem ele, ou sem Auth, as rotas não existem.
+	InstanceLoginProviders InstanceLoginProviderService
 	// Registration diz quais métodos aceitam cadastro e guarda a escolha do administrador
 	// da instância (ADR-0059). Sem ele, nenhum provedor aparece como aberto.
 	Registration RegistrationService
@@ -139,6 +142,9 @@ func mountV1OnlyRoutes(r chi.Router, d RouterDeps) {
 	}
 	if d.InstanceEmbedding != nil && d.Auth != nil {
 		mountInstanceRoutes(r, d.InstanceEmbedding, d.Auth, d.InstanceAdmins, d.Tokens)
+	}
+	if d.InstanceLoginProviders != nil && d.Auth != nil {
+		mountLoginProvidersAdminRoutes(r, d.InstanceLoginProviders, d.Auth, d.InstanceAdmins, d.Tokens)
 	}
 	if d.Registration != nil && d.Auth != nil {
 		mountRegistrationRoutes(r, d.Registration, d.Auth, d.InstanceAdmins, d.Tokens)

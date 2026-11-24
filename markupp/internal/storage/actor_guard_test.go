@@ -17,26 +17,29 @@ import (
 // a escolha do provedor, da instância, ADR-0057), o notificador trabalha no papel markupp_notifier, o authorization
 // server OAuth usa tabelas da instância (ADR-0046), os segredos gerados na primeira
 // subida também são da instância (ADR-0041), o cadastro por método é lido antes de existir
-// conta, e só grava na transação do ator (ADR-0059), e os outros
+// conta, e só grava na transação do ator (ADR-0059), os provedores de login são lidos pelo
+// login, sem ator, e apagar um leva os vínculos de todas as contas, o que só roda como o dono
+// com o ator do administrador no contexto (ADR-0060), e os outros
 // abrem o pool, migram e montam a transação do ator. A leitura sem conta (ADR-0048) é a
 // segunda entrada aceita: passa pela transação pública, e só no repositório público.
 var arquivosForaDoAtor = map[string]bool{
-	"auth.go":                  true,
-	"actor_tx.go":              true,
-	"postgres.go":              true,
-	"vault_indexer.go":         true,
-	"embedding_queue.go":       true,
-	"notification_outbox.go":   true,
-	"account_email.go":         true,
-	"identities.go":            true,
-	"oauth.go":                 true,
-	"oauth_refresh.go":         true,
-	"oauth_code.go":            true,
-	"oauth_cimd.go":            true,
-	"oauth_dcr.go":             true,
-	"instance_secrets.go":      true,
-	"instance_embedding.go":    true,
-	"instance_registration.go": true,
+	"auth.go":                     true,
+	"actor_tx.go":                 true,
+	"postgres.go":                 true,
+	"vault_indexer.go":            true,
+	"embedding_queue.go":          true,
+	"notification_outbox.go":      true,
+	"account_email.go":            true,
+	"identities.go":               true,
+	"oauth.go":                    true,
+	"oauth_refresh.go":            true,
+	"oauth_code.go":               true,
+	"oauth_cimd.go":               true,
+	"oauth_dcr.go":                true,
+	"instance_secrets.go":         true,
+	"instance_embedding.go":       true,
+	"instance_registration.go":    true,
+	"instance_login_providers.go": true,
 }
 
 var acessoDiretoAoPool = regexp.MustCompile(`gen\.New\(|\binTx\(|pgx\.BeginFunc|pool\.\w+\(`)

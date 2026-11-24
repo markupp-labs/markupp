@@ -1,0 +1,39 @@
+<%# Campos de um provedor, na criação (new_record, com o id) e na edição (o id não muda). O segredo nunca volta: o campo
+    vem vazio e, na edição, vazio mantém o guardado. %>
+<% field_class = "w-full rounded-md border border-line bg-surface px-2 py-1" %>
+<% hint = ->(name) { "#{form.field_id(name)}_hint" } %>
+<div class="flex flex-col gap-3">
+  <% if new_record %>
+    <div>
+      <%= form.label :id, t(".id"), class: "block text-ink-muted" %>
+      <%= form.text_field :id, value: provider.id, maxlength: 64, pattern: "[a-z0-9-]+", required: true, autocomplete: "off",
+                          spellcheck: false, aria: { describedby: hint.(:id) }, class: field_class %>
+      <p id="<%= hint.(:id) %>" class="text-ink-muted"><%= t(".id_hint") %></p>
+    </div>
+  <% end %>
+  <div>
+    <%= form.label :name, t(".name"), class: "block text-ink-muted" %>
+    <%= form.text_field :name, value: provider.name, maxlength: 128, required: true, autocomplete: "off", class: field_class %>
+  </div>
+  <div>
+    <%= form.label :issuer, t(".issuer"), class: "block text-ink-muted" %>
+    <%= form.url_field :issuer, value: provider.issuer, maxlength: 2048, autocomplete: "off", spellcheck: false,
+                       aria: { describedby: hint.(:issuer) }, class: field_class %>
+    <p id="<%= hint.(:issuer) %>" class="text-ink-muted"><%= t(".issuer_hint") %></p>
+  </div>
+  <div>
+    <%= form.label :client_id, t(".client_id"), class: "block text-ink-muted" %>
+    <%= form.text_field :client_id, value: provider.client_id, maxlength: 2048, required: true, autocomplete: "off", spellcheck: false,
+                        class: field_class %>
+  </div>
+  <div>
+    <%= form.label :client_secret, t(".client_secret"), class: "block text-ink-muted" %>
+    <%= form.password_field :client_secret, maxlength: 2048, autocomplete: "off",
+                            aria: { describedby: hint.(:client_secret) }, class: field_class %>
+    <p id="<%= hint.(:client_secret) %>" class="text-ink-muted"><%= provider.client_secret_set ? t(".secret_set") : t(".secret_unset") %></p>
+  </div>
+  <div class="flex items-center gap-2">
+    <%= form.check_box :enabled, checked: provider.enabled %>
+    <%= form.label :enabled, t(".enabled") %>
+  </div>
+</div>

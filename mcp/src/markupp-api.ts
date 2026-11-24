@@ -23,6 +23,11 @@ import type {
   Link,
   LinkQuery,
   LinkRefusal,
+  LoginProvider,
+  LoginProviderChange,
+  LoginProviderCreation,
+  LoginProviderList,
+  LoginProviderRemoval,
   Member,
   Note,
   NoteRevision,
@@ -111,6 +116,13 @@ export interface MarkuppApi {
   setInstanceEmbedding(
     update: InstanceEmbeddingUpdate,
   ): Promise<InstanceEmbedding>;
+  listLoginProviders(): Promise<LoginProviderList>;
+  createLoginProvider(creation: LoginProviderCreation): Promise<LoginProvider>;
+  updateLoginProvider(
+    id: string,
+    change: LoginProviderChange,
+  ): Promise<LoginProvider>;
+  deleteLoginProvider(id: string): Promise<LoginProviderRemoval>;
 }
 
 export type FetchFunction = (
@@ -138,6 +150,11 @@ type SearchHit = { note: { id: string; path: string }; vault_id: string };
 const TenantHeader = "X-Markupp-Tenant";
 
 const InstanceEmbeddingPath = "/v1/instance/embedding";
+const LoginProvidersPath = "/v1/instance/login-providers";
+
+function loginProviderPath(id: string): string {
+  return `${LoginProvidersPath}/${encodeURIComponent(id)}`;
+}
 
 // MaxLimit e MaxOffset são o maior limit e o maior offset que a API aceita numa página.
 const MaxLimit = 100;
@@ -447,6 +464,31 @@ export class HttpMarkuppApi implements MarkuppApi {
   ): Promise<InstanceEmbedding> {
     const call = { method: "PUT", path: InstanceEmbeddingPath, body: update };
     return this.json(call as ApiCall);
+  }
+
+  // Os provedores de login externo também são da instância, sem tenant.
+  listLoginProviders(): Promise<LoginProviderList> {
+    return this.json({ method: "GET", path: LoginProvidersPath });
+  }
+
+  createLoginProvider(creation: LoginProviderCreation): Promise<LoginProvider> {
+    return this.json({
+      method: "POST",
+      path: LoginProvidersPath,
+      body: creation,
+    });
+  }
+
+  updateLoginProvider(
+    id: string,
+    change: LoginProviderChange,
+  ): Promise<LoginProvider> {
+    const path = loginProviderPath(id);
+    return this.json({ method: "PUT", path, body: change });
+  }
+
+  deleteLoginProvider(id: string): Promise<LoginProviderRemoval> {
+    return this.json({ method: "DELETE", path: loginProviderPath(id) });
   }
 
   private async json<T>(call: ApiCall): Promise<T> {

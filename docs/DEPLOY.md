@@ -302,7 +302,17 @@ Opcional e desligado por padrão ([ADR-0054](adrs/ADR-0054-login-por-provedor-ex
 instalação pode aceitar login por qualquer provedor OpenID Connect (Google, Keycloak, Authentik)
 e pelo GitHub. Sem configuração, o painel não mostra botão nenhum.
 
-`MARKUPP_LOGIN_PROVIDERS` lista os ids, separados por vírgula, com letras minúsculas, dígitos e
+O jeito mais simples é pelo painel, em Configurações > Instância > Login externo, que só aparece
+para o administrador da instância ([ADR-0060](adrs/ADR-0060-login-externo-no-banco.md)). Ele
+cadastra cada provedor com id, nome, issuer, client id e client secret, e a tela mostra o
+callback a cadastrar no provedor. O segredo fica no banco cifrado como a chave do embedding, e
+a API passa a usar a mudança em alguns segundos, sem reiniciar. A API expõe o mesmo em
+`/v1/instance/login-providers`, e o servidor MCP nas ferramentas `list_login_providers`,
+`create_login_provider`, `update_login_provider` e `delete_login_provider`. Apagar um
+provedor apaga os vínculos das contas com ele.
+
+Para fixar a lista no deploy, use as variáveis: com `MARKUPP_LOGIN_PROVIDERS` definida, vale só
+ela, e a lista do painel aparece travada. `MARKUPP_LOGIN_PROVIDERS` lista os ids, separados por vírgula, com letras minúsculas, dígitos e
 hífen. Cada id lê as próprias variáveis, com o id em maiúsculas e o hífen virando sublinhado:
 
 - `MARKUPP_LOGIN_<ID>_CLIENT_ID` e `MARKUPP_LOGIN_<ID>_CLIENT_SECRET`: obrigatórias, do cadastro

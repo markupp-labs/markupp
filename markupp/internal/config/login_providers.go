@@ -57,7 +57,7 @@ func loadLoginProviders(lookup LookupFunc, cfg *Config) error {
 
 // checkLoginProviderID recusa id fora do padrão, reservado ou repetido.
 func checkLoginProviderID(id string, seen []LoginProvider) error {
-	if !loginProviderIDPattern.MatchString(id) || id == localIdentityProvider {
+	if !ValidLoginProviderID(id) {
 		return fmt.Errorf("MARKUPP_LOGIN_PROVIDERS has %q, expected ids of lowercase letters, digits and hyphens, other than %q", id, localIdentityProvider)
 	}
 	if slices.ContainsFunc(seen, func(p LoginProvider) bool { return p.ID == id }) {
@@ -90,13 +90,25 @@ func readLoginProvider(lookup LookupFunc, id string) (LoginProvider, error) {
 // checkLoginIssuer exige issuer https (http só em loopback) a todo provedor que não é o
 // GitHub. O issuer não é normalizado: o OIDC o compara letra a letra com a descoberta.
 func checkLoginIssuer(key string, provider LoginProvider) error {
-	if provider.Issuer == "" && provider.ID == GitHubLoginProviderID {
-		return nil
-	}
-	parsed, err := url.Parse(provider.Issuer)
-	if provider.Issuer == "" || err != nil || !oauthURLAllowed(parsed, oauthURLRule{allowPath: true}) {
+	if !ValidLoginIssuer(provider.ID, provider.Issuer) {
 		return fmt.Errorf("%s=%q, expected the OpenID Connect issuer https://host[/path] (http only on localhost); only the id %q goes without issuer",
 			key, provider.Issuer, GitHubLoginProviderID)
 	}
 	return nil
+}
+
+// ValidLoginProviderID diz se id serve de provedor de login: letras minúsculas, dígitos e
+// hífen, e não o id reservado da senha.
+func ValidLoginProviderID(id string) bool {
+	return loginProviderIDPattern.MatchString(id) && id != localIdentityProvider
+}
+
+// ValidLoginIssuer diz se issuer serve ao provedor id: https (http só em loopback), ou
+// vazio só no id do GitHub.
+func ValidLoginIssuer(id, issuer string) bool {
+	if issuer == "" {
+		return id == GitHubLoginProviderID
+	}
+	parsed, err := url.Parse(issuer)
+	return err == nil && oauthURLAllowed(parsed, oauthURLRule{allowPath: true})
 }
