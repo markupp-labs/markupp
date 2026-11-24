@@ -17,7 +17,7 @@ en:
   passwords:
     field:
       show: "Show password"
-      rule: "Use at least 15 characters. Well-known passwords are refused."
+      rule: "Use at least 15 characters."
   registrations:
     new:
       title: "Create an account"

@@ -17,7 +17,7 @@ pt-BR:
   passwords:
     field:
       show: "Mostrar senha"
-      rule: "Use pelo menos 15 caracteres. Senhas muito conhecidas são recusadas."
+      rule: "Use pelo menos 15 caracteres."
   registrations:
     new:
       title: "Criar uma conta"
