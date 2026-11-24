@@ -30,7 +30,7 @@ func TestInstanceLoginProviders_AdminCria_LoginSemAtorLe(t *testing.T) {
 	repo := storage.NewInstanceLoginProviders(bancoDaInstancia(t))
 
 	require.NoError(t, repo.CreateLoginProvider(comAtor(), provedorDoGoogle()))
-	require.NoError(t, repo.CreateLoginProvider(comAtor(), instance.LoginProviderRecord{ID: "github", Name: "GitHub", ClientID: "id-github", SealedSecret: "selado-github"}))
+	require.NoError(t, repo.CreateLoginProvider(comAtor(), instance.LoginProviderRecord{ID: "github", Name: "GitHub", ClientID: "id-github", SealedSecret: "selado-github"})) //nolint:gosec // G101: segredo de teste
 	records, err := repo.ListLoginProviders(context.Background())
 
 	require.NoError(t, err)

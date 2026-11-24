@@ -101,8 +101,8 @@ func (s *LoginProviderService) view(r LoginProviderRecord) LoginProviderView {
 }
 
 func (s *LoginProviderService) resealStale(ctx context.Context, r LoginProviderRecord) error {
-	plain, stale, err := s.sealer.Open(r.SealedSecret)
-	if err != nil || !stale {
+	plain, ok := s.staleSecret(r.SealedSecret)
+	if !ok {
 		return nil
 	}
 	fresh, err := s.sealer.Seal(plain)
@@ -110,6 +110,13 @@ func (s *LoginProviderService) resealStale(ctx context.Context, r LoginProviderR
 		return fmt.Errorf("reseal the secret of login provider %q: %w", r.ID, err)
 	}
 	return s.store.ResealLoginProviderSecret(ctx, r.ID, r.SealedSecret, fresh)
+}
+
+// staleSecret abre o segredo selado com uma chave de cifra antiga. O ilegível fica como
+// está, até o administrador gravar outro.
+func (s *LoginProviderService) staleSecret(sealed string) (string, bool) {
+	plain, stale, err := s.sealer.Open(sealed)
+	return plain, err == nil && stale
 }
 
 // Create grava um provedor novo.

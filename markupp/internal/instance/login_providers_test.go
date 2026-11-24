@@ -228,7 +228,7 @@ func TestLoginProviders_ComProvedoresDeQuemHospeda_ListaTravadaComOsDele(t *test
 func TestLoginProviders_Vigentes_SoOsLigadosComOSegredoAbertoEOCallback(t *testing.T) {
 	svc, _ := servicoDeLogin(
 		instance.LoginProviderRecord{ID: "google", Name: "Google", Issuer: "https://accounts.google.com", ClientID: "id", SealedSecret: "selado:s", Enabled: true},
-		instance.LoginProviderRecord{ID: "github", Name: "GitHub", ClientID: "id-gh", SealedSecret: "selado:s2"},
+		instance.LoginProviderRecord{ID: "github", Name: "GitHub", ClientID: "id-gh", SealedSecret: "selado:s2"}, //nolint:gosec // G101: segredo de teste
 	)
 
 	_, settings, err := svc.LoginProviders(context.Background())
@@ -254,7 +254,7 @@ func TestLoginProviders_Vigentes_RevisaoMudaQuandoAListaMuda(t *testing.T) {
 func TestLoginProviders_VigentesComSegredoIlegivel_PulaSoEsseProvedor(t *testing.T) {
 	svc, _ := servicoDeLogin(
 		instance.LoginProviderRecord{ID: "google", Issuer: "https://accounts.google.com", ClientID: "id", SealedSecret: "lixo", Enabled: true},
-		instance.LoginProviderRecord{ID: "github", ClientID: "id-gh", SealedSecret: "selado:s2", Enabled: true},
+		instance.LoginProviderRecord{ID: "github", ClientID: "id-gh", SealedSecret: "selado:s2", Enabled: true}, //nolint:gosec // G101: segredo de teste
 	)
 
 	_, settings, err := svc.LoginProviders(context.Background())
