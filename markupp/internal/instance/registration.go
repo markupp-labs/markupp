@@ -74,10 +74,18 @@ func (s *RegistrationService) SetOpen(ctx context.Context, id string, open bool)
 }
 
 // RegistrationOpen diz se o método id aceita cadastro agora; método desconhecido não aceita.
+// Sem conta na instalação, todo método configurado aceita a primeira (ADR-0052).
 func (s *RegistrationService) RegistrationOpen(ctx context.Context, id string) (bool, error) {
 	method, ok := s.method(id)
-	if !ok || !s.enabled {
+	if !ok {
 		return false, nil
+	}
+	hasAccounts, err := s.store.HasAccounts(ctx)
+	if err != nil {
+		return false, err
+	}
+	if !hasAccounts || !s.enabled {
+		return !hasAccounts, nil
 	}
 	choices, err := s.store.LoadRegistrationChoices(ctx)
 	if err != nil {

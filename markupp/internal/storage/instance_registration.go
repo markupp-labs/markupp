@@ -47,3 +47,12 @@ func (r *PostgresInstanceRegistration) SaveRegistrationChoice(ctx context.Contex
 	}
 	return nil
 }
+
+// HasAccounts diz se já há conta na instalação, como o cadastro confere antes de criar.
+func (r *PostgresInstanceRegistration) HasAccounts(ctx context.Context) (bool, error) {
+	count, err := gen.New(r.pool).CountUsers(ctx)
+	if err != nil {
+		return false, fmt.Errorf("count accounts of the instance: %w", err)
+	}
+	return count > 0, nil
+}
