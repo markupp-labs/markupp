@@ -25,12 +25,14 @@ type ExternalLoginService interface {
 }
 
 type externalLoginHandler struct {
-	svc ExternalLoginService
+	svc          ExternalLoginService
+	registration RegistrationService
 }
 
 type loginProviderResponse struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
+	ID               string `json:"id"`
+	Name             string `json:"name"`
+	RegistrationOpen bool   `json:"registration_open"`
 }
 
 type loginAttemptResponse struct {
@@ -55,8 +57,8 @@ type identityResponse struct {
 
 // mountExternalLoginRoutes monta o login externo, só sob /v1. As identidades da conta
 // só aceitam token de login: um app não troca as formas de entrar de ninguém.
-func mountExternalLoginRoutes(r chi.Router, svc ExternalLoginService, tokens TokenValidator, limit func(http.Handler) http.Handler) {
-	h := &externalLoginHandler{svc: svc}
+func mountExternalLoginRoutes(r chi.Router, svc ExternalLoginService, registration RegistrationService, tokens TokenValidator, limit func(http.Handler) http.Handler) {
+	h := &externalLoginHandler{svc: svc, registration: registration}
 	r.Get("/login-providers", h.listProviders)
 	r.With(limit).Post("/login-providers/{id}/attempts", h.createAttempt)
 	r.With(limit).Post("/auth/external-login", h.login)
@@ -67,12 +69,25 @@ func mountExternalLoginRoutes(r chi.Router, svc ExternalLoginService, tokens Tok
 	account.Delete("/me/identities/{id}", h.unlink)
 }
 
-func (h *externalLoginHandler) listProviders(w http.ResponseWriter, _ *http.Request) {
+func (h *externalLoginHandler) listProviders(w http.ResponseWriter, r *http.Request) {
 	out := []loginProviderResponse{}
 	for _, p := range h.svc.Providers() {
-		out = append(out, loginProviderResponse{ID: p.ID, Name: p.Name})
+		open, err := h.registrationOpen(r.Context(), p.ID)
+		if err != nil {
+			writeLoggedInternal(w, "falha no login externo", "ler o cadastro do provedor", err)
+			return
+		}
+		out = append(out, loginProviderResponse{ID: p.ID, Name: p.Name, RegistrationOpen: open})
 	}
 	writeJSON(w, http.StatusOK, out)
+}
+
+// registrationOpen diz se o provedor cadastra; sem o cadastro por método, nenhum cadastra.
+func (h *externalLoginHandler) registrationOpen(ctx context.Context, providerID string) (bool, error) {
+	if h.registration == nil {
+		return false, nil
+	}
+	return h.registration.RegistrationOpen(ctx, providerID)
 }
 
 func (h *externalLoginHandler) createAttempt(w http.ResponseWriter, r *http.Request) {

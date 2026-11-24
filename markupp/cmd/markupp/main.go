@@ -261,7 +261,8 @@ func newHandler(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, logg
 
 // newRouterDeps monta os serviços das rotas da conta, das notas e do OAuth.
 func newRouterDeps(cfg config.Config, pool *pgxpool.Pool, logger *slog.Logger) (api.RouterDeps, error) {
-	authSvc, codec := newAuthService(cfg, pool, newRegistrationService(cfg, pool))
+	registration := newRegistrationService(cfg, pool)
+	authSvc, codec := newAuthService(cfg, pool, registration)
 	oauthSvc, err := newOAuthService(cfg, pool, codec)
 	if err != nil {
 		return api.RouterDeps{}, err
@@ -277,6 +278,7 @@ func newRouterDeps(cfg config.Config, pool *pgxpool.Pool, logger *slog.Logger) (
 		TrustedProxies:     cfg.TrustedProxies,
 		AccountRateLimiter: api.NewAccountRateLimiter(cfg.RateLimitPerMinute, time.Minute, time.Now, cfg.TrustedProxies),
 		ExternalLogin:      newExternalLoginService(cfg, authSvc),
+		Registration:       registration,
 	}, nil
 }
 
