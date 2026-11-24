@@ -261,7 +261,7 @@ func newHandler(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, logg
 
 // newRouterDeps monta os serviços das rotas da conta, das notas e do OAuth.
 func newRouterDeps(cfg config.Config, pool *pgxpool.Pool, logger *slog.Logger) (api.RouterDeps, error) {
-	authSvc, codec := newAuthService(cfg, pool)
+	authSvc, codec := newAuthService(cfg, pool, newRegistrationService(cfg, pool))
 	oauthSvc, err := newOAuthService(cfg, pool, codec)
 	if err != nil {
 		return api.RouterDeps{}, err
@@ -385,13 +385,13 @@ func oauthMetadataFrom(cfg config.Config) *api.OAuthMetadata {
 	return &api.OAuthMetadata{Issuer: cfg.PublicURL, DynamicRegistration: cfg.OAuthDCREnabled}
 }
 
-func newAuthService(cfg config.Config, pool *pgxpool.Pool) (*auth.Service, *auth.TokenCodec) {
+func newAuthService(cfg config.Config, pool *pgxpool.Pool, registration auth.RegistrationPolicy) (*auth.Service, *auth.TokenCodec) {
 	authRepo := storage.NewPostgresAuthRepository(pool)
 	codec := auth.NewTokenCodec(cfg.AuthSecret, time.Duration(cfg.JWTExpirationMinutes)*time.Minute, time.Now)
 	hasher := auth.NewBcryptHasher()
 	authCfg := auth.ServiceConfig{
 		DefaultTenantID:         cfg.DefaultTenantID,
-		RegistrationEnabled:     cfg.AuthRegistrationEnabled,
+		Registration:            registration,
 		LocalEnabled:            cfg.LocalAuthEnabled,
 		RefreshExpirationPeriod: time.Duration(cfg.RefreshExpirationDays) * 24 * time.Hour,
 		EmailEnabled:            cfg.InviteByEmail,

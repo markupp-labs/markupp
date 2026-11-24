@@ -22,10 +22,16 @@ type TokenIssuer interface {
 	ValidateToken(tokenString string) (Claims, error)
 }
 
+// RegistrationPolicy diz se o método de cadastro aceita conta nova (ADR-0059).
+type RegistrationPolicy interface {
+	RegistrationOpen(ctx context.Context, method string) (bool, error)
+}
+
 // ServiceConfig define os parâmetros operacionais da autenticação.
 type ServiceConfig struct {
-	DefaultTenantID         string
-	RegistrationEnabled     bool
+	DefaultTenantID string
+	// Registration diz quais métodos cadastram depois da primeira conta; nil fecha todos.
+	Registration            RegistrationPolicy
 	LocalEnabled            bool
 	RefreshExpirationPeriod time.Duration
 	// EmailEnabled diz que há SMTP: a conta de auto-registro recebe o email de verificação.
@@ -72,7 +78,11 @@ func (s *Service) Register(ctx context.Context, email, password string) (TokenPa
 	if err != nil {
 		return TokenPair{}, fmt.Errorf("hash password for %q: %w", normEmail, err)
 	}
-	user, err := s.repo.CreateAccountTx(ctx, s.buildAccountParams(normEmail, hash))
+	params, err := s.buildAccountParams(ctx, localProvider, normEmail, hash)
+	if err != nil {
+		return TokenPair{}, err
+	}
+	user, err := s.repo.CreateAccountTx(ctx, params)
 	if err != nil {
 		return TokenPair{}, fmt.Errorf("create account for %q: %w", normEmail, err)
 	}
@@ -163,7 +173,29 @@ func (s *Service) handleUnknownUser(ctx context.Context, email, password string)
 	return TokenPair{}, ErrInvalidCredentials
 }
 
-func (s *Service) buildAccountParams(email, hash string) CreateAccountParams {
+// registrationOpen consulta a política do método; sem política, nenhum método cadastra.
+func (s *Service) registrationOpen(ctx context.Context, method string) (bool, error) {
+	if s.cfg.Registration == nil {
+		return false, nil
+	}
+	open, err := s.cfg.Registration.RegistrationOpen(ctx, method)
+	if err != nil {
+		return false, fmt.Errorf("check registration for method %q: %w", method, err)
+	}
+	return open, nil
+}
+
+// buildAccountParams monta a conta nova pelo método dado, que decide se ela nasce depois
+// da primeira.
+func (s *Service) buildAccountParams(ctx context.Context, method, email, hash string) (CreateAccountParams, error) {
+	open, err := s.registrationOpen(ctx, method)
+	if err != nil {
+		return CreateAccountParams{}, err
+	}
+	return s.newAccountParams(email, hash, open), nil
+}
+
+func (s *Service) newAccountParams(email, hash string, allowMember bool) CreateAccountParams {
 	now := s.clock()
 	userID := s.newID()
 	return CreateAccountParams{
@@ -172,7 +204,7 @@ func (s *Service) buildAccountParams(email, hash string) CreateAccountParams {
 		Identity:                UserIdentity{ID: s.newID(), UserID: userID, Provider: "local", ProviderUserID: email, PasswordHash: hash, CreatedAt: now},
 		InitialVaultID:          s.newID(),
 		InitialVaultName:        InitialVaultName,
-		AllowMemberRegistration: s.cfg.RegistrationEnabled,
+		AllowMemberRegistration: allowMember,
 		AuditEventID:            s.newID(),
 		SendVerification:        s.cfg.EmailEnabled,
 	}
