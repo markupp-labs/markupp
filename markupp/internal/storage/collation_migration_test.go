@@ -133,7 +133,7 @@ func TestMigracao00047_VersaoVaziaSemSuperusuario_RefazIndicesESegueSemRegistrar
 	antes := arquivosAtuais(t, pool)
 	dono := comoDonoSemSuperusuario(t, pool)
 
-	_, err := gooseProvider(t, dono).Up(context.Background())
+	_, err := gooseProvider(t, dono).UpTo(context.Background(), 47)
 
 	require.NoError(t, err, "a falta de superusuario nao trava o upgrade")
 	assert.NotEqual(t, antes["publications_folder_key"].relfilenode, arquivosAtuais(t, pool)["publications_folder_key"].relfilenode)
