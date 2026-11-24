@@ -20,6 +20,18 @@ type RegistrationMethod struct {
 	HostSetting *bool
 }
 
+// RegistrationMethodSource dá os métodos de cadastro vigentes, que mudam com os provedores
+// de login do administrador (ADR-0060).
+type RegistrationMethodSource interface {
+	RegistrationMethods() []RegistrationMethod
+}
+
+// RegistrationMethodList é uma lista fixa de métodos.
+type RegistrationMethodList []RegistrationMethod
+
+// RegistrationMethods devolve a própria lista.
+func (l RegistrationMethodList) RegistrationMethods() []RegistrationMethod { return l }
+
 // RegistrationMethodView é o que a API mostra de cada método.
 type RegistrationMethodView struct {
 	ID     string `json:"id"`
@@ -33,12 +45,12 @@ type RegistrationMethodView struct {
 type RegistrationService struct {
 	store   RegistrationStore
 	enabled bool
-	methods []RegistrationMethod
+	methods RegistrationMethodSource
 }
 
 // NewRegistrationService monta o serviço sobre o banco, o interruptor geral e os métodos
-// configurados, na ordem em que aparecem.
-func NewRegistrationService(store RegistrationStore, enabled bool, methods []RegistrationMethod) *RegistrationService {
+// vigentes, na ordem em que aparecem.
+func NewRegistrationService(store RegistrationStore, enabled bool, methods RegistrationMethodSource) *RegistrationService {
 	return &RegistrationService{store: store, enabled: enabled, methods: methods}
 }
 
@@ -51,8 +63,9 @@ func (s *RegistrationService) Methods(ctx context.Context) ([]RegistrationMethod
 	if err != nil {
 		return nil, err
 	}
-	views := make([]RegistrationMethodView, 0, len(s.methods))
-	for _, method := range s.methods {
+	methods := s.methods.RegistrationMethods()
+	views := make([]RegistrationMethodView, 0, len(methods))
+	for _, method := range methods {
 		views = append(views, s.view(method, choices))
 	}
 	return views, nil
@@ -95,7 +108,7 @@ func (s *RegistrationService) RegistrationOpen(ctx context.Context, id string) (
 }
 
 func (s *RegistrationService) method(id string) (RegistrationMethod, bool) {
-	for _, method := range s.methods {
+	for _, method := range s.methods.RegistrationMethods() {
 		if method.ID == id {
 			return method, true
 		}

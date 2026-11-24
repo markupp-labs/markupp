@@ -11,7 +11,7 @@ import (
 // newRegistrationService monta o cadastro por método (ADR-0059) sobre o banco, o
 // interruptor geral e os métodos configurados.
 func newRegistrationService(cfg config.Config, pool *pgxpool.Pool) *instance.RegistrationService {
-	return instance.NewRegistrationService(storage.NewInstanceRegistration(pool), cfg.AuthRegistrationEnabled, registrationMethodsFrom(cfg))
+	return instance.NewRegistrationService(storage.NewInstanceRegistration(pool), cfg.AuthRegistrationEnabled, instance.RegistrationMethodList(registrationMethodsFrom(cfg)))
 }
 
 // registrationMethodsFrom lista email e senha, quando a credencial local vale, e os

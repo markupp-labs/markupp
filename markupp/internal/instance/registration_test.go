@@ -42,7 +42,7 @@ func metodosDeTeste() []instance.RegistrationMethod {
 
 func cadastro(enabled bool, choices map[string]bool) (*instance.RegistrationService, *FakeRegistrationStore) {
 	store := &FakeRegistrationStore{choices: choices}
-	return instance.NewRegistrationService(store, enabled, metodosDeTeste()), store
+	return instance.NewRegistrationService(store, enabled, instance.RegistrationMethodList(metodosDeTeste())), store
 }
 
 func TestRegistrationMethods_SemEscolha_AbertosMenosOTravado(t *testing.T) {
