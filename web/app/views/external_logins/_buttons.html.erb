@@ -1,8 +1,9 @@
-<%# Um botão por provedor externo do servidor; purpose diz se a volta entra (login) ou cria a conta (signup).
-    Provedor conhecido aparece só com o logo, como é costume; o nome fica no aria-label e no title. %>
-<% if login_providers.any? %>
+<%# locals: (purpose:, providers:) -%>
+<%# Um botão por provedor externo; purpose diz se a volta entra (login) ou cria a conta (signup), e providers traz só os
+    que valem para isso. Provedor conhecido aparece só com o logo, como é costume; o nome fica no aria-label e no title. %>
+<% if providers.any? %>
   <div class="mt-3 flex flex-wrap gap-2">
-    <% login_providers.each do |provider| %>
+    <% providers.each do |provider| %>
       <% label = t("external_logins.buttons.continue", provider: provider.name) %>
       <% if provider.icon %>
         <%= button_to external_login_path(provider.id), params: { purpose: }, class: "btn px-3", title: label,

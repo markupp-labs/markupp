@@ -2,6 +2,8 @@
 # grava, a chave fica guardada e nunca volta, a escolha travada por quem hospeda recusa o PUT e o remoto pede URL http(s)
 # e modelo, e trocar para outro endpoint remoto sem mandar a chave de novo é recusado; o local e o none não usam chave e apagam a guardada. scenario: { provider:, url:, model:, api_key:, locked:, host_provider:, model_status: }.
 class FakeMarkuppInstanceEmbedding
+  include FakeInstanceAdminGuard
+
   ROUTE = "/v1/instance/embedding".freeze
   KEYLESS_PROVIDERS = %w[local none].freeze
 
@@ -32,12 +34,6 @@ class FakeMarkuppInstanceEmbedding
   end
 
   private
-    def refuse_non_admin(account, call)
-      return if account&.fetch("instance_admin", false)
-
-      raise MarkuppApi::InstanceAdminRequired, "fake API refuses #{call}: instance_admin_required, expected an instance admin account"
-    end
-
     def refuse_invalid(body, call)
       return unless body[:provider] == "openai-compat"
       return if body[:url].to_s.match?(%r{\Ahttps?://.+}) && body[:model].present?

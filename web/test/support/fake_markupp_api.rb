@@ -6,15 +6,16 @@ class FakeMarkuppApi
 
   delegate :put_requests, :post_requests, to: :@notes
   delegate :expire_access_tokens!, :revoke_refresh_tokens!, :refresh_token_valid?, :set_instance_admin!, to: :@accounts
-  delegate :disable_local_auth!, :close_registration!, :hold_refreshes_together!, to: :@auth
+  delegate :disable_local_auth!, :close_registration!, :close_password_registration!, :hold_refreshes_together!, to: :@auth
   delegate :assign_role!, :deny_notes_in!, :delete_tenant!, :receive_invite!, to: :@tenants
   delegate :sent_tokens, to: :@account_email
   delegate :received_etags, :graph_queries, :change_graph!, to: :@graph
   delegate :decisions, to: :@oauth_requests, prefix: :oauth
-  delegate :take_provider_down!, :link_identity!, to: :@external_login
+  delegate :take_provider_down!, :link_identity!, :close_registration_for!, to: :@external_login
   delegate :publications, to: :@publications
   delegate :limit_public_reads!, to: :@public_notes
   delegate :updates, to: :@instance_embedding, prefix: :instance_embedding
+  delegate :updates, to: :@instance_registration, prefix: :instance_registration
 
   # email_enabled: false é o servidor sem SMTP, que devolve o token do convite emitido e recusa os fluxos de email da conta.
   # graph é o cenário das ligações, comunidades e grafos sob /v1 (ver FakeMarkuppGraph); oauth_requests, o dos pedidos
@@ -22,11 +23,12 @@ class FakeMarkuppApi
   # FakeMarkuppAuthorizations); vaults, o dos cofres de cada tenant (ver FakeMarkuppVaults); publications, o das notas,
   # pastas e cofres publicados (ver FakeMarkuppPublications); login_providers, os provedores de login externo, nenhum
   # por padrão (ver FakeMarkuppExternalLogin); link_refusals, o das recusas de ligação (ver FakeMarkuppLinkRefusals);
-  # instance_embedding, o do embedding da instância (ver FakeMarkuppInstanceEmbedding).
+  # instance_embedding, o do embedding da instância (ver FakeMarkuppInstanceEmbedding); instance_registration, os métodos
+  # de cadastro da instância (ver FakeMarkuppInstanceRegistration).
   def initialize(notes: [], unreachable: false, conflict: false, accounts: FakeMarkuppAccounts::DEFAULT_ACCOUNTS,
                  tenants: FakeMarkuppTenants::DEFAULT_TENANTS, invites: [], email_enabled: true, graph: {}, oauth_requests: [],
                  authorizations: [], vaults: nil, publications: [], login_providers: [], link_refusals: [],
-                 instance_embedding: {})
+                 instance_embedding: {}, instance_registration: FakeMarkuppInstanceRegistration::DEFAULT_METHODS)
     @accounts = FakeMarkuppAccounts.new(accounts)
     @tenants = FakeMarkuppTenants.new(tenants, invites)
     @auth = FakeMarkuppAuth.new(@accounts, @tenants)
@@ -44,6 +46,7 @@ class FakeMarkuppApi
     @publications = FakeMarkuppPublications.new(publications, @notes, @vaults)
     @public_notes = FakeMarkuppPublicNotes.new(@publications, @notes)
     @instance_embedding = FakeMarkuppInstanceEmbedding.new(instance_embedding)
+    @instance_registration = FakeMarkuppInstanceRegistration.new(instance_registration)
     @unreachable = unreachable
     @slow_calls = FakeSlowCalls.new(timeout: 10)
     @received_credentials = []
@@ -116,7 +119,8 @@ class FakeMarkuppApi
     end
 
     def account_scoped?(path)
-    path.start_with?(OAUTH_REQUESTS, "/v1/auth/", "/v1/me/", "/v1/tenants", FakeMarkuppInstanceEmbedding::ROUTE) || FakeMarkuppAuthorizations::ROUTE.match?(path)
+    path.start_with?(OAUTH_REQUESTS, "/v1/auth/", "/v1/me/", "/v1/tenants", FakeMarkuppInstanceEmbedding::ROUTE,
+                    FakeMarkuppInstanceRegistration::ROUTE) || FakeMarkuppAuthorizations::ROUTE.match?(path)
   end
 
     def authenticate(call)
@@ -135,9 +139,10 @@ class FakeMarkuppApi
       return @oauth_requests if path.start_with?(OAUTH_REQUESTS)
       return @authorizations if FakeMarkuppAuthorizations::ROUTE.match?(path)
       return @tenants if path == FakeMarkuppTenants::NOTIFICATIONS
-      return @auth if path == "/v1/accounts"
+      return @auth if [ "/v1/accounts", FakeMarkuppAuth::POLICY ].include?(path)
       return @link_refusals if FakeMarkuppLinkRefusals::ROUTE.match?(path)
       return @instance_embedding if path == FakeMarkuppInstanceEmbedding::ROUTE
+      return @instance_registration if path.start_with?(FakeMarkuppInstanceRegistration::ROUTE)
       return @note_index if path.start_with?("/v1/search/") || FakeMarkuppNoteIndex::VAULT_NOTES.match?(path)
       return @account_email if path.start_with?("/v1/auth/password/", "/v1/auth/email/")
       return @auth if path.start_with?("/v1/auth/")

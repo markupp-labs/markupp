@@ -140,3 +140,52 @@ func TestLoginProvider_RedirectURL_ApontaParaOCallbackDoPainel(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "https://markupp.dev/painel/auth/google/callback", cfg.LoginRedirectURL("google"))
 }
+
+func TestLoad_ProvedorSemRegistration_DeixaOCadastroSemTrava(t *testing.T) {
+	cfg, err := config.Load(envComProvedores().Lookup)
+
+	require.NoError(t, err)
+	assert.Nil(t, cfg.LoginProviders[1].Registration)
+}
+
+func TestLoad_ProvedorComRegistration_TravaOCadastroDele(t *testing.T) {
+	env := envComProvedores()
+	env["MARKUPP_LOGIN_GITHUB_REGISTRATION"] = "false"
+
+	cfg, err := config.Load(env.Lookup)
+
+	require.NoError(t, err)
+	require.NotNil(t, cfg.LoginProviders[1].Registration)
+	assert.False(t, *cfg.LoginProviders[1].Registration)
+	assert.Nil(t, cfg.LoginProviders[0].Registration)
+}
+
+func TestLoad_RegistrationDoProvedorInvalida_NomeiaAVariavel(t *testing.T) {
+	env := envComProvedores()
+	env["MARKUPP_LOGIN_GITHUB_REGISTRATION"] = "talvez"
+
+	_, err := config.Load(env.Lookup)
+
+	require.ErrorContains(t, err, "MARKUPP_LOGIN_GITHUB_REGISTRATION")
+}
+
+func TestLoad_SemLocalRegistration_DeixaOCadastroPorSenhaSemTrava(t *testing.T) {
+	cfg, err := config.Load(fakeEnv{"MARKUPP_DATABASE_URL": urlDeTeste}.Lookup)
+
+	require.NoError(t, err)
+	assert.Nil(t, cfg.LocalRegistration)
+}
+
+func TestLoad_ComLocalRegistration_TravaOCadastroPorSenha(t *testing.T) {
+	cfg, err := config.Load(fakeEnv{"MARKUPP_DATABASE_URL": urlDeTeste, "MARKUPP_AUTH_LOCAL_REGISTRATION": "true"}.Lookup)
+
+	require.NoError(t, err)
+	require.NotNil(t, cfg.LocalRegistration)
+	assert.True(t, *cfg.LocalRegistration)
+}
+
+func TestLoad_LocalRegistrationInvalida_NomeiaAVariavel(t *testing.T) {
+	_, err := config.Load(fakeEnv{"MARKUPP_DATABASE_URL": urlDeTeste, "MARKUPP_AUTH_LOCAL_REGISTRATION": "x"}.Lookup)
+
+	require.ErrorContains(t, err, "MARKUPP_AUTH_LOCAL_REGISTRATION")
+}

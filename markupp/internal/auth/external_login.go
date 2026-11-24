@@ -123,19 +123,26 @@ func (s *ExternalLoginService) Register(ctx context.Context, cb ExternalCallback
 	if err := s.ensureUnlinked(ctx, cb.Provider, ident.Subject); err != nil {
 		return TokenPair{}, err
 	}
-	user, err := s.base.repo.CreateAccountTx(ctx, s.accountParams(cb.Provider, ident))
+	params, err := s.accountParams(ctx, cb.Provider, ident)
+	if err != nil {
+		return TokenPair{}, err
+	}
+	user, err := s.base.repo.CreateAccountTx(ctx, params)
 	if err != nil {
 		return TokenPair{}, fmt.Errorf("create account for %s:%s: %w", cb.Provider, ident.Subject, err)
 	}
 	return s.base.issueAndPersist(ctx, user, "auth.login")
 }
 
-func (s *ExternalLoginService) accountParams(provider string, ident loginprovider.Identity) CreateAccountParams {
-	p := s.base.buildAccountParams(normalizeEmail(ident.Email), "")
+func (s *ExternalLoginService) accountParams(ctx context.Context, provider string, ident loginprovider.Identity) (CreateAccountParams, error) {
+	p, err := s.base.buildAccountParams(ctx, provider, normalizeEmail(ident.Email), "")
+	if err != nil {
+		return CreateAccountParams{}, err
+	}
 	p.Identity.Provider, p.Identity.ProviderUserID = provider, ident.Subject
 	p.EmailVerified = ident.EmailVerified
 	p.SendVerification = s.base.cfg.EmailEnabled && !ident.EmailVerified
-	return p
+	return p, nil
 }
 
 // ensureUnlinked recusa a identidade que já pertence a uma conta.

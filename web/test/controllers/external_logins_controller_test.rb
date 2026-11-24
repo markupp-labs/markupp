@@ -43,6 +43,17 @@ class ExternalLoginsControllerTest < ActionDispatch::IntegrationTest
     assert_select "form[action=?] input[name=purpose][value=signup]", external_login_path("github")
   end
 
+  test "the account creation page leaves out a provider that does not create accounts, and the login keeps it" do
+    use_fake_api(login_providers: [ *GITHUB, { "id" => "keycloak", "name" => "Keycloak" } ]).close_registration_for!("keycloak")
+
+    get new_registration_path
+
+    assert_select "form[action=?]", external_login_path("keycloak"), count: 0
+    assert_select "form[action=?] input[name=purpose][value=signup]", external_login_path("github")
+    get new_session_path
+    assert_select "form[action=?] input[name=purpose][value=login]", external_login_path("keycloak")
+  end
+
   test "a server without providers shows no provider button" do
     use_fake_api
 

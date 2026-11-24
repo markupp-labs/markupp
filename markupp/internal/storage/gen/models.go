@@ -50,6 +50,12 @@ type InstanceEmbedding struct {
 	ModelStateAt pgtype.Timestamptz
 }
 
+type InstanceRegistrationMethod struct {
+	Method    string
+	Open      bool
+	UpdatedAt time.Time
+}
+
 type InstanceSecret struct {
 	Name      string
 	Value     string

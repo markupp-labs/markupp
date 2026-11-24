@@ -16,6 +16,9 @@ type LoginProvider struct {
 	Issuer       string
 	ClientID     string
 	ClientSecret string
+	// Registration é MARKUPP_LOGIN_<ID>_REGISTRATION: definida, trava o cadastro por esse
+	// provedor nesse valor; nil deixa a escolha ao administrador da instância (ADR-0059).
+	Registration *bool
 }
 
 // GitHubLoginProviderID é o único id aceito sem issuer: o GitHub não fala OIDC.
@@ -71,6 +74,11 @@ func readLoginProvider(lookup LookupFunc, id string) (LoginProvider, error) {
 	readString(lookup, prefix+"ISSUER", &provider.Issuer)
 	readString(lookup, prefix+"CLIENT_ID", &provider.ClientID)
 	readString(lookup, prefix+"CLIENT_SECRET", &provider.ClientSecret)
+	registration, err := readOptionalBool(lookup, prefix+"REGISTRATION")
+	if err != nil {
+		return LoginProvider{}, err
+	}
+	provider.Registration = registration
 	for _, key := range []string{"CLIENT_ID", "CLIENT_SECRET"} {
 		if value, _ := lookup(prefix + key); strings.TrimSpace(value) == "" {
 			return LoginProvider{}, fmt.Errorf("%s%s is empty, expected the value registered at the provider %q", prefix, key, id)

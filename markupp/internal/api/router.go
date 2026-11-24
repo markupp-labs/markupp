@@ -51,6 +51,9 @@ type RouterDeps struct {
 	// InstanceEmbedding lê e grava a escolha do provedor de embedding. Sem ele, ou sem
 	// Auth, as rotas da instância não existem.
 	InstanceEmbedding InstanceEmbeddingService
+	// Registration diz quais métodos aceitam cadastro e guarda a escolha do administrador
+	// da instância (ADR-0059). Sem ele, nenhum provedor aparece como aberto.
+	Registration RegistrationService
 }
 
 // NewRouter monta o roteador com sonda, rotas de autenticação, de notas e de
@@ -126,7 +129,7 @@ func mountV1OnlyRoutes(r chi.Router, d RouterDeps) {
 		mountVaultRoutes(r, d.Vaults, d.Tokens, d.Tenants)
 	}
 	if d.ExternalLogin != nil {
-		mountExternalLoginRoutes(r, d.ExternalLogin, d.Tokens, limitAccountAttempts(d.AccountRateLimiter))
+		mountExternalLoginRoutes(r, d.ExternalLogin, d.Registration, d.Tokens, limitAccountAttempts(d.AccountRateLimiter))
 	}
 	if d.Publications != nil {
 		mountPublicationRoutes(r, d.Publications, d.Tokens, d.Tenants)
@@ -136,6 +139,9 @@ func mountV1OnlyRoutes(r chi.Router, d RouterDeps) {
 	}
 	if d.InstanceEmbedding != nil && d.Auth != nil {
 		mountInstanceRoutes(r, d.InstanceEmbedding, d.Auth, d.InstanceAdmins, d.Tokens)
+	}
+	if d.Registration != nil && d.Auth != nil {
+		mountRegistrationRoutes(r, d.Registration, d.Auth, d.InstanceAdmins, d.Tokens)
 	}
 }
 

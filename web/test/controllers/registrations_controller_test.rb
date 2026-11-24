@@ -17,7 +17,7 @@ class RegistrationsControllerTest < ActionDispatch::IntegrationTest
       assert_select "input[type=email][name=?][required][autocomplete=email]", "registration[email]"
       assert_select "label[for=registration_password]", "Password"
       assert_select "input[type=password][name=?][required][minlength=15][autocomplete=new-password][aria-describedby=registration_password_hint]", "registration[password]"
-      assert_select "#registration_password_hint", "Use at least 15 characters. Well-known passwords are refused."
+      assert_select "#registration_password_hint", "Use at least 15 characters."
       assert_select "button[type=button][aria-controls=registration_password][aria-pressed=false][aria-label=?]", "Show password"
       assert_select "label[for=registration_password_confirmation]", "Confirm password"
       assert_select "input[type=password][name=?][required][autocomplete=new-password]", "registration[password_confirmation]"
@@ -105,5 +105,41 @@ class RegistrationsControllerTest < ActionDispatch::IntegrationTest
     assert_response :unprocessable_content
     assert_select "input[name='registration[password]'][aria-invalid=true][aria-describedby='registration_password_hint registration_password_error']"
     assert_select "#registration_password_error", "Enter a password up to 72 bytes long."
+  end
+  test "the login page hides the account creation on a server that only creates accounts by invite" do
+    use_fake_api.close_registration!
+
+    get new_session_path
+
+    assert_select "a[href=?]", new_registration_path, count: 0
+    assert_no_match(/No account yet\?/, response.body)
+    assert_select "a[href=?]", new_invite_acceptance_path
+  end
+
+  test "the account creation page goes back to the login when nothing creates accounts" do
+    use_fake_api.close_registration!
+
+    get new_registration_path
+
+    assert_redirected_to new_session_path
+    assert_equal "This server only creates accounts by invite. Ask an admin for one.", flash[:alert]
+  end
+
+  test "a closed password registration leaves out the form and keeps the providers" do
+    use_fake_api(login_providers: FakeMarkuppExternalLogin::DEFAULT_PROVIDERS).close_password_registration!
+
+    get new_registration_path
+
+    assert_response :success
+    assert_select "form[action=?]", registration_path, count: 0
+    assert_select "form[action=?] input[name=purpose][value=signup]", external_login_path("github")
+  end
+
+  test "the login page points to the account creation when only a provider creates accounts" do
+    use_fake_api(login_providers: FakeMarkuppExternalLogin::DEFAULT_PROVIDERS).close_password_registration!
+
+    get new_session_path
+
+    assert_select "a[href=?]", new_registration_path, text: "Create one."
   end
 end

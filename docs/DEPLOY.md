@@ -277,6 +277,14 @@ na tela "Criar conta" do painel. Depois da primeira, o cadastro só aceita conta
 `MARKUPP_AUTH_REGISTRATION_ENABLED=true`; desligado, ele responde 403 `registration_disabled` e
 a conta nasce só pelo convite.
 
+Com o auto-registro ligado, o administrador da instância abre e fecha o cadastro de cada método,
+email e senha e cada provedor de login externo, em Configurações > Instância > Cadastro, sem reiniciar
+([ADR-0059](adrs/ADR-0059-cadastro-por-metodo.md)). Método sem escolha está aberto. Fechar o
+cadastro de um método não fecha o login de quem já tem conta por ele. Para fixar o valor e travar
+o painel, defina `MARKUPP_AUTH_LOCAL_REGISTRATION` (email e senha) ou
+`MARKUPP_LOGIN_<ID>_REGISTRATION` (um provedor) como `true` ou `false`. Com o auto-registro
+desligado, todos os métodos ficam fechados e travados.
+
 A conta de auto-registro (`MARKUPP_AUTH_REGISTRATION_ENABLED=true`) nasce sem email provado e
 não recebe convite pela lista até verificar. Com SMTP configurado, ela recebe o email de
 verificação no cadastro, confirma com o token logada nela em `POST /auth/email/verify` e pode

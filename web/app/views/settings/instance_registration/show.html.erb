@@ -1,0 +1,29 @@
+<%# Cadastro da instância: um formulário por método, com o botão que inverte o estado. O que quem hospeda fixou fica sem
+    botão; com o cadastro desligado por quem hospeda, todos ficam assim e o aviso diz que só o convite cria conta. %>
+<div class="max-w-[65ch]">
+  <%= render "settings/section_heading", title: t("settings.nav.instance_registration"), subtitle: false %>
+  <p class="mt-1 text-ink-muted"><%= t(".intro") %></p>
+
+  <% unless @policy.registration_enabled %>
+    <p id="registration_closed" class="mt-3"><%= t(".closed_by_host") %></p>
+  <% end %>
+
+  <ul class="mt-4 flex flex-col gap-3">
+    <% @methods.each do |method| %>
+      <li id="registration_method_<%= method.id %>" class="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <span class="font-semibold"><%= method.password? ? t(".password") : method.name %></span>
+        <span class="text-ink-muted"><%= method.open ? t(".open") : t(".closed") %></span>
+        <% if method.locked %>
+          <span class="text-ink-muted"><%= t(".locked") %></span>
+        <% else %>
+          <%= form_with scope: :registration, url: settings_instance_registration_path, method: :patch do |form| %>
+            <%= form.hidden_field :method, value: method.id %>
+            <%= form.hidden_field :open, value: !method.open %>
+            <%= form.button method.open ? t(".close") : t(".reopen"), class: "btn" %>
+          <% end %>
+        <% end %>
+      </li>
+    <% end %>
+  </ul>
+  <p class="mt-4 text-ink-muted"><%= t(".login_hint") %></p>
+</div>
