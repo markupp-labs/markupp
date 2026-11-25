@@ -1,0 +1,43 @@
+<%# Um provedor: nome, id, issuer, se está ligado e quantas contas entram por ele; o endereço de retorno com o botão de
+    copiar (snippet_copy_controller); e, se dá para mexer, a edição e o apagar com a confirmação do painel. %>
+<% readonly = listing_locked || provider.locked %>
+<% callback_id = "login_provider_#{provider.id}_callback" %>
+<li id="login_provider_<%= provider.id %>" class="rounded-md border border-line p-3">
+  <h2 class="font-semibold"><%= provider.name %> <span class="font-normal text-ink-muted"><%= provider.id %></span></h2>
+  <dl class="mt-1 grid grid-cols-[auto_1fr] gap-x-3">
+    <dt class="text-ink-muted"><%= t(".issuer") %></dt>
+    <dd class="[overflow-wrap:anywhere]"><%= provider.issuer.presence || "GitHub" %></dd>
+    <dt class="text-ink-muted"><%= t(".state") %></dt>
+    <dd><%= provider.enabled ? t(".enabled") : t(".disabled") %></dd>
+    <dt class="text-ink-muted"><%= t(".linked") %></dt>
+    <dd><%= provider.linked_accounts %></dd>
+  </dl>
+
+  <div class="mt-3" data-controller="snippet-copy"
+       data-snippet-copy-copied-value="<%= t("settings.agents.show.copied") %>"
+       data-snippet-copy-copy-failed-value="<%= t("settings.agents.show.copy_failed") %>">
+    <div class="flex items-center gap-2">
+      <p id="<%= callback_id %>_label" class="min-w-0 flex-1 text-ink-muted"><%= t(".callback") %></p>
+      <span role="status" class="text-ink-muted" data-snippet-copy-target="status"></span>
+      <button type="button" class="btn" data-action="snippet-copy#copy" aria-describedby="<%= callback_id %>_label"><%= t("settings.agents.show.copy") %></button>
+    </div>
+    <pre id="<%= callback_id %>" class="mt-1 whitespace-pre-wrap [overflow-wrap:anywhere] rounded-md border border-line bg-surface-sunken p-2"
+         aria-labelledby="<%= callback_id %>_label" data-snippet-copy-target="source"><code><%= provider.callback_url %></code></pre>
+  </div>
+
+  <% if readonly %>
+    <% unless listing_locked %>
+      <p class="mt-3 text-ink-muted"><%= t(".locked") %></p>
+    <% end %>
+  <% else %>
+    <%= form_with scope: :login_provider, url: settings_instance_login_provider_path(provider.id), method: :patch,
+                  namespace: "provider_#{provider.id}", id: "login_provider_#{provider.id}_form", class: "mt-3" do |form| %>
+      <%= render "fields", form:, provider:, new_record: false %>
+      <%= form.button t(".save"), class: "btn mt-4" %>
+    <% end %>
+    <%= button_to t(".delete"), settings_instance_login_provider_path(provider.id), method: :delete, class: "btn btn-danger",
+                  form: { class: "mt-2" },
+                  data: { confirm_button: t(".delete"),
+                          turbo_confirm: t(".confirm_delete", name: provider.name, count: provider.linked_accounts) } %>
+  <% end %>
+</li>

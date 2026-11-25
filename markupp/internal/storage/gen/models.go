@@ -50,6 +50,17 @@ type InstanceEmbedding struct {
 	ModelStateAt pgtype.Timestamptz
 }
 
+type InstanceLoginProvider struct {
+	ID                 string
+	Name               string
+	Issuer             string
+	ClientID           string
+	ClientSecretSealed string
+	Enabled            bool
+	CreatedAt          time.Time
+	UpdatedAt          time.Time
+}
+
 type InstanceRegistrationMethod struct {
 	Method    string
 	Open      bool
