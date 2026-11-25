@@ -36,6 +36,25 @@ module Settings
       assert_select "#oauth_grants li", text: /Claude/, count: 0
     end
 
+    test "each authorization says where it was last used" do
+      use_fake_api(authorizations: [ { id: "auth-1", client_name: "Claude", ip: "198.51.100.9", user_agent: "Claude-User/1.0",
+                                       last_used_at: 5.minutes.ago.utc.iso8601 } ])
+      sign_in_as
+
+      get settings_authorizations_path
+
+      assert_select "#oauth_grants li[data-oauth-grant=auth-1]", text: /Claude-User.*198\.51\.100\.9.*5m/m
+    end
+
+    test "an authorization never used says so" do
+      use_fake_api(authorizations: [ { id: "auth-1", client_name: "Claude" } ])
+      sign_in_as
+
+      get settings_authorizations_path
+
+      assert_select "#oauth_grants li[data-oauth-grant=auth-1]", text: /Not used yet/
+    end
+
     test "each authorization has a revoke button that asks first" do
       use_fake_api(authorizations: AUTHORIZATIONS)
       sign_in_as
