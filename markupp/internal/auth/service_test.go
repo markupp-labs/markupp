@@ -210,6 +210,40 @@ func (f *fakeRepository) RevokeAllUserRefreshTokens(ctx context.Context, userID 
 	return nil
 }
 
+// ListActiveSessions devolve as sessões sem fim com algum refresh ainda válido, como o Postgres.
+func (f *fakeRepository) ListActiveSessions(ctx context.Context, userID string) ([]auth.SessionRecord, error) {
+	var active []auth.SessionRecord
+	for _, s := range f.sessions {
+		if s.UserID == userID && f.sessionHasLiveRefresh(s.ID) {
+			active = append(active, s)
+		}
+	}
+	return active, nil
+}
+
+func (f *fakeRepository) sessionHasLiveRefresh(sessionID string) bool {
+	for _, rec := range f.refreshTokens {
+		if rec.SessionID == sessionID && !rec.Revoked && rec.ExpiresAt.After(f.now()) {
+			return true
+		}
+	}
+	return false
+}
+
+func (f *fakeRepository) EndUserSession(ctx context.Context, userID, sessionID string) error {
+	s, ok := f.sessions[sessionID]
+	if !ok || s.UserID != userID {
+		return auth.ErrSessionNotFound
+	}
+	for k, rec := range f.refreshTokens {
+		if rec.SessionID == sessionID {
+			rec.Revoked = true
+			f.refreshTokens[k] = rec
+		}
+	}
+	return nil
+}
+
 func (f *fakeRepository) RecordAuditEvent(ctx context.Context, event auth.AuditEventRecord) error {
 	f.auditEvents = append(f.auditEvents, event)
 	return nil

@@ -90,3 +90,61 @@ func TestService_Login_TokenDeAcessoLevaASessao(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, sessaoDoToken(t, repo, pair.RefreshToken).ID, claims.SessionID, "o claim sid do OIDC")
 }
+
+func TestService_ListSessions_MarcaASessaoAtual(t *testing.T) {
+	clock := defaultClock()
+	repo := newFakeRepository(clock)
+	svc := setupAuthService(repo, false, clock)
+	ctx := auth.WithOrigin(context.Background(), origemDoNavegador)
+	pair, err := svc.Register(ctx, "admin@markupp.dev", "senha-de-teste-longa")
+	require.NoError(t, err)
+	_, err = svc.LoginLocal(ctx, "admin@markupp.dev", "senha-de-teste-longa")
+	require.NoError(t, err)
+	atual := sessaoDoToken(t, repo, pair.RefreshToken)
+
+	sessoes, err := svc.ListSessions(context.Background(), atual.UserID, atual.ID)
+
+	require.NoError(t, err)
+	require.Len(t, sessoes, 2)
+	marcadas := 0
+	for _, s := range sessoes {
+		if s.Current {
+			marcadas++
+			assert.Equal(t, atual.ID, s.ID)
+			assert.Equal(t, "203.0.113.7", s.IP)
+			assert.Equal(t, "Firefox/140", s.UserAgent)
+		}
+	}
+	assert.Equal(t, 1, marcadas)
+}
+
+func TestService_EndSession_EncerraEAudita(t *testing.T) {
+	clock := defaultClock()
+	repo := newFakeRepository(clock)
+	svc := setupAuthService(repo, false, clock)
+	pair, err := svc.Register(context.Background(), "admin@markupp.dev", "senha-de-teste-longa")
+	require.NoError(t, err)
+	sessao := sessaoDoToken(t, repo, pair.RefreshToken)
+
+	require.NoError(t, svc.EndSession(context.Background(), "quem-pediu", sessao.UserID, sessao.ID))
+
+	_, err = svc.RefreshToken(context.Background(), pair.RefreshToken)
+	require.Error(t, err, "o refresh da sessão encerrada não renova")
+	evento := repo.auditEvents[len(repo.auditEvents)-1]
+	assert.Equal(t, "auth.session_end", evento.Action)
+	assert.Equal(t, "quem-pediu", evento.ActorID)
+	assert.Equal(t, sessao.ID, evento.Target)
+}
+
+func TestService_EndSession_DeOutraConta_NaoAcha(t *testing.T) {
+	clock := defaultClock()
+	repo := newFakeRepository(clock)
+	svc := setupAuthService(repo, false, clock)
+	pair, err := svc.Register(context.Background(), "admin@markupp.dev", "senha-de-teste-longa")
+	require.NoError(t, err)
+	sessao := sessaoDoToken(t, repo, pair.RefreshToken)
+
+	err = svc.EndSession(context.Background(), "outra", "outra", sessao.ID)
+
+	require.ErrorIs(t, err, auth.ErrSessionNotFound)
+}

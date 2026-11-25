@@ -105,3 +105,53 @@ func TestSessions_RevogarTudoDaConta_EncerraTodasAsSessoes(t *testing.T) {
 	assert.True(t, lerSessao(t, db, sessao.ID).ended)
 	assert.True(t, lerSessao(t, db, outra.ID).ended)
 }
+
+func TestSessions_ListarAtivas_TiraEncerradasEAsSemRefreshValido(t *testing.T) {
+	db, repo, sessao := contaComSessao(t)
+	ctx := context.Background()
+	encerrada := sessaoDe(sessao.UserID, "sessao-encerrada", sessao.CreatedAt)
+	emitirRefresh(t, repo, encerrada, "hash-encerrada")
+	require.NoError(t, repo.RevokeRefreshToken(ctx, "hash-encerrada"))
+	vencida := sessaoDe(sessao.UserID, "sessao-vencida", sessao.CreatedAt)
+	emitirRefresh(t, repo, vencida, "hash-vencida")
+	_, err := db.Exec(ctx, `UPDATE refresh_tokens SET expires_at = now() - interval '1 minute' WHERE token_hash = 'hash-vencida'`)
+	require.NoError(t, err)
+
+	ativas, err := repo.ListActiveSessions(ctx, sessao.UserID)
+
+	require.NoError(t, err)
+	require.Len(t, ativas, 1)
+	assert.Equal(t, sessao.ID, ativas[0].ID)
+	assert.Equal(t, sessao.Origin, ativas[0].Origin)
+	assert.True(t, sessao.LastUsedAt.Equal(ativas[0].LastUsedAt))
+}
+
+func TestSessions_EncerrarDaConta_EncerraERevoga(t *testing.T) {
+	db, repo, sessao := contaComSessao(t)
+	ctx := context.Background()
+
+	require.NoError(t, repo.EndUserSession(ctx, sessao.UserID, sessao.ID))
+
+	assert.True(t, lerSessao(t, db, sessao.ID).ended)
+	_, err := repo.ConsumeRefreshToken(ctx, "hash-1")
+	require.ErrorIs(t, err, auth.ErrRefreshTokenInvalid)
+}
+
+func TestSessions_EncerrarDeOutraConta_NaoAcha(t *testing.T) {
+	db, repo, sessao := contaComSessao(t)
+
+	err := repo.EndUserSession(context.Background(), "outra-conta", sessao.ID)
+
+	require.ErrorIs(t, err, auth.ErrSessionNotFound)
+	assert.False(t, lerSessao(t, db, sessao.ID).ended)
+}
+
+func TestSessions_EncerrarJaEncerrada_NaoAcha(t *testing.T) {
+	_, repo, sessao := contaComSessao(t)
+	ctx := context.Background()
+	require.NoError(t, repo.EndUserSession(ctx, sessao.UserID, sessao.ID))
+
+	err := repo.EndUserSession(ctx, sessao.UserID, sessao.ID)
+
+	require.ErrorIs(t, err, auth.ErrSessionNotFound)
+}
