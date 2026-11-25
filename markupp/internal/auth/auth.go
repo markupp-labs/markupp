@@ -21,13 +21,15 @@ var (
 	ErrRefreshTokenRevoked  = errors.New("refresh token revoked")
 	ErrRefreshTokenExpired  = errors.New("refresh token expired")
 	ErrRefreshTokenInvalid  = errors.New("invalid refresh token")
-	ErrEmptyEmail           = errors.New("email is required")
-	ErrEmptyPassword        = errors.New("password is required")
-	ErrInviteInvalid        = errors.New("invite not found, expired or already accepted")
-	ErrMembershipNotFound   = errors.New("user is not a member of the tenant")
-	ErrTenantRequired       = errors.New("user belongs to several tenants and must choose one")
-	ErrNoTenant             = errors.New("user does not belong to any tenant")
-	ErrInvalidTenantName    = errors.New("invalid tenant name")
+	// ErrSessionNotFound cobre sessão inexistente, já encerrada ou de outra conta.
+	ErrSessionNotFound    = errors.New("session not found")
+	ErrEmptyEmail         = errors.New("email is required")
+	ErrEmptyPassword      = errors.New("password is required")
+	ErrInviteInvalid      = errors.New("invite not found, expired or already accepted")
+	ErrMembershipNotFound = errors.New("user is not a member of the tenant")
+	ErrTenantRequired     = errors.New("user belongs to several tenants and must choose one")
+	ErrNoTenant           = errors.New("user does not belong to any tenant")
+	ErrInvalidTenantName  = errors.New("invalid tenant name")
 	// ErrIdentityAlreadyLinked diz que a identidade externa já pertence a uma conta.
 	ErrIdentityAlreadyLinked = errors.New("identity already linked to an account")
 	// ErrLastIdentity recusa tirar da conta a última forma de entrar.
@@ -86,9 +88,11 @@ type RefreshTokenRecord struct {
 	UserID    string
 	// SessionID é vazio nos refresh emitidos antes das sessões (ADR-0061).
 	SessionID string
-	ExpiresAt time.Time
-	Revoked   bool
-	CreatedAt time.Time
+	// SessionEnded diz que a sessão foi encerrada: o refresh caiu com ela, não por rotação.
+	SessionEnded bool
+	ExpiresAt    time.Time
+	Revoked      bool
+	CreatedAt    time.Time
 }
 
 // SessionRecord é o login que as renovações continuam: guarda a origem e o último uso.
@@ -211,6 +215,9 @@ type Repository interface {
 	ConsumeRefreshToken(ctx context.Context, tokenHash string) (RefreshTokenRecord, error)
 	// IssueSessionTx abre a sessão ou, se ela já existe, atualiza a origem e o último uso.
 	IssueSessionTx(ctx context.Context, session SessionRecord, record RefreshTokenRecord, event AuditEventRecord) error
+	ListActiveSessions(ctx context.Context, userID string) ([]SessionRecord, error)
+	// EndUserSession encerra a sessão de userID e revoga os refresh dela.
+	EndUserSession(ctx context.Context, userID, sessionID string) error
 	GetRefreshToken(ctx context.Context, tokenHash string) (RefreshTokenRecord, error)
 	RevokeRefreshToken(ctx context.Context, tokenHash string) error
 	RevokeAllUserRefreshTokens(ctx context.Context, userID string) error

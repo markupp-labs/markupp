@@ -273,7 +273,7 @@ func newRouterDeps(cfg config.Config, pool *pgxpool.Pool, logger *slog.Logger, l
 	}
 	return api.RouterDeps{
 		Notes: notes.NewService(storage.NewPostgresNotesRepository(pool, cfg.SearchConfig), cfg.MaxNoteSize),
-		Graph: storage.NewPostgresNoteGraph(pool, cfg.SearchConfig), Auth: authSvc,
+		Graph: storage.NewPostgresNoteGraph(pool, cfg.SearchConfig), Auth: authSvc, Sessions: authSvc,
 		Admin: newAdminService(cfg, pool), AccountEmail: newAccountEmailService(cfg, pool, logger),
 		Vaults:       vaults.NewService(storage.NewPostgresVaultsRepository(pool), time.Now, uuid.NewString),
 		LinkRefusals: linkrefusals.NewService(storage.NewPostgresLinkRefusals(pool)),

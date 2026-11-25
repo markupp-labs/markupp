@@ -237,7 +237,7 @@ func (f *fakeRepository) EndUserSession(ctx context.Context, userID, sessionID s
 	}
 	for k, rec := range f.refreshTokens {
 		if rec.SessionID == sessionID {
-			rec.Revoked = true
+			rec.Revoked, rec.SessionEnded = true, true
 			f.refreshTokens[k] = rec
 		}
 	}

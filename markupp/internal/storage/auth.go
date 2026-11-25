@@ -419,12 +419,13 @@ func (r *PostgresAuthRepository) GetRefreshToken(ctx context.Context, tokenHash 
 		return auth.RefreshTokenRecord{}, fmt.Errorf("find refresh token: %w", err)
 	}
 	return auth.RefreshTokenRecord{
-		TokenHash: row.TokenHash,
-		UserID:    row.UserID,
-		SessionID: row.SessionID.String,
-		ExpiresAt: row.ExpiresAt,
-		Revoked:   row.Revoked,
-		CreatedAt: row.CreatedAt,
+		TokenHash:    row.TokenHash,
+		UserID:       row.UserID,
+		SessionID:    row.SessionID.String,
+		SessionEnded: row.SessionEnded,
+		ExpiresAt:    row.ExpiresAt,
+		Revoked:      row.Revoked,
+		CreatedAt:    row.CreatedAt,
 	}, nil
 }
 

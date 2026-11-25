@@ -370,18 +370,21 @@ func (q *Queries) GetMembership(ctx context.Context, arg GetMembershipParams) (G
 }
 
 const getRefreshToken = `-- name: GetRefreshToken :one
-SELECT token_hash, user_id, session_id, expires_at, revoked, created_at
-FROM refresh_tokens
-WHERE token_hash = $1
+SELECT r.token_hash, r.user_id, r.session_id, r.expires_at, r.revoked, r.created_at,
+       (s.ended_at IS NOT NULL)::boolean AS session_ended
+FROM refresh_tokens r
+LEFT JOIN user_sessions s ON s.id = r.session_id
+WHERE r.token_hash = $1
 `
 
 type GetRefreshTokenRow struct {
-	TokenHash string
-	UserID    string
-	SessionID pgtype.Text
-	ExpiresAt time.Time
-	Revoked   bool
-	CreatedAt time.Time
+	TokenHash    string
+	UserID       string
+	SessionID    pgtype.Text
+	ExpiresAt    time.Time
+	Revoked      bool
+	CreatedAt    time.Time
+	SessionEnded bool
 }
 
 func (q *Queries) GetRefreshToken(ctx context.Context, tokenHash string) (GetRefreshTokenRow, error) {
@@ -394,6 +397,7 @@ func (q *Queries) GetRefreshToken(ctx context.Context, tokenHash string) (GetRef
 		&i.ExpiresAt,
 		&i.Revoked,
 		&i.CreatedAt,
+		&i.SessionEnded,
 	)
 	return i, err
 }

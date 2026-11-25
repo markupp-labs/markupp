@@ -300,10 +300,14 @@ func (s *Service) RefreshToken(ctx context.Context, rawRefreshToken string) (Tok
 
 func (s *Service) handleRefreshFailure(ctx context.Context, hash string, origErr error) (TokenPair, error) {
 	rec, err := s.repo.GetRefreshToken(ctx, hash)
-	if err == nil && rec.Revoked {
-		return s.handleRefreshReuse(ctx, rec.UserID)
+	if err != nil || !rec.Revoked {
+		return TokenPair{}, origErr
 	}
-	return TokenPair{}, origErr
+	// O cliente da sessão encerrada ainda tenta renovar: não é token roubado.
+	if rec.SessionEnded {
+		return TokenPair{}, ErrRefreshTokenRevoked
+	}
+	return s.handleRefreshReuse(ctx, rec.UserID)
 }
 
 func (s *Service) handleRefreshReuse(ctx context.Context, userID string) (TokenPair, error) {
