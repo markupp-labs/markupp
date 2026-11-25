@@ -115,7 +115,8 @@ automática, até ser desfeita. O viewer não recusa.
 
 A busca só retorna nota de cofre de que o usuário é membro.
 
-A busca é léxica, e o título pesa mais que o corpo.
+A busca é léxica, e o título pesa mais que o corpo. A busca pelo sentido está planejada e ainda
+não existe.
 
 ## Embedding
 

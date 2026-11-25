@@ -73,6 +73,9 @@ Ator: cliente.
 A busca é léxica: usa o índice de texto, pesa mais o título e devolve relevância e trecho
 destacado. Cobre só os cofres de que o cliente é membro, ou um deles, se o cliente pedir.
 
+A busca pelo sentido, com os mesmos vetores da ligação por sentido, está planejada e ainda não
+existe.
+
 ## Navegar pela organização derivada
 
 Ator: cliente.

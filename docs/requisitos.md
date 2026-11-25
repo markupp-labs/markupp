@@ -11,6 +11,8 @@ O sistema deve:
 - Deixar o usuário recusar a ligação automática entre duas notas
 - Reconstruir qualquer estrutura derivada a partir das notas, a qualquer momento
 - Indexar o conteúdo para busca léxica, com relevância e trecho destacado no resultado
+- Buscar também pelo sentido, somando os vetores à busca léxica (planejado, ainda não
+  implementado)
 - Gerar vetores das notas para a ligação por sentido, com provedor de embedding plugável
 - Atualizar os índices automaticamente a cada edição
 - Deixar o cliente navegar pela base, pela visão derivada ou pelo caminho lógico
