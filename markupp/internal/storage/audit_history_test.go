@@ -20,7 +20,9 @@ var inicioDoHistorico = time.Date(2026, 11, 20, 12, 0, 0, 0, time.UTC)
 func historicoSemeado(t *testing.T) (*pgxpool.Pool, *storage.PostgresAuditHistory) {
 	t.Helper()
 	db := setupTestDB(t)
-	semearDoisTenants(t, db)
+	_, err := db.Exec(context.Background(), `INSERT INTO users (id, email, created_at, updated_at) VALUES
+		('dona', 'dona@markupp.dev', now(), now()), ('u2', 'u2@markupp.dev', now(), now())`)
+	require.NoError(t, err)
 	repo := storage.NewPostgresAuthRepository(db)
 	eventos := []struct {
 		origem auth.Origin

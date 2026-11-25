@@ -91,8 +91,8 @@ SET revoked = TRUE
 WHERE r.user_id = $1;
 
 -- name: CreateAuditEvent :exec
-INSERT INTO audit_events (id, tenant_id, actor_id, action, target, result, occurred_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7);
+INSERT INTO audit_events (id, tenant_id, actor_id, action, target, result, occurred_at, client_ip, user_agent)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9);
 
 -- Só roda para o primeiro admin, quando os únicos cofres são os da migração das notas
 -- da rc.1: move todos para o tenant dele, e o ON UPDATE CASCADE leva as notas junto.

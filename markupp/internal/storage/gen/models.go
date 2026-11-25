@@ -29,6 +29,8 @@ type AuditEvent struct {
 	Target     string
 	Result     string
 	OccurredAt time.Time
+	ClientIp   string
+	UserAgent  string
 }
 
 type EmbeddingModel struct {

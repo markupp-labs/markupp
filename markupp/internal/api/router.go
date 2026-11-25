@@ -39,6 +39,8 @@ type RouterDeps struct {
 	// pedido confere. Nil desliga as rotas e o bloqueio (ADR-0061).
 	IPBlocks   IPBlockService
 	BlockedIPs BlockedIPs
+	// AuditHistory lê o histórico para o administrador da instância. Nil desliga a rota.
+	AuditHistory AuditHistoryService
 	// InstanceAccounts é a gestão das contas pelo administrador da instância (ADR-0061).
 	InstanceAccounts InstanceAccountsService
 	// AccountAuthorizations lista e revoga os apps de outra conta para o administrador.
@@ -160,6 +162,9 @@ func mountV1OnlyRoutes(r chi.Router, d RouterDeps) {
 	}
 	if d.Sessions != nil {
 		mountMySessionRoutes(r, d.Sessions, d.Tokens)
+	}
+	if d.AuditHistory != nil && d.Auth != nil {
+		mountAuditEventRoutes(r, d.AuditHistory, d.Auth, d.InstanceAdmins, d.Tokens)
 	}
 	if d.IPBlocks != nil && d.Auth != nil {
 		mountIPBlockRoutes(r, d.IPBlocks, d.Auth, d.InstanceAdmins, d.Tokens)

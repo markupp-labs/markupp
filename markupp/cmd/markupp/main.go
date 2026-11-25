@@ -309,6 +309,7 @@ func addInstance(deps *api.RouterDeps, cfg config.Config, pool *pgxpool.Pool, bo
 	ipBlocks := storage.NewInstanceIPBlocks(pool)
 	deps.IPBlocks = instance.NewIPBlockService(ipBlocks, time.Now, uuid.NewString)
 	deps.BlockedIPs = instance.NewRefreshingIPBlocks(ipBlocks, ipBlocksRefresh, time.Now, logger)
+	deps.AuditHistory = auth.NewAuditHistory(storage.NewPostgresAuditHistory(pool))
 	deps.InstanceAccounts = auth.NewInstanceAccounts(storage.NewPostgresInstanceAccountsRepository(pool), time.Now, uuid.NewString)
 	// Sem OAuth ligado, as rotas dos apps de cada conta ficam de fora.
 	if apps, ok := deps.OAuth.(api.AccountAuthorizationService); ok {

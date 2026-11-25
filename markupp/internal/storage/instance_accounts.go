@@ -93,7 +93,7 @@ func (r *PostgresInstanceAccountsRepository) SetAccountBlocked(ctx context.Conte
 				return err
 			}
 		}
-		return q.CreateAuditEvent(ctx, toCreateAuditEventParams(event))
+		return q.CreateAuditEvent(ctx, toCreateAuditEventParams(ctx, event))
 	})
 }
 
@@ -122,6 +122,6 @@ func (r *PostgresInstanceAccountsRepository) DeleteAccount(ctx context.Context, 
 		if rows == 0 {
 			return fmt.Errorf("%w: %q", auth.ErrUserNotFound, id)
 		}
-		return q.CreateAuditEvent(ctx, toCreateAuditEventParams(event))
+		return q.CreateAuditEvent(ctx, toCreateAuditEventParams(ctx, event))
 	})
 }

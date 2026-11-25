@@ -49,7 +49,7 @@ func (r *PostgresInstanceIPBlocks) CreateIPBlock(ctx context.Context, block inst
 		if created == 0 {
 			return fmt.Errorf("%w: %s", instance.ErrIPBlockExists, block.Prefix)
 		}
-		return q.CreateAuditEvent(ctx, toCreateAuditEventParams(event))
+		return q.CreateAuditEvent(ctx, toCreateAuditEventParams(ctx, event))
 	})
 }
 
@@ -63,6 +63,6 @@ func (r *PostgresInstanceIPBlocks) DeleteIPBlock(ctx context.Context, id string,
 		if deleted == 0 {
 			return fmt.Errorf("%w: %q", instance.ErrIPBlockNotFound, id)
 		}
-		return q.CreateAuditEvent(ctx, toCreateAuditEventParams(event))
+		return q.CreateAuditEvent(ctx, toCreateAuditEventParams(ctx, event))
 	})
 }

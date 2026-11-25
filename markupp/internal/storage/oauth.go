@@ -166,7 +166,7 @@ func auditAuthorize(ctx context.Context, qtx *gen.Queries, req gen.OauthRequest,
 // auditOAuth grava o evento do authorization server sem tenant, com a conta como ator e
 // o cliente como alvo.
 func auditOAuth(ctx context.Context, qtx *gen.Queries, e oauth.AuditEvent) error {
-	err := qtx.CreateAuditEvent(ctx, toCreateAuditEventParams(auth.AuditEventRecord{
+	err := qtx.CreateAuditEvent(ctx, toCreateAuditEventParams(ctx, auth.AuditEventRecord{
 		ID: uuid.NewString(), ActorID: e.UserID, Action: e.Action,
 		Target: e.ClientID, Result: e.Result, OccurredAt: e.OccurredAt,
 	}))

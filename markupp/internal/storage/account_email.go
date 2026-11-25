@@ -161,7 +161,7 @@ func applyPasswordReset(ctx context.Context, q *gen.Queries, userID, hash string
 	if err := q.RevokeAllUserRefreshTokens(ctx, userID); err != nil {
 		return fmt.Errorf("revoke sessions of account %q: %w", userID, err)
 	}
-	return q.CreateAuditEvent(ctx, toCreateAuditEventParams(auth.AuditEventRecord{
+	return q.CreateAuditEvent(ctx, toCreateAuditEventParams(ctx, auth.AuditEventRecord{
 		ID: p.AuditEventID, ActorID: userID, Action: "auth.password_reset", Target: userID, Result: "success", OccurredAt: p.Now,
 	}))
 }

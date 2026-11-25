@@ -166,8 +166,8 @@ func (q *Queries) CountUsers(ctx context.Context) (int64, error) {
 }
 
 const createAuditEvent = `-- name: CreateAuditEvent :exec
-INSERT INTO audit_events (id, tenant_id, actor_id, action, target, result, occurred_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7)
+INSERT INTO audit_events (id, tenant_id, actor_id, action, target, result, occurred_at, client_ip, user_agent)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 `
 
 type CreateAuditEventParams struct {
@@ -178,6 +178,8 @@ type CreateAuditEventParams struct {
 	Target     string
 	Result     string
 	OccurredAt time.Time
+	ClientIp   string
+	UserAgent  string
 }
 
 func (q *Queries) CreateAuditEvent(ctx context.Context, arg CreateAuditEventParams) error {
@@ -189,6 +191,8 @@ func (q *Queries) CreateAuditEvent(ctx context.Context, arg CreateAuditEventPara
 		arg.Target,
 		arg.Result,
 		arg.OccurredAt,
+		arg.ClientIp,
+		arg.UserAgent,
 	)
 	return err
 }
