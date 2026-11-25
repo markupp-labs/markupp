@@ -18,7 +18,7 @@ var redeDoPainel = []netip.Prefix{netip.MustParsePrefix("10.0.0.0/8")}
 type relayDoMCP struct{}
 
 func (relayDoMCP) AuthenticatesResource(resourceID, secret string) bool {
-	return resourceID == "http://localhost:8080/mcp" && secret == "segredo-do-mcp"
+	return resourceID == "http://localhost:8080/mcp" && secret == "segredo-do-mcp" // #nosec G101 -- valor fictício de teste
 }
 
 // origemVista roda o pedido pelo middleware e devolve a origem que o handler recebeu.

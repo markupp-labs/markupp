@@ -133,12 +133,6 @@ func (l *AccountRateLimiter) clientIP(r *http.Request) string {
 	return ipKey(addr)
 }
 
-// keyBehind é a chave do cliente atrás de remote, a conexão vista, com os saltos do
-// X-Forwarded-For que chegaram nela.
-func (l *AccountRateLimiter) keyBehind(remote netip.Addr, hops []string) string {
-	return ipKey(addrBehind(remote, hops, l.trusted))
-}
-
 // containsAddr diz se addr cai em alguma das redes de prefixes.
 func containsAddr(prefixes []netip.Prefix, addr netip.Addr) bool {
 	for _, prefix := range prefixes {
