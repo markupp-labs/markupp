@@ -19,7 +19,8 @@ import (
 // subida também são da instância (ADR-0041), o cadastro por método é lido antes de existir
 // conta, e só grava na transação do ator (ADR-0059), os provedores de login são lidos pelo
 // login, sem ator, e apagar um leva os vínculos de todas as contas, o que só roda como o dono
-// com o ator do administrador no contexto (ADR-0060), e os outros
+// com o ator do administrador no contexto (ADR-0060), as contas, os bloqueios de IP e o
+// histórico da instância valem acima dos tenants e auditam sem tenant (ADR-0061), e os outros
 // abrem o pool, migram e montam a transação do ator. A leitura sem conta (ADR-0048) é a
 // segunda entrada aceita: passa pela transação pública, e só no repositório público.
 var arquivosForaDoAtor = map[string]bool{
@@ -40,6 +41,9 @@ var arquivosForaDoAtor = map[string]bool{
 	"instance_embedding.go":       true,
 	"instance_registration.go":    true,
 	"instance_login_providers.go": true,
+	"instance_accounts.go":        true,
+	"instance_ip_blocks.go":       true,
+	"audit_history.go":            true,
 }
 
 var acessoDiretoAoPool = regexp.MustCompile(`gen\.New\(|\binTx\(|pgx\.BeginFunc|pool\.\w+\(`)
