@@ -80,9 +80,14 @@ func deleteExpired(ctx context.Context, q *gen.Queries, c instance.RetentionClea
 	if err != nil {
 		return instance.RetentionResult{}, err
 	}
-	origins, err := q.ClearEndedSessionOrigins(ctx, pgtype.Timestamptz{Time: c.Cutoff, Valid: true})
+	cutoff := pgtype.Timestamptz{Time: c.Cutoff, Valid: true}
+	sessions, err := q.ClearEndedSessionOrigins(ctx, cutoff)
 	if err != nil {
 		return instance.RetentionResult{}, err
 	}
-	return instance.RetentionResult{Ran: true, AuditEvents: events, Origins: origins}, nil
+	apps, err := q.ClearRevokedAuthorizationOrigins(ctx, cutoff)
+	if err != nil {
+		return instance.RetentionResult{}, err
+	}
+	return instance.RetentionResult{Ran: true, AuditEvents: events, Origins: sessions + apps}, nil
 }

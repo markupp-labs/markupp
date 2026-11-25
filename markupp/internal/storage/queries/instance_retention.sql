@@ -22,3 +22,8 @@ DELETE FROM audit_events WHERE occurred_at < $1;
 -- A sessão ativa guarda a origem; a encerrada há mais que o prazo a perde.
 UPDATE user_sessions SET client_ip = '', user_agent = ''
 WHERE ended_at < $1 AND (client_ip <> '' OR user_agent <> '');
+
+-- name: ClearRevokedAuthorizationOrigins :execrows
+-- O app ativo guarda a origem; o revogado há mais que o prazo a perde.
+UPDATE oauth_authorizations SET client_ip = '', user_agent = ''
+WHERE revoked_at < $1 AND (client_ip <> '' OR user_agent <> '');

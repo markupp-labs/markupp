@@ -26,6 +26,20 @@ func (q *Queries) ClearEndedSessionOrigins(ctx context.Context, endedAt pgtype.T
 	return result.RowsAffected(), nil
 }
 
+const clearRevokedAuthorizationOrigins = `-- name: ClearRevokedAuthorizationOrigins :execrows
+UPDATE oauth_authorizations SET client_ip = '', user_agent = ''
+WHERE revoked_at < $1 AND (client_ip <> '' OR user_agent <> '')
+`
+
+// O app ativo guarda a origem; o revogado há mais que o prazo a perde.
+func (q *Queries) ClearRevokedAuthorizationOrigins(ctx context.Context, revokedAt pgtype.Timestamptz) (int64, error) {
+	result, err := q.db.Exec(ctx, clearRevokedAuthorizationOrigins, revokedAt)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const deleteAuditEventsBefore = `-- name: DeleteAuditEventsBefore :execrows
 DELETE FROM audit_events WHERE occurred_at < $1
 `
