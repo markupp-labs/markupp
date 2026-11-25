@@ -103,3 +103,20 @@ func TestRetention_ForaDaLimpeza_HistoricoContinuaInsertOnly(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "insert-only")
 }
+
+func TestRetention_Limpeza_TiraOIPDosAppsRevogadosHaMuito(t *testing.T) {
+	db := historicoParaLimpar(t)
+	_, err := db.Exec(context.Background(), `
+		INSERT INTO oauth_clients (id, source, name, redirect_uris) VALUES ('c1', 'dcr', 'Agente', ARRAY['http://127.0.0.1/cb']);
+		INSERT INTO oauth_authorizations (id, user_id, client_id, scopes, client_ip, user_agent, revoked_at) VALUES
+		('revogado-velho', 'u1', 'c1', '{notas:leitura}', '198.51.100.9', 'Claude', '2026-09-01T00:00:00Z'),
+		('ativo', 'u1', 'c1', '{notas:leitura}', '198.51.100.9', 'Claude', NULL)`)
+	require.NoError(t, err)
+
+	result, err := storage.NewInstanceRetention(db).CleanupIfDue(context.Background(), limpezaDeHoje())
+
+	require.NoError(t, err)
+	assert.Equal(t, int64(2), result.Origins, "uma sessão e um app")
+	assert.Equal(t, 0, contar(t, db, `SELECT count(*) FROM oauth_authorizations WHERE id = 'revogado-velho' AND (client_ip <> '' OR user_agent <> '')`))
+	assert.Equal(t, 1, contar(t, db, `SELECT count(*) FROM oauth_authorizations WHERE id = 'ativo' AND client_ip <> ''`))
+}
