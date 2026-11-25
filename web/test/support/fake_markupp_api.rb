@@ -61,11 +61,13 @@ class FakeMarkuppApi
 
   def release_calls! = @slow_calls.release
 
-  # Visão da mesma fake com a credencial de um cliente, como MarkuppApi.new(url, access_token:, tenant_id:, forwarded_for:).
+  # Visão da mesma fake com a credencial de um cliente, como MarkuppApi.new(url, access_token:, tenant_id:, forwarded_for:,
+  # user_agent:).
   # Chamada direta, sem as, é de confiança e não confere token: é o que os testes de modelo usam.
-  def as(access_token: nil, tenant_id: nil, forwarded_for: nil)
+  def as(access_token: nil, tenant_id: nil, forwarded_for: nil, user_agent: nil)
     credentials = { access_token:, tenant_id: }
     credentials[:forwarded_for] = forwarded_for if forwarded_for
+    credentials[:user_agent] = user_agent if user_agent
     clone.tap { |view| view.credentials = credentials }
   end
 

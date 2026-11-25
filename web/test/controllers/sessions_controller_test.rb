@@ -25,6 +25,17 @@ class SessionsControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to new_session_path
   end
 
+  test "create tells the API where the browser is, for the session the account sees" do
+    api = use_fake_api
+
+    post session_path, params: { session: { email: FakeMarkuppAccounts::DEFAULT_EMAIL, password: FakeMarkuppAccounts::DEFAULT_PASSWORD } },
+                       headers: { "User-Agent" => "Firefox/140", "REMOTE_ADDR" => "203.0.113.9" }
+
+    login = api.received_credentials.find { it[:call] == "POST /v1/auth/login" }
+    assert_equal "203.0.113.9", login[:forwarded_for]
+    assert_equal "Firefox/140", login[:user_agent]
+  end
+
   test "create logs in and opens the notes with the email in the sidebar" do
     use_fake_api(notes: [ { id: "1", path: "plan.md", content: "" } ])
 
