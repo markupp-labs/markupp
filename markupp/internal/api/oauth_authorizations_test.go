@@ -23,7 +23,7 @@ func TestMyAuthorizations_Listar_DevolveAsAutorizacoesDaConta(t *testing.T) {
 
 	require.Equal(t, http.StatusOK, rec.Code)
 	assert.JSONEq(t, `[{"id":"a1","client_id":"c1","client_name":"Agente","scopes":["notas:leitura"],
-		"created_at":"2026-10-16T12:00:00Z","updated_at":"2026-10-17T12:00:00Z"}]`, rec.Body.String())
+		"created_at":"2026-10-16T12:00:00Z","updated_at":"2026-10-17T12:00:00Z","ip":"","user_agent":""}]`, rec.Body.String())
 	assert.Equal(t, "no-store", rec.Header().Get("Cache-Control"))
 	assert.Equal(t, "u1", svc.gotUserID)
 }

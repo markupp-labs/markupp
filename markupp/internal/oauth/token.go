@@ -84,7 +84,7 @@ func (s *Service) issueTokens(ctx context.Context, redeemed RedeemedCode, now ti
 	err = s.repo.SaveCodeTokens(ctx, redeemed.Request.ID, pair.tokens)
 	switch {
 	case err == nil:
-		return pair.response, nil
+		return pair.response, s.touchAuthorization(ctx, redeemed.Authorization.ID, now)
 	case errors.Is(err, ErrCodeAlreadyUsed):
 		return TokenResponse{}, grantError(reusedCodeDescription)
 	case errors.Is(err, ErrAuthorizationNotFound):

@@ -238,7 +238,19 @@ func toAuthorization(row gen.OauthAuthorization) oauth.Authorization {
 	return oauth.Authorization{
 		ID: row.ID, UserID: row.UserID, ClientID: row.ClientID, Scopes: row.Scopes,
 		CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt, Revoked: row.RevokedAt.Valid,
+		Origin:     auth.Origin{IP: row.ClientIp, UserAgent: row.UserAgent},
+		LastUsedAt: row.LastUsedAt.Time,
 	}
+}
+
+// TouchAuthorization grava a origem e o instante do último uso da Autorização.
+func (r *PostgresOAuthRepository) TouchAuthorization(ctx context.Context, authorizationID string, origin auth.Origin, at time.Time) error {
+	err := r.q.TouchOAuthAuthorization(ctx, gen.TouchOAuthAuthorizationParams{ID: authorizationID, ClientIp: origin.IP,
+		UserAgent: origin.UserAgent, LastUsedAt: pgtype.Timestamptz{Time: at, Valid: true}})
+	if err != nil {
+		return fmt.Errorf("record use of authorization %q: %w", authorizationID, err)
+	}
+	return nil
 }
 
 // RecordAuditEvent grava um evento avulso do authorization server.

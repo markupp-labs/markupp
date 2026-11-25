@@ -237,13 +237,16 @@ type Notification struct {
 }
 
 type OauthAuthorization struct {
-	ID        string
-	UserID    string
-	ClientID  string
-	Scopes    []string
-	CreatedAt time.Time
-	UpdatedAt time.Time
-	RevokedAt pgtype.Timestamptz
+	ID         string
+	UserID     string
+	ClientID   string
+	Scopes     []string
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
+	RevokedAt  pgtype.Timestamptz
+	ClientIp   string
+	UserAgent  string
+	LastUsedAt pgtype.Timestamptz
 }
 
 type OauthClient struct {

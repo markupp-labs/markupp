@@ -152,7 +152,7 @@ func (s *Service) saveRefreshed(ctx context.Context, grant TokenGrant, scopes []
 	if err != nil {
 		return TokenResponse{}, fmt.Errorf("oauth: save rotated tokens of authorization %q: %w", grant.Authorization.ID, err)
 	}
-	return pair.response, nil
+	return pair.response, s.touchAuthorization(ctx, grant.Authorization.ID, now)
 }
 
 // auditEvent monta o evento da Autorização: ator é a conta, alvo é o cliente.

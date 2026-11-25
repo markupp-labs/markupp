@@ -70,6 +70,7 @@ func (s *Service) ListAuthorizations(ctx context.Context, userID string) ([]Auth
 		views = append(views, AuthorizationView{
 			ID: summary.ID, ClientID: summary.ClientID, ClientName: summary.ClientName, Scopes: append([]string{}, summary.Scopes...),
 			CreatedAt: summary.CreatedAt.UTC().Format(time.RFC3339), UpdatedAt: summary.UpdatedAt.UTC().Format(time.RFC3339),
+			IP: summary.Origin.IP, UserAgent: summary.Origin.UserAgent, LastUsedAt: formatLastUse(summary.LastUsedAt),
 		})
 	}
 	return views, nil
@@ -82,6 +83,22 @@ func (s *Service) RevokeAuthorization(ctx context.Context, userID, authorization
 	event := AuditEvent{Action: AuditActionRevoke, Result: AuditResultSuccess, UserID: userID, OccurredAt: s.clock()}
 	if err := s.repo.RevokeAuthorization(ctx, userID, authorizationID, event); err != nil {
 		return fmt.Errorf("oauth: revoke authorization %s of account %q: %w", ClientValue(authorizationID), userID, err)
+	}
+	return nil
+}
+
+// formatLastUse escreve o último uso em RFC 3339 UTC, vazio quando nunca houve.
+func formatLastUse(at time.Time) string {
+	if at.IsZero() {
+		return ""
+	}
+	return at.UTC().Format(time.RFC3339)
+}
+
+// touchAuthorization registra o uso da Autorização com a origem do pedido.
+func (s *Service) touchAuthorization(ctx context.Context, authorizationID string, now time.Time) error {
+	if err := s.repo.TouchAuthorization(ctx, authorizationID, auth.OriginFrom(ctx), now); err != nil {
+		return fmt.Errorf("oauth: record use of authorization %q: %w", authorizationID, err)
 	}
 	return nil
 }

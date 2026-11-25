@@ -167,3 +167,8 @@ SELECT * FROM oauth_authorizations WHERE id = $1 FOR UPDATE;
 SELECT EXISTS (
     SELECT 1 FROM oauth_tokens WHERE token_hash = $1 AND authorization_id = $2 AND NOT revoked
 );
+
+-- name: TouchOAuthAuthorization :exec
+UPDATE oauth_authorizations
+SET client_ip = $2, user_agent = $3, last_used_at = $4
+WHERE id = $1;

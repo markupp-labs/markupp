@@ -115,6 +115,9 @@ func (s *Service) issueExchanged(ctx context.Context, grant TokenGrant, now time
 	if err := s.repo.RecordAuditEvent(ctx, event); err != nil {
 		return ExchangeResponse{}, fmt.Errorf("oauth: audit exchange for authorization %q: %w", grant.Authorization.ID, err)
 	}
+	if err := s.touchAuthorization(ctx, grant.Authorization.ID, now); err != nil {
+		return ExchangeResponse{}, err
+	}
 	return ExchangeResponse{
 		AccessToken: token, IssuedTokenType: TokenTypeAccessToken, TokenType: "Bearer",
 		ExpiresIn: int64(s.cfg.ExchangeTTL / time.Second), Scope: strings.Join(grant.Token.Scopes, " "),
