@@ -29,7 +29,10 @@ class ApplicationController < ActionController::Base
   def self.retry_minutes(within) = within.in_minutes.ceil
 
   private
-    def credential = @credential ||= PanelCredential.new(session, markupp_api_factory)
+    def credential = @credential ||= PanelCredential.new(session, browser_api_factory)
+
+    # Toda chamada leva o IP e o user agent do navegador, que a API guarda na sessão e no histórico (ADR-0061).
+    def browser_api_factory = ->(**credentials) { markupp_api_factory.call(forwarded_for: request.remote_ip, user_agent: request.user_agent, **credentials) }
 
     # Só GET de página inteira volta depois do login: formulário enviado sem sessão se perde, e frame sozinho ou json
     # (a busca do ![[nota]] em segundo plano) não é página.
