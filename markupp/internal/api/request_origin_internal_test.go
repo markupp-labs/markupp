@@ -14,10 +14,17 @@ import (
 
 var redeDoPainel = []netip.Prefix{netip.MustParsePrefix("10.0.0.0/8")}
 
+// relayDoMCP aceita só o servidor MCP de teste, como o Go confere o resource.
+type relayDoMCP struct{}
+
+func (relayDoMCP) AuthenticatesResource(resourceID, secret string) bool {
+	return resourceID == "http://localhost:8080/mcp" && secret == "segredo-do-mcp"
+}
+
 // origemVista roda o pedido pelo middleware e devolve a origem que o handler recebeu.
 func origemVista(r *http.Request) auth.Origin {
 	var got auth.Origin
-	recordOrigin(redeDoPainel)(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+	recordOrigin(redeDoPainel, relayDoMCP{})(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
 		got = auth.OriginFrom(r.Context())
 	})).ServeHTTP(httptest.NewRecorder(), r)
 	return got
@@ -61,4 +68,21 @@ func TestRecordOrigin_UserAgentLongo_Corta(t *testing.T) {
 	got := origemVista(pedidoDe("203.0.113.7:51000", "", strings.Repeat("a", 2000)))
 
 	assert.Len(t, got.UserAgent, maxUserAgentBytes)
+}
+
+func TestRecordOrigin_TrocaDoMCPAutenticado_UsaIPEUserAgentDoAgente(t *testing.T) {
+	r := pedidoDe("203.0.113.50:51000", "198.51.100.9, 203.0.113.60", "Claude-User/1.0")
+	r.SetBasicAuth("http%3A%2F%2Flocalhost%3A8080%2Fmcp", "segredo-do-mcp")
+
+	got := origemVista(r)
+
+	assert.Equal(t, auth.Origin{IP: "203.0.113.60", UserAgent: "Claude-User/1.0"}, got,
+		"o último salto, escrito pelo Go ao encaminhar ao MCP, é a conexão do agente")
+}
+
+func TestRecordOrigin_BasicComSegredoErrado_IgnoraForwardedFor(t *testing.T) {
+	r := pedidoDe("203.0.113.50:51000", "198.51.100.9", "curl/8")
+	r.SetBasicAuth("http%3A%2F%2Flocalhost%3A8080%2Fmcp", "segredo-errado")
+
+	assert.Equal(t, "203.0.113.50", origemVista(r).IP)
 }
