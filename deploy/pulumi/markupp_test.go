@@ -63,7 +63,7 @@ func argsDeTeste() MarkuppArgs {
 		Image:     "ghcr.io/markupp-labs/markupp:v1.1.0",
 		Host:      "markupp.dev.br",
 		AcmeEmail: "equipe@markupp.dev.br",
-		Database:  DatabaseArgs{StorageClass: "longhorn-fast"},
+		Database:  DatabaseArgs{StorageClass: "fast-ssd"},
 	}
 }
 
@@ -131,7 +131,7 @@ func TestNewMarkupp_SemBancoExterno_CriaPostgresNoNamespaceComVolume(t *testing.
 	assert.Equal(t, "pgvector/pgvector:0.8.7-pg17-trixie", firstContainer(t, db)["image"].StringValue(),
 		"o Postgres com pgvector, na mesma versão fixa do compose e do testcontainers")
 	claim := at(t, db, "spec", "volumeClaimTemplates").ArrayValue()[0].ObjectValue()
-	assert.Equal(t, "longhorn-fast", at(t, claim, "spec", "storageClassName").StringValue())
+	assert.Equal(t, "fast-ssd", at(t, claim, "spec", "storageClassName").StringValue())
 	assert.Equal(t, "10Gi", at(t, claim, "spec", "resources", "requests", "storage").StringValue())
 }
 

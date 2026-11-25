@@ -1,88 +1,79 @@
 # Diagramas de blocos
 
-![Arquitetura da instalação em Kubernetes](diagramas-de-blocos.drawio.svg)
+![Arquitetura no compose e no Kubernetes](diagramas-de-blocos.drawio.svg)
 
-O sistema se divide em sete artefatos. A divisão segue perfil de recurso, não entidade de
-domínio: nota, cofre, usuário e busca não são serviços, compartilham banco e caminho de
-requisição. Dividir por entidade transformaria a escrita de uma nota em várias chamadas de
-rede com transação distribuída.
+O markupp roda como vários processos com ciclo de vida próprio (ADR-0002), divididos por perfil
+de recurso, não por entidade de domínio (ADR-0028). Nota, cofre, conta e busca não são serviços:
+compartilham banco e caminho de requisição. Dividir por entidade transformaria a escrita de uma
+nota em várias chamadas de rede com transação distribuída.
+
+São quatro imagens. A do servidor, em Go, roda a API, a migração, o indexador e o notificador,
+cada um com o seu comando. O embedder é o mesmo servidor com o ONNX Runtime, numa imagem à parte.
+O painel, em Rails, e o servidor MCP, em TypeScript, têm imagem própria. O compose e o componente
+Pulumi usam as mesmas imagens.
 
 ## Clientes
 
-Cliente é tudo que consome o markupp pela API REST ou pelo servidor MCP: painel web, plugin
-de editor, agente de IA e o que vier depois. Todos são pares. Nenhum toca o armazenamento,
-nenhum tem rota privilegiada, e todos enxergam o mesmo conjunto de operações.
+Cliente é tudo que consome o markupp pela API REST ou pelo servidor MCP: o painel web, o
+[plugin do Obsidian](https://github.com/markupp-labs/obsidian-markupp-plugin), agentes de IA e o
+que vier depois. Nenhum toca o banco, nenhum tem rota privilegiada, e todos enxergam o mesmo
+conjunto de operações.
 
-O navegador não entra nessa lista porque ele consome o painel, não o markupp. Quem chama a
-API é o painel, do lado do servidor.
+O navegador consome o painel, não a API. Quem chama a API é o painel, do lado do servidor.
 
-Todo tráfego entra pelo Gateway, que termina o TLS e roteia para o serviço certo. É Gateway
-API, e não Ingress (ADR-0027).
+## Serviços
 
-## Sempre ligado
+A **API REST** é o servidor Go. Por ela entra e sai todo conteúdo, e ela também é o authorization
+server do OAuth (ADR-0046).
 
-O **painel web** é a interface do usuário, em Rails com Hotwire. Roda como serviço próprio e
-é cliente da API como qualquer outro, então não alcança o banco.
+O **painel web** é a interface do usuário, em Rails com Hotwire (ADR-0031). É cliente da API como
+qualquer outro e não alcança o banco.
 
-A **API REST** é a porta REST dos clientes, tem carga constante e é o caminho de entrada e
-saída de todo conteúdo.
+O **servidor MCP** é a porta MCP dos mesmos clientes, com o mesmo conjunto de operações, e chama a
+API para tudo (ADR-0045). Atende em /mcp na origem da API, que encaminha o pedido a ele.
 
-O **servidor MCP** é a porta MCP dos mesmos clientes, com o mesmo conjunto de operações e
-uma rajada de tráfego própria. O isolamento é mútuo, e nenhum dos dois perfis de carga
-degrada o outro.
+O **indexador** processa os cofres com nota pendente e grava o que deriva das notas (ADR-0033).
+Gasta CPU em rajada e não carrega modelo.
 
-O **plano de controle** cuida do provisionamento de tenants. Tráfego baixo e postura de
-segurança distinta dos outros três.
+O **embedder** é o indexador de embedding, da ligação por sentido (ADR-0053). Transforma as notas
+em vetores com o modelo local ou com um endpoint openai-compat, e fica ocioso com o provedor
+none.
 
-## Escala a zero com KEDA
+O **notificador** entrega os emails da fila por SMTP, com repetição, fora do caminho da
+requisição.
 
-O KEDA consulta o cursor de revisão no PostgreSQL e cria trabalho só quando há o que fazer. Sem
-nota para indexar e sem notificação pendente, este grupo não consome nada.
-
-O **indexador determinístico** gasta CPU em rajada e não carrega modelo. Nasce como Job por
-lote pendente e termina quando acaba o lote.
-
-O **indexador de embedding** tem perfil próprio, com acelerador quando o modelo é local. É o
-que mais segura recurso enquanto roda, então devolver esse recurso ao cluster pesa mais aqui
-do que em qualquer outro serviço.
-
-O **worker de notificação** trata rajada com repetição, fora do caminho da requisição. É
-Deployment e não Job, porque o KEDA leva as réplicas a zero sem precisar de um pod por email.
+A **migração** aplica o schema e termina. Roda antes dos serviços que leem o banco.
 
 ## Dados
 
-Um PostgreSQL só, com o plano de registro e o plano de recuperação dentro dele. Os vetores
-ficam em pgvector.
+Um PostgreSQL só, com o pgvector para os vetores (ADR-0055). A API, a migração, o indexador, o
+embedder e o notificador falam com ele. O painel e o servidor MCP ficam de fora, porque consomem a
+API. São serviços no sentido de implantação e escala independentes, não no de banco por serviço,
+e o isolamento entre eles é de processo e de escala, não de dado.
 
-Ele roda numa instância só, dentro do namespace do markupp, e não como banco gerenciado de
-nuvem nem com operador no cluster compartilhado. É o que o ADR-0015 pede sem dizer onde, e é o
-que a infraestrutura disponível oferece. O backup é snapshot de volume no próprio cluster, então perder o cluster leva as notas
-junto.
-
-Seis dos sete serviços compartilham esse banco. O painel fica de fora porque consome a API, e
-não o PostgreSQL. São serviços no sentido de implantação e escala independentes, não no de banco
-por serviço, e o isolamento entre eles é de processo e de escala, não de dado.
-
-O preço é acoplamento pelo schema. Mudança de coluna coordena os seis, em expand e contract, e
-nenhum deles evolui o modelo de dados por conta própria. Quem aplica a migração é um Job único,
-que roda antes de qualquer serviço subir a versão nova.
+O preço é acoplamento pelo schema. Mudança de coluna coordena os cinco, em expand e contract, e
+nenhum deles evolui o modelo de dados por conta própria.
 
 ## Provedores externos
 
-A API REST valida identidade contra o provedor OIDC habilitado, o indexador de embedding
-gera vetores pelo provedor configurado, e o worker de notificação entrega email pelo dele.
+Todos opcionais e trocáveis por configuração: o login externo, por OIDC ou GitHub, que a API
+consulta (ADR-0054); o endpoint de embedding, que o embedder chama quando o provedor é
+openai-compat; e o servidor SMTP do notificador. Sem SMTP, o convite devolve o token para ser
+repassado à mão.
 
-Os três são trocáveis por configuração, e é por isso que o desenho não nomeia serviço. Uma
-instalação em nuvem entrega email por SMTP, o self-host aponta para um modelo local e um SMTP
-próprio, e o código é o mesmo nos dois.
+## Compose e Kubernetes
 
-## O que muda no self-host
+No compose, num nó só, a API é a única porta publicada, a 6275 (ADR-0058). Ela encaminha /mcp ao
+servidor MCP e todo o resto ao painel, então painel, API e MCP dividem uma origem. O TLS fica com
+um proxy HTTPS na frente, se quem opera puser um. O indexador e o notificador rodam em laço, e o
+notificador fica ocioso sem SMTP.
 
-O mesmo conjunto de imagens roda por compose num nó só, menos o plano de controle: com um
-tenant só, não há o que provisionar. Embedding e notificação sobem por perfil, só
-quando configurados. Sem cluster, o TLS termina no próprio servidor, e o embedding pode vir de
-modelo local carregado no processo do indexador.
+No Kubernetes, pelo componente Pulumi, o TLS termina no Gateway (ADR-0027). O painel ganha um
+host próprio e o MCP continua em /mcp no host da API. A API roda com duas réplicas por padrão. O
+KEDA cria um Job do indexador por cofre com nota pendente e leva o notificador de zero a uma
+réplica conforme a fila (ADR-0032); sem email configurado, o notificador nem sobe. O embedder
+roda em laço nos dois. O banco pode ser o PostgreSQL que o componente sobe no namespace ou um
+externo. O que o componente cria está no [diagrama de implantação](diagrama-de-implantacao.md).
 
-Sem cluster também não há KEDA, então lá o indexador roda em laço em vez de nascer por lote.
-
-A visão C4 do sistema é mantida no repositório do plugin (ADR-0030).
+O ADR-0028 lista também um plano de controle para provisionar tenants, que não tem código. Hoje
+qualquer conta cria tenant pela API.
