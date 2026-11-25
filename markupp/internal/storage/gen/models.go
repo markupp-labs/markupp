@@ -317,6 +317,7 @@ type RefreshToken struct {
 	ExpiresAt time.Time
 	Revoked   bool
 	CreatedAt time.Time
+	SessionID pgtype.Text
 }
 
 type Tenant struct {
@@ -360,6 +361,16 @@ type UserInvite struct {
 	AcceptedAt pgtype.Timestamptz
 	CreatedAt  time.Time
 	DeclinedAt pgtype.Timestamptz
+}
+
+type UserSession struct {
+	ID         string
+	UserID     string
+	ClientIp   string
+	UserAgent  string
+	CreatedAt  time.Time
+	LastUsedAt time.Time
+	EndedAt    pgtype.Timestamptz
 }
 
 type Vault struct {

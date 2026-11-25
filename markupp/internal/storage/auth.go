@@ -365,29 +365,38 @@ func toAuthIdentity(row gen.UserIdentity) auth.UserIdentity {
 	}
 }
 
-// ConsumeRefreshToken consome atomicamente o refresh token se valido e nao expirado, retornando o userID.
-func (r *PostgresAuthRepository) ConsumeRefreshToken(ctx context.Context, tokenHash string) (string, error) {
-	userID, err := r.q.ConsumeRefreshToken(ctx, tokenHash)
+// ConsumeRefreshToken consome atomicamente o refresh token se valido e nao expirado, retornando o dono e a sessão.
+func (r *PostgresAuthRepository) ConsumeRefreshToken(ctx context.Context, tokenHash string) (auth.RefreshTokenRecord, error) {
+	row, err := r.q.ConsumeRefreshToken(ctx, tokenHash)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return "", auth.ErrRefreshTokenInvalid
+			return auth.RefreshTokenRecord{}, auth.ErrRefreshTokenInvalid
 		}
-		return "", fmt.Errorf("consume refresh token: %w", err)
+		return auth.RefreshTokenRecord{}, fmt.Errorf("consume refresh token: %w", err)
 	}
-	return userID, nil
+	return auth.RefreshTokenRecord{TokenHash: tokenHash, UserID: row.UserID, SessionID: row.SessionID.String, Revoked: true}, nil
 }
 
-// IssueSessionTx grava o refresh token e a auditoria de login juntos na mesma transacao.
-func (r *PostgresAuthRepository) IssueSessionTx(ctx context.Context, rec auth.RefreshTokenRecord, event auth.AuditEventRecord) error {
+// IssueSessionTx grava a sessão, o refresh token e a auditoria de login juntos na mesma transacao.
+func (r *PostgresAuthRepository) IssueSessionTx(ctx context.Context, session auth.SessionRecord, rec auth.RefreshTokenRecord, event auth.AuditEventRecord) error {
 	return r.inTx(ctx, func(qtx *gen.Queries) error {
+		if err := qtx.UpsertUserSession(ctx, toUpsertUserSessionParams(session)); err != nil {
+			return fmt.Errorf("save session %q of user %q: %w", session.ID, session.UserID, err)
+		}
 		return r.saveSessionRows(ctx, qtx, rec, event)
 	})
+}
+
+func toUpsertUserSessionParams(s auth.SessionRecord) gen.UpsertUserSessionParams {
+	return gen.UpsertUserSessionParams{ID: s.ID, UserID: s.UserID, ClientIp: s.Origin.IP,
+		UserAgent: s.Origin.UserAgent, CreatedAt: s.CreatedAt, LastUsedAt: s.LastUsedAt}
 }
 
 func (r *PostgresAuthRepository) saveSessionRows(ctx context.Context, qtx *gen.Queries, rec auth.RefreshTokenRecord, event auth.AuditEventRecord) error {
 	if err := qtx.SaveRefreshToken(ctx, gen.SaveRefreshTokenParams{
 		TokenHash: rec.TokenHash,
 		UserID:    rec.UserID,
+		SessionID: pgtype.Text{String: rec.SessionID, Valid: rec.SessionID != ""},
 		ExpiresAt: rec.ExpiresAt,
 		Revoked:   rec.Revoked,
 		CreatedAt: rec.CreatedAt,
@@ -412,6 +421,7 @@ func (r *PostgresAuthRepository) GetRefreshToken(ctx context.Context, tokenHash 
 	return auth.RefreshTokenRecord{
 		TokenHash: row.TokenHash,
 		UserID:    row.UserID,
+		SessionID: row.SessionID.String,
 		ExpiresAt: row.ExpiresAt,
 		Revoked:   row.Revoked,
 		CreatedAt: row.CreatedAt,

@@ -84,9 +84,20 @@ type UserIdentity struct {
 type RefreshTokenRecord struct {
 	TokenHash string
 	UserID    string
+	// SessionID é vazio nos refresh emitidos antes das sessões (ADR-0061).
+	SessionID string
 	ExpiresAt time.Time
 	Revoked   bool
 	CreatedAt time.Time
+}
+
+// SessionRecord é o login que as renovações continuam: guarda a origem e o último uso.
+type SessionRecord struct {
+	ID         string
+	UserID     string
+	Origin     Origin
+	CreatedAt  time.Time
+	LastUsedAt time.Time
 }
 
 // AuditEventRecord armazena o evento de auditoria insert-only.
@@ -197,8 +208,9 @@ type Repository interface {
 	// UnlinkIdentityTx passa à check as identidades que restariam, lidas sob a trava da
 	// conta, e desfaz tudo quando ela recusa.
 	UnlinkIdentityTx(ctx context.Context, userID, identityID string, event AuditEventRecord, check func(remaining []UserIdentity) error) error
-	ConsumeRefreshToken(ctx context.Context, tokenHash string) (string, error)
-	IssueSessionTx(ctx context.Context, record RefreshTokenRecord, event AuditEventRecord) error
+	ConsumeRefreshToken(ctx context.Context, tokenHash string) (RefreshTokenRecord, error)
+	// IssueSessionTx abre a sessão ou, se ela já existe, atualiza a origem e o último uso.
+	IssueSessionTx(ctx context.Context, session SessionRecord, record RefreshTokenRecord, event AuditEventRecord) error
 	GetRefreshToken(ctx context.Context, tokenHash string) (RefreshTokenRecord, error)
 	RevokeRefreshToken(ctx context.Context, tokenHash string) error
 	RevokeAllUserRefreshTokens(ctx context.Context, userID string) error

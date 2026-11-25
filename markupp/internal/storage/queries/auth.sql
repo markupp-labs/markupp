@@ -45,11 +45,18 @@ INSERT INTO vault_members (vault_id, user_id, created_at)
 VALUES ($1, $2, $3);
 
 -- name: SaveRefreshToken :exec
-INSERT INTO refresh_tokens (token_hash, user_id, expires_at, revoked, created_at)
-VALUES ($1, $2, $3, $4, $5);
+INSERT INTO refresh_tokens (token_hash, user_id, session_id, expires_at, revoked, created_at)
+VALUES ($1, $2, $3, $4, $5, $6);
+
+-- name: UpsertUserSession :exec
+-- A renovação atualiza a origem e o último uso; a criação fica a do login.
+INSERT INTO user_sessions (id, user_id, client_ip, user_agent, created_at, last_used_at)
+VALUES ($1, $2, $3, $4, $5, $6)
+ON CONFLICT (id) DO UPDATE
+SET client_ip = EXCLUDED.client_ip, user_agent = EXCLUDED.user_agent, last_used_at = EXCLUDED.last_used_at;
 
 -- name: GetRefreshToken :one
-SELECT token_hash, user_id, expires_at, revoked, created_at
+SELECT token_hash, user_id, session_id, expires_at, revoked, created_at
 FROM refresh_tokens
 WHERE token_hash = $1;
 
@@ -57,17 +64,28 @@ WHERE token_hash = $1;
 UPDATE refresh_tokens
 SET revoked = TRUE
 WHERE token_hash = $1 AND revoked = FALSE AND expires_at > now()
-RETURNING user_id;
+RETURNING user_id, session_id;
 
 -- name: RevokeRefreshToken :execrows
-UPDATE refresh_tokens
+-- Encerra a sessão do token e revoga todos os refresh dela; token sem sessão cai sozinho.
+WITH target AS (
+    SELECT session_id FROM refresh_tokens WHERE token_hash = $1 AND revoked = FALSE
+), ended AS (
+    UPDATE user_sessions SET ended_at = now()
+    WHERE id = (SELECT session_id FROM target) AND ended_at IS NULL
+)
+UPDATE refresh_tokens r
 SET revoked = TRUE
-WHERE token_hash = $1 AND revoked = FALSE;
+WHERE r.revoked = FALSE
+  AND (r.token_hash = $1 OR r.session_id = (SELECT session_id FROM target));
 
 -- name: RevokeAllUserRefreshTokens :exec
-UPDATE refresh_tokens
+WITH ended AS (
+    UPDATE user_sessions s SET ended_at = now() WHERE s.user_id = $1 AND s.ended_at IS NULL
+)
+UPDATE refresh_tokens r
 SET revoked = TRUE
-WHERE user_id = $1;
+WHERE r.user_id = $1;
 
 -- name: CreateAuditEvent :exec
 INSERT INTO audit_events (id, tenant_id, actor_id, action, target, result, occurred_at)

@@ -235,14 +235,14 @@ func (s *Service) auditLoginAttempt(ctx context.Context, actorID, target, result
 	})
 }
 
-func (s *Service) buildSessionRecords(user User, pair TokenPair, action string) (RefreshTokenRecord, AuditEventRecord) {
-	now := s.clock()
+func (s *Service) buildSessionRecords(user User, session SessionRecord, pair TokenPair, action string) (RefreshTokenRecord, AuditEventRecord) {
 	rec := RefreshTokenRecord{
 		TokenHash: HashOpaqueToken(pair.RefreshToken),
 		UserID:    user.ID,
-		ExpiresAt: now.Add(s.cfg.RefreshExpirationPeriod),
+		SessionID: session.ID,
+		ExpiresAt: session.LastUsedAt.Add(s.cfg.RefreshExpirationPeriod),
 		Revoked:   false,
-		CreatedAt: now,
+		CreatedAt: session.LastUsedAt,
 	}
 	event := AuditEventRecord{
 		ID:         s.newID(),
@@ -250,35 +250,52 @@ func (s *Service) buildSessionRecords(user User, pair TokenPair, action string) 
 		Action:     action,
 		Target:     user.Email,
 		Result:     "success",
-		OccurredAt: now,
+		OccurredAt: session.LastUsedAt,
 	}
 	return rec, event
 }
 
+// issueAndPersist abre uma sessão nova para o login.
 func (s *Service) issueAndPersist(ctx context.Context, user User, action string) (TokenPair, error) {
+	return s.issueInSession(ctx, user, action, "")
+}
+
+// issueInSession emite o par na sessão sessionID; vazio abre uma sessão nova.
+func (s *Service) issueInSession(ctx context.Context, user User, action, sessionID string) (TokenPair, error) {
 	pair, err := s.tokens.GenerateTokenPair(user.ID)
 	if err != nil {
 		return TokenPair{}, fmt.Errorf("generate tokens for %q: %w", user.ID, err)
 	}
-	rec, event := s.buildSessionRecords(user, pair, action)
-	if err := s.repo.IssueSessionTx(ctx, rec, event); err != nil {
+	session := s.touchSession(ctx, user.ID, sessionID)
+	rec, event := s.buildSessionRecords(user, session, pair, action)
+	if err := s.repo.IssueSessionTx(ctx, session, rec, event); err != nil {
 		return TokenPair{}, fmt.Errorf("save session of %q: %w", user.ID, err)
 	}
 	return pair, nil
 }
 
+// touchSession monta a sessão com a origem e o horário deste pedido; a criação só vale
+// para a sessão nova, e o repositório mantém a da primeira vez.
+func (s *Service) touchSession(ctx context.Context, userID, sessionID string) SessionRecord {
+	if sessionID == "" {
+		sessionID = s.newID()
+	}
+	now := s.clock()
+	return SessionRecord{ID: sessionID, UserID: userID, Origin: OriginFrom(ctx), CreatedAt: now, LastUsedAt: now}
+}
+
 // RefreshToken valida o refresh token fornecido, revoga-o e emite um novo par de tokens.
 func (s *Service) RefreshToken(ctx context.Context, rawRefreshToken string) (TokenPair, error) {
 	hash := HashOpaqueToken(rawRefreshToken)
-	userID, err := s.repo.ConsumeRefreshToken(ctx, hash)
+	consumed, err := s.repo.ConsumeRefreshToken(ctx, hash)
 	if err != nil {
 		return s.handleRefreshFailure(ctx, hash, err)
 	}
-	user, err := s.repo.GetUserByID(ctx, userID)
+	user, err := s.repo.GetUserByID(ctx, consumed.UserID)
 	if err != nil {
-		return TokenPair{}, fmt.Errorf("find user %q of the refresh token: %w", userID, err)
+		return TokenPair{}, fmt.Errorf("find user %q of the refresh token: %w", consumed.UserID, err)
 	}
-	return s.issueAndPersist(ctx, user, "auth.refresh")
+	return s.issueInSession(ctx, user, "auth.refresh", consumed.SessionID)
 }
 
 func (s *Service) handleRefreshFailure(ctx context.Context, hash string, origErr error) (TokenPair, error) {
@@ -314,7 +331,7 @@ func (s *Service) refreshReuseEvent(user User) AuditEventRecord {
 	}
 }
 
-// RevokeSession revoga a sessão associada ao refresh token.
+// RevokeSession encerra a sessão do refresh token, com todos os refresh dela.
 func (s *Service) RevokeSession(ctx context.Context, rawRefreshToken string) error {
 	hash := HashOpaqueToken(rawRefreshToken)
 	return s.repo.RevokeRefreshToken(ctx, hash)
