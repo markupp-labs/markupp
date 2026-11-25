@@ -32,7 +32,7 @@ func TestDefault_RetornaValoresPadrao(t *testing.T) {
 	assert.Empty(t, cfg.DatabaseURL, "sem default: o banco precisa ser informado")
 	assert.Empty(t, cfg.AllowedOrigins, "sem origem configurada o CORS fica desligado")
 	assert.Equal(t, "default", cfg.DefaultTenantID)
-	assert.Equal(t, 15, cfg.JWTExpirationMinutes)
+	assert.Equal(t, 5, cfg.JWTExpirationMinutes, "ADR-0061: o bloqueio vale em até 5 minutos")
 	assert.Equal(t, 7, cfg.RefreshExpirationDays)
 	assert.False(t, cfg.AuthRegistrationEnabled)
 	assert.True(t, cfg.LocalAuthEnabled)
