@@ -19,6 +19,9 @@ const (
 	// loginProvidersRefresh é o máximo que uma réplica da API leva para ver a mudança
 	// que o administrador fez na lista (ADR-0060).
 	loginProvidersRefresh = 5 * time.Second
+	// ipBlocksRefresh é o máximo que uma réplica da API leva para ver o bloqueio de IP
+	// que o administrador criou ou tirou (ADR-0061).
+	ipBlocksRefresh = 5 * time.Second
 )
 
 // newLoginProviderService monta os provedores de login do administrador, com os das

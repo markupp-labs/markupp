@@ -35,6 +35,10 @@ type RouterDeps struct {
 	// TrustedProxies são as redes dos proxies cujo X-Forwarded-For os proxies do painel
 	// e do MCP repassam. De outra conexão, o header de entrada é descartado.
 	TrustedProxies []netip.Prefix
+	// IPBlocks é a lista de bloqueios de IP do administrador; BlockedIPs, a que cada
+	// pedido confere. Nil desliga as rotas e o bloqueio (ADR-0061).
+	IPBlocks   IPBlockService
+	BlockedIPs BlockedIPs
 	// InstanceAccounts é a gestão das contas pelo administrador da instância (ADR-0061).
 	InstanceAccounts InstanceAccountsService
 	// AccountAuthorizations lista e revoga os apps de outra conta para o administrador.
@@ -75,6 +79,7 @@ func NewRouter(d RouterDeps) chi.Router {
 	r.Use(middleware.RequestID)
 	r.Use(middleware.Recoverer)
 	r.Use(recordOrigin(d.TrustedProxies, d.PublicRelay))
+	r.Use(refuseBlockedIPs(d.BlockedIPs))
 	mountOAuthServerRoutes(r, d)
 	mountMCPProxy(r, d.MCPUpstreamURL, d.TrustedProxies)
 	mountPanelProxy(r, d.PanelUpstreamURL, d.TrustedProxies)
@@ -155,6 +160,9 @@ func mountV1OnlyRoutes(r chi.Router, d RouterDeps) {
 	}
 	if d.Sessions != nil {
 		mountMySessionRoutes(r, d.Sessions, d.Tokens)
+	}
+	if d.IPBlocks != nil && d.Auth != nil {
+		mountIPBlockRoutes(r, d.IPBlocks, d.Auth, d.InstanceAdmins, d.Tokens)
 	}
 	if d.InstanceAccounts != nil && d.Auth != nil {
 		h := &instanceAccountsHandler{accounts: d.InstanceAccounts, sessions: d.Sessions, apps: d.AccountAuthorizations}

@@ -5,6 +5,7 @@
 package gen
 
 import (
+	"net/netip"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -59,6 +60,13 @@ type InstanceEmbedding struct {
 	ModelState   string
 	ModelError   string
 	ModelStateAt pgtype.Timestamptz
+}
+
+type InstanceIpBlock struct {
+	ID        string
+	Cidr      netip.Prefix
+	Note      string
+	CreatedAt time.Time
 }
 
 type InstanceLoginProvider struct {

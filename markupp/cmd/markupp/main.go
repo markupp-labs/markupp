@@ -258,7 +258,7 @@ func newHandler(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, logg
 		return nil, err
 	}
 	addPublication(&deps, cfg, pool)
-	addInstance(&deps, cfg, pool, box)
+	addInstance(&deps, cfg, pool, box, logger)
 	deps.InstanceLoginProviders = loginProviders
 	return api.NewRouter(deps), nil
 }
@@ -303,9 +303,12 @@ func newAccountEmailService(cfg config.Config, pool *pgxpool.Pool, logger *slog.
 
 // addInstance liga as rotas do administrador da instância (ADR-0057), com a cifra da
 // chave do provedor de embedding.
-func addInstance(deps *api.RouterDeps, cfg config.Config, pool *pgxpool.Pool, box instance.Sealer) {
+func addInstance(deps *api.RouterDeps, cfg config.Config, pool *pgxpool.Pool, box instance.Sealer, logger *slog.Logger) {
 	deps.InstanceAdmins = cfg.InstanceAdmins
 	deps.InstanceEmbedding = instance.NewEmbeddingService(storage.NewAppInstanceEmbedding(pool), box)
+	ipBlocks := storage.NewInstanceIPBlocks(pool)
+	deps.IPBlocks = instance.NewIPBlockService(ipBlocks, time.Now, uuid.NewString)
+	deps.BlockedIPs = instance.NewRefreshingIPBlocks(ipBlocks, ipBlocksRefresh, time.Now, logger)
 	deps.InstanceAccounts = auth.NewInstanceAccounts(storage.NewPostgresInstanceAccountsRepository(pool), time.Now, uuid.NewString)
 	// Sem OAuth ligado, as rotas dos apps de cada conta ficam de fora.
 	if apps, ok := deps.OAuth.(api.AccountAuthorizationService); ok {

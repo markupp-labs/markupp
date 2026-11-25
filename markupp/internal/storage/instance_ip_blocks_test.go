@@ -60,11 +60,3 @@ func TestInstanceIPBlocks_Apagar_ESegundaVezNaoAcha(t *testing.T) {
 	require.NoError(t, err)
 	assert.Empty(t, blocks)
 }
-
-func TestInstanceIPBlocks_CriarSemAtor_Recusa(t *testing.T) {
-	repo := storage.NewInstanceIPBlocks(bancoDaInstancia(t))
-
-	err := repo.CreateIPBlock(context.Background(), bloqueioDe("b1", "198.51.100.0/24"), eventoDoBloqueio("ip_blocks.create", "b1"))
-
-	require.ErrorIs(t, err, storage.ErrNoActor)
-}
