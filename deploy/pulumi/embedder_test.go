@@ -39,7 +39,7 @@ func TestNewMarkupp_Embedder_GuardaOModeloNumVolumeDoNamespace(t *testing.T) {
 	assert.Equal(t, "markupp-embedder-models", at(t, pvc, "metadata", "name").StringValue())
 	assert.Equal(t, "ReadWriteOnce", at(t, pvc, "spec", "accessModes").ArrayValue()[0].StringValue())
 	assert.Equal(t, "2Gi", at(t, pvc, "spec", "resources", "requests", "storage").StringValue())
-	assert.Equal(t, "longhorn-fast", at(t, pvc, "spec", "storageClassName").StringValue())
+	assert.Equal(t, "fast-ssd", at(t, pvc, "spec", "storageClassName").StringValue())
 	embedder := deploymentNamed(t, monitor, "markupp-embedder")
 	mount := firstContainer(t, embedder)["volumeMounts"].ArrayValue()[0].ObjectValue()
 	assert.Equal(t, "/var/lib/markupp/models", mount["mountPath"].StringValue())

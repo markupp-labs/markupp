@@ -1,8 +1,8 @@
 name: Smoke da stack dev
 
 # Testa a implantação em cada PR e a cada push em dev com o mesmo smoke de
-# make smoke-kind: kind com os requisitos do cluster de produção, stack dev do
-# Pulumi e API testada por https pelo Gateway.
+# make smoke-kind: kind com os pré-requisitos que o componente Pulumi pede, stack
+# dev do Pulumi e API testada por https pelo Gateway.
 
 on:
   pull_request:

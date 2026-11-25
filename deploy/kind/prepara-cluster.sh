@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Sobe o cluster kind da stack dev com os pré-requisitos do cluster de produção:
-# Gateway API, Cilium, cert-manager e KEDA.
+# Sobe o cluster kind da stack dev com os pré-requisitos que o componente Pulumi
+# pede (docs/DEPLOY.md): Gateway API, Cilium, cert-manager e KEDA.
 set -euo pipefail
 
 CLUSTER="${CLUSTER:-markupp-dev}"
@@ -31,7 +31,7 @@ instala_cert_manager() {
 }
 
 # liga_gateway_no_cert_manager faz o cert-manager emitir certificado a partir
-# da anotação do Gateway, como o controller de produção roda com --enable-gateway-api.
+# da anotação do Gateway, que o componente usa para o certificado.
 liga_gateway_no_cert_manager() {
   kubectl -n cert-manager patch deployment cert-manager --type=json -p \
     '[{"op":"add","path":"/spec/template/spec/containers/0/args/-","value":"--enable-gateway-api"}]'
