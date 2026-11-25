@@ -529,3 +529,25 @@ func TestLoad_ProxyConfiavelForaDoFormato_RetornaErroComOValor(t *testing.T) {
 		assert.Contains(t, err.Error(), "CIDR", valor)
 	}
 }
+
+func TestLoad_PrazoDoHistorico_AusenteFicaZeroEDefinidoTrava(t *testing.T) {
+	sem, err := config.Load(fakeEnv{"MARKUPP_DATABASE_URL": urlDeTeste, "MARKUPP_AUTH_SECRET": segredoDeTesteValido}.Lookup)
+	require.NoError(t, err)
+	com, err := config.Load(fakeEnv{"MARKUPP_DATABASE_URL": urlDeTeste, "MARKUPP_AUTH_SECRET": segredoDeTesteValido,
+		"MARKUPP_ACCESS_HISTORY_RETENTION_DAYS": "90"}.Lookup)
+	require.NoError(t, err)
+
+	assert.Zero(t, sem.AccessHistoryRetentionDays, "sem a variável, vale a escolha do administrador")
+	assert.Equal(t, 90, com.AccessHistoryRetentionDays)
+}
+
+func TestLoad_PrazoDoHistoricoForaDaFaixa_Recusa(t *testing.T) {
+	for _, valor := range []string{"0", "3651", "um-ano"} {
+		_, err := config.Load(fakeEnv{"MARKUPP_DATABASE_URL": urlDeTeste, "MARKUPP_AUTH_SECRET": segredoDeTesteValido,
+			"MARKUPP_ACCESS_HISTORY_RETENTION_DAYS": valor}.Lookup)
+
+		require.Error(t, err, valor)
+		assert.Contains(t, err.Error(), "MARKUPP_ACCESS_HISTORY_RETENTION_DAYS")
+		assert.Contains(t, err.Error(), "from 1 to 3650")
+	}
+}
