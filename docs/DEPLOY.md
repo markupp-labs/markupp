@@ -362,7 +362,13 @@ autenticado. Sem o painel nessa lista, as sessões do painel mostram o IP dele.
 
 O administrador da instância lista as contas, bloqueia, desbloqueia e apaga, encerra sessões,
 revoga apps de outra conta, bloqueia IP ou faixa e lê o histórico de acessos, pelo painel, pela
-API em `/v1/instance` e pelo MCP. O bloqueio de IP vale em toda rota, menos `/v1/healthz`, e
+API em `/v1/instance` e pelo MCP, nas ferramentas `list_accounts`, `get_account`,
+`block_account`, `unblock_account`, `delete_account`, `list_account_sessions`,
+`end_account_session`, `list_account_authorizations`, `revoke_account_authorization`,
+`list_ip_blocks`, `block_ip`, `unblock_ip`, `list_audit_events`,
+`get_access_history_retention` e `set_access_history_retention`. Cada pessoa vê e encerra as
+próprias sessões em Settings, grupo Account, e nas ferramentas `list_my_sessions` e
+`end_my_session`. O bloqueio de IP vale em toda rota, menos `/v1/healthz`, e
 cada réplica da API vê a mudança em até 5 segundos.
 
 O histórico e o IP das sessões encerradas e dos apps revogados somem depois de um prazo, de 365
