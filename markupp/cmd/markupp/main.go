@@ -259,6 +259,7 @@ func newHandler(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, logg
 	}
 	addPublication(&deps, cfg, pool)
 	addInstance(&deps, cfg, pool, box, logger)
+	startRetention(ctx, &deps, cfg, pool, logger)
 	deps.InstanceLoginProviders = loginProviders
 	return api.NewRouter(deps), nil
 }
@@ -315,6 +316,18 @@ func addInstance(deps *api.RouterDeps, cfg config.Config, pool *pgxpool.Pool, bo
 	if apps, ok := deps.OAuth.(api.AccountAuthorizationService); ok {
 		deps.AccountAuthorizations = apps
 	}
+}
+
+// retentionCleanupEvery é de quanto em quanto cada réplica da API tenta a limpeza do
+// histórico; só uma limpa, e no máximo uma vez por dia (ADR-0061).
+const retentionCleanupEvery = time.Hour
+
+// startRetention liga a rota do prazo de guarda e a limpeza do histórico em segundo plano,
+// que para quando ctx acaba.
+func startRetention(ctx context.Context, deps *api.RouterDeps, cfg config.Config, pool *pgxpool.Pool, logger *slog.Logger) {
+	svc := instance.NewRetentionService(storage.NewInstanceRetention(pool), cfg.AccessHistoryRetentionDays, time.Now, uuid.NewString)
+	deps.Retention = svc
+	go instance.RunRetentionCleanup(ctx, svc, retentionCleanupEvery, logger)
 }
 
 // addPublication liga a publicação de notas, pastas e cofres e a leitura sem conta delas

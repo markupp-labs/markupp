@@ -22,13 +22,16 @@ type Config struct {
 	DatabaseURL string
 	MaxNoteSize int64
 	// AllowedOrigins libera CORS para essas origens. Vazio desliga o CORS.
-	AllowedOrigins          []string
-	AuthSecret              string
-	DefaultTenantID         string
-	JWTExpirationMinutes    int
-	RefreshExpirationDays   int
-	AuthRegistrationEnabled bool
-	LocalAuthEnabled        bool
+	AllowedOrigins       []string
+	AuthSecret           string
+	DefaultTenantID      string
+	JWTExpirationMinutes int
+	// AccessHistoryRetentionDays é o prazo de guarda do histórico e do IP que quem hospeda
+	// fixou; zero deixa o administrador da instância escolher (ADR-0061).
+	AccessHistoryRetentionDays int
+	RefreshExpirationDays      int
+	AuthRegistrationEnabled    bool
+	LocalAuthEnabled           bool
 	// LocalRegistration é MARKUPP_AUTH_LOCAL_REGISTRATION: definida, trava o cadastro por
 	// email e senha nesse valor; nil deixa a escolha ao administrador da instância (ADR-0059).
 	LocalRegistration *bool
@@ -363,6 +366,11 @@ func loadAuthSettings(lookup LookupFunc, cfg *Config) error {
 		return err
 	}
 	cfg.RefreshExpirationDays = int(refExp)
+	retention := int64(cfg.AccessHistoryRetentionDays)
+	if err := readBounded(lookup, "MARKUPP_ACCESS_HISTORY_RETENTION_DAYS", 1, 3650, "from 1 to 3650", &retention); err != nil {
+		return err
+	}
+	cfg.AccessHistoryRetentionDays = int(retention)
 	return loadAuthFlags(lookup, cfg)
 }
 

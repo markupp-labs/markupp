@@ -88,6 +88,13 @@ type InstanceRegistrationMethod struct {
 	UpdatedAt time.Time
 }
 
+type InstanceRetention struct {
+	Singleton     bool
+	Days          pgtype.Int4
+	LastCleanupAt pgtype.Timestamptz
+	UpdatedAt     time.Time
+}
+
 type InstanceSecret struct {
 	Name      string
 	Value     string

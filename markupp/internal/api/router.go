@@ -39,6 +39,8 @@ type RouterDeps struct {
 	// pedido confere. Nil desliga as rotas e o bloqueio (ADR-0061).
 	IPBlocks   IPBlockService
 	BlockedIPs BlockedIPs
+	// Retention é o prazo de guarda do histórico e do IP. Nil desliga a rota.
+	Retention RetentionService
 	// AuditHistory lê o histórico para o administrador da instância. Nil desliga a rota.
 	AuditHistory AuditHistoryService
 	// InstanceAccounts é a gestão das contas pelo administrador da instância (ADR-0061).
@@ -162,6 +164,9 @@ func mountV1OnlyRoutes(r chi.Router, d RouterDeps) {
 	}
 	if d.Sessions != nil {
 		mountMySessionRoutes(r, d.Sessions, d.Tokens)
+	}
+	if d.Retention != nil && d.Auth != nil {
+		mountRetentionRoutes(r, d.Retention, d.Auth, d.InstanceAdmins, d.Tokens)
 	}
 	if d.AuditHistory != nil && d.Auth != nil {
 		mountAuditEventRoutes(r, d.AuditHistory, d.Auth, d.InstanceAdmins, d.Tokens)
