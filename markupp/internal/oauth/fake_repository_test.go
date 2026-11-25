@@ -60,6 +60,12 @@ type fakeOAuthRepository struct {
 	dcrRegistrations []oauth.DCRRegistration
 	// touches guarda cada uso registrado de Autorização.
 	touches []authorizationTouch
+	// blocked são as contas bloqueadas pelo administrador da instância.
+	blocked map[string]bool
+}
+
+func (f *fakeOAuthRepository) AccountBlocked(_ context.Context, userID string) (bool, error) {
+	return f.blocked[userID], nil
 }
 
 type authorizationTouch struct {

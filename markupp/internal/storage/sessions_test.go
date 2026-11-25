@@ -167,3 +167,14 @@ func TestSessions_RefreshDeSessaoEncerrada_DizQueASessaoAcabou(t *testing.T) {
 	assert.True(t, rec.Revoked)
 	assert.True(t, rec.SessionEnded)
 }
+
+func TestUsers_ContaBloqueada_GetUserByIDDizQueEstaBloqueada(t *testing.T) {
+	db, repo, sessao := contaComSessao(t)
+	_, err := db.Exec(context.Background(), `UPDATE users SET blocked_at = now() WHERE id = $1`, sessao.UserID)
+	require.NoError(t, err)
+
+	user, err := repo.GetUserByID(context.Background(), sessao.UserID)
+
+	require.NoError(t, err)
+	assert.True(t, user.Blocked)
+}

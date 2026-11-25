@@ -27,3 +27,18 @@ func TestPostgresOAuthRepo_TouchAuthorization_ListaMostraOrigemEUltimoUso(t *tes
 	assert.True(t, quando.Equal(got[1].LastUsedAt))
 	assert.True(t, got[0].LastUsedAt.IsZero(), "Autorização nunca usada")
 }
+
+func TestPostgresOAuthRepo_AccountBlocked(t *testing.T) {
+	repo, pool := repoOAuth(t)
+	autorizacoesDeVariasContas(t, pool)
+	_, err := pool.Exec(context.Background(), `UPDATE users SET blocked_at = now() WHERE id = 'u2'`)
+	require.NoError(t, err)
+
+	livre, err := repo.AccountBlocked(context.Background(), "u1")
+	require.NoError(t, err)
+	bloqueada, err := repo.AccountBlocked(context.Background(), "u2")
+	require.NoError(t, err)
+
+	assert.False(t, livre)
+	assert.True(t, bloqueada)
+}
