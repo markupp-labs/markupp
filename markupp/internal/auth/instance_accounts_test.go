@@ -2,6 +2,7 @@ package auth_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -63,7 +64,7 @@ func contasDaInstancia() (*fakeInstanceAccountsRepository, *auth.InstanceAccount
 	ids := 0
 	svc := auth.NewInstanceAccounts(repo, func() time.Time { return momentoDaAdministracao }, func() string {
 		ids++
-		return "evento-" + string(rune('0'+ids))
+		return fmt.Sprintf("evento-%d", ids)
 	})
 	return repo, svc
 }
