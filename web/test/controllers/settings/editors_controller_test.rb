@@ -23,7 +23,7 @@ module Settings
       assert_select "main #editor_style_hint", text: /Styled makes headings larger/
       assert_select "main #vim_keys_heading", "Vim key bindings"
       assert_select "main form[action=?] button[role=switch][aria-labelledby=vim_keys_heading][aria-describedby=vim_keys_hint]", vim_keys_path
-      assert_select "main #vim_keys_hint", text: /normal, insert and visual modes of Vim/
+      assert_select "main #vim_keys_hint", text: /Edit with Vim modes and commands/
     end
 
     test "show works for an account without tenant" do

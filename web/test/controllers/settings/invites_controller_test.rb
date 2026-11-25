@@ -88,8 +88,8 @@ module Settings
       assert_response :created
       expires = I18n.l(7.days.from_now.to_date, format: :short)
       assert_select "main [role=status]",
-                    text: /This server has no email set up\. Send this token to gil@markupp\.dev yourself; it works once and expires on #{expires}\./
-      assert_select "main label", "Invite token"
+                    text: /Invites aren't emailed on this instance\. Send this code to gil@markupp\.dev; it works once, until #{expires}\./
+      assert_select "main label", "Invite code"
       assert_select "main input[readonly][value=issued-token-1]"
       assert_select "main li[data-invite-status=pending]", text: /gil@markupp\.dev/
 
@@ -202,7 +202,7 @@ module Settings
       get settings_invites_path
 
       assert_response :bad_gateway
-      assert_select "main", text: /Can't reach the markupp server/
+      assert_select "main", text: /Couldn't load this/
     end
   end
 end

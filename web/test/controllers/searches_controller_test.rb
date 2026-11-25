@@ -82,7 +82,7 @@ class SearchesControllerTest < ActionDispatch::IntegrationTest
     get search_path(q: "x")
 
     assert_response :bad_gateway
-    assert_select "turbo-frame#search_results", text: /Can't reach the markupp server/
+    assert_select "turbo-frame#search_results", text: /Couldn't load this/
   end
 
   # Sem a lista de cofres a busca não sabe onde procurar: avisa a falha em vez de parecer que nada casou.
@@ -94,7 +94,7 @@ class SearchesControllerTest < ActionDispatch::IntegrationTest
     get search_path(q: "ship")
 
     assert_response :bad_gateway
-    assert_select "turbo-frame#search_results", text: /Can't reach the markupp server/
+    assert_select "turbo-frame#search_results", text: /Couldn't load this/
   end
 
   test "a tenant the API refuses during the search is forgotten with the notice inside the results frame" do

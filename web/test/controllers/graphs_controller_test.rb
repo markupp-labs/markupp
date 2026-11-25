@@ -60,7 +60,7 @@ class GraphsControllerTest < ActionDispatch::IntegrationTest
     get graph_path
 
     assert_response :bad_gateway
-    assert_select "main", text: /Can't reach the markupp server/
+    assert_select "main", text: /Couldn't load this/
   end
 
   test "the full graph page draws the canvas of the vault of the note it came from, with esc back to that note" do

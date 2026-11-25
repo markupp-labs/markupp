@@ -75,7 +75,7 @@ module Settings
 
       assert_response :success
       assert_select "main h1", "Agents"
-      assert_select "main [role=note]", text: /This instance has no MCP server/
+      assert_select "main [role=note]", text: /AI agents aren.t available here yet/
       assert_select "main [role=note]", text: /MARKUPP_MCP_URL|Pulumi|compose/, count: 0
       assert_select "main pre", count: 0
       assert_select "main [aria-label='MCP clients']", count: 0

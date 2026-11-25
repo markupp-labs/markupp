@@ -96,7 +96,7 @@ class ExplorersControllerTest < ActionDispatch::IntegrationTest
     get explorer_path(mode: "central"), headers: { "Turbo-Frame" => "explorer_list" }
 
     assert_response :bad_gateway
-    assert_select "turbo-frame#explorer_list", text: /Can't reach the markupp server/
+    assert_select "turbo-frame#explorer_list", text: /Couldn't load this/
   end
 
   private

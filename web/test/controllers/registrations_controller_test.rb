@@ -104,7 +104,7 @@ class RegistrationsControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :unprocessable_content
     assert_select "input[name='registration[password]'][aria-invalid=true][aria-describedby='registration_password_hint registration_password_error']"
-    assert_select "#registration_password_error", "Enter a password up to 72 bytes long."
+    assert_select "#registration_password_error", "This password is too long. Use a shorter one."
   end
   test "the login page hides the account creation on a server that only creates accounts by invite" do
     use_fake_api.close_registration!

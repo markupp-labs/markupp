@@ -14,8 +14,8 @@ class TenantInvitesTest < ApplicationSystemTestCase
     select "viewer", from: "Role"
     click_on "Send invite"
 
-    assert_text "Send this token to gil@markupp.dev yourself"
-    assert_field "Invite token", with: "issued-token-1", readonly: true
+    assert_text "Send this code to gil@markupp.dev"
+    assert_field "Invite code", with: "issued-token-1", readonly: true
   end
 
   test "the admin revokes a pending invite after confirming" do

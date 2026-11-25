@@ -63,7 +63,7 @@ module Settings
 
       assert_redirected_to settings_instance_embedding_path
       follow_redirect!
-      assert_select "[role=status]", "Saved. The server switches to it within a minute."
+      assert_select "[role=status]", "Saved. It takes effect within a minute."
       assert_equal({ provider: "openai-compat", url: "https://api.example/v1", model: "m", api_key: "sk-new" }, fake.instance_embedding_updates.last)
     end
 
@@ -83,7 +83,7 @@ module Settings
       patch settings_instance_embedding_path, params: { embedding: { provider: "openai-compat", url: "", model: "m" } }
 
       assert_response :unprocessable_entity
-      assert_select "main [role=alert]", "Check the provider: the remote endpoint needs an http or https URL and a model."
+      assert_select "main [role=alert]", "Enter a URL (http or https) and a model."
     end
 
     test "changing the URL without typing the key again stays on the form and asks for the key" do

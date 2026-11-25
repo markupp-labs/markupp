@@ -12,7 +12,7 @@ en:
       hint: "There is no public note at this address. Check the link with whoever shared it."
     rate_limited:
       title: "Too many requests"
-      hint: "This address asked the server too often. Wait a minute and reload the page."
+      hint: "Wait a minute and reload the page."
   public_searches:
     show:
       title: "%{query} | %{publication}"

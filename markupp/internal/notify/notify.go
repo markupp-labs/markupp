@@ -84,7 +84,7 @@ func InviteMessage(d TokenDetails, token, from, panelURL string) Message {
 		subject: "Convite para um tenant no markupp",
 		lead:    fmt.Sprintf("%s convidou você para %s no markupp, com o papel %s.", d.InviterEmail, d.TenantName, d.Role),
 		route:   inviteLink,
-		usage:   "Use o token no cliente do markupp para aceitar. O convite vale até " + validUntil(d.ExpiresAt) + ".",
+		usage:   "Use o código no markupp para aceitar. O convite vale até " + validUntil(d.ExpiresAt) + ".",
 		expiry:  "O convite vale até " + validUntil(d.ExpiresAt) + ".",
 		reason:  "este endereço foi convidado para um tenant.",
 	}.message(from, d.Email, token, panelURL)
@@ -97,9 +97,9 @@ func VerifyEmailMessage(d TokenDetails, token, from, panelURL string) Message {
 		subject: "Confirme seu email no markupp",
 		lead:    "Confirme que este email é seu para receber convites no markupp.",
 		route:   verifyLink,
-		usage:   "Use o token no cliente do markupp, logado na conta que você criou. Ele vale até " + validUntil(d.ExpiresAt) + ".",
+		usage:   "Use o código no markupp, logado na conta que você criou. Ele vale até " + validUntil(d.ExpiresAt) + ".",
 		expiry:  "Abra o link logado na conta que você criou. Ele vale até " + validUntil(d.ExpiresAt) + ".",
-		caution: "Se não foi você que criou a conta, ignore este email e não use o token.",
+		caution: "Se não foi você que criou a conta, ignore este email.",
 		reason:  "uma conta do markupp foi criada com este endereço.",
 	}.message(from, d.Email, token, panelURL)
 }
@@ -111,7 +111,7 @@ func ResetPasswordMessage(d TokenDetails, token, from, panelURL string) Message 
 		subject: "Troca de senha no markupp",
 		lead:    "Alguém pediu a troca da senha da sua conta no markupp.",
 		route:   resetLink,
-		usage:   "Use o token no cliente do markupp. Ele vale até " + validUntil(d.ExpiresAt) + ".",
+		usage:   "Use o código no markupp. Ele vale até " + validUntil(d.ExpiresAt) + ".",
 		expiry:  "O link vale até " + validUntil(d.ExpiresAt) + ".",
 		reason:  "pediram a troca da senha da conta deste endereço.",
 	}.message(from, d.Email, token, panelURL)

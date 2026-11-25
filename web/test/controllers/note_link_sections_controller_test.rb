@@ -76,6 +76,6 @@ class NoteLinkSectionsControllerTest < ActionDispatch::IntegrationTest
     get "/notes/plan/links/mentions?offset=100"
 
     assert_response :bad_gateway
-    assert_select "turbo-frame#links_mentions_100", text: /Can't reach the markupp server/
+    assert_select "turbo-frame#links_mentions_100", text: /Couldn't load this/
   end
 end

@@ -8,7 +8,7 @@ pt-BR:
       instance_embedding: "Embedding"
     instance_embedding:
       show:
-        intro: "A ligação por sentido liga as notas que tratam do mesmo assunto. Ela precisa de um provedor de embedding, um só para a instância inteira."
+        intro: "Liga automaticamente as notas que falam do mesmo assunto. O provedor escolhido vale para todos nesta instância."
         locked: "Definido por quem hospeda esta instância: %{provider}. Não dá para mudar aqui."
         provider: "Provedor"
         providers:
@@ -27,7 +27,7 @@ pt-BR:
         key_set: "Há uma chave guardada. Deixe o campo vazio para mantê-la."
         key_unset: "Nenhuma chave guardada. Deixe o campo vazio se o endpoint não pede."
         clear_api_key: "Apagar a chave guardada"
-        reindex_hint: "Trocar de provedor ou de modelo recalcula o sentido de todas as notas."
+        reindex_hint: "Trocar o provedor ou o modelo refaz as ligações de todas as notas."
         save: "Salvar"
         status: "Estado do modelo"
         no_status: "Nenhum modelo em uso."
@@ -37,9 +37,9 @@ pt-BR:
           error: "Erro"
         changed_at: "desde %{time}"
       update:
-        saved: "Salvo. O servidor passa a usá-lo em até um minuto."
+        saved: "Salvo. Começa a valer em até um minuto."
       errors:
-        invalid_request: "Confira o provedor: o endpoint remoto pede uma URL http ou https e um modelo."
+        invalid_request: "Informe uma URL (http ou https) e um modelo."
         host_locked: "Quem hospeda esta instância definiu o provedor, então não dá para mudar aqui."
         api_key_required: "Para usar outro endpoint remoto, digite a chave da API de novo ou marque Apagar a chave guardada."
   shortcuts:

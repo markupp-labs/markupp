@@ -248,8 +248,8 @@ func TestInviteMessage_SemPainel_FicaComoAntes(t *testing.T) {
 	msg := notify.InviteMessage(detalhesDeTeste(), "tok-123", "convites@markupp.dev", "")
 
 	esperado := "admin@markupp.dev convidou você para Equipe A no markupp, com o papel member.\n\n" +
-		"Token do convite:\ntok-123\n\n" +
-		"Use o token no cliente do markupp para aceitar. O convite vale até 2026-10-22 12:00 UTC.\n\n" +
+		"Código do convite:\ntok-123\n\n" +
+		"Use o código no markupp para aceitar. O convite vale até 2026-10-22 12:00 UTC.\n\n" +
 		"-- \nmarkupp\nVocê recebeu este email porque este endereço foi convidado para um tenant.\n"
 	assert.Equal(t, esperado, msg.Body)
 }
@@ -299,9 +299,9 @@ func TestMensagens_ComPainel_DizemOQueOLinkFazSemOferecerOToken(t *testing.T) {
 		rotulo  string
 		caminho string
 	}{
-		"convite":     {notify.InviteMessage, "Abra o link para aceitar o convite:", "Token do convite:", "/invite_acceptance/new"},
-		"verificacao": {notify.VerifyEmailMessage, "Abra o link para confirmar seu email:", "Token de verificação:", "/email_confirmation/new"},
-		"senha":       {notify.ResetPasswordMessage, "Abra o link para trocar sua senha:", "Token de troca de senha:", "/password_reset/new"},
+		"convite":     {notify.InviteMessage, "Abra o link para aceitar o convite:", "Código do convite:", "/invite_acceptance/new"},
+		"verificacao": {notify.VerifyEmailMessage, "Abra o link para confirmar seu email:", "Código de confirmação:", "/email_confirmation/new"},
+		"senha":       {notify.ResetPasswordMessage, "Abra o link para trocar sua senha:", "Código para trocar a senha:", "/password_reset/new"},
 	}
 	for nome, c := range casos {
 		msg := c.monta(detalhesDeTeste(), "tok", "contas@markupp.dev", "https://painel.markupp.dev")

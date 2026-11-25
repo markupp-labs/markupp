@@ -114,7 +114,7 @@ class OAuthAuthorizationsControllerTest < ActionDispatch::IntegrationTest
     get "/oauth/requests/r1"
 
     assert_response :bad_gateway
-    assert_select "h1", /Can't reach the markupp server/
+    assert_select "h1", /Couldn't load this/
   end
 
   private

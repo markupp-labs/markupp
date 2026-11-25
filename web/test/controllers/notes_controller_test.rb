@@ -404,7 +404,7 @@ class NotesControllerTest < ActionDispatch::IntegrationTest
     get root_path
 
     assert_response :bad_gateway
-    assert_select "main h1", "502: Can't reach the markupp server"
+    assert_select "main h1", "502: Couldn't load this"
     # Para quem usa, o efeito e o que fazer; a causa técnica fica no log.
     assert_select "main p", "Try again in a moment."
     assert_no_match(/MARKUPP_|API_URL/, response.body)

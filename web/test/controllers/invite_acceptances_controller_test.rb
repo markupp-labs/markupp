@@ -10,9 +10,9 @@ class InviteAcceptancesControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select "h1", "Accept an invite"
-    assert_select "main", text: /Paste the token from the invite email and choose a password for your new account\./
+    assert_select "main", text: /Choose a password to create your account\./
     assert_select "form[action=?][method=post]", invite_acceptance_path do
-      assert_select "label[for=invite_acceptance_token]", "Token"
+      assert_select "label[for=invite_acceptance_token]", "Code"
       assert_select "input[type=text][name=?][required]", "invite_acceptance[token]"
       assert_select "label[for=invite_acceptance_password]", "Password"
       assert_select "input[type=password][name=?][required][minlength=15][autocomplete=new-password]", "invite_acceptance[password]"
@@ -42,7 +42,7 @@ class InviteAcceptancesControllerTest < ActionDispatch::IntegrationTest
   test "the login page points to the invite acceptance" do
     get new_session_path
 
-    assert_select "main", text: /Got an invite token\?/
+    assert_select "main", text: /Got an invite\?/
     assert_select "a[href=?]", new_invite_acceptance_path, text: "Accept it here."
   end
 
@@ -66,7 +66,7 @@ class InviteAcceptancesControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :unprocessable_content
     assert_select "input[name=?][value=tok-9][aria-invalid=true][aria-describedby=invite_acceptance_token_error]", "invite_acceptance[token]"
-    assert_select "#invite_acceptance_token_error", "This token is invalid, expired or already used."
+    assert_select "#invite_acceptance_token_error", "This link expired or was already used. Request a new one."
     assert_select "input[name=?]:not([value])", "invite_acceptance[password]"
   end
 
@@ -76,7 +76,7 @@ class InviteAcceptancesControllerTest < ActionDispatch::IntegrationTest
     accept_invite("", "senha-nova-de-teste")
 
     assert_response :unprocessable_content
-    assert_select "#invite_acceptance_token_error", "Paste the token from the email."
+    assert_select "#invite_acceptance_token_error", "Paste the code from the email."
   end
 
   test "create with a password the API refuses says the rule under the field" do
@@ -86,7 +86,7 @@ class InviteAcceptancesControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :unprocessable_content
     assert_select "input[name=?][aria-invalid=true][aria-describedby=?]", "invite_acceptance[password]", "invite_acceptance_password_hint invite_acceptance_password_error"
-    assert_select "#invite_acceptance_password_error", "Enter a password up to 72 bytes long."
+    assert_select "#invite_acceptance_password_error", "This password is too long. Use a shorter one."
   end
 
   test "create for an email that already has an account points to the login" do
@@ -106,7 +106,7 @@ class InviteAcceptancesControllerTest < ActionDispatch::IntegrationTest
     accept_invite("tok-1", "senha-nova-de-teste")
 
     assert_response :unprocessable_content
-    assert_select "[role=alert]", "Password login is disabled on this server."
+    assert_select "[role=alert]", "Password sign-in isn't available here."
   end
 
   test "a used token does not work twice" do
@@ -117,7 +117,7 @@ class InviteAcceptancesControllerTest < ActionDispatch::IntegrationTest
     accept_invite("tok-1", "outra-senha-de-teste")
 
     assert_response :unprocessable_content
-    assert_select "#invite_acceptance_token_error", "This token is invalid, expired or already used."
+    assert_select "#invite_acceptance_token_error", "This link expired or was already used. Request a new one."
   end
 
   test "create answers bad gateway when the API is unreachable" do
@@ -126,7 +126,7 @@ class InviteAcceptancesControllerTest < ActionDispatch::IntegrationTest
     accept_invite("tok-1", "senha-nova-de-teste")
 
     assert_response :bad_gateway
-    assert_select "main", text: /Can't reach the markupp server/
+    assert_select "main", text: /Couldn't load this/
   end
 
   private

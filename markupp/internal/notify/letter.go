@@ -26,9 +26,9 @@ type letter struct {
 type tokenLink struct{ path, action, button, label string }
 
 var (
-	inviteLink = tokenLink{"/invite_acceptance/new", "Abra o link para aceitar o convite:", "Aceitar convite", "Token do convite:"}
-	verifyLink = tokenLink{"/email_confirmation/new", "Abra o link para confirmar seu email:", "Confirmar email", "Token de verificação:"}
-	resetLink  = tokenLink{"/password_reset/new", "Abra o link para trocar sua senha:", "Trocar senha", "Token de troca de senha:"}
+	inviteLink = tokenLink{"/invite_acceptance/new", "Abra o link para aceitar o convite:", "Aceitar convite", "Código do convite:"}
+	verifyLink = tokenLink{"/email_confirmation/new", "Abra o link para confirmar seu email:", "Confirmar email", "Código de confirmação:"}
+	resetLink  = tokenLink{"/password_reset/new", "Abra o link para trocar sua senha:", "Trocar senha", "Código para trocar a senha:"}
 )
 
 func (l letter) message(from, to, token, panelURL string) Message {

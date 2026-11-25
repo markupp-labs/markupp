@@ -4,7 +4,7 @@ require "test_helper"
 class NoteRolesTest < ActionDispatch::IntegrationTest
   EMAIL = FakeMarkuppAccounts::DEFAULT_EMAIL
   NOTES = [ { id: "1", path: "plan.md", content: "# Plan\n" } ].freeze
-  READ_ONLY_ALERT = "Your role in this tenant is viewer, it can only read notes."
+  READ_ONLY_ALERT = "You can only view notes here."
 
   test "a viewer gets no new note shortcut in the sidebar" do
     use_fake_api(notes: NOTES, tenants: viewer_tenant)
@@ -41,7 +41,7 @@ class NoteRolesTest < ActionDispatch::IntegrationTest
     assert_select "button", text: "Save", count: 0
     assert_select "button", text: "Delete", count: 0
     assert_select "form#delete_note", count: 0
-    assert_select "main", text: /Read only: your role here is viewer\./
+    assert_select "main", text: /You can only view this note\./
   end
 
   test "a writer still edits the note" do
