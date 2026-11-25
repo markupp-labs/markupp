@@ -351,6 +351,25 @@ services:
 Os segredos ficam no `.env`. Um provedor OIDC fora do ar não impede o servidor de subir: a
 descoberta acontece no primeiro login, e o botão responde que o provedor não respondeu.
 
+## Contas e sessões
+
+Cada login abre uma sessão, que guarda o IP, o user agent e o último uso, e cada app autorizado
+guarda o mesmo ([ADR-0061](adrs/ADR-0061-contas-e-sessoes.md)). O JWT de acesso vale 5 minutos
+por padrão, trocado por `MARKUPP_JWT_EXPIRATION_MINUTES`, de 1 a 10080: é o tempo máximo que uma
+conta ou sessão cortada ainda acessa. O painel e o servidor MCP repassam o IP de quem usa no
+X-Forwarded-For, que a API só lê de rede listada em `MARKUPP_TRUSTED_PROXIES` ou do servidor MCP
+autenticado. Sem o painel nessa lista, as sessões do painel mostram o IP dele.
+
+O administrador da instância lista as contas, bloqueia, desbloqueia e apaga, encerra sessões,
+revoga apps de outra conta, bloqueia IP ou faixa e lê o histórico de acessos, pelo painel, pela
+API em `/v1/instance` e pelo MCP. O bloqueio de IP vale em toda rota, menos `/v1/healthz`, e
+cada réplica da API vê a mudança em até 5 segundos.
+
+O histórico e o IP das sessões encerradas e dos apps revogados somem depois de um prazo, de 365
+dias por padrão. O administrador escolhe outro pelo painel, e a variável
+`MARKUPP_ACCESS_HISTORY_RETENTION_DAYS`, de 1 a 3650, vence a escolha e a trava. A limpeza roda
+na própria API: cada réplica tenta uma vez por hora, e só uma limpa, no máximo uma vez por dia.
+
 ## Ligação por sentido
 
 Opcional e desligada por padrão ([ADR-0053](adrs/ADR-0053-ligacoes-automaticas.md)): o
