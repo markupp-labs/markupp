@@ -91,6 +91,7 @@ func TestPostgresAuthRepo_RefreshToken_FluxoCompleto(t *testing.T) {
 	record := auth.RefreshTokenRecord{
 		TokenHash: "hash-token-12345",
 		UserID:    p.User.ID,
+		SessionID: "sessao-1",
 		ExpiresAt: now.Add(24 * time.Hour),
 		Revoked:   false,
 		CreatedAt: now,
@@ -104,16 +105,17 @@ func TestPostgresAuthRepo_RefreshToken_FluxoCompleto(t *testing.T) {
 		Result:     "success",
 		OccurredAt: now,
 	}
-	require.NoError(t, repo.IssueSessionTx(ctx, record, event))
+	require.NoError(t, repo.IssueSessionTx(ctx, sessaoDe(p.User.ID, "sessao-1", now), record, event))
 
 	retrieved, err := repo.GetRefreshToken(ctx, record.TokenHash)
 	require.NoError(t, err)
 	assert.Equal(t, record.UserID, retrieved.UserID)
 	assert.False(t, retrieved.Revoked)
 
-	consumedUserID, err := repo.ConsumeRefreshToken(ctx, record.TokenHash)
+	consumed, err := repo.ConsumeRefreshToken(ctx, record.TokenHash)
 	require.NoError(t, err)
-	assert.Equal(t, p.User.ID, consumedUserID)
+	assert.Equal(t, p.User.ID, consumed.UserID)
+	assert.Equal(t, "sessao-1", consumed.SessionID)
 
 	_, err = repo.ConsumeRefreshToken(ctx, record.TokenHash)
 	require.ErrorIs(t, err, auth.ErrRefreshTokenInvalid, "token ja consumido nao pode ser reutilizado")
@@ -185,6 +187,7 @@ func TestPostgresAuthRepo_RevokeAllUserRefreshTokens_RevogaTokensDoUsuario(t *te
 	rec1 := auth.RefreshTokenRecord{
 		TokenHash: "hash-token-a",
 		UserID:    p.User.ID,
+		SessionID: "sessao-a",
 		ExpiresAt: now.Add(24 * time.Hour),
 		Revoked:   false,
 		CreatedAt: now,
@@ -198,7 +201,7 @@ func TestPostgresAuthRepo_RevokeAllUserRefreshTokens_RevogaTokensDoUsuario(t *te
 		Result:     "success",
 		OccurredAt: now,
 	}
-	require.NoError(t, repo.IssueSessionTx(ctx, rec1, event1))
+	require.NoError(t, repo.IssueSessionTx(ctx, sessaoDe(p.User.ID, "sessao-a", now), rec1, event1))
 
 	require.NoError(t, repo.RevokeAllUserRefreshTokens(ctx, p.User.ID))
 

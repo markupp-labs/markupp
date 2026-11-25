@@ -45,6 +45,7 @@ type fakeRepository struct {
 	users         map[string]auth.User
 	identities    map[string]auth.UserIdentity
 	refreshTokens map[string]auth.RefreshTokenRecord
+	sessions      map[string]auth.SessionRecord
 	auditEvents   []auth.AuditEventRecord
 	createdVaults []string
 	lastAccount   auth.CreateAccountParams
@@ -61,6 +62,7 @@ func newFakeRepository(clock func() time.Time) *fakeRepository {
 		memberships:   make(map[string]auth.Membership),
 		identities:    make(map[string]auth.UserIdentity),
 		refreshTokens: make(map[string]auth.RefreshTokenRecord),
+		sessions:      make(map[string]auth.SessionRecord),
 	}
 }
 
@@ -159,17 +161,22 @@ func (f *fakeRepository) GetUserIdentity(ctx context.Context, provider, provider
 	return id, nil
 }
 
-func (f *fakeRepository) ConsumeRefreshToken(ctx context.Context, tokenHash string) (string, error) {
+func (f *fakeRepository) ConsumeRefreshToken(ctx context.Context, tokenHash string) (auth.RefreshTokenRecord, error) {
 	rec, ok := f.refreshTokens[tokenHash]
 	if !ok || rec.Revoked || rec.ExpiresAt.Before(f.now()) {
-		return "", auth.ErrRefreshTokenInvalid
+		return auth.RefreshTokenRecord{}, auth.ErrRefreshTokenInvalid
 	}
 	rec.Revoked = true
 	f.refreshTokens[tokenHash] = rec
-	return rec.UserID, nil
+	return rec, nil
 }
 
-func (f *fakeRepository) IssueSessionTx(ctx context.Context, record auth.RefreshTokenRecord, event auth.AuditEventRecord) error {
+// IssueSessionTx guarda a sessão como o upsert do Postgres: a criação fica a da primeira vez.
+func (f *fakeRepository) IssueSessionTx(ctx context.Context, session auth.SessionRecord, record auth.RefreshTokenRecord, event auth.AuditEventRecord) error {
+	if antiga, ok := f.sessions[session.ID]; ok {
+		session.CreatedAt = antiga.CreatedAt
+	}
+	f.sessions[session.ID] = session
 	f.refreshTokens[record.TokenHash] = record
 	f.auditEvents = append(f.auditEvents, event)
 	return nil
