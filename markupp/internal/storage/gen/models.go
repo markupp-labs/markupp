@@ -36,6 +36,17 @@ type EmbeddingModel struct {
 	Dimension int32
 }
 
+type InstanceAccountSummary struct {
+	ID            string
+	Email         string
+	EmailVerified bool
+	CreatedAt     time.Time
+	Blocked       bool
+	LoginMethods  []string
+	HasLastAccess bool
+	LastAccessAt  time.Time
+}
+
 type InstanceEmbedding struct {
 	Singleton    bool
 	Provider     string
