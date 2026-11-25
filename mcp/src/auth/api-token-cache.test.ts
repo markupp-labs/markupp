@@ -16,7 +16,7 @@ function cacheOver(
 ): ApiTokenCache {
   const config = exchangeConfig(fetcher, clock);
   return new ApiTokenCache(
-    (t) => exchangeAgentToken(config, t),
+    (t, origin) => exchangeAgentToken(config, t, origin),
     clock.now,
     maxEntries,
   );
