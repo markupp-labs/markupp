@@ -12,18 +12,22 @@ import (
 const maxUserAgentBytes = 512
 
 // recordOrigin guarda no contexto o IP do cliente, com a regra de proxy confiável do
-// limitador, e o user agent, para a sessão e a auditoria (ADR-0061).
-func recordOrigin(trusted []netip.Prefix) func(http.Handler) http.Handler {
+// limitador, e o user agent, para a sessão e a auditoria (ADR-0061). O relay autenticado,
+// como o servidor MCP na troca de token, repassa o IP e o user agent do agente.
+func recordOrigin(trusted []netip.Prefix, relay RelayAuthenticator) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			origin := auth.Origin{IP: originIP(r, trusted), UserAgent: cleanUserAgent(r.UserAgent())}
+			origin := auth.Origin{IP: originIP(r, trusted, relay), UserAgent: cleanUserAgent(r.UserAgent())}
 			next.ServeHTTP(w, r.WithContext(auth.WithOrigin(r.Context(), origin)))
 		})
 	}
 }
 
-func originIP(r *http.Request, trusted []netip.Prefix) string {
+func originIP(r *http.Request, trusted []netip.Prefix, relay RelayAuthenticator) string {
 	addr, ok := clientAddr(r, trusted)
+	if isAuthenticatedRelay(r, relay) {
+		addr, ok = relayedClientAddr(r, trusted)
+	}
 	if !ok {
 		return connectionHost(r.RemoteAddr)
 	}

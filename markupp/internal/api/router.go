@@ -70,7 +70,7 @@ func NewRouter(d RouterDeps) chi.Router {
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
 	r.Use(middleware.Recoverer)
-	r.Use(recordOrigin(d.TrustedProxies))
+	r.Use(recordOrigin(d.TrustedProxies, d.PublicRelay))
 	mountOAuthServerRoutes(r, d)
 	mountMCPProxy(r, d.MCPUpstreamURL, d.TrustedProxies)
 	mountPanelProxy(r, d.PanelUpstreamURL, d.TrustedProxies)

@@ -30,15 +30,25 @@ func isAuthenticatedRelay(r *http.Request, relay RelayAuthenticator) bool {
 	return protoErr == nil && relay.AuthenticatesResource(resourceID, secret)
 }
 
-// relayedClientIP trata o último salto do X-Forwarded-For, que o Go escreveu ao
-// encaminhar /mcp/public, como a conexão que o agente abriu, e segue dali a regra do
-// clientIP. Sem esse salto legível, vale a conexão do relay.
+// relayedClientIP é a chave do agente que o relay repassa; sem salto legível, vale a
+// conexão do relay.
 func (l *AccountRateLimiter) relayedClientIP(r *http.Request) string {
+	agent, ok := relayedClientAddr(r, l.trusted)
+	if !ok {
+		return l.clientIP(r)
+	}
+	return ipKey(agent)
+}
+
+// relayedClientAddr trata o último salto do X-Forwarded-For, que o Go escreveu ao
+// encaminhar ao servidor MCP, como a conexão que o agente abriu, e segue dali a regra do
+// clientAddr. Falso quando esse salto não é IP.
+func relayedClientAddr(r *http.Request, trusted []netip.Prefix) (netip.Addr, bool) {
 	hops := forwardedHops(r)
 	last := len(hops) - 1
 	agent, err := netip.ParseAddr(strings.TrimSpace(hops[last]))
 	if err != nil {
-		return l.clientIP(r)
+		return netip.Addr{}, false
 	}
-	return l.keyBehind(agent.Unmap(), hops[:last])
+	return addrBehind(agent.Unmap(), hops[:last], trusted), true
 }
