@@ -140,6 +140,11 @@ O vínculo entre uma credencial (email e senha ou provedor externo) e a conta de
 A identidade é única globalmente pelo par provedor e identificador do provedor.
 _Avoid_: login, credencial avulsa, perfil
 
+**Instância**:
+Uma instalação do markupp no ar, com os dados dela, mantida por quem hospeda. Contas e tenants
+vivem dentro de uma instância.
+_Avoid_: servidor, nuvem, deploy
+
 **Conta**:
 A pessoa na instância, com email único, que participa de vários tenants. Login e sessão são
 da conta; o tenant em que ela age vem de cada requisição.
