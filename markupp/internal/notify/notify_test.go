@@ -3,6 +3,7 @@ package notify_test
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"testing"
 	"time"
 
@@ -100,7 +101,7 @@ func reservaPendente(attempt int) *fakeOutbox {
 func tokenFixo() (string, error) { return "tok-novo", nil }
 
 func novoDeliverer(fila notify.Outbox, mailer notify.Mailer) *notify.Deliverer {
-	return notify.NewDeliverer(fila, mailer, "convites@markupp.dev", "", tokenFixo, func() time.Time { return agora })
+	return notify.NewDeliverer(fila, mailer, "convites@markupp.dev", "", tokenFixo, func() time.Time { return agora }, slog.New(slog.DiscardHandler))
 }
 
 func TestDeliverNext_ConvitePendente_GravaOHashEEnviaOToken(t *testing.T) {
@@ -282,7 +283,7 @@ func TestMensagens_ComPainel_LevamOTokenSoDentroDoLink(t *testing.T) {
 
 func TestDeliverNext_ComPainel_EnviaOLinkDoConvite(t *testing.T) {
 	mailer := &fakeMailer{}
-	deliverer := notify.NewDeliverer(reservaPendente(1), mailer, "convites@markupp.dev", "http://localhost:3999", tokenFixo, func() time.Time { return agora })
+	deliverer := notify.NewDeliverer(reservaPendente(1), mailer, "convites@markupp.dev", "http://localhost:3999", tokenFixo, func() time.Time { return agora }, slog.New(slog.DiscardHandler))
 
 	_, err := deliverer.DeliverNext(context.Background())
 
