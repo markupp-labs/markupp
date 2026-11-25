@@ -77,3 +77,16 @@ func TestService_Refresh_TokenAntigoSemSessao_AbreSessaoNova(t *testing.T) {
 
 	assert.NotEmpty(t, sessaoDoToken(t, repo, pair2.RefreshToken).ID)
 }
+
+func TestService_Login_TokenDeAcessoLevaASessao(t *testing.T) {
+	clock := defaultClock()
+	repo := newFakeRepository(clock)
+	svc := setupAuthService(repo, false, clock)
+
+	pair, err := svc.Register(context.Background(), "admin@markupp.dev", "senha-de-teste-longa")
+	require.NoError(t, err)
+
+	claims, err := auth.NewTokenCodec("segredo-para-testes-de-servico", 15*time.Minute, clock).ValidateToken(pair.AccessToken)
+	require.NoError(t, err)
+	assert.Equal(t, sessaoDoToken(t, repo, pair.RefreshToken).ID, claims.SessionID, "o claim sid do OIDC")
+}

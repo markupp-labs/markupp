@@ -29,7 +29,8 @@ func (f *fakeTokenValidator) ValidateToken(tokenString string) (auth.Claims, err
 func TestRequireAuth_TokenValido_InjetaContextoEProssegue(t *testing.T) {
 	validator := &fakeTokenValidator{
 		claims: auth.Claims{
-			Subject: "user-123",
+			Subject:   "user-123",
+			SessionID: "sessao-1",
 		},
 	}
 
@@ -53,6 +54,7 @@ func TestRequireAuth_TokenValido_InjetaContextoEProssegue(t *testing.T) {
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.True(t, reached)
 	assert.Equal(t, "user-123", capturedUser.UserID)
+	assert.Equal(t, "sessao-1", capturedUser.SessionID)
 	assert.Empty(t, capturedUser.TenantID, "o tenant vem do vinculo, nao do token")
 	assert.Empty(t, capturedUser.Role)
 	assert.False(t, capturedUser.FromOAuth, "token sem scope e de login")
