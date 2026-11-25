@@ -73,8 +73,8 @@ class SettingsTest < ApplicationSystemTestCase
     within("main") { click_on "Change password" }
 
     assert_current_path settings_account_path
-    assert_text "Password reset email sent to #{FakeMarkuppAccounts::DEFAULT_EMAIL}."
-    within("main") { click_on "I have a reset token" }
+    assert_text "We sent a link to #{FakeMarkuppAccounts::DEFAULT_EMAIL}."
+    within("main") { click_on "I have a reset code" }
 
     assert_current_path new_password_reset_path
   end
@@ -82,9 +82,9 @@ class SettingsTest < ApplicationSystemTestCase
   test "resetting the password from the account ends the session and asks to log in again" do
     visit settings_account_path
     within("main") { click_on "Change password" }
-    assert_text "Password reset email sent to #{FakeMarkuppAccounts::DEFAULT_EMAIL}."
-    within("main") { click_on "I have a reset token" }
-    fill_in "Token", with: @api.sent_tokens.last.fetch(:token)
+    assert_text "We sent a link to #{FakeMarkuppAccounts::DEFAULT_EMAIL}."
+    within("main") { click_on "I have a reset code" }
+    fill_in "Code", with: @api.sent_tokens.last.fetch(:token)
     fill_in "New password", with: "senha-nova-de-teste"
     fill_in "Confirm password", with: "senha-nova-de-teste"
     click_on "Reset password"

@@ -55,6 +55,6 @@ class LinkRefusalsControllerTest < ActionDispatch::IntegrationTest
     post link_refusals_path(format: :json), params: { note_ids: %w[draft plan] }
 
     assert_response :forbidden
-    assert_equal "Your role in this tenant is viewer, it can only read.", response.parsed_body["message"]
+    assert_equal "You can only view notes here.", response.parsed_body["message"]
   end
 end

@@ -4,7 +4,7 @@ pt-BR:
       continue: "Continuar com %{provider}"
     connected: "%{provider} conectado."
     errors:
-      expired: "Este login expirou ou veio de outra aba. Comece de novo."
+      expired: "O login expirou. Tente de novo."
       cancelled: "O login com %{provider} foi cancelado."
       not_linked: "Nenhuma conta usa esta identidade do %{provider} ainda. Crie uma conta com ela, ou entre e conecte nas Configurações."
       account_exists: "Este email já tem uma conta. Entre e conecte o %{provider} em Configurações > Conta."

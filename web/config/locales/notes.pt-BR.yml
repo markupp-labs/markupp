@@ -13,7 +13,7 @@ pt-BR:
       overwrite: "Sobrescrever"
       delete: "Apagar"
       confirm_delete: "Apagar %{path}? Não dá para desfazer."
-      read_only: "Só leitura: seu papel aqui é viewer."
+      read_only: "Você só pode ler esta nota."
       mode: "Visão da nota"
       modes:
         edit: "Editar"
@@ -46,5 +46,5 @@ pt-BR:
       title: "Nota não encontrada"
       hint: "Ela pode ter sido renomeada ou apagada. Escolha outra na barra lateral."
     unreachable:
-      title: "Não dá para alcançar o servidor do markupp"
+      title: "Não foi possível carregar"
       hint: "Tente de novo daqui a pouco."

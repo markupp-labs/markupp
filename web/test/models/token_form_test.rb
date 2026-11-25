@@ -16,21 +16,21 @@ class TokenFormTest < ActiveSupport::TestCase
     form = token_form(" ", "senha-nova-de-teste")
 
     assert_nil form.submit(@fake_api, ACCEPT_PATH)
-    assert_equal [ "Paste the token from the email." ], form.errors[:token]
+    assert_equal [ "Paste the code from the email." ], form.errors[:token]
   end
 
   test "submit with a token the API refuses puts the reason on the token" do
     form = token_form("tok-9", "senha-nova-de-teste")
 
     assert_nil form.submit(@fake_api, ACCEPT_PATH)
-    assert_equal [ "This token is invalid, expired or already used." ], form.errors[:token]
+    assert_equal [ "This link expired or was already used. Request a new one." ], form.errors[:token]
   end
 
   test "submit with a password the API refuses puts the rule on the password" do
     form = token_form("tok-1", "")
 
     assert_nil form.submit(@fake_api, ACCEPT_PATH)
-    assert_equal [ "Enter a password up to 72 bytes long." ], form.errors[:password]
+    assert_equal [ "This password is too long. Use a shorter one." ], form.errors[:password]
   end
 
   test "submit for an email that already has an account puts the reason on base" do
@@ -47,14 +47,14 @@ class TokenFormTest < ActiveSupport::TestCase
     form = token_form("tok-1", "senha-nova-de-teste")
 
     assert_nil form.submit(@fake_api, ACCEPT_PATH)
-    assert_equal [ "Password login is disabled on this server." ], form.errors[:base]
+    assert_equal [ "Password sign-in isn't available here." ], form.errors[:base]
   end
 
   test "submit says when the server can't send email" do
     form = token_form("tok-1", "senha-nova-de-teste")
 
     assert_nil form.submit(FakeMarkuppApi.new(email_enabled: false), "/v1/auth/password/reset")
-    assert_equal [ "This server can't send email, so password reset is off. Ask an administrator." ], form.errors[:base]
+    assert_equal [ "Password reset by email isn't available here. Ask an administrator for help." ], form.errors[:base]
   end
 
   test "submit with a confirmation that differs answers nil before the API" do

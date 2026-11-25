@@ -38,7 +38,7 @@ module Settings
       assert_select "main", text: /#{EMAIL}/
       assert_select "main h2", "Email confirmation"
       assert_select "main form[action=?][method=post] button", email_verification_path, text: "Send confirmation email"
-      assert_select "main a[href=?]", new_email_confirmation_path, text: "I have a token"
+      assert_select "main a[href=?]", new_email_confirmation_path, text: "I have a confirmation code"
     end
 
     test "show offers the password change through the reset email" do
@@ -48,9 +48,9 @@ module Settings
       get settings_account_path
 
       assert_select "main h2", "Password"
-      assert_select "main", text: /emails a token to #{EMAIL}/
+      assert_select "main", text: /email a link to #{EMAIL}/
       assert_select "main form[action=?][method=post] button", password_change_path, text: "Change password"
-      assert_select "main a[href=?]", new_password_reset_path, text: "I have a reset token"
+      assert_select "main a[href=?]", new_password_reset_path, text: "I have a reset code"
     end
 
     test "show hides change password when /auth/me says the account can't use a password" do
@@ -94,7 +94,7 @@ module Settings
 
       assert_response :success
       assert_select "main h1", "Account"
-      assert_select "nav#sidebar .sidebar-scroll p", text: "Can't reach the markupp server"
+      assert_select "nav#sidebar .sidebar-scroll p", text: "Couldn't load this"
       assert_select "nav#sidebar .sidebar-scroll a[href=?]", note_path("1"), count: 0
     end
 

@@ -71,7 +71,7 @@ func TestMensagens_ComPainel_HTMLTemBotaoEOLinkPorExtensoSemOToken(t *testing.T)
 func TestMensagens_SemPainel_HTMLMostraOTokenComORotulo(t *testing.T) {
 	msg := notify.InviteMessage(detalhesDeTeste(), "tok-123", "convites@markupp.dev", "")
 
-	assert.Contains(t, msg.HTML, "Token do convite:")
+	assert.Contains(t, msg.HTML, "Código do convite:")
 	assert.Contains(t, msg.HTML, ">tok-123<")
 	assert.Contains(t, msg.HTML, "2026-10-22 12:00 UTC")
 }

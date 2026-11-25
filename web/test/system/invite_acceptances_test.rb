@@ -6,7 +6,7 @@ class InviteAcceptancesTest < ApplicationSystemTestCase
 
     visit new_session_path
     click_on "Accept it here."
-    fill_in "Token", with: "tok-1"
+    fill_in "Code", with: "tok-1"
     fill_in "Password", with: "senha-nova-de-teste"
     fill_in "Confirm password", with: "senha-nova-de-teste"
     click_on "Create account"

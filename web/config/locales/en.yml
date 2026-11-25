@@ -9,8 +9,8 @@ en:
   markupp_api:
     errors:
       session_expired: "Your session expired. Log in again."
-      forbidden: "Your role in this tenant can't do that."
-      read_only: "Your role in this tenant is viewer, it can only read notes."
+      forbidden: "You don't have permission to do that."
+      read_only: "You can only view notes here."
       tenant_unavailable: "You no longer have access to that tenant."
       vault_unavailable: "You no longer have access to that vault."
       no_vault: "Create a vault first, then add notes to it."
@@ -29,7 +29,7 @@ en:
     new:
       title: "Log in"
       submit: "Log in"
-      invite_hint: "Got an invite token?"
+      invite_hint: "Got an invite?"
       accept_invite: "Accept it here."
       forgot_password: "Forgot password?"
       no_account: "No account yet?"
@@ -39,7 +39,7 @@ en:
   invite_acceptances:
     new:
       title: "Accept an invite"
-      hint: "Paste the token from the invite email and choose a password for your new account."
+      hint: "Choose a password to create your account."
       password: "Password"
       submit: "Create account"
       log_in: "Log in"
@@ -47,17 +47,16 @@ en:
     new:
       title: "Reset your password"
       submit: "Send"
-      token_hint: "Got the token already?"
-      have_token: "I have a token"
+      token_hint: "Already have a code?"
+      have_token: "I have a code"
     create:
-      sent: "If an account uses that email, a reset token is on its way."
+      sent: "Check your email for a link to reset your password. If it doesn't show up in a few minutes, check your spam folder."
       invalid_email: "Enter the email of your account."
-      email_unavailable: "This server can't send email. Ask an administrator to reset your password."
-      local_auth_disabled: "Password login is disabled on this server."
+      email_unavailable: "Password reset by email isn't available here. Ask an administrator for help."
+      local_auth_disabled: "Password sign-in isn't available here."
   password_resets:
     new:
       title: "Choose a new password"
-      hint: "Paste the token from the email and choose a new password."
       password: "New password"
       submit: "Reset password"
     create:
@@ -65,15 +64,15 @@ en:
       changed_signed_out: "Password changed. Log in again."
   password_changes:
     create:
-      sent: "Password reset email sent to %{email}. Use its token to choose the new password."
+      sent: "We sent a link to %{email}. Open it to choose a new password."
   email_verifications:
     create:
       sent: "Confirmation email sent. It may take a few minutes."
-      email_unavailable: "This server can't send email. Ask an administrator to confirm your email."
+      email_unavailable: "Email confirmation isn't available here. Ask an administrator for help."
   email_confirmations:
     new:
       title: "Confirm your email"
-      hint: "Paste the token from the confirmation email."
+      hint: "If the code isn't filled in, paste the one from the email."
       submit: "Confirm"
     create:
       confirmed: "Email confirmed. Pending invites now show up in your tenant list."
@@ -91,8 +90,8 @@ en:
       back_to_notes: "Back to your notes"
       back_to_login: "Go to log in"
       "400":
-        title: "Bad request"
-        hint: "The panel could not read what was sent. Go back and try again."
+        title: "Something went wrong"
+        hint: "Go back and try again."
       "404":
         title: "Nothing at %{path}"
         hint: "Check the address, or go back from here."
@@ -100,11 +99,11 @@ en:
         title: "Can't answer in that format"
         hint: "This address only answers web pages. Open it in the browser."
       "422":
-        title: "Change rejected"
-        hint: "The form may have expired. Reload the page and send it again."
+        title: "This page expired"
+        hint: "Reload and try again."
       "500":
-        title: "Something broke on the panel"
-        hint: "The error was logged. Try again in a moment."
+        title: "Something went wrong"
+        hint: "Try again in a moment."
       other:
-        title: "Request failed"
+        title: "Something went wrong"
         hint: "Go back and try again."

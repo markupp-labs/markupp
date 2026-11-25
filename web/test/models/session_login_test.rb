@@ -28,7 +28,7 @@ class SessionLoginTest < ActiveSupport::TestCase
     session_login = login(FakeMarkuppAccounts::DEFAULT_EMAIL, FakeMarkuppAccounts::DEFAULT_PASSWORD)
 
     assert_nil session_login.submit(@fake_api)
-    assert_equal [ "Password login is disabled on this server." ], session_login.errors[:base]
+    assert_equal [ "Password sign-in isn't available here." ], session_login.errors[:base]
   end
 
   private

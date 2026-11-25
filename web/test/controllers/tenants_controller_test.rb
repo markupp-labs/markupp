@@ -96,7 +96,7 @@ class TenantsControllerTest < ActionDispatch::IntegrationTest
     post tenants_path, params: { tenant: { name: "Acme research" } }
 
     assert_response :bad_gateway
-    assert_select "main", text: /Can't reach the markupp server/
+    assert_select "main", text: /Couldn't load this/
   end
 
   ACME = { id: "tenant-1", name: "Acme research", members: { FakeMarkuppAccounts::DEFAULT_EMAIL => "owner" } }.freeze
@@ -142,7 +142,7 @@ class TenantsControllerTest < ActionDispatch::IntegrationTest
     delete "/tenants/tenant-2", params: { confirm_name: "Home lab" }, headers: { "Referer" => "http://www.example.com/settings/general" }
 
     assert_redirected_to "/settings/general"
-    assert_equal "Your role in this tenant can't do that.", flash[:alert]
+    assert_equal "You don't have permission to do that.", flash[:alert]
     get tenants_path
     assert_select "main #tenant_cards > li", count: 2
   end
@@ -168,6 +168,6 @@ class TenantsControllerTest < ActionDispatch::IntegrationTest
     delete "/tenants/tenant-1"
 
     assert_response :bad_gateway
-    assert_select "main", text: /Can't reach the markupp server/
+    assert_select "main", text: /Couldn't load this/
   end
 end

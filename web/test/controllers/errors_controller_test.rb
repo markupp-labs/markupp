@@ -40,7 +40,7 @@ class ErrorsControllerTest < ActionDispatch::IntegrationTest
     as_in_production { post notes_path }
 
     assert_response :bad_request
-    assert_select "main h1", "400: Bad request"
+    assert_select "main h1", "400: Something went wrong"
   end
 
   test "a format the page does not speak answers a styled 406" do
@@ -66,7 +66,7 @@ class ErrorsControllerTest < ActionDispatch::IntegrationTest
     as_in_production { post session_path, params: { session: { email: "ana@example.com", password: "secret" } } }
 
     assert_response :unprocessable_content
-    assert_select "main h1", "422: Change rejected"
+    assert_select "main h1", "422: This page expired"
   ensure
     ActionController::Base.allow_forgery_protection = false
   end
@@ -77,7 +77,7 @@ class ErrorsControllerTest < ActionDispatch::IntegrationTest
     as_in_production { sign_in_as }
 
     assert_response :internal_server_error
-    assert_select "main h1", "500: Something broke on the panel"
+    assert_select "main h1", "500: Something went wrong"
     assert_select "main a[href=?]", new_session_path
   end
 

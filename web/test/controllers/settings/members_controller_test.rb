@@ -51,7 +51,7 @@ module Settings
       get settings_members_path
 
       assert_redirected_to root_path
-      assert_equal "Your role in this tenant can't do that.", flash[:alert]
+      assert_equal "You don't have permission to do that.", flash[:alert]
     end
 
     test "the activity bar links to the settings for every role" do
@@ -191,7 +191,7 @@ module Settings
       get settings_members_path
 
       assert_response :bad_gateway
-      assert_select "main", text: /Can't reach the markupp server/
+      assert_select "main", text: /Couldn't load this/
     end
   end
 end

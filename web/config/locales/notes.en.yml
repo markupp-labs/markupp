@@ -13,7 +13,7 @@ en:
       overwrite: "Overwrite"
       delete: "Delete"
       confirm_delete: "Delete %{path}? This cannot be undone."
-      read_only: "Read only: your role here is viewer."
+      read_only: "You can only view this note."
       mode: "Note view"
       modes:
         edit: "Edit"
@@ -46,5 +46,5 @@ en:
       title: "Note not found"
       hint: "It may have been renamed or deleted. Pick another one from the sidebar."
     unreachable:
-      title: "Can't reach the markupp server"
+      title: "Couldn't load this"
       hint: "Try again in a moment."

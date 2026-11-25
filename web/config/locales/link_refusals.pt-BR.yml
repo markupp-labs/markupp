@@ -20,7 +20,7 @@ pt-BR:
       invalid_request: "Escolha duas notas para recusar a ligação entre elas."
       same_note: "Uma nota não recusa ligação com ela mesma."
       note_outside_vault: "Uma dessas notas não está mais neste cofre."
-      read_only: "Seu papel neste tenant é viewer, que só lê."
+      read_only: "Você só pode ler as notas aqui."
       vault_unavailable: "Você não tem mais acesso a esse cofre."
   settings:
     nav:
