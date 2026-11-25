@@ -127,7 +127,7 @@ func Default() Config {
 		MaxNoteSize:              50 * 1024 * 1024,
 		AuthSecret:               "",
 		DefaultTenantID:          "default",
-		JWTExpirationMinutes:     15,
+		JWTExpirationMinutes:     5,
 		RefreshExpirationDays:    7,
 		AuthRegistrationEnabled:  false,
 		LocalAuthEnabled:         true,
