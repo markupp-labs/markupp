@@ -18,7 +18,16 @@ O login abre uma sessão, que agrupa os refresh das renovações e guarda o IP, 
 criação e o último uso. A autorização OAuth guarda o mesmo. O último uso muda no login, em cada
 renovação e em cada troca de token do MCP, nunca a cada requisição. O painel repassa o IP e o user
 agent do navegador no login e na renovação, e a API só confia neles quando o painel está em
-`MARKUPP_TRUSTED_PROXIES`, a mesma regra do limitador
+`MARKUPP_TRUSTED_PROXIES`, a mesma regra do limitador. Os clientes OAuth (MCP, CLI, plugin, apps
+de terceiros) têm a origem do pedido ao `/oauth/token`, e o servidor MCP repassa o IP do agente na
+troca, como já faz na leitura pública. O JWT leva o id da sessão no claim `sid`, só para a lista
+marcar a sessão atual
+
+A pessoa tem dois recursos, como nos grandes provedores: as sessões de login, em `/v1/me/sessions`,
+e os apps autorizados, em `/v1/me/authorizations`. O token OAuth só chega às sessões com o escopo
+admin. As rotas do administrador ficam sob `/v1/instance`, com o mesmo escopo e as mesmas
+ferramentas no MCP. A conta bloqueada recebe `account_blocked` só depois de a senha ou o provedor
+conferirem, e no OAuth o `invalid_grant` da RFC 6749
 
 O administrador lista as contas e as sessões e clientes de cada uma. Ele bloqueia uma conta, que
 deixa de entrar por qualquer método e perde as sessões e as autorizações, e as notas ficam até ele
