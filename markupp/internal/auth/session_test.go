@@ -128,8 +128,6 @@ func TestService_EndSession_EncerraEAudita(t *testing.T) {
 
 	require.NoError(t, svc.EndSession(context.Background(), "quem-pediu", sessao.UserID, sessao.ID))
 
-	_, err = svc.RefreshToken(context.Background(), pair.RefreshToken)
-	require.Error(t, err, "o refresh da sessão encerrada não renova")
 	evento := repo.auditEvents[len(repo.auditEvents)-1]
 	assert.Equal(t, "auth.session_end", evento.Action)
 	assert.Equal(t, "quem-pediu", evento.ActorID)
@@ -147,4 +145,23 @@ func TestService_EndSession_DeOutraConta_NaoAcha(t *testing.T) {
 	err = svc.EndSession(context.Background(), "outra", "outra", sessao.ID)
 
 	require.ErrorIs(t, err, auth.ErrSessionNotFound)
+}
+
+func TestService_RefreshDeSessaoEncerrada_RecusaSemDerrubarAsOutras(t *testing.T) {
+	clock := defaultClock()
+	repo := newFakeRepository(clock)
+	svc := setupAuthService(repo, false, clock)
+	ctx := context.Background()
+	encerrada, err := svc.Register(ctx, "admin@markupp.dev", "senha-de-teste-longa")
+	require.NoError(t, err)
+	outra, err := svc.LoginLocal(ctx, "admin@markupp.dev", "senha-de-teste-longa")
+	require.NoError(t, err)
+	sessao := sessaoDoToken(t, repo, encerrada.RefreshToken)
+	require.NoError(t, svc.EndSession(ctx, sessao.UserID, sessao.UserID, sessao.ID))
+
+	_, err = svc.RefreshToken(ctx, encerrada.RefreshToken)
+
+	require.ErrorIs(t, err, auth.ErrRefreshTokenRevoked)
+	_, err = svc.RefreshToken(ctx, outra.RefreshToken)
+	require.NoError(t, err, "o cliente da sessão encerrada tentar renovar não é reuso de token roubado")
 }

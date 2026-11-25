@@ -155,3 +155,15 @@ func TestSessions_EncerrarJaEncerrada_NaoAcha(t *testing.T) {
 
 	require.ErrorIs(t, err, auth.ErrSessionNotFound)
 }
+
+func TestSessions_RefreshDeSessaoEncerrada_DizQueASessaoAcabou(t *testing.T) {
+	_, repo, sessao := contaComSessao(t)
+	ctx := context.Background()
+	require.NoError(t, repo.EndUserSession(ctx, sessao.UserID, sessao.ID))
+
+	rec, err := repo.GetRefreshToken(ctx, "hash-1")
+
+	require.NoError(t, err)
+	assert.True(t, rec.Revoked)
+	assert.True(t, rec.SessionEnded)
+}
