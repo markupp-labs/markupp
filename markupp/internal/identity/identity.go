@@ -16,7 +16,9 @@ const (
 // dele lá, lidos do vínculo no banco. FromOAuth marca o token entregue pela troca
 // OAuth, que só alcança o que OAuthScopes permite; token de login tem acesso inteiro.
 type Actor struct {
-	UserID      string
+	UserID string
+	// SessionID é a sessão de login do token; vazio no token OAuth (ADR-0061).
+	SessionID   string
 	TenantID    string
 	Role        string
 	FromOAuth   bool

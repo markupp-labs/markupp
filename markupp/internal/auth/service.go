@@ -18,7 +18,7 @@ const maxPasswordLength = 72
 
 // TokenIssuer define o contrato de geração e validação de tokens para o serviço.
 type TokenIssuer interface {
-	GenerateTokenPair(userID string) (TokenPair, error)
+	GenerateTokenPair(userID, sessionID string) (TokenPair, error)
 	ValidateToken(tokenString string) (Claims, error)
 }
 
@@ -262,11 +262,11 @@ func (s *Service) issueAndPersist(ctx context.Context, user User, action string)
 
 // issueInSession emite o par na sessão sessionID; vazio abre uma sessão nova.
 func (s *Service) issueInSession(ctx context.Context, user User, action, sessionID string) (TokenPair, error) {
-	pair, err := s.tokens.GenerateTokenPair(user.ID)
+	session := s.touchSession(ctx, user.ID, sessionID)
+	pair, err := s.tokens.GenerateTokenPair(user.ID, session.ID)
 	if err != nil {
 		return TokenPair{}, fmt.Errorf("generate tokens for %q: %w", user.ID, err)
 	}
-	session := s.touchSession(ctx, user.ID, sessionID)
 	rec, event := s.buildSessionRecords(user, session, pair, action)
 	if err := s.repo.IssueSessionTx(ctx, session, rec, event); err != nil {
 		return TokenPair{}, fmt.Errorf("save session of %q: %w", user.ID, err)

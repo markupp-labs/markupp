@@ -32,7 +32,10 @@ type tokenHeader struct {
 // vínculo no banco a cada requisição, e nunca envelhecem dentro do token. Scope só
 // existe no token que a troca OAuth entrega; vazio é token de login, de acesso inteiro.
 type Claims struct {
-	Subject   string `json:"sub"`
+	Subject string `json:"sub"`
+	// SessionID é o claim sid do OIDC: a sessão de login que emitiu o token. Vazio no
+	// token da troca OAuth, que não vem de sessão de login.
+	SessionID string `json:"sid,omitempty"`
 	IssuedAt  int64  `json:"iat"`
 	ExpiresAt int64  `json:"exp"`
 	Scope     string `json:"scope,omitempty"`
@@ -61,18 +64,19 @@ func NewTokenCodec(secret string, expiration time.Duration, clock func() time.Ti
 	}
 }
 
-func (c *TokenCodec) newAccessClaims(userID string) Claims {
+func (c *TokenCodec) newAccessClaims(userID, sessionID string) Claims {
 	now := c.clock()
 	return Claims{
 		Subject:   userID,
+		SessionID: sessionID,
 		IssuedAt:  now.Unix(),
 		ExpiresAt: now.Add(c.expiration).Unix(),
 	}
 }
 
-// GenerateTokenPair gera o JWT de acesso e um refresh token aleatório.
-func (c *TokenCodec) GenerateTokenPair(userID string) (TokenPair, error) {
-	access, err := c.encodeClaims(c.newAccessClaims(userID))
+// GenerateTokenPair gera o JWT de acesso da sessão e um refresh token aleatório.
+func (c *TokenCodec) GenerateTokenPair(userID, sessionID string) (TokenPair, error) {
+	access, err := c.encodeClaims(c.newAccessClaims(userID, sessionID))
 	if err != nil {
 		return TokenPair{}, err
 	}
