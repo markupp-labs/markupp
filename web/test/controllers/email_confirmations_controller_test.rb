@@ -20,7 +20,7 @@ class EmailConfirmationsControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select "h1", "Confirm your email"
     assert_select "main form[action=?][method=post]", email_confirmation_path do
-      assert_select "label[for=email_confirmation_token]", "Token"
+      assert_select "label[for=email_confirmation_token]", "Code"
       assert_select "input[type=text][name=?][required]", "email_confirmation[token]"
       assert_select "input[type=password]", count: 0
       assert_select "button", "Confirm"
@@ -58,7 +58,7 @@ class EmailConfirmationsControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :unprocessable_content
     assert_select "input[name=?][value=tok-9][aria-invalid=true][aria-describedby=email_confirmation_token_error]", "email_confirmation[token]"
-    assert_select "#email_confirmation_token_error", "This token is invalid, expired or already used."
+    assert_select "#email_confirmation_token_error", "This link expired or was already used. Request a new one."
   end
 
   test "create for a confirmed email says it is confirmed, not an error" do
@@ -79,7 +79,7 @@ class EmailConfirmationsControllerTest < ActionDispatch::IntegrationTest
     confirm_email("tok-1")
 
     assert_response :bad_gateway
-    assert_select "main", text: /Can't reach the markupp server/
+    assert_select "main", text: /Couldn't load this/
   end
 
   private

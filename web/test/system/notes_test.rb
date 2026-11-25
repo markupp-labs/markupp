@@ -344,7 +344,7 @@ class NotesTest < ApplicationSystemTestCase
     assert_selector ".cm-content[contenteditable=false]", text: "Plan"
     find("body").send_keys([ :control, "s" ])
 
-    assert_text "Read only: your role here is viewer."
+    assert_text "You can only view this note."
     assert_no_selector "[role=alert]"
     assert_empty api.received_credentials.select { it[:call] == "PUT /v1/notes/1" }
   end

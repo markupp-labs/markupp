@@ -123,7 +123,7 @@ class NoteLinksControllerTest < ActionDispatch::IntegrationTest
     get note_links_path("plan")
 
     assert_response :bad_gateway
-    assert_select "turbo-frame#note_links", text: /Can't reach the markupp server/
+    assert_select "turbo-frame#note_links", text: /Couldn't load this/
   end
 
   test "the page of a note loads its links in a lazy frame of the links view, and the new note says to open one" do

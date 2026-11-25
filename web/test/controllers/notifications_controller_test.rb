@@ -102,7 +102,7 @@ class NotificationsControllerTest < ActionDispatch::IntegrationTest
     assert_response :bad_gateway
     assert_select "turbo-frame#notification_badge_side [aria-live=polite]", "Notifications"
     assert_select "turbo-frame#notification_badge_side a", count: 0
-    assert_select "turbo-frame#notification_list", text: /Can't reach the markupp server/
+    assert_select "turbo-frame#notification_list", text: /Couldn't load this/
   end
 
   test "a frame without a session keeps links out of the badge and leads to the login from the list" do

@@ -143,7 +143,7 @@ class MyInvitesControllerTest < ActionDispatch::IntegrationTest
     get my_invites_path, headers: { "Turbo-Frame" => "my_invites" }
 
     assert_response :bad_gateway
-    assert_select "turbo-frame#my_invites", text: /Can't reach the markupp server/
+    assert_select "turbo-frame#my_invites", text: /Couldn't load this/
   end
 
   test "accepting answers bad gateway when the API is unreachable" do
@@ -154,6 +154,6 @@ class MyInvitesControllerTest < ActionDispatch::IntegrationTest
     patch my_invite_path("invite-1")
 
     assert_response :bad_gateway
-    assert_select "main", text: /Can't reach the markupp server/
+    assert_select "main", text: /Couldn't load this/
   end
 end

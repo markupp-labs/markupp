@@ -50,7 +50,7 @@ class ErrorPagesTest < ApplicationSystemTestCase
   test "the static 500 page draws in the panel font without the app" do
     visit "/500.html"
 
-    assert_selector "main h1", text: "500: Something broke on the panel"
+    assert_selector "main h1", text: "500: Something went wrong"
     assert evaluate_async_script(FONT_LOADED_SCRIPT), "expected the Fira Code from /FiraCode-VF.woff2 to load on the static page"
   end
 

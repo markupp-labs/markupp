@@ -55,7 +55,7 @@ module Settings
 
       get settings_authorizations_path
 
-      assert_select "main", text: /No authorizations yet\. Clients such as markupp-mcp and markupp-cli show up here once you log in with them\./
+      assert_select "main", text: /No authorized apps yet\. Apps such as markupp-mcp and markupp-cli show up here once you sign in with them\./
       assert_select "#oauth_grants", count: 0
     end
 
@@ -101,7 +101,7 @@ module Settings
       get settings_authorizations_path
 
       assert_response :bad_gateway
-      assert_select "main", text: /Can't reach the markupp server/
+      assert_select "main", text: /Couldn't load this/
     end
   end
 end

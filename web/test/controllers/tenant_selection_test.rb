@@ -274,7 +274,7 @@ class TenantSelectionTest < ActionDispatch::IntegrationTest
     get tenants_path
 
     assert_response :bad_gateway
-    assert_select "main", text: /Can't reach the markupp server/
+    assert_select "main", text: /Couldn't load this/
   end
 
   private

@@ -106,7 +106,7 @@ module Settings
       get GENERAL
 
       assert_response :bad_gateway
-      assert_select "main", text: /Can't reach the markupp server/
+      assert_select "main", text: /Couldn't load this/
     end
   end
 end

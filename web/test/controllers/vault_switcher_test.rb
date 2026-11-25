@@ -106,7 +106,7 @@ class VaultSwitcherTest < ActionDispatch::IntegrationTest
     get root_path
 
     assert_response :bad_gateway
-    assert_select "main h1", "502: Can't reach the markupp server"
+    assert_select "main h1", "502: Couldn't load this"
     assert_select "#current_tenant" do
       assert_select "button[popovertarget=tenant_switcher]", text: "Acme research"
       assert_select ".text-danger", text: "Vaults unavailable"
@@ -125,7 +125,7 @@ class VaultSwitcherTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select "main h1", "Account"
     assert_select "#current_tenant .text-danger", text: "Vaults unavailable"
-    assert_select "nav#sidebar .sidebar-scroll p", text: "Can't reach the markupp server"
+    assert_select "nav#sidebar .sidebar-scroll p", text: "Couldn't load this"
     assert_select "main nav a[href=?]", settings_vault_path, count: 0
     assert_select "main nav a[href=?]", settings_general_path
   end
@@ -171,7 +171,7 @@ class VaultSwitcherTest < ActionDispatch::IntegrationTest
     post vaults_path, params: { vault: { name: "Field notes" } }
 
     assert_response :bad_gateway
-    assert_select "main h1", "502: Can't reach the markupp server"
+    assert_select "main h1", "502: Couldn't load this"
   end
 
   test "switching answers bad gateway when the API is unreachable" do
@@ -182,7 +182,7 @@ class VaultSwitcherTest < ActionDispatch::IntegrationTest
     patch current_vault_path, params: { vault_id: "vault-2" }
 
     assert_response :bad_gateway
-    assert_select "main h1", "502: Can't reach the markupp server"
+    assert_select "main h1", "502: Couldn't load this"
   end
 
   test "switching answers bad gateway when only the vault listing fails" do
@@ -203,7 +203,7 @@ class VaultSwitcherTest < ActionDispatch::IntegrationTest
     post vaults_path, params: { vault: { name: "Field notes" } }
 
     assert_redirected_to root_path
-    assert_equal "Your role in this tenant is viewer, it can only read notes.", flash[:alert]
+    assert_equal "You can only view notes here.", flash[:alert]
   end
 
   private

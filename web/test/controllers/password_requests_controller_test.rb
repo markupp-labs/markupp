@@ -2,7 +2,7 @@ require "test_helper"
 
 # Esqueci a senha: o pedido manda o token por email, e a resposta não revela se a conta existe.
 class PasswordRequestsControllerTest < ActionDispatch::IntegrationTest
-  SENT = "If an account uses that email, a reset token is on its way."
+  SENT = "Check your email for a link to reset your password. If it doesn't show up in a few minutes, check your spam folder."
 
   test "new shows the email form in the public layout with a way to the token" do
     get new_password_request_path
@@ -70,7 +70,7 @@ class PasswordRequestsControllerTest < ActionDispatch::IntegrationTest
     request_reset(FakeMarkuppAccounts::DEFAULT_EMAIL)
 
     assert_response :unprocessable_content
-    assert_select "[role=alert]", "This server can't send email. Ask an administrator to reset your password."
+    assert_select "[role=alert]", "Password reset by email isn't available here. Ask an administrator for help."
     assert_select "input[name=?][value=?]", "password_request[email]", FakeMarkuppAccounts::DEFAULT_EMAIL
   end
 
@@ -80,7 +80,7 @@ class PasswordRequestsControllerTest < ActionDispatch::IntegrationTest
     request_reset(FakeMarkuppAccounts::DEFAULT_EMAIL)
 
     assert_response :unprocessable_content
-    assert_select "[role=alert]", "Password login is disabled on this server."
+    assert_select "[role=alert]", "Password sign-in isn't available here."
   end
 
   test "create answers bad gateway when the API is unreachable" do
@@ -89,7 +89,7 @@ class PasswordRequestsControllerTest < ActionDispatch::IntegrationTest
     request_reset(FakeMarkuppAccounts::DEFAULT_EMAIL)
 
     assert_response :bad_gateway
-    assert_select "main", text: /Can't reach the markupp server/
+    assert_select "main", text: /Couldn't load this/
   end
 
   test "create stops after five requests in a minute" do

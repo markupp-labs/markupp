@@ -38,7 +38,7 @@ class EmailVerificationsControllerTest < ActionDispatch::IntegrationTest
     post email_verification_path
 
     assert_redirected_to settings_account_path
-    assert_equal "This server can't send email. Ask an administrator to confirm your email.", flash[:alert]
+    assert_equal "Email confirmation isn't available here. Ask an administrator for help.", flash[:alert]
   end
 
   test "create answers bad gateway when the API is unreachable" do
@@ -49,7 +49,7 @@ class EmailVerificationsControllerTest < ActionDispatch::IntegrationTest
     post email_verification_path
 
     assert_response :bad_gateway
-    assert_select "main", text: /Can't reach the markupp server/
+    assert_select "main", text: /Couldn't load this/
   end
 
   test "create stops after five requests in a minute" do
