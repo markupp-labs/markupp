@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/auth"
 	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/oauth"
 )
 
@@ -57,6 +58,19 @@ type fakeOAuthRepository struct {
 	savedCIMD        []savedCIMDClient
 	// dcrRegistrations guarda cada chamada a RegisterDCRClient.
 	dcrRegistrations []oauth.DCRRegistration
+	// touches guarda cada uso registrado de Autorização.
+	touches []authorizationTouch
+}
+
+type authorizationTouch struct {
+	AuthorizationID string
+	Origin          auth.Origin
+	At              time.Time
+}
+
+func (f *fakeOAuthRepository) TouchAuthorization(_ context.Context, authorizationID string, origin auth.Origin, at time.Time) error {
+	f.touches = append(f.touches, authorizationTouch{AuthorizationID: authorizationID, Origin: origin, At: at})
+	return nil
 }
 
 // freshCIMDLookup é uma chamada a GetFreshCIMDClient.
