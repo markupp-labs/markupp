@@ -35,6 +35,10 @@ type RouterDeps struct {
 	// TrustedProxies são as redes dos proxies cujo X-Forwarded-For os proxies do painel
 	// e do MCP repassam. De outra conexão, o header de entrada é descartado.
 	TrustedProxies []netip.Prefix
+	// InstanceAccounts é a gestão das contas pelo administrador da instância (ADR-0061).
+	InstanceAccounts InstanceAccountsService
+	// AccountAuthorizations lista e revoga os apps de outra conta para o administrador.
+	AccountAuthorizations AccountAuthorizationService
 	// Sessions lista e encerra as sessões de login da conta (ADR-0061). Nil desliga /me/sessions.
 	Sessions SessionService
 	// AccountRateLimiter limita as rotas de conta (ADR-0044). Nil deixa as rotas livres.
@@ -151,6 +155,10 @@ func mountV1OnlyRoutes(r chi.Router, d RouterDeps) {
 	}
 	if d.Sessions != nil {
 		mountMySessionRoutes(r, d.Sessions, d.Tokens)
+	}
+	if d.InstanceAccounts != nil && d.Auth != nil {
+		h := &instanceAccountsHandler{accounts: d.InstanceAccounts, sessions: d.Sessions, apps: d.AccountAuthorizations}
+		mountInstanceAccountRoutes(r, h, d.Auth, d.InstanceAdmins, d.Tokens)
 	}
 	if d.Registration != nil && d.Auth != nil {
 		mountRegistrationRoutes(r, d.Registration, d.Auth, d.InstanceAdmins, d.Tokens)

@@ -306,6 +306,11 @@ func newAccountEmailService(cfg config.Config, pool *pgxpool.Pool, logger *slog.
 func addInstance(deps *api.RouterDeps, cfg config.Config, pool *pgxpool.Pool, box instance.Sealer) {
 	deps.InstanceAdmins = cfg.InstanceAdmins
 	deps.InstanceEmbedding = instance.NewEmbeddingService(storage.NewAppInstanceEmbedding(pool), box)
+	deps.InstanceAccounts = auth.NewInstanceAccounts(storage.NewPostgresInstanceAccountsRepository(pool), time.Now, uuid.NewString)
+	// Sem OAuth ligado, as rotas dos apps de cada conta ficam de fora.
+	if apps, ok := deps.OAuth.(api.AccountAuthorizationService); ok {
+		deps.AccountAuthorizations = apps
+	}
 }
 
 // addPublication liga a publicação de notas, pastas e cofres e a leitura sem conta delas

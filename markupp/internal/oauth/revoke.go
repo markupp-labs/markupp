@@ -80,7 +80,13 @@ func (s *Service) ListAuthorizations(ctx context.Context, userID string) ([]Auth
 // preenche o cliente alvo do evento na transação; Autorização inexistente, revogada ou
 // de outra conta sai como ErrAuthorizationNotFound.
 func (s *Service) RevokeAuthorization(ctx context.Context, userID, authorizationID string) error {
-	event := AuditEvent{Action: AuditActionRevoke, Result: AuditResultSuccess, UserID: userID, OccurredAt: s.clock()}
+	return s.RevokeAuthorizationAs(ctx, userID, userID, authorizationID)
+}
+
+// RevokeAuthorizationAs revoga a Autorização de userID a pedido de actorID, que é a
+// própria conta ou o administrador da instância (ADR-0061), auditado como autor.
+func (s *Service) RevokeAuthorizationAs(ctx context.Context, actorID, userID, authorizationID string) error {
+	event := AuditEvent{Action: AuditActionRevoke, Result: AuditResultSuccess, UserID: actorID, OccurredAt: s.clock()}
 	if err := s.repo.RevokeAuthorization(ctx, userID, authorizationID, event); err != nil {
 		return fmt.Errorf("oauth: revoke authorization %s of account %q: %w", ClientValue(authorizationID), userID, err)
 	}

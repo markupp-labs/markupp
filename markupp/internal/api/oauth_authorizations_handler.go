@@ -45,7 +45,12 @@ func authorizationListFrom(views []oauth.AuthorizationView) []oauth.Authorizatio
 func (h *oauthHandler) revokeAuthorization(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-store")
 	actor, _ := identity.ActorFrom(r.Context())
-	err := h.svc.RevokeAuthorization(r.Context(), actor.UserID, chi.URLParam(r, "id"))
+	writeAuthorizationRevoke(w, h.svc.RevokeAuthorization(r.Context(), actor.UserID, chi.URLParam(r, "id")))
+}
+
+// writeAuthorizationRevoke responde à revogação sem distinguir Autorização inexistente,
+// já revogada ou de outra conta.
+func writeAuthorizationRevoke(w http.ResponseWriter, err error) {
 	if errors.Is(err, oauth.ErrAuthorizationNotFound) {
 		writeError(w, "authorization_not_found", "authorization not found or already revoked", http.StatusNotFound)
 		return
