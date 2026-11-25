@@ -342,6 +342,7 @@ type User struct {
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
 	EmailVerified bool
+	BlockedAt     pgtype.Timestamptz
 }
 
 type UserIdentity struct {

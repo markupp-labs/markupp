@@ -262,6 +262,9 @@ func (s *Service) issueAndPersist(ctx context.Context, user User, action string)
 
 // issueInSession emite o par na sessão sessionID; vazio abre uma sessão nova.
 func (s *Service) issueInSession(ctx context.Context, user User, action, sessionID string) (TokenPair, error) {
+	if user.Blocked {
+		return TokenPair{}, s.refuseBlocked(ctx, user, action)
+	}
 	session := s.touchSession(ctx, user.ID, sessionID)
 	pair, err := s.tokens.GenerateTokenPair(user.ID, session.ID)
 	if err != nil {
@@ -272,6 +275,17 @@ func (s *Service) issueInSession(ctx context.Context, user User, action, session
 		return TokenPair{}, fmt.Errorf("save session of %q: %w", user.ID, err)
 	}
 	return pair, nil
+}
+
+// refuseBlocked audita a tentativa da conta bloqueada, que só chega aqui depois de a
+// senha ou o provedor conferirem, e devolve ErrAccountBlocked.
+func (s *Service) refuseBlocked(ctx context.Context, user User, action string) error {
+	event := AuditEventRecord{ID: s.newID(), ActorID: user.ID, Action: action, Target: user.Email,
+		Result: "blocked", OccurredAt: s.clock()}
+	if err := s.repo.RecordAuditEvent(ctx, event); err != nil {
+		return fmt.Errorf("audit blocked %s of %q: %w", action, user.ID, err)
+	}
+	return ErrAccountBlocked
 }
 
 // touchSession monta a sessão com a origem e o horário deste pedido; a criação só vale

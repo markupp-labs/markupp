@@ -243,6 +243,15 @@ func toAuthorization(row gen.OauthAuthorization) oauth.Authorization {
 	}
 }
 
+// AccountBlocked diz se a conta está bloqueada; conta que não existe mais conta como bloqueada.
+func (r *PostgresOAuthRepository) AccountBlocked(ctx context.Context, userID string) (bool, error) {
+	blocked, err := r.q.OAuthAccountBlocked(ctx, userID)
+	if err != nil {
+		return false, fmt.Errorf("check whether account %q is blocked: %w", userID, err)
+	}
+	return blocked, nil
+}
+
 // TouchAuthorization grava a origem e o instante do último uso da Autorização.
 func (r *PostgresOAuthRepository) TouchAuthorization(ctx context.Context, authorizationID string, origin auth.Origin, at time.Time) error {
 	err := r.q.TouchOAuthAuthorization(ctx, gen.TouchOAuthAuthorizationParams{ID: authorizationID, ClientIp: origin.IP,

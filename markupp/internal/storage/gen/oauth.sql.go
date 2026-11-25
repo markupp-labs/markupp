@@ -588,6 +588,18 @@ func (q *Queries) MarkOAuthCodeReused(ctx context.Context, arg MarkOAuthCodeReus
 	return i, err
 }
 
+const oAuthAccountBlocked = `-- name: OAuthAccountBlocked :one
+SELECT COALESCE((SELECT blocked_at IS NOT NULL FROM users WHERE id = $1), TRUE)::boolean
+`
+
+// Conta que já não existe conta como bloqueada: não ganha token.
+func (q *Queries) OAuthAccountBlocked(ctx context.Context, id string) (bool, error) {
+	row := q.db.QueryRow(ctx, oAuthAccountBlocked, id)
+	var column_1 bool
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const redeemOAuthCode = `-- name: RedeemOAuthCode :one
 UPDATE oauth_requests SET code_used_at = $1::TIMESTAMPTZ
 WHERE code_hash = $2::TEXT AND code_used_at IS NULL AND code_expires_at > $1::TIMESTAMPTZ

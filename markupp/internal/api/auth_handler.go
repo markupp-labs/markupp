@@ -240,6 +240,8 @@ func (h *authHandler) handleAuthError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, auth.ErrInvalidCredentials):
 		writeError(w, "invalid_credentials", "invalid email or password", http.StatusUnauthorized)
+	case errors.Is(err, auth.ErrAccountBlocked):
+		writeError(w, "account_blocked", "this account is blocked; contact the instance administrator", http.StatusForbidden)
 	case errors.Is(err, auth.ErrInviteInvalid):
 		writeError(w, "invalid_invite", auth.ErrInviteInvalid.Error(), http.StatusBadRequest)
 	case errors.Is(err, auth.ErrUserAlreadyExists):

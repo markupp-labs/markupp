@@ -336,7 +336,8 @@ func (r *PostgresAuthRepository) GetUserByID(ctx context.Context, id string) (au
 }
 
 func toAuthUser(row gen.GetUserByIDRow) auth.User {
-	return auth.User{ID: row.ID, Email: row.Email, EmailVerified: row.EmailVerified, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}
+	return auth.User{ID: row.ID, Email: row.Email, EmailVerified: row.EmailVerified, CreatedAt: row.CreatedAt,
+		UpdatedAt: row.UpdatedAt, Blocked: row.Blocked}
 }
 
 // GetUserIdentity busca o vínculo de autenticação externa ou credencial local.

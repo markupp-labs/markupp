@@ -211,6 +211,8 @@ type Repository interface {
 	RegisterDCRClient(ctx context.Context, reg DCRRegistration) error
 	// RecordAuditEvent grava um evento avulso do authorization server.
 	RecordAuditEvent(ctx context.Context, event AuditEvent) error
+	// AccountBlocked diz se a conta foi bloqueada pelo administrador da instância.
+	AccountBlocked(ctx context.Context, userID string) (bool, error)
 	// TouchAuthorization grava a origem e o instante do último uso da Autorização.
 	TouchAuthorization(ctx context.Context, authorizationID string, origin auth.Origin, at time.Time) error
 	// RevokeAuthorization trava a Autorização, confere que ela é da conta e segue ativa

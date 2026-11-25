@@ -21,6 +21,8 @@ var (
 	ErrRefreshTokenRevoked  = errors.New("refresh token revoked")
 	ErrRefreshTokenExpired  = errors.New("refresh token expired")
 	ErrRefreshTokenInvalid  = errors.New("invalid refresh token")
+	// ErrAccountBlocked recusa credencial nova à conta bloqueada pelo administrador.
+	ErrAccountBlocked = errors.New("account blocked by the instance administrator")
 	// ErrSessionNotFound cobre sessão inexistente, já encerrada ou de outra conta.
 	ErrSessionNotFound    = errors.New("session not found")
 	ErrEmptyEmail         = errors.New("email is required")
@@ -47,6 +49,8 @@ type User struct {
 	PasswordLogin bool
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
+	// Blocked diz que o administrador da instância bloqueou a conta (ADR-0061).
+	Blocked bool
 }
 
 // Member é um usuário visto de dentro do tenant, com o papel dele lá.

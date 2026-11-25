@@ -403,7 +403,8 @@ func (q *Queries) GetRefreshToken(ctx context.Context, tokenHash string) (GetRef
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, email, email_verified, created_at, updated_at FROM users WHERE id = $1
+SELECT id, email, email_verified, created_at, updated_at, (blocked_at IS NOT NULL)::boolean AS blocked
+FROM users WHERE id = $1
 `
 
 type GetUserByIDRow struct {
@@ -412,6 +413,7 @@ type GetUserByIDRow struct {
 	EmailVerified bool
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
+	Blocked       bool
 }
 
 func (q *Queries) GetUserByID(ctx context.Context, id string) (GetUserByIDRow, error) {
@@ -423,6 +425,7 @@ func (q *Queries) GetUserByID(ctx context.Context, id string) (GetUserByIDRow, e
 		&i.EmailVerified,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Blocked,
 	)
 	return i, err
 }

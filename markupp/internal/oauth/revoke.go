@@ -102,3 +102,19 @@ func (s *Service) touchAuthorization(ctx context.Context, authorizationID string
 	}
 	return nil
 }
+
+// blockedAccountDescription é a recusa do token à conta bloqueada (ADR-0061).
+const blockedAccountDescription = "account blocked by the instance administrator; expected an active account"
+
+// checkAccountActive recusa com invalid_grant a conta bloqueada: nenhum token novo sai
+// para ela, nem pela troca do código, nem pelo refresh, nem pela troca do MCP.
+func (s *Service) checkAccountActive(ctx context.Context, userID string) error {
+	blocked, err := s.repo.AccountBlocked(ctx, userID)
+	if err != nil {
+		return fmt.Errorf("oauth: check account %q: %w", userID, err)
+	}
+	if blocked {
+		return grantError(blockedAccountDescription)
+	}
+	return nil
+}

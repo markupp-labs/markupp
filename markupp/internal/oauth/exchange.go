@@ -107,6 +107,9 @@ func exchangeable(grant TokenGrant, resource string, now time.Time) bool {
 
 // issueExchanged emite o token da API com os escopos do access token e audita a troca.
 func (s *Service) issueExchanged(ctx context.Context, grant TokenGrant, now time.Time) (ExchangeResponse, error) {
+	if err := s.checkAccountActive(ctx, grant.Authorization.UserID); err != nil {
+		return ExchangeResponse{}, err
+	}
 	token, err := s.scoped.IssueScopedToken(grant.Authorization.UserID, grant.Token.Scopes, s.cfg.ExchangeTTL)
 	if err != nil {
 		return ExchangeResponse{}, fmt.Errorf("oauth: issue exchange token for authorization %q: %w", grant.Authorization.ID, err)

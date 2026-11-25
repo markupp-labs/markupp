@@ -139,6 +139,9 @@ func narrowScopes(raw string, granted []string) ([]string, error) {
 // O access leva os escopos pedidos e o refresh mantém os do refresh consumido (RFC 6749,
 // seção 6). Uma revogação que entrou depois do consumo derruba o grant sem gravar nada.
 func (s *Service) saveRefreshed(ctx context.Context, grant TokenGrant, scopes []string, now time.Time) (TokenResponse, error) {
+	if err := s.checkAccountActive(ctx, grant.Authorization.UserID); err != nil {
+		return TokenResponse{}, err
+	}
 	base := IssuedToken{AuthorizationID: grant.Authorization.ID, Resource: grant.Token.Resource, Scopes: scopes}
 	pair, err := s.newTokenPair(base, grant.Token.Scopes, grant.Authorization.UserID, now)
 	if err != nil {
