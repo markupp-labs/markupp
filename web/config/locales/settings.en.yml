@@ -18,13 +18,13 @@ en:
         title: "Account"
         email: "Email"
         confirmation: "Email confirmation"
-        confirmation_hint: "Confirm your email to see the invites sent to it. The confirmation email brings a token."
+        confirmation_hint: "Confirm your email to see the invites sent to it."
         send: "Send confirmation email"
-        have_token: "I have a token"
+        have_token: "I have a confirmation code"
         password: "Password"
-        password_hint: "The server emails a token to %{email}; use it to choose the new password."
+        password_hint: "We'll email a link to %{email} so you can choose a new password."
         change_password: "Change password"
-        have_reset_token: "I have a reset token"
+        have_reset_token: "I have a reset code"
       identities:
         title: "Connected accounts"
         hint: "Log in with these accounts instead of a password. Disconnecting keeps at least one way to log in."
@@ -36,14 +36,14 @@ en:
         last_identity: "This is the only way left to log in to your account. Connect another one first."
     authorizations:
       index:
-        hint: "Clients you allowed to act on your account. Revoking one logs it out; the others keep working."
-        empty: "No authorizations yet. Clients such as markupp-mcp and markupp-cli show up here once you log in with them."
-        client: "Client"
+        hint: "Apps you've authorized to use your account. Revoking one disconnects only that app."
+        empty: "No authorized apps yet. Apps such as markupp-mcp and markupp-cli show up here once you sign in with them."
+        client: "App"
         authorized: "Authorized"
-        scopes: "Scopes"
+        scopes: "Permissions"
       oauth_grant:
         authorized: "Authorized"
-        scopes: "Scopes"
+        scopes: "Permissions"
         revoke: "Revoke"
         confirm_revoke: "Revoke the authorization for %{client}?"
       destroy:
@@ -66,10 +66,10 @@ en:
         styled: "Styled"
         editor_style_hint: "Plain shows the markdown at one size, like VS Code. Styled makes headings larger, like the Obsidian source mode."
         vim_keys: "Vim key bindings"
-        vim_keys_hint: "Vim key bindings give the editor the normal, insert and visual modes of Vim, with :w, :q and :e. Esc twice, then Tab, leaves the editor."
+        vim_keys_hint: "Edit with Vim modes and commands. To leave the editor, press Esc twice, then Tab."
     agents:
       mcp_missing:
-        notice: "This instance has no MCP server, so AI agents cannot connect to it yet. Ask the administrator to turn on MCP."
+        notice: "AI agents aren't available here yet. Ask an administrator to turn them on."
       show:
         title: "Agents"
         intro: "Connect an AI agent to this markupp instance over MCP. Pick your client, copy the snippet, and sign in when the client asks: the agent acts with your account and your roles."
@@ -126,8 +126,8 @@ en:
         member_not_found: "That person is no longer a member."
     invites:
       index:
-        token_hint: "This server has no email set up. Send this token to %{email} yourself; it works once and expires on %{date}."
-        token: "Invite token"
+        token_hint: "Invites aren't emailed on this instance. Send this code to %{email}; it works once, until %{date}."
+        token: "Invite code"
         send: "Send invite"
         empty: "No invites yet. Invite someone with the form above."
         email: "Email"

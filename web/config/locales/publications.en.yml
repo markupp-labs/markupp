@@ -1,7 +1,7 @@
 en:
   markupp_api:
     errors:
-      publish_forbidden: "Only the owner and the admins publish folders and vaults; a note, whoever edits it."
+      publish_forbidden: "You don't have permission to publish this."
   shortcuts:
     names:
       publish_note: "Publish the note"
@@ -29,7 +29,7 @@ en:
         one: "1 note goes public."
         other: "%{count} notes go public."
       includes_future: "Any notes added to %{name} later go public too."
-      readers: "Anyone with the link reads them, people and AI agents without an account, and can search them and follow their links."
+      readers: "Anyone with the link can read, search and browse them, no account needed."
       type_name: "Type %{name} to confirm"
       indexable: "Let search engines list it"
       publish: "Publish"
@@ -55,7 +55,7 @@ en:
     publications:
       gone: "That publication was already gone."
       index:
-        hint: "Everything here is open to anyone with the link, people and AI agents without an account. Unpublish to make it private again; its public links stop working."
+        hint: "Anyone with the link can read what is here, no account needed. Unpublish to make it private again."
         vault: "Vault"
         all_vaults: "All vaults"
         show: "Show"
