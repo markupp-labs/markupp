@@ -20,6 +20,11 @@ export type TokenExchangeConfig = {
   clock: Clock;
 };
 
+// AgentOrigin é de onde o agente chamou: o X-Forwarded-For que chegou ao servidor MCP,
+// com o salto que o Go escreveu, e o user agent dele. O Go guarda os dois na Autorização
+// (ADR-0061) e só confia no X-Forwarded-For porque a troca vem autenticada como resource.
+export type AgentOrigin = { forwardedFor?: string; userAgent?: string };
+
 // ExchangedApiToken é o JWT curto da API e o instante em que ele expira.
 export type ExchangedApiToken = { accessToken: string; expiresAtMs: number };
 
@@ -62,10 +67,11 @@ const SUCCESS_SHAPE =
 export async function exchangeAgentToken(
   config: TokenExchangeConfig,
   agentToken: string,
+  origin: AgentOrigin = {},
 ): Promise<ExchangedApiToken> {
   const response = await config.fetch(
     new URL("/oauth/token", config.apiUrl),
-    exchangeRequestInit(config, agentToken),
+    exchangeRequestInit(config, agentToken, origin),
   );
   if (!response.ok) {
     throw await exchangeRefusal(response);
@@ -76,6 +82,7 @@ export async function exchangeAgentToken(
 function exchangeRequestInit(
   config: TokenExchangeConfig,
   agentToken: string,
+  origin: AgentOrigin,
 ): RequestInit {
   return {
     method: "POST",
@@ -86,9 +93,17 @@ function exchangeRequestInit(
       ),
       "content-type": "application/x-www-form-urlencoded",
       accept: "application/json",
+      ...originHeaders(origin),
     },
     body: exchangeForm(agentToken),
   };
+}
+
+function originHeaders(origin: AgentOrigin): Record<string, string> {
+  const headers: Record<string, string> = {};
+  if (origin.forwardedFor) headers["x-forwarded-for"] = origin.forwardedFor;
+  if (origin.userAgent) headers["user-agent"] = origin.userAgent;
+  return headers;
 }
 
 function exchangeForm(agentToken: string): URLSearchParams {

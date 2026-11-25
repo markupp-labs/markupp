@@ -1,8 +1,13 @@
-import type { Clock, ExchangedApiToken } from "./token-exchange.js";
+import type {
+  AgentOrigin,
+  Clock,
+  ExchangedApiToken,
+} from "./token-exchange.js";
 
 // AgentTokenExchange troca o token do agente por um JWT da API, sem cache.
 export type AgentTokenExchange = (
   agentToken: string,
+  origin: AgentOrigin,
 ) => Promise<ExchangedApiToken>;
 
 // EXPIRY_MARGIN_MS é quanto antes do exp o JWT deixa de ser entregue, para não
@@ -28,14 +33,18 @@ export class ApiTokenCache {
     this.maxEntries = maxEntries;
   }
 
-  // apiTokenFor devolve o JWT guardado enquanto vale e troca de novo quando expira.
-  async apiTokenFor(agentToken: string): Promise<string> {
+  // apiTokenFor devolve o JWT guardado enquanto vale e troca de novo quando expira,
+  // levando a origem do agente na troca.
+  async apiTokenFor(
+    agentToken: string,
+    origin: AgentOrigin = {},
+  ): Promise<string> {
     const key = await agentTokenKey(agentToken);
     const cached = this.entries.get(key);
     if (cached && this.clock() < cached.expiresAtMs - EXPIRY_MARGIN_MS) {
       return cached.accessToken;
     }
-    const fresh = await this.exchange(agentToken);
+    const fresh = await this.exchange(agentToken, origin);
     this.store(key, fresh);
     return fresh.accessToken;
   }

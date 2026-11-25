@@ -1,7 +1,11 @@
 import type { MarkuppSession } from "../session.js";
 import type { ApiTokenCache } from "./api-token-cache.js";
 import { protectedResourceMetadataUrl } from "./protected-resource.js";
-import { isAgentTokenRefused, TokenExchangeError } from "./token-exchange.js";
+import {
+  isAgentTokenRefused,
+  TokenExchangeError,
+  type AgentOrigin,
+} from "./token-exchange.js";
 
 // AuthFailureLog é a entrada JSON de uma troca de token que falhou sem ser culpa do
 // agente; nunca leva o token do agente.
@@ -23,7 +27,13 @@ export type HttpAuthenticateConfig = {
 
 // AuthenticatedRequest é a parte do http.IncomingMessage que o authenticate lê; o
 // tsconfig não carrega os tipos do Node.
-export type AuthenticatedRequest = { headers: { authorization?: string } };
+export type AuthenticatedRequest = {
+  headers: {
+    authorization?: string;
+    "x-forwarded-for"?: string | string[];
+    "user-agent"?: string;
+  };
+};
 
 export type HttpAuthenticate = (
   request: AuthenticatedRequest,
@@ -41,9 +51,17 @@ export function createHttpAuthenticate(
     if (agentToken === undefined) {
       throw unauthorized(config.resourceUrl, false);
     }
-    await checkAgentToken(config, agentToken);
-    return { apiToken: () => renewApiToken(config, agentToken) };
+    const origin = agentOrigin(request);
+    await checkAgentToken(config, agentToken, origin);
+    return { apiToken: () => renewApiToken(config, agentToken, origin) };
   };
+}
+
+// agentOrigin junta os X-Forwarded-For repetidos como o Go lê, e o user agent do agente.
+export function agentOrigin(request: AuthenticatedRequest): AgentOrigin {
+  const header = request.headers["x-forwarded-for"];
+  const forwardedFor = Array.isArray(header) ? header.join(", ") : header;
+  return { forwardedFor, userAgent: request.headers["user-agent"] };
 }
 
 // renewApiToken entrega o JWT no meio da sessão. A recusa do token do agente segue para
@@ -51,9 +69,10 @@ export function createHttpAuthenticate(
 async function renewApiToken(
   config: HttpAuthenticateConfig,
   agentToken: string,
+  origin: AgentOrigin,
 ): Promise<string> {
   try {
-    return await config.tokens.apiTokenFor(agentToken);
+    return await config.tokens.apiTokenFor(agentToken, origin);
   } catch (error) {
     if (isAgentTokenRefused(error)) throw error;
     config.log(exchangeFailureLog(error));
@@ -71,9 +90,10 @@ export function bearerToken(header: string | undefined): string | undefined {
 async function checkAgentToken(
   config: HttpAuthenticateConfig,
   agentToken: string,
+  origin: AgentOrigin,
 ): Promise<void> {
   try {
-    await config.tokens.apiTokenFor(agentToken);
+    await config.tokens.apiTokenFor(agentToken, origin);
   } catch (error) {
     throw refusalResponse(config, error);
   }

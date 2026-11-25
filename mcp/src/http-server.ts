@@ -85,7 +85,8 @@ function apiTokenCache(
 ): ApiTokenCache {
   const exchangeConfig = { ...config, fetch: deps.fetch, clock: deps.clock };
   return new ApiTokenCache(
-    (agentToken) => exchangeAgentToken(exchangeConfig, agentToken),
+    (agentToken, origin) =>
+      exchangeAgentToken(exchangeConfig, agentToken, origin),
     deps.clock,
     API_TOKEN_CACHE_ENTRIES,
   );
