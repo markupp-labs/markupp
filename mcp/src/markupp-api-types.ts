@@ -180,3 +180,94 @@ export type LoginProviderCreation = LoginProviderChange & {
 
 // LoginProviderRemoval é a resposta do DELETE: quantas contas perderam a ligação.
 export type LoginProviderRemoval = { removed_links: number };
+
+// Session é uma sessão de login da conta (ADR-0061); current marca a de quem pede.
+export type Session = {
+  id: string;
+  ip: string;
+  user_agent: string;
+  created_at: string;
+  last_used_at: string;
+  current: boolean;
+};
+
+// AccountStatus filtra as contas da instância.
+export type AccountStatus = "active" | "blocked";
+
+// AccountQuery filtra GET /v1/instance/accounts; q é parte do email.
+export type AccountQuery = {
+  q?: string;
+  status?: AccountStatus;
+  limit?: number;
+  offset?: number;
+};
+
+// InstanceAccount é a conta como o administrador da instância a vê.
+export type InstanceAccount = {
+  id: string;
+  email: string;
+  email_verified: boolean;
+  login_methods: string[];
+  created_at: string;
+  last_access_at: string | null;
+  blocked: boolean;
+};
+
+// InstanceAccountDetail traz também os tenants que somem com a conta.
+export type InstanceAccountDetail = InstanceAccount & {
+  sole_owner_tenants: { id: string; name: string; notes: number }[];
+};
+
+// AppAuthorization é um app autorizado de uma conta, com a origem do último uso.
+export type AppAuthorization = {
+  id: string;
+  client_id: string;
+  client_name: string;
+  scopes: string[];
+  created_at: string;
+  updated_at: string;
+  ip: string;
+  user_agent: string;
+  last_used_at?: string;
+};
+
+// IpBlock é um IP ou faixa bloqueado na instância.
+export type IpBlock = {
+  id: string;
+  cidr: string;
+  note: string;
+  created_at: string;
+};
+
+export type IpBlockCreation = { cidr: string; note?: string };
+
+// AuditResult é o resultado de um evento do histórico.
+export type AuditResult = "success" | "failure" | "blocked";
+
+// AuditQuery filtra o histórico; since e until são RFC 3339, até until exclusive.
+export type AuditQuery = {
+  account?: string;
+  action?: string;
+  result?: AuditResult;
+  ip?: string;
+  since?: string;
+  until?: string;
+  limit?: number;
+  offset?: number;
+};
+
+// AuditEvent é um evento do histórico de acessos e mudanças sensíveis.
+export type AuditEvent = {
+  id: string;
+  actor_id: string;
+  actor_email: string;
+  action: string;
+  target: string;
+  result: AuditResult;
+  ip: string;
+  user_agent: string;
+  occurred_at: string;
+};
+
+// Retention é o prazo de guarda do histórico e do IP; host_locked diz que quem hospeda o fixou.
+export type Retention = { days: number; host_locked: boolean };

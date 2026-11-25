@@ -14,6 +14,10 @@ import type {
   PublishRequest,
 } from "./publication.js";
 import type { ApiTokenSource } from "./session.js";
+import {
+  instanceAccessCalls,
+  type InstanceAccessApi,
+} from "./instance-access-api.js";
 import type {
   Account,
   FoundNote,
@@ -45,7 +49,7 @@ export type * from "./markupp-api-types.js";
 
 // MarkuppApi é a fatia da API REST do markupp que as ferramentas MCP usam. tenant é o
 // id do tenant em que a chamada age; vault, quando vem, restringe a nota a esse cofre.
-export interface MarkuppApi {
+export interface MarkuppApi extends InstanceAccessApi {
   getAccount(): Promise<Account>;
   listTenants(): Promise<TenantMembership[]>;
   listNotes(tenant: string, vault?: string): Promise<NoteSummary[]>;
@@ -161,11 +165,24 @@ const MaxLimit = 100;
 const MaxOffset = 10_000;
 
 // HttpMarkuppApi fala com a API do markupp só pelas rotas /v1.
+// As chamadas da instância moram em instance-access-api.ts; a declaração abaixo junta os
+// tipos delas à classe, e o construtor as liga ao transporte dela.
+export interface HttpMarkuppApi extends InstanceAccessApi {}
+
 export class HttpMarkuppApi implements MarkuppApi {
   private readonly baseUrl: string;
 
   constructor(private readonly options: HttpMarkuppApiOptions) {
     this.baseUrl = options.baseUrl.replace(/\/+$/, "");
+    Object.assign(
+      this,
+      instanceAccessCalls({
+        json: (call) => this.json(call),
+        send: async (call) => {
+          await this.send(call);
+        },
+      }),
+    );
   }
 
   // getAccount lê a conta em /v1/auth/me, que aceita token OAuth de qualquer escopo.

@@ -32,6 +32,8 @@ import type {
   PublicationList,
   PublishRequest,
 } from "../publication.js";
+import type { InstanceAccessApi } from "../instance-access-api.js";
+import { FakeInstanceAccess } from "./fake-instance-access.js";
 import { FakeInstanceEmbedding } from "./fake-instance-embedding.js";
 import { FakeInstanceLoginProviders } from "./fake-instance-login-providers.js";
 import { FakeInvites } from "./fake-invites.js";
@@ -50,6 +52,9 @@ const DefaultVaultId = "vault-default";
 // duplicate_path, conflict, forbidden, member_not_found, invite_not_found,
 // already_member e os dos cofres, das publicações e das ligações, que FakeVaults,
 // FakePublications e FakeLinks descrevem.
+// As chamadas da instância vêm do FakeInstanceAccess, ligadas no construtor.
+export interface FakeMarkuppApi extends InstanceAccessApi {}
+
 export class FakeMarkuppApi implements MarkuppApi {
   readonly revisions: NoteRevision[] = [];
   private readonly tenants: TenantMembership[] = [];
@@ -63,6 +68,28 @@ export class FakeMarkuppApi implements MarkuppApi {
   private readonly links = new FakeLinks(() => this.tick());
   private readonly instanceEmbedding = new FakeInstanceEmbedding();
   private readonly loginProviders = new FakeInstanceLoginProviders();
+  private readonly instanceAccess = new FakeInstanceAccess();
+
+  constructor() {
+    Object.assign(this, this.instanceAccess.api());
+  }
+
+  // withSession grava uma sessão de login da conta; current marca a de quem pede.
+  withSession(id: string, current: boolean): this {
+    this.instanceAccess.seedSession(id, current);
+    return this;
+  }
+
+  // withInstanceAccount grava uma conta da instância, ativa.
+  withInstanceAccount(id: string, email: string): this {
+    this.instanceAccess.seedAccount(id, email);
+    return this;
+  }
+
+  // lastAuditQuery é o filtro da última leitura do histórico.
+  lastAuditQuery(): unknown {
+    return this.instanceAccess.lastAuditQuery;
+  }
 
   withTenant(id: string, role = "member", name = id): this {
     this.tenants.push({ id, name, role });
@@ -85,6 +112,7 @@ export class FakeMarkuppApi implements MarkuppApi {
   withInstanceAdmin(): this {
     this.instanceEmbedding.admin = true;
     this.loginProviders.admin = true;
+    this.instanceAccess.admin = true;
     return this;
   }
 
