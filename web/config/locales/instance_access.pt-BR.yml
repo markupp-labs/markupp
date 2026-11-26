@@ -1,0 +1,134 @@
+pt-BR:
+  settings:
+    nav:
+      instance_accounts: "Contas"
+      instance_access: "Acessos"
+      instance_history: "Histórico"
+    pager:
+      label: "Páginas"
+      previous: "Página anterior"
+      next: "Próxima página"
+    instance_accounts:
+      errors:
+        account_not_found: "Essa conta não existe mais."
+        cannot_target_self: "Você não pode bloquear nem apagar a própria conta."
+      index:
+        intro: "Todas as contas desta instância, da mais nova para a mais antiga. Abra uma para ver onde ela está conectada, bloquear ou apagar."
+        search: "Email"
+        search_placeholder: "Parte do email"
+        status: "Situação"
+        any: "Qualquer"
+        filter: "Filtrar"
+        empty: "Nenhuma conta encontrada."
+        email: "Email"
+        methods: "Entra com"
+        last_access: "Último acesso"
+        never: "Nunca"
+        statuses:
+          active: "Ativa"
+          blocked: "Bloqueada"
+      show:
+        back: "Todas as contas"
+        status: "Situação"
+        email_verified: "Email confirmado"
+        "yes": "Sim"
+        "no": "Não"
+        methods: "Entra com"
+        created: "Criada em"
+        last_access: "Último acesso"
+        block: "Bloquear"
+        unblock: "Desbloquear"
+        confirm_block: "Bloquear %{email}? A conta não entra por nenhum método, perde as sessões e os apps e sai em minutos. As notas ficam."
+        no_sessions: "Nenhuma sessão ativa."
+        no_authorizations: "Nenhum app autorizado."
+        danger: "Apagar conta"
+        delete_hint: "Apaga a conta de vez. Os tenants em que ela é a única owner vão junto, com cofres e notas."
+        delete: "Apagar conta"
+        confirm_delete: "Apagar %{email}? As sessões e os apps vão junto, e também %{tenants} e %{notes} em que ela é a única owner."
+        tenants:
+          one: "1 tenant"
+          other: "%{count} tenants"
+        notes:
+          one: "1 nota"
+          other: "%{count} notas"
+      update:
+        blocked: "Conta bloqueada. Ela sai em minutos."
+        unblocked: "Conta desbloqueada."
+      destroy:
+        deleted: "Conta apagada."
+    instance_access:
+      errors:
+        invalid_ip_block: "Use um IP ou uma faixa CIDR, como 198.51.100.7 ou 198.51.100.0/24."
+        blocks_own_ip: "Essa faixa inclui o seu IP, e bloquear trancaria você fora."
+        ip_block_exists: "Essa faixa já está bloqueada."
+        ip_block_not_found: "Esse bloqueio não existe mais."
+        invalid_retention: "Guarde de 1 a 3650 dias."
+        host_locked: "A configuração de quem hospeda define o prazo."
+      show:
+        ip_blocks: "IPs bloqueados"
+        ip_blocks_hint: "Os pedidos destes IPs e faixas são recusados em toda rota, menos na sonda de saúde."
+        no_ip_blocks: "Nenhum IP bloqueado."
+        cidr: "IP ou faixa"
+        note: "Nota"
+        block: "Bloquear"
+        unblock: "Desbloquear"
+        confirm_unblock: "Desbloquear %{cidr}?"
+        retention: "Prazo de guarda"
+        retention_hint: "Por quanto tempo o histórico e os IPs das sessões encerradas ficam guardados. Os mais antigos somem uma vez por dia."
+        days: "Dias"
+        save: "Salvar"
+        retention_locked:
+          one: "Guardados por 1 dia, definido por MARKUPP_ACCESS_HISTORY_RETENTION_DAYS na configuração de quem hospeda."
+          other: "Guardados por %{count} dias, definido por MARKUPP_ACCESS_HISTORY_RETENTION_DAYS na configuração de quem hospeda."
+    instance_ip_blocks:
+      create:
+        blocked: "%{cidr} bloqueado. Toda réplica recusa em segundos."
+      destroy:
+        unblocked: "Desbloqueado."
+    instance_retention:
+      update:
+        saved:
+          one: "Histórico e IPs agora ficam guardados por 1 dia."
+          other: "Histórico e IPs agora ficam guardados por %{count} dias."
+    instance_history:
+      show:
+        intro: "Logins, falhas de login e mudanças sensíveis, do mais novo para trás, com de onde vieram."
+        account: "Conta"
+        account_placeholder: "Id da conta"
+        action: "Ação"
+        result: "Resultado"
+        any: "Qualquer"
+        ip: "IP"
+        since: "De"
+        until: "Até"
+        filter: "Filtrar"
+        empty:
+          one: "Nenhum evento. O histórico guarda o último dia."
+          other: "Nenhum evento. O histórico guarda os últimos %{count} dias."
+        results:
+          success: "Deu certo"
+          failure: "Falhou"
+          blocked: "Bloqueado"
+        actions:
+          auth_login: "Login"
+          auth_register: "Conta criada"
+          auth_register_admin: "Primeira conta criada"
+          auth_accept_invite: "Conta criada por convite"
+          auth_refresh: "Sessão renovada"
+          auth_refresh_reuse: "Token de sessão reusado"
+          auth_password_reset: "Troca de senha"
+          auth_identity_link: "Provedor de login vinculado"
+          auth_identity_unlink: "Provedor de login desvinculado"
+          auth_session_end: "Sessão encerrada"
+          oauth_authorize: "App autorizado"
+          oauth_refresh: "Token de app renovado"
+          oauth_refresh_reuse: "Token de app reusado"
+          oauth_revoke: "App revogado"
+          oauth_exchange: "Token de agente trocado"
+          oauth_code_reuse: "Código de autorização reusado"
+          accounts_block: "Conta bloqueada"
+          accounts_unblock: "Conta desbloqueada"
+          accounts_delete: "Conta apagada"
+          ip_blocks_create: "IP bloqueado"
+          ip_blocks_delete: "IP desbloqueado"
+          instance_retention_update: "Prazo de guarda trocado"

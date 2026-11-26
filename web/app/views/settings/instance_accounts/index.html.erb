@@ -1,0 +1,49 @@
+<%# Contas da instância (ADR-0061): busca por parte do email e filtro de situação; cada linha leva à página da conta. Pelo
+    teclado como as outras listas: j/k entre as linhas, Enter abre. %>
+<div class="max-w-4xl">
+  <%= render "settings/section_heading", title: t("settings.nav.instance_accounts"), subtitle: false %>
+  <p class="mt-1 max-w-[65ch] text-ink-muted"><%= t(".intro") %></p>
+
+  <%= form_with url: settings_instance_accounts_path, method: :get, html: { role: "search" }, class: "mt-4 flex flex-wrap items-end gap-3" do |form| %>
+    <label class="flex flex-col">
+      <span class="text-ink-muted"><%= t(".search") %></span>
+      <%= form.search_field :q, value: params[:q], class: "input", placeholder: t(".search_placeholder") %>
+    </label>
+    <label class="flex flex-col">
+      <span class="text-ink-muted"><%= t(".status") %></span>
+      <%= form.select :status, [ [ t(".any"), "" ] ] + InstanceAccount::STATUSES.map { [ t(".statuses.#{it}"), it ] }, { selected: params[:status] }, class: "input" %>
+    </label>
+    <%= form.button t(".filter"), class: "btn", name: nil %>
+  <% end %>
+
+  <% if @accounts.empty? %>
+    <p class="mt-4 text-ink-muted"><%= t(".empty") %></p>
+  <% else %>
+    <ul id="instance_accounts" data-controller="context-menu" data-action="keydown->context-menu#navigate"
+        class="mt-4 md:grid md:grid-cols-[1fr_10rem_6rem_auto] md:gap-x-3">
+      <li aria-hidden="true" class="hidden px-2 py-1 text-ink-muted md:col-span-4 md:grid md:grid-cols-subgrid">
+        <span><%= t(".email") %></span>
+        <span><%= t(".methods") %></span>
+        <span><%= t(".last_access") %></span>
+      </li>
+      <% @accounts.each_with_index do |account, index| %>
+        <li data-account="<%= account.id %>" data-context-menu-target="item" tabindex="<%= index.zero? ? 0 : -1 %>"
+            class="border-t border-line px-2 py-2 md:col-span-4 md:grid md:grid-cols-subgrid md:items-center">
+          <%= link_to account.email, settings_instance_account_path(account.id), class: "[overflow-wrap:anywhere] underline" %>
+          <p class="text-ink-muted"><span class="md:sr-only"><%= t(".methods") %></span> <%= account.login_methods.join(", ") %></p>
+          <p class="text-ink-muted">
+            <span class="md:sr-only"><%= t(".last_access") %></span>
+            <% if account.last_access_at %>
+              <time datetime="<%= account.last_access_at.iso8601 %>" title="<%= l(account.last_access_at, format: :long) %>"><%= compact_age(account.last_access_at) %></time>
+            <% else %>
+              <%= t(".never") %>
+            <% end %>
+          </p>
+          <p class="<%= account.blocked ? "text-danger" : "text-ink-muted" %>"><%= t(".statuses.#{account.blocked ? "blocked" : "active"}") %></p>
+        </li>
+      <% end %>
+    </ul>
+  <% end %>
+  <%= render "settings/pager", offset: @offset, count: @accounts.size, page_size: InstanceAccount::PAGE_SIZE,
+             query: { q: params[:q].presence, status: params[:status].presence }.compact %>
+</div>

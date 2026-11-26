@@ -1,0 +1,84 @@
+<%# Página de uma conta (ADR-0061): situação, sessões, apps e as ações de bloquear e apagar. Apagar diz antes quantos
+    tenants e notas somem junto, os de que a conta é a única owner. %>
+<% account = @detail.account %>
+<div class="max-w-4xl">
+  <%= render "settings/section_heading", title: account.email, subtitle: false %>
+  <p class="mt-1"><%= link_to t(".back"), settings_instance_accounts_path, class: "underline" %></p>
+
+  <dl id="account_status" class="mt-4 grid grid-cols-[10rem_1fr] gap-y-1">
+    <dt class="text-ink-muted"><%= t(".status") %></dt>
+    <dd class="<%= "text-danger" if account.blocked %>"><%= t("settings.instance_accounts.index.statuses.#{account.blocked ? "blocked" : "active"}") %></dd>
+    <dt class="text-ink-muted"><%= t(".email_verified") %></dt>
+    <dd><%= account.email_verified ? t(".yes") : t(".no") %></dd>
+    <dt class="text-ink-muted"><%= t(".methods") %></dt>
+    <dd><%= account.login_methods.join(", ").presence || "?" %></dd>
+    <dt class="text-ink-muted"><%= t(".created") %></dt>
+    <dd><%= l(account.created_at.to_date, format: :long) %></dd>
+    <dt class="text-ink-muted"><%= t(".last_access") %></dt>
+    <dd><%= account.last_access_at ? l(account.last_access_at, format: :long) : t("settings.instance_accounts.index.never") %></dd>
+  </dl>
+
+  <div class="mt-4 flex flex-wrap gap-3">
+    <% if account.blocked %>
+      <%= button_to t(".unblock"), settings_instance_account_path(account.id), method: :patch, params: { account: { blocked: "0" } }, class: "btn" %>
+    <% else %>
+      <%= button_to t(".block"), settings_instance_account_path(account.id), method: :patch, params: { account: { blocked: "1" } }, class: "btn btn-danger",
+                    data: { confirm_button: t(".block"), turbo_confirm: t(".confirm_block", email: account.email) } %>
+    <% end %>
+  </div>
+
+  <h2 class="mt-6 text-base font-semibold"><%= t("settings.accounts.sessions.title") %></h2>
+  <% if @sessions.empty? %>
+    <p class="mt-2 text-ink-muted"><%= t(".no_sessions") %></p>
+  <% else %>
+    <ul id="account_sessions" data-controller="context-menu" data-action="keydown->context-menu#navigate keydown->context-menu#deleteFocused"
+        class="mt-3 md:grid md:grid-cols-[1fr_9rem_5rem_auto] md:gap-x-3">
+      <% @sessions.each_with_index do |session, index| %>
+        <% client = client_label(session.user_agent) %>
+        <li data-session="<%= session.id %>" data-context-menu-target="item" tabindex="<%= index.zero? ? 0 : -1 %>"
+            class="border-t border-line px-2 py-2 md:col-span-4 md:grid md:grid-cols-subgrid md:items-center">
+          <p title="<%= session.user_agent %>"><%= client %></p>
+          <p class="font-mono text-ink-muted"><%= session.ip.presence || "?" %></p>
+          <p class="text-ink-muted"><time datetime="<%= session.last_used_at.iso8601 %>"><%= compact_age(session.last_used_at) %></time></p>
+          <%= button_to t("settings.accounts.sessions.end"), settings_instance_account_session_path(account.id, session.id), method: :delete,
+                        class: "btn btn-danger", data: { context_menu_delete: "", confirm_button: t("settings.accounts.sessions.end"),
+                                                         turbo_confirm: t("settings.accounts.sessions.confirm_end", client:) } %>
+        </li>
+      <% end %>
+    </ul>
+  <% end %>
+
+  <h2 class="mt-6 text-base font-semibold"><%= t("settings.nav.authorizations") %></h2>
+  <% if @authorizations.empty? %>
+    <p class="mt-2 text-ink-muted"><%= t(".no_authorizations") %></p>
+  <% else %>
+    <ul id="account_authorizations" data-controller="context-menu" data-action="keydown->context-menu#navigate keydown->context-menu#deleteFocused"
+        class="mt-3 md:grid md:grid-cols-[1fr_1fr_auto] md:gap-x-3">
+      <% @authorizations.each_with_index do |grant, index| %>
+        <li data-authorization="<%= grant.id %>" data-context-menu-target="item" tabindex="<%= index.zero? ? 0 : -1 %>"
+            class="border-t border-line px-2 py-2 md:col-span-3 md:grid md:grid-cols-subgrid md:items-center">
+          <p><%= grant.client_name %></p>
+          <p class="text-ink-muted">
+            <% if grant.last_used_at %>
+              <%= t("settings.authorizations.oauth_grant.last_used", client: client_label(grant.user_agent), ip: grant.ip.presence || "?") %>
+              <time datetime="<%= grant.last_used_at.iso8601 %>"><%= compact_age(grant.last_used_at) %></time>
+            <% else %>
+              <%= t("settings.authorizations.oauth_grant.not_used") %>
+            <% end %>
+          </p>
+          <%= button_to t("settings.authorizations.oauth_grant.revoke"), settings_instance_account_authorization_path(account.id, grant.id),
+                        method: :delete, class: "btn btn-danger",
+                        data: { context_menu_delete: "", confirm_button: t("settings.authorizations.oauth_grant.revoke"),
+                                turbo_confirm: t("settings.authorizations.oauth_grant.confirm_revoke", client: grant.client_name) } %>
+        </li>
+      <% end %>
+    </ul>
+  <% end %>
+
+  <h2 class="mt-8 text-base font-semibold text-danger"><%= t(".danger") %></h2>
+  <p class="mt-2 text-ink-muted"><%= t(".delete_hint") %></p>
+  <%= button_to t(".delete"), settings_instance_account_path(account.id), method: :delete, form_class: "mt-3", class: "btn btn-danger",
+                data: { confirm_button: t(".delete"),
+                        turbo_confirm: t(".confirm_delete", email: account.email,
+                                         tenants: t(".tenants", count: @detail.sole_owner_tenants.size), notes: t(".notes", count: @detail.notes)) } %>
+</div>

@@ -47,6 +47,14 @@ class MarkuppApi
   class AuthorizationNotFound < NotFound; end
   # Sessão de login inexistente, já encerrada ou de outra conta: a API não distingue (ADR-0061).
   class SessionNotFound < NotFound; end
+  # Gestão das contas e dos acessos da instância (ADR-0061).
+  class AccountNotFound < NotFound; end
+  class CannotTargetSelf < Error; end
+  class InvalidIpBlock < InvalidRequest; end
+  class BlocksOwnIp < Error; end
+  class IpBlockExists < Error; end
+  class IpBlockNotFound < NotFound; end
+  class InvalidRetention < InvalidRequest; end
   # Cofre inexistente ou de que a conta não é membro.
   class VaultUnavailable < Forbidden; end
   # Nome de cofre vazio, com espaço nas pontas ou longo demais.
@@ -123,6 +131,9 @@ class MarkuppApi
     "email_unavailable" => EmailUnavailable, "email_already_verified" => EmailAlreadyVerified,
     "vault_forbidden" => VaultUnavailable, "request_not_found" => OAuthRequestNotFound, "authorization_not_found" => AuthorizationNotFound,
     "session_not_found" => SessionNotFound, "account_blocked" => AccountBlocked,
+    "account_not_found" => AccountNotFound, "cannot_target_self" => CannotTargetSelf, "invalid_ip_block" => InvalidIpBlock,
+    "blocks_own_ip" => BlocksOwnIp, "ip_block_exists" => IpBlockExists, "ip_block_not_found" => IpBlockNotFound,
+    "invalid_retention" => InvalidRetention,
     "invalid_name" => InvalidName, "not_tenant_member" => NotTenantMember, "already_vault_member" => AlreadyVaultMember,
     "vault_member_not_found" => VaultMemberNotFound, "no_vault" => NoVault, "registration_disabled" => RegistrationDisabled,
     "email_not_verified" => EmailNotVerified, "invite_limit_reached" => InviteLimitReached,
