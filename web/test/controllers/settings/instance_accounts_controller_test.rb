@@ -58,7 +58,7 @@ module Settings
 
       assert_select "#instance_accounts li[data-account]", count: 1
       assert_select "form[role=search] input[name=q][value=caio]"
-      assert_includes fake.instance_access.queries, "q=caio&status=blocked&limit=50&offset=0"
+      assert_includes fake.instance_access.queries, "limit=50&offset=0&q=caio&status=blocked"
     end
 
     test "a full page links to the next one" do

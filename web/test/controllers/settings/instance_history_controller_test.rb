@@ -35,7 +35,7 @@ module Settings
 
       get settings_instance_history_path(account: "u-bia", result: "failure", ip: "198.51.100.9", since: "2026-11-01")
 
-      assert_includes fake.instance_access.queries, "account=u-bia&result=failure&ip=198.51.100.9&since=2026-11-01T00%3A00%3A00Z&limit=50&offset=0"
+      assert_includes fake.instance_access.queries, "account=u-bia&ip=198.51.100.9&limit=50&offset=0&result=failure&since=2026-11-01T00%3A00%3A00Z"
       assert_select "form[role=search] select[name=result] option[selected][value=failure]"
     end
 
