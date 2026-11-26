@@ -45,10 +45,14 @@ class FakeMarkuppAccounts
     end
   end
 
-  # Rotação, como a API: o refresh usado deixa de valer e volta um par novo.
+  # Cenário: o administrador da instância bloqueia a conta (ADR-0061).
+  def block_account!(email) = find_by_email(email).store("blocked", true)
+
+  # Rotação, como a API: o refresh usado deixa de valer e volta um par novo; a conta bloqueada não renova.
   def rotate_refresh(token)
     account = @refresh_tokens.delete(token)
     raise MarkuppApi::RefreshRejected, "fake API refuses refresh token #{token.inspect}, expected one of #{@refresh_tokens.keys}" unless account
+    raise MarkuppApi::AccountBlocked, "fake API refuses the refresh of #{account["email"]}: account_blocked" if account["blocked"]
 
     issue_pair(account)
   end

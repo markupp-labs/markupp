@@ -5,7 +5,7 @@ class FakeMarkuppApi
   attr_reader :received_credentials
 
   delegate :put_requests, :post_requests, to: :@notes
-  delegate :expire_access_tokens!, :revoke_refresh_tokens!, :refresh_token_valid?, :set_instance_admin!, to: :@accounts
+  delegate :block_account!, :expire_access_tokens!, :revoke_refresh_tokens!, :refresh_token_valid?, :set_instance_admin!, to: :@accounts
   delegate :disable_local_auth!, :close_registration!, :close_password_registration!, :hold_refreshes_together!, to: :@auth
   delegate :assign_role!, :deny_notes_in!, :delete_tenant!, :receive_invite!, to: :@tenants
   delegate :sent_tokens, to: :@account_email
