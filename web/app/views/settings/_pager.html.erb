@@ -1,0 +1,11 @@
+<%# Páginas por offset, como a API: anterior quando não é a primeira, próxima quando a página veio cheia. %>
+<% if offset.positive? || count == page_size %>
+  <nav aria-label="<%= t(".label") %>" class="mt-4 flex gap-3">
+    <% if offset.positive? %>
+      <%= link_to t(".previous"), url_for(query.merge(offset: [ offset - page_size, 0 ].max)), rel: "prev", class: "underline" %>
+    <% end %>
+    <% if count == page_size %>
+      <%= link_to t(".next"), url_for(query.merge(offset: offset + page_size)), rel: "next", class: "underline" %>
+    <% end %>
+  </nav>
+<% end %>

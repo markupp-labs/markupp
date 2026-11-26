@@ -76,6 +76,9 @@ func checkResource(raw, granted string) error {
 // reuso do código ou a revogação da Autorização que entrou depois do consumo derruba o
 // grant sem gravar nada.
 func (s *Service) issueTokens(ctx context.Context, redeemed RedeemedCode, now time.Time) (TokenResponse, error) {
+	if err := s.checkAccountActive(ctx, redeemed.Authorization.UserID); err != nil {
+		return TokenResponse{}, err
+	}
 	base := IssuedToken{AuthorizationID: redeemed.Authorization.ID, Resource: redeemed.Request.Resource, Scopes: redeemed.Request.Scopes}
 	pair, err := s.newTokenPair(base, base.Scopes, redeemed.Authorization.UserID, now)
 	if err != nil {
@@ -84,7 +87,7 @@ func (s *Service) issueTokens(ctx context.Context, redeemed RedeemedCode, now ti
 	err = s.repo.SaveCodeTokens(ctx, redeemed.Request.ID, pair.tokens)
 	switch {
 	case err == nil:
-		return pair.response, nil
+		return pair.response, s.touchAuthorization(ctx, redeemed.Authorization.ID, now)
 	case errors.Is(err, ErrCodeAlreadyUsed):
 		return TokenResponse{}, grantError(reusedCodeDescription)
 	case errors.Is(err, ErrAuthorizationNotFound):

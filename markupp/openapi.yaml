@@ -18,6 +18,9 @@ info:
     seguem as RFCs, com um desvio intencional da RFC 7009 (ADR-0046): /oauth/revoke
     responde 200 sem revogar nada quando o token é de outro cliente, em vez de recusar o
     pedido, para não revelar a quem o token pertence.
+
+    Pedido de IP ou faixa bloqueada pelo administrador da instância responde 403
+    ip_blocked em qualquer rota, menos /v1/healthz (ADR-0061).
   version: 0.1.0
 servers:
   - url: http://localhost:8080/v1
@@ -302,7 +305,10 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '403':
-          description: Credencial local desligada na configuração (local_auth_disabled)
+          description: >-
+            Credencial local desligada na configuração (local_auth_disabled), ou conta
+            bloqueada pelo administrador da instância, só depois de a senha conferir
+            (account_blocked)
           content:
             application/json:
               schema:
@@ -313,8 +319,9 @@ paths:
     post:
       summary: Troca o refresh token por um novo par
       description: >
-        O refresh token é de uso único. Reapresentar um token já usado revoga todas as
-        sessões do usuário.
+        O refresh token é de uso único e continua a mesma sessão (ADR-0061). Reapresentar
+        um token já usado revoga todas as sessões do usuário; o token de uma sessão
+        encerrada só é recusado.
       security: []
       requestBody:
         required: true
@@ -331,6 +338,12 @@ paths:
                 $ref: '#/components/schemas/TokenPairResponse'
         '401':
           description: Refresh token inválido, expirado ou revogado (invalid_refresh_token)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Conta bloqueada pelo administrador da instância (account_blocked)
           content:
             application/json:
               schema:
@@ -874,6 +887,47 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/OAuthAuthorizationNotFound'
+  /me/sessions:
+    get:
+      summary: Lista as sessões de login ativas da conta
+      description: >
+        Sessão é o login que as renovações continuam, com o IP e o user agent do último uso
+        (ADR-0061). current marca a sessão do token de quem pede. O token OAuth só chega
+        com o escopo administracao.
+      responses:
+        '200':
+          description: Sessões ativas, do último uso para trás
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum: [no-store]
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SessionResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /me/sessions/{id}:
+    delete:
+      summary: Encerra uma sessão da conta
+      description: >
+        Encerra a sessão e revoga os refresh dela. O JWT já emitido vale até expirar.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Sessão encerrada
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/SessionNotFound'
   /oauth/requests/{id}:
     get:
       summary: Descreve um pedido de autorização OAuth para a tela de consentimento
@@ -2803,8 +2857,392 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /instance/accounts:
+    get:
+      summary: Lista as contas da instância
+      description: Só o administrador da instância (ADR-0061). Da conta criada mais recentemente para trás.
+      parameters:
+        - name: q
+          in: query
+          description: Parte do email, sem diferenciar maiúsculas
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [active, blocked]
+        - $ref: '#/components/parameters/AdminListOffset'
+        - $ref: '#/components/parameters/AdminListLimit'
+      responses:
+        '200':
+          description: Contas da página
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AccountSummaryResponse'
+        '400':
+          description: Filtro ou paginação inválidos (invalid_request)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/InstanceAdminRequired'
+  /instance/accounts/{id}:
+    parameters:
+      - $ref: '#/components/parameters/AccountID'
+    get:
+      summary: Descreve uma conta da instância
+      description: Traz também os tenants que somem se a conta for apagada.
+      responses:
+        '200':
+          description: Conta
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountDetailResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/InstanceAdminRequired'
+        '404':
+          $ref: '#/components/responses/AccountNotFound'
+    patch:
+      summary: Bloqueia ou desbloqueia a conta
+      description: >-
+        Bloquear encerra as sessões e revoga os apps autorizados; a conta não ganha
+        credencial nova por nenhum método, e o JWT já emitido vale até expirar. As notas
+        ficam. O administrador não bloqueia a própria conta.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AccountPatchRequest'
+      responses:
+        '200':
+          description: Conta como ficou
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountDetailResponse'
+        '400':
+          description: Corpo sem blocked (invalid_request)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/InstanceAdminRequired'
+        '404':
+          $ref: '#/components/responses/AccountNotFound'
+        '409':
+          $ref: '#/components/responses/CannotTargetSelf'
+    delete:
+      summary: Apaga a conta
+      description: >-
+        Apaga a conta e os tenants em que ela é a única owner, com cofres e notas; nos outros
+        tenants ela só sai. O administrador não apaga a própria conta.
+      responses:
+        '204':
+          description: Conta apagada
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/InstanceAdminRequired'
+        '404':
+          $ref: '#/components/responses/AccountNotFound'
+        '409':
+          $ref: '#/components/responses/CannotTargetSelf'
+  /instance/accounts/{id}/sessions:
+    get:
+      summary: Lista as sessões ativas de uma conta
+      description: current é sempre falso, porque a sessão do administrador é outra.
+      parameters:
+        - $ref: '#/components/parameters/AccountID'
+      responses:
+        '200':
+          description: Sessões ativas, do último uso para trás
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SessionResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/InstanceAdminRequired'
+  /instance/accounts/{id}/sessions/{session_id}:
+    delete:
+      summary: Encerra uma sessão de uma conta
+      parameters:
+        - $ref: '#/components/parameters/AccountID'
+        - name: session_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Sessão encerrada
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/InstanceAdminRequired'
+        '404':
+          $ref: '#/components/responses/SessionNotFound'
+  /instance/accounts/{id}/authorizations:
+    get:
+      summary: Lista os apps autorizados de uma conta
+      parameters:
+        - $ref: '#/components/parameters/AccountID'
+      responses:
+        '200':
+          description: Autorizações ativas
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/OAuthAuthorizationResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/InstanceAdminRequired'
+  /instance/accounts/{id}/authorizations/{authorization_id}:
+    delete:
+      summary: Revoga um app autorizado de uma conta
+      description: A revogação fica no histórico com o administrador como autor.
+      parameters:
+        - $ref: '#/components/parameters/AccountID'
+        - name: authorization_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Autorização revogada
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/InstanceAdminRequired'
+        '404':
+          $ref: '#/components/responses/OAuthAuthorizationNotFound'
+  /instance/ip-blocks:
+    get:
+      summary: Lista os IPs e faixas bloqueados
+      description: >-
+        Só o administrador da instância (ADR-0061). Cada réplica da API vê a mudança em
+        alguns segundos.
+      responses:
+        '200':
+          description: Bloqueios na ordem de criação
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/IPBlockResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/InstanceAdminRequired'
+    post:
+      summary: Bloqueia um IP ou uma faixa
+      description: >-
+        IP solto vira a faixa de um endereço, e a faixa é normalizada. A faixa que pega o IP
+        de quem pede é recusada.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IPBlockRequest'
+      responses:
+        '201':
+          description: Bloqueio criado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IPBlockResponse'
+        '400':
+          description: Nem IP nem CIDR (invalid_ip_block)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/InstanceAdminRequired'
+        '409':
+          description: Faixa já bloqueada (ip_block_exists) ou com o IP de quem pede (blocks_own_ip)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /instance/ip-blocks/{id}:
+    delete:
+      summary: Desbloqueia um IP ou uma faixa
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Bloqueio removido
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/InstanceAdminRequired'
+        '404':
+          description: Bloqueio inexistente (ip_block_not_found)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /instance/audit-events:
+    get:
+      summary: Lê o histórico de acessos e de mudanças sensíveis
+      description: >-
+        Só o administrador da instância (ADR-0061). Do evento mais novo para trás. O
+        histórico some depois do prazo de guarda.
+      parameters:
+        - name: account
+          in: query
+          description: Id da conta autora
+          schema:
+            type: string
+        - name: action
+          in: query
+          example: auth.login
+          schema:
+            type: string
+        - name: result
+          in: query
+          schema:
+            type: string
+            enum: [success, failure, blocked]
+        - name: ip
+          in: query
+          schema:
+            type: string
+        - name: since
+          in: query
+          description: Início do período, inclusive
+          schema:
+            type: string
+            format: date-time
+        - name: until
+          in: query
+          description: Fim do período, exclusive
+          schema:
+            type: string
+            format: date-time
+        - $ref: '#/components/parameters/AdminListOffset'
+        - $ref: '#/components/parameters/AdminListLimit'
+      responses:
+        '200':
+          description: Eventos da página
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AuditEventResponse'
+        '400':
+          description: Filtro, período ou paginação inválidos (invalid_request)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/InstanceAdminRequired'
+  /instance/retention:
+    get:
+      summary: Lê o prazo de guarda do histórico e do IP
+      description: >-
+        Só o administrador da instância (ADR-0061). Com MARKUPP_ACCESS_HISTORY_RETENTION_DAYS
+        definida, vale a variável e o prazo fica travado. Sem escolha, 365 dias.
+      responses:
+        '200':
+          description: Prazo vigente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RetentionResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/InstanceAdminRequired'
+    put:
+      summary: Troca o prazo de guarda
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RetentionRequest'
+      responses:
+        '200':
+          description: Prazo gravado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RetentionResponse'
+        '400':
+          description: Fora de 1 a 3650 dias (invalid_retention) ou sem days (invalid_request)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/InstanceAdminRequired'
+        '409':
+          description: Prazo fixado por quem hospeda (host_locked)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 components:
   parameters:
+    AccountID:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+    AdminListOffset:
+      name: offset
+      in: query
+      schema:
+        type: integer
+        minimum: 0
+        maximum: 10000
+        default: 0
+    AdminListLimit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 200
+        default: 50
     PageOffset:
       name: offset
       in: query
@@ -3035,6 +3473,24 @@ components:
         type: string
         enum: [gzip]
   responses:
+    AccountNotFound:
+      description: Conta inexistente (account_not_found)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    CannotTargetSelf:
+      description: O administrador pediu isso para a própria conta (cannot_target_self)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    SessionNotFound:
+      description: Sessão inexistente, já encerrada ou de outra conta (session_not_found)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
     InstanceAdminRequired:
       description: Conta fora da lista de administradores da instância ou de email não verificado (instance_admin_required)
       content:
@@ -3044,8 +3500,9 @@ components:
     ExternalLoginRefused:
       description: >
         Provedor fora da configuração (unknown_login_provider, 400), código, verifier ou nonce
-        recusados pelo provedor ou pela validação (login_rejected, 401) ou, no login, nenhuma
-        conta com a identidade (identity_not_linked, 401)
+        recusados pelo provedor ou pela validação (login_rejected, 401), no login, nenhuma
+        conta com a identidade (identity_not_linked, 401), ou conta bloqueada pelo
+        administrador da instância (account_blocked, 403)
       content:
         application/json:
           schema:
@@ -3232,6 +3689,141 @@ components:
         updated_at:
           type: string
           format: date-time
+        ip:
+          type: string
+          description: IP do último uso no /oauth/token ou na troca do MCP
+        user_agent:
+          type: string
+        last_used_at:
+          type: string
+          format: date-time
+          description: Ausente sem uso registrado
+    SessionResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        ip:
+          type: string
+        user_agent:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        last_used_at:
+          type: string
+          format: date-time
+        current:
+          type: boolean
+          description: A sessão do token de quem pede
+    AccountSummaryResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+        email_verified:
+          type: boolean
+        login_methods:
+          type: array
+          description: local para senha e o id de cada provedor externo
+          items:
+            type: string
+        created_at:
+          type: string
+          format: date-time
+        last_access_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Último uso de sessão ou de app autorizado
+        blocked:
+          type: boolean
+    AccountDetailResponse:
+      allOf:
+        - $ref: '#/components/schemas/AccountSummaryResponse'
+        - type: object
+          properties:
+            sole_owner_tenants:
+              type: array
+              description: Tenants que somem com a conta, por ela ser a única owner
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  name:
+                    type: string
+                  notes:
+                    type: integer
+    AccountPatchRequest:
+      type: object
+      required: [blocked]
+      properties:
+        blocked:
+          type: boolean
+    IPBlockRequest:
+      type: object
+      required: [cidr]
+      properties:
+        cidr:
+          type: string
+          example: 198.51.100.0/24
+        note:
+          type: string
+    IPBlockResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        cidr:
+          type: string
+        note:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+    AuditEventResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        actor_id:
+          type: string
+          description: Vazio quando não há conta, como na falha de login de email sem conta
+        actor_email:
+          type: string
+        action:
+          type: string
+          example: auth.login
+        target:
+          type: string
+        result:
+          type: string
+          enum: [success, failure, blocked]
+        ip:
+          type: string
+        user_agent:
+          type: string
+        occurred_at:
+          type: string
+          format: date-time
+    RetentionResponse:
+      type: object
+      properties:
+        days:
+          type: integer
+        host_locked:
+          type: boolean
+    RetentionRequest:
+      type: object
+      required: [days]
+      properties:
+        days:
+          type: integer
+          minimum: 1
+          maximum: 3650
     OAuthRequestResponse:
       type: object
       properties:

@@ -514,3 +514,26 @@ func TestAuthHandler_CriarTenant_NomeInvalido_Retorna400(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, rec.Code)
 	assert.Contains(t, rec.Body.String(), "invalid_request")
 }
+
+func TestAuthHandler_ContaBloqueada_Retorna403AccountBlocked(t *testing.T) {
+	casos := map[string]struct {
+		svc  *fakeAuthService
+		path string
+		body string
+	}{
+		"login":   {&fakeAuthService{loginErr: auth.ErrAccountBlocked}, "/v1/auth/login", `{"email":"a@markupp.dev","password":"senha-de-teste-longa"}`},
+		"refresh": {&fakeAuthService{refreshErr: auth.ErrAccountBlocked}, "/v1/auth/refresh", `{"refresh_token":"r"}`},
+	}
+	for nome, c := range casos {
+		t.Run(nome, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodPost, c.path, bytes.NewBufferString(c.body))
+			req.Header.Set("Content-Type", "application/json")
+			rec := httptest.NewRecorder()
+
+			setupAuthRouter(c.svc, nil).ServeHTTP(rec, req)
+
+			assert.Equal(t, http.StatusForbidden, rec.Code)
+			assert.Contains(t, rec.Body.String(), `"error":"account_blocked"`)
+		})
+	}
+}

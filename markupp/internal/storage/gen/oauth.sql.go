@@ -229,7 +229,7 @@ func (q *Queries) DenyOAuthRequest(ctx context.Context, arg DenyOAuthRequestPara
 }
 
 const getActiveOAuthAuthorization = `-- name: GetActiveOAuthAuthorization :one
-SELECT id, user_id, client_id, scopes, created_at, updated_at, revoked_at FROM oauth_authorizations WHERE user_id = $1 AND client_id = $2 AND revoked_at IS NULL
+SELECT id, user_id, client_id, scopes, created_at, updated_at, revoked_at, client_ip, user_agent, last_used_at FROM oauth_authorizations WHERE user_id = $1 AND client_id = $2 AND revoked_at IS NULL
 `
 
 type GetActiveOAuthAuthorizationParams struct {
@@ -248,12 +248,15 @@ func (q *Queries) GetActiveOAuthAuthorization(ctx context.Context, arg GetActive
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.RevokedAt,
+		&i.ClientIp,
+		&i.UserAgent,
+		&i.LastUsedAt,
 	)
 	return i, err
 }
 
 const getActiveOAuthAuthorizationByID = `-- name: GetActiveOAuthAuthorizationByID :one
-SELECT id, user_id, client_id, scopes, created_at, updated_at, revoked_at FROM oauth_authorizations WHERE id = $1 AND revoked_at IS NULL
+SELECT id, user_id, client_id, scopes, created_at, updated_at, revoked_at, client_ip, user_agent, last_used_at FROM oauth_authorizations WHERE id = $1 AND revoked_at IS NULL
 `
 
 func (q *Queries) GetActiveOAuthAuthorizationByID(ctx context.Context, id string) (OauthAuthorization, error) {
@@ -267,6 +270,9 @@ func (q *Queries) GetActiveOAuthAuthorizationByID(ctx context.Context, id string
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.RevokedAt,
+		&i.ClientIp,
+		&i.UserAgent,
+		&i.LastUsedAt,
 	)
 	return i, err
 }
@@ -327,7 +333,7 @@ func (q *Queries) GetOAuthClient(ctx context.Context, arg GetOAuthClientParams) 
 }
 
 const getOAuthTokenWithAuthorization = `-- name: GetOAuthTokenWithAuthorization :one
-SELECT oauth_tokens.token_hash, oauth_tokens.authorization_id, oauth_tokens.kind, oauth_tokens.resource, oauth_tokens.scopes, oauth_tokens.expires_at, oauth_tokens.revoked, oauth_tokens.rotated_at, oauth_tokens.created_at, oauth_authorizations.id, oauth_authorizations.user_id, oauth_authorizations.client_id, oauth_authorizations.scopes, oauth_authorizations.created_at, oauth_authorizations.updated_at, oauth_authorizations.revoked_at
+SELECT oauth_tokens.token_hash, oauth_tokens.authorization_id, oauth_tokens.kind, oauth_tokens.resource, oauth_tokens.scopes, oauth_tokens.expires_at, oauth_tokens.revoked, oauth_tokens.rotated_at, oauth_tokens.created_at, oauth_authorizations.id, oauth_authorizations.user_id, oauth_authorizations.client_id, oauth_authorizations.scopes, oauth_authorizations.created_at, oauth_authorizations.updated_at, oauth_authorizations.revoked_at, oauth_authorizations.client_ip, oauth_authorizations.user_agent, oauth_authorizations.last_used_at
 FROM oauth_tokens JOIN oauth_authorizations ON oauth_authorizations.id = oauth_tokens.authorization_id
 WHERE oauth_tokens.token_hash = $1
 `
@@ -358,6 +364,9 @@ func (q *Queries) GetOAuthTokenWithAuthorization(ctx context.Context, tokenHash 
 		&i.OauthAuthorization.CreatedAt,
 		&i.OauthAuthorization.UpdatedAt,
 		&i.OauthAuthorization.RevokedAt,
+		&i.OauthAuthorization.ClientIp,
+		&i.OauthAuthorization.UserAgent,
+		&i.OauthAuthorization.LastUsedAt,
 	)
 	return i, err
 }
@@ -462,7 +471,7 @@ func (q *Queries) IsUnrevokedOAuthToken(ctx context.Context, arg IsUnrevokedOAut
 }
 
 const listActiveOAuthAuthorizations = `-- name: ListActiveOAuthAuthorizations :many
-SELECT oauth_authorizations.id, oauth_authorizations.user_id, oauth_authorizations.client_id, oauth_authorizations.scopes, oauth_authorizations.created_at, oauth_authorizations.updated_at, oauth_authorizations.revoked_at, oauth_clients.name AS client_name
+SELECT oauth_authorizations.id, oauth_authorizations.user_id, oauth_authorizations.client_id, oauth_authorizations.scopes, oauth_authorizations.created_at, oauth_authorizations.updated_at, oauth_authorizations.revoked_at, oauth_authorizations.client_ip, oauth_authorizations.user_agent, oauth_authorizations.last_used_at, oauth_clients.name AS client_name
 FROM oauth_authorizations JOIN oauth_clients ON oauth_clients.id = oauth_authorizations.client_id
 WHERE oauth_authorizations.user_id = $1 AND oauth_authorizations.revoked_at IS NULL
 ORDER BY oauth_authorizations.updated_at DESC
@@ -490,6 +499,9 @@ func (q *Queries) ListActiveOAuthAuthorizations(ctx context.Context, userID stri
 			&i.OauthAuthorization.CreatedAt,
 			&i.OauthAuthorization.UpdatedAt,
 			&i.OauthAuthorization.RevokedAt,
+			&i.OauthAuthorization.ClientIp,
+			&i.OauthAuthorization.UserAgent,
+			&i.OauthAuthorization.LastUsedAt,
 			&i.ClientName,
 		); err != nil {
 			return nil, err
@@ -514,7 +526,7 @@ func (q *Queries) LockDCRRegistrations(ctx context.Context) error {
 }
 
 const lockOAuthAuthorization = `-- name: LockOAuthAuthorization :one
-SELECT id, user_id, client_id, scopes, created_at, updated_at, revoked_at FROM oauth_authorizations WHERE id = $1 FOR UPDATE
+SELECT id, user_id, client_id, scopes, created_at, updated_at, revoked_at, client_ip, user_agent, last_used_at FROM oauth_authorizations WHERE id = $1 FOR UPDATE
 `
 
 // Trava a Autorização, revogada ou não, para serializar a gravação do par rotacionado
@@ -530,6 +542,9 @@ func (q *Queries) LockOAuthAuthorization(ctx context.Context, id string) (OauthA
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.RevokedAt,
+		&i.ClientIp,
+		&i.UserAgent,
+		&i.LastUsedAt,
 	)
 	return i, err
 }
@@ -571,6 +586,18 @@ func (q *Queries) MarkOAuthCodeReused(ctx context.Context, arg MarkOAuthCodeReus
 		&i.CodeReusedAt,
 	)
 	return i, err
+}
+
+const oAuthAccountBlocked = `-- name: OAuthAccountBlocked :one
+SELECT COALESCE((SELECT blocked_at IS NOT NULL FROM users WHERE id = $1), TRUE)::boolean
+`
+
+// Conta que já não existe conta como bloqueada: não ganha token.
+func (q *Queries) OAuthAccountBlocked(ctx context.Context, id string) (bool, error) {
+	row := q.db.QueryRow(ctx, oAuthAccountBlocked, id)
+	var column_1 bool
+	err := row.Scan(&column_1)
+	return column_1, err
 }
 
 const redeemOAuthCode = `-- name: RedeemOAuthCode :one
@@ -687,6 +714,29 @@ WHERE r.id = $1 AND c.source = 'dcr'
 // cliente e, em cascata, a Autorização ainda não commitada.
 func (q *Queries) ShareDCRRegistrationLockForRequest(ctx context.Context, id string) error {
 	_, err := q.db.Exec(ctx, shareDCRRegistrationLockForRequest, id)
+	return err
+}
+
+const touchOAuthAuthorization = `-- name: TouchOAuthAuthorization :exec
+UPDATE oauth_authorizations
+SET client_ip = $2, user_agent = $3, last_used_at = $4
+WHERE id = $1
+`
+
+type TouchOAuthAuthorizationParams struct {
+	ID         string
+	ClientIp   string
+	UserAgent  string
+	LastUsedAt pgtype.Timestamptz
+}
+
+func (q *Queries) TouchOAuthAuthorization(ctx context.Context, arg TouchOAuthAuthorizationParams) error {
+	_, err := q.db.Exec(ctx, touchOAuthAuthorization,
+		arg.ID,
+		arg.ClientIp,
+		arg.UserAgent,
+		arg.LastUsedAt,
+	)
 	return err
 }
 

@@ -6,7 +6,8 @@ INSERT INTO users (id, email, email_verified, created_at, updated_at)
 VALUES ($1, $2, $3, $4, $5);
 
 -- name: GetUserByID :one
-SELECT id, email, email_verified, created_at, updated_at FROM users WHERE id = $1;
+SELECT id, email, email_verified, created_at, updated_at, (blocked_at IS NOT NULL)::boolean AS blocked
+FROM users WHERE id = $1;
 
 -- name: CreateUserIdentity :exec
 INSERT INTO user_identities (id, user_id, provider, provider_user_id, password_hash, created_at)
@@ -45,33 +46,53 @@ INSERT INTO vault_members (vault_id, user_id, created_at)
 VALUES ($1, $2, $3);
 
 -- name: SaveRefreshToken :exec
-INSERT INTO refresh_tokens (token_hash, user_id, expires_at, revoked, created_at)
-VALUES ($1, $2, $3, $4, $5);
+INSERT INTO refresh_tokens (token_hash, user_id, session_id, expires_at, revoked, created_at)
+VALUES ($1, $2, $3, $4, $5, $6);
+
+-- name: UpsertUserSession :exec
+-- A renovação atualiza a origem e o último uso; a criação fica a do login.
+INSERT INTO user_sessions (id, user_id, client_ip, user_agent, created_at, last_used_at)
+VALUES ($1, $2, $3, $4, $5, $6)
+ON CONFLICT (id) DO UPDATE
+SET client_ip = EXCLUDED.client_ip, user_agent = EXCLUDED.user_agent, last_used_at = EXCLUDED.last_used_at;
 
 -- name: GetRefreshToken :one
-SELECT token_hash, user_id, expires_at, revoked, created_at
-FROM refresh_tokens
-WHERE token_hash = $1;
+SELECT r.token_hash, r.user_id, r.session_id, r.expires_at, r.revoked, r.created_at,
+       (s.ended_at IS NOT NULL)::boolean AS session_ended
+FROM refresh_tokens r
+LEFT JOIN user_sessions s ON s.id = r.session_id
+WHERE r.token_hash = $1;
 
 -- name: ConsumeRefreshToken :one
 UPDATE refresh_tokens
 SET revoked = TRUE
 WHERE token_hash = $1 AND revoked = FALSE AND expires_at > now()
-RETURNING user_id;
+RETURNING user_id, session_id;
 
 -- name: RevokeRefreshToken :execrows
-UPDATE refresh_tokens
+-- Encerra a sessão do token e revoga todos os refresh dela; token sem sessão cai sozinho.
+WITH target AS (
+    SELECT session_id FROM refresh_tokens WHERE token_hash = $1 AND revoked = FALSE
+), ended AS (
+    UPDATE user_sessions SET ended_at = now()
+    WHERE id = (SELECT session_id FROM target) AND ended_at IS NULL
+)
+UPDATE refresh_tokens r
 SET revoked = TRUE
-WHERE token_hash = $1 AND revoked = FALSE;
+WHERE r.revoked = FALSE
+  AND (r.token_hash = $1 OR r.session_id = (SELECT session_id FROM target));
 
 -- name: RevokeAllUserRefreshTokens :exec
-UPDATE refresh_tokens
+WITH ended AS (
+    UPDATE user_sessions s SET ended_at = now() WHERE s.user_id = $1 AND s.ended_at IS NULL
+)
+UPDATE refresh_tokens r
 SET revoked = TRUE
-WHERE user_id = $1;
+WHERE r.user_id = $1;
 
 -- name: CreateAuditEvent :exec
-INSERT INTO audit_events (id, tenant_id, actor_id, action, target, result, occurred_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7);
+INSERT INTO audit_events (id, tenant_id, actor_id, action, target, result, occurred_at, client_ip, user_agent)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9);
 
 -- Só roda para o primeiro admin, quando os únicos cofres são os da migração das notas
 -- da rc.1: move todos para o tenant dele, e o ON UPDATE CASCADE leva as notas junto.

@@ -26,7 +26,7 @@ class AuthenticateHarness {
       resourceUrl,
     });
     const tokens = new ApiTokenCache(
-      (t) => exchangeAgentToken(config, t),
+      (t, origin) => exchangeAgentToken(config, t, origin),
       this.clock.now,
       10,
     );
@@ -111,6 +111,23 @@ describe("createHttpAuthenticate", () => {
     harness.clock.advance(300_000);
     expect(await session.apiToken()).toBe("jwt-2");
     expect(harness.fetcher.requests).toHaveLength(2);
+  });
+});
+
+describe("origem do agente", () => {
+  it("leva à troca o X-Forwarded-For e o user agent da requisição do agente", async () => {
+    const harness = new AuthenticateHarness();
+    harness.fetcher.respondWith(200, { access_token: "jwt", expires_in: 300 });
+    await harness.authenticate({
+      headers: {
+        authorization: "Bearer ag",
+        "x-forwarded-for": "198.51.100.9",
+        "user-agent": "Claude-User/1.0",
+      },
+    });
+    const request = harness.fetcher.requests[0]!;
+    expect(request.headers.get("x-forwarded-for")).toBe("198.51.100.9");
+    expect(request.headers.get("user-agent")).toBe("Claude-User/1.0");
   });
 });
 

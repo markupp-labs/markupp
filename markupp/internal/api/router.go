@@ -35,6 +35,20 @@ type RouterDeps struct {
 	// TrustedProxies são as redes dos proxies cujo X-Forwarded-For os proxies do painel
 	// e do MCP repassam. De outra conexão, o header de entrada é descartado.
 	TrustedProxies []netip.Prefix
+	// IPBlocks é a lista de bloqueios de IP do administrador; BlockedIPs, a que cada
+	// pedido confere. Nil desliga as rotas e o bloqueio (ADR-0061).
+	IPBlocks   IPBlockService
+	BlockedIPs BlockedIPs
+	// Retention é o prazo de guarda do histórico e do IP. Nil desliga a rota.
+	Retention RetentionService
+	// AuditHistory lê o histórico para o administrador da instância. Nil desliga a rota.
+	AuditHistory AuditHistoryService
+	// InstanceAccounts é a gestão das contas pelo administrador da instância (ADR-0061).
+	InstanceAccounts InstanceAccountsService
+	// AccountAuthorizations lista e revoga os apps de outra conta para o administrador.
+	AccountAuthorizations AccountAuthorizationService
+	// Sessions lista e encerra as sessões de login da conta (ADR-0061). Nil desliga /me/sessions.
+	Sessions SessionService
 	// AccountRateLimiter limita as rotas de conta (ADR-0044). Nil deixa as rotas livres.
 	AccountRateLimiter *AccountRateLimiter
 	// Publications publica e despublica notas, pastas e cofres (ADR-0048).
@@ -68,6 +82,8 @@ func NewRouter(d RouterDeps) chi.Router {
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
 	r.Use(middleware.Recoverer)
+	r.Use(recordOrigin(d.TrustedProxies, d.PublicRelay))
+	r.Use(refuseBlockedIPs(d.BlockedIPs))
 	mountOAuthServerRoutes(r, d)
 	mountMCPProxy(r, d.MCPUpstreamURL, d.TrustedProxies)
 	mountPanelProxy(r, d.PanelUpstreamURL, d.TrustedProxies)
@@ -145,6 +161,22 @@ func mountV1OnlyRoutes(r chi.Router, d RouterDeps) {
 	}
 	if d.InstanceLoginProviders != nil && d.Auth != nil {
 		mountLoginProvidersAdminRoutes(r, d.InstanceLoginProviders, d.Auth, d.InstanceAdmins, d.Tokens)
+	}
+	if d.Sessions != nil {
+		mountMySessionRoutes(r, d.Sessions, d.Tokens)
+	}
+	if d.Retention != nil && d.Auth != nil {
+		mountRetentionRoutes(r, d.Retention, d.Auth, d.InstanceAdmins, d.Tokens)
+	}
+	if d.AuditHistory != nil && d.Auth != nil {
+		mountAuditEventRoutes(r, d.AuditHistory, d.Auth, d.InstanceAdmins, d.Tokens)
+	}
+	if d.IPBlocks != nil && d.Auth != nil {
+		mountIPBlockRoutes(r, d.IPBlocks, d.Auth, d.InstanceAdmins, d.Tokens)
+	}
+	if d.InstanceAccounts != nil && d.Auth != nil {
+		h := &instanceAccountsHandler{accounts: d.InstanceAccounts, sessions: d.Sessions, apps: d.AccountAuthorizations}
+		mountInstanceAccountRoutes(r, h, d.Auth, d.InstanceAdmins, d.Tokens)
 	}
 	if d.Registration != nil && d.Auth != nil {
 		mountRegistrationRoutes(r, d.Registration, d.Auth, d.InstanceAdmins, d.Tokens)

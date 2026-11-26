@@ -5,7 +5,7 @@ class FakeMarkuppApi
   attr_reader :received_credentials
 
   delegate :put_requests, :post_requests, to: :@notes
-  delegate :expire_access_tokens!, :revoke_refresh_tokens!, :refresh_token_valid?, :set_instance_admin!, to: :@accounts
+  delegate :block_account!, :expire_access_tokens!, :revoke_refresh_tokens!, :refresh_token_valid?, :set_instance_admin!, to: :@accounts
   delegate :disable_local_auth!, :close_registration!, :close_password_registration!, :hold_refreshes_together!, to: :@auth
   delegate :assign_role!, :deny_notes_in!, :delete_tenant!, :receive_invite!, to: :@tenants
   delegate :sent_tokens, to: :@account_email
@@ -31,7 +31,7 @@ class FakeMarkuppApi
                  tenants: FakeMarkuppTenants::DEFAULT_TENANTS, invites: [], email_enabled: true, graph: {}, oauth_requests: [],
                  authorizations: [], vaults: nil, publications: [], login_providers: [], link_refusals: [],
                  instance_embedding: {}, instance_registration: FakeMarkuppInstanceRegistration::DEFAULT_METHODS,
-                 instance_login_providers: {})
+                 instance_login_providers: {}, sessions: [], instance_access: {})
     @accounts = FakeMarkuppAccounts.new(accounts)
     @tenants = FakeMarkuppTenants.new(tenants, invites)
     @auth = FakeMarkuppAuth.new(@accounts, @tenants)
@@ -51,21 +51,31 @@ class FakeMarkuppApi
     @instance_embedding = FakeMarkuppInstanceEmbedding.new(instance_embedding)
     @instance_registration = FakeMarkuppInstanceRegistration.new(instance_registration)
     @instance_login_providers = FakeMarkuppInstanceLoginProviders.new(instance_login_providers)
+    @sessions = FakeMarkuppSessions.new(sessions)
+    @instance_access = FakeMarkuppInstanceAccess.new(instance_access)
     @unreachable = unreachable
     @slow_calls = FakeSlowCalls.new(timeout: 10)
     @received_credentials = []
   end
+
+  # Contas, bloqueios de IP e consultas da instância (ver FakeMarkuppInstanceAccess).
+  def instance_access = @instance_access
+
+  # Ids das sessões de login que sobraram (ver FakeMarkuppSessions).
+  def session_ids = @sessions.ids
 
   # Cenário: a API demora nas chamadas que começam com call_prefix ("GET /notes/2") até release_calls!.
   def hold_calls!(call_prefix) = @slow_calls.hold(call_prefix)
 
   def release_calls! = @slow_calls.release
 
-  # Visão da mesma fake com a credencial de um cliente, como MarkuppApi.new(url, access_token:, tenant_id:, forwarded_for:).
+  # Visão da mesma fake com a credencial de um cliente, como MarkuppApi.new(url, access_token:, tenant_id:, forwarded_for:,
+  # user_agent:).
   # Chamada direta, sem as, é de confiança e não confere token: é o que os testes de modelo usam.
-  def as(access_token: nil, tenant_id: nil, forwarded_for: nil)
+  def as(access_token: nil, tenant_id: nil, forwarded_for: nil, user_agent: nil)
     credentials = { access_token:, tenant_id: }
     credentials[:forwarded_for] = forwarded_for if forwarded_for
+    credentials[:user_agent] = user_agent if user_agent
     clone.tap { |view| view.credentials = credentials }
   end
 
@@ -142,6 +152,8 @@ class FakeMarkuppApi
       return @public_notes if FakeMarkuppPublicNotes.handles?(path)
       return @oauth_requests if path.start_with?(OAUTH_REQUESTS)
       return @authorizations if FakeMarkuppAuthorizations::ROUTE.match?(path)
+      return @sessions if FakeMarkuppSessions::ROUTE.match?(path)
+      return @instance_access if FakeMarkuppInstanceAccess.handles?(path)
       return @tenants if path == FakeMarkuppTenants::NOTIFICATIONS
       return @auth if [ "/v1/accounts", FakeMarkuppAuth::POLICY ].include?(path)
       return @link_refusals if FakeMarkuppLinkRefusals::ROUTE.match?(path)

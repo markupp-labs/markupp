@@ -39,6 +39,31 @@ async function caughtError(promise: Promise<unknown>): Promise<unknown> {
 }
 
 describe("exchangeAgentToken", () => {
+  it("repassa o IP e o user agent do agente para o Go guardar na Autorização", async () => {
+    const fetcher = new FakeFetch().respondWith(200, {
+      access_token: "jwt",
+      expires_in: 300,
+    });
+    await exchangeAgentToken(configFor(fetcher, new FakeClock()), "agente", {
+      forwardedFor: "198.51.100.9, 203.0.113.60",
+      userAgent: "Claude-User/1.0",
+    });
+    const request = fetcher.requests[0]!;
+    expect(request.headers.get("x-forwarded-for")).toBe(
+      "198.51.100.9, 203.0.113.60",
+    );
+    expect(request.headers.get("user-agent")).toBe("Claude-User/1.0");
+  });
+
+  it("sem origem conhecida não inventa X-Forwarded-For", async () => {
+    const fetcher = new FakeFetch().respondWith(200, {
+      access_token: "jwt",
+      expires_in: 300,
+    });
+    await exchangeAgentToken(configFor(fetcher, new FakeClock()), "agente", {});
+    expect(fetcher.requests[0]!.headers.has("x-forwarded-for")).toBe(false);
+  });
+
   it("manda o formulário RFC 8693 ao endpoint de token do issuer", async () => {
     const fetcher = new FakeFetch().respondWith(200, {
       access_token: "jwt",

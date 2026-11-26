@@ -33,6 +33,8 @@ class MarkuppApi
   class EmailAlreadyVerified < Error; end
   class Forbidden < Error; end
   class LocalAuthDisabled < Forbidden; end
+  # O administrador da instância bloqueou a conta: ela não entra nem renova (ADR-0061).
+  class AccountBlocked < Forbidden; end
   # viewer tentou escrever nota.
   class ReadOnly < Forbidden; end
   # O tenant do cabeçalho não serve: não é da conta (403), a conta não tem tenant (403) ou faltou escolher (400).
@@ -43,6 +45,16 @@ class MarkuppApi
   class OAuthRequestNotFound < NotFound; end
   # Autorização inexistente, já revogada ou de outra conta: a API não distingue.
   class AuthorizationNotFound < NotFound; end
+  # Sessão de login inexistente, já encerrada ou de outra conta: a API não distingue (ADR-0061).
+  class SessionNotFound < NotFound; end
+  # Gestão das contas e dos acessos da instância (ADR-0061).
+  class AccountNotFound < NotFound; end
+  class CannotTargetSelf < Error; end
+  class InvalidIpBlock < InvalidRequest; end
+  class BlocksOwnIp < Error; end
+  class IpBlockExists < Error; end
+  class IpBlockNotFound < NotFound; end
+  class InvalidRetention < InvalidRequest; end
   # Cofre inexistente ou de que a conta não é membro.
   class VaultUnavailable < Forbidden; end
   # Nome de cofre vazio, com espaço nas pontas ou longo demais.
@@ -118,6 +130,10 @@ class MarkuppApi
     "invalid_invite" => InvalidToken, "invalid_token" => InvalidToken, "already_exists" => AccountExists,
     "email_unavailable" => EmailUnavailable, "email_already_verified" => EmailAlreadyVerified,
     "vault_forbidden" => VaultUnavailable, "request_not_found" => OAuthRequestNotFound, "authorization_not_found" => AuthorizationNotFound,
+    "session_not_found" => SessionNotFound, "account_blocked" => AccountBlocked,
+    "account_not_found" => AccountNotFound, "cannot_target_self" => CannotTargetSelf, "invalid_ip_block" => InvalidIpBlock,
+    "blocks_own_ip" => BlocksOwnIp, "ip_block_exists" => IpBlockExists, "ip_block_not_found" => IpBlockNotFound,
+    "invalid_retention" => InvalidRetention,
     "invalid_name" => InvalidName, "not_tenant_member" => NotTenantMember, "already_vault_member" => AlreadyVaultMember,
     "vault_member_not_found" => VaultMemberNotFound, "no_vault" => NoVault, "registration_disabled" => RegistrationDisabled,
     "email_not_verified" => EmailNotVerified, "invite_limit_reached" => InviteLimitReached,
@@ -136,15 +152,16 @@ class MarkuppApi
   # Para o status cujo corpo não traz código conhecido.
   ERRORS_BY_STATUS = { "401" => Unauthorized, "403" => Forbidden, "404" => NotFound, "429" => RateLimited }.freeze
 
-  # forwarded_for é o IP de quem lê a nota pública sem conta: vai no X-Forwarded-For para o limite por IP da API contar
-  # o visitante, e não o painel. A API só lê esse header do relay autenticado: relay é a PublicRelayCredential, cujo
-  # HTTP Basic vai junto, ou de um proxy em que ela confia.
-  def initialize(base_url, access_token: nil, tenant_id: nil, read_timeout: READ_TIMEOUT, forwarded_for: nil, relay: nil)
+  # forwarded_for é o IP do navegador e user_agent o dele: vão no X-Forwarded-For e no User-Agent para o limite por IP
+  # e a sessão da API contarem quem usa, e não o painel (ADR-0061). A API só lê o X-Forwarded-For de um proxy em que
+  # confia ou do relay autenticado: relay é a PublicRelayCredential, cujo HTTP Basic vai junto.
+  def initialize(base_url, access_token: nil, tenant_id: nil, read_timeout: READ_TIMEOUT, forwarded_for: nil, user_agent: nil, relay: nil)
     @base_url = base_url
     @access_token = access_token
     @tenant_id = tenant_id
     @read_timeout = read_timeout
     @forwarded_for = forwarded_for
+    @user_agent = user_agent
     @relay = relay
   end
 
@@ -192,6 +209,7 @@ class MarkuppApi
       http_request["Authorization"] = authorization if authorization
       http_request["X-Markupp-Tenant"] = @tenant_id if @tenant_id
       http_request["X-Forwarded-For"] = @forwarded_for if @forwarded_for
+      http_request["User-Agent"] = @user_agent if @user_agent
       return http_request if body.nil?
 
       http_request.content_type = "application/json"

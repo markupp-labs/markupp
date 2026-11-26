@@ -1,0 +1,56 @@
+<%# Histórico da instância (ADR-0061): acessos e mudanças sensíveis, do mais novo para trás, com filtros por conta, ação,
+    resultado, IP e período. A ação conhecida aparece com o nome do idioma; a desconhecida, como veio. %>
+<div class="max-w-4xl">
+  <%= render "settings/section_heading", title: t("settings.nav.instance_history"), subtitle: false %>
+  <p class="mt-1 max-w-[65ch] text-ink-muted"><%= t(".intro") %></p>
+
+  <%= form_with url: settings_instance_history_path, method: :get, html: { role: "search" }, class: "mt-4 flex flex-wrap items-end gap-3" do |form| %>
+    <label class="flex flex-col">
+      <span class="text-ink-muted"><%= t(".account") %></span>
+      <%= form.text_field :account, value: @filters[:account], class: "input w-40", placeholder: t(".account_placeholder") %>
+    </label>
+    <label class="flex flex-col">
+      <span class="text-ink-muted"><%= t(".action") %></span>
+      <%= form.text_field :event, value: @filters[:event], class: "input w-40", placeholder: "auth.login" %>
+    </label>
+    <label class="flex flex-col">
+      <span class="text-ink-muted"><%= t(".result") %></span>
+      <%= form.select :result, [ [ t(".any"), "" ] ] + AuditEvent::RESULTS.map { [ t(".results.#{it}"), it ] }, { selected: @filters[:result] }, class: "input" %>
+    </label>
+    <label class="flex flex-col">
+      <span class="text-ink-muted"><%= t(".ip") %></span>
+      <%= form.text_field :ip, value: @filters[:ip], class: "input w-36 font-mono" %>
+    </label>
+    <label class="flex flex-col">
+      <span class="text-ink-muted"><%= t(".since") %></span>
+      <%= form.date_field :since, value: @filters[:since], class: "input" %>
+    </label>
+    <label class="flex flex-col">
+      <span class="text-ink-muted"><%= t(".until") %></span>
+      <%= form.date_field :until, value: @filters[:until], class: "input" %>
+    </label>
+    <%= form.button t(".filter"), class: "btn", name: nil %>
+  <% end %>
+
+  <% if @events.empty? %>
+    <p class="mt-4 text-ink-muted"><%= t(".empty", count: @retention.days) %></p>
+  <% else %>
+    <ul id="audit_events" data-controller="context-menu" data-action="keydown->context-menu#navigate"
+        class="mt-4 md:grid md:grid-cols-[9rem_1fr_1fr_6rem_1fr] md:gap-x-3">
+      <% @events.each_with_index do |event, index| %>
+        <li data-audit-event="<%= event.id %>" data-context-menu-target="item" tabindex="<%= index.zero? ? 0 : -1 %>"
+            class="border-t border-line px-2 py-2 md:col-span-5 md:grid md:grid-cols-subgrid md:items-center">
+          <time class="text-ink-muted" datetime="<%= event.occurred_at.iso8601 %>"><%= l(event.occurred_at, format: :short) %></time>
+          <p class="[overflow-wrap:anywhere]"><%= event.who %></p>
+          <p><%= t(".actions.#{event.action.tr(".", "_")}", default: event.action) %></p>
+          <p class="<%= "text-danger" unless event.result == "success" %>"><%= t(".results.#{event.result}", default: event.result) %></p>
+          <p class="text-ink-muted">
+            <span class="font-mono"><%= event.ip.presence || "?" %></span>
+            <% if event.user_agent.present? %>· <span title="<%= event.user_agent %>"><%= client_label(event.user_agent) %></span><% end %>
+          </p>
+        </li>
+      <% end %>
+    </ul>
+  <% end %>
+  <%= render "settings/pager", offset: @offset, count: @events.size, page_size: AuditEvent::PAGE_SIZE, query: @filters.compact_blank %>
+</div>

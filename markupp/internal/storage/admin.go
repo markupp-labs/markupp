@@ -72,7 +72,7 @@ func (r *PostgresAdminRepository) CreateInviteTx(ctx context.Context, inv auth.I
 		if err := enqueueInvite(ctx, q, inv.ID, byEmail); err != nil {
 			return err
 		}
-		return q.CreateAuditEvent(ctx, toCreateAuditEventParams(event))
+		return q.CreateAuditEvent(ctx, toCreateAuditEventParams(ctx, event))
 	})
 }
 
@@ -169,7 +169,7 @@ func applyMembershipChange(ctx context.Context, q *gen.Queries, c auth.Membershi
 	if err != nil {
 		return fmt.Errorf("change role of %q to %q: %w", c.UserID, c.NewRole, err)
 	}
-	return q.CreateAuditEvent(ctx, toCreateAuditEventParams(c.Event))
+	return q.CreateAuditEvent(ctx, toCreateAuditEventParams(ctx, c.Event))
 }
 
 // RevokeInviteTx apaga o convite ainda sem resposta, auditado junto, ou devolve
@@ -183,7 +183,7 @@ func (r *PostgresAdminRepository) RevokeInviteTx(ctx context.Context, inviteID s
 		if rows == 0 {
 			return fmt.Errorf("%w: %q", auth.ErrInviteInvalid, inviteID)
 		}
-		return q.CreateAuditEvent(ctx, toCreateAuditEventParams(event))
+		return q.CreateAuditEvent(ctx, toCreateAuditEventParams(ctx, event))
 	})
 }
 
@@ -199,6 +199,6 @@ func (r *PostgresAdminRepository) DeleteTenantTx(ctx context.Context, event auth
 		if rows == 0 {
 			return fmt.Errorf("%w: tenant %q has no owner %q", auth.ErrMembershipNotFound, event.TenantID, event.ActorID)
 		}
-		return q.CreateAuditEvent(ctx, toCreateAuditEventParams(event))
+		return q.CreateAuditEvent(ctx, toCreateAuditEventParams(ctx, event))
 	})
 }

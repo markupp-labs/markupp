@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"time"
+
+	"github.com/ifsc-ES2/projeto-markupp/markupp/internal/auth"
 )
 
 // Client é um cliente OAuth registrado, por Client ID Metadata Document ou por DCR.
@@ -60,6 +62,10 @@ type Authorization struct {
 	// Revoked é preenchido por FindToken, RedeemCode e no reuso de
 	// ConsumeRefreshToken, que devolvem a Autorização mesmo revogada.
 	Revoked bool
+	// Origin e LastUsedAt são do último uso no /oauth/token ou na troca; LastUsedAt zero
+	// é Autorização sem uso desde que passou a ser registrado (ADR-0061).
+	Origin     auth.Origin
+	LastUsedAt time.Time
 }
 
 // Tipos de token guardados em oauth_tokens.
@@ -205,6 +211,10 @@ type Repository interface {
 	RegisterDCRClient(ctx context.Context, reg DCRRegistration) error
 	// RecordAuditEvent grava um evento avulso do authorization server.
 	RecordAuditEvent(ctx context.Context, event AuditEvent) error
+	// AccountBlocked diz se a conta foi bloqueada pelo administrador da instância.
+	AccountBlocked(ctx context.Context, userID string) (bool, error)
+	// TouchAuthorization grava a origem e o instante do último uso da Autorização.
+	TouchAuthorization(ctx context.Context, authorizationID string, origin auth.Origin, at time.Time) error
 	// RevokeAuthorization trava a Autorização, confere que ela é da conta e segue ativa
 	// antes de escrever, marca-a como revogada, revoga os tokens dela e audita o evento
 	// com event.ClientID preenchido pela Autorização, numa transação. Devolve

@@ -48,7 +48,7 @@ func (r *PostgresVaultsRepository) CreateTx(ctx context.Context, v vaults.Vault,
 		if err != nil {
 			return fmt.Errorf("create vault %q: %w", v.Name, err)
 		}
-		return q.CreateAuditEvent(ctx, toCreateAuditEventParams(event))
+		return q.CreateAuditEvent(ctx, toCreateAuditEventParams(ctx, event))
 	})
 }
 
@@ -64,7 +64,7 @@ func (r *PostgresVaultsRepository) RenameTx(ctx context.Context, id, name string
 			return fmt.Errorf("rename vault %q: %w", id, err)
 		}
 		v = vaults.Vault{ID: row.ID, Name: row.Name, CreatedAt: row.CreatedAt}
-		return q.CreateAuditEvent(ctx, toCreateAuditEventParams(event))
+		return q.CreateAuditEvent(ctx, toCreateAuditEventParams(ctx, event))
 	})
 	return v, err
 }
@@ -79,7 +79,7 @@ func (r *PostgresVaultsRepository) DeleteTx(ctx context.Context, id string, even
 		if n == 0 {
 			return fmt.Errorf("%w: %q", vaults.ErrVaultNotFound, id)
 		}
-		return q.CreateAuditEvent(ctx, toCreateAuditEventParams(event))
+		return q.CreateAuditEvent(ctx, toCreateAuditEventParams(ctx, event))
 	})
 }
 
@@ -116,7 +116,7 @@ func (r *PostgresVaultsRepository) AddMemberTx(ctx context.Context, vaultID, use
 		if err != nil {
 			return fmt.Errorf("read member %q of vault %q: %w", userID, vaultID, err)
 		}
-		return q.CreateAuditEvent(ctx, toCreateAuditEventParams(event))
+		return q.CreateAuditEvent(ctx, toCreateAuditEventParams(ctx, event))
 	})
 	return m, err
 }
@@ -134,7 +134,7 @@ func (r *PostgresVaultsRepository) RemoveMemberTx(ctx context.Context, vaultID, 
 		if n == 0 {
 			return fmt.Errorf("%w: %q in vault %q", vaults.ErrMemberNotFound, userID, vaultID)
 		}
-		return q.CreateAuditEvent(ctx, toCreateAuditEventParams(event))
+		return q.CreateAuditEvent(ctx, toCreateAuditEventParams(ctx, event))
 	})
 }
 

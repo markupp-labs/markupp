@@ -166,7 +166,7 @@ func auditAuthorize(ctx context.Context, qtx *gen.Queries, req gen.OauthRequest,
 // auditOAuth grava o evento do authorization server sem tenant, com a conta como ator e
 // o cliente como alvo.
 func auditOAuth(ctx context.Context, qtx *gen.Queries, e oauth.AuditEvent) error {
-	err := qtx.CreateAuditEvent(ctx, toCreateAuditEventParams(auth.AuditEventRecord{
+	err := qtx.CreateAuditEvent(ctx, toCreateAuditEventParams(ctx, auth.AuditEventRecord{
 		ID: uuid.NewString(), ActorID: e.UserID, Action: e.Action,
 		Target: e.ClientID, Result: e.Result, OccurredAt: e.OccurredAt,
 	}))
@@ -238,7 +238,28 @@ func toAuthorization(row gen.OauthAuthorization) oauth.Authorization {
 	return oauth.Authorization{
 		ID: row.ID, UserID: row.UserID, ClientID: row.ClientID, Scopes: row.Scopes,
 		CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt, Revoked: row.RevokedAt.Valid,
+		Origin:     auth.Origin{IP: row.ClientIp, UserAgent: row.UserAgent},
+		LastUsedAt: row.LastUsedAt.Time,
 	}
+}
+
+// AccountBlocked diz se a conta está bloqueada; conta que não existe mais conta como bloqueada.
+func (r *PostgresOAuthRepository) AccountBlocked(ctx context.Context, userID string) (bool, error) {
+	blocked, err := r.q.OAuthAccountBlocked(ctx, userID)
+	if err != nil {
+		return false, fmt.Errorf("check whether account %q is blocked: %w", userID, err)
+	}
+	return blocked, nil
+}
+
+// TouchAuthorization grava a origem e o instante do último uso da Autorização.
+func (r *PostgresOAuthRepository) TouchAuthorization(ctx context.Context, authorizationID string, origin auth.Origin, at time.Time) error {
+	err := r.q.TouchOAuthAuthorization(ctx, gen.TouchOAuthAuthorizationParams{ID: authorizationID, ClientIp: origin.IP,
+		UserAgent: origin.UserAgent, LastUsedAt: pgtype.Timestamptz{Time: at, Valid: true}})
+	if err != nil {
+		return fmt.Errorf("record use of authorization %q: %w", authorizationID, err)
+	}
+	return nil
 }
 
 // RecordAuditEvent grava um evento avulso do authorization server.

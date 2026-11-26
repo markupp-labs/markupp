@@ -13,5 +13,7 @@ class SessionLogin
     errors.add(:base, :invalid_credentials) && nil
   rescue MarkuppApi::LocalAuthDisabled
     errors.add(:base, :local_auth_disabled) && nil
+  rescue MarkuppApi::AccountBlocked
+    errors.add(:base, :account_blocked) && nil
   end
 end

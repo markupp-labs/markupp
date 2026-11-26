@@ -132,6 +132,7 @@ func TestExternalLogin_ErrosViramRespostas(t *testing.T) {
 		{auth.ErrIdentityAlreadyLinked, http.StatusConflict, "identity_already_linked"},
 		{auth.ErrUserAlreadyExists, http.StatusConflict, "already_exists"},
 		{auth.ErrProviderEmailMissing, http.StatusUnprocessableEntity, "provider_email_missing"},
+		{auth.ErrAccountBlocked, http.StatusForbidden, "account_blocked"},
 		{errors.New("banco fora"), http.StatusInternalServerError, "internal"},
 	}
 	for _, c := range casos {

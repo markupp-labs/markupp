@@ -150,6 +150,21 @@ A pessoa na instância, com email único, que participa de vários tenants. Logi
 da conta; o tenant em que ela age vem de cada requisição.
 _Avoid_: usuário do tenant, perfil
 
+**Sessão**:
+Um login da conta, que as renovações continuam até ela sair ou ser encerrada. Guarda de onde
+veio o último uso. A conta e o administrador da instância encerram uma sessão.
+_Avoid_: dispositivo, token, login avulso
+
+**Conta bloqueada**:
+A conta que o administrador da instância bloqueou: não entra por nenhum método e perde as
+sessões e as autorizações, e as notas ficam até ele desbloquear ou apagar a conta.
+_Avoid_: conta suspensa, conta desativada, banimento
+
+**Histórico**:
+O registro dos acessos e das mudanças sensíveis da instância, como login, falha de login, troca
+de senha e vínculo de provedor, com de onde vieram. Some depois do prazo de guarda.
+_Avoid_: log, auditoria, eventos
+
 **Vínculo**:
 A participação de uma conta num tenant, com um papel: owner, admin, member ou viewer. Owner e
 admin administram o tenant, só o owner apaga o tenant, e o viewer só lê nos cofres de que é

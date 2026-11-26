@@ -91,7 +91,7 @@ func (r *PostgresPublications) InsertTx(ctx context.Context, d publication.Draft
 		if err := insertPublication(ctx, q, d); err != nil {
 			return err
 		}
-		if err := q.CreateAuditEvent(ctx, toCreateAuditEventParams(event)); err != nil {
+		if err := q.CreateAuditEvent(ctx, toCreateAuditEventParams(ctx, event)); err != nil {
 			return err
 		}
 		var err error
@@ -152,7 +152,7 @@ func (r *PostgresPublications) SetIndexableTx(ctx context.Context, id string, in
 		if err := requireChanged(ctx, q, id, n, err); err != nil {
 			return err
 		}
-		if err := q.CreateAuditEvent(ctx, toCreateAuditEventParams(event)); err != nil {
+		if err := q.CreateAuditEvent(ctx, toCreateAuditEventParams(ctx, event)); err != nil {
 			return err
 		}
 		out, err = readPublication(ctx, q, id)
@@ -168,7 +168,7 @@ func (r *PostgresPublications) DeleteTx(ctx context.Context, id string, event au
 		if err := requireChanged(ctx, q, id, n, err); err != nil {
 			return err
 		}
-		return q.CreateAuditEvent(ctx, toCreateAuditEventParams(event))
+		return q.CreateAuditEvent(ctx, toCreateAuditEventParams(ctx, event))
 	})
 }
 

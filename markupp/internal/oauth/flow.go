@@ -94,6 +94,10 @@ type AuthorizationView struct {
 	Scopes     []string `json:"scopes"`
 	CreatedAt  string   `json:"created_at"`
 	UpdatedAt  string   `json:"updated_at"`
+	// IP, UserAgent e LastUsedAt são do último uso; LastUsedAt fica de fora sem uso.
+	IP         string `json:"ip"`
+	UserAgent  string `json:"user_agent"`
+	LastUsedAt string `json:"last_used_at,omitempty"`
 }
 
 // TokenResponse é a resposta de sucesso do endpoint de token (RFC 6749, seção 5.1).

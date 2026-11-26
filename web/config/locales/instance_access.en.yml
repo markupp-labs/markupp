@@ -1,0 +1,134 @@
+en:
+  settings:
+    nav:
+      instance_accounts: "Accounts"
+      instance_access: "Access"
+      instance_history: "History"
+    pager:
+      label: "Pages"
+      previous: "Previous page"
+      next: "Next page"
+    instance_accounts:
+      errors:
+        account_not_found: "That account no longer exists."
+        cannot_target_self: "You can't block or delete your own account."
+      index:
+        intro: "Every account of this instance, newest first. Open one to see where it is signed in, block it or delete it."
+        search: "Email"
+        search_placeholder: "Part of the email"
+        status: "Status"
+        any: "Any"
+        filter: "Filter"
+        empty: "No accounts match."
+        email: "Email"
+        methods: "Signs in with"
+        last_access: "Last access"
+        never: "Never"
+        statuses:
+          active: "Active"
+          blocked: "Blocked"
+      show:
+        back: "All accounts"
+        status: "Status"
+        email_verified: "Email confirmed"
+        "yes": "Yes"
+        "no": "No"
+        methods: "Signs in with"
+        created: "Created"
+        last_access: "Last access"
+        block: "Block"
+        unblock: "Unblock"
+        confirm_block: "Block %{email}? It can't sign in by any method, its sessions and apps are cut, and it leaves within minutes. Its notes stay."
+        no_sessions: "No active sessions."
+        no_authorizations: "No authorized apps."
+        danger: "Delete account"
+        delete_hint: "Deletes the account for good. Tenants where it is the only owner go with it, with their vaults and notes."
+        delete: "Delete account"
+        confirm_delete: "Delete %{email}? Its sessions and apps go too, and so do %{tenants} and %{notes} where it is the only owner."
+        tenants:
+          one: "1 tenant"
+          other: "%{count} tenants"
+        notes:
+          one: "1 note"
+          other: "%{count} notes"
+      update:
+        blocked: "Account blocked. It leaves within minutes."
+        unblocked: "Account unblocked."
+      destroy:
+        deleted: "Account deleted."
+    instance_access:
+      errors:
+        invalid_ip_block: "Use an IP or a CIDR range, such as 198.51.100.7 or 198.51.100.0/24."
+        blocks_own_ip: "That range holds your own IP, and blocking it would lock you out."
+        ip_block_exists: "That range is already blocked."
+        ip_block_not_found: "That block no longer exists."
+        invalid_retention: "Keep them for 1 to 3650 days."
+        host_locked: "The hosting configuration sets the retention."
+      show:
+        ip_blocks: "Blocked IPs"
+        ip_blocks_hint: "Requests from these IPs and ranges are refused on every route, except the health probe."
+        no_ip_blocks: "No IP is blocked."
+        cidr: "IP or range"
+        note: "Note"
+        block: "Block"
+        unblock: "Unblock"
+        confirm_unblock: "Unblock %{cidr}?"
+        retention: "Retention"
+        retention_hint: "How long the history and the IPs of ended sessions are kept. Older ones are deleted once a day."
+        days: "Days"
+        save: "Save"
+        retention_locked:
+          one: "Kept for 1 day, set by MARKUPP_ACCESS_HISTORY_RETENTION_DAYS in the hosting configuration."
+          other: "Kept for %{count} days, set by MARKUPP_ACCESS_HISTORY_RETENTION_DAYS in the hosting configuration."
+    instance_ip_blocks:
+      create:
+        blocked: "%{cidr} blocked. Every replica refuses it within seconds."
+      destroy:
+        unblocked: "Unblocked."
+    instance_retention:
+      update:
+        saved:
+          one: "History and IPs are now kept for 1 day."
+          other: "History and IPs are now kept for %{count} days."
+    instance_history:
+      show:
+        intro: "Sign ins, failed sign ins and sensitive changes, newest first, with where they came from."
+        account: "Account"
+        account_placeholder: "Account id"
+        action: "Action"
+        result: "Result"
+        any: "Any"
+        ip: "IP"
+        since: "From"
+        until: "To"
+        filter: "Filter"
+        empty:
+          one: "No events. The history keeps the last day."
+          other: "No events. The history keeps the last %{count} days."
+        results:
+          success: "Succeeded"
+          failure: "Failed"
+          blocked: "Blocked"
+        actions:
+          auth_login: "Sign in"
+          auth_register: "Account created"
+          auth_register_admin: "First account created"
+          auth_accept_invite: "Account created by invite"
+          auth_refresh: "Session renewed"
+          auth_refresh_reuse: "Reused session token"
+          auth_password_reset: "Password reset"
+          auth_identity_link: "Login provider linked"
+          auth_identity_unlink: "Login provider unlinked"
+          auth_session_end: "Session ended"
+          oauth_authorize: "App authorized"
+          oauth_refresh: "App token renewed"
+          oauth_refresh_reuse: "Reused app token"
+          oauth_revoke: "App revoked"
+          oauth_exchange: "Agent token exchanged"
+          oauth_code_reuse: "Reused authorization code"
+          accounts_block: "Account blocked"
+          accounts_unblock: "Account unblocked"
+          accounts_delete: "Account deleted"
+          ip_blocks_create: "IP blocked"
+          ip_blocks_delete: "IP unblocked"
+          instance_retention_update: "Retention changed"

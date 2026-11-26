@@ -72,7 +72,7 @@ func registerMember(ctx context.Context, qtx *gen.Queries, p auth.CreateAccountP
 			return err
 		}
 	}
-	return qtx.CreateAuditEvent(ctx, accountEvent(p.AuditEventID, "", "auth.register", p.User))
+	return qtx.CreateAuditEvent(ctx, accountEvent(ctx, p.AuditEventID, "", "auth.register", p.User))
 }
 
 // bootstrapFirstTenant entrega ao primeiro usuário da instância o tenant inicial, como
@@ -89,7 +89,7 @@ func bootstrapFirstTenant(ctx context.Context, qtx *gen.Queries, p auth.CreateAc
 	if err := adoptExistingVaults(ctx, qtx, tenantID, u); err != nil {
 		return err
 	}
-	return qtx.CreateAuditEvent(ctx, accountEvent(p.AuditEventID, tenantID, "auth.register_admin", u))
+	return qtx.CreateAuditEvent(ctx, accountEvent(ctx, p.AuditEventID, tenantID, "auth.register_admin", u))
 }
 
 // adoptExistingVaults move para o tenant do primeiro usuário os cofres da migração. O
@@ -144,8 +144,8 @@ func insertInitialVault(ctx context.Context, q *gen.Queries, j tenantJoin) error
 	return q.AddVaultMember(ctx, gen.AddVaultMemberParams{VaultID: j.vaultID, UserID: j.userID, CreatedAt: j.at})
 }
 
-func accountEvent(id, tenantID, action string, u auth.User) gen.CreateAuditEventParams {
-	return toCreateAuditEventParams(auth.AuditEventRecord{
+func accountEvent(ctx context.Context, id, tenantID, action string, u auth.User) gen.CreateAuditEventParams {
+	return toCreateAuditEventParams(ctx, auth.AuditEventRecord{
 		ID: id, TenantID: tenantID, ActorID: u.ID, Action: action,
 		Target: u.Email, Result: "success", OccurredAt: u.CreatedAt,
 	})
@@ -162,7 +162,7 @@ func (r *PostgresAuthRepository) CreateTenantTx(ctx context.Context, p auth.Crea
 		if err := joinTenant(ctx, qtx, join); err != nil {
 			return err
 		}
-		return qtx.CreateAuditEvent(ctx, toCreateAuditEventParams(auth.AuditEventRecord{
+		return qtx.CreateAuditEvent(ctx, toCreateAuditEventParams(ctx, auth.AuditEventRecord{
 			ID: p.AuditEventID, TenantID: p.TenantID, ActorID: p.UserID, Action: "tenants.create",
 			Target: p.TenantID, Result: "success", OccurredAt: p.Now,
 		}))
@@ -201,7 +201,7 @@ func (r *PostgresAuthRepository) AcceptInviteByIDTx(ctx context.Context, p auth.
 		if err != nil {
 			return err
 		}
-		return qtx.CreateAuditEvent(ctx, inviteAnswerEvent(p.AuditEventID, inv.TenantID, p.UserID, "invites.accept", p.InviteID, p.Now))
+		return qtx.CreateAuditEvent(ctx, inviteAnswerEvent(ctx, p.AuditEventID, inv.TenantID, p.UserID, "invites.accept", p.InviteID, p.Now))
 	})
 	return m, err
 }
@@ -214,7 +214,7 @@ func (r *PostgresAuthRepository) DeclineInviteTx(ctx context.Context, p auth.Dec
 		if err != nil {
 			return claimErr(err)
 		}
-		return qtx.CreateAuditEvent(ctx, inviteAnswerEvent(p.AuditEventID, tenantID, p.UserID, "invites.decline", p.InviteID, p.Now))
+		return qtx.CreateAuditEvent(ctx, inviteAnswerEvent(ctx, p.AuditEventID, tenantID, p.UserID, "invites.decline", p.InviteID, p.Now))
 	})
 }
 
@@ -225,8 +225,8 @@ func membershipConflictErr(err error, userID, tenantID string) error {
 	return err
 }
 
-func inviteAnswerEvent(id, tenantID, userID, action, inviteID string, at time.Time) gen.CreateAuditEventParams {
-	return toCreateAuditEventParams(auth.AuditEventRecord{
+func inviteAnswerEvent(ctx context.Context, id, tenantID, userID, action, inviteID string, at time.Time) gen.CreateAuditEventParams {
+	return toCreateAuditEventParams(ctx, auth.AuditEventRecord{
 		ID: id, TenantID: tenantID, ActorID: userID, Action: action,
 		Target: inviteID, Result: "success", OccurredAt: at,
 	})
@@ -259,7 +259,7 @@ func createInvitedAccount(ctx context.Context, qtx *gen.Queries, inv gen.ClaimIn
 	if err := joinTenant(ctx, qtx, join); err != nil {
 		return err
 	}
-	return qtx.CreateAuditEvent(ctx, accountEvent(p.AuditEventID, inv.TenantID, "auth.accept_invite", u))
+	return qtx.CreateAuditEvent(ctx, accountEvent(ctx, p.AuditEventID, inv.TenantID, "auth.accept_invite", u))
 }
 
 func claimErr(err error) error {
@@ -336,7 +336,8 @@ func (r *PostgresAuthRepository) GetUserByID(ctx context.Context, id string) (au
 }
 
 func toAuthUser(row gen.GetUserByIDRow) auth.User {
-	return auth.User{ID: row.ID, Email: row.Email, EmailVerified: row.EmailVerified, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}
+	return auth.User{ID: row.ID, Email: row.Email, EmailVerified: row.EmailVerified, CreatedAt: row.CreatedAt,
+		UpdatedAt: row.UpdatedAt, Blocked: row.Blocked}
 }
 
 // GetUserIdentity busca o vínculo de autenticação externa ou credencial local.
@@ -365,36 +366,45 @@ func toAuthIdentity(row gen.UserIdentity) auth.UserIdentity {
 	}
 }
 
-// ConsumeRefreshToken consome atomicamente o refresh token se valido e nao expirado, retornando o userID.
-func (r *PostgresAuthRepository) ConsumeRefreshToken(ctx context.Context, tokenHash string) (string, error) {
-	userID, err := r.q.ConsumeRefreshToken(ctx, tokenHash)
+// ConsumeRefreshToken consome atomicamente o refresh token se valido e nao expirado, retornando o dono e a sessão.
+func (r *PostgresAuthRepository) ConsumeRefreshToken(ctx context.Context, tokenHash string) (auth.RefreshTokenRecord, error) {
+	row, err := r.q.ConsumeRefreshToken(ctx, tokenHash)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return "", auth.ErrRefreshTokenInvalid
+			return auth.RefreshTokenRecord{}, auth.ErrRefreshTokenInvalid
 		}
-		return "", fmt.Errorf("consume refresh token: %w", err)
+		return auth.RefreshTokenRecord{}, fmt.Errorf("consume refresh token: %w", err)
 	}
-	return userID, nil
+	return auth.RefreshTokenRecord{TokenHash: tokenHash, UserID: row.UserID, SessionID: row.SessionID.String, Revoked: true}, nil
 }
 
-// IssueSessionTx grava o refresh token e a auditoria de login juntos na mesma transacao.
-func (r *PostgresAuthRepository) IssueSessionTx(ctx context.Context, rec auth.RefreshTokenRecord, event auth.AuditEventRecord) error {
+// IssueSessionTx grava a sessão, o refresh token e a auditoria de login juntos na mesma transacao.
+func (r *PostgresAuthRepository) IssueSessionTx(ctx context.Context, session auth.SessionRecord, rec auth.RefreshTokenRecord, event auth.AuditEventRecord) error {
 	return r.inTx(ctx, func(qtx *gen.Queries) error {
+		if err := qtx.UpsertUserSession(ctx, toUpsertUserSessionParams(session)); err != nil {
+			return fmt.Errorf("save session %q of user %q: %w", session.ID, session.UserID, err)
+		}
 		return r.saveSessionRows(ctx, qtx, rec, event)
 	})
+}
+
+func toUpsertUserSessionParams(s auth.SessionRecord) gen.UpsertUserSessionParams {
+	return gen.UpsertUserSessionParams{ID: s.ID, UserID: s.UserID, ClientIp: s.Origin.IP,
+		UserAgent: s.Origin.UserAgent, CreatedAt: s.CreatedAt, LastUsedAt: s.LastUsedAt}
 }
 
 func (r *PostgresAuthRepository) saveSessionRows(ctx context.Context, qtx *gen.Queries, rec auth.RefreshTokenRecord, event auth.AuditEventRecord) error {
 	if err := qtx.SaveRefreshToken(ctx, gen.SaveRefreshTokenParams{
 		TokenHash: rec.TokenHash,
 		UserID:    rec.UserID,
+		SessionID: pgtype.Text{String: rec.SessionID, Valid: rec.SessionID != ""},
 		ExpiresAt: rec.ExpiresAt,
 		Revoked:   rec.Revoked,
 		CreatedAt: rec.CreatedAt,
 	}); err != nil {
 		return fmt.Errorf("save refresh token: %w", err)
 	}
-	if err := qtx.CreateAuditEvent(ctx, toCreateAuditEventParams(event)); err != nil {
+	if err := qtx.CreateAuditEvent(ctx, toCreateAuditEventParams(ctx, event)); err != nil {
 		return fmt.Errorf("save session audit: %w", err)
 	}
 	return nil
@@ -410,11 +420,13 @@ func (r *PostgresAuthRepository) GetRefreshToken(ctx context.Context, tokenHash 
 		return auth.RefreshTokenRecord{}, fmt.Errorf("find refresh token: %w", err)
 	}
 	return auth.RefreshTokenRecord{
-		TokenHash: row.TokenHash,
-		UserID:    row.UserID,
-		ExpiresAt: row.ExpiresAt,
-		Revoked:   row.Revoked,
-		CreatedAt: row.CreatedAt,
+		TokenHash:    row.TokenHash,
+		UserID:       row.UserID,
+		SessionID:    row.SessionID.String,
+		SessionEnded: row.SessionEnded,
+		ExpiresAt:    row.ExpiresAt,
+		Revoked:      row.Revoked,
+		CreatedAt:    row.CreatedAt,
 	}, nil
 }
 
@@ -440,7 +452,7 @@ func (r *PostgresAuthRepository) RevokeAllUserRefreshTokens(ctx context.Context,
 
 // RecordAuditEvent insere uma linha de auditoria no plano de registro.
 func (r *PostgresAuthRepository) RecordAuditEvent(ctx context.Context, e auth.AuditEventRecord) error {
-	if err := r.q.CreateAuditEvent(ctx, toCreateAuditEventParams(e)); err != nil {
+	if err := r.q.CreateAuditEvent(ctx, toCreateAuditEventParams(ctx, e)); err != nil {
 		return fmt.Errorf("record audit for %q: %w", e.Target, err)
 	}
 	return nil
@@ -457,7 +469,9 @@ func toCreateIdentityParams(i auth.UserIdentity) gen.CreateUserIdentityParams {
 	}
 }
 
-func toCreateAuditEventParams(e auth.AuditEventRecord) gen.CreateAuditEventParams {
+// toCreateAuditEventParams leva ao evento a origem do pedido que o causou (ADR-0061).
+func toCreateAuditEventParams(ctx context.Context, e auth.AuditEventRecord) gen.CreateAuditEventParams {
+	origin := auth.OriginFrom(ctx)
 	return gen.CreateAuditEventParams{
 		ID:         e.ID,
 		TenantID:   pgtype.Text{String: e.TenantID, Valid: e.TenantID != ""},
@@ -466,5 +480,7 @@ func toCreateAuditEventParams(e auth.AuditEventRecord) gen.CreateAuditEventParam
 		Target:     e.Target,
 		Result:     e.Result,
 		OccurredAt: e.OccurredAt,
+		ClientIp:   origin.IP,
+		UserAgent:  origin.UserAgent,
 	}
 }

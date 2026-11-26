@@ -186,6 +186,7 @@ var externalLoginErrors = []struct {
 	message string
 }{
 	{auth.ErrIdentityNotLinked, http.StatusUnauthorized, "identity_not_linked", "no account uses this identity; create an account with it or link it in the account settings"},
+	{auth.ErrAccountBlocked, http.StatusForbidden, "account_blocked", "this account is blocked; contact the instance administrator"},
 	{loginprovider.ErrLoginRejected, http.StatusUnauthorized, "login_rejected", "the login provider rejected this sign in; start again"},
 	{loginprovider.ErrProviderUnavailable, http.StatusBadGateway, "provider_unavailable", "the login provider did not answer; try again later"},
 	{auth.ErrUnknownLoginProvider, http.StatusBadRequest, "unknown_login_provider", "this installation has no such login provider"},

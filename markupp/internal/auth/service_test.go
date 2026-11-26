@@ -45,6 +45,7 @@ type fakeRepository struct {
 	users         map[string]auth.User
 	identities    map[string]auth.UserIdentity
 	refreshTokens map[string]auth.RefreshTokenRecord
+	sessions      map[string]auth.SessionRecord
 	auditEvents   []auth.AuditEventRecord
 	createdVaults []string
 	lastAccount   auth.CreateAccountParams
@@ -61,6 +62,7 @@ func newFakeRepository(clock func() time.Time) *fakeRepository {
 		memberships:   make(map[string]auth.Membership),
 		identities:    make(map[string]auth.UserIdentity),
 		refreshTokens: make(map[string]auth.RefreshTokenRecord),
+		sessions:      make(map[string]auth.SessionRecord),
 	}
 }
 
@@ -159,17 +161,22 @@ func (f *fakeRepository) GetUserIdentity(ctx context.Context, provider, provider
 	return id, nil
 }
 
-func (f *fakeRepository) ConsumeRefreshToken(ctx context.Context, tokenHash string) (string, error) {
+func (f *fakeRepository) ConsumeRefreshToken(ctx context.Context, tokenHash string) (auth.RefreshTokenRecord, error) {
 	rec, ok := f.refreshTokens[tokenHash]
 	if !ok || rec.Revoked || rec.ExpiresAt.Before(f.now()) {
-		return "", auth.ErrRefreshTokenInvalid
+		return auth.RefreshTokenRecord{}, auth.ErrRefreshTokenInvalid
 	}
 	rec.Revoked = true
 	f.refreshTokens[tokenHash] = rec
-	return rec.UserID, nil
+	return rec, nil
 }
 
-func (f *fakeRepository) IssueSessionTx(ctx context.Context, record auth.RefreshTokenRecord, event auth.AuditEventRecord) error {
+// IssueSessionTx guarda a sessão como o upsert do Postgres: a criação fica a da primeira vez.
+func (f *fakeRepository) IssueSessionTx(ctx context.Context, session auth.SessionRecord, record auth.RefreshTokenRecord, event auth.AuditEventRecord) error {
+	if antiga, ok := f.sessions[session.ID]; ok {
+		session.CreatedAt = antiga.CreatedAt
+	}
+	f.sessions[session.ID] = session
 	f.refreshTokens[record.TokenHash] = record
 	f.auditEvents = append(f.auditEvents, event)
 	return nil
@@ -198,6 +205,40 @@ func (f *fakeRepository) RevokeAllUserRefreshTokens(ctx context.Context, userID 
 		if v.UserID == userID {
 			v.Revoked = true
 			f.refreshTokens[k] = v
+		}
+	}
+	return nil
+}
+
+// ListActiveSessions devolve as sessões sem fim com algum refresh ainda válido, como o Postgres.
+func (f *fakeRepository) ListActiveSessions(ctx context.Context, userID string) ([]auth.SessionRecord, error) {
+	var active []auth.SessionRecord
+	for _, s := range f.sessions {
+		if s.UserID == userID && f.sessionHasLiveRefresh(s.ID) {
+			active = append(active, s)
+		}
+	}
+	return active, nil
+}
+
+func (f *fakeRepository) sessionHasLiveRefresh(sessionID string) bool {
+	for _, rec := range f.refreshTokens {
+		if rec.SessionID == sessionID && !rec.Revoked && rec.ExpiresAt.After(f.now()) {
+			return true
+		}
+	}
+	return false
+}
+
+func (f *fakeRepository) EndUserSession(ctx context.Context, userID, sessionID string) error {
+	s, ok := f.sessions[sessionID]
+	if !ok || s.UserID != userID {
+		return auth.ErrSessionNotFound
+	}
+	for k, rec := range f.refreshTokens {
+		if rec.SessionID == sessionID {
+			rec.Revoked, rec.SessionEnded = true, true
+			f.refreshTokens[k] = rec
 		}
 	}
 	return nil

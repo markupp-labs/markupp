@@ -126,3 +126,15 @@ func TestRevokeAuthorization_FalhaDoRepositorio_DevolveErroEmbrulhado(t *testing
 	require.ErrorIs(t, err, repo.revokeAuthErr)
 	assert.NotErrorIs(t, err, oauth.ErrAuthorizationNotFound)
 }
+
+func TestRevokeAuthorizationAs_AdministradorRevogaAppDeOutraConta_AuditaOAdministrador(t *testing.T) {
+	repo := newFakeOAuthRepository()
+
+	err := newTestService(repo).RevokeAuthorizationAs(context.Background(), "admin", testUserID, "aut-1")
+
+	require.NoError(t, err)
+	event := testRevokeAuthorizationEvent()
+	event.UserID = "admin"
+	assert.Equal(t, []revokedAuthorization{{UserID: testUserID, AuthorizationID: "aut-1", Event: event}}, repo.revokedAuths,
+		"a Autorização é da conta; quem revogou é o administrador")
+}

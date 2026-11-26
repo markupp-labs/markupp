@@ -75,6 +75,7 @@ class FakeMarkuppAuth
 
       account = @accounts.find_by_credentials(body[:email], body[:password])
       raise MarkuppApi::InvalidCredentials, "fake API refuses POST /auth/login for #{body[:email].inspect}, expected a known email and its password" unless account
+      raise MarkuppApi::AccountBlocked, "fake API refuses POST /auth/login for #{body[:email].inspect}: account_blocked" if account["blocked"]
 
       @accounts.issue_pair(account)
     end

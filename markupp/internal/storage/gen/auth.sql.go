@@ -139,14 +139,19 @@ const consumeRefreshToken = `-- name: ConsumeRefreshToken :one
 UPDATE refresh_tokens
 SET revoked = TRUE
 WHERE token_hash = $1 AND revoked = FALSE AND expires_at > now()
-RETURNING user_id
+RETURNING user_id, session_id
 `
 
-func (q *Queries) ConsumeRefreshToken(ctx context.Context, tokenHash string) (string, error) {
+type ConsumeRefreshTokenRow struct {
+	UserID    string
+	SessionID pgtype.Text
+}
+
+func (q *Queries) ConsumeRefreshToken(ctx context.Context, tokenHash string) (ConsumeRefreshTokenRow, error) {
 	row := q.db.QueryRow(ctx, consumeRefreshToken, tokenHash)
-	var user_id string
-	err := row.Scan(&user_id)
-	return user_id, err
+	var i ConsumeRefreshTokenRow
+	err := row.Scan(&i.UserID, &i.SessionID)
+	return i, err
 }
 
 const countUsers = `-- name: CountUsers :one
@@ -161,8 +166,8 @@ func (q *Queries) CountUsers(ctx context.Context) (int64, error) {
 }
 
 const createAuditEvent = `-- name: CreateAuditEvent :exec
-INSERT INTO audit_events (id, tenant_id, actor_id, action, target, result, occurred_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7)
+INSERT INTO audit_events (id, tenant_id, actor_id, action, target, result, occurred_at, client_ip, user_agent)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 `
 
 type CreateAuditEventParams struct {
@@ -173,6 +178,8 @@ type CreateAuditEventParams struct {
 	Target     string
 	Result     string
 	OccurredAt time.Time
+	ClientIp   string
+	UserAgent  string
 }
 
 func (q *Queries) CreateAuditEvent(ctx context.Context, arg CreateAuditEventParams) error {
@@ -184,6 +191,8 @@ func (q *Queries) CreateAuditEvent(ctx context.Context, arg CreateAuditEventPara
 		arg.Target,
 		arg.Result,
 		arg.OccurredAt,
+		arg.ClientIp,
+		arg.UserAgent,
 	)
 	return err
 }
@@ -365,26 +374,41 @@ func (q *Queries) GetMembership(ctx context.Context, arg GetMembershipParams) (G
 }
 
 const getRefreshToken = `-- name: GetRefreshToken :one
-SELECT token_hash, user_id, expires_at, revoked, created_at
-FROM refresh_tokens
-WHERE token_hash = $1
+SELECT r.token_hash, r.user_id, r.session_id, r.expires_at, r.revoked, r.created_at,
+       (s.ended_at IS NOT NULL)::boolean AS session_ended
+FROM refresh_tokens r
+LEFT JOIN user_sessions s ON s.id = r.session_id
+WHERE r.token_hash = $1
 `
 
-func (q *Queries) GetRefreshToken(ctx context.Context, tokenHash string) (RefreshToken, error) {
+type GetRefreshTokenRow struct {
+	TokenHash    string
+	UserID       string
+	SessionID    pgtype.Text
+	ExpiresAt    time.Time
+	Revoked      bool
+	CreatedAt    time.Time
+	SessionEnded bool
+}
+
+func (q *Queries) GetRefreshToken(ctx context.Context, tokenHash string) (GetRefreshTokenRow, error) {
 	row := q.db.QueryRow(ctx, getRefreshToken, tokenHash)
-	var i RefreshToken
+	var i GetRefreshTokenRow
 	err := row.Scan(
 		&i.TokenHash,
 		&i.UserID,
+		&i.SessionID,
 		&i.ExpiresAt,
 		&i.Revoked,
 		&i.CreatedAt,
+		&i.SessionEnded,
 	)
 	return i, err
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, email, email_verified, created_at, updated_at FROM users WHERE id = $1
+SELECT id, email, email_verified, created_at, updated_at, (blocked_at IS NOT NULL)::boolean AS blocked
+FROM users WHERE id = $1
 `
 
 type GetUserByIDRow struct {
@@ -393,6 +417,7 @@ type GetUserByIDRow struct {
 	EmailVerified bool
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
+	Blocked       bool
 }
 
 func (q *Queries) GetUserByID(ctx context.Context, id string) (GetUserByIDRow, error) {
@@ -404,6 +429,7 @@ func (q *Queries) GetUserByID(ctx context.Context, id string) (GetUserByIDRow, e
 		&i.EmailVerified,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Blocked,
 	)
 	return i, err
 }
@@ -632,9 +658,12 @@ func (q *Queries) LockUserIdentities(ctx context.Context, id string) error {
 }
 
 const revokeAllUserRefreshTokens = `-- name: RevokeAllUserRefreshTokens :exec
-UPDATE refresh_tokens
+WITH ended AS (
+    UPDATE user_sessions s SET ended_at = now() WHERE s.user_id = $1 AND s.ended_at IS NULL
+)
+UPDATE refresh_tokens r
 SET revoked = TRUE
-WHERE user_id = $1
+WHERE r.user_id = $1
 `
 
 func (q *Queries) RevokeAllUserRefreshTokens(ctx context.Context, userID string) error {
@@ -643,11 +672,19 @@ func (q *Queries) RevokeAllUserRefreshTokens(ctx context.Context, userID string)
 }
 
 const revokeRefreshToken = `-- name: RevokeRefreshToken :execrows
-UPDATE refresh_tokens
+WITH target AS (
+    SELECT session_id FROM refresh_tokens WHERE token_hash = $1 AND revoked = FALSE
+), ended AS (
+    UPDATE user_sessions SET ended_at = now()
+    WHERE id = (SELECT session_id FROM target) AND ended_at IS NULL
+)
+UPDATE refresh_tokens r
 SET revoked = TRUE
-WHERE token_hash = $1 AND revoked = FALSE
+WHERE r.revoked = FALSE
+  AND (r.token_hash = $1 OR r.session_id = (SELECT session_id FROM target))
 `
 
+// Encerra a sessão do token e revoga todos os refresh dela; token sem sessão cai sozinho.
 func (q *Queries) RevokeRefreshToken(ctx context.Context, tokenHash string) (int64, error) {
 	result, err := q.db.Exec(ctx, revokeRefreshToken, tokenHash)
 	if err != nil {
@@ -657,13 +694,14 @@ func (q *Queries) RevokeRefreshToken(ctx context.Context, tokenHash string) (int
 }
 
 const saveRefreshToken = `-- name: SaveRefreshToken :exec
-INSERT INTO refresh_tokens (token_hash, user_id, expires_at, revoked, created_at)
-VALUES ($1, $2, $3, $4, $5)
+INSERT INTO refresh_tokens (token_hash, user_id, session_id, expires_at, revoked, created_at)
+VALUES ($1, $2, $3, $4, $5, $6)
 `
 
 type SaveRefreshTokenParams struct {
 	TokenHash string
 	UserID    string
+	SessionID pgtype.Text
 	ExpiresAt time.Time
 	Revoked   bool
 	CreatedAt time.Time
@@ -673,9 +711,39 @@ func (q *Queries) SaveRefreshToken(ctx context.Context, arg SaveRefreshTokenPara
 	_, err := q.db.Exec(ctx, saveRefreshToken,
 		arg.TokenHash,
 		arg.UserID,
+		arg.SessionID,
 		arg.ExpiresAt,
 		arg.Revoked,
 		arg.CreatedAt,
+	)
+	return err
+}
+
+const upsertUserSession = `-- name: UpsertUserSession :exec
+INSERT INTO user_sessions (id, user_id, client_ip, user_agent, created_at, last_used_at)
+VALUES ($1, $2, $3, $4, $5, $6)
+ON CONFLICT (id) DO UPDATE
+SET client_ip = EXCLUDED.client_ip, user_agent = EXCLUDED.user_agent, last_used_at = EXCLUDED.last_used_at
+`
+
+type UpsertUserSessionParams struct {
+	ID         string
+	UserID     string
+	ClientIp   string
+	UserAgent  string
+	CreatedAt  time.Time
+	LastUsedAt time.Time
+}
+
+// A renovação atualiza a origem e o último uso; a criação fica a do login.
+func (q *Queries) UpsertUserSession(ctx context.Context, arg UpsertUserSessionParams) error {
+	_, err := q.db.Exec(ctx, upsertUserSession,
+		arg.ID,
+		arg.UserID,
+		arg.ClientIp,
+		arg.UserAgent,
+		arg.CreatedAt,
+		arg.LastUsedAt,
 	)
 	return err
 }

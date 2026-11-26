@@ -70,6 +70,7 @@ func (s *Service) ListAuthorizations(ctx context.Context, userID string) ([]Auth
 		views = append(views, AuthorizationView{
 			ID: summary.ID, ClientID: summary.ClientID, ClientName: summary.ClientName, Scopes: append([]string{}, summary.Scopes...),
 			CreatedAt: summary.CreatedAt.UTC().Format(time.RFC3339), UpdatedAt: summary.UpdatedAt.UTC().Format(time.RFC3339),
+			IP: summary.Origin.IP, UserAgent: summary.Origin.UserAgent, LastUsedAt: formatLastUse(summary.LastUsedAt),
 		})
 	}
 	return views, nil
@@ -79,9 +80,47 @@ func (s *Service) ListAuthorizations(ctx context.Context, userID string) ([]Auth
 // preenche o cliente alvo do evento na transação; Autorização inexistente, revogada ou
 // de outra conta sai como ErrAuthorizationNotFound.
 func (s *Service) RevokeAuthorization(ctx context.Context, userID, authorizationID string) error {
-	event := AuditEvent{Action: AuditActionRevoke, Result: AuditResultSuccess, UserID: userID, OccurredAt: s.clock()}
+	return s.RevokeAuthorizationAs(ctx, userID, userID, authorizationID)
+}
+
+// RevokeAuthorizationAs revoga a Autorização de userID a pedido de actorID, que é a
+// própria conta ou o administrador da instância (ADR-0061), auditado como autor.
+func (s *Service) RevokeAuthorizationAs(ctx context.Context, actorID, userID, authorizationID string) error {
+	event := AuditEvent{Action: AuditActionRevoke, Result: AuditResultSuccess, UserID: actorID, OccurredAt: s.clock()}
 	if err := s.repo.RevokeAuthorization(ctx, userID, authorizationID, event); err != nil {
 		return fmt.Errorf("oauth: revoke authorization %s of account %q: %w", ClientValue(authorizationID), userID, err)
+	}
+	return nil
+}
+
+// formatLastUse escreve o último uso em RFC 3339 UTC, vazio quando nunca houve.
+func formatLastUse(at time.Time) string {
+	if at.IsZero() {
+		return ""
+	}
+	return at.UTC().Format(time.RFC3339)
+}
+
+// touchAuthorization registra o uso da Autorização com a origem do pedido.
+func (s *Service) touchAuthorization(ctx context.Context, authorizationID string, now time.Time) error {
+	if err := s.repo.TouchAuthorization(ctx, authorizationID, auth.OriginFrom(ctx), now); err != nil {
+		return fmt.Errorf("oauth: record use of authorization %q: %w", authorizationID, err)
+	}
+	return nil
+}
+
+// blockedAccountDescription é a recusa do token à conta bloqueada (ADR-0061).
+const blockedAccountDescription = "account blocked by the instance administrator; expected an active account"
+
+// checkAccountActive recusa com invalid_grant a conta bloqueada: nenhum token novo sai
+// para ela, nem pela troca do código, nem pelo refresh, nem pela troca do MCP.
+func (s *Service) checkAccountActive(ctx context.Context, userID string) error {
+	blocked, err := s.repo.AccountBlocked(ctx, userID)
+	if err != nil {
+		return fmt.Errorf("oauth: check account %q: %w", userID, err)
+	}
+	if blocked {
+		return grantError(blockedAccountDescription)
 	}
 	return nil
 }

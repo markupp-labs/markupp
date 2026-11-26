@@ -32,7 +32,7 @@ func TestDefault_RetornaValoresPadrao(t *testing.T) {
 	assert.Empty(t, cfg.DatabaseURL, "sem default: o banco precisa ser informado")
 	assert.Empty(t, cfg.AllowedOrigins, "sem origem configurada o CORS fica desligado")
 	assert.Equal(t, "default", cfg.DefaultTenantID)
-	assert.Equal(t, 15, cfg.JWTExpirationMinutes)
+	assert.Equal(t, 5, cfg.JWTExpirationMinutes, "ADR-0061: o bloqueio vale em até 5 minutos")
 	assert.Equal(t, 7, cfg.RefreshExpirationDays)
 	assert.False(t, cfg.AuthRegistrationEnabled)
 	assert.True(t, cfg.LocalAuthEnabled)
@@ -527,5 +527,27 @@ func TestLoad_ProxyConfiavelForaDoFormato_RetornaErroComOValor(t *testing.T) {
 		assert.Contains(t, err.Error(), "MARKUPP_TRUSTED_PROXIES", valor)
 		assert.Contains(t, err.Error(), valor)
 		assert.Contains(t, err.Error(), "CIDR", valor)
+	}
+}
+
+func TestLoad_PrazoDoHistorico_AusenteFicaZeroEDefinidoTrava(t *testing.T) {
+	sem, err := config.Load(fakeEnv{"MARKUPP_DATABASE_URL": urlDeTeste, "MARKUPP_AUTH_SECRET": segredoDeTesteValido}.Lookup)
+	require.NoError(t, err)
+	com, err := config.Load(fakeEnv{"MARKUPP_DATABASE_URL": urlDeTeste, "MARKUPP_AUTH_SECRET": segredoDeTesteValido,
+		"MARKUPP_ACCESS_HISTORY_RETENTION_DAYS": "90"}.Lookup)
+	require.NoError(t, err)
+
+	assert.Zero(t, sem.AccessHistoryRetentionDays, "sem a variável, vale a escolha do administrador")
+	assert.Equal(t, 90, com.AccessHistoryRetentionDays)
+}
+
+func TestLoad_PrazoDoHistoricoForaDaFaixa_Recusa(t *testing.T) {
+	for _, valor := range []string{"0", "3651", "um-ano"} {
+		_, err := config.Load(fakeEnv{"MARKUPP_DATABASE_URL": urlDeTeste, "MARKUPP_AUTH_SECRET": segredoDeTesteValido,
+			"MARKUPP_ACCESS_HISTORY_RETENTION_DAYS": valor}.Lookup)
+
+		require.Error(t, err, valor)
+		assert.Contains(t, err.Error(), "MARKUPP_ACCESS_HISTORY_RETENTION_DAYS")
+		assert.Contains(t, err.Error(), "from 1 to 3650")
 	}
 }

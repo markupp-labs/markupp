@@ -1,0 +1,48 @@
+<%# Acessos da instância (ADR-0061): os IPs e faixas bloqueados em toda rota, com o bloqueio novo embaixo, e o prazo de
+    guarda do histórico e do IP, só leitura quando quem hospeda o fixou. %>
+<div class="max-w-[65ch]">
+  <%= render "settings/section_heading", title: t("settings.nav.instance_access"), subtitle: false %>
+
+  <h2 class="mt-4 text-base font-semibold"><%= t(".ip_blocks") %></h2>
+  <p class="mt-1 text-ink-muted"><%= t(".ip_blocks_hint") %></p>
+  <% if @ip_blocks.empty? %>
+    <p class="mt-3 text-ink-muted"><%= t(".no_ip_blocks") %></p>
+  <% else %>
+    <ul id="ip_blocks" data-controller="context-menu" data-action="keydown->context-menu#navigate keydown->context-menu#deleteFocused" class="mt-3">
+      <% @ip_blocks.each_with_index do |block, index| %>
+        <li data-ip-block="<%= block.id %>" data-context-menu-target="item" tabindex="<%= index.zero? ? 0 : -1 %>"
+            class="flex flex-wrap items-center gap-3 border-t border-line px-2 py-2">
+          <p class="font-mono"><%= block.cidr %></p>
+          <p class="flex-1 text-ink-muted [overflow-wrap:anywhere]"><%= block.note %></p>
+          <%= button_to t(".unblock"), settings_instance_ip_block_path(block.id), method: :delete, class: "btn",
+                        data: { context_menu_delete: "", confirm_button: t(".unblock"), turbo_confirm: t(".confirm_unblock", cidr: block.cidr) } %>
+        </li>
+      <% end %>
+    </ul>
+  <% end %>
+  <%= form_with scope: :ip_block, url: settings_instance_ip_blocks_path, class: "mt-3 flex flex-wrap items-end gap-3" do |form| %>
+    <label class="flex flex-col">
+      <span class="text-ink-muted"><%= t(".cidr") %></span>
+      <%= form.text_field :cidr, required: true, class: "input font-mono", placeholder: "198.51.100.0/24", autocomplete: "off" %>
+    </label>
+    <label class="flex flex-1 flex-col">
+      <span class="text-ink-muted"><%= t(".note") %></span>
+      <%= form.text_field :note, class: "input", maxlength: 500 %>
+    </label>
+    <%= form.button t(".block"), class: "btn" %>
+  <% end %>
+
+  <h2 class="mt-8 text-base font-semibold"><%= t(".retention") %></h2>
+  <p class="mt-1 text-ink-muted"><%= t(".retention_hint") %></p>
+  <% if @retention.host_locked %>
+    <p id="retention_locked" class="mt-3"><%= t(".retention_locked", count: @retention.days) %></p>
+  <% else %>
+    <%= form_with scope: :retention, url: settings_instance_retention_path, method: :patch, class: "mt-3 flex flex-wrap items-end gap-3" do |form| %>
+      <label class="flex flex-col">
+        <span class="text-ink-muted"><%= t(".days") %></span>
+        <%= form.number_field :days, value: @retention.days, min: 1, max: 3650, required: true, class: "input w-32" %>
+      </label>
+      <%= form.button t(".save"), class: "btn" %>
+    <% end %>
+  <% end %>
+</div>

@@ -9,6 +9,7 @@ en:
   markupp_api:
     errors:
       session_expired: "Your session expired. Log in again."
+      account_blocked: "This account is blocked. Contact the administrator of this instance."
       forbidden: "You don't have permission to do that."
       read_only: "You can only view notes here."
       tenant_unavailable: "You no longer have access to that tenant."
@@ -77,6 +78,9 @@ en:
     create:
       confirmed: "Email confirmed. Pending invites now show up in your tenant list."
   # Unidades da idade curta (CompactAgeHelper): o maior passo que cabe, sem espaço entre o número e a unidade.
+  client_label:
+    unknown: "Unknown client"
+    on_system: "%{browser} on %{system}"
   compact_age:
     now: "now"
     y: "%{count}y"

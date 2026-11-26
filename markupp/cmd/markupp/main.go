@@ -258,7 +258,8 @@ func newHandler(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, logg
 		return nil, err
 	}
 	addPublication(&deps, cfg, pool)
-	addInstance(&deps, cfg, pool, box)
+	addInstance(&deps, cfg, pool, box, logger)
+	startRetention(ctx, &deps, cfg, pool, logger)
 	deps.InstanceLoginProviders = loginProviders
 	return api.NewRouter(deps), nil
 }
@@ -273,7 +274,7 @@ func newRouterDeps(cfg config.Config, pool *pgxpool.Pool, logger *slog.Logger, l
 	}
 	return api.RouterDeps{
 		Notes: notes.NewService(storage.NewPostgresNotesRepository(pool, cfg.SearchConfig), cfg.MaxNoteSize),
-		Graph: storage.NewPostgresNoteGraph(pool, cfg.SearchConfig), Auth: authSvc,
+		Graph: storage.NewPostgresNoteGraph(pool, cfg.SearchConfig), Auth: authSvc, Sessions: authSvc,
 		Admin: newAdminService(cfg, pool), AccountEmail: newAccountEmailService(cfg, pool, logger),
 		Vaults:       vaults.NewService(storage.NewPostgresVaultsRepository(pool), time.Now, uuid.NewString),
 		LinkRefusals: linkrefusals.NewService(storage.NewPostgresLinkRefusals(pool)),
@@ -303,9 +304,30 @@ func newAccountEmailService(cfg config.Config, pool *pgxpool.Pool, logger *slog.
 
 // addInstance liga as rotas do administrador da instância (ADR-0057), com a cifra da
 // chave do provedor de embedding.
-func addInstance(deps *api.RouterDeps, cfg config.Config, pool *pgxpool.Pool, box instance.Sealer) {
+func addInstance(deps *api.RouterDeps, cfg config.Config, pool *pgxpool.Pool, box instance.Sealer, logger *slog.Logger) {
 	deps.InstanceAdmins = cfg.InstanceAdmins
 	deps.InstanceEmbedding = instance.NewEmbeddingService(storage.NewAppInstanceEmbedding(pool), box)
+	ipBlocks := storage.NewInstanceIPBlocks(pool)
+	deps.IPBlocks = instance.NewIPBlockService(ipBlocks, time.Now, uuid.NewString)
+	deps.BlockedIPs = instance.NewRefreshingIPBlocks(ipBlocks, ipBlocksRefresh, time.Now, logger)
+	deps.AuditHistory = auth.NewAuditHistory(storage.NewPostgresAuditHistory(pool))
+	deps.InstanceAccounts = auth.NewInstanceAccounts(storage.NewPostgresInstanceAccountsRepository(pool), time.Now, uuid.NewString)
+	// Sem OAuth ligado, as rotas dos apps de cada conta ficam de fora.
+	if apps, ok := deps.OAuth.(api.AccountAuthorizationService); ok {
+		deps.AccountAuthorizations = apps
+	}
+}
+
+// retentionCleanupEvery é de quanto em quanto cada réplica da API tenta a limpeza do
+// histórico; só uma limpa, e no máximo uma vez por dia (ADR-0061).
+const retentionCleanupEvery = time.Hour
+
+// startRetention liga a rota do prazo de guarda e a limpeza do histórico em segundo plano,
+// que para quando ctx acaba.
+func startRetention(ctx context.Context, deps *api.RouterDeps, cfg config.Config, pool *pgxpool.Pool, logger *slog.Logger) {
+	svc := instance.NewRetentionService(storage.NewInstanceRetention(pool), cfg.AccessHistoryRetentionDays, time.Now, uuid.NewString)
+	deps.Retention = svc
+	go instance.RunRetentionCleanup(ctx, svc, retentionCleanupEvery, logger)
 }
 
 // addPublication liga a publicação de notas, pastas e cofres e a leitura sem conta delas

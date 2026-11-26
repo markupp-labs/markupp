@@ -5,6 +5,7 @@
 package gen
 
 import (
+	"net/netip"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -28,12 +29,25 @@ type AuditEvent struct {
 	Target     string
 	Result     string
 	OccurredAt time.Time
+	ClientIp   string
+	UserAgent  string
 }
 
 type EmbeddingModel struct {
 	Singleton bool
 	Name      string
 	Dimension int32
+}
+
+type InstanceAccountSummary struct {
+	ID            string
+	Email         string
+	EmailVerified bool
+	CreatedAt     time.Time
+	Blocked       bool
+	LoginMethods  []string
+	HasLastAccess bool
+	LastAccessAt  time.Time
 }
 
 type InstanceEmbedding struct {
@@ -48,6 +62,13 @@ type InstanceEmbedding struct {
 	ModelState   string
 	ModelError   string
 	ModelStateAt pgtype.Timestamptz
+}
+
+type InstanceIpBlock struct {
+	ID        string
+	Cidr      netip.Prefix
+	Note      string
+	CreatedAt time.Time
 }
 
 type InstanceLoginProvider struct {
@@ -65,6 +86,13 @@ type InstanceRegistrationMethod struct {
 	Method    string
 	Open      bool
 	UpdatedAt time.Time
+}
+
+type InstanceRetention struct {
+	Singleton     bool
+	Days          pgtype.Int4
+	LastCleanupAt pgtype.Timestamptz
+	UpdatedAt     time.Time
 }
 
 type InstanceSecret struct {
@@ -237,13 +265,16 @@ type Notification struct {
 }
 
 type OauthAuthorization struct {
-	ID        string
-	UserID    string
-	ClientID  string
-	Scopes    []string
-	CreatedAt time.Time
-	UpdatedAt time.Time
-	RevokedAt pgtype.Timestamptz
+	ID         string
+	UserID     string
+	ClientID   string
+	Scopes     []string
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
+	RevokedAt  pgtype.Timestamptz
+	ClientIp   string
+	UserAgent  string
+	LastUsedAt pgtype.Timestamptz
 }
 
 type OauthClient struct {
@@ -317,6 +348,7 @@ type RefreshToken struct {
 	ExpiresAt time.Time
 	Revoked   bool
 	CreatedAt time.Time
+	SessionID pgtype.Text
 }
 
 type Tenant struct {
@@ -338,6 +370,7 @@ type User struct {
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
 	EmailVerified bool
+	BlockedAt     pgtype.Timestamptz
 }
 
 type UserIdentity struct {
@@ -360,6 +393,16 @@ type UserInvite struct {
 	AcceptedAt pgtype.Timestamptz
 	CreatedAt  time.Time
 	DeclinedAt pgtype.Timestamptz
+}
+
+type UserSession struct {
+	ID         string
+	UserID     string
+	ClientIp   string
+	UserAgent  string
+	CreatedAt  time.Time
+	LastUsedAt time.Time
+	EndedAt    pgtype.Timestamptz
 }
 
 type Vault struct {

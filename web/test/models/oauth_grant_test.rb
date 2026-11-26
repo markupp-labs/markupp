@@ -17,9 +17,9 @@ class OAuthGrantTest < ActiveSupport::TestCase
 
   test "all builds the authorizations of the account with client, scopes and authorization date" do
     assert_equal [ OAuthGrant.new(id: "auth-1", client_name: "markupp-mcp (terminal)", scopes: %w[notas:leitura notas:escrita],
-                                  created_at: Time.utc(2026, 10, 16, 12)),
+                                  created_at: Time.utc(2026, 10, 16, 12), ip: "", user_agent: "", last_used_at: nil),
                    OAuthGrant.new(id: "auth-2", client_name: "markupp-cli (terminal)", scopes: %w[notas:leitura],
-                                  created_at: Time.utc(2026, 10, 20, 9, 30)) ],
+                                  created_at: Time.utc(2026, 10, 20, 9, 30), ip: "", user_agent: "", last_used_at: nil) ],
                  OAuthGrant.all(api_as(ANA))
   end
 

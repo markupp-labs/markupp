@@ -37,7 +37,7 @@ func (r *PostgresAuthRepository) LinkIdentityTx(ctx context.Context, ident auth.
 		if err != nil {
 			return fmt.Errorf("link identity %s to user %q: %w", ident.Provider, ident.UserID, err)
 		}
-		return qtx.CreateAuditEvent(ctx, toCreateAuditEventParams(event))
+		return qtx.CreateAuditEvent(ctx, toCreateAuditEventParams(ctx, event))
 	})
 }
 
@@ -54,7 +54,7 @@ func (r *PostgresAuthRepository) UnlinkIdentityTx(ctx context.Context, userID, i
 		if err := qtx.DeleteUserIdentity(ctx, gen.DeleteUserIdentityParams{ID: identityID, UserID: userID}); err != nil {
 			return fmt.Errorf("unlink identity %q of user %q: %w", identityID, userID, err)
 		}
-		return qtx.CreateAuditEvent(ctx, toCreateAuditEventParams(event))
+		return qtx.CreateAuditEvent(ctx, toCreateAuditEventParams(ctx, event))
 	})
 }
 

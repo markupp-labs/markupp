@@ -172,6 +172,18 @@ class MarkuppApiTest < ActiveSupport::TestCase
     server.close
   end
 
+  test "sends the user agent of the browser in User-Agent" do
+    server = FakeHttpServer.new(status: "200 OK", body: "{}")
+    thread = server.serve_once
+
+    MarkuppApi.new(server.url, forwarded_for: "203.0.113.9", user_agent: "Firefox/140").post("/v1/auth/login", email: "ana@markupp.dev")
+    thread.join
+    assert_equal "Firefox/140", server.requested_headers["user-agent"]
+    assert_equal "203.0.113.9", server.requested_headers["x-forwarded-for"]
+  ensure
+    server.close
+  end
+
   test "authenticates as the relay of the public reading when it forwards the IP of the visitor" do
     server = FakeHttpServer.new(status: "200 OK", body: "{}")
     thread = server.serve_once

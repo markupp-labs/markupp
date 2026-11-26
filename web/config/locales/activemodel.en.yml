@@ -29,6 +29,7 @@ en:
             base:
               invalid_credentials: "Email or password is wrong."
               local_auth_disabled: "Password sign-in isn't available here."
+              account_blocked: "This account is blocked. Contact the administrator of this instance."
         account_registration:
           attributes:
             password:
