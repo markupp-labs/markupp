@@ -18,6 +18,7 @@ class ApplicationController < ActionController::Base
   rescue_from MarkuppApi::Forbidden, with: :refuse_forbidden
   rescue_from MarkuppApi::TenantUnavailable, with: :forget_tenant
   rescue_from MarkuppApi::Unauthorized, MarkuppApi::SessionExpired, with: :expire_session
+  rescue_from MarkuppApi::AccountBlocked, with: :leave_blocked_account
 
   # rate_limit do create com a mensagem que cita a janela; quem passa do limite volta para redirect_path.
   def self.limit_create_attempts(to:, within:, redirect_path:)
@@ -176,6 +177,13 @@ class ApplicationController < ActionController::Base
       log_api_event("markupp_session_expired", error)
       credential.sign_out
       leave_page(new_session_path, t("markupp_api.errors.session_expired"), frame_status: :unauthorized)
+    end
+
+    # A conta bloqueada pelo administrador da instância sai com o motivo, na renovação que a API recusa (ADR-0061).
+    def leave_blocked_account(error)
+      log_api_event("markupp_account_blocked", error)
+      credential.sign_out
+      leave_page(new_session_path, t("markupp_api.errors.account_blocked"), frame_status: :forbidden)
     end
 
     # Json não segue redirect para página: só o status, e o aviso fica para a próxima página de verdade.

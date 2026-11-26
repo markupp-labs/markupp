@@ -9,6 +9,7 @@ pt-BR:
   markupp_api:
     errors:
       session_expired: "Sua sessão expirou. Entre de novo."
+      account_blocked: "Esta conta está bloqueada. Fale com quem administra esta instância."
       forbidden: "Seu papel neste tenant não permite isso."
       read_only: "Seu papel neste tenant é viewer, que só lê notas."
       tenant_unavailable: "Você não tem mais acesso a esse tenant."

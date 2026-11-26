@@ -33,6 +33,8 @@ class MarkuppApi
   class EmailAlreadyVerified < Error; end
   class Forbidden < Error; end
   class LocalAuthDisabled < Forbidden; end
+  # O administrador da instância bloqueou a conta: ela não entra nem renova (ADR-0061).
+  class AccountBlocked < Forbidden; end
   # viewer tentou escrever nota.
   class ReadOnly < Forbidden; end
   # O tenant do cabeçalho não serve: não é da conta (403), a conta não tem tenant (403) ou faltou escolher (400).
@@ -120,7 +122,7 @@ class MarkuppApi
     "invalid_invite" => InvalidToken, "invalid_token" => InvalidToken, "already_exists" => AccountExists,
     "email_unavailable" => EmailUnavailable, "email_already_verified" => EmailAlreadyVerified,
     "vault_forbidden" => VaultUnavailable, "request_not_found" => OAuthRequestNotFound, "authorization_not_found" => AuthorizationNotFound,
-    "session_not_found" => SessionNotFound,
+    "session_not_found" => SessionNotFound, "account_blocked" => AccountBlocked,
     "invalid_name" => InvalidName, "not_tenant_member" => NotTenantMember, "already_vault_member" => AlreadyVaultMember,
     "vault_member_not_found" => VaultMemberNotFound, "no_vault" => NoVault, "registration_disabled" => RegistrationDisabled,
     "email_not_verified" => EmailNotVerified, "invite_limit_reached" => InviteLimitReached,

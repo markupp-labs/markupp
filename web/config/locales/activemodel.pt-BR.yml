@@ -29,6 +29,7 @@ pt-BR:
             base:
               invalid_credentials: "Email ou senha incorretos."
               local_auth_disabled: "O login com senha está desativado neste servidor."
+              account_blocked: "Esta conta está bloqueada. Fale com quem administra esta instância."
         account_registration:
           attributes:
             password:

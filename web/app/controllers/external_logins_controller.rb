@@ -15,7 +15,8 @@ class ExternalLoginsController < ApplicationController
     MarkuppApi::RegistrationDisabled => [ "activemodel.errors.models.account_registration.attributes.base.registration_disabled", :new_registration_path ],
     MarkuppApi::ProviderEmailMissing => [ "external_logins.errors.email_missing", :new_registration_path ],
     MarkuppApi::LoginRejected => [ "external_logins.errors.rejected", :back ],
-    MarkuppApi::ProviderUnavailable => [ "external_logins.errors.unavailable", :back ]
+    MarkuppApi::ProviderUnavailable => [ "external_logins.errors.unavailable", :back ],
+    MarkuppApi::AccountBlocked => [ "markupp_api.errors.account_blocked", :new_session_path ]
   }.freeze
   # Página de onde cada propósito sai, e para onde volta quando algo dá errado.
   BACK_PATHS = { "login" => :new_session_path, "signup" => :new_registration_path, "link" => :settings_account_path }.freeze
