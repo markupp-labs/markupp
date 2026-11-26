@@ -23,7 +23,7 @@ class PublicationsControllerTest < ActionDispatch::IntegrationTest
       assert_select "h2", text: "Publish the folder docs"
       assert_select "p", text: /2 notes go public/
       assert_select "p", text: /notes added to docs later go public too/
-      assert_select "p", text: /people and AI agents without an account/
+      assert_select "p", text: /no account needed/
       assert_select "form[action=?][data-turbo-frame=_top]", publications_path do
         assert_select "input[type=hidden][name=kind][value=folder]"
         assert_select "input[type=hidden][name=path][value=docs]"
@@ -83,7 +83,7 @@ class PublicationsControllerTest < ActionDispatch::IntegrationTest
     post publications_path, params: { kind: "folder", path: "docs", confirm: "docs" }, headers: { "Referer" => root_url }
 
     assert_redirected_to root_url
-    assert_equal "Only the owner and the admins publish folders and vaults; a note, whoever edits it.", flash[:alert]
+    assert_equal "You don't have permission to publish this.", flash[:alert]
   end
 
   test "an unknown kind answers 400 without calling the API" do

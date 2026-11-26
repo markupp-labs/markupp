@@ -109,7 +109,7 @@ class SessionsControllerTest < ActionDispatch::IntegrationTest
     sign_in_as
 
     assert_response :unprocessable_content
-    assert_select "[role=alert]", "Password login is disabled on this server."
+    assert_select "[role=alert]", "Password sign-in isn't available here."
   end
 
   test "create answers bad gateway when the API is unreachable" do
@@ -118,7 +118,7 @@ class SessionsControllerTest < ActionDispatch::IntegrationTest
     sign_in_as
 
     assert_response :bad_gateway
-    assert_select "main", text: /Can't reach the markupp server/
+    assert_select "main", text: /Couldn't load this/
   end
 
   test "create stops after too many attempts" do

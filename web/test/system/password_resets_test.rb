@@ -10,9 +10,9 @@ class PasswordResetsTest < ApplicationSystemTestCase
     click_on "Forgot password?"
     fill_in "Email", with: EMAIL
     click_on "Send"
-    assert_text "If an account uses that email, a reset token is on its way."
-    click_on "I have a token"
-    fill_in "Token", with: api.sent_tokens.last.fetch(:token)
+    assert_text "Check your email for a link to reset your password. If it doesn't show up in a few minutes, check your spam folder."
+    click_on "I have a code"
+    fill_in "Code", with: api.sent_tokens.last.fetch(:token)
     fill_in "New password", with: "senha-nova-de-teste"
     fill_in "Confirm password", with: "senha-nova-de-teste"
     click_on "Reset password"

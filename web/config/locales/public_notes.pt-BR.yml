@@ -11,8 +11,8 @@ pt-BR:
       title: "Nada publicado aqui"
       hint: "Não há nota pública neste endereço. Confira o link com quem o compartilhou."
     rate_limited:
-      title: "Pedidos demais"
-      hint: "Este endereço chamou o servidor vezes demais. Espere um minuto e recarregue a página."
+      title: "Muitos acessos em pouco tempo"
+      hint: "Espere um minuto e recarregue a página."
   public_searches:
     show:
       title: "%{query} | %{publication}"

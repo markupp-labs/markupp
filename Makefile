@@ -18,7 +18,7 @@ test:
 e2e-mcp:
 	cd mcp && npm run e2e
 
-# Smoke descartável da stack dev num kind com os requisitos do cluster de produção.
+# Smoke descartável da stack dev num kind com os pré-requisitos que o componente Pulumi pede.
 # Precisa de Docker, kind, helm, kubectl e Pulumi, e apaga o cluster no fim
 smoke-kind:
 	./deploy/kind/ambiente.sh smoke

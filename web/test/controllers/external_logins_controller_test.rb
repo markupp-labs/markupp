@@ -108,7 +108,7 @@ class ExternalLoginsControllerTest < ActionDispatch::IntegrationTest
     come_back("codigo-ana", "state-de-outra-aba")
 
     assert_redirected_to new_session_path
-    assert_equal "This sign in expired or came from another tab. Start again.", flash[:alert]
+    assert_equal "Sign-in expired. Try again.", flash[:alert]
   end
 
   test "a callback without an attempt is refused" do
@@ -117,7 +117,7 @@ class ExternalLoginsControllerTest < ActionDispatch::IntegrationTest
     come_back("codigo-ana", "state-1")
 
     assert_redirected_to new_session_path
-    assert_equal "This sign in expired or came from another tab. Start again.", flash[:alert]
+    assert_equal "Sign-in expired. Try again.", flash[:alert]
   end
 
   test "the attempt is used once" do

@@ -8,7 +8,7 @@ en:
       instance_embedding: "Embedding"
     instance_embedding:
       show:
-        intro: "Semantic links connect notes that cover the same subject. They need an embedding provider, one for the whole instance."
+        intro: "Automatically links notes about the same subject. The provider you pick applies to everyone on this instance."
         locked: "Set by whoever hosts this instance: %{provider}. It can't be changed here."
         provider: "Provider"
         providers:
@@ -27,7 +27,7 @@ en:
         key_set: "A key is set. Leave the field empty to keep it."
         key_unset: "No key set. Leave the field empty if the endpoint needs none."
         clear_api_key: "Remove the stored key"
-        reindex_hint: "Changing the provider or the model recomputes the meaning of every note."
+        reindex_hint: "Changing the provider or the model rebuilds the links of every note."
         save: "Save"
         status: "Model status"
         no_status: "No model in use."
@@ -37,9 +37,9 @@ en:
           error: "Error"
         changed_at: "since %{time}"
       update:
-        saved: "Saved. The server switches to it within a minute."
+        saved: "Saved. It takes effect within a minute."
       errors:
-        invalid_request: "Check the provider: the remote endpoint needs an http or https URL and a model."
+        invalid_request: "Enter a URL (http or https) and a model."
         host_locked: "Whoever hosts this instance set the provider, so it can't be changed here."
         api_key_required: "To use another remote endpoint, type the API key again, or tick Remove the stored key."
   shortcuts:

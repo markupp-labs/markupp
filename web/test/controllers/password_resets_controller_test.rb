@@ -10,7 +10,7 @@ class PasswordResetsControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select "h1", "Choose a new password"
     assert_select "form[action=?][method=post]", password_reset_path do
-      assert_select "label[for=password_reset_token]", "Token"
+      assert_select "label[for=password_reset_token]", "Code"
       assert_select "input[type=text][name=?][required]", "password_reset[token]"
       assert_select "label[for=password_reset_password]", "New password"
       assert_select "input[type=password][name=?][required][minlength=15][autocomplete=new-password]", "password_reset[password]"
@@ -69,7 +69,7 @@ class PasswordResetsControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :unprocessable_content
     assert_select "input[name=?][value=tok-9][aria-invalid=true][aria-describedby=password_reset_token_error]", "password_reset[token]"
-    assert_select "#password_reset_token_error", "This token is invalid, expired or already used."
+    assert_select "#password_reset_token_error", "This link expired or was already used. Request a new one."
     assert_select "input[name=?]:not([value])", "password_reset[password]"
   end
 
@@ -80,7 +80,7 @@ class PasswordResetsControllerTest < ActionDispatch::IntegrationTest
     reset_password(token, "outra-senha-de-teste")
 
     assert_response :unprocessable_content
-    assert_select "#password_reset_token_error", "This token is invalid, expired or already used."
+    assert_select "#password_reset_token_error", "This link expired or was already used. Request a new one."
   end
 
   test "create with a password the API refuses says the rule under the field" do
@@ -89,7 +89,7 @@ class PasswordResetsControllerTest < ActionDispatch::IntegrationTest
     reset_password(token, " ")
 
     assert_response :unprocessable_content
-    assert_select "#password_reset_password_error", "Enter a password up to 72 bytes long."
+    assert_select "#password_reset_password_error", "This password is too long. Use a shorter one."
   end
 
   test "create says when the server can't send email" do
@@ -98,7 +98,7 @@ class PasswordResetsControllerTest < ActionDispatch::IntegrationTest
     reset_password("tok-1", "senha-nova-de-teste")
 
     assert_response :unprocessable_content
-    assert_select "[role=alert]", "This server can't send email, so password reset is off. Ask an administrator."
+    assert_select "[role=alert]", "Password reset by email isn't available here. Ask an administrator for help."
   end
 
   test "create answers bad gateway when the API is unreachable" do
@@ -107,7 +107,7 @@ class PasswordResetsControllerTest < ActionDispatch::IntegrationTest
     reset_password("tok-1", "senha-nova-de-teste")
 
     assert_response :bad_gateway
-    assert_select "main", text: /Can't reach the markupp server/
+    assert_select "main", text: /Couldn't load this/
   end
 
   private

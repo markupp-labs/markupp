@@ -1,7 +1,7 @@
 pt-BR:
   markupp_api:
     errors:
-      publish_forbidden: "Só o owner e os admins publicam pastas e cofres; a nota, quem a edita."
+      publish_forbidden: "Você não tem permissão para publicar isto."
   shortcuts:
     names:
       publish_note: "Publicar a nota"
@@ -29,7 +29,7 @@ pt-BR:
         one: "1 nota fica pública."
         other: "%{count} notas ficam públicas."
       includes_future: "As notas que entrarem em %{name} depois também ficam públicas."
-      readers: "Qualquer pessoa com o link as lê, pessoas e agentes de IA sem conta, e pode buscar nelas e seguir os links delas."
+      readers: "Qualquer pessoa com o link pode ler, buscar e navegar por elas, sem precisar de conta."
       type_name: "Digite %{name} para confirmar"
       indexable: "Deixar os buscadores listarem"
       publish: "Publicar"
@@ -55,7 +55,7 @@ pt-BR:
     publications:
       gone: "Essa publicação já não existia."
       index:
-        hint: "Tudo aqui está aberto a qualquer pessoa com o link, pessoas e agentes de IA sem conta. Despublique para tornar privado de novo; os links públicos param de funcionar."
+        hint: "Qualquer pessoa com o link pode ler o que está aqui, sem precisar de conta. Despublique para voltar a ser privado."
         vault: "Cofre"
         all_vaults: "Todos os cofres"
         show: "Mostrar"

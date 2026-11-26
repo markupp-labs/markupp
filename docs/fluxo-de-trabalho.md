@@ -1,52 +1,42 @@
-# Fluxo de Trabalho
+# Fluxo de trabalho
 
-Este documento consolida as regras de colaboração no repositório do Markupp. Ele reúne, em um só lugar, como o código entra no projeto: branches, pull requests, revisão e integração na `main`.
+Como o código entra no repositório: branches, commits, pull requests e releases.
 
-## Uso obrigatório de branches
+## Branches
 
-Todo desenvolvimento acontece em branches criadas a partir da `dev`. Não é permitido trabalhar diretamente na `main`.
+- main: recebe só a dev, na consolidação de um release.
+- dev: integração. Todo trabalho parte dela e volta para ela.
+- Branches de trabalho: saem da dev com o prefixo do tipo de commit e uma descrição curta, como feat/log-do-notificador, fix/otel-1-47 ou docs/glossario-instancia. O prefixo é feat/, nunca feature/, e refact/, nunca refactor/, mesmo que merges antigos mostrem o contrário.
 
-Commits direto na `dev` devem ser justificados, de tamanho atômico e pontuais, qualquer trabalho que exija mais de um commit deve seguir em uma branch separada.
+## Commits
 
-- `main`: branch de produção, só recebe merges da `dev`
-- `dev`: branch de integração, onde as features convergem antes de ir para produção
-- Branches de trabalho: criadas a partir da `dev`, seguindo o padrão [conventional branches](https://conventional-branch.github.io/).
+Conventional commits em português, sem escopo entre parênteses: `feat: adiciona validação de upload`. Os tipos aceitos são feat, fix, docs, test, chore, refact, release e merge. Refatoração usa refact:, e o hook recusa refactor:.
 
-Detalhes em [git-flow.md](./git-flow.md).
+- release: consolida a dev na main.
+- merge: é o back-merge escrito à mão, de main para dev ou de dev para uma branch de trabalho.
 
-## Integração de mudanças via pull request
+Cada commit traz uma mudança lógica. Refatoração, feature e correção vão em commits separados, mesmo quando mexem no mesmo arquivo.
 
-Nenhum código entra na `main` sem passar por pull request. Commits seguem o padrão conventional commits em português.
+O hook commit-msg roda [scripts/valida-mensagem-de-commit.sh](../scripts/valida-mensagem-de-commit.sh) e também recusa emoji, travessão e atribuição de autoria a ferramenta (Co-Authored-By e afins). Mensagens que o próprio git gera, como `Merge branch` e `Revert`, passam. Instale os hooks no clone com `make hooks`. A CI roda o mesmo script em todos os commits de cada PR.
 
-Ciclo de vida de uma mudança:
+## Pull requests
 
-1. Criar branch de trabalho a partir da `dev`
-2. Desenvolver e commitar na branch
-3. Abrir PR da branch de trabalho para a `dev`
-4. Obter revisão e aprovação de um par
-5. Mergear na `dev`
-6. Quando a `dev` estiver estável, abrir PR da `dev` para a `main`
+O PR de trabalho mira a dev. Use o [template de PR](../.github/PULL_REQUEST_TEMPLATE.md), e issues seguem os [templates de issue](../.github/ISSUE_TEMPLATE/).
 
-## Quem revisa e aprova PRs
+O repositório só aceita merge commit: squash e rebase estão desligados.
 
-| Ação | Quem pode |
-|------|-----------|
-| Abrir PR | Qualquer integrante da equipe |
-| Revisar e aprovar PR | Qualquer par (integrante diferente do autor) |
-| Mergear na `main` | Somente via PR aprovado vindo da `dev` |
+A main é protegida. Um PR para ela precisa de:
 
-Ver seção Governança no [README.md](../README.md).
+- uma aprovação, e um push novo descarta as aprovações anteriores;
+- os checks Server (Go) tests e Commit conventions verdes, com a branch atualizada em relação à main;
+- todas as conversas resolvidas.
 
-## Aprovação mínima antes da integração
+Force push e remoção da main estão bloqueados. A dev não tem proteção configurada.
 
-Todo PR exige no mínimo 1 aprovação de um par antes de ser mergeado. O autor do PR não pode aprovar o próprio PR.
+## Release
 
-## Política de push direto na branch principal
+1. Abra um PR da dev para a main com o título `release: ...` e faça o merge com merge commit.
+2. Traga a main de volta para a dev com um commit `merge:`, por exemplo `merge: traz o main da release da rc.10 de volta à dev`. Sem esse back-merge, as duas branches divergem.
+3. Marque o release com uma tag semver com prefixo v, como v1.0.0 ou v1.0.0-rc.1. O [workflow de release](../.github/workflows/release.yml) recusa tag fora desse formato.
 
-- Não se deve fazer push direto para `main`.
-- Não se deve abrir PR de branches de trabalho diretamente para a `main`.
-- A `main` só aceita merge vindo da `dev` via PR aprovado por um par.
-
-## Template de PR com checklist mínimo
-
-Todo PR aberto no repositório utiliza o template em [`.github/PULL_REQUEST_TEMPLATE.md`](../.github/PULL_REQUEST_TEMPLATE.md)
+A tag publica as imagens no GHCR e o pacote markupp-mcp no npm. Tag de prerelease (com hífen) não move a tag latest da imagem e vai para a dist-tag next do npm.

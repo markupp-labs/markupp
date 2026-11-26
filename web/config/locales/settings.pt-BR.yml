@@ -18,13 +18,13 @@ pt-BR:
         title: "Conta"
         email: "Email"
         confirmation: "Confirmação do email"
-        confirmation_hint: "Confirme seu email para ver os convites enviados a ele. O email de confirmação traz um token."
+        confirmation_hint: "Confirme seu email para ver os convites enviados para ele."
         send: "Enviar email de confirmação"
-        have_token: "Tenho um token"
+        have_token: "Tenho o código de confirmação"
         password: "Senha"
-        password_hint: "O servidor manda um token para %{email}; use-o para escolher a senha nova."
+        password_hint: "Enviamos um link para %{email} para você escolher a senha nova."
         change_password: "Trocar senha"
-        have_reset_token: "Tenho um token de redefinição"
+        have_reset_token: "Tenho o código de redefinição"
       identities:
         title: "Contas conectadas"
         hint: "Entre com estas contas no lugar da senha. Desconectar sempre deixa ao menos uma forma de entrar."
@@ -49,17 +49,17 @@ pt-BR:
         last_identity: "Esta é a única forma que resta de entrar na sua conta. Conecte outra antes."
     authorizations:
       index:
-        hint: "Clientes que você autorizou a agir em nome da sua conta. Revogar um desconecta só ele; os outros seguem funcionando."
-        empty: "Nenhuma autorização ainda. Clientes como o markupp-mcp e o markupp-cli aparecem aqui depois que você faz login por eles."
-        client: "Cliente"
+        hint: "Apps que você autorizou a usar sua conta. Revogar um desconecta só esse app."
+        empty: "Nenhum app autorizado ainda. Apps como o markupp-mcp e o markupp-cli aparecem aqui quando você entra por eles."
+        client: "App"
         authorized: "Autorizado em"
         last_use: "Último uso"
-        scopes: "Escopos"
+        scopes: "Permissões"
       oauth_grant:
         authorized: "Autorizado em"
         last_used: "%{client} de %{ip},"
         not_used: "Ainda não usado"
-        scopes: "Escopos"
+        scopes: "Permissões"
         revoke: "Revogar"
         confirm_revoke: "Revogar a autorização de %{client}?"
       destroy:
@@ -82,10 +82,10 @@ pt-BR:
         styled: "Estilizado"
         editor_style_hint: "Simples mostra o markdown num tamanho só, como no VS Code. Estilizado aumenta os títulos, como o modo fonte do Obsidian."
         vim_keys: "Atalhos do Vim"
-        vim_keys_hint: "Os atalhos do Vim dão ao editor os modos normal, inserção e visual do Vim, com :w, :q e :e. Esc duas vezes e depois Tab saem do editor."
+        vim_keys_hint: "Edite com os modos e comandos do Vim. Para sair do editor, aperte Esc duas vezes e depois Tab."
     agents:
       mcp_missing:
-        notice: "Esta instância não tem servidor MCP, então os agentes de IA ainda não conseguem se conectar. Peça ao administrador para ligar o MCP."
+        notice: "Os agentes de IA ainda não estão disponíveis aqui. Peça a um administrador para ativá-los."
       show:
         title: "Agentes"
         intro: "Conecte um agente de IA a esta instância do markupp por MCP. Escolha o seu cliente, copie o trecho e entre quando o cliente pedir: o agente age com a sua conta e os seus papéis."
@@ -142,8 +142,8 @@ pt-BR:
         member_not_found: "Essa pessoa não é mais membro."
     invites:
       index:
-        token_hint: "Este servidor não tem email configurado. Mande você mesmo este token para %{email}; ele vale uma vez e expira em %{date}."
-        token: "Token do convite"
+        token_hint: "O convite não vai por email nesta instância. Mande este código para %{email}; ele vale uma vez, até %{date}."
+        token: "Código do convite"
         send: "Enviar convite"
         empty: "Nenhum convite ainda. Convide alguém pelo formulário acima."
         email: "Email"

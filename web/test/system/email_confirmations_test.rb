@@ -11,8 +11,8 @@ class EmailConfirmationsTest < ApplicationSystemTestCase
     click_on "Confirm your email"
     click_on "Send confirmation email"
     assert_text "Confirmation email sent."
-    click_on "I have a token"
-    fill_in "Token", with: api.sent_tokens.last.fetch(:token)
+    click_on "I have a confirmation code"
+    fill_in "Code", with: api.sent_tokens.last.fetch(:token)
     click_on "Confirm"
     assert_text "Email confirmed."
 

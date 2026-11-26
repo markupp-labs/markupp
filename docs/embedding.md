@@ -5,13 +5,12 @@ O provedor de embedding transforma cada nota num vetor para a ligação por sent
 
 ## Escolha rápida
 
-| Provedor | Onde o modelo roda | Custo | Quando usar |
-| --- | --- | --- | --- |
-| `none` | nenhum | zero | Padrão do self-host. Busca léxica e grafo funcionam sem vetor |
-| `local` | dentro do indexador de embedding | elétrico | Self-host sem nenhum serviço externo, nem container extra |
-| `openai-compat` | máquina de quem hospeda | elétrico | Self-host que já roda Ollama, LocalAI ou vLLM |
-| `openai-compat` | API da OpenAI | por token | Quem já tem chave e não quer rodar modelo |
-| `bedrock` | AWS | por token | Planejado, ainda não implementado |
+| Provedor | Onde o modelo roda | Quando usar |
+| --- | --- | --- |
+| `none` | nenhum | Padrão do self-host. Busca léxica e grafo funcionam sem vetor |
+| `local` | dentro do indexador de embedding | Self-host sem nenhum serviço externo, nem container extra |
+| `openai-compat` | máquina de quem hospeda | Self-host que já roda Ollama, LocalAI ou vLLM |
+| `openai-compat` | API da OpenAI | Quem já tem chave e não quer rodar modelo |
 
 ## Onde se escolhe
 
@@ -95,5 +94,4 @@ download falhar, gravar a mesma escolha de novo tenta outra vez.
 Vetor de modelo diferente não é comparável: cada modelo produz um espaço próprio, e a dimensão
 muda. O modelo ativo fica registrado junto dos vetores. Ao trocar de provedor ou de modelo, o
 indexador apaga os vetores e refaz os de todas as notas. Isso é seguro porque vetor é dado
-derivado (ADR-0012), mas custa uma passada de embedding sobre todas as notas, o que num
-provedor pago é custo por chamada.
+derivado (ADR-0012), mas pede uma passada de embedding sobre todas as notas.

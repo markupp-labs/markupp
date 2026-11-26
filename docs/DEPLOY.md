@@ -50,6 +50,8 @@ namespace informado:
   enquanto não há email na fila;
 - o TriggerAuthentication que entrega ao KEDA a URL de um papel do banco que só conta os cofres
   pendentes e as notificações vencidas;
+- o Deployment do indexador de embedding, com o volume dos pesos do modelo;
+- com `panel` ou `mcp` informado, o Deployment e o Service do painel ou do servidor MCP;
 - um Gateway com HTTPRoute, e um Issuer do cert-manager para o certificado.
 
 ### Pré-requisitos do cluster
@@ -62,8 +64,10 @@ namespace informado:
   migração dar login ao papel do scaler
 - o namespace do markupp, já criado
 - uma credencial com permissão no namespace para Secret, Job, Deployment, StatefulSet, Service,
-  Gateway, HTTPRoute, Issuer, ScaledJob, ScaledObject e TriggerAuthentication
-- uma StorageClass para o volume do PostgreSQL. Sem informar, vale a padrão do cluster
+  PersistentVolumeClaim, Gateway, HTTPRoute, Issuer, ScaledJob, ScaledObject e
+  TriggerAuthentication
+- uma StorageClass para os volumes do PostgreSQL e do embedder. Sem informar, vale a padrão do
+  cluster
 - um backend de estado do Pulumi
 
 ### Usar o componente
@@ -84,7 +88,7 @@ resources:
       host: notas.exemplo.com
       acmeEmail: ops@exemplo.com
       database:
-        storageClass: longhorn-fast
+        storageClass: fast-ssd
 ```
 
 Para enviar o convite por email, informe `email` com `smtpUrl`, no formato
@@ -525,7 +529,7 @@ pontas:
 | `MARKUPP_MCP_PORT` | MCP | 3000 | porta em que o MCP escuta, em todas as interfaces |
 
 O servidor MCP sobe com `markupp-mcp http` (a imagem já começa assim) e espera até 60 segundos
-pelo Go e pelo arquivo do segredo. No cluster, com o MCP em subdomínio próprio (ADR-0045), o
+pelo Go e pelo arquivo do segredo. No cluster, o MCP fica na mesma origem da API, em `/mcp`, e o
 `MARKUPP_OAUTH_RESOURCES` do Go e o `MARKUPP_MCP_RESOURCE_URL` e o `MARKUPP_MCP_RESOURCE_SECRET`
 do MCP vêm do Secret.
 
