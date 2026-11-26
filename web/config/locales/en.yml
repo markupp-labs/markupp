@@ -78,6 +78,9 @@ en:
     create:
       confirmed: "Email confirmed. Pending invites now show up in your tenant list."
   # Unidades da idade curta (CompactAgeHelper): o maior passo que cabe, sem espaço entre o número e a unidade.
+  client_label:
+    unknown: "Unknown client"
+    on_system: "%{browser} on %{system}"
   compact_age:
     now: "now"
     y: "%{count}y"

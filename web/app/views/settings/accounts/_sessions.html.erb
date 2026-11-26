@@ -1,0 +1,30 @@
+<%# Sessões de login da conta (ADR-0061). Pelo teclado como as listas de membros: j/k entre as linhas, Delete na linha com o
+    foco pede para encerrar. A sessão deste painel não encerra aqui: sai pelo Log out. %>
+<h2 class="mt-6 text-base font-semibold"><%= t(".title") %></h2>
+<p class="mt-2 text-ink-muted"><%= t(".hint") %></p>
+<ul id="account_sessions" data-controller="context-menu" data-action="keydown->context-menu#navigate keydown->context-menu#deleteFocused"
+    class="mt-3 md:grid md:grid-cols-[1fr_9rem_5rem_auto] md:gap-x-3">
+  <li aria-hidden="true" class="hidden px-2 py-1 text-ink-muted md:col-span-4 md:grid md:grid-cols-subgrid">
+    <span><%= t(".client") %></span>
+    <span><%= t(".ip") %></span>
+    <span><%= t(".last_used") %></span>
+  </li>
+  <% sessions.each_with_index do |session, index| %>
+    <% client = client_label(session.user_agent) %>
+    <li data-session="<%= session.id %>" <%= "data-context-menu-target=item" unless session.current %> tabindex="<%= index.zero? ? 0 : -1 %>"
+        class="border-t border-line px-2 py-2 md:col-span-4 md:grid md:grid-cols-subgrid md:items-center">
+      <p class="[overflow-wrap:anywhere]" title="<%= session.user_agent %>"><%= client %></p>
+      <p class="font-mono text-ink-muted"><span class="md:sr-only"><%= t(".ip") %></span> <%= session.ip.presence || "?" %></p>
+      <p class="text-ink-muted">
+        <span class="md:sr-only"><%= t(".last_used") %></span>
+        <time datetime="<%= session.last_used_at.iso8601 %>" title="<%= l(session.last_used_at, format: :long) %>"><%= compact_age(session.last_used_at) %></time>
+      </p>
+      <% if session.current %>
+        <p class="text-accent"><%= t(".current") %></p>
+      <% else %>
+        <%= button_to t(".end"), settings_session_path(session.id), method: :delete, form_class: "mt-1 md:mt-0", class: "btn btn-danger",
+                      data: { context_menu_delete: "", confirm_button: t(".end"), turbo_confirm: t(".confirm_end", client:) } %>
+      <% end %>
+    </li>
+  <% end %>
+</ul>

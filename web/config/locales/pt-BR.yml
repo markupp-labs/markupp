@@ -78,6 +78,9 @@ pt-BR:
     create:
       confirmed: "Email confirmado. Os convites pendentes agora aparecem na sua lista de tenants."
   # Unidades da idade curta (CompactAgeHelper): o maior passo que cabe, sem espaço entre o número e a unidade.
+  client_label:
+    unknown: "Cliente desconhecido"
+    on_system: "%{browser} no %{system}"
   compact_age:
     now: "agora"
     y: "%{count}a"

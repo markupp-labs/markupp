@@ -43,6 +43,8 @@ class MarkuppApi
   class OAuthRequestNotFound < NotFound; end
   # Autorização inexistente, já revogada ou de outra conta: a API não distingue.
   class AuthorizationNotFound < NotFound; end
+  # Sessão de login inexistente, já encerrada ou de outra conta: a API não distingue (ADR-0061).
+  class SessionNotFound < NotFound; end
   # Cofre inexistente ou de que a conta não é membro.
   class VaultUnavailable < Forbidden; end
   # Nome de cofre vazio, com espaço nas pontas ou longo demais.
@@ -118,6 +120,7 @@ class MarkuppApi
     "invalid_invite" => InvalidToken, "invalid_token" => InvalidToken, "already_exists" => AccountExists,
     "email_unavailable" => EmailUnavailable, "email_already_verified" => EmailAlreadyVerified,
     "vault_forbidden" => VaultUnavailable, "request_not_found" => OAuthRequestNotFound, "authorization_not_found" => AuthorizationNotFound,
+    "session_not_found" => SessionNotFound,
     "invalid_name" => InvalidName, "not_tenant_member" => NotTenantMember, "already_vault_member" => AlreadyVaultMember,
     "vault_member_not_found" => VaultMemberNotFound, "no_vault" => NoVault, "registration_disabled" => RegistrationDisabled,
     "email_not_verified" => EmailNotVerified, "invite_limit_reached" => InviteLimitReached,

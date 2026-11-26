@@ -10,10 +10,11 @@
     <%# Grade no desktop, blocos empilhados no celular. Pelo teclado como as listas de membros: j/k entre as linhas,
         Delete na linha com o foco pede para revogar. %>
     <ul id="oauth_grants" data-controller="context-menu" data-action="keydown->context-menu#navigate keydown->context-menu#deleteFocused"
-        class="mt-4 md:grid md:grid-cols-[1fr_8rem_1fr_auto] md:gap-x-3">
-      <li aria-hidden="true" class="hidden px-2 py-1 text-ink-muted md:col-span-4 md:grid md:grid-cols-subgrid">
+        class="mt-4 md:grid md:grid-cols-[1fr_8rem_1fr_1fr_auto] md:gap-x-3">
+      <li aria-hidden="true" class="hidden px-2 py-1 text-ink-muted md:col-span-5 md:grid md:grid-cols-subgrid">
         <span><%= t(".client") %></span>
         <span><%= t(".authorized") %></span>
+        <span><%= t(".last_use") %></span>
         <span><%= t(".scopes") %></span>
       </li>
       <%= render partial: "settings/authorizations/oauth_grant", collection: oauth_grants %>

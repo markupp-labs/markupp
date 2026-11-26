@@ -65,6 +65,7 @@ Rails.application.routes.draw do
     resource :instance_embedding, path: "instance/embedding", only: [ :show, :update ], controller: "instance_embedding"
     resource :instance_registration, path: "instance/registration", only: [ :show, :update ], controller: "instance_registration"
     resources :instance_login_providers, path: "instance/login-providers", only: [ :index, :create, :update, :destroy ]
+    resources :sessions, only: :destroy
   end
 
   # Nota pública, lida sem conta (ADR-0048): o fim do endereço é o slug do título e o id público depois do último hífen.

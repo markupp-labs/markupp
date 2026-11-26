@@ -1,9 +1,17 @@
 <%# Cada bloco repete no celular o rótulo que o cabeçalho dá no desktop; os escopos usam os nomes da tela de consentimento. %>
 <li data-oauth-grant="<%= oauth_grant.id %>" data-context-menu-target="item" tabindex="<%= oauth_grant_counter.zero? ? 0 : -1 %>"
-    class="border-t border-line px-2 py-2 md:col-span-4 md:grid md:grid-cols-subgrid md:items-center">
+    class="border-t border-line px-2 py-2 md:col-span-5 md:grid md:grid-cols-subgrid md:items-center">
   <p class="client-name [overflow-wrap:anywhere]"><%= oauth_grant.client_name %></p>
   <p class="text-ink-muted">
     <span class="md:sr-only"><%= t(".authorized") %></span> <%= l(oauth_grant.created_at.to_date, format: :short) %>
+  </p>
+  <p class="text-ink-muted">
+    <% if oauth_grant.last_used_at %>
+      <%= t(".last_used", client: client_label(oauth_grant.user_agent), ip: oauth_grant.ip.presence || "?") %>
+      <time datetime="<%= oauth_grant.last_used_at.iso8601 %>" title="<%= l(oauth_grant.last_used_at, format: :long) %>"><%= compact_age(oauth_grant.last_used_at) %></time>
+    <% else %>
+      <%= t(".not_used") %>
+    <% end %>
   </p>
   <ul aria-label="<%= t(".scopes") %>">
     <% oauth_grant.scopes.each do |scope| %>

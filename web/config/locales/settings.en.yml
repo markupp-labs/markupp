@@ -30,6 +30,19 @@ en:
         hint: "Log in with these accounts instead of a password. Disconnecting keeps at least one way to log in."
         connect: "Connect %{provider}"
         disconnect: "Disconnect %{provider}"
+      sessions:
+        title: "Sessions"
+        hint: "Where your account is signed in to the panel. End the ones you don't recognize; that device signs out within minutes."
+        client: "Client"
+        ip: "IP"
+        last_used: "Last used"
+        current: "This session"
+        end: "End"
+        confirm_end: "End the session of %{client}?"
+    sessions:
+      destroy:
+        ended: "Session ended. That device signs out within minutes."
+        not_found: "That session is no longer active."
     identities:
       destroy:
         disconnected: "%{provider} disconnected."
@@ -40,9 +53,12 @@ en:
         empty: "No authorizations yet. Clients such as markupp-mcp and markupp-cli show up here once you log in with them."
         client: "Client"
         authorized: "Authorized"
+        last_use: "Last use"
         scopes: "Scopes"
       oauth_grant:
         authorized: "Authorized"
+        last_used: "%{client} from %{ip},"
+        not_used: "Not used yet"
         scopes: "Scopes"
         revoke: "Revoke"
         confirm_revoke: "Revoke the authorization for %{client}?"

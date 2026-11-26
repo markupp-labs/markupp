@@ -30,6 +30,19 @@ pt-BR:
         hint: "Entre com estas contas no lugar da senha. Desconectar sempre deixa ao menos uma forma de entrar."
         connect: "Conectar %{provider}"
         disconnect: "Desconectar %{provider}"
+      sessions:
+        title: "Sessões"
+        hint: "Onde sua conta está conectada ao painel. Encerre as que você não reconhece; o aparelho sai em minutos."
+        client: "Cliente"
+        ip: "IP"
+        last_used: "Último uso"
+        current: "Esta sessão"
+        end: "Encerrar"
+        confirm_end: "Encerrar a sessão de %{client}?"
+    sessions:
+      destroy:
+        ended: "Sessão encerrada. O aparelho sai em minutos."
+        not_found: "Essa sessão não está mais ativa."
     identities:
       destroy:
         disconnected: "%{provider} desconectado."
@@ -40,9 +53,12 @@ pt-BR:
         empty: "Nenhuma autorização ainda. Clientes como o markupp-mcp e o markupp-cli aparecem aqui depois que você faz login por eles."
         client: "Cliente"
         authorized: "Autorizado em"
+        last_use: "Último uso"
         scopes: "Escopos"
       oauth_grant:
         authorized: "Autorizado em"
+        last_used: "%{client} de %{ip},"
+        not_used: "Ainda não usado"
         scopes: "Escopos"
         revoke: "Revogar"
         confirm_revoke: "Revogar a autorização de %{client}?"
