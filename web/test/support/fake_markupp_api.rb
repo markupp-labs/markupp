@@ -31,7 +31,7 @@ class FakeMarkuppApi
                  tenants: FakeMarkuppTenants::DEFAULT_TENANTS, invites: [], email_enabled: true, graph: {}, oauth_requests: [],
                  authorizations: [], vaults: nil, publications: [], login_providers: [], link_refusals: [],
                  instance_embedding: {}, instance_registration: FakeMarkuppInstanceRegistration::DEFAULT_METHODS,
-                 instance_login_providers: {}, sessions: [])
+                 instance_login_providers: {}, sessions: [], instance_access: {})
     @accounts = FakeMarkuppAccounts.new(accounts)
     @tenants = FakeMarkuppTenants.new(tenants, invites)
     @auth = FakeMarkuppAuth.new(@accounts, @tenants)
@@ -52,10 +52,14 @@ class FakeMarkuppApi
     @instance_registration = FakeMarkuppInstanceRegistration.new(instance_registration)
     @instance_login_providers = FakeMarkuppInstanceLoginProviders.new(instance_login_providers)
     @sessions = FakeMarkuppSessions.new(sessions)
+    @instance_access = FakeMarkuppInstanceAccess.new(instance_access)
     @unreachable = unreachable
     @slow_calls = FakeSlowCalls.new(timeout: 10)
     @received_credentials = []
   end
+
+  # Contas, bloqueios de IP e consultas da instância (ver FakeMarkuppInstanceAccess).
+  def instance_access = @instance_access
 
   # Ids das sessões de login que sobraram (ver FakeMarkuppSessions).
   def session_ids = @sessions.ids
@@ -149,6 +153,7 @@ class FakeMarkuppApi
       return @oauth_requests if path.start_with?(OAUTH_REQUESTS)
       return @authorizations if FakeMarkuppAuthorizations::ROUTE.match?(path)
       return @sessions if FakeMarkuppSessions::ROUTE.match?(path)
+      return @instance_access if FakeMarkuppInstanceAccess.handles?(path)
       return @tenants if path == FakeMarkuppTenants::NOTIFICATIONS
       return @auth if [ "/v1/accounts", FakeMarkuppAuth::POLICY ].include?(path)
       return @link_refusals if FakeMarkuppLinkRefusals::ROUTE.match?(path)
